@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Calculadora } from "@/components/Calculadora";
@@ -70,15 +70,8 @@ function Index() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-6">
-      <header className="text-center">
-        <h1 className="font-display text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
-          Veterício Serviços Veterinários LTDA
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Ficha de Avaliação da Internação</p>
-      </header>
-
-      <section className="mt-5 grid grid-cols-2 gap-2 sm:gap-3">
+    <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
+      <section className="grid grid-cols-2 gap-2 sm:gap-3">
         <Calculadora />
         <div className="space-y-2 sm:space-y-3">
           <Cronometro />
@@ -97,15 +90,6 @@ function Index() {
             setForm(REGISTRO_VAZIO);
           }}
         />
-      </div>
-
-      <div className="mt-4 text-center">
-        <Link
-          to="/registros"
-          className="inline-flex rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
-        >
-          Animais registrados ({registros.length})
-        </Link>
       </div>
 
       <div className="mt-8">
