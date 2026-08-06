@@ -4,9 +4,10 @@ type Props = {
   registros: Registro[];
   onEditar: (r: Registro) => void;
   onExcluir: (id: string) => void;
+  onCopiar: (r: Registro) => void;
 };
 
-export function ListaRegistros({ registros, onEditar, onExcluir }: Props) {
+export function ListaRegistros({ registros, onEditar, onExcluir, onCopiar }: Props) {
   if (registros.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -23,7 +24,14 @@ export function ListaRegistros({ registros, onEditar, onExcluir }: Props) {
             <h3 className="text-base font-semibold text-foreground">
               {i + 1}. {r.animal.trim() || "Sem nome"}
             </h3>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => onCopiar(r)}
+                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+              >
+                Copiar
+              </button>
               <button
                 type="button"
                 onClick={() => onEditar(r)}
