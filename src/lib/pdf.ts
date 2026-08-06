@@ -46,7 +46,7 @@ export async function exportarPdf(
 
   doc.setFontSize(11);
   for (const bloco of blocos) {
-    const [cabecalho, ...resto] = bloco.split("\n");
+    const [cabecalho = "", ...resto] = bloco.split("\n");
     novaPaginaSeNecessario(40);
 
     doc.setFont("helvetica", "bold");
