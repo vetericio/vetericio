@@ -26,17 +26,18 @@ Layout em duas colunas:
 - **Calculadora**: teclado grande, com operações básicas e botão de potência (elevado, `^`).
 - **Cronômetro**: só **Iniciar/Pausar** e **Zerar**, tamanho reduzido, alinhado com a taxa de infusão.
 - **Taxa de infusão**: só o campo *Peso* é editável (aceita `5,3` ou `5.3`); as duas linhas de cálculo são fixas e atualizam o resultado em mL/h automaticamente.
+- Vai aparecer Cachorro, a formula embaixo, menor, e no espaço abaixo o numero
 
 ## Formulário de avaliação
 
 Campos com opções fixas (seleção por toque):
 
 - **Alimentação**: Ração, Patê, Ração + patê, Forçado, Recuperação, Jejum, Não alimentou, Líquido, Sonda
-- **Comportamento**: Responsivo, Prostrado, Ativo, Responsivo e ativo, Neurológico, Decúbito, Agressivo, Responsivo porém prostrado
+- **Comportamento**: Responsivo, Prostrado, Ativo, Neurológico, Decúbito, Agressivo, Responsivo porém prostrado
 - **Fezes**: Sim, Não, Pastoso, Diarreia, Melena
 - **Mucosas**: Normocoradas, Hipocoradas, Ictéricas, Hiperêmicas, Cianóticas
 - **Urina**: Sim, Não, Sonda, Compressão
-- **Vômito**: Sim, Não
+- **Vômito**: Sim, Não, Sialorreia 
 
 Campos digitados: **Animal** (nome), **Temperatura** (°C), **FC** (bpm), **FR** (mpm), **PAS** (mmHg), **Glicemia** (mg/dL), **Observações**.
 
@@ -70,5 +71,5 @@ Observações:
 
 - Página única em `src/routes/index.tsx` com componentes em `src/components/` (Calculadora, Cronometro, TaxaInfusao, FormAvaliacao, ListaRegistros, ExportarTexto).
 - Persistência via `localStorage` (offline, sem backend).
-- Instalável no celular (manifest + ícones) para abrir como app; o app funciona sem internet.
+- Instalável no celular (manifest + ícones) para abrir como app; o app funciona sem internet. Ter essa opção no final do app (instalar) e gera um app na tela do android.
 - Layout mobile-first, com a linha de ferramentas em duas colunas também no celular quando couber.
