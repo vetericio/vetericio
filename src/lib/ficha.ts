@@ -108,24 +108,58 @@ export function formatarTodos(registros: Registro[]): string {
 }
 
 const CHAVE = "veterico-registros-v1";
+const CHAVE_PLANTOES = "veterico-plantoes-v1";
+
+export const MAX_PLANTOES = 10;
+
+export type Plantao = {
+  id: string;
+  data: string;
+  turno: string;
+  registros: Registro[];
+  criadoEm: string;
+};
+
+export function rotuloPlantao(p: Plantao): string {
+  const [ano, mes, dia] = p.data.split("-");
+  const dataBr = ano && mes && dia ? `${dia}/${mes}/${ano}` : p.data;
+  return p.turno ? `${dataBr} — ${p.turno}` : dataBr;
+}
 
 export function carregarRegistros(): Registro[] {
+  return ler<Registro>(CHAVE);
+}
+
+export function salvarRegistros(registros: Registro[]) {
+  escrever(CHAVE, registros);
+}
+
+export function carregarPlantoes(): Plantao[] {
+  return ler<Plantao>(CHAVE_PLANTOES);
+}
+
+export function salvarPlantoes(plantoes: Plantao[]) {
+  escrever(CHAVE_PLANTOES, plantoes);
+}
+
+function ler<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE);
+    const bruto = window.localStorage.getItem(chave);
     if (!bruto) return [];
     const dados = JSON.parse(bruto);
-    return Array.isArray(dados) ? (dados as Registro[]) : [];
+    return Array.isArray(dados) ? (dados as T[]) : [];
   } catch {
     return [];
   }
 }
 
-export function salvarRegistros(registros: Registro[]) {
+function escrever(chave: string, valor: unknown) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE, JSON.stringify(registros));
+    window.localStorage.setItem(chave, JSON.stringify(valor));
   } catch {
     /* armazenamento indisponível */
   }
 }
+
