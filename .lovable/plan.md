@@ -61,4 +61,5 @@ Os animais em andamento ficam no plantão atual. Quando o plantão termina, ele 
 - `index.tsx` e `registros.tsx`: remoção dos cabeçalhos/botões duplicados; títulos de `head()` permanecem distintos por rota.
 - `ListaRegistros.tsx`: botão Copiar por item usando `formatarRegistro` + `navigator.clipboard`.
 - PDF no cliente com `jspdf` (instalar), em `src/lib/pdf.ts`, usando fonte com acentuação e quebra de linha/página; import dinâmico para não pesar o carregamento inicial.
+- Plantões: tipo `Plantao { id, data, turno, registros }` em `src/lib/ficha.ts`, hook `src/hooks/usePlantoes.ts` com `localStorage` (chave `veterico-plantoes-v1`, corte nos 10 mais recentes) e nova rota `src/routes/plantoes.tsx` com `head()` próprio.
 
