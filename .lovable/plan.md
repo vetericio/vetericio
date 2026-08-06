@@ -43,7 +43,18 @@ Logo abaixo do subtítulo, uma linha de navegação com dois botões:
 - Confirmação por toast em cada ação ("Texto copiado", "PDF gerado").
 - Tudo funciona offline (geração no próprio aparelho).
 
+## 6. Salvar por plantão (histórico dos 10 últimos)
+
+Os animais em andamento ficam no plantão atual. Quando o plantão termina, ele é arquivado no histórico.
+
+- Botão **Fechar plantão** na página de registros: pede a **data** (já vem preenchida com a de hoje) e um **turno** opcional (Diurno / Noturno), salva o plantão com todos os animais e limpa a lista para começar o próximo.
+- Nova página **Plantões** (botão no cabeçalho, ao lado de Início e Animais registrados) listando os plantões salvos, do mais recente para o mais antigo: data, turno e quantidade de animais.
+- Ao abrir um plantão salvo: ver o texto completo, **copiar**, **exportar PDF** e **excluir** aquele plantão.
+- Guarda apenas os **10 últimos** plantões; ao fechar o 11º, o mais antigo é descartado automaticamente.
+- Tudo salvo no próprio aparelho, funcionando offline.
+
 ## Detalhes técnicos
+
 
 - Novo componente `src/components/Cabecalho.tsx` (título, subtítulo e navegação com `Link` + `activeProps`), renderizado em `src/routes/__root.tsx` acima do `<Outlet />` para não remontar entre rotas.
 - `TaxaInfusao.tsx`: apenas troca do texto da unidade para `mL/dia`.
