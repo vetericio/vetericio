@@ -81,6 +81,7 @@ function Registros() {
 
       <div className="mt-4 flex flex-wrap gap-2">
           {registros.length > 0 && (
+          <>
           <button
             type="button"
             onClick={copiar}
@@ -95,6 +96,7 @@ function Registros() {
           >
             Compartilhar
           </button>
+          </>
           )}
           <button
             type="button"
