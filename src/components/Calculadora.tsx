@@ -50,17 +50,17 @@ export function Calculadora() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="flex h-full flex-col gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-sm sm:gap-3 sm:p-4">
+      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.7rem]">
         Calculadora
       </p>
-      <div className="rounded-xl bg-secondary px-3 py-3 text-right">
-        <p className="min-h-5 truncate text-sm text-muted-foreground">{expr || "0"}</p>
-        <p className="mt-1 truncate text-3xl font-semibold leading-tight text-foreground">
+      <div className="rounded-xl bg-secondary px-2 py-2 text-right sm:px-3 sm:py-3">
+        <p className="min-h-4 truncate text-xs text-muted-foreground sm:text-sm">{expr || "0"}</p>
+        <p className="mt-0.5 truncate text-xl font-semibold leading-tight text-foreground sm:text-3xl">
           {resultado || "—"}
         </p>
       </div>
-      <div className="grid flex-1 grid-cols-4 gap-2">
+      <div className="grid flex-1 grid-cols-4 gap-1.5 sm:gap-2">
         {TECLAS.flat().map((tecla) => {
           const operador = ["÷", "×", "−", "+", "^", "%"].includes(tecla);
           const igual = tecla === "=";
@@ -71,7 +71,7 @@ export function Calculadora() {
               type="button"
               onClick={() => aoTocar(tecla)}
               className={[
-                "rounded-xl py-3 text-lg font-semibold transition-colors active:scale-[0.97]",
+                "rounded-lg py-2 text-sm font-semibold transition-colors active:scale-[0.97] sm:rounded-xl sm:py-3 sm:text-lg",
                 igual
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : operador
