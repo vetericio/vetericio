@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { useRegistros } from "@/hooks/useRegistros";
@@ -27,6 +27,18 @@ export const Route = createFileRoute("/registros")({
 
 function Registros() {
   const { registros, setRegistros } = useRegistros();
+  const navigate = useNavigate();
+
+  const apagarTudo = () => {
+    if (registros.length === 0) {
+      toast.info("Não há registros salvos.");
+      return;
+    }
+    if (window.confirm("Apagar todos os registros salvos neste aparelho?")) {
+      setRegistros([]);
+      toast.success("Todos os registros foram apagados.");
+    }
+  };
 
   const copiar = async () => {
     try {
@@ -67,8 +79,9 @@ function Registros() {
         </Link>
       </header>
 
-      {registros.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
+          {registros.length > 0 && (
+          <>
           <button
             type="button"
             onClick={copiar}
@@ -83,29 +96,30 @@ function Registros() {
           >
             Compartilhar
           </button>
+          </>
+          )}
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm("Apagar todos os registros?")) {
-                setRegistros([]);
-                toast.success("Registros apagados.");
-              }
-            }}
-            className="rounded-xl bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20"
+            onClick={apagarTudo}
+            className="rounded-xl bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90"
           >
-            Limpar tudo
+            Apagar todos os registros
           </button>
-        </div>
-      )}
+      </div>
 
       <div className="mt-4">
         <ListaRegistros
           registros={registros}
           onEditar={(r) => {
             window.localStorage.setItem("veterico-editar-id", r.id);
-            window.location.href = "/";
+            navigate({ to: "/" });
           }}
-          onExcluir={(id) => setRegistros((rs) => rs.filter((x) => x.id !== id))}
+          onExcluir={(id) => {
+            const alvo = registros.find((r) => r.id === id);
+            if (!window.confirm(`Excluir o registro de ${alvo?.animal.trim() || "sem nome"}?`)) return;
+            setRegistros((rs) => rs.filter((x) => x.id !== id));
+            toast.success("Registro excluído.");
+          }}
         />
       </div>
 
