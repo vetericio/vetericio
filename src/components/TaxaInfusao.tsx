@@ -40,7 +40,7 @@ export function TaxaInfusao() {
                 {fator} × peso<sup>0,75</sup>
               </p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums text-primary sm:text-lg">
-                {resultado ? `${resultado} mL/h` : "—"}
+                {resultado ? `${resultado} mL/dia` : "—"}
               </p>
             </div>
           );
