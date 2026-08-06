@@ -66,7 +66,8 @@ function Index() {
       toast.success(`${form.animal.trim()} adicionado.`);
     }
     setForm(REGISTRO_VAZIO);
-    navigate({ to: "/registros" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate({ to: "/" });
   };
 
   return (
