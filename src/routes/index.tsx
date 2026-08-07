@@ -7,7 +7,23 @@ import { TaxaInfusao } from "@/components/TaxaInfusao";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
-import { REGISTRO_VAZIO, type Registro } from "@/lib/ficha";
+import {
+  REGISTRO_VAZIO,
+  chaveAnimal,
+  proximoNomeDuplicado,
+  type Registro,
+} from "@/lib/ficha";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
