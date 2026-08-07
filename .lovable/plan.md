@@ -1,65 +1,67 @@
-# Espécie, novas opções de alimento e alertas nos números
+# Aba Evolução — gráficos por animal
 
-## 1. Alimentação — novas opções
+## 1. Nova aba
 
-Adicionar **Comida própria** e **Frango** à lista de opções de Alimentação (junto de Ração, Patê, Ração + patê, Forçado, Recuperação, Jejum, Não alimentou, Líquido, Sonda).
+Novo botão **Evolução** no cabeçalho (ao lado de Plantões) e nova página `/evolucao`.
 
-## 2. Espécie depois do nome
+Na página:
 
-Ao lado/abaixo do campo Animal, dois botões: **Cachorro** / **Gato**.
+- Uma **caixa suspensa** com todos os animais que têm avaliações (nome + espécie).
+- Ao escolher um animal, aparecem **gráficos de linha por parâmetro**: Temperatura,
+  FC, FR, PAS e Glicemia.
+- Cada ponto do gráfico é **uma avaliação**, em ordem de tempo (eixo X com data/hora
+  da avaliação; se só houver uma avaliação, mostra o ponto isolado).
+- Parâmetro sem nenhum valor preenchido não gera gráfico (fica escondido).
+- Abaixo de cada gráfico, uma faixa de referência da espécie (quando a espécie estiver
+  definida) para leitura rápida do que está fora do normal.
+- Sem animais registrados, a página mostra uma mensagem simples convidando a registrar
+  a primeira avaliação.
 
-- A espécie escolhida define as faixas de referência dos números.
-- No texto exportado, aparece depois do nome, na mesma linha:
+Fonte dos dados: as avaliações da lista atual **e** as dos plantões salvos, agrupadas
+pelo mesmo animal, para a evolução não se perder ao fechar o plantão.
+
+## 2. Mesmo animal ou animal diferente
+
+Ao enviar uma avaliação cujo **nome e espécie** já existem, o app pergunta:
 
 ```text
-Saturna (Cachorro)
-Alimentação: Patê.
-...
+Já existe "Saturna (Cachorro)". É o mesmo animal?
+[ Sim, é o mesmo ]   [ Não, é outro animal ]
 ```
 
+- **Sim**: a avaliação entra no histórico do animal existente (mesmo gráfico).
+- **Não**: cria um animal separado, com o nome escrito **"Saturna (2)"** — e (3), (4)…
+  conforme o necessário. O nome com o número é o que aparece na lista, no texto
+  exportado, no PDF e na caixa suspensa.
+- Se nome ou espécie diferem de tudo que já existe, nada é perguntado.
+- Ao **editar** um registro existente, a pergunta não aparece.
 
-- Sem espécie escolhida, os números não recebem alerta nem observação automática.
+## 3. Pré-requisito: espécie e horário
 
-## 3. Números fora da faixa: campo em vermelho + observação automática
+Para os gráficos funcionarem, cada avaliação passa a guardar:
 
-Ao digitar um valor fora da faixa da espécie, o campo fica **vermelho** e uma frase é
-adicionada automaticamente nas Observações:
+- **Espécie** (Cachorro / Gato) — botões abaixo do campo Animal, e no texto exportado
+  aparece depois do nome, na mesma linha: `Saturna (Cachorro)`.
+- **Data e hora do registro**, usada como eixo do gráfico (não aparece no texto
+  exportado, só nos gráficos).
 
-```text
-Animal com hipotermia em 07/08/2026 às 09:05.
-```
-
-Faixas de referência:
-
-| Parâmetro | Cão | Gato | Abaixo | Acima |
-| --- | --- | --- | --- | --- |
-| Temperatura (°C) | 37,5–39,5 | 37,5–39,5 | Hipotermia | Hipertermia |
-| FC (bpm) | 60–180 | 140–220 | Bradicardia | Taquicardia |
-| FR (irpm) | 18–34 | 20–30 | Bradipneia | Taquipneia |
-| PAS (mmHg) | 110–160 | 90–170 | Hipotensão | Hipertensão |
-| Glicemia (mg/dL) | 70–120 | 80–150 | Hipoglicemia | Hiperglicemia |
-
-- FR igual a 0 gera **apneia**.
-- A data/hora é a do momento em que o valor fora da faixa foi digitado.
-- A frase fica registrada no histórico: se o valor voltar para a faixa normal, a
-  observação **permanece** (é o registro do que aconteceu e quando). Nada é apagado
-  automaticamente — o texto escrito à mão também é preservado.
-- Cada situação entra uma vez por valor digitado; se o valor mudar de categoria
-  (ex.: de hipotermia para hipertermia), a nova frase é acrescentada com sua própria
-  data e hora, abaixo da anterior.
-
-- Abaixo dos campos numéricos, um resumo das faixas da espécie selecionada, para
-  referência rápida.
+Registros antigos, sem espécie ou sem horário, continuam válidos: entram nos gráficos
+em ordem de inserção e sem faixa de referência.
 
 ## Detalhes técnicos
 
-- `src/lib/ficha.ts`: adicionar `especie` ao tipo `Registro` e a `REGISTRO_VAZIO`;
-  incluir as novas opções em `OPCOES.alimentacao`; nova tabela `FAIXAS` por espécie;
-  helpers `avaliarValor(chave, valor, especie)` → `{ fora: boolean, termo: string }`,
-  `frasePorTermo(termo, data)` e ajuste de `formatarRegistro` para imprimir a espécie
-  logo após o nome.
-- `src/components/FormAvaliacao.tsx`: botões de espécie, borda/texto vermelhos
-  (tokens `destructive`) nos inputs fora da faixa, e sincronização das frases
-  automáticas em Observações via marcador de linhas geradas (linhas que começam com
-  "Animal com ") para poder substituí-las sem tocar no texto manual.
-- Registros antigos sem `especie` continuam válidos (campo opcional/vazio).
+- `src/lib/ficha.ts`: adicionar `especie` e `criadoEm` (ISO) a `Registro` /
+  `REGISTRO_VAZIO`; tabela `FAIXAS` por espécie; helper `chaveAnimal(r)`
+  (nome normalizado + espécie) e `proximoNomeDuplicado(nome, registros)` para gerar
+  "Nome (2)"; `formatarRegistro` imprime `Nome (Espécie)` na primeira linha.
+- `src/lib/evolucao.ts`: agrupa registros da lista atual + `carregarPlantoes()` por
+  `chaveAnimal`, ordena por `criadoEm` e devolve séries por parâmetro
+  (`{ rotulo, unidade, pontos: [{ quando, valor }] }`), ignorando valores vazios.
+- `src/routes/evolucao.tsx`: `head()` própria, `<select>` de animal e gráficos com
+  `recharts` (`LineChart`/`ResponsiveContainer`), cores via tokens do design system,
+  faixa de referência com `ReferenceArea` quando houver espécie.
+- `src/components/Cabecalho.tsx`: novo `<Link to="/evolucao">`.
+- `src/components/FormAvaliacao.tsx`: botões de espécie.
+- `src/routes/index.tsx`: ao enviar (modo criação), detectar nome+espécie existentes e
+  abrir um diálogo (`AlertDialog`) com as duas opções antes de salvar; "outro animal"
+  salva com o nome numerado. `criadoEm` definido no momento do envio.
