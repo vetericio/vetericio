@@ -146,9 +146,11 @@ export function formatarRegistro(r: Registro): string {
   ].filter(Boolean) as string[];
 
   const obs = r.observacoes.trim();
-  const nome = r.animal.trim() || "Sem nome";
+  const base = r.animal.trim() || "Sem nome";
+  const nome = r.especie ? `${base} (${r.especie})` : base;
   return [nome, ...linhas, `Observações: ${obs}`].join("\n");
 }
+
 
 export function formatarTodos(registros: Registro[]): string {
   return registros
