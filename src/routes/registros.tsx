@@ -59,26 +59,8 @@ function Registros() {
     }
   };
 
-  const fecharPlantao = () => {
-    if (!data) {
-      toast.error("Informe a data do plantão.");
-      return;
-    }
-    const plantao = {
-      id: crypto.randomUUID(),
-      data,
-      turno,
-      registros,
-      criadoEm: new Date().toISOString(),
-    };
-    setPlantoes((ps) => [plantao, ...ps].slice(0, MAX_PLANTOES));
-    setRegistros([]);
-    setFechando(false);
-    setTurno("");
-    setData(hoje());
-    toast.success("Plantão salvo no histórico.");
-    navigate({ to: "/plantoes" });
-  };
+
+
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
