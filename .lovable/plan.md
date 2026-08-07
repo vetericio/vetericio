@@ -23,7 +23,7 @@ A pergunta aparece uma vez por parâmetro alterado, no momento da alteração.
 Cada card passa a ter:
 
 - **Editar animal** — abre a ficha existente para corrigir dados daquele registro (comportamento atual).
-- **Atualizar informações** — mostra a avaliação anterior do animal em modo somente leitura (não editável) no topo da ficha e abre campos vazios abaixo para acrescentar a nova informação, criando uma nova avaliação na evolução do mesmo animal (sem perguntar se é o mesmo animal).
+- **Atualizar informações** — mostra a avaliação anterior do animal em modo somente leitura (não editável) no topo da ficha e abre campos vazios abaixo para acrescentar a nova informação, mantendo os dois valores no parâmetro (ex.: `Temperatura: 32,5 / 37,9`) e acrescentando em Observações a frase `Temperatura atualizada às 12h para 37,9 °C.`
 
 Copiar e Excluir seguem como estão.
 
