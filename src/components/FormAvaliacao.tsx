@@ -134,20 +134,41 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {NUMERICOS.map(({ chave, rotulo, unidade }) => (
-          <label key={chave} className="block">
-            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {rotulo} <span className="normal-case tracking-normal">({unidade})</span>
-            </span>
-            <input
-              value={valores[chave]}
-              onChange={(e) => set(chave, e.target.value)}
-              inputMode="decimal"
-              className="mt-1 w-full rounded-lg border border-input bg-background px-2.5 py-2 text-base font-semibold tabular-nums text-foreground outline-none focus:border-ring"
-            />
-          </label>
-        ))}
+        {NUMERICOS.map(({ chave, rotulo, unidade }) => {
+          const { fora } = avaliarValor(chave, valores[chave], valores.especie);
+          return (
+            <label key={chave} className="block">
+              <span
+                className={[
+                  "text-[0.7rem] font-semibold uppercase tracking-[0.14em]",
+                  fora ? "text-destructive" : "text-muted-foreground",
+                ].join(" ")}
+              >
+                {rotulo} <span className="normal-case tracking-normal">({unidade})</span>
+              </span>
+              <input
+                value={valores[chave]}
+                onChange={(e) => setNumero(chave, e.target.value)}
+                inputMode="decimal"
+                aria-invalid={fora}
+                className={[
+                  "mt-1 w-full rounded-lg border bg-background px-2.5 py-2 text-base font-semibold tabular-nums outline-none",
+                  fora
+                    ? "border-destructive text-destructive focus:border-destructive"
+                    : "border-input text-foreground focus:border-ring",
+                ].join(" ")}
+              />
+            </label>
+          );
+        })}
       </div>
+
+      {faixas && (
+        <p className="mt-2 text-[0.7rem] leading-relaxed text-muted-foreground">
+          Faixas ({valores.especie}): {faixas}
+        </p>
+      )}
+
 
       <label className="mt-4 block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
