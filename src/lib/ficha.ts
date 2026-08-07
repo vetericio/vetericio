@@ -85,6 +85,55 @@ export function frasePorTermo(termo: string, data = new Date()): string {
   return `Animal com ${termo} em ${dia} às ${hora}.`;
 }
 
+/** Termos clínicos possíveis para um parâmetro. */
+export function termosDe(chave: ChaveNumerica): string[] {
+  const base = [TERMOS[chave].abaixo, TERMOS[chave].acima];
+  return chave === "fr" ? [...base, "apneia"] : base;
+}
+
+/** Remove as frases automáticas geradas pelo app para aquele parâmetro. */
+export function removerFraseDoParametro(observacoes: string, chave: ChaveNumerica): string {
+  const termos = termosDe(chave);
+  return observacoes
+    .split("\n")
+    .filter((linha) => {
+      const l = linha.trim();
+      if (!l.startsWith("Animal com ")) return true;
+      return !termos.some((t) => l.includes(` ${t} em `));
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** "Temperatura atualizada às 12h para 40,2 °C." */
+export function fraseAtualizacao(
+  chave: ChaveNumerica,
+  valor: string,
+  data = new Date(),
+): string {
+  const { rotulo, unidade } = ROTULOS_NUMERICOS[chave];
+  const hora = `${String(data.getHours()).padStart(2, "0")}h${String(data.getMinutes()).padStart(2, "0")}`;
+  return `${rotulo} atualizada às ${hora} para ${comVirgula(valor.trim())} ${unidade}.`;
+}
+
+/** Junta o valor anterior e o novo no mesmo campo: "32,5 / 37,9". */
+export function mesclarValores(anterior: string, novo: string): string {
+  const a = anterior.trim();
+  const n = novo.trim();
+  if (!n) return a;
+  if (!a) return n;
+  return `${a} / ${n}`;
+}
+
+/** Acrescenta uma linha ao final das observações, sem repetir. */
+export function comLinha(observacoes: string, linhaNova: string): string {
+  const base = observacoes.replace(/\s+$/, "");
+  if (base.split("\n").some((l) => l.trim() === linhaNova)) return base;
+  return base ? `${base}\n${linhaNova}` : linhaNova;
+}
+
+
 /** Resumo das faixas da espécie, para referência rápida. */
 export function resumoFaixas(especie: Especie | undefined): string {
   if (especie !== "Cachorro" && especie !== "Gato") return "";
