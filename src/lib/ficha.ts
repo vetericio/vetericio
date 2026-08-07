@@ -130,8 +130,8 @@ export const OPCOES = {
     "Comida própria",
     "Frango",
     "Líquido",
-
     "Sonda",
+
   ],
   comportamento: [
     "Responsivo",
