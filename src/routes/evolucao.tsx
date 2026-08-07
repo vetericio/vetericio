@@ -178,10 +178,10 @@ function Evolucao() {
                     {s.pontos.map((p, i) => (
                       <div key={i} className="min-w-16 flex-1 shrink-0">
                         <div
-                          className="flex h-12 items-center justify-center rounded-lg px-1 text-center text-[0.65rem] font-semibold leading-tight text-foreground"
+                          className="flex h-12 items-center justify-center rounded-lg px-1 text-center text-[0.65rem] font-semibold leading-tight"
                           style={{
                             backgroundColor: corDaOpcao(s.chave, p.opcao),
-                            opacity: 0.85,
+                            color: "var(--primary-foreground)",
                           }}
                           title={`${p.rotuloX} — ${p.opcao}`}
                         >
