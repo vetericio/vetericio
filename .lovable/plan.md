@@ -4,19 +4,19 @@
 
 Adicionar **Comida própria** e **Frango** à lista de opções de Alimentação (junto de Ração, Patê, Ração + patê, Forçado, Recuperação, Jejum, Não alimentou, Líquido, Sonda).
 
-## 2. Espécie logo abaixo do nome
+## 2. Espécie depois do nome
 
-Abaixo do campo Animal, dois botões: **Cachorro** / **Gato**.
+Ao lado/abaixo do campo Animal, dois botões: **Cachorro** / **Gato**.
 
 - A espécie escolhida define as faixas de referência dos números.
-- Aparece no texto exportado, na linha seguinte ao nome:
+- No texto exportado, aparece depois do nome, na mesma linha:
 
 ```text
-Saturna
-Cachorro
+Saturna (Cachorro)
 Alimentação: Patê.
 ...
 ```
+
 
 - Sem espécie escolhida, os números não recebem alerta nem observação automática.
 
