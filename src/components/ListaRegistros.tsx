@@ -3,11 +3,18 @@ import { dataHoraRegistro, formatarRegistro, type Registro } from "@/lib/ficha";
 type Props = {
   registros: Registro[];
   onEditar: (r: Registro) => void;
+  onAtualizar: (r: Registro) => void;
   onExcluir: (id: string) => void;
   onCopiar: (r: Registro) => void;
 };
 
-export function ListaRegistros({ registros, onEditar, onExcluir, onCopiar }: Props) {
+export function ListaRegistros({
+  registros,
+  onEditar,
+  onAtualizar,
+  onExcluir,
+  onCopiar,
+}: Props) {
   if (registros.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -42,7 +49,14 @@ export function ListaRegistros({ registros, onEditar, onExcluir, onCopiar }: Pro
                 onClick={() => onEditar(r)}
                 className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
               >
-                Editar
+                Editar animal
+              </button>
+              <button
+                type="button"
+                onClick={() => onAtualizar(r)}
+                className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Atualizar informações
               </button>
               <button
                 type="button"

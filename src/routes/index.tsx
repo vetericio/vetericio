@@ -10,7 +10,11 @@ import { useRegistros } from "@/hooks/useRegistros";
 import {
   REGISTRO_VAZIO,
   chaveAnimal,
+  comLinha,
+  fraseAtualizacao,
+  mesclarValores,
   proximoNomeDuplicado,
+  type ChaveNumerica,
   type Registro,
 } from "@/lib/ficha";
 import {
@@ -47,30 +51,84 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+const NUMS: ChaveNumerica[] = ["temperatura", "fc", "fr", "pas", "glicemia"];
+const CATEGORIAS = ["alimentacao", "comportamento", "fezes", "mucosas", "urina", "vomito"] as const;
+
+/** Acrescenta a nova informação ao registro existente, mantendo os dois valores. */
+function mesclarAvaliacao(base: Registro, novos: Omit<Registro, "id">): Registro {
+  const resultado: Registro = { ...base };
+  let obs = base.observacoes;
+
+  for (const chave of NUMS) {
+    const novo = novos[chave].trim();
+    if (!novo) continue;
+    resultado[chave] = mesclarValores(base[chave], novo);
+    obs = comLinha(obs, fraseAtualizacao(chave, novo));
+  }
+  for (const chave of CATEGORIAS) {
+    const novo = novos[chave].trim();
+    if (novo) resultado[chave] = mesclarValores(base[chave], novo);
+  }
+
+  const extra = novos.observacoes.trim();
+  if (extra) obs = comLinha(obs, extra);
+  resultado.observacoes = obs;
+  return resultado;
+}
+
 function Index() {
   const { registros, setRegistros, carregado } = useRegistros();
   const [form, setForm] = useState<Omit<Registro, "id">>(REGISTRO_VAZIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [anterior, setAnterior] = useState<Registro | null>(null);
   const [duplicado, setDuplicado] = useState<Registro | null>(null);
 
   const navigate = useNavigate();
 
-  // Abre em modo edição quando vem da página de registros.
+  // Abre em modo edição ou atualização quando vem da página de registros.
   useEffect(() => {
     if (!carregado) return;
-    const id = window.localStorage.getItem("veterico-editar-id");
-    if (!id) return;
+    const idEditar = window.localStorage.getItem("veterico-editar-id");
+    const idAtualizar = window.localStorage.getItem("veterico-atualizar-id");
     window.localStorage.removeItem("veterico-editar-id");
-    const alvo = registros.find((r) => r.id === id);
-    if (alvo) {
-      const { id: _ignorado, ...resto } = alvo;
-      setForm(resto);
-      setEditandoId(id);
+    window.localStorage.removeItem("veterico-atualizar-id");
+
+    if (idEditar) {
+      const alvo = registros.find((r) => r.id === idEditar);
+      if (alvo) {
+        const { id: _ignorado, ...resto } = alvo;
+        setForm(resto);
+        setEditandoId(idEditar);
+      }
+      return;
+    }
+    if (idAtualizar) {
+      const alvo = registros.find((r) => r.id === idAtualizar);
+      if (alvo) {
+        setAnterior(alvo);
+        setForm({ ...REGISTRO_VAZIO, animal: alvo.animal, especie: alvo.especie ?? "" });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carregado]);
 
+  const limpar = () => {
+    setEditandoId(null);
+    setAnterior(null);
+    setForm(REGISTRO_VAZIO);
+    setDuplicado(null);
+  };
+
   const salvar = (valores: Omit<Registro, "id">) => {
+    if (anterior) {
+      const atualizado = mesclarAvaliacao(anterior, valores);
+      setRegistros((rs) => rs.map((r) => (r.id === anterior.id ? atualizado : r)));
+      limpar();
+      toast.success("Informações acrescentadas.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      navigate({ to: "/" });
+      return;
+    }
     if (editandoId) {
       setRegistros((rs) => rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)));
       setEditandoId(null);
@@ -99,7 +157,7 @@ function Index() {
       toast.error("Informe o nome do animal.");
       return;
     }
-    if (!editandoId) {
+    if (!editandoId && !anterior) {
       const chave = chaveAnimal(form);
       const existente = registros.find((r) => chaveAnimal(r) === chave);
       if (existente) {
@@ -127,12 +185,11 @@ function Index() {
           onChange={setForm}
           onEnviar={enviar}
           editando={Boolean(editandoId)}
-          onCancelar={() => {
-            setEditandoId(null);
-            setForm(REGISTRO_VAZIO);
-          }}
+          anterior={anterior}
+          onCancelar={limpar}
         />
       </div>
+
 
       <div className="mt-8">
         <InstalarApp />
