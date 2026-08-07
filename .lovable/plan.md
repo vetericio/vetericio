@@ -59,12 +59,15 @@ em ordem de inserção e sem faixa de referência.
   (nome normalizado + espécie) e `proximoNomeDuplicado(nome, registros)` para gerar
   "Nome (2)"; `formatarRegistro` imprime `Nome (Espécie)` na primeira linha.
 - `src/lib/evolucao.ts`: agrupa registros da lista atual + `carregarPlantoes()` por
-  `chaveAnimal`, ordena por `criadoEm` e devolve séries por parâmetro
-  (`{ rotulo, unidade, pontos: [{ quando, valor }] }`), ignorando valores vazios.
-- `src/routes/evolucao.tsx`: `head()` própria, `<select>` de animal e gráficos com
-  `recharts` (`LineChart`/`ResponsiveContainer`), cores via tokens do design system,
-  faixa de referência com `ReferenceArea` quando houver espécie.
+  `chaveAnimal`, ordena por `criadoEm` e devolve séries numéricas
+  (`{ rotulo, unidade, pontos: [{ quando, valor }] }`) e séries categóricas
+  (`{ rotulo, pontos: [{ quando, opcao }] }`) a partir de `OPCOES`, ignorando vazios.
+- `src/routes/evolucao.tsx`: `head()` própria, `<select>` de animal, gráficos numéricos
+  com `recharts` (`LineChart`/`ResponsiveContainer`) e faixa de referência via
+  `ReferenceArea`; séries categóricas renderizadas como trilha de blocos (divs flex,
+  uma cor por opção via mapa de tokens HSL do design system) com legenda.
 - `src/components/Cabecalho.tsx`: novo `<Link to="/evolucao">`.
+
 - `src/components/FormAvaliacao.tsx`: botões de espécie.
 - `src/routes/index.tsx`: ao enviar (modo criação), detectar nome+espécie existentes e
   abrir um diálogo (`AlertDialog`) com as duas opções antes de salvar; "outro animal"
