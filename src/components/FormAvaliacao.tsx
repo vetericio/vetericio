@@ -1,4 +1,11 @@
-import { ESPECIES, OPCOES, REGISTRO_VAZIO, type Especie, type Registro } from "@/lib/ficha";
+import {
+  ESPECIES,
+  OPCOES,
+  type ChaveNumerica,
+  type Especie,
+  type Registro,
+} from "@/lib/ficha";
+
 
 type Props = {
   valores: Omit<Registro, "id">;
