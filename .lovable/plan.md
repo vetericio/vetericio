@@ -5,7 +5,7 @@
 Ao digitar um valor fora da faixa, a frase "Animal com hipertermia em 07/08/2026 às 12:25." continua sendo inserida em Observações. A diferença:
 
 - Se você apagar ou corrigir o valor antes de enviar, a frase correspondente àquele parâmetro é removida automaticamente.
-- Se digitar outro valor ainda fora da faixa, a frase é reescrita com o novo termo e hora.
+- Se digitar outro valor ainda fora da faixa, a frase é reescrita com o novo termo e hora. Depois de enviar, a frase nunca é apagada automaticamente — nem se o valor voltar para a faixa normal; só sai se você apagar o texto manualmente.
 - Frases escritas por você à mão nunca são apagadas — só as geradas pelo app.
 
 ## 2. Editando um registro já salvo
