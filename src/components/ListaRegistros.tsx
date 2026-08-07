@@ -49,7 +49,14 @@ export function ListaRegistros({
                 onClick={() => onEditar(r)}
                 className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
               >
-                Editar
+                Editar animal
+              </button>
+              <button
+                type="button"
+                onClick={() => onAtualizar(r)}
+                className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Atualizar informações
               </button>
               <button
                 type="button"
