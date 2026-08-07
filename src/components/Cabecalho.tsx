@@ -46,7 +46,17 @@ export function Cabecalho() {
           >
             Plantões
           </Link>
+          <Link
+            to="/evolucao"
+            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+            inactiveProps={{
+              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+            }}
+          >
+            Evolução
+          </Link>
         </nav>
+
       </div>
     </header>
   );

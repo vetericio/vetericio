@@ -1,4 +1,14 @@
-import { OPCOES, REGISTRO_VAZIO, type Registro } from "@/lib/ficha";
+import {
+  ESPECIES,
+  OPCOES,
+  avaliarValor,
+  frasePorTermo,
+  resumoFaixas,
+  type ChaveNumerica,
+  type Especie,
+  type Registro,
+} from "@/lib/ficha";
+
 
 type Props = {
   valores: Omit<Registro, "id">;
@@ -8,7 +18,7 @@ type Props = {
   onCancelar: () => void;
 };
 
-const NUMERICOS: { chave: keyof typeof REGISTRO_VAZIO; rotulo: string; unidade: string }[] = [
+const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
   { chave: "temperatura", rotulo: "Temperatura", unidade: "°C" },
   { chave: "fc", rotulo: "FC", unidade: "bpm" },
   { chave: "fr", rotulo: "FR", unidade: "mpm" },
@@ -25,9 +35,32 @@ const GRUPOS: { chave: keyof typeof OPCOES; rotulo: string }[] = [
   { chave: "vomito", rotulo: "Vômito" },
 ];
 
+/** Acrescenta a frase automática nas observações, sem repetir e sem apagar nada. */
+function comFraseAutomatica(observacoes: string, termo: string): string {
+  if (!termo) return observacoes;
+  const frase = frasePorTermo(termo);
+  const jaRegistrado = observacoes
+    .split("\n")
+    .some((l) => l.trim().startsWith("Animal com ") && l.includes(` ${termo} em `));
+  if (jaRegistrado) return observacoes;
+  return observacoes.trim() ? `${observacoes.replace(/\s+$/, "")}\n${frase}` : frase;
+}
+
 export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancelar }: Props) {
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
+
+  const setNumero = (chave: ChaveNumerica, valor: string) => {
+    const { fora, termo } = avaliarValor(chave, valor, valores.especie);
+    onChange({
+      ...valores,
+      [chave]: valor,
+      observacoes: fora ? comFraseAutomatica(valores.observacoes, termo) : valores.observacoes,
+    });
+  };
+
+  const faixas = resumoFaixas(valores.especie);
+
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -42,6 +75,33 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
           className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-lg font-semibold text-foreground outline-none focus:border-ring"
         />
       </label>
+
+      <div className="mt-3">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Espécie
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {ESPECIES.map((esp) => {
+            const ativo = valores.especie === esp;
+            return (
+              <button
+                key={esp}
+                type="button"
+                onClick={() => onChange({ ...valores, especie: (ativo ? "" : esp) as Especie })}
+                className={[
+                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                  ativo
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+                ].join(" ")}
+              >
+                {esp}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
 
       <div className="mt-5 space-y-4">
         {GRUPOS.map(({ chave, rotulo }) => (
@@ -74,20 +134,41 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {NUMERICOS.map(({ chave, rotulo, unidade }) => (
-          <label key={chave} className="block">
-            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {rotulo} <span className="normal-case tracking-normal">({unidade})</span>
-            </span>
-            <input
-              value={valores[chave]}
-              onChange={(e) => set(chave, e.target.value)}
-              inputMode="decimal"
-              className="mt-1 w-full rounded-lg border border-input bg-background px-2.5 py-2 text-base font-semibold tabular-nums text-foreground outline-none focus:border-ring"
-            />
-          </label>
-        ))}
+        {NUMERICOS.map(({ chave, rotulo, unidade }) => {
+          const { fora } = avaliarValor(chave, valores[chave], valores.especie);
+          return (
+            <label key={chave} className="block">
+              <span
+                className={[
+                  "text-[0.7rem] font-semibold uppercase tracking-[0.14em]",
+                  fora ? "text-destructive" : "text-muted-foreground",
+                ].join(" ")}
+              >
+                {rotulo} <span className="normal-case tracking-normal">({unidade})</span>
+              </span>
+              <input
+                value={valores[chave]}
+                onChange={(e) => setNumero(chave, e.target.value)}
+                inputMode="decimal"
+                aria-invalid={fora}
+                className={[
+                  "mt-1 w-full rounded-lg border bg-background px-2.5 py-2 text-base font-semibold tabular-nums outline-none",
+                  fora
+                    ? "border-destructive text-destructive focus:border-destructive"
+                    : "border-input text-foreground focus:border-ring",
+                ].join(" ")}
+              />
+            </label>
+          );
+        })}
       </div>
+
+      {faixas && (
+        <p className="mt-2 text-[0.7rem] leading-relaxed text-muted-foreground">
+          Faixas ({valores.especie}): {faixas}
+        </p>
+      )}
+
 
       <label className="mt-4 block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

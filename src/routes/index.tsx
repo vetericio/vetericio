@@ -7,7 +7,23 @@ import { TaxaInfusao } from "@/components/TaxaInfusao";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
-import { REGISTRO_VAZIO, type Registro } from "@/lib/ficha";
+import {
+  REGISTRO_VAZIO,
+  chaveAnimal,
+  proximoNomeDuplicado,
+  type Registro,
+} from "@/lib/ficha";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,6 +51,8 @@ function Index() {
   const { registros, setRegistros, carregado } = useRegistros();
   const [form, setForm] = useState<Omit<Registro, "id">>(REGISTRO_VAZIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [duplicado, setDuplicado] = useState<Registro | null>(null);
+
   const navigate = useNavigate();
 
   // Abre em modo edição quando vem da página de registros.
@@ -52,23 +70,42 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carregado]);
 
+  const salvar = (valores: Omit<Registro, "id">) => {
+    if (editandoId) {
+      setRegistros((rs) => rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)));
+      setEditandoId(null);
+      toast.success("Registro atualizado.");
+    } else {
+      const novo: Registro = {
+        ...valores,
+        criadoEm: new Date().toISOString(),
+        id: crypto.randomUUID(),
+      };
+      setRegistros((rs) => [...rs, novo]);
+      toast.success(`${valores.animal.trim()} adicionado.`);
+    }
+    setForm(REGISTRO_VAZIO);
+    setDuplicado(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate({ to: "/" });
+  };
+
   const enviar = () => {
     if (!form.animal.trim()) {
       toast.error("Informe o nome do animal.");
       return;
     }
-    if (editandoId) {
-      setRegistros((rs) => rs.map((r) => (r.id === editandoId ? { ...form, id: editandoId } : r)));
-      setEditandoId(null);
-      toast.success("Registro atualizado.");
-    } else {
-      setRegistros((rs) => [...rs, { ...form, id: crypto.randomUUID() }]);
-      toast.success(`${form.animal.trim()} adicionado.`);
+    if (!editandoId) {
+      const chave = chaveAnimal(form);
+      const existente = registros.find((r) => chaveAnimal(r) === chave);
+      if (existente) {
+        setDuplicado(existente);
+        return;
+      }
     }
-    setForm(REGISTRO_VAZIO);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    navigate({ to: "/" });
+    salvar(form);
   };
+
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
@@ -96,6 +133,37 @@ function Index() {
       <div className="mt-8">
         <InstalarApp />
       </div>
+
+      <AlertDialog open={Boolean(duplicado)} onOpenChange={(o) => !o && setDuplicado(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>É o mesmo animal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Já existe{" "}
+              <strong>
+                {duplicado?.animal.trim()}
+                {duplicado?.especie ? ` (${duplicado.especie})` : ""}
+              </strong>{" "}
+              na lista. Se for o mesmo animal, esta avaliação entra na evolução dele. Se for
+              outro, ele é salvo com um número depois do nome.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() =>
+                salvar({
+                  ...form,
+                  animal: proximoNomeDuplicado(form.animal, registros),
+                })
+              }
+            >
+              Não, é outro animal
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => salvar(form)}>Sim, é o mesmo</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
+
 }
