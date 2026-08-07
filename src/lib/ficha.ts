@@ -95,7 +95,9 @@ export const OPCOES = {
 
 export const REGISTRO_VAZIO: Omit<Registro, "id"> = {
   animal: "",
+  especie: "",
   alimentacao: "",
+
   comportamento: "",
   fezes: "",
   mucosas: "",
