@@ -10,7 +10,11 @@ import { useRegistros } from "@/hooks/useRegistros";
 import {
   REGISTRO_VAZIO,
   chaveAnimal,
+  comLinha,
+  fraseAtualizacao,
+  mesclarValores,
   proximoNomeDuplicado,
+  type ChaveNumerica,
   type Registro,
 } from "@/lib/ficha";
 import {
