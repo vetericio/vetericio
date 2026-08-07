@@ -51,7 +51,7 @@ export const CATEGORICOS: { chave: keyof typeof OPCOES; rotulo: string }[] = [
   { chave: "vomito", rotulo: "Vômito" },
 ];
 
-function quando(r: Registro, indice: number): string {
+function quando(r: Registro, _indice: number): string {
   if (r.criadoEm) {
     const d = new Date(r.criadoEm);
     if (!Number.isNaN(d.getTime())) {
