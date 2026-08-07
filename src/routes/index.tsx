@@ -51,6 +51,8 @@ function Index() {
   const { registros, setRegistros, carregado } = useRegistros();
   const [form, setForm] = useState<Omit<Registro, "id">>(REGISTRO_VAZIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [duplicado, setDuplicado] = useState<Registro | null>(null);
+
   const navigate = useNavigate();
 
   // Abre em modo edição quando vem da página de registros.
