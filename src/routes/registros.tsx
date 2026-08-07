@@ -1,17 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { useRegistros } from "@/hooks/useRegistros";
-import { usePlantoes } from "@/hooks/usePlantoes";
-import {
-  MAX_PLANTOES,
-  formatarRegistro,
-  formatarTodos,
-  type Registro,
-} from "@/lib/ficha";
+import { formatarRegistro, type Registro } from "@/lib/ficha";
 import { exportarPdf } from "@/lib/pdf";
-import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/registros")({
   head: () => ({
@@ -34,20 +26,9 @@ export const Route = createFileRoute("/registros")({
   component: Registros,
 });
 
-function hoje() {
-  const d = new Date();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mes}-${dia}`;
-}
-
 function Registros() {
   const { registros, setRegistros } = useRegistros();
-  const { setPlantoes } = usePlantoes();
   const navigate = useNavigate();
-  const [fechando, setFechando] = useState(false);
-  const [data, setData] = useState(hoje);
-  const [turno, setTurno] = useState("");
 
   const apagarTudo = () => {
     if (registros.length === 0) {
