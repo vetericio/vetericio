@@ -49,7 +49,7 @@ export function ListaRegistros({
                 onClick={() => onEditar(r)}
                 className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
               >
-                Editar animal
+                Editar
               </button>
               <button
                 type="button"
