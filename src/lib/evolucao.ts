@@ -63,7 +63,7 @@ function quando(r: Registro, indice: number): string {
       });
     }
   }
-  return `#${indice + 1}`;
+  return "";
 }
 
 function ordem(r: Registro): number {

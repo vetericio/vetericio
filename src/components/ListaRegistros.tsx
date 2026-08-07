@@ -1,4 +1,4 @@
-import { formatarRegistro, type Registro } from "@/lib/ficha";
+import { dataHoraRegistro, formatarRegistro, type Registro } from "@/lib/ficha";
 
 type Props = {
   registros: Registro[];
@@ -18,11 +18,16 @@ export function ListaRegistros({ registros, onEditar, onExcluir, onCopiar }: Pro
 
   return (
     <div className="space-y-3">
-      {registros.map((r, i) => (
+      {registros.map((r) => (
         <article key={r.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-base font-semibold text-foreground">
-              {i + 1}. {r.animal.trim() || "Sem nome"}
+              {dataHoraRegistro(r) && (
+                <span className="mr-1 font-normal text-muted-foreground">
+                  {dataHoraRegistro(r)} —
+                </span>
+              )}
+              {r.animal.trim() || "Sem nome"}
             </h3>
             <div className="flex shrink-0 flex-wrap justify-end gap-2">
               <button
