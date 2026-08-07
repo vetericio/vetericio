@@ -148,7 +148,7 @@ function Evolucao() {
                           formatter={(v) => [`${comVirgula(String(v))} ${s.unidade}`, s.rotulo]}
                         />
                         <Line
-                          type="monotone"
+                          type="linear"
                           dataKey="valor"
                           stroke="var(--primary)"
                           strokeWidth={2}
