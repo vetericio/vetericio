@@ -7,13 +7,17 @@ Novo botão **Evolução** no cabeçalho (ao lado de Plantões) e nova página `
 Na página:
 
 - Uma **caixa suspensa** com todos os animais que têm avaliações (nome + espécie).
-- Ao escolher um animal, aparecem **gráficos de linha por parâmetro**: Temperatura,
-  FC, FR, PAS e Glicemia.
-- Cada ponto do gráfico é **uma avaliação**, em ordem de tempo (eixo X com data/hora
+- Ao escolher um animal, aparecem gráficos de **todos os parâmetros**, em duas partes:
+  - **Números** (gráfico de linha): Temperatura, FC, FR, PAS e Glicemia.
+  - **Escolhas** (linha do tempo visual em faixas coloridas, uma faixa por avaliação):
+    Alimentação, Comportamento, Fezes, Mucosas, Urina e Vômito — cada opção tem sua
+    própria cor, com legenda ao lado, para ver a evolução de um relance.
+- Cada ponto/faixa é **uma avaliação**, em ordem de tempo (eixo X com data/hora
   da avaliação; se só houver uma avaliação, mostra o ponto isolado).
 - Parâmetro sem nenhum valor preenchido não gera gráfico (fica escondido).
-- Abaixo de cada gráfico, uma faixa de referência da espécie (quando a espécie estiver
-  definida) para leitura rápida do que está fora do normal.
+- Abaixo de cada gráfico numérico, uma faixa de referência da espécie (quando a espécie
+  estiver definida) para leitura rápida do que está fora do normal.
+
 - Sem animais registrados, a página mostra uma mensagem simples convidando a registrar
   a primeira avaliação.
 
@@ -55,11 +59,13 @@ em ordem de inserção e sem faixa de referência.
   (nome normalizado + espécie) e `proximoNomeDuplicado(nome, registros)` para gerar
   "Nome (2)"; `formatarRegistro` imprime `Nome (Espécie)` na primeira linha.
 - `src/lib/evolucao.ts`: agrupa registros da lista atual + `carregarPlantoes()` por
-  `chaveAnimal`, ordena por `criadoEm` e devolve séries por parâmetro
-  (`{ rotulo, unidade, pontos: [{ quando, valor }] }`), ignorando valores vazios.
-- `src/routes/evolucao.tsx`: `head()` própria, `<select>` de animal e gráficos com
-  `recharts` (`LineChart`/`ResponsiveContainer`), cores via tokens do design system,
-  faixa de referência com `ReferenceArea` quando houver espécie.
+  `chaveAnimal`, ordena por `criadoEm` e devolve séries numéricas
+  (`{ rotulo, unidade, pontos: [{ quando, valor }] }`) e séries categóricas
+  (`{ rotulo, pontos: [{ quando, opcao }] }`) a partir de `OPCOES`, ignorando vazios.
+- `src/routes/evolucao.tsx`: `head()` própria, `<select>` de animal, gráficos numéricos
+  com `recharts` (`LineChart`/`ResponsiveContainer`) e faixa de referência via
+  `ReferenceArea`; séries categóricas renderizadas como trilha de blocos (divs flex,
+  uma cor por opção via mapa de tokens HSL do design system) com legenda.
 - `src/components/Cabecalho.tsx`: novo `<Link to="/evolucao">`.
 - `src/components/FormAvaliacao.tsx`: botões de espécie.
 - `src/routes/index.tsx`: ao enviar (modo criação), detectar nome+espécie existentes e
