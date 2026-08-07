@@ -35,7 +35,25 @@ export function Cabecalho() {
               className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
             }}
           >
-            Animais registrados
+            Animais internados
+          </Link>
+          <Link
+            to="/evolucao"
+            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+            inactiveProps={{
+              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+            }}
+          >
+            Evolução
+          </Link>
+          <Link
+            to="/plantoes"
+            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+            inactiveProps={{
+              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+            }}
+          >
+            Plantões
           </Link>
         </nav>
 
