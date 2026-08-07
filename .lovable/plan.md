@@ -67,7 +67,6 @@ em ordem de inserção e sem faixa de referência.
   `ReferenceArea`; séries categóricas renderizadas como trilha de blocos (divs flex,
   uma cor por opção via mapa de tokens HSL do design system) com legenda.
 - `src/components/Cabecalho.tsx`: novo `<Link to="/evolucao">`.
-
 - `src/components/FormAvaliacao.tsx`: botões de espécie.
 - `src/routes/index.tsx`: ao enviar (modo criação), detectar nome+espécie existentes e
   abrir um diálogo (`AlertDialog`) com as duas opções antes de salvar; "outro animal"
