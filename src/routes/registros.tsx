@@ -106,110 +106,23 @@ function Registros() {
       </h2>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <Link
-          to="/plantoes"
-          className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-        >
-          Plantões
-        </Link>
-        <Link
-          to="/evolucao"
-          className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-        >
-          Evolução
-        </Link>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
         {registros.length > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={() => copiarTexto(formatarTodos(registros))}
-              className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              Copiar todos
-            </button>
-            <button
-              type="button"
-              onClick={exportar}
-              className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              Exportar PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => setFechando((v) => !v)}
-              className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-            >
-              Fechar plantão
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={exportar}
+            className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Exportar PDF
+          </button>
         )}
         <button
           type="button"
           onClick={apagarTudo}
           className="rounded-xl bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90"
         >
-          Apagar todos os registros
+          Limpar todos os dados
         </button>
       </div>
-
-      {fechando && registros.length > 0 && (
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <h3 className="font-display text-sm font-semibold text-foreground">Fechar plantão</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Os {registros.length} animais vão para o histórico e a lista fica vazia para o próximo
-            plantão.
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs text-muted-foreground">Data</span>
-              <input
-                type="date"
-                value={data}
-                onChange={(e) => setData(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-foreground outline-none focus:border-ring"
-              />
-            </label>
-            <div>
-              <span className="text-xs text-muted-foreground">Turno (opcional)</span>
-              <div className="mt-1 flex gap-2">
-                {["Diurno", "Noturno"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTurno(turno === t ? "" : t)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                      turno === t
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={fecharPlantao}
-              className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              Salvar plantão
-            </button>
-            <button
-              type="button"
-              onClick={() => setFechando(false)}
-              className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-            >
-              Cancelar
-            </button>
-          </div>
-        </section>
-      )}
 
       <div className="mt-4">
         <ListaRegistros
