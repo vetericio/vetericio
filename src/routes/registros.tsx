@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { useRegistros } from "@/hooks/useRegistros";
-import { formatarRegistro, type Registro } from "@/lib/ficha";
+import { formatarRegistro, formatarTodos, type Registro } from "@/lib/ficha";
 import { exportarPdf } from "@/lib/pdf";
 
 export const Route = createFileRoute("/registros")({
