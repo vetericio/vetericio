@@ -51,6 +51,31 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+const NUMS: ChaveNumerica[] = ["temperatura", "fc", "fr", "pas", "glicemia"];
+const CATEGORIAS = ["alimentacao", "comportamento", "fezes", "mucosas", "urina", "vomito"] as const;
+
+/** Acrescenta a nova informação ao registro existente, mantendo os dois valores. */
+function mesclarAvaliacao(base: Registro, novos: Omit<Registro, "id">): Registro {
+  const resultado: Registro = { ...base };
+  let obs = base.observacoes;
+
+  for (const chave of NUMS) {
+    const novo = novos[chave].trim();
+    if (!novo) continue;
+    resultado[chave] = mesclarValores(base[chave], novo);
+    obs = comLinha(obs, fraseAtualizacao(chave, novo));
+  }
+  for (const chave of CATEGORIAS) {
+    const novo = novos[chave].trim();
+    if (novo) resultado[chave] = mesclarValores(base[chave], novo);
+  }
+
+  const extra = novos.observacoes.trim();
+  if (extra) obs = comLinha(obs, extra);
+  resultado.observacoes = obs;
+  return resultado;
+}
+
 function Index() {
   const { registros, setRegistros, carregado } = useRegistros();
   const [form, setForm] = useState<Omit<Registro, "id">>(REGISTRO_VAZIO);
