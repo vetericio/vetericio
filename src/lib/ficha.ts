@@ -46,6 +46,58 @@ export function faixaDe(especie: Especie | undefined, chave: ChaveNumerica) {
   return null;
 }
 
+const TERMOS: Record<ChaveNumerica, { abaixo: string; acima: string }> = {
+  temperatura: { abaixo: "hipotermia", acima: "hipertermia" },
+  fc: { abaixo: "bradicardia", acima: "taquicardia" },
+  fr: { abaixo: "bradipneia", acima: "taquipneia" },
+  pas: { abaixo: "hipotensão", acima: "hipertensão" },
+  glicemia: { abaixo: "hipoglicemia", acima: "hiperglicemia" },
+};
+
+export const ROTULOS_NUMERICOS: Record<ChaveNumerica, { rotulo: string; unidade: string }> = {
+  temperatura: { rotulo: "Temperatura", unidade: "°C" },
+  fc: { rotulo: "FC", unidade: "bpm" },
+  fr: { rotulo: "FR", unidade: "mpm" },
+  pas: { rotulo: "PAS", unidade: "mmHg" },
+  glicemia: { rotulo: "Glicemia", unidade: "mg/dL" },
+};
+
+/** Diz se o valor está fora da faixa da espécie e qual o termo clínico. */
+export function avaliarValor(
+  chave: ChaveNumerica,
+  valor: string,
+  especie: Especie | undefined,
+): { fora: boolean; termo: string } {
+  const faixa = faixaDe(especie, chave);
+  const n = paraNumero(valor);
+  if (!faixa || Number.isNaN(n)) return { fora: false, termo: "" };
+  if (chave === "fr" && n === 0) return { fora: true, termo: "apneia" };
+  if (n < faixa[0]) return { fora: true, termo: TERMOS[chave].abaixo };
+  if (n > faixa[1]) return { fora: true, termo: TERMOS[chave].acima };
+  return { fora: false, termo: "" };
+}
+
+/** "Animal com hipotermia em 07/08/2026 às 09:05." */
+export function frasePorTermo(termo: string, data = new Date()): string {
+  const dois = (n: number) => String(n).padStart(2, "0");
+  const dia = `${dois(data.getDate())}/${dois(data.getMonth() + 1)}/${data.getFullYear()}`;
+  const hora = `${dois(data.getHours())}:${dois(data.getMinutes())}`;
+  return `Animal com ${termo} em ${dia} às ${hora}.`;
+}
+
+/** Resumo das faixas da espécie, para referência rápida. */
+export function resumoFaixas(especie: Especie | undefined): string {
+  if (especie !== "Cachorro" && especie !== "Gato") return "";
+  return (Object.keys(FAIXAS[especie]) as ChaveNumerica[])
+    .map((chave) => {
+      const [min, max] = FAIXAS[especie][chave];
+      const { rotulo, unidade } = ROTULOS_NUMERICOS[chave];
+      return `${rotulo} ${comVirgula(String(min))}–${comVirgula(String(max))} ${unidade}`;
+    })
+    .join(" · ");
+}
+
+
 /** Identidade do animal: nome normalizado + espécie. */
 export function chaveAnimal(r: Pick<Registro, "animal" | "especie">): string {
   const nome = r.animal
