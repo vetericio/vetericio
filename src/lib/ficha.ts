@@ -1,6 +1,10 @@
+export type Especie = "Cachorro" | "Gato" | "";
+
 export type Registro = {
   id: string;
   animal: string;
+  especie?: Especie;
+  criadoEm?: string;
   alimentacao: string;
   comportamento: string;
   fezes: string;
@@ -14,6 +18,53 @@ export type Registro = {
   glicemia: string;
   observacoes: string;
 };
+
+export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
+
+export type ChaveNumerica = "temperatura" | "fc" | "fr" | "pas" | "glicemia";
+
+/** Faixas de referência por espécie. */
+export const FAIXAS: Record<"Cachorro" | "Gato", Record<ChaveNumerica, [number, number]>> = {
+  Cachorro: {
+    temperatura: [37.5, 39.5],
+    fc: [60, 180],
+    fr: [18, 34],
+    pas: [110, 160],
+    glicemia: [70, 120],
+  },
+  Gato: {
+    temperatura: [37.5, 39.5],
+    fc: [140, 220],
+    fr: [20, 30],
+    pas: [90, 170],
+    glicemia: [80, 150],
+  },
+};
+
+export function faixaDe(especie: Especie | undefined, chave: ChaveNumerica) {
+  if (especie === "Cachorro" || especie === "Gato") return FAIXAS[especie][chave];
+  return null;
+}
+
+/** Identidade do animal: nome normalizado + espécie. */
+export function chaveAnimal(r: Pick<Registro, "animal" | "especie">): string {
+  const nome = r.animal
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return `${nome}|${r.especie ?? ""}`;
+}
+
+/** Gera "Nome (2)", "Nome (3)"… conforme os nomes já existentes. */
+export function proximoNomeDuplicado(nome: string, registros: Registro[]): string {
+  const baseLimpa = nome.trim().replace(/\s*\(\d+\)$/, "");
+  const usados = new Set(registros.map((r) => r.animal.trim().toLowerCase()));
+  let n = 2;
+  while (usados.has(`${baseLimpa} (${n})`.toLowerCase())) n += 1;
+  return `${baseLimpa} (${n})`;
+}
+
 
 export const OPCOES = {
   alimentacao: [
