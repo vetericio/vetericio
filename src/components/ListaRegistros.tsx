@@ -56,7 +56,7 @@ export function ListaRegistros({
                 onClick={() => onAtualizar(r)}
                 className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
-                Atualizar informações
+                Atualizar
               </button>
               <button
                 type="button"
