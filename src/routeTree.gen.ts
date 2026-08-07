@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as RegistrosRouteImport } from './routes/registros'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvolucaoRoute = EvolucaoRouteImport.update({
+  id: '/evolucao',
+  path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlantoesRoute = PlantoesRouteImport.update({
@@ -31,30 +37,34 @@ const RegistrosRoute = RegistrosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/evolucao': typeof EvolucaoRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/evolucao': typeof EvolucaoRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/evolucao': typeof EvolucaoRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/plantoes' | '/registros'
+  fullPaths: '/' | '/evolucao' | '/plantoes' | '/registros'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/plantoes' | '/registros'
-  id: '__root__' | '/' | '/plantoes' | '/registros'
+  to: '/' | '/evolucao' | '/plantoes' | '/registros'
+  id: '__root__' | '/' | '/evolucao' | '/plantoes' | '/registros'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EvolucaoRoute: typeof EvolucaoRoute
   PlantoesRoute: typeof PlantoesRoute
   RegistrosRoute: typeof RegistrosRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evolucao': {
+      id: '/evolucao'
+      path: '/evolucao'
+      fullPath: '/evolucao'
+      preLoaderRoute: typeof EvolucaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plantoes': {
@@ -87,19 +104,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EvolucaoRoute: EvolucaoRoute,
   PlantoesRoute: PlantoesRoute,
   RegistrosRoute: RegistrosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
