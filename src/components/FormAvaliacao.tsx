@@ -43,6 +43,33 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
         />
       </label>
 
+      <div className="mt-3">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Espécie
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {ESPECIES.map((esp) => {
+            const ativo = valores.especie === esp;
+            return (
+              <button
+                key={esp}
+                type="button"
+                onClick={() => onChange({ ...valores, especie: (ativo ? "" : esp) as Especie })}
+                className={[
+                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                  ativo
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+                ].join(" ")}
+              >
+                {esp}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+
       <div className="mt-5 space-y-4">
         {GRUPOS.map(({ chave, rotulo }) => (
           <div key={chave}>
