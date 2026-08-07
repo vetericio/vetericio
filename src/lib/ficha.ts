@@ -127,7 +127,10 @@ export const OPCOES = {
     "Recuperação",
     "Jejum",
     "Não alimentou",
+    "Comida própria",
+    "Frango",
     "Líquido",
+
     "Sonda",
   ],
   comportamento: [
