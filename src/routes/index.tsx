@@ -133,6 +133,37 @@ function Index() {
       <div className="mt-8">
         <InstalarApp />
       </div>
+
+      <AlertDialog open={Boolean(duplicado)} onOpenChange={(o) => !o && setDuplicado(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>É o mesmo animal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Já existe{" "}
+              <strong>
+                {duplicado?.animal.trim()}
+                {duplicado?.especie ? ` (${duplicado.especie})` : ""}
+              </strong>{" "}
+              na lista. Se for o mesmo animal, esta avaliação entra na evolução dele. Se for
+              outro, ele é salvo com um número depois do nome.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() =>
+                salvar({
+                  ...form,
+                  animal: proximoNomeDuplicado(form.animal, registros),
+                })
+              }
+            >
+              Não, é outro animal
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => salvar(form)}>Sim, é o mesmo</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
+
 }
