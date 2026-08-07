@@ -41,9 +41,13 @@ Faixas de referência:
 
 - FR igual a 0 gera **apneia**.
 - A data/hora é a do momento em que o valor fora da faixa foi digitado.
-- Cada situação entra uma única vez; se o valor voltar para a faixa (ou mudar de
-  categoria), a frase correspondente é removida/atualizada, sem apagar o texto que o
-  usuário escreveu à mão.
+- A frase fica registrada no histórico: se o valor voltar para a faixa normal, a
+  observação **permanece** (é o registro do que aconteceu e quando). Nada é apagado
+  automaticamente — o texto escrito à mão também é preservado.
+- Cada situação entra uma vez por valor digitado; se o valor mudar de categoria
+  (ex.: de hipotermia para hipertermia), a nova frase é acrescentada com sua própria
+  data e hora, abaixo da anterior.
+
 - Abaixo dos campos numéricos, um resumo das faixas da espécie selecionada, para
   referência rápida.
 
