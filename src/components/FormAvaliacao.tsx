@@ -1,6 +1,9 @@
 import {
   ESPECIES,
   OPCOES,
+  avaliarValor,
+  frasePorTermo,
+  resumoFaixas,
   type ChaveNumerica,
   type Especie,
   type Registro,
@@ -32,9 +35,32 @@ const GRUPOS: { chave: keyof typeof OPCOES; rotulo: string }[] = [
   { chave: "vomito", rotulo: "Vômito" },
 ];
 
+/** Acrescenta a frase automática nas observações, sem repetir e sem apagar nada. */
+function comFraseAutomatica(observacoes: string, termo: string): string {
+  if (!termo) return observacoes;
+  const frase = frasePorTermo(termo);
+  const jaRegistrado = observacoes
+    .split("\n")
+    .some((l) => l.trim().startsWith("Animal com ") && l.includes(` ${termo} em `));
+  if (jaRegistrado) return observacoes;
+  return observacoes.trim() ? `${observacoes.replace(/\s+$/, "")}\n${frase}` : frase;
+}
+
 export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancelar }: Props) {
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
+
+  const setNumero = (chave: ChaveNumerica, valor: string) => {
+    const { fora, termo } = avaliarValor(chave, valor, valores.especie);
+    onChange({
+      ...valores,
+      [chave]: valor,
+      observacoes: fora ? comFraseAutomatica(valores.observacoes, termo) : valores.observacoes,
+    });
+  };
+
+  const faixas = resumoFaixas(valores.especie);
+
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
