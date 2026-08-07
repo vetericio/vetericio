@@ -52,23 +52,42 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carregado]);
 
+  const salvar = (valores: Omit<Registro, "id">) => {
+    if (editandoId) {
+      setRegistros((rs) => rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)));
+      setEditandoId(null);
+      toast.success("Registro atualizado.");
+    } else {
+      const novo: Registro = {
+        ...valores,
+        criadoEm: new Date().toISOString(),
+        id: crypto.randomUUID(),
+      };
+      setRegistros((rs) => [...rs, novo]);
+      toast.success(`${valores.animal.trim()} adicionado.`);
+    }
+    setForm(REGISTRO_VAZIO);
+    setDuplicado(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate({ to: "/" });
+  };
+
   const enviar = () => {
     if (!form.animal.trim()) {
       toast.error("Informe o nome do animal.");
       return;
     }
-    if (editandoId) {
-      setRegistros((rs) => rs.map((r) => (r.id === editandoId ? { ...form, id: editandoId } : r)));
-      setEditandoId(null);
-      toast.success("Registro atualizado.");
-    } else {
-      setRegistros((rs) => [...rs, { ...form, id: crypto.randomUUID() }]);
-      toast.success(`${form.animal.trim()} adicionado.`);
+    if (!editandoId) {
+      const chave = chaveAnimal(form);
+      const existente = registros.find((r) => chaveAnimal(r) === chave);
+      if (existente) {
+        setDuplicado(existente);
+        return;
+      }
     }
-    setForm(REGISTRO_VAZIO);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    navigate({ to: "/" });
+    salvar(form);
   };
+
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
