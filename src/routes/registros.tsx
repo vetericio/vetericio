@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
@@ -104,6 +104,21 @@ function Registros() {
       <h2 className="font-display text-lg font-semibold text-foreground">
         Animais registrados ({registros.length})
       </h2>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link
+          to="/plantoes"
+          className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+        >
+          Plantões
+        </Link>
+        <Link
+          to="/evolucao"
+          className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+        >
+          Evolução
+        </Link>
+      </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {registros.length > 0 && (

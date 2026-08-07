@@ -82,7 +82,11 @@ function Index() {
         id: crypto.randomUUID(),
       };
       setRegistros((rs) => [...rs, novo]);
-      toast.success(`${valores.animal.trim()} adicionado.`);
+      setForm(REGISTRO_VAZIO);
+      setDuplicado(null);
+      // Recarrega o início: formulário limpo e total do cabeçalho atualizado.
+      window.location.assign("/");
+      return;
     }
     setForm(REGISTRO_VAZIO);
     setDuplicado(null);

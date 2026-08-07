@@ -207,12 +207,26 @@ export function formatarRegistro(r: Registro): string {
 }
 
 
+/** Data e hora da avaliação (ex.: 07/08 09:05). Vazio quando não houver data salva. */
+export function dataHoraRegistro(r: Registro): string {
+  if (!r.criadoEm) return "";
+  const d = new Date(r.criadoEm);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function formatarTodos(registros: Registro[]): string {
   return registros
-    .map((r, i) => {
+    .map((r) => {
       const texto = formatarRegistro(r);
       const [nome, ...resto] = texto.split("\n");
-      return [`${i + 1}. ${nome}`, ...resto].join("\n");
+      const quando = dataHoraRegistro(r);
+      return [quando ? `${quando} — ${nome}` : nome, ...resto].join("\n");
     })
     .join("\n\n");
 }
