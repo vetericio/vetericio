@@ -1,14 +1,29 @@
+import { useRef, useState } from "react";
 import {
   ESPECIES,
   OPCOES,
   avaliarValor,
+  comLinha,
+  comVirgula,
   frasePorTermo,
+  fraseAtualizacao,
+  removerFraseDoParametro,
   resumoFaixas,
+  ROTULOS_NUMERICOS,
   type ChaveNumerica,
   type Especie,
   type Registro,
 } from "@/lib/ficha";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Props = {
   valores: Omit<Registro, "id">;
@@ -16,6 +31,8 @@ type Props = {
   onEnviar: () => void;
   editando: boolean;
   onCancelar: () => void;
+  /** Avaliação anterior mostrada apenas para leitura (modo "atualizar informações"). */
+  anterior?: Registro | null;
 };
 
 const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
@@ -46,24 +63,99 @@ function comFraseAutomatica(observacoes: string, termo: string): string {
   return observacoes.trim() ? `${observacoes.replace(/\s+$/, "")}\n${frase}` : frase;
 }
 
-export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancelar }: Props) {
+export function FormAvaliacao({
+  valores,
+  onChange,
+  onEnviar,
+  editando,
+  onCancelar,
+  anterior,
+}: Props) {
+  const iniciais = useRef(valores);
+  const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
+  const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
+
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
 
   const setNumero = (chave: ChaveNumerica, valor: string) => {
+    // Em modo edição, as observações só mudam depois da pergunta (substituir/acrescentar).
+    if (editando) {
+      onChange({ ...valores, [chave]: valor });
+      return;
+    }
     const { fora, termo } = avaliarValor(chave, valor, valores.especie);
+    const limpas = removerFraseDoParametro(valores.observacoes, chave);
     onChange({
       ...valores,
       [chave]: valor,
-      observacoes: fora ? comFraseAutomatica(valores.observacoes, termo) : valores.observacoes,
+      observacoes: fora ? comFraseAutomatica(limpas, termo) : limpas,
     });
+  };
+
+  const aoSairDoCampo = (chave: ChaveNumerica) => {
+    if (!editando) return;
+    if (perguntados.includes(chave)) return;
+    const antes = (iniciais.current[chave] ?? "").trim();
+    const agora = (valores[chave] ?? "").trim();
+    if (!agora || antes === agora) return;
+    setPendente(chave);
+  };
+
+  const responder = (substituir: boolean) => {
+    const chave = pendente;
+    if (!chave) return;
+    const valor = valores[chave];
+    if (substituir) {
+      const { fora, termo } = avaliarValor(chave, valor, valores.especie);
+      const limpas = removerFraseDoParametro(valores.observacoes, chave);
+      onChange({
+        ...valores,
+        observacoes: fora ? comFraseAutomatica(limpas, termo) : limpas,
+      });
+    } else {
+      onChange({
+        ...valores,
+        observacoes: comLinha(valores.observacoes, fraseAtualizacao(chave, valor)),
+      });
+    }
+    setPerguntados((p) => [...p, chave]);
+    setPendente(null);
   };
 
   const faixas = resumoFaixas(valores.especie);
 
-
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      {anterior && (
+        <div className="mb-4 rounded-xl border border-border bg-secondary/50 p-3">
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Informação anterior (somente leitura)
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-foreground sm:grid-cols-3">
+            {NUMERICOS.filter(({ chave }) => (anterior[chave] ?? "").trim()).map(({ chave }) => (
+              <p key={chave}>
+                <span className="text-muted-foreground">{ROTULOS_NUMERICOS[chave].rotulo}: </span>
+                <span className="font-semibold tabular-nums">{comVirgula(anterior[chave])}</span>
+              </p>
+            ))}
+            {GRUPOS.filter(({ chave }) => (anterior[chave] ?? "").trim()).map(
+              ({ chave, rotulo }) => (
+                <p key={chave}>
+                  <span className="text-muted-foreground">{rotulo}: </span>
+                  <span className="font-semibold">{anterior[chave]}</span>
+                </p>
+              ),
+            )}
+          </div>
+          {anterior.observacoes.trim() && (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+              {anterior.observacoes.trim()}
+            </p>
+          )}
+        </div>
+      )}
+
       <label className="block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Animal
@@ -72,6 +164,7 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
           value={valores.animal}
           onChange={(e) => set("animal", e.target.value)}
           placeholder="Nome do animal"
+          readOnly={Boolean(anterior)}
           className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-lg font-semibold text-foreground outline-none focus:border-ring"
         />
       </label>
@@ -101,7 +194,6 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
           })}
         </div>
       </div>
-
 
       <div className="mt-5 space-y-4">
         {GRUPOS.map(({ chave, rotulo }) => (
@@ -149,6 +241,7 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
               <input
                 value={valores[chave]}
                 onChange={(e) => setNumero(chave, e.target.value)}
+                onBlur={() => aoSairDoCampo(chave)}
                 inputMode="decimal"
                 aria-invalid={fora}
                 className={[
@@ -169,7 +262,6 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
         </p>
       )}
 
-
       <label className="mt-4 block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Observações
@@ -188,9 +280,9 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
           onClick={onEnviar}
           className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          {editando ? "Salvar alterações" : "Enviar"}
+          {anterior ? "Acrescentar informação" : editando ? "Salvar alterações" : "Enviar"}
         </button>
-        {editando && (
+        {(editando || anterior) && (
           <button
             type="button"
             onClick={onCancelar}
@@ -200,6 +292,24 @@ export function FormAvaliacao({ valores, onChange, onEnviar, editando, onCancela
           </button>
         )}
       </div>
+
+      <AlertDialog open={Boolean(pendente)} onOpenChange={(o) => !o && setPendente(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendente ? ROTULOS_NUMERICOS[pendente].rotulo : ""} alterada
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A nova informação deve substituir a anterior nas observações ou ser acrescentada
+              como atualização?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => responder(false)}>Acrescentar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => responder(true)}>Substituir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
