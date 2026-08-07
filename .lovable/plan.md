@@ -10,5 +10,5 @@
 ## Verificacao
 
 - Abrir **Animais internados** na versao publicada.
-- Conferir visualmente os botoes **Copiar / Editar / Atualizar**.
+- Conferir visualmente os botoes **Copiar / Editar / Atualizar / Excluir**.
 - Garantir que nao exista mais nenhuma ocorrencia visivel de **Editar animal**.
