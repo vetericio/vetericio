@@ -8,7 +8,7 @@ type Props = {
   onCancelar: () => void;
 };
 
-const NUMERICOS: { chave: keyof typeof REGISTRO_VAZIO; rotulo: string; unidade: string }[] = [
+const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
   { chave: "temperatura", rotulo: "Temperatura", unidade: "°C" },
   { chave: "fc", rotulo: "FC", unidade: "bpm" },
   { chave: "fr", rotulo: "FR", unidade: "mpm" },
