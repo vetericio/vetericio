@@ -3,11 +3,18 @@ import { dataHoraRegistro, formatarRegistro, type Registro } from "@/lib/ficha";
 type Props = {
   registros: Registro[];
   onEditar: (r: Registro) => void;
+  onAtualizar: (r: Registro) => void;
   onExcluir: (id: string) => void;
   onCopiar: (r: Registro) => void;
 };
 
-export function ListaRegistros({ registros, onEditar, onExcluir, onCopiar }: Props) {
+export function ListaRegistros({
+  registros,
+  onEditar,
+  onAtualizar,
+  onExcluir,
+  onCopiar,
+}: Props) {
   if (registros.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
