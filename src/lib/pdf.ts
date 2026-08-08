@@ -1,5 +1,6 @@
 import type { Registro } from "./ficha";
 import { formatarTodos } from "./ficha";
+import { carregarPlantaoAtual, rotuloPlantaoAtual } from "./plantao";
 
 const TITULO = "Veterício Serviços Veterinários LTDA";
 const SUBTITULO = "Ficha de Avaliação da Internação";
