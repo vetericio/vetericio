@@ -42,13 +42,16 @@ function Registros() {
   };
 
   const copiarTexto = async (texto: string) => {
+    // Quebra de linha CRLF: reconhecida por WhatsApp, Notas e outros apps.
+    const normalizado = texto.replace(/\r\n/g, "\n").replace(/\n/g, "\r\n");
     try {
-      await navigator.clipboard.writeText(texto);
+      await navigator.clipboard.writeText(normalizado);
       toast.success("Texto copiado.");
     } catch {
       toast.error("Não foi possível copiar.");
     }
   };
+
 
   const exportar = async () => {
     try {
