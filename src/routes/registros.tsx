@@ -37,7 +37,29 @@ export const Route = createFileRoute("/registros")({
 
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
+  const { setPlantoes } = usePlantoes();
+  const { plantao } = usePlantaoAtual();
   const navigate = useNavigate();
+
+  const finalizarPlantao = () => {
+    if (registros.length === 0) {
+      toast.info("Não há animais para finalizar o plantão.");
+      return;
+    }
+    if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
+    const novo: Plantao = {
+      id: crypto.randomUUID(),
+      data: diaDeHoje(),
+      turno: plantao?.turno ?? "",
+      registros,
+      criadoEm: new Date().toISOString(),
+    };
+    setPlantoes((ps) => [novo, ...ps].slice(0, MAX_PLANTOES));
+    setRegistros([]);
+    toast.success("Plantão finalizado.");
+    navigate({ to: "/plantoes" });
+  };
+
 
   const apagarTudo = () => {
     if (registros.length === 0) {
