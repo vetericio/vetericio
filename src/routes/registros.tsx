@@ -112,6 +112,15 @@ function Registros() {
             Exportar PDF
           </button>
         )}
+        {registros.length > 0 && (
+          <button
+            type="button"
+            onClick={finalizarPlantao}
+            className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+          >
+            Finalizar plantão
+          </button>
+        )}
         <button
           type="button"
           onClick={apagarTudo}
