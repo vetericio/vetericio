@@ -279,6 +279,14 @@ export function nomeAnimal(r: Pick<Registro, "animal" | "especie">): string {
   return emoji ? `${base} ${emoji}` : base;
 }
 
+/** "Tigresa (Cachorro)" — versão sem emoji, usada no PDF. */
+export function nomeAnimalTexto(r: Pick<Registro, "animal" | "especie">): string {
+  const base = r.animal.trim() || "Sem nome";
+  if (r.especie === "Cachorro") return `${base} (Cachorro)`;
+  if (r.especie === "Gato") return `${base} (Gato)`;
+  return base;
+}
+
 
 /** Data e hora da avaliação (ex.: 07/08 09:05). Vazio quando não houver data salva. */
 export function dataHoraRegistro(r: Registro): string {
