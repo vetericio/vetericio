@@ -47,7 +47,7 @@ export async function exportarPdf(
   doc.text(legenda, margem, y);
   y += 24;
 
-  const texto = formatarTodos(registros, { emoji: false });
+  const texto = formatarTodos(registros, { emoji: false, obsPadrao: true });
   const blocos = texto.split("\n\n");
 
   doc.setFontSize(11);
