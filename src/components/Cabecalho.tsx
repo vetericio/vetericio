@@ -16,6 +16,10 @@ export function Cabecalho() {
         <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
           Ficha de Avaliação da Internação
         </p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {new Date().toLocaleDateString("pt-BR")}
+        </p>
+
 
         <nav className="mt-3 flex flex-wrap justify-center gap-2">
           <Link
