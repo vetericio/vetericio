@@ -1,11 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { useRegistros } from "@/hooks/useRegistros";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base =
   "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
 export function Cabecalho() {
   const { registros } = useRegistros();
+  const { plantao, definirTurno } = usePlantaoAtual();
 
   return (
     <header className="border-b border-border bg-card/60">
@@ -17,8 +20,20 @@ export function Cabecalho() {
           Ficha de Avaliação da Internação
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {new Date().toLocaleDateString("pt-BR")}
+          {plantao
+            ? rotuloPlantaoAtual(plantao)
+            : new Date().toLocaleDateString("pt-BR")}
+          {plantao && (
+            <button
+              type="button"
+              onClick={() => definirTurno(null)}
+              className="ml-2 underline underline-offset-2 hover:text-foreground"
+            >
+              alterar
+            </button>
+          )}
         </p>
+
 
 
         <nav className="mt-3 flex flex-wrap justify-center gap-2">
