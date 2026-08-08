@@ -1,3 +1,5 @@
+import { resumoRegistro } from "./resumo";
+
 export type Especie = "Cachorro" | "Gato" | "";
 
 export type Registro = {
