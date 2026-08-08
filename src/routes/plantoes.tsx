@@ -13,7 +13,7 @@ export const Route = createFileRoute("/plantoes")({
       {
         name: "description",
         content:
-          "Histórico dos 10 últimos plantões da internação, com texto completo, cópia, exportação em PDF e exclusão.",
+          "Histórico completo dos plantões da internação, com texto, cópia, exportação em PDF e exclusão.",
       },
       { property: "og:title", content: "Plantões salvos — Veterício" },
       {
