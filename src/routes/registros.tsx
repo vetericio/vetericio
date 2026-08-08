@@ -27,7 +27,7 @@ export const Route = createFileRoute("/registros")({
 });
 
 function Registros() {
-  const { registros, setRegistros } = useRegistros();
+  const { registros, setRegistros, carregado } = useRegistros();
   const navigate = useNavigate();
 
   const apagarTudo = () => {
