@@ -236,7 +236,9 @@ function linha(rotulo: string, valor: string, unidade = ""): string | null {
   return `${rotulo}: ${texto}.`;
 }
 
-export function formatarRegistro(r: Registro): string {
+export type OpcoesFormato = { emoji?: boolean };
+
+export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const linhas = [
     linha("Alimentação", r.alimentacao),
     linha("Comportamento", r.comportamento),
@@ -253,13 +255,15 @@ export function formatarRegistro(r: Registro): string {
 
   const obs = r.observacoes.trim();
   const resumo = resumoRegistro(r);
+  const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   return [
-    nomeAnimal(r),
+    titulo,
     ...linhas,
     `Observações: ${obs}`,
     ...(resumo ? [`Resumo: ${resumo}`] : []),
   ].join("\n");
 }
+
 
 /** Emoji da espécie: 🐶 ou 🐱. */
 export function emojiEspecie(especie: Especie | undefined): string {
