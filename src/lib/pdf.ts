@@ -36,8 +36,8 @@ export async function exportarPdf(
 
   const legendaBruta =
     opcoes?.legenda ||
-    rotuloPlantaoAtual(carregarPlantaoAtual()) ||
-    new Date().toLocaleDateString("pt-BR", { dateStyle: "long" });
+    rotuloPlantaoPdf(carregarPlantaoAtual()) ||
+    dataPorExtenso(new Date());
 
   // A seta "→" não existe nas fontes padrão do PDF: usar hífen.
   const legenda = legendaBruta.replace(/\s*→\s*/g, " - ");
