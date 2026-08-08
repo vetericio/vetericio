@@ -13,7 +13,7 @@ export const Route = createFileRoute("/plantoes")({
       {
         name: "description",
         content:
-          "Histórico dos 10 últimos plantões da internação, com texto completo, cópia, exportação em PDF e exclusão.",
+          "Histórico completo dos plantões da internação, com texto, cópia, exportação em PDF e exclusão.",
       },
       { property: "og:title", content: "Plantões salvos — Veterício" },
       {
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/plantoes")({
 function Plantoes() {
   const { plantoes, setPlantoes } = usePlantoes();
   const [aberto, setAberto] = useState<string | null>(null);
+  const [baixando, setBaixando] = useState<string | null>(null);
 
   const copiar = async (p: Plantao) => {
     try {
@@ -52,6 +53,52 @@ function Plantoes() {
     }
   };
 
+  const baixarTodos = async () => {
+    if (plantoes.length === 0) {
+      toast.info("Nenhum plantão salvo para baixar.");
+      return;
+    }
+    try {
+      for (let i = 0; i < plantoes.length; i++) {
+        const p = plantoes[i]!;
+        setBaixando(`${i + 1} de ${plantoes.length}`);
+        await exportarPdf(p.registros, {
+          legenda: rotuloPlantaoPdfDe(p.data, p.turno),
+          arquivo: `veterico-plantao-${p.data}.pdf`,
+        });
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      toast.success("Todos os plantões foram baixados.", {
+        description: "Se algum arquivo não apareceu, libere downloads múltiplos no navegador.",
+      });
+    } catch {
+      toast.error("Não foi possível baixar todos os PDFs.");
+    } finally {
+      setBaixando(null);
+    }
+  };
+
+  const apagarTodos = () => {
+    if (plantoes.length === 0) {
+      toast.info("Nenhum plantão salvo.");
+      return;
+    }
+    const perguntas = [
+      "Apagar todos os plantões salvos?",
+      "Tem certeza? Isso remove o histórico completo.",
+      "Esta ação é permanente e não pode ser desfeita.",
+      "Última confirmação: apagar para sempre?",
+    ];
+    for (const q of perguntas) {
+      if (!window.confirm(q)) {
+        toast.info("Nada foi apagado.");
+        return;
+      }
+    }
+    setPlantoes([]);
+    toast.success("Todos os plantões foram apagados.");
+  };
+
   const excluir = (p: Plantao) => {
     if (!window.confirm(`Excluir o plantão de ${rotuloPlantao(p)}?`)) return;
     setPlantoes((ps) => ps.filter((x) => x.id !== p.id));
@@ -64,8 +111,26 @@ function Plantoes() {
         Plantões salvos ({plantoes.length})
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Ficam guardados os 50 últimos plantões neste aparelho.
+        Todos os plantões ficam guardados neste aparelho.
       </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={baixarTodos}
+          disabled={baixando !== null}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+        >
+          {baixando ? `Baixando ${baixando}...` : "Baixar todos os plantões (PDF)"}
+        </button>
+        <button
+          type="button"
+          onClick={apagarTodos}
+          className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20"
+        >
+          Apagar todos os plantões
+        </button>
+      </div>
 
       {plantoes.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
