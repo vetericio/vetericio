@@ -37,6 +37,24 @@ export function rotuloPlantaoAtual(p: PlantaoAtual | null): string {
   return `Plantão noturno: ${curta(inicio)} (noite) → ${curta(fim)} (manhã)`;
 }
 
+/** Data por extenso: "8 de agosto de 2026". */
+export function dataPorExtenso(data: Date): string {
+  return data.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/** "Plantão diurno - 8 de agosto de 2026" (usado no PDF). */
+export function rotuloPlantaoPdf(p: PlantaoAtual | null): string {
+  if (!p) return "";
+  return `Plantão ${p.turno} - ${dataPorExtenso(daDia(p.dia))}`;
+}
+
+/** Igual ao anterior, a partir de um dia salvo (AAAA-MM-DD) e turno em texto. */
+export function rotuloPlantaoPdfDe(dia: string, turno: string): string {
+  const data = dataPorExtenso(daDia(dia));
+  const t = turno.trim();
+  return t ? `Plantão ${t} - ${data}` : data;
+}
+
 export function carregarPlantaoAtual(): PlantaoAtual | null {
   if (typeof window === "undefined") return null;
   try {
