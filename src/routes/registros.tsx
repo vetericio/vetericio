@@ -2,7 +2,16 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { useRegistros } from "@/hooks/useRegistros";
-import { formatarRegistro, formatarTodos, type Registro } from "@/lib/ficha";
+import { usePlantoes } from "@/hooks/usePlantoes";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import {
+  formatarRegistro,
+  formatarTodos,
+  MAX_PLANTOES,
+  type Plantao,
+  type Registro,
+} from "@/lib/ficha";
+import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 
 export const Route = createFileRoute("/registros")({
