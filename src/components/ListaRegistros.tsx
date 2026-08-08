@@ -1,4 +1,5 @@
-import { dataHoraRegistro, formatarRegistro, type Registro } from "@/lib/ficha";
+import { formatarRegistro, nomeAnimal, type Registro } from "@/lib/ficha";
+
 
 type Props = {
   registros: Registro[];
@@ -29,12 +30,8 @@ export function ListaRegistros({
         <article key={r.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-base font-semibold text-foreground">
-              {dataHoraRegistro(r) && (
-                <span className="mr-1 font-normal text-muted-foreground">
-                  {dataHoraRegistro(r)} —
-                </span>
-              )}
-              {r.animal.trim() || "Sem nome"}
+              {nomeAnimal(r)}
+
             </h3>
             <div className="flex shrink-0 flex-wrap justify-end gap-2">
               <button

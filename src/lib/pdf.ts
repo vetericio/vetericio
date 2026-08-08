@@ -1,5 +1,6 @@
 import type { Registro } from "./ficha";
 import { formatarTodos } from "./ficha";
+import { carregarPlantaoAtual, rotuloPlantaoAtual } from "./plantao";
 
 const TITULO = "Veterício Serviços Veterinários LTDA";
 const SUBTITULO = "Ficha de Avaliação da Internação";
@@ -34,7 +35,11 @@ export async function exportarPdf(
   y += 16;
 
   const legenda =
-    opcoes?.legenda ?? new Date().toLocaleDateString("pt-BR", { dateStyle: "long" });
+    opcoes?.legenda ||
+    rotuloPlantaoAtual(carregarPlantaoAtual()) ||
+    new Date().toLocaleDateString("pt-BR", { dateStyle: "long" });
+
+
   doc.setFontSize(10);
   doc.setTextColor(110);
   doc.text(legenda, margem, y);

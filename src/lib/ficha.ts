@@ -1,3 +1,5 @@
+import { resumoRegistro } from "./resumo";
+
 export type Especie = "Cachorro" | "Gato" | "";
 
 export type Registro = {
@@ -250,9 +252,27 @@ export function formatarRegistro(r: Registro): string {
   ].filter(Boolean) as string[];
 
   const obs = r.observacoes.trim();
+  const resumo = resumoRegistro(r);
+  return [
+    nomeAnimal(r),
+    ...linhas,
+    `Observações: ${obs}`,
+    ...(resumo ? [`Resumo: ${resumo}`] : []),
+  ].join("\n");
+}
+
+/** Emoji da espécie: 🐶 ou 🐱. */
+export function emojiEspecie(especie: Especie | undefined): string {
+  if (especie === "Cachorro") return "🐶";
+  if (especie === "Gato") return "🐱";
+  return "";
+}
+
+/** "Tigresa 🐶" */
+export function nomeAnimal(r: Pick<Registro, "animal" | "especie">): string {
   const base = r.animal.trim() || "Sem nome";
-  const nome = r.especie ? `${base} (${r.especie})` : base;
-  return [nome, ...linhas, `Observações: ${obs}`].join("\n");
+  const emoji = emojiEspecie(r.especie);
+  return emoji ? `${base} ${emoji}` : base;
 }
 
 
@@ -270,15 +290,9 @@ export function dataHoraRegistro(r: Registro): string {
 }
 
 export function formatarTodos(registros: Registro[]): string {
-  return registros
-    .map((r) => {
-      const texto = formatarRegistro(r);
-      const [nome, ...resto] = texto.split("\n");
-      const quando = dataHoraRegistro(r);
-      return [quando ? `${quando} — ${nome}` : nome, ...resto].join("\n");
-    })
-    .join("\n\n");
+  return registros.map((r) => formatarRegistro(r)).join("\n\n");
 }
+
 
 const CHAVE = "veterico-registros-v1";
 const CHAVE_PLANTOES = "veterico-plantoes-v1";

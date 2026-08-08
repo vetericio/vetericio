@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Cabecalho } from "@/components/Cabecalho";
+import { DialogoTurno } from "@/components/DialogoTurno";
 
 
 function NotFoundComponent() {
@@ -129,6 +130,8 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Cabecalho />
+      <DialogoTurno />
+
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster position="top-center" />
