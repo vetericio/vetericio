@@ -1,6 +1,10 @@
-# Cópia e PDF com uma informação por linha
+# Cópia e PDF com uma informação por linha (+ data no início)
 
-## O problema
+## 1. Data na página inicial
+
+Abaixo de "Ficha de Avaliação da Internação", no cabeçalho, aparece a data do aparelho em texto pequeno e discreto (ex.: `08/08/2026`), sempre atualizada.
+
+## 2. O problema da cópia
 
 Ao copiar (do app ou do PDF) o texto cola tudo emendado numa linha só: `alimentação forçado, comportamento responsivo`. Isso acontece porque as quebras de linha usadas não são reconhecidas por alguns aplicativos (WhatsApp, Notas) e porque, no PDF, as linhas são desenhadas muito próximas e o leitor de PDF as junta ao copiar.
 
@@ -24,6 +28,7 @@ Cada informação em sua própria linha, tanto no texto copiado do app quanto no
 
 ## Detalhes técnicos
 
+- `src/components/Cabecalho.tsx`: linha com a data atual (`toLocaleDateString("pt-BR")`) logo abaixo do subtítulo, em `text-[11px] text-muted-foreground`.
 - `src/routes/registros.tsx`: `copiarTexto()` normaliza o texto para `\r\n` antes de `navigator.clipboard.writeText` (aplica ao copiar individual e ao copiar todos).
-- `src/lib/pdf.ts`: aumentar o `lineHeightFactor`/espaçamento vertical por linha (de 15 pt para ~17 pt) e desenhar cada linha do registro com `doc.text(l, margem, y)` isolado (já é o caso), garantindo que a extração de texto do PDF preserve as quebras. Manter `splitTextToSize` para linhas longas.
+- `src/lib/pdf.ts`: aumentar o espaçamento vertical por linha (de 15 pt para ~17 pt) e desenhar cada linha do registro com `doc.text(l, margem, y)` isolado (já é o caso), garantindo que a extração de texto do PDF preserve as quebras. Manter `splitTextToSize` para linhas longas.
 - Sem mudanças em `src/lib/ficha.ts` (a formatação já gera uma informação por linha).
