@@ -7,7 +7,6 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import {
   formatarRegistro,
   formatarTodos,
-  MAX_PLANTOES,
   type Plantao,
   type Registro,
 } from "@/lib/ficha";
@@ -54,7 +53,7 @@ function Registros() {
       registros,
       criadoEm: new Date().toISOString(),
     };
-    setPlantoes((ps) => [novo, ...ps].slice(0, MAX_PLANTOES));
+    setPlantoes((ps) => [novo, ...ps]);
     setRegistros([]);
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
