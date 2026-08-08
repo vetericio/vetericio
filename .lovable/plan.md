@@ -1,59 +1,29 @@
-# Plantão diurno/noturno, nome com emoji e resumo automático
+# Cópia e PDF com uma informação por linha
 
-## 1. Pergunta de turno ao abrir
+## O problema
 
-Na primeira abertura do dia, o app pergunta: **Plantão diurno ou noturno?** A escolha fica salva no aparelho por aquele dia (pode ser trocada por um toque na linha do plantão no cabeçalho).
+Ao copiar (do app ou do PDF) o texto cola tudo emendado numa linha só: `alimentação forçado, comportamento responsivo`. Isso acontece porque as quebras de linha usadas não são reconhecidas por alguns aplicativos (WhatsApp, Notas) e porque, no PDF, as linhas são desenhadas muito próximas e o leitor de PDF as junta ao copiar.
 
-Abaixo de "Ficha de Avaliação da Internação" aparece:
-
-```text
-Plantão diurno: 07/08/26
-Plantão noturno: 07/08/26 (noite) → 08/08/26 (manhã)
-```
-
-O texto do plantão também entra no topo da exportação (texto copiado e PDF).
-
-## 2. Nome do animal sem data
-
-Nos cards de Animais internados, no texto copiado e no PDF, o título passa a ser só nome + emoji da espécie:
+## O resultado esperado
 
 ```text
 Tigresa 🐶
-Mel 🐱
+Alimentação: Forçado
+Comportamento: Ativo
+Fezes: Sim
+Temperatura: 38,1 °C
 ```
 
-Sem data/hora e sem "(Cachorro)". A data continua registrada internamente e segue aparecendo nos gráficos de Evolução.
+Cada informação em sua própria linha, tanto no texto copiado do app quanto no texto copiado de dentro do PDF.
 
-## 3. Resumo automático (feito pelo app, offline)
+## O que muda
 
-Cada registro ganha uma linha **Resumo:** em linguagem natural, montada pelo app a partir dos campos preenchidos — funciona sem internet.
-
-Exemplos:
-
-```text
-Resumo: Animal se alimentou por sonda, estava ativo e com parâmetros normais.
-Resumo: Animal não se alimentou, estava taquicárdico, não defecou.
-```
-
-Como o texto é montado:
-
-- Alimentação: "se alimentou com ração", "se alimentou por sonda", "não se alimentou", "em jejum".
-- Comportamento: "estava ativo/prostrado/responsivo…".
-- Fezes e urina: "defecou (pastoso)", "não defecou", "urinou", "não urinou".
-- Vômito: "apresentou vômito", "sem vômito", "com sialorreia".
-- Mucosas: citadas quando diferentes de normocoradas.
-- Números: se todos dentro da faixa da espécie → "com parâmetros normais"; se houver alterações → lista os termos clínicos (taquicárdico, hipotérmico, hipoglicêmico…).
-
-O resumo aparece no card da lista, no texto copiado e no PDF, e é recalculado sozinho quando o registro é atualizado.
+1. **Copiar no app** (um animal e todos os animais): o texto passa a usar quebra de linha compatível com todos os apps (`\r\n`), então cola sempre uma informação por linha.
+2. **PDF**: cada informação é escrita como um parágrafo próprio, com espaçamento entre linhas suficiente para o leitor de PDF entender que são linhas separadas ao copiar. O nome do animal continua em negrito e cada animal separado por um espaço em branco.
+3. Nada muda no conteúdo em si — só a formatação/quebra de linhas.
 
 ## Detalhes técnicos
 
-- `src/lib/plantao.ts` (novo): tipo `Turno`, leitura/gravação em `localStorage` (`veterico-plantao-v1` com `{ dia, turno }`), e `rotuloTurno()` gerando as frases de data (noturno = dia escolhido → dia seguinte, formato `dd/MM/aa`).
-- `src/hooks/usePlantaoAtual.ts` (novo): mesmo padrão `useSyncExternalStore` de `useRegistros`.
-- `src/components/DialogoTurno.tsx` (novo): `AlertDialog` com Diurno/Noturno, aberto quando não há turno salvo para o dia de hoje.
-- `src/components/Cabecalho.tsx`: mostra a linha do plantão (clicável para trocar) acima do total de registros; monta o diálogo em `__root.tsx` ou no próprio cabeçalho.
-- `src/lib/ficha.ts`: `formatarRegistro` passa a usar `nomeComEmoji(r)` (🐶/🐱) no lugar de `Nome (Espécie)` e acrescenta a linha `Resumo:`; `formatarTodos` deixa de prefixar a data/hora e recebe o cabeçalho do plantão.
-- `src/lib/resumo.ts` (novo): `resumirRegistro(r)` com os mapeamentos acima, reaproveitando `avaliarValor`/`FAIXAS` para os termos clínicos.
-- `src/components/ListaRegistros.tsx`: remove o prefixo `dataHoraRegistro` do título.
-- `src/lib/pdf.ts`: inclui a linha do plantão no topo do documento.
-- `src/lib/evolucao.ts` permanece igual (Evolução continua usando data/hora).
+- `src/routes/registros.tsx`: `copiarTexto()` normaliza o texto para `\r\n` antes de `navigator.clipboard.writeText` (aplica ao copiar individual e ao copiar todos).
+- `src/lib/pdf.ts`: aumentar o `lineHeightFactor`/espaçamento vertical por linha (de 15 pt para ~17 pt) e desenhar cada linha do registro com `doc.text(l, margem, y)` isolado (já é o caso), garantindo que a extração de texto do PDF preserve as quebras. Manter `splitTextToSize` para linhas longas.
+- Sem mudanças em `src/lib/ficha.ts` (a formatação já gera uma informação por linha).
