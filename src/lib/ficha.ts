@@ -236,7 +236,7 @@ function linha(rotulo: string, valor: string, unidade = ""): string | null {
   return `${rotulo}: ${texto}.`;
 }
 
-export type OpcoesFormato = { emoji?: boolean };
+export type OpcoesFormato = { emoji?: boolean; obsPadrao?: boolean };
 
 export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const linhas = [
@@ -254,12 +254,13 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   ].filter(Boolean) as string[];
 
   const obs = r.observacoes.trim();
+  const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante." : "");
   const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   return [
     titulo,
     ...linhas,
-    `Observações: ${obs}`,
+    `Observações: ${textoObs}`,
     ...(resumo ? [`Resumo: ${resumo}`] : []),
   ].join("\n");
 }
