@@ -1,5 +1,4 @@
 import { formatarRegistro, nomeAnimal, type Registro } from "@/lib/ficha";
-import { resumoRegistro } from "@/lib/resumo";
 
 
 type Props = {
