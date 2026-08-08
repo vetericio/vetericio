@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
+import { rotuloPlantaoPdfDe } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 
 export const Route = createFileRoute("/plantoes")({
