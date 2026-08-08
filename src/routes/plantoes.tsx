@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
+import { rotuloPlantaoPdfDe } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 
 export const Route = createFileRoute("/plantoes")({
@@ -42,7 +43,7 @@ function Plantoes() {
   const pdf = async (p: Plantao) => {
     try {
       await exportarPdf(p.registros, {
-        legenda: `Plantão ${rotuloPlantao(p)}`,
+        legenda: rotuloPlantaoPdfDe(p.data, p.turno),
         arquivo: `veterico-plantao-${p.data}.pdf`,
       });
       toast.success("PDF gerado.");
@@ -63,7 +64,7 @@ function Plantoes() {
         Plantões salvos ({plantoes.length})
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Ficam guardados os 10 últimos plantões neste aparelho.
+        Ficam guardados os 50 últimos plantões neste aparelho.
       </p>
 
       {plantoes.length === 0 ? (

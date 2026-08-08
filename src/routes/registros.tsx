@@ -2,7 +2,16 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { useRegistros } from "@/hooks/useRegistros";
-import { formatarRegistro, formatarTodos, type Registro } from "@/lib/ficha";
+import { usePlantoes } from "@/hooks/usePlantoes";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import {
+  formatarRegistro,
+  formatarTodos,
+  MAX_PLANTOES,
+  type Plantao,
+  type Registro,
+} from "@/lib/ficha";
+import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 
 export const Route = createFileRoute("/registros")({
@@ -28,7 +37,29 @@ export const Route = createFileRoute("/registros")({
 
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
+  const { setPlantoes } = usePlantoes();
+  const { plantao } = usePlantaoAtual();
   const navigate = useNavigate();
+
+  const finalizarPlantao = () => {
+    if (registros.length === 0) {
+      toast.info("Não há animais para finalizar o plantão.");
+      return;
+    }
+    if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
+    const novo: Plantao = {
+      id: crypto.randomUUID(),
+      data: diaDeHoje(),
+      turno: plantao?.turno ?? "",
+      registros,
+      criadoEm: new Date().toISOString(),
+    };
+    setPlantoes((ps) => [novo, ...ps].slice(0, MAX_PLANTOES));
+    setRegistros([]);
+    toast.success("Plantão finalizado.");
+    navigate({ to: "/plantoes" });
+  };
+
 
   const apagarTudo = () => {
     if (registros.length === 0) {
@@ -79,6 +110,15 @@ function Registros() {
             className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
           >
             Exportar PDF
+          </button>
+        )}
+        {registros.length > 0 && (
+          <button
+            type="button"
+            onClick={finalizarPlantao}
+            className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+          >
+            Finalizar plantão
           </button>
         )}
         <button

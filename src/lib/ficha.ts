@@ -310,7 +310,7 @@ export function formatarTodos(registros: Registro[], opcoes?: OpcoesFormato): st
 const CHAVE = "veterico-registros-v1";
 const CHAVE_PLANTOES = "veterico-plantoes-v1";
 
-export const MAX_PLANTOES = 10;
+export const MAX_PLANTOES = 50;
 
 export type Plantao = {
   id: string;
