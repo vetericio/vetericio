@@ -301,8 +301,8 @@ export function dataHoraRegistro(r: Registro): string {
   });
 }
 
-export function formatarTodos(registros: Registro[]): string {
-  return registros.map((r) => formatarRegistro(r)).join("\n\n");
+export function formatarTodos(registros: Registro[], opcoes?: OpcoesFormato): string {
+  return registros.map((r) => formatarRegistro(r, opcoes)).join("\n\n");
 }
 
 
