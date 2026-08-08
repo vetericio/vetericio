@@ -34,19 +34,20 @@ export async function exportarPdf(
   doc.text(SUBTITULO, margem, y);
   y += 16;
 
-  const legenda =
+  const legendaBruta =
     opcoes?.legenda ||
     rotuloPlantaoAtual(carregarPlantaoAtual()) ||
     new Date().toLocaleDateString("pt-BR", { dateStyle: "long" });
 
+  // A seta "→" não existe nas fontes padrão do PDF: usar hífen.
+  const legenda = legendaBruta.replace(/\s*→\s*/g, " - ");
 
-  doc.setFontSize(10);
-  doc.setTextColor(110);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
   doc.text(legenda, margem, y);
-  doc.setTextColor(0);
   y += 24;
 
-  const texto = formatarTodos(registros);
+  const texto = formatarTodos(registros, { emoji: false });
   const blocos = texto.split("\n\n");
 
   doc.setFontSize(11);
