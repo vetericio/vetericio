@@ -52,22 +52,25 @@ export async function exportarPdf(
     doc.setFont("helvetica", "bold");
     const linhasCabecalho = doc.splitTextToSize(cabecalho, largura) as string[];
     for (const l of linhasCabecalho) {
-      novaPaginaSeNecessario(16);
+      novaPaginaSeNecessario(18);
       doc.text(l, margem, y);
-      y += 16;
+      y += 18;
     }
 
     doc.setFont("helvetica", "normal");
+    // Cada informação em sua própria linha, com espaçamento suficiente para
+    // que a cópia a partir do PDF preserve as quebras de linha.
     for (const linha of resto) {
       const partes = doc.splitTextToSize(linha, largura) as string[];
       for (const l of partes) {
-        novaPaginaSeNecessario(15);
+        novaPaginaSeNecessario(17);
         doc.text(l, margem, y);
-        y += 15;
+        y += 17;
       }
     }
-    y += 14;
+    y += 16;
   }
+
 
   doc.save(opcoes?.arquivo ?? "veterico-fichas.pdf");
 }
