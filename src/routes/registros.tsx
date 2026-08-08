@@ -68,7 +68,7 @@ function Registros() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
       <h2 className="font-display text-lg font-semibold text-foreground">
-        Animais registrados ({registros.length})
+        Animais registrados{carregado ? ` (${registros.length})` : ""}
       </h2>
 
       <div className="mt-3 flex flex-wrap gap-2">
