@@ -34,7 +34,10 @@ export async function exportarPdf(
   y += 16;
 
   const legenda =
-    opcoes?.legenda ?? new Date().toLocaleDateString("pt-BR", { dateStyle: "long" });
+    opcoes?.legenda ??
+    rotuloPlantaoAtual(carregarPlantaoAtual()) ||
+    new Date().toLocaleDateString("pt-BR", { dateStyle: "long" });
+
   doc.setFontSize(10);
   doc.setTextColor(110);
   doc.text(legenda, margem, y);
