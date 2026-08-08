@@ -42,7 +42,7 @@ function Plantoes() {
   const pdf = async (p: Plantao) => {
     try {
       await exportarPdf(p.registros, {
-        legenda: `Plantão ${rotuloPlantao(p)}`,
+        legenda: rotuloPlantaoPdfDe(p.data, p.turno),
         arquivo: `veterico-plantao-${p.data}.pdf`,
       });
       toast.success("PDF gerado.");
