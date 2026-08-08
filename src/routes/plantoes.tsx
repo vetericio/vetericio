@@ -64,7 +64,7 @@ function Plantoes() {
         Plantões salvos ({plantoes.length})
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Ficam guardados os 10 últimos plantões neste aparelho.
+        Ficam guardados os 50 últimos plantões neste aparelho.
       </p>
 
       {plantoes.length === 0 ? (
