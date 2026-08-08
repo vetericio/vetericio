@@ -236,7 +236,9 @@ function linha(rotulo: string, valor: string, unidade = ""): string | null {
   return `${rotulo}: ${texto}.`;
 }
 
-export function formatarRegistro(r: Registro): string {
+export type OpcoesFormato = { emoji?: boolean };
+
+export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const linhas = [
     linha("Alimentação", r.alimentacao),
     linha("Comportamento", r.comportamento),
@@ -253,13 +255,15 @@ export function formatarRegistro(r: Registro): string {
 
   const obs = r.observacoes.trim();
   const resumo = resumoRegistro(r);
+  const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   return [
-    nomeAnimal(r),
+    titulo,
     ...linhas,
     `Observações: ${obs}`,
     ...(resumo ? [`Resumo: ${resumo}`] : []),
   ].join("\n");
 }
+
 
 /** Emoji da espécie: 🐶 ou 🐱. */
 export function emojiEspecie(especie: Especie | undefined): string {
@@ -273,6 +277,14 @@ export function nomeAnimal(r: Pick<Registro, "animal" | "especie">): string {
   const base = r.animal.trim() || "Sem nome";
   const emoji = emojiEspecie(r.especie);
   return emoji ? `${base} ${emoji}` : base;
+}
+
+/** "Tigresa (Cachorro)" — versão sem emoji, usada no PDF. */
+export function nomeAnimalTexto(r: Pick<Registro, "animal" | "especie">): string {
+  const base = r.animal.trim() || "Sem nome";
+  if (r.especie === "Cachorro") return `${base} (Cachorro)`;
+  if (r.especie === "Gato") return `${base} (Gato)`;
+  return base;
 }
 
 
@@ -289,8 +301,8 @@ export function dataHoraRegistro(r: Registro): string {
   });
 }
 
-export function formatarTodos(registros: Registro[]): string {
-  return registros.map((r) => formatarRegistro(r)).join("\n\n");
+export function formatarTodos(registros: Registro[], opcoes?: OpcoesFormato): string {
+  return registros.map((r) => formatarRegistro(r, opcoes)).join("\n\n");
 }
 
 
