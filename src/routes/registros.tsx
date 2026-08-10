@@ -147,9 +147,24 @@ function Registros() {
         </button>
       </div>
 
+      {registros.length > 0 && (
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Procurar animal pelo nome"
+          className="mt-4 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        />
+      )}
+
       <div className="mt-4">
+        {registros.length > 0 && visiveis.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Nenhum animal encontrado com esse nome.
+          </p>
+        ) : (
         <ListaRegistros
-          registros={registros}
+          registros={visiveis}
           onCopiar={(r: Registro) => copiarTexto(formatarRegistro(r))}
           onEditar={(r) => {
             window.localStorage.setItem("veterico-editar-id", r.id);
