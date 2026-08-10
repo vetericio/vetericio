@@ -19,8 +19,8 @@ function subscribe(fn: () => void) {
 const getSnapshot = () => estado;
 const getServerSnapshot = () => estado;
 
-function definir(turno: Turno | null) {
-  estado = turno ? { dia: diaDeHoje(), turno } : null;
+function definir(turno: Turno | null, dia?: string) {
+  estado = turno ? { dia: dia || diaDeHoje(), turno, escolhidoEm: diaDeHoje() } : null;
   salvarPlantaoAtual(estado);
   ouvintes.forEach((fn) => fn());
 }

@@ -1,9 +1,11 @@
 export type Turno = "diurno" | "noturno";
 
 export type PlantaoAtual = {
-  /** Dia do aparelho no formato AAAA-MM-DD em que a escolha foi feita. */
+  /** Dia do plantão no formato AAAA-MM-DD (pode ser escolhido manualmente). */
   dia: string;
   turno: Turno;
+  /** Dia do aparelho em que a escolha foi feita (AAAA-MM-DD). */
+  escolhidoEm?: string;
 };
 
 const CHAVE = "veterico-plantao-v1";
@@ -87,7 +89,8 @@ export function carregarPlantaoAtual(): PlantaoAtual | null {
     const bruto = window.localStorage.getItem(CHAVE);
     if (!bruto) return null;
     const dados = JSON.parse(bruto) as PlantaoAtual;
-    if (dados?.dia !== diaDeHoje()) return null;
+    const referencia = dados?.escolhidoEm ?? dados?.dia;
+    if (referencia !== diaDeHoje()) return null;
     if (dados.turno !== "diurno" && dados.turno !== "noturno") return null;
     return dados;
   } catch {
