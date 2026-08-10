@@ -34,11 +34,28 @@ export const Route = createFileRoute("/registros")({
   component: Registros,
 });
 
+function normalizar(texto: string) {
+  return texto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const { setPlantoes } = usePlantoes();
   const { plantao } = usePlantaoAtual();
   const navigate = useNavigate();
+  const [busca, setBusca] = useState("");
+
+  const ordenados = [...registros].sort((a, b) =>
+    normalizar(a.animal).localeCompare(normalizar(b.animal), "pt-BR"),
+  );
+  const termo = normalizar(busca);
+  const visiveis = termo
+    ? ordenados.filter((r) => normalizar(r.animal).includes(termo))
+    : ordenados;
 
   const finalizarPlantao = () => {
     if (registros.length === 0) {
