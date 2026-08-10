@@ -182,6 +182,7 @@ function Registros() {
             toast.success("Registro excluído.");
           }}
         />
+        )}
       </div>
 
       {registros.length > 0 && (
