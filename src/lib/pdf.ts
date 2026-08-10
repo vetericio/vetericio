@@ -84,5 +84,6 @@ export async function exportarPdf(
   }
 
 
-  doc.save(opcoes?.arquivo ?? "veterico-fichas.pdf");
+  const atual = carregarPlantaoAtual();
+  doc.save(opcoes?.arquivo ?? nomeArquivoPdf(atual?.dia ?? diaDeHoje(), atual?.turno));
 }
