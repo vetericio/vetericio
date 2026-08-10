@@ -233,7 +233,7 @@ function linha(rotulo: string, valor: string, unidade = ""): string | null {
   const v = valor.trim();
   if (!v) return null;
   const texto = unidade ? `${comVirgula(v)} ${unidade}` : comVirgula(v);
-  return `${rotulo}: ${texto}.`;
+  return `${rotulo}: ${texto}`;
 }
 
 export type OpcoesFormato = { emoji?: boolean; obsPadrao?: boolean };
