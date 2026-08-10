@@ -1,9 +1,11 @@
 export type Turno = "diurno" | "noturno";
 
 export type PlantaoAtual = {
-  /** Dia do aparelho no formato AAAA-MM-DD em que a escolha foi feita. */
+  /** Dia do plantão no formato AAAA-MM-DD (pode ser escolhido manualmente). */
   dia: string;
   turno: Turno;
+  /** Dia do aparelho em que a escolha foi feita (AAAA-MM-DD). */
+  escolhidoEm?: string;
 };
 
 const CHAVE = "veterico-plantao-v1";
