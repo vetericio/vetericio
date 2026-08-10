@@ -233,7 +233,7 @@ function linha(rotulo: string, valor: string, unidade = ""): string | null {
   const v = valor.trim();
   if (!v) return null;
   const texto = unidade ? `${comVirgula(v)} ${unidade}` : comVirgula(v);
-  return `${rotulo}: ${texto}.`;
+  return `${rotulo}: ${texto}`;
 }
 
 export type OpcoesFormato = { emoji?: boolean; obsPadrao?: boolean };
@@ -254,7 +254,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   ].filter(Boolean) as string[];
 
   const obs = r.observacoes.trim();
-  const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante." : "");
+  const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante" : "");
   const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   return [
