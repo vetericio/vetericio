@@ -42,16 +42,31 @@ export function dataPorExtenso(data: Date): string {
   return data.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** "Plantão diurno - 8 de agosto de 2026" (usado no PDF). */
+/** dd/mm/aaaa */
+function longa(data: Date): string {
+  const dois = (n: number) => String(n).padStart(2, "0");
+  return `${dois(data.getDate())}/${dois(data.getMonth() + 1)}/${data.getFullYear()}`;
+}
+
+/**
+ * Diurno: "Plantão diurno - 10 de agosto de 2026"
+ * Noturno: "Plantão noturno - 08/08/26 (noite) - 09/08/2026 (manhã)"
+ */
 export function rotuloPlantaoPdf(p: PlantaoAtual | null): string {
   if (!p) return "";
-  return `Plantão ${p.turno} - ${dataPorExtenso(daDia(p.dia))}`;
+  return rotuloPlantaoPdfDe(p.dia, p.turno);
 }
 
 /** Igual ao anterior, a partir de um dia salvo (AAAA-MM-DD) e turno em texto. */
 export function rotuloPlantaoPdfDe(dia: string, turno: string): string {
-  const data = dataPorExtenso(daDia(dia));
-  const t = turno.trim();
+  const inicio = daDia(dia);
+  const t = turno.trim().toLowerCase();
+  if (t === "noturno") {
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + 1);
+    return `Plantão noturno - ${curta(inicio)} (noite) - ${longa(fim)} (manhã)`;
+  }
+  const data = dataPorExtenso(inicio);
   return t ? `Plantão ${t} - ${data}` : data;
 }
 
