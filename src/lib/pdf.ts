@@ -57,31 +57,33 @@ export async function exportarPdf(
   const blocos = texto.split("\n\n");
 
   doc.setFontSize(11);
+  const ALTURA_LINHA = 21;
   for (const bloco of blocos) {
     const [cabecalho = "", ...resto] = bloco.split("\n");
-    novaPaginaSeNecessario(40);
+    novaPaginaSeNecessario(ALTURA_LINHA * 2);
 
     doc.setFont("helvetica", "bold");
     const linhasCabecalho = doc.splitTextToSize(cabecalho, largura) as string[];
     for (const l of linhasCabecalho) {
-      novaPaginaSeNecessario(18);
-      doc.text(l, margem, y);
-      y += 18;
+      novaPaginaSeNecessario(ALTURA_LINHA);
+      doc.text(l, margem, y, { baseline: "alphabetic", maxWidth: largura });
+      y += ALTURA_LINHA;
     }
 
     doc.setFont("helvetica", "normal");
-    // Cada informação em sua própria linha, com espaçamento suficiente para
-    // que a cópia a partir do PDF preserve as quebras de linha.
+    // Cada informação é um bloco de texto independente, com espaçamento
+    // generoso, para que a cópia a partir do PDF preserve as quebras de linha.
     for (const linha of resto) {
       const partes = doc.splitTextToSize(linha, largura) as string[];
       for (const l of partes) {
-        novaPaginaSeNecessario(17);
-        doc.text(l, margem, y);
-        y += 17;
+        novaPaginaSeNecessario(ALTURA_LINHA);
+        doc.text(l, margem, y, { baseline: "alphabetic", maxWidth: largura });
+        y += ALTURA_LINHA;
       }
     }
-    y += 16;
+    y += 18;
   }
+
 
 
   const atual = carregarPlantaoAtual();
