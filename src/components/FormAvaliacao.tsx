@@ -74,6 +74,7 @@ export function FormAvaliacao({
   const iniciais = useRef(valores);
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
+  const [outroAberto, setOutroAberto] = useState(false);
 
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
