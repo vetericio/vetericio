@@ -89,7 +89,8 @@ export function carregarPlantaoAtual(): PlantaoAtual | null {
     const bruto = window.localStorage.getItem(CHAVE);
     if (!bruto) return null;
     const dados = JSON.parse(bruto) as PlantaoAtual;
-    if (dados?.dia !== diaDeHoje()) return null;
+    const referencia = dados?.escolhidoEm ?? dados?.dia;
+    if (referencia !== diaDeHoje()) return null;
     if (dados.turno !== "diurno" && dados.turno !== "noturno") return null;
     return dados;
   } catch {
