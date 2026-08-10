@@ -254,7 +254,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   ].filter(Boolean) as string[];
 
   const obs = r.observacoes.trim();
-  const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante." : "");
+  const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante" : "");
   const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   return [
