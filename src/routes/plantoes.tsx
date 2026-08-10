@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
-import { rotuloPlantaoPdfDe } from "@/lib/plantao";
+import { nomeArquivoPdf, rotuloPlantaoPdfDe } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 
 export const Route = createFileRoute("/plantoes")({
@@ -45,7 +45,7 @@ function Plantoes() {
     try {
       await exportarPdf(p.registros, {
         legenda: rotuloPlantaoPdfDe(p.data, p.turno),
-        arquivo: `veterico-plantao-${p.data}.pdf`,
+        arquivo: nomeArquivoPdf(p.data, p.turno),
       });
       toast.success("PDF gerado.");
     } catch {
@@ -64,7 +64,7 @@ function Plantoes() {
         setBaixando(`${i + 1} de ${plantoes.length}`);
         await exportarPdf(p.registros, {
           legenda: rotuloPlantaoPdfDe(p.data, p.turno),
-          arquivo: `veterico-plantao-${p.data}.pdf`,
+          arquivo: nomeArquivoPdf(p.data, p.turno),
         });
         await new Promise((r) => setTimeout(r, 400));
       }

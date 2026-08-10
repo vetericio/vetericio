@@ -55,6 +55,17 @@ export function rotuloPlantaoPdfDe(dia: string, turno: string): string {
   return t ? `Plantão ${t} - ${data}` : data;
 }
 
+/** "Plantão noturno 08.08.26.pdf" (nome do arquivo exportado). */
+export function nomeArquivoPdf(dia: string, turno?: string): string {
+  const data = daDia(dia);
+  const dois = (n: number) => String(n).padStart(2, "0");
+  const curtaPontos = `${dois(data.getDate())}.${dois(data.getMonth() + 1)}.${String(
+    data.getFullYear(),
+  ).slice(-2)}`;
+  const t = (turno ?? "").trim();
+  return t ? `Plantão ${t} ${curtaPontos}.pdf` : `Plantão ${curtaPontos}.pdf`;
+}
+
 export function carregarPlantaoAtual(): PlantaoAtual | null {
   if (typeof window === "undefined") return null;
   try {
