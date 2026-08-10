@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { useRegistros } from "@/hooks/useRegistros";
@@ -34,11 +35,28 @@ export const Route = createFileRoute("/registros")({
   component: Registros,
 });
 
+function normalizar(texto: string) {
+  return texto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const { setPlantoes } = usePlantoes();
   const { plantao } = usePlantaoAtual();
   const navigate = useNavigate();
+  const [busca, setBusca] = useState("");
+
+  const ordenados = [...registros].sort((a, b) =>
+    normalizar(a.animal).localeCompare(normalizar(b.animal), "pt-BR"),
+  );
+  const termo = normalizar(busca);
+  const visiveis = termo
+    ? ordenados.filter((r) => normalizar(r.animal).includes(termo))
+    : ordenados;
 
   const finalizarPlantao = () => {
     if (registros.length === 0) {
@@ -129,9 +147,24 @@ function Registros() {
         </button>
       </div>
 
+      {registros.length > 0 && (
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Procurar animal pelo nome"
+          className="mt-4 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+        />
+      )}
+
       <div className="mt-4">
+        {registros.length > 0 && visiveis.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            Nenhum animal encontrado com esse nome.
+          </p>
+        ) : (
         <ListaRegistros
-          registros={registros}
+          registros={visiveis}
           onCopiar={(r: Registro) => copiarTexto(formatarRegistro(r))}
           onEditar={(r) => {
             window.localStorage.setItem("veterico-editar-id", r.id);
@@ -149,6 +182,7 @@ function Registros() {
             toast.success("Registro excluído.");
           }}
         />
+        )}
       </div>
 
       {registros.length > 0 && (
