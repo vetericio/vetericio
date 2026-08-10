@@ -196,33 +196,75 @@ export function FormAvaliacao({
       </div>
 
       <div className="mt-5 space-y-4">
-        {GRUPOS.map(({ chave, rotulo }) => (
-          <div key={chave}>
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {rotulo}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {OPCOES[chave].map((opcao) => {
-                const ativo = valores[chave] === opcao;
-                return (
+        {GRUPOS.map(({ chave, rotulo }) => {
+          const opcoesFixas = OPCOES[chave] as readonly string[];
+          const valorAtual = valores[chave].trim();
+          const ehAlimentacao = chave === "alimentacao";
+          const outroAtivo =
+            ehAlimentacao && (outroAberto || (valorAtual !== "" && !opcoesFixas.includes(valorAtual)));
+          return (
+            <div key={chave}>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {rotulo}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {opcoesFixas.map((opcao) => {
+                  const ativo = valores[chave] === opcao;
+                  return (
+                    <button
+                      key={opcao}
+                      type="button"
+                      onClick={() => {
+                        if (ehAlimentacao) setOutroAberto(false);
+                        set(chave, ativo ? "" : opcao);
+                      }}
+                      className={[
+                        "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                        ativo
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+                      ].join(" ")}
+                    >
+                      {opcao}
+                    </button>
+                  );
+                })}
+                {ehAlimentacao && (
                   <button
-                    key={opcao}
                     type="button"
-                    onClick={() => set(chave, ativo ? "" : opcao)}
+                    onClick={() => {
+                      if (outroAtivo) {
+                        setOutroAberto(false);
+                        set("alimentacao", "");
+                      } else {
+                        setOutroAberto(true);
+                        set("alimentacao", "");
+                      }
+                    }}
                     className={[
                       "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                      ativo
+                      outroAtivo
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
                     ].join(" ")}
                   >
-                    {opcao}
+                    Outro
                   </button>
-                );
-              })}
+                )}
+              </div>
+              {ehAlimentacao && outroAtivo && (
+                <input
+                  type="text"
+                  autoFocus
+                  value={opcoesFixas.includes(valorAtual) ? "" : valores.alimentacao}
+                  onChange={(e) => set("alimentacao", e.target.value)}
+                  placeholder="Escreva o alimento"
+                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                />
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">

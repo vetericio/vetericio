@@ -180,7 +180,7 @@ export const OPCOES = {
     "Não alimentou",
     "Comida própria",
     "Frango",
-    "Líquido",
+    "Iogurte",
     "Sonda",
 
   ],

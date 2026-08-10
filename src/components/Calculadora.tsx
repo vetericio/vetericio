@@ -29,23 +29,30 @@ function avaliar(expr: string): string {
 
 export function Calculadora() {
   const [expr, setExpr] = useState("");
-  const [resultado, setResultado] = useState("");
+  const [fixado, setFixado] = useState("");
+
+  const previa = expr ? avaliar(expr) : "";
+  const resultado = fixado || (previa && previa !== "Erro" ? previa : "");
 
   const aoTocar = (tecla: string) => {
     if (tecla === "C") {
       setExpr("");
-      setResultado("");
+      setFixado("");
       return;
     }
     if (tecla === "⌫") {
+      setFixado("");
       setExpr((e) => e.slice(0, -1));
       return;
     }
     if (tecla === "=") {
       if (!expr) return;
-      setResultado(avaliar(expr));
+      const valor = avaliar(expr);
+      setFixado(valor);
+      setExpr(valor === "Erro" ? "" : valor.replace(",", ","));
       return;
     }
+    setFixado("");
     setExpr((e) => e + tecla);
   };
 
@@ -55,7 +62,9 @@ export function Calculadora() {
         Calculadora
       </p>
       <div className="rounded-xl bg-secondary px-2 py-2 text-right sm:px-3 sm:py-3">
-        <p className="min-h-4 truncate text-xs text-muted-foreground sm:text-sm">{expr || "0"}</p>
+        <p className="min-h-4 truncate text-xs text-muted-foreground sm:text-sm">
+          {fixado ? "" : expr || "0"}
+        </p>
         <p className="mt-0.5 truncate text-xl font-semibold leading-tight text-foreground sm:text-3xl">
           {resultado || "—"}
         </p>
