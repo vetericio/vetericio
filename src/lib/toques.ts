@@ -20,9 +20,10 @@ export type ToqueId =
   | "rock"
   | "balada"
   | "arabia"
-  | "vila";
+  | "vila"
+  | ExtraId;
 
-export const TOQUES: { id: ToqueId; nome: string }[] = [
+const TOQUES_BASE: { id: ToqueId; nome: string }[] = [
   { id: "suave", nome: "Suave" },
   { id: "sino", nome: "Sino" },
   { id: "urgente", nome: "Urgente" },
@@ -44,6 +45,7 @@ export const TOQUES: { id: ToqueId; nome: string }[] = [
   { id: "arabia", nome: "Noites da Arábia" },
   { id: "vila", nome: "Vila alegre" },
 ];
+
 
 /** [frequência, início (s), duração (s)] */
 type Nota = [number, number, number];
