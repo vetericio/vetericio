@@ -8,6 +8,7 @@ import { exportarPdf } from "@/lib/pdf";
 import { importarPlantaoDoPdf, type ResultadoImportacao } from "@/lib/importar-pdf";
 import { useRef } from "react";
 import { useCurvas } from "@/hooks/useCurvas";
+import { useRegistros } from "@/hooks/useRegistros";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,7 @@ function Plantoes() {
   const [aberto, setAberto] = useState<string | null>(null);
   const [baixando, setBaixando] = useState<string | null>(null);
   const { setCurvas } = useCurvas();
+  const { setRegistros } = useRegistros();
   const entradaArquivo = useRef<HTMLInputElement | null>(null);
   const [previa, setPrevia] = useState<ResultadoImportacao | null>(null);
   const [lendo, setLendo] = useState(false);
@@ -66,6 +68,8 @@ function Plantoes() {
     if (!previa) return;
     const { plantao } = previa;
     setPlantoes((ps) => [plantao, ...ps]);
+    // Também entram na lista de internados: assim aparecem em animais e evolução.
+    setRegistros((rs) => [...rs, ...plantao.registros.map((r) => ({ ...r, id: crypto.randomUUID() }))]);
     if (plantao.curvas?.length) {
       const novas = plantao.curvas;
       setCurvas((lista) => [...novas, ...lista]);
