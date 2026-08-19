@@ -14,6 +14,7 @@ import {
 import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 import { useCurvas } from "@/hooks/useCurvas";
+import { chaveDoAnimal } from "@/lib/curva";
 import { limparAlarmesDeCurva } from "@/hooks/useAlarmes";
 
 export const Route = createFileRoute("/registros")({
@@ -49,7 +50,7 @@ function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const { setPlantoes } = usePlantoes();
   const { plantao } = usePlantaoAtual();
-  const { setCurvas } = useCurvas();
+  const { curvas, setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
 
@@ -72,6 +73,10 @@ function Registros() {
       data: diaDeHoje(),
       turno: plantao?.turno ?? "",
       registros,
+      // Guarda a foto das curvas destes animais para o PDF deste plantão.
+      curvas: curvas.filter((c) =>
+        registros.some((r) => chaveDoAnimal(r.animal, r.especie) === c.chave),
+      ),
       criadoEm: new Date().toISOString(),
     };
     setPlantoes((ps) => [novo, ...ps]);

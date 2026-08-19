@@ -1,4 +1,4 @@
-import { blocoCurvasDoRegistro } from "./curva";
+import { blocoCurvasDoRegistro, type Curva } from "./curva";
 import { resumoRegistro } from "./resumo";
 
 export type Especie = "Cachorro" | "Gato" | "";
@@ -237,7 +237,12 @@ function linha(rotulo: string, valor: string, unidade = ""): string | null {
   return `${rotulo}: ${texto}`;
 }
 
-export type OpcoesFormato = { emoji?: boolean; obsPadrao?: boolean };
+export type OpcoesFormato = {
+  emoji?: boolean;
+  obsPadrao?: boolean;
+  /** Curvas guardadas no plantão; sem isso, lê as curvas atuais do aparelho. */
+  curvas?: Curva[];
+};
 
 export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const linhas = [
@@ -258,7 +263,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante" : "");
   const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
-  const curvas = blocoCurvasDoRegistro(r);
+  const curvas = blocoCurvasDoRegistro(r, opcoes?.curvas);
   return [
     titulo,
     ...linhas,
@@ -320,6 +325,8 @@ export type Plantao = {
   data: string;
   turno: string;
   registros: Registro[];
+  /** Foto das curvas do plantão, para o PDF nunca perder as medições. */
+  curvas?: Curva[];
   criadoEm: string;
 };
 
