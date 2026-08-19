@@ -187,7 +187,16 @@ function Registros() {
 
       {registros.length > 0 && (
         <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <h2 className="font-display text-base font-semibold text-foreground">Texto exportado</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-base font-semibold text-foreground">Texto exportado</h2>
+            <button
+              type="button"
+              onClick={() => copiarTexto(formatarTodos(registros))}
+              className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+            >
+              Copiar
+            </button>
+          </div>
           <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-xl bg-secondary p-3 font-sans text-sm leading-relaxed text-foreground">
             {formatarTodos(registros)}
           </pre>
