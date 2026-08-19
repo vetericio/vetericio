@@ -1,6 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   carregarAlarmes,
+  padraoJejum,
+  proximoDisparo,
   reprogramar,
   salvarAlarmes,
   type Alarme,
@@ -66,6 +68,34 @@ export function adiarAlarmeAtivo(minutos = 5) {
     alarmes = alarmes.map((a) => (a.id === atual.id ? { ...a, ativo: true, proximo } : a));
     salvarAlarmes(alarmes);
   }
+  notificar();
+}
+
+/** Liga o alarme de jejum das 00h (usado ao começar um plantão noturno). */
+export function ativarJejumNoturno() {
+  if (!iniciado) {
+    iniciado = true;
+    alarmes = carregarAlarmes();
+  }
+  const jejum = alarmes.find((a) => a.id === "jejum-00h");
+  const ligado: Alarme = jejum
+    ? { ...jejum, ativo: true, proximo: proximoDisparo(jejum.hora) }
+    : { ...padraoJejum(), ativo: true };
+  alarmes = jejum
+    ? alarmes.map((a) => (a.id === "jejum-00h" ? ligado : a))
+    : [ligado, ...alarmes];
+  salvarAlarmes(alarmes);
+  notificar();
+}
+
+/** Remove os alarmes criados por curvas (ao finalizar o plantão). */
+export function limparAlarmesDeCurva() {
+  if (!iniciado) {
+    iniciado = true;
+    alarmes = carregarAlarmes();
+  }
+  alarmes = alarmes.filter((a) => !a.curvaId);
+  salvarAlarmes(alarmes);
   notificar();
 }
 

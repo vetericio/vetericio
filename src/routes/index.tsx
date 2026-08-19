@@ -1,13 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Alarmes } from "@/components/Alarmes";
 import { Calculadora } from "@/components/Calculadora";
 import { Cronometro } from "@/components/Cronometro";
 import { TaxaInfusao } from "@/components/TaxaInfusao";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
+import { useCurvas } from "@/hooks/useCurvas";
+import { definirAlarmes } from "@/hooks/useAlarmes";
+import { criarAlarme, horaDe, horaDeAgoraMais } from "@/lib/alarmes";
+import { chaveDoAnimal, type Curva } from "@/lib/curva";
 import {
   REGISTRO_VAZIO,
   chaveAnimal,
@@ -83,6 +86,8 @@ function Index() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [anterior, setAnterior] = useState<Registro | null>(null);
   const [duplicado, setDuplicado] = useState<Registro | null>(null);
+  const [fazerCurva, setFazerCurva] = useState(false);
+  const { setCurvas } = useCurvas();
 
   const navigate = useNavigate();
 
@@ -120,6 +125,45 @@ function Index() {
     setDuplicado(null);
   };
 
+  /** Cria a curva glicêmica do animal (a cada 2h) e o alarme correspondente. */
+  const iniciarCurvaGlicemica = (r: Registro) => {
+    const id = crypto.randomUUID();
+    const intervalo = 2;
+    const proximo = horaDeAgoraMais(intervalo);
+    const alarme = criarAlarme({
+      rotulo: `Curva ${r.animal.trim()} — glicemia`,
+      hora: horaDe(proximo),
+      toque: "urgente",
+      intervaloHoras: intervalo,
+      curvaId: id,
+    });
+    alarme.proximo = proximo.toISOString();
+    definirAlarmes((lista) => [...lista, alarme]);
+
+    const curva: Curva = {
+      id,
+      chave: chaveDoAnimal(r.animal, r.especie),
+      animal: r.animal.trim(),
+      especie: (r.especie ?? "") as Curva["especie"],
+      parametros: ["glicemia"],
+      intervaloHoras: intervalo,
+      ativa: true,
+      criadoEm: new Date().toISOString(),
+      alarmeId: alarme.id,
+      medicoes: r.glicemia.trim()
+        ? [
+            {
+              id: crypto.randomUUID(),
+              em: new Date().toISOString(),
+              glicemia: r.glicemia.trim(),
+              pas: "",
+            },
+          ]
+        : [],
+    };
+    setCurvas((lista) => [curva, ...lista]);
+  };
+
   const salvar = (valores: Omit<Registro, "id">) => {
     if (anterior) {
       const atualizado = mesclarAvaliacao(anterior, valores);
@@ -141,7 +185,9 @@ function Index() {
         id: crypto.randomUUID(),
       };
       setRegistros((rs) => [...rs, novo]);
+      if (fazerCurva) iniciarCurvaGlicemica(novo);
       setForm(REGISTRO_VAZIO);
+      setFazerCurva(false);
       setDuplicado(null);
       // Recarrega o início: formulário limpo e total do cabeçalho atualizado.
       window.location.assign("/");
@@ -180,10 +226,6 @@ function Index() {
         </div>
       </section>
 
-      <div className="mt-3">
-        <Alarmes />
-      </div>
-
       <div className="mt-5">
         <FormAvaliacao
           valores={form}
@@ -191,6 +233,8 @@ function Index() {
           onEnviar={enviar}
           editando={Boolean(editandoId)}
           anterior={anterior}
+          fazerCurva={fazerCurva}
+          onFazerCurva={setFazerCurva}
           onCancelar={limpar}
         />
       </div>
