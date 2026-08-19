@@ -12,7 +12,15 @@ export type ToqueId =
   | "marimba"
   | "alvorada"
   | "ondas"
-  | "plantao";
+  | "plantao"
+  | "ode"
+  | "elisa"
+  | "turca"
+  | "aria"
+  | "rock"
+  | "balada"
+  | "arabia"
+  | "vila";
 
 export const TOQUES: { id: ToqueId; nome: string }[] = [
   { id: "suave", nome: "Suave" },
@@ -27,6 +35,14 @@ export const TOQUES: { id: ToqueId; nome: string }[] = [
   { id: "alvorada", nome: "Alvorada" },
   { id: "ondas", nome: "Ondas" },
   { id: "plantao", nome: "Plantão" },
+  { id: "ode", nome: "Ode à Alegria" },
+  { id: "elisa", nome: "Para Elisa" },
+  { id: "turca", nome: "Marcha Turca" },
+  { id: "aria", nome: "Ária (Bach)" },
+  { id: "rock", nome: "Rock" },
+  { id: "balada", nome: "Balada" },
+  { id: "arabia", nome: "Noites da Arábia" },
+  { id: "vila", nome: "Vila alegre" },
 ];
 
 /** [frequência, início (s), duração (s)] */
@@ -35,6 +51,20 @@ type Nota = [number, number, number];
 /** Monta uma melodia contínua a partir de notas em sequência. */
 function melodia(freqs: number[], passo: number, sustento = passo * 1.1): Nota[] {
   return freqs.map((f, i) => [f, i * passo, sustento] as Nota);
+}
+
+/** Melodia com ritmo variável: pares [frequência, batidas]. */
+function ritmo(pares: [number, number][], batida: number, ligado = 0.95): Nota[] {
+  let t = 0;
+  return pares.map(([f, b]) => {
+    const nota: Nota = [f, t, b * batida * ligado];
+    t += b * batida;
+    return nota;
+  });
+}
+
+function duracaoRitmo(pares: [number, number][], batida: number): number {
+  return pares.reduce((s, [, b]) => s + b, 0) * batida;
 }
 
 const DO = 523.25;
@@ -47,6 +77,86 @@ const SI = 987.77;
 const DO2 = 1046.5;
 const MI2 = 1318.51;
 const SOL2 = 1567.98;
+
+/* Oitava grave (para as melodias clássicas e o rock) */
+const do_ = 261.63;
+const reb_ = 277.18;
+const re_ = 293.66;
+const mi_ = 329.63;
+const fa_ = 349.23;
+const solb_ = 369.99;
+const sol_ = 392;
+const lab_ = 415.3;
+const la_ = 440;
+const sib_ = 466.16;
+const si_ = 493.88;
+const mib_ = 311.13;
+const la0 = 220;
+const mi0 = 164.81;
+const sol0 = 196;
+const fa0 = 174.61;
+const re0 = 146.83;
+
+/* Ode à Alegria (Beethoven) */
+const ODE: [number, number][] = [
+  [mi_, 1], [mi_, 1], [fa_, 1], [sol_, 1],
+  [sol_, 1], [fa_, 1], [mi_, 1], [re_, 1],
+  [do_, 1], [do_, 1], [re_, 1], [mi_, 1],
+  [mi_, 1.5], [re_, 0.5], [re_, 2],
+];
+
+/* Para Elisa (Beethoven) */
+const ELISA: [number, number][] = [
+  [MI, 0.5], [RE, 0.5], [MI, 0.5], [RE, 0.5], [MI, 0.5], [si_, 0.5], [RE, 0.5], [DO, 0.5],
+  [la_, 1.5], [do_, 0.5], [mi_, 0.5], [la_, 0.5],
+  [si_, 1.5], [mi_, 0.5], [lab_, 0.5], [si_, 0.5], [DO, 1.5],
+];
+
+/* Marcha Turca (Mozart) */
+const TURCA: [number, number][] = [
+  [si_, 0.5], [la_, 0.5], [lab_, 0.5], [la_, 0.5], [DO, 1],
+  [RE, 0.5], [DO, 0.5], [si_, 0.5], [DO, 0.5], [MI, 1],
+  [FA, 0.5], [MI, 0.5], [RE, 0.5], [MI, 0.5], [LA, 1],
+  [LA, 0.5], [SOL, 0.5], [FA, 0.5], [MI, 0.5], [RE, 1],
+];
+
+/* Ária / prelúdio (Bach) — arpejos calmos */
+const ARIA: [number, number][] = [
+  [do_, 1], [mi_, 1], [sol_, 1], [DO, 1],
+  [si_, 1], [sol_, 1], [MI, 1], [RE, 1],
+  [do_, 1], [fa_, 1], [la_, 1], [DO, 1],
+  [si_, 1], [sol_, 1], [re_, 1], [do_, 1],
+];
+
+/* Rock — riff marcado */
+const ROCK: [number, number][] = [
+  [mi0, 1], [mi0, 0.5], [sol0, 1], [mi0, 0.5], [la0, 1],
+  [mi0, 1], [mi0, 0.5], [sib_ / 2, 1], [la0, 0.5], [sol0, 1],
+];
+
+/* Balada dramática — clima menor, piano grave */
+const BALADA: [number, number][] = [
+  [la0, 1], [do_, 1], [mi_, 1], [do_, 1],
+  [fa0, 1], [la_, 1], [do_, 1.5], [si_, 0.5],
+  [sol0, 1], [si_, 1], [re_, 1], [mi_, 1],
+  [la0, 2], [mi_, 2],
+];
+
+/* Noites da Arábia — escala oriental */
+const ARABIA: [number, number][] = [
+  [re_, 1], [mib_, 0.5], [solb_, 1], [fa_, 0.5],
+  [mib_, 1], [re_, 1], [do_, 0.5], [re_, 1.5],
+  [la_, 1], [solb_, 0.5], [fa_, 1], [mib_, 0.5], [re_, 2],
+];
+
+/* Vila alegre — clima de abertura animada */
+const VILA: [number, number][] = [
+  [sol_, 0.5], [DO, 0.5], [MI, 0.5], [DO, 0.5], [SOL, 1],
+  [MI, 0.5], [DO, 0.5], [RE, 0.5], [MI, 0.5], [RE, 1],
+  [DO, 0.5], [la_, 0.5], [DO, 0.5], [RE, 0.5], [MI, 1],
+  [RE, 0.5], [DO, 0.5], [si_, 0.5], [DO, 0.5], [sol_, 1],
+];
+
 
 const PADROES: Record<ToqueId, { ciclo: number; onda: OscillatorType; notas: Nota[] }> = {
   suave: {
