@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAlarmes } from "@/hooks/useAlarmes";
-import { criarAlarme, proximoDisparo, textoProximo, type Alarme } from "@/lib/alarmes";
+import {
+  NOME_PLATAFORMA,
+  criarAlarme,
+  detectarPlataforma,
+  proximoDisparo,
+  textoProximo,
+  type Alarme,
+} from "@/lib/alarmes";
 import {
   TOQUES,
   desbloquearAudio,
@@ -19,8 +26,11 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
   const [rotulo, setRotulo] = useState("");
   const [toque, setToque] = useState<ToqueId>("sino");
   const [diario, setDiario] = useState(true);
+  const [link, setLink] = useState("");
 
   useEffect(() => setMontado(true), []);
+
+  const plataforma = detectarPlataforma(link);
 
   const alternar = (a: Alarme) => {
     desbloquearAudio();
@@ -35,12 +45,24 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
 
   const adicionar = () => {
     desbloquearAudio();
-    const novo = criarAlarme({ rotulo: rotulo || `Alarme ${hora}`, hora, toque, diario });
+    if (link.trim() && !plataforma) {
+      toast.error("Use um link do YouTube, Spotify ou Deezer.");
+      return;
+    }
+    const novo = criarAlarme({
+      rotulo: rotulo || `Alarme ${hora}`,
+      hora,
+      toque,
+      diario,
+      linkExterno: link,
+    });
     setAlarmes((lista) => [...lista, novo]);
     setRotulo("");
+    setLink("");
     setAberto(false);
     toast.success(`Alarme criado para ${textoProximo(novo)}.`);
   };
+
 
   const excluir = (id: string) => {
     setAlarmes((lista) => lista.filter((x) => x.id !== id));
