@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Cabecalho } from "@/components/Cabecalho";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
+import { Rodape } from "@/components/Rodape";
 
 
 function NotFoundComponent() {
@@ -136,6 +137,7 @@ function RootComponent() {
 
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Rodape />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
