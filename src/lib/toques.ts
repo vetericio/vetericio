@@ -313,6 +313,10 @@ function tocarCiclo(id: ToqueId) {
     g.connect(mestre);
     osc.start(t0);
     osc.stop(t0 + duracao + 0.05);
+    ativos.push([osc, g]);
+    osc.onended = () => {
+      ativos = ativos.filter(([o]) => o !== osc);
+    };
   }
 }
 
@@ -329,12 +333,30 @@ export function duracaoToque(id: ToqueId): number {
   return PADROES[id].ciclo * 1000;
 }
 
+/** Para a repetição e corta na hora tudo que já estava agendado. */
 export function pararToque() {
   if (repetidor !== null) {
     window.clearInterval(repetidor);
     repetidor = null;
   }
+  const c = ctx;
+  const lista = ativos;
+  ativos = [];
+  if (!c) return;
+  const fim = c.currentTime + 0.03;
+  for (const [osc, g] of lista) {
+    try {
+      g.gain.cancelScheduledValues(c.currentTime);
+      g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, fim);
+      osc.onended = null;
+      osc.stop(fim);
+    } catch {
+      /* nota já encerrada */
+    }
+  }
 }
+
 
 /** Vibração longa, repetida, enquanto o alarme estiver soando. */
 let vibrando = false;
