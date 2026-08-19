@@ -20,6 +20,8 @@ export type Registro = {
   pas: string;
   glicemia: string;
   observacoes: string;
+  /** Registro de óbito do animal, quando houver. */
+  obito?: { hora: string; motivo: string };
 };
 
 export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
@@ -264,10 +266,14 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   const curvas = blocoCurvasDoRegistro(r, opcoes?.curvas);
+  const obito = r.obito
+    ? `Óbito: ${r.obito.hora.trim()}${r.obito.motivo.trim() ? ` - ${r.obito.motivo.trim()}` : ""}`
+    : "";
   return [
     titulo,
     ...linhas,
     ...(curvas ? curvas.split("\n") : []),
+    ...(obito ? [obito] : []),
     `Observações: ${textoObs}`,
     ...(resumo ? [`Resumo: ${resumo}`] : []),
   ].join("\n");
