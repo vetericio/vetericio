@@ -144,7 +144,7 @@ function Index() {
       id,
       chave: chaveDoAnimal(r.animal, r.especie),
       animal: r.animal.trim(),
-      especie: r.especie,
+      especie: (r.especie ?? "") as Curva["especie"],
       parametros: ["glicemia"],
       intervaloHoras: intervalo,
       ativa: true,
