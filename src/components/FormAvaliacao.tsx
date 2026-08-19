@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import {
   ESPECIES,
   OPCOES,
@@ -33,6 +33,9 @@ type Props = {
   onCancelar: () => void;
   /** Avaliação anterior mostrada apenas para leitura (modo "atualizar informações"). */
   anterior?: Registro | null;
+  /** "Fazer curva?" ao lado da glicemia. */
+  fazerCurva?: boolean;
+  onFazerCurva?: (valor: boolean) => void;
 };
 
 const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
@@ -70,6 +73,8 @@ export function FormAvaliacao({
   editando,
   onCancelar,
   anterior,
+  fazerCurva = false,
+  onFazerCurva,
 }: Props) {
   const iniciais = useRef(valores);
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
@@ -272,7 +277,8 @@ export function FormAvaliacao({
         {NUMERICOS.map(({ chave, rotulo, unidade }) => {
           const { fora } = avaliarValor(chave, valores[chave], valores.especie);
           return (
-            <label key={chave} className="block">
+            <Fragment key={chave}>
+            <label className="block">
               <span
                 className={[
                   "text-[0.7rem] font-semibold uppercase tracking-[0.14em]",
@@ -295,6 +301,31 @@ export function FormAvaliacao({
                 ].join(" ")}
               />
             </label>
+            {chave === "glicemia" && onFazerCurva && (
+              <div className="block">
+                <span className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Fazer curva?
+                </span>
+                <div className="mt-1 flex gap-2">
+                  {[true, false].map((v) => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      onClick={() => onFazerCurva(v)}
+                      className={[
+                        "flex-1 rounded-lg px-2 py-2 text-sm font-semibold transition-colors",
+                        fazerCurva === v
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+                      ].join(" ")}
+                    >
+                      {v ? "Sim" : "Não"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            </Fragment>
           );
         })}
       </div>
