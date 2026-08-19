@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as RegistrosRouteImport } from './routes/registros'
@@ -17,6 +18,11 @@ import { Route as RegistrosRouteImport } from './routes/registros'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CurvaRoute = CurvaRouteImport.update({
+  id: '/curva',
+  path: '/curva',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EvolucaoRoute = EvolucaoRouteImport.update({
@@ -37,12 +43,14 @@ const RegistrosRoute = RegistrosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/curva': typeof CurvaRoute
   '/evolucao': typeof EvolucaoRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/curva': typeof CurvaRoute
   '/evolucao': typeof EvolucaoRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/curva': typeof CurvaRoute
   '/evolucao': typeof EvolucaoRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/evolucao' | '/plantoes' | '/registros'
+  fullPaths: '/' | '/curva' | '/evolucao' | '/plantoes' | '/registros'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/evolucao' | '/plantoes' | '/registros'
-  id: '__root__' | '/' | '/evolucao' | '/plantoes' | '/registros'
+  to: '/' | '/curva' | '/evolucao' | '/plantoes' | '/registros'
+  id: '__root__' | '/' | '/curva' | '/evolucao' | '/plantoes' | '/registros'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CurvaRoute: typeof CurvaRoute
   EvolucaoRoute: typeof EvolucaoRoute
   PlantoesRoute: typeof PlantoesRoute
   RegistrosRoute: typeof RegistrosRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/curva': {
+      id: '/curva'
+      path: '/curva'
+      fullPath: '/curva'
+      preLoaderRoute: typeof CurvaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/evolucao': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CurvaRoute: CurvaRoute,
   EvolucaoRoute: EvolucaoRoute,
   PlantoesRoute: PlantoesRoute,
   RegistrosRoute: RegistrosRoute,

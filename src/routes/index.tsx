@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Alarmes } from "@/components/Alarmes";
 import { Calculadora } from "@/components/Calculadora";
 import { Cronometro } from "@/components/Cronometro";
 import { TaxaInfusao } from "@/components/TaxaInfusao";
@@ -178,6 +179,10 @@ function Index() {
           <TaxaInfusao />
         </div>
       </section>
+
+      <div className="mt-3">
+        <Alarmes />
+      </div>
 
       <div className="mt-5">
         <FormAvaliacao

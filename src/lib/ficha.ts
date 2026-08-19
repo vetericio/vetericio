@@ -1,3 +1,4 @@
+import { blocoCurvasDoRegistro } from "./curva";
 import { resumoRegistro } from "./resumo";
 
 export type Especie = "Cachorro" | "Gato" | "";
@@ -257,9 +258,11 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante" : "");
   const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
+  const curvas = blocoCurvasDoRegistro(r);
   return [
     titulo,
     ...linhas,
+    ...(curvas ? curvas.split("\n") : []),
     `Observações: ${textoObs}`,
     ...(resumo ? [`Resumo: ${resumo}`] : []),
   ].join("\n");
