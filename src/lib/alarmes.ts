@@ -1,7 +1,5 @@
 import type { ToqueId } from "./toques";
 
-export type PlataformaMusica = "youtube" | "spotify" | "deezer";
-
 export type Alarme = {
   id: string;
   rotulo: string;
@@ -15,39 +13,9 @@ export type Alarme = {
   intervaloHoras?: number | undefined;
   /** Curva que criou este alarme, quando houver. */
   curvaId?: string | undefined;
-  /** Link de música do YouTube, Spotify ou Deezer. */
-  linkExterno?: string | undefined;
-  plataforma?: PlataformaMusica | undefined;
   /** Próximo disparo (ISO). */
   proximo: string;
 };
-
-/** Descobre a plataforma pelo endereço colado. */
-export function detectarPlataforma(link: string): PlataformaMusica | undefined {
-  const l = link.toLowerCase();
-  if (l.includes("youtube.com") || l.includes("youtu.be")) return "youtube";
-  if (l.includes("spotify.com") || l.startsWith("spotify:")) return "spotify";
-  if (l.includes("deezer.com") || l.includes("dzr.page.link")) return "deezer";
-  return undefined;
-}
-
-export const NOME_PLATAFORMA: Record<PlataformaMusica, string> = {
-  youtube: "YouTube",
-  spotify: "Spotify",
-  deezer: "Deezer",
-};
-
-/** Id do vídeo do YouTube, para o player embutido. */
-export function idYoutube(link: string): string | undefined {
-  const curto = link.match(/youtu\.be\/([\w-]{6,})/);
-  if (curto?.[1]) return curto[1];
-  const normal = link.match(/[?&]v=([\w-]{6,})/);
-  if (normal?.[1]) return normal[1];
-  const shorts = link.match(/\/(?:shorts|embed|live)\/([\w-]{6,})/);
-  if (shorts?.[1]) return shorts[1];
-  return undefined;
-}
-
 
 const CHAVE = "veterico-alarmes-v1";
 
@@ -112,9 +80,7 @@ export function criarAlarme(dados: {
   diario?: boolean;
   intervaloHoras?: number;
   curvaId?: string;
-  linkExterno?: string;
 }): Alarme {
-  const link = dados.linkExterno?.trim();
   return {
     id: crypto.randomUUID(),
     rotulo: dados.rotulo.trim() || "Alarme",
@@ -124,8 +90,6 @@ export function criarAlarme(dados: {
     diario: dados.diario ?? false,
     intervaloHoras: dados.intervaloHoras,
     curvaId: dados.curvaId,
-    linkExterno: link || undefined,
-    plataforma: link ? detectarPlataforma(link) : undefined,
     proximo: proximoDisparo(dados.hora),
   };
 }

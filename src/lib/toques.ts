@@ -20,9 +20,10 @@ export type ToqueId =
   | "rock"
   | "balada"
   | "arabia"
-  | "vila";
+  | "vila"
+  | ExtraId;
 
-export const TOQUES: { id: ToqueId; nome: string }[] = [
+const TOQUES_BASE: { id: ToqueId; nome: string }[] = [
   { id: "suave", nome: "Suave" },
   { id: "sino", nome: "Sino" },
   { id: "urgente", nome: "Urgente" },
@@ -44,6 +45,7 @@ export const TOQUES: { id: ToqueId; nome: string }[] = [
   { id: "arabia", nome: "Noites da Arábia" },
   { id: "vila", nome: "Vila alegre" },
 ];
+
 
 /** [frequência, início (s), duração (s)] */
 type Nota = [number, number, number];
@@ -158,7 +160,10 @@ const VILA: [number, number][] = [
 ];
 
 
-const PADROES: Record<ToqueId, { ciclo: number; onda: OscillatorType; notas: Nota[] }> = {
+const PADROES_BASE: Record<
+  Exclude<ToqueId, ExtraId>,
+  { ciclo: number; onda: OscillatorType; notas: Nota[] }
+> = {
   suave: {
     ciclo: 4.8,
     onda: "sine",
@@ -260,6 +265,102 @@ const PADROES: Record<ToqueId, { ciclo: number; onda: OscillatorType; notas: Not
     notas: ritmo(VILA, 0.28, 0.9),
   },
 };
+
+/* ---- 30 toques extras (total 50) ---- */
+
+type Extra = {
+  id: string;
+  nome: string;
+  onda: OscillatorType;
+  batida: number;
+  pares: [number, number][];
+};
+
+const EXTRAS = [
+  { id: "aurora", nome: "Aurora", onda: "sine", batida: 0.45,
+    pares: [[DO, 1], [MI, 1], [SOL, 1], [LA, 1], [SOL, 1], [MI, 2]] },
+  { id: "brisa", nome: "Brisa", onda: "sine", batida: 0.5,
+    pares: [[la_, 1], [DO, 1], [MI, 1], [RE, 1], [DO, 2]] },
+  { id: "chuva", nome: "Chuva", onda: "triangle", batida: 0.25,
+    pares: [[DO2, 1], [SOL, 1], [DO2, 1], [LA, 1], [SI, 1], [SOL, 1], [MI, 2]] },
+  { id: "estrelas", nome: "Estrelas", onda: "sine", batida: 0.3,
+    pares: [[DO2, 1], [MI2, 1], [SOL2, 1], [MI2, 1], [DO2, 1], [LA, 1], [DO2, 2]] },
+  { id: "manha", nome: "Manhã", onda: "triangle", batida: 0.4,
+    pares: [[SOL, 1], [LA, 1], [SI, 1], [DO2, 2], [SI, 1], [SOL, 2]] },
+  { id: "flauta", nome: "Flauta", onda: "sine", batida: 0.35,
+    pares: [[MI, 1], [FA, 1], [SOL, 1], [LA, 1], [SOL, 1], [FA, 1], [MI, 2]] },
+  { id: "violao", nome: "Violão", onda: "triangle", batida: 0.3,
+    pares: [[do_, 1], [sol_, 1], [DO, 1], [MI, 1], [DO, 1], [sol_, 1], [do_, 2]] },
+  { id: "piano", nome: "Piano", onda: "sine", batida: 0.4,
+    pares: [[fa_, 1], [la_, 1], [DO, 1], [FA, 1], [DO, 1], [la_, 1], [fa_, 2]] },
+  { id: "valsa", nome: "Valsa", onda: "triangle", batida: 0.35,
+    pares: [[DO, 1], [SOL, 1], [SOL, 1], [RE, 1], [SOL, 1], [SOL, 1], [MI, 2]] },
+  { id: "cantiga", nome: "Cantiga", onda: "triangle", batida: 0.35,
+    pares: [[MI, 1], [RE, 1], [DO, 1], [RE, 1], [MI, 1], [MI, 1], [MI, 2]] },
+  { id: "roda", nome: "Roda-roda", onda: "square", batida: 0.3,
+    pares: [[SOL, 1], [MI, 1], [MI, 1], [LA, 1], [FA, 1], [FA, 1], [DO, 1], [MI, 1], [RE, 2]] },
+  { id: "festa", nome: "Festa", onda: "square", batida: 0.28,
+    pares: [[DO, 1], [DO, 1], [SOL, 1], [SOL, 1], [LA, 1], [LA, 1], [SOL, 2]] },
+  { id: "circo", nome: "Circo", onda: "square", batida: 0.24,
+    pares: [[DO2, 1], [SI, 1], [DO2, 1], [SI, 1], [DO2, 1], [SOL, 1], [MI, 1], [DO, 2]] },
+  { id: "carrossel", nome: "Carrossel", onda: "triangle", batida: 0.26,
+    pares: [[MI, 1], [SOL, 1], [DO2, 1], [SOL, 1], [MI, 1], [DO, 1], [MI, 2]] },
+  { id: "bossa", nome: "Bossa", onda: "sine", batida: 0.34,
+    pares: [[re_, 1], [fa_, 1], [la_, 1], [DO, 1], [la_, 1], [fa_, 1], [re_, 2]] },
+  { id: "samba", nome: "Samba", onda: "triangle", batida: 0.22,
+    pares: [[DO, 1], [MI, 1], [SOL, 1], [MI, 1], [FA, 1], [LA, 1], [SOL, 1], [MI, 1], [DO, 2]] },
+  { id: "forro", nome: "Forró", onda: "sawtooth", batida: 0.24,
+    pares: [[sol_, 1], [si_, 1], [RE, 1], [si_, 1], [DO, 1], [MI, 1], [SOL, 1], [MI, 2]] },
+  { id: "sertao", nome: "Sertão", onda: "triangle", batida: 0.38,
+    pares: [[mi_, 1], [sol_, 1], [la_, 1], [si_, 1], [la_, 1], [sol_, 1], [mi_, 2]] },
+  { id: "tango", nome: "Tango", onda: "sawtooth", batida: 0.3,
+    pares: [[la0, 1], [do_, 1], [mi_, 1], [re_, 1], [do_, 1], [si_, 1], [la_, 2]] },
+  { id: "blues", nome: "Blues", onda: "sawtooth", batida: 0.32,
+    pares: [[la0, 1], [do_, 1], [re_, 1], [mib_, 1], [re_, 1], [do_, 1], [la0, 2]] },
+  { id: "jazz", nome: "Jazz", onda: "triangle", batida: 0.28,
+    pares: [[re_, 1], [solb_, 1], [la_, 1], [DO, 1], [si_, 1], [sol_, 1], [re_, 2]] },
+  { id: "funk", nome: "Groove", onda: "square", batida: 0.2,
+    pares: [[mi0, 1], [mi0, 1], [sol0, 1], [la0, 1], [sol0, 1], [mi0, 1], [re0, 2]] },
+  { id: "metal", nome: "Metal", onda: "sawtooth", batida: 0.18,
+    pares: [[mi0, 1], [mi0, 1], [mi0, 1], [sib_ / 2, 1], [mi0, 1], [sol0, 1], [la0, 2]] },
+  { id: "eletro", nome: "Eletrônico", onda: "square", batida: 0.16,
+    pares: [[LA, 1], [LA, 1], [DO2, 1], [MI2, 1], [DO2, 1], [LA, 1], [MI, 2]] },
+  { id: "retro", nome: "Retrô 8-bit", onda: "square", batida: 0.14,
+    pares: [[DO, 1], [MI, 1], [SOL, 1], [DO2, 1], [SOL, 1], [MI, 1], [DO, 1], [SOL, 2]] },
+  { id: "hino", nome: "Hino", onda: "triangle", batida: 0.5,
+    pares: [[DO, 1], [DO, 1], [SOL, 1], [SOL, 1], [LA, 1], [SI, 1], [DO2, 2]] },
+  { id: "coral", nome: "Coral", onda: "sine", batida: 0.6,
+    pares: [[fa_, 1], [sol_, 1], [la_, 1], [DO, 1], [si_, 1], [la_, 2]] },
+  { id: "medieval", nome: "Medieval", onda: "triangle", batida: 0.36,
+    pares: [[re_, 1], [fa_, 1], [sol_, 1], [la_, 1], [sol_, 1], [fa_, 1], [re_, 2]] },
+  { id: "oriente", nome: "Oriente", onda: "sine", batida: 0.34,
+    pares: [[do_, 1], [reb_, 1], [fa_, 1], [solb_, 1], [fa_, 1], [reb_, 1], [do_, 2]] },
+  { id: "safari", nome: "Safari", onda: "triangle", batida: 0.22,
+    pares: [[sol_, 1], [sib_, 1], [DO, 1], [sib_, 1], [sol_, 1], [fa_, 1], [sol_, 2]] },
+] as const satisfies readonly Extra[];
+
+export type ExtraId = (typeof EXTRAS)[number]["id"];
+
+export const TOQUES: { id: ToqueId; nome: string }[] = [
+  ...TOQUES_BASE,
+  ...EXTRAS.map((e) => ({ id: e.id as ToqueId, nome: e.nome })),
+];
+
+const PADROES: Record<ToqueId, { ciclo: number; onda: OscillatorType; notas: Nota[] }> = {
+  ...PADROES_BASE,
+  ...(Object.fromEntries(
+    EXTRAS.map((e) => [
+      e.id,
+      {
+        ciclo: duracaoRitmo(e.pares as unknown as [number, number][], e.batida) + 0.3,
+        onda: e.onda,
+        notas: ritmo(e.pares as unknown as [number, number][], e.batida),
+      },
+    ]),
+  ) as Record<ExtraId, { ciclo: number; onda: OscillatorType; notas: Nota[] }>),
+};
+
+
 
 
 type Ctx = AudioContext & { criado?: boolean };
