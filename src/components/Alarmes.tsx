@@ -224,7 +224,9 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
                 <p className="text-[11px] text-muted-foreground">
                   {a.ativo ? `Soa ${textoProximo(a)}` : "Desligado"}
                   {a.intervaloHoras ? ` · a cada ${a.intervaloHoras}h` : a.diario ? " · diário" : ""}
+                  {a.plataforma ? ` · ${NOME_PLATAFORMA[a.plataforma]}` : ""}
                 </p>
+
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
