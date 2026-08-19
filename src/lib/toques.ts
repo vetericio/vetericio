@@ -219,7 +219,48 @@ const PADROES: Record<ToqueId, { ciclo: number; onda: OscillatorType; notas: Not
     onda: "triangle",
     notas: melodia([LA, FA, DO2, LA, SOL, MI, SI, SOL], 0.6, 0.55),
   },
+  ode: {
+    ciclo: duracaoRitmo(ODE, 0.42) + 0.3,
+    onda: "triangle",
+    notas: ritmo(ODE, 0.42),
+  },
+  elisa: {
+    ciclo: duracaoRitmo(ELISA, 0.34) + 0.3,
+    onda: "sine",
+    notas: ritmo(ELISA, 0.34),
+  },
+  turca: {
+    ciclo: duracaoRitmo(TURCA, 0.3) + 0.3,
+    onda: "triangle",
+    notas: ritmo(TURCA, 0.3),
+  },
+  aria: {
+    ciclo: duracaoRitmo(ARIA, 0.5) + 0.4,
+    onda: "sine",
+    notas: ritmo(ARIA, 0.5, 1.05),
+  },
+  rock: {
+    ciclo: duracaoRitmo(ROCK, 0.3) + 0.2,
+    onda: "sawtooth",
+    notas: ritmo(ROCK, 0.3, 0.85),
+  },
+  balada: {
+    ciclo: duracaoRitmo(BALADA, 0.45) + 0.4,
+    onda: "triangle",
+    notas: ritmo(BALADA, 0.45, 1.02),
+  },
+  arabia: {
+    ciclo: duracaoRitmo(ARABIA, 0.38) + 0.3,
+    onda: "sine",
+    notas: ritmo(ARABIA, 0.38),
+  },
+  vila: {
+    ciclo: duracaoRitmo(VILA, 0.28) + 0.3,
+    onda: "square",
+    notas: ritmo(VILA, 0.28, 0.9),
+  },
 };
+
 
 type Ctx = AudioContext & { criado?: boolean };
 
