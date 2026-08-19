@@ -267,6 +267,8 @@ type Ctx = AudioContext & { criado?: boolean };
 let ctx: Ctx | null = null;
 let mestre: GainNode | null = null;
 let repetidor: number | null = null;
+let ativos: [OscillatorNode, GainNode][] = [];
+
 
 function obterCtx(): Ctx | null {
   if (typeof window === "undefined") return null;
