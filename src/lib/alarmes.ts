@@ -112,7 +112,9 @@ export function criarAlarme(dados: {
   diario?: boolean;
   intervaloHoras?: number;
   curvaId?: string;
+  linkExterno?: string;
 }): Alarme {
+  const link = dados.linkExterno?.trim();
   return {
     id: crypto.randomUUID(),
     rotulo: dados.rotulo.trim() || "Alarme",
@@ -122,9 +124,12 @@ export function criarAlarme(dados: {
     diario: dados.diario ?? false,
     intervaloHoras: dados.intervaloHoras,
     curvaId: dados.curvaId,
+    linkExterno: link || undefined,
+    plataforma: link ? detectarPlataforma(link) : undefined,
     proximo: proximoDisparo(dados.hora),
   };
 }
+
 
 /** Depois de soar: reprograma (diário/intervalo) ou desliga. */
 export function reprogramar(a: Alarme, base = new Date()): Alarme {
