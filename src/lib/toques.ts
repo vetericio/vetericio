@@ -160,7 +160,10 @@ const VILA: [number, number][] = [
 ];
 
 
-const PADROES: Record<ToqueId, { ciclo: number; onda: OscillatorType; notas: Nota[] }> = {
+const PADROES_BASE: Record<
+  Exclude<ToqueId, ExtraId>,
+  { ciclo: number; onda: OscillatorType; notas: Nota[] }
+> = {
   suave: {
     ciclo: 4.8,
     onda: "sine",
