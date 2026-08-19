@@ -1,6 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   carregarAlarmes,
+  padraoJejum,
+  proximoDisparo,
   reprogramar,
   salvarAlarmes,
   type Alarme,
