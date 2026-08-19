@@ -13,6 +13,8 @@ import {
 } from "@/lib/ficha";
 import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
+import { useCurvas } from "@/hooks/useCurvas";
+import { limparAlarmesDeCurva } from "@/hooks/useAlarmes";
 
 export const Route = createFileRoute("/registros")({
   head: () => ({
@@ -47,6 +49,7 @@ function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const { setPlantoes } = usePlantoes();
   const { plantao } = usePlantaoAtual();
+  const { setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
 
@@ -73,6 +76,9 @@ function Registros() {
     };
     setPlantoes((ps) => [novo, ...ps]);
     setRegistros([]);
+    // As curvas valem até o fim do plantão: encerra e desliga os alarmes delas.
+    setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
+    limparAlarmesDeCurva();
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
   };

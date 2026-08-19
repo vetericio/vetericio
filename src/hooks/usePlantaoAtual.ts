@@ -6,6 +6,7 @@ import {
   type PlantaoAtual,
   type Turno,
 } from "@/lib/plantao";
+import { ativarJejumNoturno } from "./useAlarmes";
 
 let estado: PlantaoAtual | null = null;
 let iniciado = false;
@@ -22,6 +23,7 @@ const getServerSnapshot = () => estado;
 function definir(turno: Turno | null, dia?: string) {
   estado = turno ? { dia: dia || diaDeHoje(), turno, escolhidoEm: diaDeHoje() } : null;
   salvarPlantaoAtual(estado);
+  if (turno === "noturno") ativarJejumNoturno();
   ouvintes.forEach((fn) => fn());
 }
 

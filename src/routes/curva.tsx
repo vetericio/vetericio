@@ -384,10 +384,10 @@ function PaginaCurva() {
                     ))}
                   </ul>
 
-                  <div className="mt-3 h-52 w-full">
+                  <div className="mt-3 h-52 w-full" style={{ minHeight: 208 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={dados} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="hora" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
                         <Tooltip />
@@ -396,7 +396,7 @@ function PaginaCurva() {
                             type="monotone"
                             dataKey="glicemia"
                             name="Glicemia"
-                            stroke="hsl(var(--primary))"
+                            stroke="var(--primary)"
                             strokeWidth={2}
                             connectNulls
                           />
@@ -406,7 +406,7 @@ function PaginaCurva() {
                             type="monotone"
                             dataKey="pas"
                             name="PAS"
-                            stroke="hsl(var(--destructive))"
+                            stroke="var(--destructive)"
                             strokeWidth={2}
                             connectNulls
                           />
