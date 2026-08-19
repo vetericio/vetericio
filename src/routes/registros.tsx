@@ -16,6 +16,16 @@ import { exportarPdf } from "@/lib/pdf";
 import { useCurvas } from "@/hooks/useCurvas";
 import { chaveDoAnimal } from "@/lib/curva";
 import { limparAlarmesDeCurva } from "@/hooks/useAlarmes";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/registros")({
   head: () => ({
@@ -53,6 +63,43 @@ function Registros() {
   const { curvas, setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
+  const [obitoAlvo, setObitoAlvo] = useState<Registro | null>(null);
+  const [obitoHora, setObitoHora] = useState("");
+  const [obitoMotivo, setObitoMotivo] = useState("");
+
+  const horaAgora = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}h${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const abrirObito = (r: Registro) => {
+    if (r.obito) {
+      if (!window.confirm(`Desfazer o registro de óbito de ${r.animal.trim()}?`)) return;
+      setRegistros((rs) =>
+        rs.map((x) => {
+          if (x.id !== r.id) return x;
+          const { obito: _removido, ...resto } = x;
+          return resto as Registro;
+        }),
+      );
+      toast.success("Registro de óbito desfeito.");
+      return;
+    }
+    setObitoHora(horaAgora());
+    setObitoMotivo("");
+    setObitoAlvo(r);
+  };
+
+  const confirmarObito = () => {
+    if (!obitoAlvo) return;
+    const hora = obitoHora.trim() || horaAgora();
+    const motivo = obitoMotivo.trim();
+    setRegistros((rs) =>
+      rs.map((x) => (x.id === obitoAlvo.id ? { ...x, obito: { hora, motivo } } : x)),
+    );
+    setObitoAlvo(null);
+    toast.success("Óbito registrado na ficha.");
+  };
 
   const ordenados = [...registros].sort((a, b) =>
     normalizar(a.animal).localeCompare(normalizar(b.animal), "pt-BR"),
@@ -181,6 +228,7 @@ function Registros() {
             window.localStorage.setItem("veterico-editar-id", r.id);
             navigate({ to: "/" });
           }}
+          onObito={abrirObito}
           onAtualizar={(r) => {
             window.localStorage.setItem("veterico-atualizar-id", r.id);
             navigate({ to: "/" });
@@ -195,6 +243,43 @@ function Registros() {
         />
         )}
       </div>
+
+      <AlertDialog open={Boolean(obitoAlvo)} onOpenChange={(o) => !o && setObitoAlvo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar óbito</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirmar que <strong>{obitoAlvo?.animal.trim()}</strong> foi a óbito? Informe a hora
+              e o motivo para constar na ficha.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <label className="block">
+              <span className="text-xs font-semibold text-muted-foreground">Hora do óbito</span>
+              <input
+                value={obitoHora}
+                onChange={(e) => setObitoHora(e.target.value)}
+                placeholder="14h30"
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground outline-none focus:border-ring"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-muted-foreground">Motivo</span>
+              <textarea
+                value={obitoMotivo}
+                onChange={(e) => setObitoMotivo(e.target.value)}
+                rows={3}
+                placeholder="Parada cardiorrespiratória"
+                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+              />
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarObito}>Confirmar óbito</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {registros.length > 0 && (
         <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm">

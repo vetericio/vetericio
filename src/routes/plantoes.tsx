@@ -5,6 +5,20 @@ import { usePlantoes } from "@/hooks/usePlantoes";
 import { formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
 import { nomeArquivoPdf, rotuloPlantaoPdfDe } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
+import { importarPlantaoDoPdf, type ResultadoImportacao } from "@/lib/importar-pdf";
+import { useRef } from "react";
+import { useCurvas } from "@/hooks/useCurvas";
+import { useRegistros } from "@/hooks/useRegistros";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/plantoes")({
   head: () => ({
@@ -31,6 +45,38 @@ function Plantoes() {
   const { plantoes, setPlantoes } = usePlantoes();
   const [aberto, setAberto] = useState<string | null>(null);
   const [baixando, setBaixando] = useState<string | null>(null);
+  const { setCurvas } = useCurvas();
+  const { setRegistros } = useRegistros();
+  const entradaArquivo = useRef<HTMLInputElement | null>(null);
+  const [previa, setPrevia] = useState<ResultadoImportacao | null>(null);
+  const [lendo, setLendo] = useState(false);
+
+  const escolherArquivo = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    setLendo(true);
+    try {
+      setPrevia(await importarPlantaoDoPdf(arquivo));
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível ler o PDF.");
+    } finally {
+      setLendo(false);
+      if (entradaArquivo.current) entradaArquivo.current.value = "";
+    }
+  };
+
+  const confirmarImportacao = () => {
+    if (!previa) return;
+    const { plantao } = previa;
+    setPlantoes((ps) => [plantao, ...ps]);
+    // Também entram na lista de internados: assim aparecem em animais e evolução.
+    setRegistros((rs) => [...rs, ...plantao.registros.map((r) => ({ ...r, id: crypto.randomUUID() }))]);
+    if (plantao.curvas?.length) {
+      const novas = plantao.curvas;
+      setCurvas((lista) => [...novas, ...lista]);
+    }
+    setPrevia(null);
+    toast.success("Plantão importado.");
+  };
 
   const copiar = async (p: Plantao) => {
     try {
@@ -125,6 +171,21 @@ function Plantoes() {
         >
           {baixando ? `Baixando ${baixando}...` : "Baixar todos os plantões (PDF)"}
         </button>
+        <input
+          ref={entradaArquivo}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => escolherArquivo(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          onClick={() => entradaArquivo.current?.click()}
+          disabled={lendo}
+          className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-60"
+        >
+          {lendo ? "Lendo PDF..." : "Importar plantão (PDF)"}
+        </button>
         <button
           type="button"
           onClick={apagarTodos}
@@ -133,6 +194,25 @@ function Plantoes() {
           Apagar todos os plantões
         </button>
       </div>
+
+      <AlertDialog open={Boolean(previa)} onOpenChange={(o) => !o && setPrevia(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Importar este plantão?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Encontrei {previa?.animais}{" "}
+              {previa?.animais === 1 ? "animal" : "animais"}
+              {previa?.curvas ? ` e ${previa.curvas} ${previa.curvas === 1 ? "curva" : "curvas"}` : ""}{" "}
+              no PDF de {previa ? rotuloPlantao(previa.plantao) : ""}. Os dados entram no histórico e
+              passam a aparecer em animais, evolução e curvas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarImportacao}>Importar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {plantoes.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
