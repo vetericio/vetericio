@@ -153,12 +153,6 @@ function PaginaCurva() {
     toast.success("Medição registrada.");
   };
 
-  const encerrar = (c: Curva) => {
-    setCurvas((lista) => lista.map((x) => (x.id === c.id ? { ...x, ativa: false } : x)));
-    if (c.alarmeId) definirAlarmes((lista) => lista.filter((a) => a.id !== c.alarmeId));
-    toast.success("Curva encerrada. O histórico continua na ficha.");
-  };
-
   const excluirCurva = (c: Curva) => {
     if (!window.confirm(`Apagar a curva de ${c.animal}?`)) return;
     setCurvas((lista) => lista.filter((x) => x.id !== c.id));
@@ -316,15 +310,6 @@ function PaginaCurva() {
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {c.ativa && (
-                    <button
-                      type="button"
-                      onClick={() => encerrar(c)}
-                      className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-                    >
-                      Encerrar
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => excluirCurva(c)}

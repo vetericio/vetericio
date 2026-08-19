@@ -7,6 +7,7 @@ type Props = {
   onAtualizar: (r: Registro) => void;
   onExcluir: (id: string) => void;
   onCopiar: (r: Registro) => void;
+  onObito: (r: Registro) => void;
 };
 
 export function ListaRegistros({
@@ -15,6 +16,7 @@ export function ListaRegistros({
   onAtualizar,
   onExcluir,
   onCopiar,
+  onObito,
 }: Props) {
   if (registros.length === 0) {
     return (
@@ -31,7 +33,11 @@ export function ListaRegistros({
           <div className="flex items-start justify-between gap-3">
             <h3 className="text-base font-semibold text-foreground">
               {nomeAnimal(r)}
-
+              {r.obito && (
+                <span className="ml-2 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-destructive">
+                  Óbito {r.obito.hora}
+                </span>
+              )}
             </h3>
             <div className="flex shrink-0 flex-wrap justify-end gap-2">
               <button
@@ -54,6 +60,13 @@ export function ListaRegistros({
                 className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 Atualizar
+              </button>
+              <button
+                type="button"
+                onClick={() => onObito(r)}
+                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+              >
+                {r.obito ? "Desfazer óbito" : "Óbito"}
               </button>
               <button
                 type="button"
