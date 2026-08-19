@@ -96,18 +96,25 @@ function desenharGrafico(doc: Doc, c: Curva, x: number, y: number, largura: numb
     doc.text(d.hora, px(i, base.length), y + areaAltura + 10, { align: "center" });
   });
 
-  // Legenda
-  const legenda = series
-    .map((s) => `${ROTULO_PARAMETRO[s.p].rotulo} (${ROTULO_PARAMETRO[s.p].unidade})`)
-    .join("  ·  ");
-  doc.setTextColor(100);
+  // Legenda com a cor de cada parâmetro
+  let lx = x + padEsq;
+  const ly = y + alturaGrafico + 2;
   doc.setFontSize(8);
-  doc.text(legenda, x + padEsq, y + alturaGrafico + 2);
+  for (const s of series) {
+    const [r, g, b] = CORES[s.p] ?? [80, 80, 80];
+    doc.setFillColor(r, g, b);
+    doc.circle(lx + 3, ly - 2.5, 3, "F");
+    doc.setTextColor(r, g, b);
+    const rotulo = `${ROTULO_PARAMETRO[s.p].rotulo} (${ROTULO_PARAMETRO[s.p].unidade})`;
+    doc.text(rotulo, lx + 9, ly);
+    lx += 9 + doc.getTextWidth(rotulo) + 14;
+  }
 
   doc.setTextColor(0);
   doc.setDrawColor(0);
   return alturaGrafico + 10;
 }
+
 
 export async function exportarPdf(
   registros: Registro[],
