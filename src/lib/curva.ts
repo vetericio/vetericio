@@ -75,6 +75,7 @@ export function tituloCurva(c: Curva): string {
 
 /** Bloco de texto da curva, uma medição por linha. */
 export function textoCurva(c: Curva): string {
+  const varios = c.parametros.length > 1;
   const linhas = c.medicoes
     .filter((m) => m.glicemia.trim() || m.pas.trim())
     .map((m) => {
@@ -82,7 +83,8 @@ export function textoCurva(c: Curva): string {
         .map((p) => {
           const valor = (p === "glicemia" ? m.glicemia : m.pas).trim();
           if (!valor) return "";
-          return `${valor.replace(".", ",")} ${ROTULO_PARAMETRO[p].unidade}`;
+          const prefixo = varios ? `${ROTULO_PARAMETRO[p].rotulo}: ` : "";
+          return `${prefixo}${valor.replace(".", ",")} ${ROTULO_PARAMETRO[p].unidade}`;
         })
         .filter(Boolean);
       return `${horaDaMedicao(m)} - ${partes.join(" / ")}`;
@@ -90,6 +92,7 @@ export function textoCurva(c: Curva): string {
   if (linhas.length === 0) return `${tituloCurva(c)}\nsem medições registradas`;
   return [tituloCurva(c), ...linhas].join("\n");
 }
+
 
 /** Blocos de curva de um animal, para a ficha, a cópia e o PDF. */
 export function blocoCurvasDoRegistro(
