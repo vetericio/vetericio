@@ -36,63 +36,69 @@ export function Cabecalho() {
 
 
 
-        <nav className="mt-3 flex flex-wrap justify-center gap-2">
-          <Link
-            to="/"
-            activeOptions={{ exact: true }}
-            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-            inactiveProps={{
-              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-            }}
-          >
-            Início
-          </Link>
-          <Link
-            to="/registros"
-            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-            inactiveProps={{
-              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-            }}
-          >
-            Animais internados
-          </Link>
-          <Link
-            to="/evolucao"
-            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-            inactiveProps={{
-              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-            }}
-          >
-            Evolução
-          </Link>
-          <Link
-            to="/curva"
-            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-            inactiveProps={{
-              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-            }}
-          >
-            Curva
-          </Link>
-          <Link
-            to="/alarmes"
-            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-            inactiveProps={{
-              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-            }}
-          >
-            Alarmes
-          </Link>
-          <Link
-            to="/plantoes"
-            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-            inactiveProps={{
-              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-            }}
-          >
-            Plantões
-          </Link>
+        <nav className="mt-3 space-y-2">
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link
+              to="/"
+              activeOptions={{ exact: true }}
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Início
+            </Link>
+            <Link
+              to="/registros"
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Animais internados
+            </Link>
+            <Link
+              to="/evolucao"
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Evolução
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link
+              to="/curva"
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Curva
+            </Link>
+            <Link
+              to="/alarmes"
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Alarmes
+            </Link>
+            <Link
+              to="/plantoes"
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Plantões
+            </Link>
+          </div>
         </nav>
+
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
           Total de registros do plantão de hoje: {registros.length}

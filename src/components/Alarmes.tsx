@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAlarmes } from "@/hooks/useAlarmes";
-import { criarAlarme, proximoDisparo, textoProximo, type Alarme } from "@/lib/alarmes";
+import {
+  NOME_PLATAFORMA,
+  criarAlarme,
+  detectarPlataforma,
+  proximoDisparo,
+  textoProximo,
+  type Alarme,
+} from "@/lib/alarmes";
 import {
   TOQUES,
   desbloquearAudio,
@@ -19,8 +26,11 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
   const [rotulo, setRotulo] = useState("");
   const [toque, setToque] = useState<ToqueId>("sino");
   const [diario, setDiario] = useState(true);
+  const [link, setLink] = useState("");
 
   useEffect(() => setMontado(true), []);
+
+  const plataforma = detectarPlataforma(link);
 
   const alternar = (a: Alarme) => {
     desbloquearAudio();
@@ -35,12 +45,24 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
 
   const adicionar = () => {
     desbloquearAudio();
-    const novo = criarAlarme({ rotulo: rotulo || `Alarme ${hora}`, hora, toque, diario });
+    if (link.trim() && !plataforma) {
+      toast.error("Use um link do YouTube, Spotify ou Deezer.");
+      return;
+    }
+    const novo = criarAlarme({
+      rotulo: rotulo || `Alarme ${hora}`,
+      hora,
+      toque,
+      diario,
+      linkExterno: link,
+    });
     setAlarmes((lista) => [...lista, novo]);
     setRotulo("");
+    setLink("");
     setAberto(false);
     toast.success(`Alarme criado para ${textoProximo(novo)}.`);
   };
+
 
   const excluir = (id: string) => {
     setAlarmes((lista) => lista.filter((x) => x.id !== id));
@@ -146,6 +168,38 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
             Repetir todos os dias
           </label>
 
+          <div className="rounded-xl bg-background p-3">
+            <span className="text-xs font-semibold text-muted-foreground">
+              Ou use a sua música (YouTube, Spotify ou Deezer)
+            </span>
+            <div className="mt-1 flex gap-2">
+              <input
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="Cole o link da música"
+                className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+              />
+              <button
+                type="button"
+                disabled={!plataforma}
+                onClick={() => window.open(link, "_blank", "noopener")}
+                className="shrink-0 rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-40"
+              >
+                Testar
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+              {link.trim() && !plataforma
+                ? "Link não reconhecido — use YouTube, Spotify ou Deezer."
+                : plataforma === "youtube"
+                  ? "YouTube: o vídeo toca na tela do alarme com o app aberto."
+                  : plataforma
+                    ? `${NOME_PLATAFORMA[plataforma]} não libera o áudio para outros apps: o alarme soa com a música do app e aparece o botão "Abrir minha música".`
+                    : "Sem link, o alarme usa a música escolhida acima."}
+            </p>
+          </div>
+
+
           <button
             type="button"
             onClick={adicionar}
@@ -170,7 +224,9 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
                 <p className="text-[11px] text-muted-foreground">
                   {a.ativo ? `Soa ${textoProximo(a)}` : "Desligado"}
                   {a.intervaloHoras ? ` · a cada ${a.intervaloHoras}h` : a.diario ? " · diário" : ""}
+                  {a.plataforma ? ` · ${NOME_PLATAFORMA[a.plataforma]}` : ""}
                 </p>
+
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
