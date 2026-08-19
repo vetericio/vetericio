@@ -87,14 +87,17 @@ export function textoCurva(c: Curva): string {
         .filter(Boolean);
       return `${horaDaMedicao(m)} - ${partes.join(" / ")}`;
     });
-  if (linhas.length === 0) return "";
+  if (linhas.length === 0) return `${tituloCurva(c)}\nsem medições registradas`;
   return [tituloCurva(c), ...linhas].join("\n");
 }
 
 /** Blocos de curva de um animal, para a ficha, a cópia e o PDF. */
-export function blocoCurvasDoRegistro(r: Pick<Registro, "animal" | "especie">): string {
+export function blocoCurvasDoRegistro(
+  r: Pick<Registro, "animal" | "especie">,
+  lista?: Curva[],
+): string {
   const chave = chaveDoAnimal(r.animal, r.especie);
-  return carregarCurvas()
+  return (lista ?? carregarCurvas())
     .filter((c) => c.chave === chave)
     .map(textoCurva)
     .filter(Boolean)
