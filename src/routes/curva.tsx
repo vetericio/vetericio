@@ -58,6 +58,7 @@ function PaginaCurva() {
   const [intervalo, setIntervalo] = useState(2);
   const [toque, setToque] = useState<ToqueId>("urgente");
   const [novos, setNovos] = useState<Record<string, { glicemia: string; pas: string }>>({});
+  const [comAlarme, setComAlarme] = useState(true);
 
   const animais = useMemo(() => {
     const mapa = new Map<string, { chave: string; rotulo: string; animal: string; especie: string }>();
@@ -104,10 +105,7 @@ function PaginaCurva() {
     };
 
     const nomes = parametros.map((p) => ROTULO_PARAMETRO[p].rotulo).join(" e ");
-    const sugerir = window.confirm(
-      `Criar alarme a cada ${intervalo}h para a curva de ${nomes} de ${selecionado.animal}?`,
-    );
-    if (sugerir) {
+    if (comAlarme) {
       const proximo = horaDeAgoraMais(intervalo);
       const alarme = criarAlarme({
         rotulo: `Curva ${selecionado.animal} — ${nomes.toLowerCase()}`,
@@ -270,6 +268,22 @@ function PaginaCurva() {
               ))}
             </select>
           </label>
+
+          {parametros.length > 0 && (
+            <label className="flex items-start gap-2 rounded-xl bg-secondary/60 p-3 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={comAlarme}
+                onChange={(e) => setComAlarme(e.target.checked)}
+                className="mt-0.5 h-4 w-4"
+              />
+              <span>
+                <strong>Sugestão de alarme:</strong> avisar a cada {intervalo}h para medir{" "}
+                {parametros.map((p) => ROTULO_PARAMETRO[p].rotulo.toLowerCase()).join(" e ")} de{" "}
+                {selecionado?.animal}. O alarme vale até finalizar o plantão.
+              </span>
+            </label>
+          )}
 
           <button
             type="button"
