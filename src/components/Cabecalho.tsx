@@ -66,6 +66,15 @@ export function Cabecalho() {
             Evolução
           </Link>
           <Link
+            to="/curva"
+            activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+            inactiveProps={{
+              className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+            }}
+          >
+            Curva
+          </Link>
+          <Link
             to="/plantoes"
             activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
             inactiveProps={{
