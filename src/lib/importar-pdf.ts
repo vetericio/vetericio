@@ -120,18 +120,13 @@ export async function importarPlantaoDoPdf(arquivo: File): Promise<ResultadoImpo
   let curvaAtual: Curva | null = null;
   let ultimoCampo: keyof Registro | null = null;
 
-  const iniciarAnimal = (animal: string, especie: Especie) => {
-    atual = {
-      ...REGISTRO_VAZIO,
-      id: crypto.randomUUID(),
-      animal,
-      especie,
-      criadoEm: new Date().toISOString(),
-    } as Registro;
-    registros.push(atual);
-    curvaAtual = null;
-    ultimoCampo = null;
-  };
+  const criarAnimal = (animal: string, especie: Especie): Registro => ({
+    ...REGISTRO_VAZIO,
+    id: crypto.randomUUID(),
+    animal,
+    especie,
+    criadoEm: new Date().toISOString(),
+  });
 
   for (const linha of linhas) {
     if (semAcento(linha).includes("veterico servicos")) continue;
@@ -224,7 +219,10 @@ export async function importarPlantaoDoPdf(arquivo: File): Promise<ResultadoImpo
         atual.observacoes = `${atual.observacoes}\n${linha}`.trim();
         continue;
       }
-      iniciarAnimal(titulo.animal, titulo.especie);
+      atual = criarAnimal(titulo.animal, titulo.especie);
+      registros.push(atual);
+      curvaAtual = null;
+      ultimoCampo = null;
       continue;
     }
 
