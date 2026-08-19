@@ -1,14 +1,9 @@
 import { useEffect } from "react";
 import { adiarAlarmeAtivo, pararAlarmeAtivo, useAlarmes } from "@/hooks/useAlarmes";
-import { NOME_PLATAFORMA, idYoutube } from "@/lib/alarmes";
 import { pararToque, pararVibracao, tocarToque, vibrar } from "@/lib/toques";
 
 export function AlarmeAtivo() {
   const { alarmeTocando } = useAlarmes();
-  const videoYoutube =
-    alarmeTocando?.plataforma === "youtube" && alarmeTocando.linkExterno
-      ? idYoutube(alarmeTocando.linkExterno)
-      : undefined;
 
   useEffect(() => {
     if (!alarmeTocando) {
@@ -16,7 +11,7 @@ export function AlarmeAtivo() {
       pararVibracao();
       return;
     }
-    if (!videoYoutube) tocarToque(alarmeTocando.toque, true);
+    tocarToque(alarmeTocando.toque, true);
     vibrar();
     const revibrar = window.setInterval(vibrar, 18000);
     return () => {
@@ -24,7 +19,7 @@ export function AlarmeAtivo() {
       pararToque();
       pararVibracao();
     };
-  }, [alarmeTocando, videoYoutube]);
+  }, [alarmeTocando]);
 
   if (!alarmeTocando) return null;
 
@@ -40,27 +35,7 @@ export function AlarmeAtivo() {
         {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
       </p>
 
-      {videoYoutube && (
-        <iframe
-          title="Música do alarme"
-          src={`https://www.youtube.com/embed/${videoYoutube}?autoplay=1&loop=1&playlist=${videoYoutube}`}
-          allow="autoplay; encrypted-media"
-          className="h-28 w-full max-w-xs rounded-xl border border-border"
-        />
-      )}
-
       <div className="flex w-full max-w-xs flex-col gap-3">
-        {alarmeTocando.linkExterno && !videoYoutube && (
-          <a
-            href={alarmeTocando.linkExterno}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl bg-accent px-4 py-3 text-base font-semibold text-accent-foreground hover:bg-accent/80"
-          >
-            Abrir minha música
-            {alarmeTocando.plataforma ? ` no ${NOME_PLATAFORMA[alarmeTocando.plataforma]}` : ""}
-          </a>
-        )}
         <button
           type="button"
           onClick={() => pararAlarmeAtivo()}
