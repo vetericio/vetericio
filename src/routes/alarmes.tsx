@@ -29,7 +29,7 @@ function PaginaAlarmes() {
       <h2 className="font-display text-xl font-semibold text-foreground">Alarmes</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         O alarme de <strong>jejum dos animais (00h)</strong> liga sozinho quando o plantão é
-        noturno. Você pode criar quantos alarmes quiser e escolher entre 12 músicas.
+        noturno. Você pode criar quantos alarmes quiser e escolher entre 20 músicas.
       </p>
       <div className="mt-4">
         <Alarmes />
