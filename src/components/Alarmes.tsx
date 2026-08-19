@@ -1,16 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAlarmes } from "@/hooks/useAlarmes";
 import { criarAlarme, proximoDisparo, textoProximo, type Alarme } from "@/lib/alarmes";
-import { TOQUES, desbloquearAudio, pararToque, tocarToque, type ToqueId } from "@/lib/toques";
+import {
+  TOQUES,
+  desbloquearAudio,
+  duracaoToque,
+  pararToque,
+  tocarToque,
+  type ToqueId,
+} from "@/lib/toques";
 
 export function Alarmes({ compacto = false }: { compacto?: boolean }) {
-  const { alarmes, setAlarmes, carregado } = useAlarmes();
+  const { alarmes, setAlarmes } = useAlarmes();
+  const [montado, setMontado] = useState(false);
   const [aberto, setAberto] = useState(false);
   const [hora, setHora] = useState("00:00");
   const [rotulo, setRotulo] = useState("");
   const [toque, setToque] = useState<ToqueId>("sino");
   const [diario, setDiario] = useState(true);
+
+  useEffect(() => setMontado(true), []);
 
   const alternar = (a: Alarme) => {
     desbloquearAudio();
@@ -88,21 +98,24 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
           </div>
 
           <div>
-            <span className="text-xs font-semibold text-muted-foreground">Música</span>
-            <div className="mt-1 flex flex-wrap gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">
+              Música (12 opções, toque em ▶ para ouvir)
+            </span>
+            <div className="mt-1 grid grid-cols-4 gap-2">
               {TOQUES.map((t) => (
-                <div key={t.id} className="flex items-center gap-1">
+                <div
+                  key={t.id}
+                  className={`flex flex-col items-center gap-1 rounded-lg p-1.5 ${
+                    toque === t.id ? "bg-primary text-primary-foreground" : "bg-background"
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => {
                       desbloquearAudio();
                       setToque(t.id);
                     }}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                      toque === t.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-foreground hover:bg-background/70"
-                    }`}
+                    className="w-full truncate text-center text-[11px] font-semibold"
                   >
                     {t.nome}
                   </button>
@@ -112,9 +125,9 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
                     onClick={() => {
                       desbloquearAudio();
                       tocarToque(t.id);
-                      window.setTimeout(pararToque, 2600);
+                      window.setTimeout(pararToque, duracaoToque(t.id));
                     }}
-                    className="rounded-lg bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="text-xs opacity-70 hover:opacity-100"
                   >
                     ▶
                   </button>
@@ -144,7 +157,7 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
       )}
 
       <ul className="mt-3 space-y-2">
-        {carregado &&
+        {montado &&
           alarmes.map((a) => (
             <li
               key={a.id}
