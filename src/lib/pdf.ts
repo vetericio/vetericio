@@ -1,4 +1,5 @@
 import type { Registro } from "./ficha";
+import type { Curva } from "./curva";
 import { formatarTodos } from "./ficha";
 import {
   carregarPlantaoAtual,
@@ -13,7 +14,7 @@ const SUBTITULO = "Ficha de Avaliação da Internação";
 
 export async function exportarPdf(
   registros: Registro[],
-  opcoes?: { legenda?: string; arquivo?: string },
+  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[] },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -53,7 +54,11 @@ export async function exportarPdf(
   doc.text(legenda, margem, y);
   y += 24;
 
-  const texto = formatarTodos(registros, { emoji: false, obsPadrao: true });
+  const texto = formatarTodos(registros, {
+    emoji: false,
+    obsPadrao: true,
+    ...(opcoes?.curvas ? { curvas: opcoes.curvas } : {}),
+  });
   const blocos = texto.split("\n\n");
 
   doc.setFontSize(11);
@@ -73,13 +78,28 @@ export async function exportarPdf(
     doc.setFont("helvetica", "normal");
     // Cada informação é um bloco de texto independente, com espaçamento
     // generoso, para que a cópia a partir do PDF preserve as quebras de linha.
+    let naCurva = false;
     for (const linha of resto) {
-      const partes = doc.splitTextToSize(linha, largura) as string[];
+      const tituloCurva = /^Curva /.test(linha);
+      const fimDaCurva = /^(Observações|Resumo):/.test(linha);
+      if (tituloCurva) {
+        naCurva = true;
+        y += 10;
+      } else if (fimDaCurva && naCurva) {
+        naCurva = false;
+        y += 10;
+      }
+
+      const recuo = naCurva ? 14 : 0;
+      const negrito = tituloCurva;
+      doc.setFont("helvetica", negrito ? "bold" : "normal");
+      const partes = doc.splitTextToSize(linha, largura - recuo) as string[];
       for (const l of partes) {
         novaPaginaSeNecessario(ALTURA_LINHA);
-        doc.text(l, margem, y, { baseline: "alphabetic", maxWidth: largura });
+        doc.text(l, margem + recuo, y, { baseline: "alphabetic", maxWidth: largura - recuo });
         y += ALTURA_LINHA;
       }
+      doc.setFont("helvetica", "normal");
     }
     y += 18;
   }
