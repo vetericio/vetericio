@@ -99,7 +99,7 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
 
           <div>
             <span className="text-xs font-semibold text-muted-foreground">
-              Música (12 opções, toque em ▶ para ouvir)
+              Música (20 opções, toque em ▶ para ouvir)
             </span>
             <div className="mt-1 grid grid-cols-4 gap-2">
               {TOQUES.map((t) => (
