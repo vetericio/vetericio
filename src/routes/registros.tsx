@@ -140,7 +140,7 @@ function Registros() {
     if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
     const novo: Plantao = {
       id: crypto.randomUUID(),
-      data: diaDeHoje(),
+      data: plantao?.dia ?? diaDeHoje(),
       turno: plantao?.turno ?? "",
       registros,
       // Guarda a foto das curvas destes animais para o PDF deste plantão.
