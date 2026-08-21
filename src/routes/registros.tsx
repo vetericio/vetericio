@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
+import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
