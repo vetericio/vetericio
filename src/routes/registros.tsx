@@ -154,6 +154,8 @@ function Registros() {
     // As curvas valem até o fim do plantão: encerra e desliga os alarmes delas.
     setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
     limparAlarmesDeCurva();
+    // Encerrado o plantão, o app volta a perguntar o turno na próxima abertura.
+    limparPlantao();
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
   };
