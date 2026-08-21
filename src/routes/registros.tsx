@@ -240,7 +240,8 @@ function Registros() {
         />
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 flex gap-2">
+        <div className="min-w-0 flex-1">
         {registros.length > 0 && visiveis.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             Nenhum animal encontrado com esse nome.
