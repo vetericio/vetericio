@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
+import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
@@ -59,10 +60,11 @@ function normalizar(texto: string) {
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const { setPlantoes } = usePlantoes();
-  const { plantao } = usePlantaoAtual();
+  const { plantao, limparPlantao } = usePlantaoAtual();
   const { curvas, setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
+  const [letraAtiva, setLetraAtiva] = useState<string | null>(null);
   const [obitoAlvo, setObitoAlvo] = useState<Registro | null>(null);
   const [obitoHora, setObitoHora] = useState("");
   const [obitoMotivo, setObitoMotivo] = useState("");
@@ -109,6 +111,28 @@ function Registros() {
     ? ordenados.filter((r) => normalizar(r.animal).includes(termo))
     : ordenados;
 
+  const inicialDe = (nome: string) => {
+    const c = normalizar(nome).charAt(0).toUpperCase();
+    return /[A-Z]/.test(c) ? c : "#";
+  };
+  const letras = Array.from(new Set(visiveis.map((r) => inicialDe(r.animal)))).sort((a, b) =>
+    a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b, "pt-BR"),
+  );
+
+  const irParaLetra = (letra: string) => {
+    if (letra === letraAtiva) {
+      setLetraAtiva(null);
+      return;
+    }
+    setLetraAtiva(letra);
+    const alvo = visiveis.find((r) => inicialDe(r.animal) === letra);
+    if (alvo) {
+      document
+        .getElementById(`animal-${alvo.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const finalizarPlantao = () => {
     if (registros.length === 0) {
       toast.info("Não há animais para finalizar o plantão.");
@@ -117,7 +141,7 @@ function Registros() {
     if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
     const novo: Plantao = {
       id: crypto.randomUUID(),
-      data: diaDeHoje(),
+      data: plantao?.dia ?? diaDeHoje(),
       turno: plantao?.turno ?? "",
       registros,
       // Guarda a foto das curvas destes animais para o PDF deste plantão.
@@ -131,6 +155,8 @@ function Registros() {
     // As curvas valem até o fim do plantão: encerra e desliga os alarmes delas.
     setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
     limparAlarmesDeCurva();
+    // Encerrado o plantão, o app volta a perguntar o turno na próxima abertura.
+    limparPlantao();
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
   };
@@ -215,7 +241,8 @@ function Registros() {
         />
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 flex gap-2">
+        <div className="min-w-0 flex-1">
         {registros.length > 0 && visiveis.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             Nenhum animal encontrado com esse nome.
@@ -242,6 +269,8 @@ function Registros() {
           }}
         />
         )}
+        </div>
+        <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
       </div>
 
       <AlertDialog open={Boolean(obitoAlvo)} onOpenChange={(o) => !o && setObitoAlvo(null)}>

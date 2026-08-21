@@ -29,7 +29,12 @@ export function ListaRegistros({
   return (
     <div className="space-y-3">
       {registros.map((r) => (
-        <article key={r.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <article
+          key={r.id}
+          id={`animal-${r.id}`}
+          className="scroll-mt-28 rounded-2xl border border-border bg-card p-4 shadow-sm"
+        >
+
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
