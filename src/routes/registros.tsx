@@ -59,7 +59,7 @@ function normalizar(texto: string) {
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const { setPlantoes } = usePlantoes();
-  const { plantao } = usePlantaoAtual();
+  const { plantao, limparPlantao } = usePlantaoAtual();
   const { curvas, setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
