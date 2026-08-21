@@ -305,6 +305,15 @@ function Registros() {
         <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
       </div>
 
+      <AtualizarEmBloco
+        aberto={blocoAberto}
+        onFechar={() => setBlocoAberto(false)}
+        registros={registros}
+        onAplicar={aplicarBloco}
+      />
+
+
+
       <AlertDialog open={Boolean(obitoAlvo)} onOpenChange={(o) => !o && setObitoAlvo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
