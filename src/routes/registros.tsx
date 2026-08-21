@@ -63,6 +63,7 @@ function Registros() {
   const { curvas, setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
+  const [letraAtiva, setLetraAtiva] = useState<string | null>(null);
   const [obitoAlvo, setObitoAlvo] = useState<Registro | null>(null);
   const [obitoHora, setObitoHora] = useState("");
   const [obitoMotivo, setObitoMotivo] = useState("");
