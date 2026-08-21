@@ -379,3 +379,49 @@ function escrever(chave: string, valor: unknown) {
   }
 }
 
+
+export type ChaveCategoria = keyof typeof OPCOES;
+export type ChaveAtualizavel = ChaveNumerica | ChaveCategoria;
+
+export const PARAMETROS_BLOCO: { chave: ChaveAtualizavel; rotulo: string }[] = [
+  { chave: "temperatura", rotulo: "Temperatura (°C)" },
+  { chave: "fc", rotulo: "FC (bpm)" },
+  { chave: "fr", rotulo: "FR (mpm)" },
+  { chave: "pas", rotulo: "PAS (mmHg)" },
+  { chave: "glicemia", rotulo: "Glicemia (mg/dL)" },
+  { chave: "alimentacao", rotulo: "Alimentação" },
+  { chave: "comportamento", rotulo: "Comportamento" },
+  { chave: "fezes", rotulo: "Fezes" },
+  { chave: "mucosas", rotulo: "Mucosas" },
+  { chave: "urina", rotulo: "Urina" },
+  { chave: "vomito", rotulo: "Vômito" },
+];
+
+export function ehChaveNumerica(chave: ChaveAtualizavel): chave is ChaveNumerica {
+  return chave in ROTULOS_NUMERICOS;
+}
+
+/**
+ * Acrescenta um novo valor de um parâmetro ao registro, mantendo o valor anterior
+ * e escrevendo as frases automáticas nas observações.
+ */
+export function aplicarAtualizacao(
+  registro: Registro,
+  chave: ChaveAtualizavel,
+  valor: string,
+  data = new Date(),
+): Registro {
+  const novo = valor.trim();
+  if (!novo) return registro;
+  const atualizado: Registro = {
+    ...registro,
+    [chave]: mesclarValores(registro[chave], novo),
+  };
+  if (ehChaveNumerica(chave)) {
+    let obs = comLinha(atualizado.observacoes, fraseAtualizacao(chave, novo, data));
+    const { fora, termo } = avaliarValor(chave, novo, registro.especie);
+    if (fora && termo) obs = comLinha(obs, frasePorTermo(termo, data));
+    atualizado.observacoes = obs;
+  }
+  return atualizado;
+}
