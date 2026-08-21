@@ -273,37 +273,45 @@ function Registros() {
         />
       )}
 
-      <div className="mt-4 flex gap-2">
-        <div className="min-w-0 flex-1">
-        {registros.length > 0 && visiveis.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Nenhum animal encontrado com esse nome.
-          </p>
-        ) : (
-        <ListaRegistros
-          registros={visiveis}
-          onCopiar={(r: Registro) => copiarTexto(formatarRegistro(r))}
-          onEditar={(r) => {
-            window.localStorage.setItem("veterico-editar-id", r.id);
-            navigate({ to: "/" });
-          }}
-          onObito={abrirObito}
-          onAtualizar={(r) => {
-            window.localStorage.setItem("veterico-atualizar-id", r.id);
-            navigate({ to: "/" });
-          }}
-          onExcluir={(id) => {
-            const alvo = registros.find((r) => r.id === id);
-            if (!window.confirm(`Excluir o registro de ${alvo?.animal.trim() || "sem nome"}?`))
-              return;
-            setRegistros((rs) => rs.filter((x) => x.id !== id));
-            toast.success("Registro excluído.");
-          }}
-        />
-        )}
-        </div>
-        <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
-      </div>
+      <Tabs defaultValue="todos" className="mt-4">
+        <TabsList>
+          <TabsTrigger value="todos">Todos</TabsTrigger>
+          <TabsTrigger value="atencao">Animais em atenção ({emAtencao.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="todos">
+          <div className="flex gap-2">
+            <div className="min-w-0 flex-1">
+              {registros.length > 0 && visiveis.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  Nenhum animal encontrado com esse nome.
+                </p>
+              ) : (
+                <ListaRegistros
+                  registros={visiveis}
+                  onCopiar={onCopiar}
+                  onEditar={onEditar}
+                  onObito={abrirObito}
+                  onAtualizar={onAtualizar}
+                  onExcluir={onExcluir}
+                />
+              )}
+            </div>
+            <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="atencao">
+          <AnimaisAtencao
+            registros={emAtencao}
+            onCopiar={onCopiar}
+            onEditar={onEditar}
+            onObito={abrirObito}
+            onAtualizar={onAtualizar}
+            onExcluir={onExcluir}
+          />
+        </TabsContent>
+      </Tabs>
 
       <AtualizarEmBloco
         aberto={blocoAberto}
