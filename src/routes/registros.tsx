@@ -109,6 +109,28 @@ function Registros() {
     ? ordenados.filter((r) => normalizar(r.animal).includes(termo))
     : ordenados;
 
+  const inicialDe = (nome: string) => {
+    const c = normalizar(nome).charAt(0).toUpperCase();
+    return /[A-Z]/.test(c) ? c : "#";
+  };
+  const letras = Array.from(new Set(visiveis.map((r) => inicialDe(r.animal)))).sort((a, b) =>
+    a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b, "pt-BR"),
+  );
+
+  const irParaLetra = (letra: string) => {
+    if (letra === letraAtiva) {
+      setLetraAtiva(null);
+      return;
+    }
+    setLetraAtiva(letra);
+    const alvo = visiveis.find((r) => inicialDe(r.animal) === letra);
+    if (alvo) {
+      document
+        .getElementById(`animal-${alvo.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const finalizarPlantao = () => {
     if (registros.length === 0) {
       toast.info("Não há animais para finalizar o plantão.");
