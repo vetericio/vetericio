@@ -72,8 +72,24 @@ function Registros() {
   const [obitoAlvo, setObitoAlvo] = useState<Registro | null>(null);
   const [obitoHora, setObitoHora] = useState("");
   const [obitoMotivo, setObitoMotivo] = useState("");
+  const [blocoAberto, setBlocoAberto] = useState(false);
 
-  const horaAgora = () => {
+  const aplicarBloco = (chave: ChaveAtualizavel, valores: Record<string, string>) => {
+    let contador = 0;
+    setRegistros((rs) =>
+      rs.map((r) => {
+        const valor = (valores[r.id] ?? "").trim();
+        if (!valor || r.obito) return r;
+        contador += 1;
+        return aplicarAtualizacao(r, chave, valor);
+      }),
+    );
+    setBlocoAberto(false);
+    toast.success(
+      contador === 1 ? "1 animal atualizado." : `${contador} animais atualizados.`,
+    );
+  };
+
     const d = new Date();
     return `${String(d.getHours()).padStart(2, "0")}h${String(d.getMinutes()).padStart(2, "0")}`;
   };
