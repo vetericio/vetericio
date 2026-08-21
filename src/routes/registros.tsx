@@ -268,6 +268,8 @@ function Registros() {
           }}
         />
         )}
+        </div>
+        <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
       </div>
 
       <AlertDialog open={Boolean(obitoAlvo)} onOpenChange={(o) => !o && setObitoAlvo(null)}>
