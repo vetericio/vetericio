@@ -425,3 +425,43 @@ export function aplicarAtualizacao(
   }
   return atualizado;
 }
+
+export type Alteracao = {
+  chave: ChaveNumerica;
+  rotulo: string;
+  valor: string;
+  unidade: string;
+  direcao: "abaixo" | "acima";
+  termo: string;
+  faixa: [number, number];
+};
+
+/** Último valor de um campo que pode ter histórico ("37,2 / 39,8"). */
+export function ultimoValor(campo: string): string {
+  const partes = (campo ?? "").split("/").map((p) => p.trim()).filter(Boolean);
+  return partes[partes.length - 1] ?? "";
+}
+
+/** Parâmetros numéricos fora da faixa da espécie, avaliando o último valor. */
+export function alteracoesDoRegistro(r: Registro): Alteracao[] {
+  const chaves = Object.keys(ROTULOS_NUMERICOS) as ChaveNumerica[];
+  const lista: Alteracao[] = [];
+  for (const chave of chaves) {
+    const faixa = faixaDe(r.especie, chave);
+    if (!faixa) continue;
+    const valor = ultimoValor(r[chave]);
+    const { fora, termo } = avaliarValor(chave, valor, r.especie);
+    if (!fora) continue;
+    const n = paraNumero(valor);
+    lista.push({
+      chave,
+      rotulo: ROTULOS_NUMERICOS[chave].rotulo,
+      valor: comVirgula(valor),
+      unidade: ROTULOS_NUMERICOS[chave].unidade,
+      direcao: n > faixa[1] ? "acima" : "abaixo",
+      termo,
+      faixa,
+    });
+  }
+  return lista;
+}
