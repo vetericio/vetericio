@@ -40,5 +40,5 @@ export function usePlantaoAtual() {
     setCarregado(true);
   }, []);
 
-  return { plantao, definirTurno: definir, carregado };
+  return { plantao, definirTurno: definir, limparPlantao: () => definir(null), carregado };
 }
