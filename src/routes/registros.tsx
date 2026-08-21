@@ -3,15 +3,19 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
+import { AtualizarEmBloco } from "@/components/AtualizarEmBloco";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import {
+  aplicarAtualizacao,
   formatarRegistro,
   formatarTodos,
+  type ChaveAtualizavel,
   type Plantao,
   type Registro,
 } from "@/lib/ficha";
+
 import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 import { useCurvas } from "@/hooks/useCurvas";
