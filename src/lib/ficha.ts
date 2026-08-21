@@ -439,7 +439,7 @@ export type Alteracao = {
 /** Último valor de um campo que pode ter histórico ("37,2 / 39,8"). */
 export function ultimoValor(campo: string): string {
   const partes = (campo ?? "").split("/").map((p) => p.trim()).filter(Boolean);
-  return partes.length ? partes[partes.length - 1] : "";
+  return partes[partes.length - 1] ?? "";
 }
 
 /** Parâmetros numéricos fora da faixa da espécie, avaliando o último valor. */
