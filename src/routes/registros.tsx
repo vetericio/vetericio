@@ -3,15 +3,19 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
 import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
+import { AtualizarEmBloco } from "@/components/AtualizarEmBloco";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import {
+  aplicarAtualizacao,
   formatarRegistro,
   formatarTodos,
+  type ChaveAtualizavel,
   type Plantao,
   type Registro,
 } from "@/lib/ficha";
+
 import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 import { useCurvas } from "@/hooks/useCurvas";
@@ -68,9 +72,27 @@ function Registros() {
   const [obitoAlvo, setObitoAlvo] = useState<Registro | null>(null);
   const [obitoHora, setObitoHora] = useState("");
   const [obitoMotivo, setObitoMotivo] = useState("");
+  const [blocoAberto, setBlocoAberto] = useState(false);
+
+  const aplicarBloco = (chave: ChaveAtualizavel, valores: Record<string, string>) => {
+    let contador = 0;
+    setRegistros((rs) =>
+      rs.map((r) => {
+        const valor = (valores[r.id] ?? "").trim();
+        if (!valor || r.obito) return r;
+        contador += 1;
+        return aplicarAtualizacao(r, chave, valor);
+      }),
+    );
+    setBlocoAberto(false);
+    toast.success(
+      contador === 1 ? "1 animal atualizado." : `${contador} animais atualizados.`,
+    );
+  };
 
   const horaAgora = () => {
     const d = new Date();
+
     return `${String(d.getHours()).padStart(2, "0")}h${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
@@ -216,6 +238,16 @@ function Registros() {
         {registros.length > 0 && (
           <button
             type="button"
+            onClick={() => setBlocoAberto(true)}
+            className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+          >
+            Atualizar em bloco
+          </button>
+        )}
+
+        {registros.length > 0 && (
+          <button
+            type="button"
             onClick={finalizarPlantao}
             className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
           >
@@ -272,6 +304,15 @@ function Registros() {
         </div>
         <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
       </div>
+
+      <AtualizarEmBloco
+        aberto={blocoAberto}
+        onFechar={() => setBlocoAberto(false)}
+        registros={registros}
+        onAplicar={aplicarBloco}
+      />
+
+
 
       <AlertDialog open={Boolean(obitoAlvo)} onOpenChange={(o) => !o && setObitoAlvo(null)}>
         <AlertDialogContent>
