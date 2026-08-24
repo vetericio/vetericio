@@ -13,7 +13,8 @@ export function Medicacoes({ lista, onChange }: Props) {
   const [aberto, setAberto] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
-  const arquivoRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galeriaRef = useRef<HTMLInputElement>(null);
 
 
   const alterar = (indice: number, campo: keyof Medicacao, valor: string) => {
@@ -54,7 +55,8 @@ export function Medicacoes({ lista, onChange }: Props) {
       toast.error("Não foi possível ler a imagem neste aparelho.");
     } finally {
       setLendo(false);
-      if (arquivoRef.current) arquivoRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
+      if (galeriaRef.current) galeriaRef.current.value = "";
     }
   };
 
@@ -79,17 +81,35 @@ export function Medicacoes({ lista, onChange }: Props) {
           <button
             type="button"
             disabled={lendo}
-            onClick={() => arquivoRef.current?.click()}
+            onClick={() => cameraRef.current?.click()}
             className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
           >
             {lendo ? "Lendo foto…" : "📷 Tirar foto"}
           </button>
+          <button
+            type="button"
+            disabled={lendo}
+            onClick={() => galeriaRef.current?.click()}
+            className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-60"
+          >
+            {lendo ? "Lendo foto…" : "🖼️ Enviar foto"}
+          </button>
         </div>
         <input
-          ref={arquivoRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const arquivo = e.target.files?.[0];
+            if (arquivo) void lerFoto(arquivo);
+          }}
+        />
+        <input
+          ref={galeriaRef}
+          type="file"
+          accept="image/*"
           className="hidden"
           onChange={(e) => {
             const arquivo = e.target.files?.[0];
