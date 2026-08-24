@@ -196,8 +196,13 @@ export async function exportarPdf(
         y += 10;
       }
 
-      const recuo = naCurva ? 14 : 0;
-      const negrito = tituloCurvaLinha;
+      // Bloco de medicações: título em negrito e itens recuados.
+      const tituloMedicacao = /^Medicações:$/.test(linha);
+      const itemMedicacao = /^- /.test(linha);
+      if (tituloMedicacao) y += 6;
+
+      const recuo = naCurva || itemMedicacao ? 14 : 0;
+      const negrito = tituloCurvaLinha || tituloMedicacao;
       doc.setFont("helvetica", negrito ? "bold" : "normal");
       const partes = doc.splitTextToSize(linha, largura - recuo) as string[];
       for (const l of partes) {
