@@ -4,7 +4,7 @@ import { useRegistros } from "./useRegistros";
 import { usePlantoes } from "./usePlantoes";
 import { usePlantaoAtual } from "./usePlantaoAtual";
 import { useCurvas } from "./useCurvas";
-import { limparAlarmesDeCurva } from "./useAlarmes";
+import { encerrarTodosAlarmes } from "./useAlarmes";
 import { chaveDoAnimal } from "@/lib/curva";
 import { diaDeHoje } from "@/lib/plantao";
 import type { Plantao } from "@/lib/ficha";
@@ -33,9 +33,9 @@ export function useFinalizarPlantao() {
       setPlantoes((ps) => [novo, ...ps]);
       setRegistros([]);
     }
-    // As curvas valem até o fim do plantão: encerra e desliga os alarmes delas.
+    // As curvas valem até o fim do plantão: encerra todas e desliga todos os alarmes.
     setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
-    limparAlarmesDeCurva();
+    encerrarTodosAlarmes();
     limparPlantao();
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
