@@ -28,7 +28,7 @@ export const lerReceitaComIA = createServerFn({ method: "POST" })
     if (!chave) throw new Error("IA não configurada");
 
     const corpo = {
-      model: "google/gemini-3.1-flash",
+      model: "google/gemini-3.7-flash",
       messages: [
         { role: "system", content: INSTRUCAO },
         {
