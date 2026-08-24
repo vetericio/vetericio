@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
+import { DialogoTurno } from "@/components/DialogoTurno";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base =
@@ -8,7 +11,18 @@ const base =
 
 export function Cabecalho() {
   const { registros } = useRegistros();
-  const { plantao, definirTurno } = usePlantaoAtual();
+  const { plantao, definirTurno, carregado } = usePlantaoAtual();
+  const finalizar = useFinalizarPlantao();
+  const [iniciarAberto, setIniciarAberto] = useState(false);
+
+  const finalizarPlantao = () => {
+    const quantos = registros.length;
+    const aviso = quantos
+      ? `Tem certeza que deseja finalizar o plantão? ${quantos} animal(is) irão para o histórico de plantões.`
+      : "Tem certeza que deseja finalizar o plantão?";
+    if (!window.confirm(aviso)) return;
+    finalizar();
+  };
 
   return (
     <header className="border-b border-border bg-card/60">
@@ -33,6 +47,32 @@ export function Cabecalho() {
             </button>
           )}
         </p>
+
+        {carregado && (
+          <div className="mt-3">
+            {plantao ? (
+              <button
+                type="button"
+                onClick={finalizarPlantao}
+                className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
+              >
+                Finalizar plantão
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIniciarAberto(true)}
+                className="w-full max-w-xs rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Iniciar plantão
+              </button>
+            )}
+          </div>
+        )}
+
+        <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
+
+
 
 
 

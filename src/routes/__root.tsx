@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Cabecalho } from "@/components/Cabecalho";
-import { DialogoTurno } from "@/components/DialogoTurno";
+
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
 
@@ -132,7 +132,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Cabecalho />
-      <DialogoTurno />
+      
       <AlarmeAtivo />
 
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

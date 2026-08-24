@@ -2,20 +2,32 @@ import { useState } from "react";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { diaDeHoje } from "@/lib/plantao";
 
-export function DialogoTurno() {
-  const { plantao, definirTurno, carregado } = usePlantaoAtual();
+type Props = {
+  aberto: boolean;
+  onFechar: () => void;
+};
+
+export function DialogoTurno({ aberto, onFechar }: Props) {
+  const { definirTurno } = usePlantaoAtual();
   const [mostrarData, setMostrarData] = useState(false);
   const [dia, setDia] = useState(diaDeHoje());
 
-  if (!carregado || plantao) return null;
+  if (!aberto) return null;
 
   const diaEscolhido = mostrarData ? dia : undefined;
+
+  const iniciar = (turno: "diurno" | "noturno") => {
+    definirTurno(turno, diaEscolhido);
+    setMostrarData(false);
+    setDia(diaDeHoje());
+    onFechar();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-lg">
         <h2 className="font-display text-lg font-semibold text-foreground">
-          Qual é o plantão de hoje?
+          Tem certeza que deseja iniciar o plantão?
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Escolha o turno para registrar a data das fichas.
@@ -23,14 +35,14 @@ export function DialogoTurno() {
         <div className="mt-5 grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => definirTurno("diurno", diaEscolhido)}
+            onClick={() => iniciar("diurno")}
             className="rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             ☀️ Diurno
           </button>
           <button
             type="button"
-            onClick={() => definirTurno("noturno", diaEscolhido)}
+            onClick={() => iniciar("noturno")}
             className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
           >
             🌙 Noturno
@@ -72,6 +84,14 @@ export function DialogoTurno() {
             Escolher outra data
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={onFechar}
+          className="mt-4 block w-full text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Cancelar
+        </button>
       </div>
     </div>
   );

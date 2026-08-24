@@ -3,6 +3,13 @@ import { resumoRegistro } from "./resumo";
 
 export type Especie = "Cachorro" | "Gato" | "";
 
+/** Uma linha da tabela de medicações do animal. */
+export type Medicacao = {
+  nome: string;
+  dose: string;
+  duracao: string;
+};
+
 export type Registro = {
   id: string;
   animal: string;
@@ -20,9 +27,23 @@ export type Registro = {
   pas: string;
   glicemia: string;
   observacoes: string;
+  /** Medicações do animal (manuais ou lidas de uma foto). */
+  medicacoes?: Medicacao[];
   /** Registro de óbito do animal, quando houver. */
   obito?: { hora: string; motivo: string };
 };
+
+/** "Dipirona - 0,5 mL - 3 dias" */
+export function linhaMedicacao(m: Medicacao): string {
+  return [m.nome.trim(), m.dose.trim(), m.duracao.trim()].filter(Boolean).join(" - ");
+}
+
+/** Bloco de texto das medicações, vazio quando não houver nenhuma. */
+export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
+  const lista = (r.medicacoes ?? []).filter((m) => linhaMedicacao(m));
+  if (lista.length === 0) return [];
+  return ["Medicações:", ...lista.map((m) => `- ${linhaMedicacao(m)}`)];
+}
 
 export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
 
@@ -272,6 +293,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   return [
     titulo,
     ...linhas,
+    ...blocoMedicacoes(r),
     ...(curvas ? curvas.split("\n") : []),
     ...(obito ? [obito] : []),
     `Observações: ${textoObs}`,

@@ -8,22 +8,17 @@ import { AnimaisAtencao } from "@/components/AnimaisAtencao";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { alteracoesDoRegistro } from "@/lib/ficha";
 import { useRegistros } from "@/hooks/useRegistros";
-import { usePlantoes } from "@/hooks/usePlantoes";
-import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import {
   aplicarAtualizacao,
   formatarRegistro,
   formatarTodos,
   type ChaveAtualizavel,
-  type Plantao,
+  type Medicacao,
   type Registro,
 } from "@/lib/ficha";
 
-import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
-import { useCurvas } from "@/hooks/useCurvas";
-import { chaveDoAnimal } from "@/lib/curva";
-import { limparAlarmesDeCurva } from "@/hooks/useAlarmes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,9 +61,7 @@ function normalizar(texto: string) {
 
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
-  const { setPlantoes } = usePlantoes();
-  const { plantao, limparPlantao } = usePlantaoAtual();
-  const { curvas, setCurvas } = useCurvas();
+  const finalizar = useFinalizarPlantao();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [letraAtiva, setLetraAtiva] = useState<string | null>(null);
@@ -164,26 +157,11 @@ function Registros() {
       return;
     }
     if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
-    const novo: Plantao = {
-      id: crypto.randomUUID(),
-      data: plantao?.dia ?? diaDeHoje(),
-      turno: plantao?.turno ?? "",
-      registros,
-      // Guarda a foto das curvas destes animais para o PDF deste plantão.
-      curvas: curvas.filter((c) =>
-        registros.some((r) => chaveDoAnimal(r.animal, r.especie) === c.chave),
-      ),
-      criadoEm: new Date().toISOString(),
-    };
-    setPlantoes((ps) => [novo, ...ps]);
-    setRegistros([]);
-    // As curvas valem até o fim do plantão: encerra e desliga os alarmes delas.
-    setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
-    limparAlarmesDeCurva();
-    // Encerrado o plantão, o app volta a perguntar o turno na próxima abertura.
-    limparPlantao();
-    toast.success("Plantão finalizado.");
-    navigate({ to: "/plantoes" });
+    finalizar();
+  };
+
+  const onMedicacoes = (id: string, medicacoes: Medicacao[]) => {
+    setRegistros((rs) => rs.map((r) => (r.id === id ? { ...r, medicacoes } : r)));
   };
 
 
@@ -313,6 +291,7 @@ function Registros() {
                   onObito={abrirObito}
                   onAtualizar={onAtualizar}
                   onExcluir={onExcluir}
+                  onMedicacoes={onMedicacoes}
                 />
               )}
             </div>
