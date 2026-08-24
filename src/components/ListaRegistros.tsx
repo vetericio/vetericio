@@ -88,6 +88,8 @@ export function ListaRegistros({
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted-foreground">
             {formatarRegistro(r).split("\n").slice(1).join("\n")}
           </pre>
+
+          <Medicacoes registro={r} onSalvar={onMedicacoes} />
         </article>
       ))}
     </div>
