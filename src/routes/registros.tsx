@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { alteracoesDoRegistro } from "@/lib/ficha";
 import { useRegistros } from "@/hooks/useRegistros";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
-import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import {
   aplicarAtualizacao,
   formatarRegistro,
@@ -19,11 +18,7 @@ import {
   type Registro,
 } from "@/lib/ficha";
 
-import { diaDeHoje } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
-import { useCurvas } from "@/hooks/useCurvas";
-import { chaveDoAnimal } from "@/lib/curva";
-import { limparAlarmesDeCurva } from "@/hooks/useAlarmes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,8 +62,6 @@ function normalizar(texto: string) {
 function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const finalizar = useFinalizarPlantao();
-  const { plantao, limparPlantao } = usePlantaoAtual();
-  const { curvas, setCurvas } = useCurvas();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [letraAtiva, setLetraAtiva] = useState<string | null>(null);
