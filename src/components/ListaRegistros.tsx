@@ -1,4 +1,5 @@
-import { formatarRegistro, nomeAnimal, type Registro } from "@/lib/ficha";
+import { formatarRegistro, nomeAnimal, type Medicacao, type Registro } from "@/lib/ficha";
+import { Medicacoes } from "@/components/Medicacoes";
 
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
   onExcluir: (id: string) => void;
   onCopiar: (r: Registro) => void;
   onObito: (r: Registro) => void;
+  onMedicacoes: (id: string, medicacoes: Medicacao[]) => void;
 };
 
 export function ListaRegistros({
@@ -17,6 +19,7 @@ export function ListaRegistros({
   onExcluir,
   onCopiar,
   onObito,
+  onMedicacoes,
 }: Props) {
   if (registros.length === 0) {
     return (
