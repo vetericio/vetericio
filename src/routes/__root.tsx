@@ -132,7 +132,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Cabecalho />
-      <DialogoTurno />
+      
       <AlarmeAtivo />
 
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
