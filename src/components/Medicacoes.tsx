@@ -1,37 +1,33 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import type { Medicacao, Registro } from "@/lib/ficha";
+import type { Medicacao } from "@/lib/ficha";
 
 type Props = {
-  registro: Registro;
-  onSalvar: (id: string, medicacoes: Medicacao[]) => void;
+  lista: Medicacao[];
+  onChange: (medicacoes: Medicacao[]) => void;
 };
 
 const VAZIA: Medicacao = { nome: "", dose: "", duracao: "" };
 
-export function Medicacoes({ registro, onSalvar }: Props) {
+export function Medicacoes({ lista, onChange }: Props) {
   const [aberto, setAberto] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
   const arquivoRef = useRef<HTMLInputElement>(null);
 
-  const lista = registro.medicacoes ?? [];
 
   const alterar = (indice: number, campo: keyof Medicacao, valor: string) => {
     const nova = lista.map((m, i) => (i === indice ? { ...m, [campo]: valor } : m));
-    onSalvar(registro.id, nova);
+    onChange(nova);
   };
 
   const adicionar = () => {
-    onSalvar(registro.id, [...lista, { ...VAZIA }]);
+    onChange([...lista, { ...VAZIA }]);
     setAberto(true);
   };
 
   const remover = (indice: number) => {
-    onSalvar(
-      registro.id,
-      lista.filter((_, i) => i !== indice),
-    );
+    onChange(lista.filter((_, i) => i !== indice));
   };
 
   const lerFoto = async (arquivo: File) => {
@@ -45,7 +41,7 @@ export function Medicacoes({ registro, onSalvar }: Props) {
         setTextoBruto(texto);
         toast.info("Não reconheci medicações. Confira o texto lido e preencha à mão.");
       } else {
-        onSalvar(registro.id, [...lista, ...encontradas]);
+        onChange([...lista, ...encontradas]);
         setTextoBruto(texto);
         toast.success(
           encontradas.length === 1

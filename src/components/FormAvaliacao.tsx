@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Medicacoes } from "@/components/Medicacoes";
 
 type Props = {
   valores: Omit<Registro, "id">;
@@ -347,6 +348,16 @@ export function FormAvaliacao({
           className="mt-1 w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
         />
       </label>
+
+      <div className="mt-4">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Medicações
+        </span>
+        <Medicacoes
+          lista={valores.medicacoes ?? []}
+          onChange={(medicacoes) => onChange({ ...valores, medicacoes })}
+        />
+      </div>
 
       <div className="mt-5 flex gap-2">
         <button
