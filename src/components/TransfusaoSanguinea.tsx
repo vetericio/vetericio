@@ -83,7 +83,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>VG/HT alvo (%)</span>
+          <span className={labelClass}>Ht alvo (%)</span>
           <input
             value={vgAlvo}
             onChange={(e) => setVgAlvo(e.target.value)}
