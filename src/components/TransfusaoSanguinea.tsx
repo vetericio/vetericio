@@ -61,7 +61,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Ht atual (%)</span>
+          <span className={labelClass}>Ht receptor (%)</span>
           <input
             value={vgAtual}
             onChange={(e) => setVgAtual(e.target.value)}
@@ -72,7 +72,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Ht bolsa (%)</span>
+          <span className={labelClass}>Ht doador (%)</span>
           <input
             value={vgUnidade}
             onChange={(e) => setVgUnidade(e.target.value)}
@@ -83,7 +83,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Ht alvo (%)</span>
+          <span className={labelClass}>Ht desejado (%)</span>
           <input
             value={vgAlvo}
             onChange={(e) => setVgAlvo(e.target.value)}
