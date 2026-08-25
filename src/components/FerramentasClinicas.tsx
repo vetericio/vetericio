@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { TaxaInfusao } from "./TaxaInfusao";
+import { Calculadora } from "./Calculadora";
 import { TransfusaoSanguinea } from "./TransfusaoSanguinea";
 
 export function FerramentasClinicas() {
@@ -27,13 +27,13 @@ export function FerramentasClinicas() {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-2.5 shadow-sm sm:p-3">
-      <div ref={emblaRef} className="overflow-hidden">
-        <div className="flex">
+    <div className="flex h-full flex-col">
+      <div ref={emblaRef} className="flex-1 overflow-hidden">
+        <div className="flex h-full">
           <div className="min-w-0 flex-[0_0_100%]">
-            <TaxaInfusao />
+            <Calculadora />
           </div>
-          <div className="min-w-0 flex-[0_0_100%] pl-2 sm:pl-3">
+          <div className="min-w-0 flex-[0_0_100%]">
             <TransfusaoSanguinea />
           </div>
         </div>
@@ -45,7 +45,7 @@ export function FerramentasClinicas() {
             key={i}
             type="button"
             onClick={() => irPara(i)}
-            aria-label={i === 0 ? "Taxa de infusão" : "Transfusão sanguínea"}
+            aria-label={i === 0 ? "Calculadora" : "Transfusão sanguínea"}
             className={`h-2 w-2 rounded-full transition-colors ${
               indice === i ? "bg-primary" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
             }`}
