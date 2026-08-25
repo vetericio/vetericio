@@ -48,9 +48,9 @@ export function TransfusaoSanguinea() {
         ))}
       </div>
 
-      <div className="mt-2 space-y-2">
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <label className="block">
-          <span className={labelClass}>Peso do paciente (kg)</span>
+          <span className={labelClass}>Peso (kg)</span>
           <input
             value={peso}
             onChange={(e) => setPeso(e.target.value)}
@@ -61,7 +61,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Ht atual do paciente (%)</span>
+          <span className={labelClass}>Ht atual (%)</span>
           <input
             value={vgAtual}
             onChange={(e) => setVgAtual(e.target.value)}
@@ -72,7 +72,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Ht da bolsa (%)</span>
+          <span className={labelClass}>Ht bolsa (%)</span>
           <input
             value={vgUnidade}
             onChange={(e) => setVgUnidade(e.target.value)}
