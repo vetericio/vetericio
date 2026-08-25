@@ -32,7 +32,7 @@ export function Cronometro() {
   const { base, mil } = formatar(ms);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-3 shadow-sm">
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         Cronômetro
       </p>
@@ -40,7 +40,7 @@ export function Cronometro() {
         <span className="text-2xl">{base}</span>
         <span className="text-base text-muted-foreground">.{mil}</span>
       </p>
-      <div className="mt-2 flex gap-2">
+      <div className="mt-auto flex gap-2">
         <button
           type="button"
           onClick={() => setRodando((r) => !r)}

@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Calculadora } from "@/components/Calculadora";
 import { Cronometro } from "@/components/Cronometro";
-import { FerramentasClinicas } from "@/components/FerramentasClinicas";
 import { TaxaInfusao } from "@/components/TaxaInfusao";
+import { TransfusaoSanguinea } from "@/components/TransfusaoSanguinea";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
@@ -218,12 +219,11 @@ function Index() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
-      <section className="grid grid-cols-2 items-stretch gap-2 sm:gap-3">
-        <FerramentasClinicas />
-        <div className="space-y-2 sm:space-y-3">
-          <Cronometro />
-          <TaxaInfusao />
-        </div>
+      <section className="grid grid-cols-2 gap-2 sm:gap-3">
+        <Calculadora />
+        <Cronometro />
+        <TransfusaoSanguinea />
+        <TaxaInfusao />
       </section>
 
       <div className="mt-5">
