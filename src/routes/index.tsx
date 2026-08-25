@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Calculadora } from "@/components/Calculadora";
 import { Cronometro } from "@/components/Cronometro";
-import { TaxaInfusao } from "@/components/TaxaInfusao";
+import { FerramentasClinicas } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
@@ -222,7 +222,7 @@ function Index() {
         <Calculadora />
         <div className="space-y-2 sm:space-y-3">
           <Cronometro />
-          <TaxaInfusao />
+          <FerramentasClinicas />
         </div>
       </section>
 

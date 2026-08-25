@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
@@ -14,6 +14,7 @@ export function Cabecalho() {
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
   const finalizar = useFinalizarPlantao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
+  const [dataHoje, setDataHoje] = useState("");
 
   const finalizarPlantao = () => {
     const quantos = registros.length;
@@ -23,6 +24,10 @@ export function Cabecalho() {
     if (!window.confirm(aviso)) return;
     finalizar();
   };
+
+  useEffect(() => {
+    setDataHoje(new Date().toLocaleDateString("pt-BR"));
+  }, []);
 
   return (
     <header className="border-b border-border bg-card/60">
@@ -34,9 +39,7 @@ export function Cabecalho() {
           Ficha de Avaliação da Internação
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {plantao
-            ? rotuloPlantaoAtual(plantao)
-            : new Date().toLocaleDateString("pt-BR")}
+          {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
           {plantao && (
             <button
               type="button"
