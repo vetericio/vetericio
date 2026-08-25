@@ -57,7 +57,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Informe o Ht atual do paciente.",
+      erro: "Informe o Ht do receptor.",
     };
   }
   if (Number.isNaN(vgUnidade) || vgUnidade <= 0) {
@@ -65,7 +65,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Informe o Ht da bolsa.",
+      erro: "Informe o Ht do doador.",
     };
   }
   if (Number.isNaN(vgAlvo) || vgAlvo <= 0) {
@@ -73,7 +73,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Informe o Ht alvo.",
+      erro: "Informe o Ht desejado.",
     };
   }
   if (vgAtual >= vgAlvo) {
@@ -81,7 +81,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Ht atual deve ser menor que o Ht alvo.",
+      erro: "Ht do receptor deve ser menor que o Ht desejado.",
     };
   }
 
