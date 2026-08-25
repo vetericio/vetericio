@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Calculadora } from "@/components/Calculadora";
 import { Cronometro } from "@/components/Cronometro";
 import { FerramentasClinicas } from "@/components/FerramentasClinicas";
+import { TaxaInfusao } from "@/components/TaxaInfusao";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
