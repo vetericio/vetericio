@@ -12,7 +12,7 @@ export function TaxaInfusao() {
   const p = paraNumero(peso);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-2.5 shadow-sm sm:p-3">
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-2.5 shadow-sm sm:p-3">
       <p className="text-[0.6rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.7rem]">
         Taxa de infusão
       </p>
@@ -27,7 +27,7 @@ export function TaxaInfusao() {
         />
       </label>
 
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-auto space-y-1.5 pt-2">
         {[
           { especie: "Cachorro", fator: 130 },
           { especie: "Gato", fator: 80 },
