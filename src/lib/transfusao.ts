@@ -35,7 +35,8 @@ export function calcularVolumeSangueTotal(
   vgUnidade: number,
 ): number {
   const fator = FATORES_SANGUE_TOTAL[especie];
-  return Math.round((peso * fator * (vgAlvo - vgAtual)) / vgUnidade);
+  const numerador = peso * fator * (vgAlvo - vgAtual);
+  return Math.round(numerador / vgUnidade);
 }
 
 export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
@@ -87,7 +88,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
 
   const fator = FATORES_SANGUE_TOTAL[dados.especie];
   const volume = calcularVolumeSangueTotal(dados.especie, peso, vgAtual, vgAlvo, vgUnidade);
-  const formula = `${peso} × ${fator} × (${vgAlvo} − ${vgAtual}) ÷ ${vgUnidade}`;
+  const formula = `Volume (mL) = [ ${peso} × ${fator} × (${vgAlvo} − ${vgAtual}) ] ÷ ${vgUnidade}`;
 
   return { volume, formula, fator, erro: null };
 }
