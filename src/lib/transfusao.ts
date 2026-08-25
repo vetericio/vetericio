@@ -35,7 +35,7 @@ export function calcularVolumeSangueTotal(
   vgUnidade: number,
 ): number {
   const fator = FATORES_SANGUE_TOTAL[especie];
-  return Math.round(peso * fator * (vgAlvo - vgAtual) / vgUnidade);
+  return Math.round((peso * fator * (vgAlvo - vgAtual)) / vgUnidade);
 }
 
 export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
@@ -45,19 +45,44 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
   const vgAlvo = paraNumero(dados.vgAlvo);
 
   if (Number.isNaN(peso) || peso <= 0) {
-    return { volume: null, formula: "", fator: FATORES_SANGUE_TOTAL[dados.especie], erro: "Informe um peso válido maior que zero." };
+    return {
+      volume: null,
+      formula: "",
+      fator: FATORES_SANGUE_TOTAL[dados.especie],
+      erro: "Informe um peso válido maior que zero.",
+    };
   }
   if (Number.isNaN(vgAtual) || vgAtual <= 0) {
-    return { volume: null, formula: "", fator: FATORES_SANGUE_TOTAL[dados.especie], erro: "Informe o VG/HT atual do paciente." };
+    return {
+      volume: null,
+      formula: "",
+      fator: FATORES_SANGUE_TOTAL[dados.especie],
+      erro: "Informe o VG/HT atual do paciente.",
+    };
   }
   if (Number.isNaN(vgUnidade) || vgUnidade <= 0) {
-    return { volume: null, formula: "", fator: FATORES_SANGUE_TOTAL[dados.especie], erro: "Informe o VG/HT da unidade sanguínea." };
+    return {
+      volume: null,
+      formula: "",
+      fator: FATORES_SANGUE_TOTAL[dados.especie],
+      erro: "Informe o VG/HT da unidade sanguínea.",
+    };
   }
   if (Number.isNaN(vgAlvo) || vgAlvo <= 0) {
-    return { volume: null, formula: "", fator: FATORES_SANGUE_TOTAL[dados.especie], erro: "Informe o VG/HT alvo." };
+    return {
+      volume: null,
+      formula: "",
+      fator: FATORES_SANGUE_TOTAL[dados.especie],
+      erro: "Informe o VG/HT alvo.",
+    };
   }
   if (vgAtual >= vgAlvo) {
-    return { volume: null, formula: "", fator: FATORES_SANGUE_TOTAL[dados.especie], erro: "VG/HT atual deve ser menor que o VG/HT alvo." };
+    return {
+      volume: null,
+      formula: "",
+      fator: FATORES_SANGUE_TOTAL[dados.especie],
+      erro: "VG/HT atual deve ser menor que o VG/HT alvo.",
+    };
   }
 
   const fator = FATORES_SANGUE_TOTAL[dados.especie];

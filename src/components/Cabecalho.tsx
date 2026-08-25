@@ -6,8 +6,7 @@ import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
-const base =
-  "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
+const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
 export function Cabecalho() {
   const { registros } = useRegistros();
@@ -75,10 +74,6 @@ export function Cabecalho() {
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
 
-
-
-
-
         <nav className="mt-3 space-y-2">
           <div className="flex flex-wrap justify-center gap-2">
             <Link
@@ -141,7 +136,6 @@ export function Cabecalho() {
             </Link>
           </div>
         </nav>
-
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
           Total de registros do plantão de hoje: {registros.length}

@@ -118,7 +118,8 @@ export function TransfusaoSanguinea() {
         )}
 
         <p className="mt-2 text-[0.6rem] leading-tight text-muted-foreground">
-          O resultado é uma estimativa e deve ser ajustado conforme avaliação clínica e monitorização do paciente.
+          O resultado é uma estimativa e deve ser ajustado conforme avaliação clínica e
+          monitorização do paciente.
         </p>
       </div>
     </div>
