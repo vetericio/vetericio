@@ -57,7 +57,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Informe o VG/HT atual do paciente.",
+      erro: "Informe o Ht atual do paciente.",
     };
   }
   if (Number.isNaN(vgUnidade) || vgUnidade <= 0) {
@@ -65,7 +65,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Informe o VG/HT da unidade sanguínea.",
+      erro: "Informe o Ht da bolsa.",
     };
   }
   if (Number.isNaN(vgAlvo) || vgAlvo <= 0) {
@@ -73,7 +73,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "Informe o VG/HT alvo.",
+      erro: "Informe o Ht alvo.",
     };
   }
   if (vgAtual >= vgAlvo) {
@@ -81,7 +81,7 @@ export function validarTransfusao(dados: DadosTransfusao): ResultadoTransfusao {
       volume: null,
       formula: "",
       fator: FATORES_SANGUE_TOTAL[dados.especie],
-      erro: "VG/HT atual deve ser menor que o VG/HT alvo.",
+      erro: "Ht atual deve ser menor que o Ht alvo.",
     };
   }
 
