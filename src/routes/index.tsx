@@ -219,11 +219,11 @@ function Index() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
-      <section className="grid grid-cols-2 gap-2 sm:gap-3">
-        <Calculadora />
-        <Cronometro />
-        <TransfusaoSanguinea />
-        <TaxaInfusao />
+      <section className="grid grid-cols-2 items-stretch gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <Calculadora />
+        </div>
+        <FerramentasClinicas />
       </section>
 
       <div className="mt-5">
