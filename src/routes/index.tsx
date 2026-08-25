@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Calculadora } from "@/components/Calculadora";
 import { Cronometro } from "@/components/Cronometro";
-import { TaxaInfusao } from "@/components/TaxaInfusao";
+import { FerramentasClinicas } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { useRegistros } from "@/hooks/useRegistros";
@@ -31,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -175,7 +174,9 @@ function Index() {
       return;
     }
     if (editandoId) {
-      setRegistros((rs) => rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)));
+      setRegistros((rs) =>
+        rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)),
+      );
       setEditandoId(null);
       toast.success("Registro atualizado.");
     } else {
@@ -215,14 +216,13 @@ function Index() {
     salvar(form);
   };
 
-
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
       <section className="grid grid-cols-2 gap-2 sm:gap-3">
         <Calculadora />
         <div className="space-y-2 sm:space-y-3">
           <Cronometro />
-          <TaxaInfusao />
+          <FerramentasClinicas />
         </div>
       </section>
 
@@ -239,7 +239,6 @@ function Index() {
         />
       </div>
 
-
       <div className="mt-8">
         <InstalarApp />
       </div>
@@ -254,8 +253,8 @@ function Index() {
                 {duplicado?.animal.trim()}
                 {duplicado?.especie ? ` (${duplicado.especie})` : ""}
               </strong>{" "}
-              na lista. Se for o mesmo animal, esta avaliação entra na evolução dele. Se for
-              outro, ele é salvo com um número depois do nome.
+              na lista. Se for o mesmo animal, esta avaliação entra na evolução dele. Se for outro,
+              ele é salvo com um número depois do nome.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -275,5 +274,4 @@ function Index() {
       </AlertDialog>
     </main>
   );
-
 }

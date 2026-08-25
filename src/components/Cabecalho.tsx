@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
@@ -6,14 +6,14 @@ import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
-const base =
-  "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
+const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
 export function Cabecalho() {
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
   const finalizar = useFinalizarPlantao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
+  const [dataHoje, setDataHoje] = useState("");
 
   const finalizarPlantao = () => {
     const quantos = registros.length;
@@ -23,6 +23,10 @@ export function Cabecalho() {
     if (!window.confirm(aviso)) return;
     finalizar();
   };
+
+  useEffect(() => {
+    setDataHoje(new Date().toLocaleDateString("pt-BR"));
+  }, []);
 
   return (
     <header className="border-b border-border bg-card/60">
@@ -34,9 +38,7 @@ export function Cabecalho() {
           Ficha de Avaliação da Internação
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {plantao
-            ? rotuloPlantaoAtual(plantao)
-            : new Date().toLocaleDateString("pt-BR")}
+          {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
           {plantao && (
             <button
               type="button"
@@ -71,10 +73,6 @@ export function Cabecalho() {
         )}
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
-
-
-
-
 
         <nav className="mt-3 space-y-2">
           <div className="flex flex-wrap justify-center gap-2">
@@ -138,7 +136,6 @@ export function Cabecalho() {
             </Link>
           </div>
         </nav>
-
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
           Total de registros do plantão de hoje: {registros.length}
