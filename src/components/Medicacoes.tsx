@@ -9,7 +9,10 @@ type Props = {
   onChange: (medicacoes: Medicacao[]) => void;
 };
 
-const VAZIA: Medicacao = { nome: "", dose: "", duracao: "" };
+const UNIDADES = ["mL", "cápsula/comprimido"] as const;
+type Unidade = (typeof UNIDADES)[number];
+
+const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias", "outros"] as const;
 
 function lerComoDataUrl(arquivo: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -20,52 +23,99 @@ function lerComoDataUrl(arquivo: File): Promise<string> {
   });
 }
 
+/** Tenta separar uma dose "0,5 mL" ou "1 cp" em quantidade + unidade. */
+function parseDose(dose: string): { quantidade: string; unidade: Unidade } {
+  const limpa = dose.trim();
+  const lower = limpa.toLowerCase();
+  if (lower.includes("cp") || lower.includes("cápsula") || lower.includes("capsula") || lower.includes("comprimido") || lower.includes("comp")) {
+    const match = limpa.match(/^([\d,.]+)\s*/);
+    return { quantidade: match ? match[1] : limpa, unidade: "cápsula/comprimido" };
+  }
+  if (lower.includes("ml")) {
+    const match = limpa.match(/^([\d,.]+)\s*/);
+    return { quantidade: match ? match[1] : limpa, unidade: "mL" };
+  }
+  return { quantidade: limpa, unidade: "mL" };
+}
+
+/** Converte a duração salva em opção padrão + texto customizado. */
+function parseDuracao(duracao: string): { padrao: string; outros: string } {
+  const valor = duracao.trim();
+  if (!valor) return { padrao: "", outros: "" };
+  if ((DURACOES_PADRAO as readonly string[]).includes(valor)) return { padrao: valor, outros: "" };
+  return { padrao: "outros", outros: valor };
+}
+
+function montarDose(quantidade: string, unidade: Unidade): string {
+  const q = quantidade.trim();
+  if (!q) return "";
+  return `${q} ${unidade}`;
+}
+
+function montarDuracao(padrao: string, outros: string): string {
+  if (padrao === "outros") return outros.trim();
+  return padrao;
+}
+
 export function Medicacoes({ lista, onChange }: Props) {
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
-  const [rascunho, setRascunho] = useState<Medicacao>({ ...VAZIA });
   const [editando, setEditando] = useState<number | null>(null);
+  const [nome, setNome] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [unidade, setUnidade] = useState<Unidade>("mL");
+  const [duracaoPadrao, setDuracaoPadrao] = useState("");
+  const [duracaoOutros, setDuracaoOutros] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
 
-  const alterarRascunho = (campo: keyof Medicacao, valor: string) =>
-    setRascunho((r) => ({ ...r, [campo]: valor }));
+  const resetForm = () => {
+    setNome("");
+    setQuantidade("");
+    setUnidade("mL");
+    setDuracaoPadrao("");
+    setDuracaoOutros("");
+    setEditando(null);
+  };
 
   const enviar = () => {
-    const nome = rascunho.nome.trim();
-    const dose = rascunho.dose.trim();
-    const duracao = rascunho.duracao.trim();
-    if (!nome) {
+    const nomeLimpo = nome.trim();
+    if (!nomeLimpo) {
       toast.error("Escreva o nome da medicação.");
       return;
     }
-    const item: Medicacao = { nome, dose, duracao };
+    const dose = montarDose(quantidade, unidade);
+    const duracao = montarDuracao(duracaoPadrao, duracaoOutros);
+    const item: Medicacao = { nome: nomeLimpo, dose, duracao };
+
     if (editando === null) {
       onChange([...lista, item]);
       toast.success("Medicação adicionada.");
     } else {
       onChange(lista.map((m, i) => (i === editando ? item : m)));
       toast.success("Medicação atualizada.");
-      setEditando(null);
     }
-    setRascunho({ ...VAZIA });
+    resetForm();
     setAberto(true);
   };
 
   const editar = (indice: number) => {
     const item = lista[indice];
     if (!item) return;
-    setRascunho({ ...item });
+    const { quantidade: q, unidade: u } = parseDose(item.dose);
+    const { padrao, outros } = parseDuracao(item.duracao);
+    setNome(item.nome);
+    setQuantidade(q);
+    setUnidade(u);
+    setDuracaoPadrao(padrao);
+    setDuracaoOutros(outros);
     setEditando(indice);
     setAberto(true);
   };
 
-  const cancelarEdicao = () => {
-    setEditando(null);
-    setRascunho({ ...VAZIA });
-  };
+  const cancelarEdicao = () => resetForm();
 
   const remover = (indice: number) => {
     onChange(lista.filter((_, i) => i !== indice));
@@ -134,11 +184,11 @@ export function Medicacoes({ lista, onChange }: Props) {
 
   return (
     <section className="mt-3 rounded-xl border border-border bg-background/60 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap sm:justify-between">
         <button
           type="button"
           onClick={() => setAberto((a) => !a)}
-          className="text-xs font-semibold text-foreground underline-offset-2 hover:underline"
+          className="truncate text-left text-xs font-semibold text-foreground underline-offset-2 hover:underline"
         >
           Medicações ({lista.length}) {aberto ? "▲" : "▼"}
         </button>
@@ -196,10 +246,10 @@ export function Medicacoes({ lista, onChange }: Props) {
                   key={i}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/60 px-2.5 py-1.5"
                 >
-                  <span className="text-sm text-foreground">
-                    {[m.nome, m.dose, m.duracao].filter(Boolean).join(" · ")}
+                  <span className="min-w-0 text-sm text-foreground">
+                    <span className="block truncate">{[m.nome, m.dose, m.duracao].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="flex gap-1.5">
+                  <span className="flex shrink-0 gap-1.5">
                     <button
                       type="button"
                       onClick={() => editar(i)}
@@ -221,25 +271,55 @@ export function Medicacoes({ lista, onChange }: Props) {
           )}
 
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
-            <div className="grid gap-1 sm:grid-cols-3">
+            <div className="grid gap-1.5 sm:grid-cols-3">
               <input
-                value={rascunho.nome}
-                onChange={(e) => alterarRascunho("nome", e.target.value)}
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
                 placeholder="Medicação"
                 className={campo}
               />
-              <input
-                value={rascunho.dose}
-                onChange={(e) => alterarRascunho("dose", e.target.value)}
-                placeholder="Dose"
-                className={campo}
-              />
-              <input
-                value={rascunho.duracao}
-                onChange={(e) => alterarRascunho("duracao", e.target.value)}
-                placeholder="Duração"
-                className={campo}
-              />
+              <div className="flex min-w-0 gap-1.5">
+                <input
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  placeholder="Quantidade"
+                  className={`${campo} min-w-0 flex-1`}
+                />
+                <select
+                  value={unidade}
+                  onChange={(e) => setUnidade(e.target.value as Unidade)}
+                  className={`${campo} shrink-0`}
+                  style={{ width: "auto", minWidth: "5.5rem" }}
+                >
+                  {UNIDADES.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex min-w-0 gap-1.5">
+                <select
+                  value={duracaoPadrao}
+                  onChange={(e) => setDuracaoPadrao(e.target.value)}
+                  className={`${campo} min-w-0 flex-1`}
+                >
+                  <option value="">Duração</option>
+                  {DURACOES_PADRAO.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                {duracaoPadrao === "outros" && (
+                  <input
+                    value={duracaoOutros}
+                    onChange={(e) => setDuracaoOutros(e.target.value)}
+                    placeholder="Outra duração"
+                    className={`${campo} min-w-0 flex-1`}
+                  />
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <button
