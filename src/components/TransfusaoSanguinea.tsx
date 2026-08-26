@@ -83,7 +83,7 @@ export function TransfusaoSanguinea() {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Ht desejado (%)</span>
+          <span className={`${labelClass} whitespace-nowrap`}>Ht desejado (%)</span>
           <input
             value={vgAlvo}
             onChange={(e) => setVgAlvo(e.target.value)}
