@@ -344,7 +344,10 @@ export function Medicacoes({ lista, onChange }: Props) {
                       name="duracao"
                       value={d}
                       checked={duracao === d}
-                      onChange={() => setDuracao(d)}
+                      onChange={() => {
+                        console.log("radio click", d);
+                        setDuracao(d);
+                      }}
                       className="h-3.5 w-3.5 accent-primary"
                     />
                     <span>{d}</span>
