@@ -13,6 +13,8 @@ const UNIDADES = ["mL", "cápsula/comprimido"] as const;
 type Unidade = (typeof UNIDADES)[number];
 
 const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias"] as const;
+const DURACAO_OUTROS = "outros";
+type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS;
 
 function lerComoDataUrl(arquivo: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -38,17 +40,27 @@ function parseDose(dose: string): { quantidade: string; unidade: Unidade } {
   return { quantidade: limpa, unidade: "mL" };
 }
 
-/** Mantém a duração apenas se estiver entre as opções fixas. */
-function parseDuracao(duracao: string): string {
+/** Define o modo do radio a partir da duração salva. */
+function parseDuracao(duracao: string): { modo: DuracaoPadrao; outros: string } {
   const valor = duracao.trim();
-  if ((DURACOES_PADRAO as readonly string[]).includes(valor)) return valor;
-  return "";
+  if ((DURACOES_PADRAO as readonly string[]).includes(valor)) {
+    return { modo: valor as DuracaoPadrao, outros: "" };
+  }
+  if (valor) {
+    return { modo: DURACAO_OUTROS, outros: valor };
+  }
+  return { modo: "8h", outros: "" };
 }
 
 function montarDose(quantidade: string, unidade: Unidade): string {
   const q = quantidade.trim();
   if (!q) return "";
   return `${q} ${unidade}`;
+}
+
+function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
+  if (modo === DURACAO_OUTROS) return outros.trim();
+  return modo;
 }
 
 export function Medicacoes({ lista, onChange }: Props) {
@@ -59,7 +71,8 @@ export function Medicacoes({ lista, onChange }: Props) {
   const [nome, setNome] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
-  const [duracao, setDuracao] = useState("");
+  const [duracao, setDuracao] = useState<DuracaoPadrao>("8h");
+  const [duracaoOutros, setDuracaoOutros] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
@@ -68,7 +81,8 @@ export function Medicacoes({ lista, onChange }: Props) {
     setNome("");
     setQuantidade("");
     setUnidade("mL");
-    setDuracao("");
+    setDuracao("8h");
+    setDuracaoOutros("");
     setEditando(null);
   };
 
@@ -79,7 +93,12 @@ export function Medicacoes({ lista, onChange }: Props) {
       return;
     }
     const dose = montarDose(quantidade, unidade);
-    const item: Medicacao = { nome: nomeLimpo, dose, duracao };
+    const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
+    if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
+      toast.error("Escreva a duração em outros.");
+      return;
+    }
+    const item: Medicacao = { nome: nomeLimpo, dose, duracao: duracaoSalva };
 
     if (editando === null) {
       onChange([...lista, item]);
@@ -96,10 +115,12 @@ export function Medicacoes({ lista, onChange }: Props) {
     const item = lista[indice];
     if (!item) return;
     const { quantidade: q, unidade: u } = parseDose(item.dose);
+    const { modo, outros } = parseDuracao(item.duracao);
     setNome(item.nome);
     setQuantidade(q);
     setUnidade(u);
-    setDuracao(parseDuracao(item.duracao));
+    setDuracao(modo);
+    setDuracaoOutros(outros);
     setEditando(indice);
     setAberto(true);
   };
@@ -117,6 +138,26 @@ export function Medicacoes({ lista, onChange }: Props) {
     return { encontradas: analisarMedicacoes(texto), texto };
   };
 
+  const normalizarDuracao = (valor: string): string => {
+    const v = valor.trim().toLowerCase();
+    const mapa: Record<string, string> = {
+      "8h": "8h", "8": "8h", "oito horas": "8h", "8 horas": "8h",
+      "12h": "12h", "12": "12h", "doze horas": "12h", "12 horas": "12h",
+      "24h": "24h", "24": "24h", "vinte e quatro horas": "24h", "24 horas": "24h",
+      "48h": "48h", "48": "48h", "quarenta e oito horas": "48h", "48 horas": "48h",
+      "7d": "7 dias", "7 dias": "7 dias", "7": "7 dias", "sete dias": "7 dias",
+    };
+    return mapa[v] ?? v;
+  };
+
+  const classificarDuracao = (valor: string): { modo: DuracaoPadrao; outros: string } => {
+    const normalizado = normalizarDuracao(valor);
+    if ((DURACOES_PADRAO as readonly string[]).includes(normalizado)) {
+      return { modo: normalizado as DuracaoPadrao, outros: "" };
+    }
+    return { modo: DURACAO_OUTROS, outros: valor.trim() };
+  };
+
   const lerFoto = async (arquivo: File) => {
     setLendo(true);
     setTextoBruto("");
@@ -129,7 +170,10 @@ export function Medicacoes({ lista, onChange }: Props) {
         try {
           const imagem = await lerComoDataUrl(arquivo);
           const resultado = await lerIA({ data: { imagem } });
-          encontradas = resultado.medicacoes;
+          encontradas = resultado.medicacoes.map((m) => {
+            const { modo, outros } = classificarDuracao(m.duracao);
+            return { ...m, duracao: modo === DURACAO_OUTROS && outros ? outros : modo };
+          });
           usouIA = true;
         } catch {
           usouIA = false;
@@ -139,7 +183,12 @@ export function Medicacoes({ lista, onChange }: Props) {
       if (!usouIA || encontradas.length === 0) {
         try {
           const offline = await lerOffline(arquivo);
-          if (encontradas.length === 0) encontradas = offline.encontradas;
+          if (encontradas.length === 0) {
+            encontradas = offline.encontradas.map((m) => {
+              const { modo, outros } = classificarDuracao(m.duracao);
+              return { ...m, duracao: modo === DURACAO_OUTROS && outros ? outros : modo };
+            });
+          }
           texto = offline.texto;
           if (!usouIA) toast.info("Sem internet: leitura offline, precisão menor.");
         } catch {
@@ -287,18 +336,29 @@ export function Medicacoes({ lista, onChange }: Props) {
                   ))}
                 </select>
               </div>
-              <select
-                value={duracao}
-                onChange={(e) => setDuracao(e.target.value)}
-                className={campo}
-              >
-                <option value="">Duração</option>
-                {DURACOES_PADRAO.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
+              <div className={`${campo} flex flex-wrap items-center gap-3`}>
+                {[...DURACOES_PADRAO, DURACAO_OUTROS].map((d) => (
+                  <label key={d} className="inline-flex cursor-pointer items-center gap-1 text-xs text-foreground">
+                    <input
+                      type="radio"
+                      name="duracao"
+                      value={d}
+                      checked={duracao === d}
+                      onChange={() => setDuracao(d)}
+                      className="h-3.5 w-3.5 accent-primary"
+                    />
+                    <span>{d}</span>
+                  </label>
                 ))}
-              </select>
+                {duracao === DURACAO_OUTROS && (
+                  <input
+                    value={duracaoOutros}
+                    onChange={(e) => setDuracaoOutros(e.target.value)}
+                    placeholder="Especifique"
+                    className={`${campo} min-w-[7rem] flex-1 text-xs`}
+                  />
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <button
