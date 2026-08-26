@@ -336,27 +336,27 @@ export function Medicacoes({ lista, onChange }: Props) {
                   ))}
                 </select>
               </div>
-              <div className={`${campo} flex flex-wrap items-center gap-3`}>
-                {([...DURACOES_PADRAO, DURACAO_OUTROS] as DuracaoPadrao[]).map((d) => (
-                  <label
-                    key={d}
-                    className="inline-flex cursor-pointer items-center gap-1 text-xs text-foreground"
-                    onClick={() => {
-                      console.log("label click", d, "current", duracao);
-                      setDuracao(d);
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="duracao"
-                      value={d}
-                      checked={duracao === d}
-                      onChange={() => setDuracao(d)}
-                      className="h-3.5 w-3.5 accent-primary"
-                    />
-                    <span>{d}</span>
-                  </label>
-                ))}
+              <div className={`${campo} flex flex-wrap items-center gap-2`}>
+                {([...DURACOES_PADRAO, DURACAO_OUTROS] as DuracaoPadrao[]).map((d) => {
+                  const selecionado = duracao === d;
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDuracao(d)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors ${
+                        selecionado
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current">
+                        {selecionado && <span className="h-2 w-2 rounded-full bg-current" />}
+                      </span>
+                      <span>{d}</span>
+                    </button>
+                  );
+                })}
                 {duracao === DURACAO_OUTROS && (
                   <input
                     value={duracaoOutros}
