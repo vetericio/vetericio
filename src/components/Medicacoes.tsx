@@ -29,11 +29,11 @@ function parseDose(dose: string): { quantidade: string; unidade: Unidade } {
   const lower = limpa.toLowerCase();
   if (lower.includes("cp") || lower.includes("cápsula") || lower.includes("capsula") || lower.includes("comprimido") || lower.includes("comp")) {
     const match = limpa.match(/^([\d,.]+)\s*/);
-    return { quantidade: match ? match[1] : limpa, unidade: "cápsula/comprimido" };
+    return { quantidade: match?.[1] ?? limpa, unidade: "cápsula/comprimido" };
   }
   if (lower.includes("ml")) {
     const match = limpa.match(/^([\d,.]+)\s*/);
-    return { quantidade: match ? match[1] : limpa, unidade: "mL" };
+    return { quantidade: match?.[1] ?? limpa, unidade: "mL" };
   }
   return { quantidade: limpa, unidade: "mL" };
 }
