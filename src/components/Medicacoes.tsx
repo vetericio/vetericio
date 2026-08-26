@@ -12,7 +12,7 @@ type Props = {
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
 type Unidade = (typeof UNIDADES)[number];
 
-const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias", "outros"] as const;
+const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias"] as const;
 
 function lerComoDataUrl(arquivo: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -38,23 +38,17 @@ function parseDose(dose: string): { quantidade: string; unidade: Unidade } {
   return { quantidade: limpa, unidade: "mL" };
 }
 
-/** Converte a duração salva em opção padrão + texto customizado. */
-function parseDuracao(duracao: string): { padrao: string; outros: string } {
+/** Mantém a duração apenas se estiver entre as opções fixas. */
+function parseDuracao(duracao: string): string {
   const valor = duracao.trim();
-  if (!valor) return { padrao: "", outros: "" };
-  if ((DURACOES_PADRAO as readonly string[]).includes(valor)) return { padrao: valor, outros: "" };
-  return { padrao: "outros", outros: valor };
+  if ((DURACOES_PADRAO as readonly string[]).includes(valor)) return valor;
+  return "";
 }
 
 function montarDose(quantidade: string, unidade: Unidade): string {
   const q = quantidade.trim();
   if (!q) return "";
   return `${q} ${unidade}`;
-}
-
-function montarDuracao(padrao: string, outros: string): string {
-  if (padrao === "outros") return outros.trim();
-  return padrao;
 }
 
 export function Medicacoes({ lista, onChange }: Props) {
@@ -65,8 +59,7 @@ export function Medicacoes({ lista, onChange }: Props) {
   const [nome, setNome] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
-  const [duracaoPadrao, setDuracaoPadrao] = useState("");
-  const [duracaoOutros, setDuracaoOutros] = useState("");
+  const [duracao, setDuracao] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
@@ -75,8 +68,7 @@ export function Medicacoes({ lista, onChange }: Props) {
     setNome("");
     setQuantidade("");
     setUnidade("mL");
-    setDuracaoPadrao("");
-    setDuracaoOutros("");
+    setDuracao("");
     setEditando(null);
   };
 
@@ -87,7 +79,6 @@ export function Medicacoes({ lista, onChange }: Props) {
       return;
     }
     const dose = montarDose(quantidade, unidade);
-    const duracao = montarDuracao(duracaoPadrao, duracaoOutros);
     const item: Medicacao = { nome: nomeLimpo, dose, duracao };
 
     if (editando === null) {
@@ -105,12 +96,10 @@ export function Medicacoes({ lista, onChange }: Props) {
     const item = lista[indice];
     if (!item) return;
     const { quantidade: q, unidade: u } = parseDose(item.dose);
-    const { padrao, outros } = parseDuracao(item.duracao);
     setNome(item.nome);
     setQuantidade(q);
     setUnidade(u);
-    setDuracaoPadrao(padrao);
-    setDuracaoOutros(outros);
+    setDuracao(parseDuracao(item.duracao));
     setEditando(indice);
     setAberto(true);
   };
@@ -298,28 +287,18 @@ export function Medicacoes({ lista, onChange }: Props) {
                   ))}
                 </select>
               </div>
-              <div className="flex min-w-0 gap-1.5">
-                <select
-                  value={duracaoPadrao}
-                  onChange={(e) => setDuracaoPadrao(e.target.value)}
-                  className={`${campo} min-w-0 flex-1`}
-                >
-                  <option value="">Duração</option>
-                  {DURACOES_PADRAO.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                {duracaoPadrao === "outros" && (
-                  <input
-                    value={duracaoOutros}
-                    onChange={(e) => setDuracaoOutros(e.target.value)}
-                    placeholder="Outra duração"
-                    className={`${campo} min-w-0 flex-1`}
-                  />
-                )}
-              </div>
+              <select
+                value={duracao}
+                onChange={(e) => setDuracao(e.target.value)}
+                className={campo}
+              >
+                <option value="">Duração</option>
+                {DURACOES_PADRAO.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2">
               <button
