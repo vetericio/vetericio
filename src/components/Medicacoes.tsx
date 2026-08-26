@@ -338,16 +338,17 @@ export function Medicacoes({ lista, onChange }: Props) {
               </div>
               <div className={`${campo} flex flex-wrap items-center gap-3`}>
                 {([...DURACOES_PADRAO, DURACAO_OUTROS] as DuracaoPadrao[]).map((d) => (
-                  <label key={d} className="inline-flex cursor-pointer items-center gap-1 text-xs text-foreground">
+                  <label
+                    key={d}
+                    className="inline-flex cursor-pointer items-center gap-1 text-xs text-foreground"
+                    onClick={() => setDuracao(d)}
+                  >
                     <input
                       type="radio"
                       name="duracao"
                       value={d}
                       checked={duracao === d}
-                      onChange={() => {
-                        console.log("radio click", d);
-                        setDuracao(d);
-                      }}
+                      onChange={() => setDuracao(d)}
                       className="h-3.5 w-3.5 accent-primary"
                     />
                     <span>{d}</span>
