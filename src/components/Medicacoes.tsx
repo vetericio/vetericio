@@ -341,7 +341,10 @@ export function Medicacoes({ lista, onChange }: Props) {
                   <label
                     key={d}
                     className="inline-flex cursor-pointer items-center gap-1 text-xs text-foreground"
-                    onClick={() => setDuracao(d)}
+                    onClick={() => {
+                      console.log("label click", d, "current", duracao);
+                      setDuracao(d);
+                    }}
                   >
                     <input
                       type="radio"
