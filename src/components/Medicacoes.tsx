@@ -323,15 +323,32 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
             <div className="grid gap-1.5 sm:grid-cols-3">
               <input
+                ref={nomeRef}
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    quantidadeRef.current?.focus();
+                  }
+                }}
+                enterKeyHint="next"
                 placeholder="Medicação"
                 className={campo}
               />
               <div className="flex min-w-0 gap-1.5">
                 <input
+                  ref={quantidadeRef}
                   value={quantidade}
                   onChange={(e) => setQuantidade(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (duracao === DURACAO_OUTROS) outrosRef.current?.focus();
+                      else enviar();
+                    }
+                  }}
+                  enterKeyHint="next"
                   placeholder="Quantidade"
                   className={`${campo} min-w-0 flex-1`}
                 />
