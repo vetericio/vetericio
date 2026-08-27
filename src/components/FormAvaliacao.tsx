@@ -359,13 +359,13 @@ export function FormAvaliacao({
         />
       </div>
 
-      <div className="mt-5 flex gap-2">
+      <div className="mt-6 flex gap-2 border-t border-border pt-5">
         <button
           type="button"
           onClick={onEnviar}
           className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          {anterior ? "Acrescentar informação" : editando ? "Salvar alterações" : "Enviar"}
+          {anterior ? "Acrescentar informação" : editando ? "Salvar alterações" : "Enviar ficha"}
         </button>
         {(editando || anterior) && (
           <button
@@ -377,6 +377,7 @@ export function FormAvaliacao({
           </button>
         )}
       </div>
+
 
       <AlertDialog open={Boolean(pendente)} onOpenChange={(o) => !o && setPendente(null)}>
         <AlertDialogContent>
