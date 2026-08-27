@@ -65,7 +65,7 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
   return modo;
 }
 
-export function Medicacoes({ lista, onChange }: Props) {
+export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
@@ -77,6 +77,9 @@ export function Medicacoes({ lista, onChange }: Props) {
   const [duracaoOutros, setDuracaoOutros] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
+  const nomeRef = useRef<HTMLInputElement>(null);
+  const quantidadeRef = useRef<HTMLInputElement>(null);
+  const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
 
   const resetForm = () => {
