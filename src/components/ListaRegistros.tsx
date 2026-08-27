@@ -89,7 +89,7 @@ export function ListaRegistros({
             {formatarRegistro(r).split("\n").slice(1).join("\n")}
           </pre>
 
-          <Medicacoes lista={r.medicacoes ?? []} onChange={(m) => onMedicacoes(r.id, m)} />
+          <Medicacoes lista={r.medicacoes ?? []} onChange={(m) => onMedicacoes(r.id, m)} somenteLeitura />
         </article>
       ))}
     </div>

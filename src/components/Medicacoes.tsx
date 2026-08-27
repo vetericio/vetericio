@@ -7,6 +7,8 @@ import type { Medicacao } from "@/lib/ficha";
 type Props = {
   lista: Medicacao[];
   onChange: (medicacoes: Medicacao[]) => void;
+  /** No card do animal (Animais internados) a lista é só para leitura. */
+  somenteLeitura?: boolean;
 };
 
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
@@ -63,7 +65,7 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
   return modo;
 }
 
-export function Medicacoes({ lista, onChange }: Props) {
+export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
@@ -75,6 +77,9 @@ export function Medicacoes({ lista, onChange }: Props) {
   const [duracaoOutros, setDuracaoOutros] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
+  const nomeRef = useRef<HTMLInputElement>(null);
+  const quantidadeRef = useRef<HTMLInputElement>(null);
+  const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
 
   const resetForm = () => {
@@ -230,24 +235,26 @@ export function Medicacoes({ lista, onChange }: Props) {
         >
           Medicações ({lista.length}) {aberto ? "▲" : "▼"}
         </button>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={lendo}
-            onClick={() => cameraRef.current?.click()}
-            className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-          >
-            {lendo ? "Lendo foto…" : "📷 Tirar foto"}
-          </button>
-          <button
-            type="button"
-            disabled={lendo}
-            onClick={() => galeriaRef.current?.click()}
-            className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-60"
-          >
-            {lendo ? "Lendo foto…" : "🖼️ Enviar foto"}
-          </button>
-        </div>
+        {!somenteLeitura && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={lendo}
+              onClick={() => cameraRef.current?.click()}
+              className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            >
+              {lendo ? "Lendo foto…" : "📷 Tirar foto"}
+            </button>
+            <button
+              type="button"
+              disabled={lendo}
+              onClick={() => galeriaRef.current?.click()}
+              className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-60"
+            >
+              {lendo ? "Lendo foto…" : "🖼️ Enviar foto"}
+            </button>
+          </div>
+        )}
         <input
           ref={cameraRef}
           type="file"
@@ -275,7 +282,9 @@ export function Medicacoes({ lista, onChange }: Props) {
         <div className="mt-3 space-y-3">
           {lista.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Nenhuma medicação. Preencha abaixo e toque em Enviar, ou tire uma foto da receita.
+              {somenteLeitura
+                ? "Nenhuma medicação. Para editar, use o botão Editar do animal."
+                : "Nenhuma medicação. Preencha abaixo e toque em Enviar, ou tire uma foto da receita."}
             </p>
           ) : (
             <ul className="space-y-1.5">
@@ -287,39 +296,59 @@ export function Medicacoes({ lista, onChange }: Props) {
                   <span className="min-w-0 text-sm text-foreground">
                     <span className="block truncate">{[m.nome, m.dose, m.duracao].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="flex shrink-0 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => editar(i)}
-                      className="rounded-lg bg-background px-2 py-1 text-xs font-semibold text-foreground hover:bg-background/70"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remover(i)}
-                      className="rounded-lg bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
-                    >
-                      Excluir
-                    </button>
-                  </span>
+                  {!somenteLeitura && (
+                    <span className="flex shrink-0 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => editar(i)}
+                        className="rounded-lg bg-background px-2 py-1 text-xs font-semibold text-foreground hover:bg-background/70"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remover(i)}
+                        className="rounded-lg bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
+                      >
+                        Excluir
+                      </button>
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
           )}
 
+          {!somenteLeitura && (
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
             <div className="grid gap-1.5 sm:grid-cols-3">
               <input
+                ref={nomeRef}
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    quantidadeRef.current?.focus();
+                  }
+                }}
+                enterKeyHint="next"
                 placeholder="Medicação"
                 className={campo}
               />
               <div className="flex min-w-0 gap-1.5">
                 <input
+                  ref={quantidadeRef}
                   value={quantidade}
                   onChange={(e) => setQuantidade(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (duracao === DURACAO_OUTROS) outrosRef.current?.focus();
+                      else enviar();
+                    }
+                  }}
+                  enterKeyHint="next"
                   placeholder="Quantidade"
                   className={`${campo} min-w-0 flex-1`}
                 />
@@ -359,8 +388,16 @@ export function Medicacoes({ lista, onChange }: Props) {
                 })}
                 {duracao === DURACAO_OUTROS && (
                   <input
+                    ref={outrosRef}
                     value={duracaoOutros}
                     onChange={(e) => setDuracaoOutros(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        enviar();
+                      }
+                    }}
+                    enterKeyHint="send"
                     placeholder="Especifique"
                     className={`${campo} min-w-[7rem] flex-1 text-xs`}
                   />
@@ -386,6 +423,7 @@ export function Medicacoes({ lista, onChange }: Props) {
               )}
             </div>
           </div>
+          )}
 
           {textoBruto && (
             <details className="rounded-lg bg-secondary p-2">
