@@ -160,9 +160,6 @@ function Registros() {
     finalizar();
   };
 
-  const onMedicacoes = (id: string, medicacoes: Medicacao[]) => {
-    setRegistros((rs) => rs.map((r) => (r.id === id ? { ...r, medicacoes } : r)));
-  };
 
 
   const apagarTudo = () => {

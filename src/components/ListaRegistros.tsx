@@ -19,8 +19,8 @@ export function ListaRegistros({
   onExcluir,
   onCopiar,
   onObito,
-  onMedicacoes,
 }: Props) {
+
   if (registros.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
