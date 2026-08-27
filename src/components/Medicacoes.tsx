@@ -289,9 +289,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
             <p className="text-xs text-muted-foreground">
               {somenteLeitura
                 ? "Nenhuma medicação. Para editar, use o botão Editar do animal."
-                : "Nenhuma medicação. Preencha abaixo e toque em Enviar, ou tire uma foto da receita."}
+                : "Nenhuma medicação. Preencha abaixo e toque em Adicionar medicação, ou tire uma foto da receita."}
             </p>
           ) : (
+
             <ul className="space-y-1.5">
               {lista.map((m, i) => (
                 <li
