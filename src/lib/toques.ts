@@ -337,7 +337,27 @@ const EXTRAS = [
     pares: [[do_, 1], [reb_, 1], [fa_, 1], [solb_, 1], [fa_, 1], [reb_, 1], [do_, 2]] },
   { id: "safari", nome: "Safari", onda: "triangle", batida: 0.22,
     pares: [[sol_, 1], [sib_, 1], [DO, 1], [sib_, 1], [sol_, 1], [fa_, 1], [sol_, 2]] },
+  /* Cinco melodias reais de domínio público. */
+  { id: "turkey", nome: "Turkey in the Straw", onda: "square", batida: 0.2,
+    pares: [[DO2, 1], [LA, 1], [FA, 1], [FA, 1], [SOL, 1], [LA, 1], [SI, 1], [DO2, 2],
+            [LA, 1], [FA, 1], [SOL, 1], [LA, 1], [FA, 1], [FA, 1], [DO, 2]] },
+  { id: "rockclassico", nome: "Rock clássico", onda: "sawtooth", batida: 0.19,
+    pares: [[mi0, 1], [mi0, 1], [sol0, 1], [la0, 1], [la0, 1], [sol0, 1], [mi0, 1], [re0, 1],
+            [mi0, 1], [mi0, 1], [sol0, 1], [la0, 1], [si_ / 2, 1], [la0, 1], [sol0, 1], [mi0, 2]] },
+  { id: "greensleeves", nome: "Greensleeves", onda: "triangle", batida: 0.3,
+
+    pares: [[la_, 1], [DO, 2], [RE, 1], [MI, 1.5], [FA, 0.5], [MI, 2],
+            [RE, 1], [si_, 2], [sol_, 1], [la_, 1.5], [si_, 0.5], [DO, 2],
+            [la_, 1], [la_, 1.5], [sol_, 0.5], [la_, 1], [si_, 1], [DO, 2]] },
+  { id: "canon", nome: "Canon (Pachelbel)", onda: "sine", batida: 0.42,
+    pares: [[MI, 2], [RE, 2], [DO, 2], [si_, 2],
+            [la_, 2], [si_, 2], [DO, 2], [RE, 2],
+            [MI, 2], [RE, 2], [DO, 2], [si_, 2], [la_, 3]] },
+  { id: "clair", nome: "Clair de Lune", onda: "sine", batida: 0.5,
+    pares: [[reb_ * 2, 2], [DO, 1], [reb_ * 2, 1], [fa_ * 2, 3],
+            [mib_ * 2, 1], [reb_ * 2, 2], [DO, 2], [sib_, 2], [reb_ * 2, 3]] },
 ] as const satisfies readonly Extra[];
+
 
 export type ExtraId = (typeof EXTRAS)[number]["id"];
 

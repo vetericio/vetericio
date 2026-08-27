@@ -23,7 +23,7 @@ export function TaxaInfusao() {
           onChange={(e) => setPeso(e.target.value)}
           inputMode="decimal"
           placeholder="5,3"
-          className="mt-0.5 w-full rounded-lg border border-input bg-background px-2 py-1.5 text-base font-semibold text-foreground outline-none focus:border-ring"
+          className="mt-0.5 w-full rounded-lg border border-input bg-background px-2 py-1.5 text-base font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:border-ring"
         />
       </label>
 

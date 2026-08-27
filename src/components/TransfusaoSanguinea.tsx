@@ -22,7 +22,7 @@ export function TransfusaoSanguinea() {
   });
 
   const inputClass =
-    "w-full rounded-lg border border-input bg-background px-2 py-1.5 text-base font-semibold text-foreground outline-none focus:border-ring";
+    "w-full rounded-lg border border-input bg-background px-2 py-1.5 text-base font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/40 focus:border-ring";
   const labelClass = "block text-[0.65rem] text-muted-foreground sm:text-xs";
 
   return (

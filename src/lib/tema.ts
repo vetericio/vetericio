@@ -12,6 +12,12 @@ export type TemaId =
   | "verde-cinza"
   | "pro"
   | "laranja"
+  | "natal"
+  | "jack"
+  | "cansado"
+  | "feliz"
+  | "rock"
+  | "veterico"
   | "minha-cor";
 
 export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: string }[] = [
@@ -33,6 +39,22 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   },
   { id: "pro", nome: "Profissional", classe: "tema-pro", descricao: "Azul-marinho sóbrio" },
   { id: "laranja", nome: "Laranja", classe: "tema-laranja", descricao: "Laranja quente" },
+  { id: "natal", nome: "Natal", classe: "tema-natal", descricao: "Verde, vermelho e dourado" },
+  {
+    id: "jack",
+    nome: "Jack Skellington",
+    classe: "tema-jack",
+    descricao: "Morcegos e o Zero ao fundo",
+  },
+  { id: "cansado", nome: "Cansado", classe: "tema-cansado", descricao: "Contraste suave" },
+  { id: "feliz", nome: "Feliz", classe: "tema-feliz", descricao: "Cores alegres" },
+  { id: "rock", nome: "Rock", classe: "tema-rock", descricao: "Preto, prata e vermelho" },
+  {
+    id: "veterico",
+    nome: "Veterício",
+    classe: "tema-veterico",
+    descricao: "Cores e padrão da logo",
+  },
   { id: "minha-cor", nome: "Minha cor", classe: "tema-minha-cor", descricao: "Você escolhe a cor" },
 ];
 

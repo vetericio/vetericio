@@ -14,9 +14,19 @@ type Props = {
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
 type Unidade = (typeof UNIDADES)[number];
 
-const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias"] as const;
+const DURACOES_PADRAO = ["8h", "12h", "24h"] as const;
 const DURACAO_OUTROS = "outros";
 type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS | "";
+
+/** Máscara de centavos para mL: digita de trás para frente (5 -> 0,05 / 50 -> 0,50). */
+function mascaraMl(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").replace(/^0+(?=\d{3,})/, "");
+  if (!digitos) return "";
+  const cheio = digitos.padStart(3, "0");
+  const inteiro = cheio.slice(0, -2).replace(/^0+(?=\d)/, "");
+  return `${inteiro},${cheio.slice(-2)}`;
+}
+
 
 
 function lerComoDataUrl(arquivo: File): Promise<string> {
@@ -346,7 +356,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 <input
                   ref={quantidadeRef}
                   value={quantidade}
-                  onChange={(e) => setQuantidade(e.target.value)}
+                  onChange={(e) =>
+                    setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value)
+                  }
+
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -371,7 +384,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                   ))}
                 </select>
               </div>
-              <div className={`${campo} flex flex-wrap items-center gap-2`}>
+              <div className={`${campo} space-y-1.5`}>
+                <div className="grid grid-cols-4 gap-1">
                 {([...DURACOES_PADRAO, DURACAO_OUTROS] as DuracaoPadrao[]).map((d) => {
                   const selecionado = duracao === d;
                   return (
@@ -379,19 +393,21 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                       key={d}
                       type="button"
                       onClick={() => setDuracao(d)}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors ${
+                      className={`inline-flex items-center justify-center gap-1 rounded-full border px-1 py-1 text-[0.7rem] transition-colors ${
                         selecionado
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-background text-foreground hover:bg-secondary"
                       }`}
                     >
-                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current">
-                        {selecionado && <span className="h-2 w-2 rounded-full bg-current" />}
+                      <span className="flex h-3 w-3 shrink-0 items-center justify-center rounded-full border border-current">
+                        {selecionado && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                       </span>
-                      <span>{d}</span>
+                      <span className="truncate">{d}</span>
                     </button>
                   );
                 })}
+                </div>
+
                 {duracao === DURACAO_OUTROS && (
                   <input
                     ref={outrosRef}
@@ -405,7 +421,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                     }}
                     enterKeyHint="send"
                     placeholder="Especifique"
-                    className={`${campo} min-w-[7rem] flex-1 text-xs`}
+                    className={`${campo} w-full text-xs`}
                   />
                 )}
               </div>

@@ -14,7 +14,7 @@ Nas calculadoras de **Taxa de infusão** e **Transfusão sanguínea**, os exempl
 Recorto a logo (cão laranja + gato azul no círculo) da imagem que você enviou, deixo o fundo transparente e coloco:
 
 - pequena no cabeçalho, acima de tudo, em todas as páginas;
-- no topo do PDF exportado, ao lado do nome da clínica.
+- no topo do PDF exportado, ao lado do nome da clínica. O nome deve continuar Veterício Serviços Veterinários LTDA.
 
 ## 4. Cinco temas novos + tema Veterício
 
