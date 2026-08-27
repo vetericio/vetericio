@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import logoVeterico from "@/assets/logo-veterico.png.asset.json";
+
 import { Link } from "@tanstack/react-router";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
