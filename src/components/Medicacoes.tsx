@@ -356,7 +356,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 <input
                   ref={quantidadeRef}
                   value={quantidade}
-                  onChange={(e) => setQuantidade(e.target.value)}
+                  onChange={(e) =>
+                    setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value)
+                  }
+
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
