@@ -384,7 +384,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                   ))}
                 </select>
               </div>
-              <div className={`${campo} flex flex-wrap items-center gap-2`}>
+              <div className={`${campo} space-y-1.5`}>
+                <div className="grid grid-cols-4 gap-1">
                 {([...DURACOES_PADRAO, DURACAO_OUTROS] as DuracaoPadrao[]).map((d) => {
                   const selecionado = duracao === d;
                   return (
@@ -392,19 +393,21 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                       key={d}
                       type="button"
                       onClick={() => setDuracao(d)}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition-colors ${
+                      className={`inline-flex items-center justify-center gap-1 rounded-full border px-1 py-1 text-[0.7rem] transition-colors ${
                         selecionado
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-background text-foreground hover:bg-secondary"
                       }`}
                     >
-                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current">
-                        {selecionado && <span className="h-2 w-2 rounded-full bg-current" />}
+                      <span className="flex h-3 w-3 shrink-0 items-center justify-center rounded-full border border-current">
+                        {selecionado && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                       </span>
-                      <span>{d}</span>
+                      <span className="truncate">{d}</span>
                     </button>
                   );
                 })}
+                </div>
+
                 {duracao === DURACAO_OUTROS && (
                   <input
                     ref={outrosRef}
