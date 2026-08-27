@@ -7,6 +7,8 @@ import type { Medicacao } from "@/lib/ficha";
 type Props = {
   lista: Medicacao[];
   onChange: (medicacoes: Medicacao[]) => void;
+  /** No card do animal (Animais internados) a lista é só para leitura. */
+  somenteLeitura?: boolean;
 };
 
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
