@@ -30,10 +30,16 @@ export function Cabecalho() {
 
   return (
     <header className="border-b border-border bg-card/60">
-      <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-5 text-center">
+      <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
+        <img
+          src={logoVeterico.url}
+          alt="Logo Veterício"
+          className="mx-auto mb-1.5 h-9 w-auto sm:h-11"
+        />
         <h1 className="font-display text-lg font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
           Veterício Serviços Veterinários LTDA
         </h1>
+
         <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
           Ficha de Avaliação da Internação
         </p>
