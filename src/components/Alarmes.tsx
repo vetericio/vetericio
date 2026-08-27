@@ -115,7 +115,7 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
 
           <div>
             <span className="text-xs font-semibold text-muted-foreground">
-              Música (50 opções, toque em ▶ para ouvir)
+              Música (55 opções, toque em ▶ para ouvir)
             </span>
             <input
               value={busca}
