@@ -409,24 +409,25 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2 border-t border-border pt-2">
               <button
                 type="button"
                 onClick={enviar}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
               >
-                {editando === null ? "Enviar" : "Salvar alteração"}
+                {editando === null ? "Adicionar medicação" : "Salvar alteração"}
               </button>
               {editando !== null && (
                 <button
                   type="button"
                   onClick={cancelarEdicao}
-                  className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                  className="rounded-lg bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-background/70"
                 >
                   Cancelar
                 </button>
               )}
             </div>
+
           </div>
           )}
 
