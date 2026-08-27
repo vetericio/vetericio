@@ -282,7 +282,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
         <div className="mt-3 space-y-3">
           {lista.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Nenhuma medicação. Preencha abaixo e toque em Enviar, ou tire uma foto da receita.
+              {somenteLeitura
+                ? "Nenhuma medicação. Para editar, use o botão Editar do animal."
+                : "Nenhuma medicação. Preencha abaixo e toque em Enviar, ou tire uma foto da receita."}
             </p>
           ) : (
             <ul className="space-y-1.5">
@@ -294,27 +296,30 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                   <span className="min-w-0 text-sm text-foreground">
                     <span className="block truncate">{[m.nome, m.dose, m.duracao].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="flex shrink-0 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => editar(i)}
-                      className="rounded-lg bg-background px-2 py-1 text-xs font-semibold text-foreground hover:bg-background/70"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remover(i)}
-                      className="rounded-lg bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
-                    >
-                      Excluir
-                    </button>
-                  </span>
+                  {!somenteLeitura && (
+                    <span className="flex shrink-0 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => editar(i)}
+                        className="rounded-lg bg-background px-2 py-1 text-xs font-semibold text-foreground hover:bg-background/70"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remover(i)}
+                        className="rounded-lg bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
+                      >
+                        Excluir
+                      </button>
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
           )}
 
+          {!somenteLeitura && (
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
             <div className="grid gap-1.5 sm:grid-cols-3">
               <input
