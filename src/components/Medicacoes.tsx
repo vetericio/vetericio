@@ -235,24 +235,26 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
         >
           Medicações ({lista.length}) {aberto ? "▲" : "▼"}
         </button>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={lendo}
-            onClick={() => cameraRef.current?.click()}
-            className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-          >
-            {lendo ? "Lendo foto…" : "📷 Tirar foto"}
-          </button>
-          <button
-            type="button"
-            disabled={lendo}
-            onClick={() => galeriaRef.current?.click()}
-            className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-60"
-          >
-            {lendo ? "Lendo foto…" : "🖼️ Enviar foto"}
-          </button>
-        </div>
+        {!somenteLeitura && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={lendo}
+              onClick={() => cameraRef.current?.click()}
+              className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            >
+              {lendo ? "Lendo foto…" : "📷 Tirar foto"}
+            </button>
+            <button
+              type="button"
+              disabled={lendo}
+              onClick={() => galeriaRef.current?.click()}
+              className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-60"
+            >
+              {lendo ? "Lendo foto…" : "🖼️ Enviar foto"}
+            </button>
+          </div>
+        )}
         <input
           ref={cameraRef}
           type="file"
