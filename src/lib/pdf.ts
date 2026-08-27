@@ -135,15 +135,25 @@ export async function exportarPdf(
     }
   };
 
+  const logoLargura = 34;
+  const logoAltura = 37;
+  try {
+    doc.addImage(LOGO_PDF_DATA_URL, "PNG", margem, y - 12, logoLargura, logoAltura);
+  } catch {
+    /* sem logo, segue sem imagem */
+  }
+  const textoX = margem + logoLargura + 10;
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text(TITULO, margem, y);
+  doc.text(TITULO, textoX, y);
   y += 20;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(SUBTITULO, margem, y);
+  doc.text(SUBTITULO, textoX, y);
   y += 16;
+
 
   const legendaBruta =
     opcoes?.legenda ||
