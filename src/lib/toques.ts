@@ -341,7 +341,11 @@ const EXTRAS = [
   { id: "turkey", nome: "Turkey in the Straw", onda: "square", batida: 0.2,
     pares: [[DO2, 1], [LA, 1], [FA, 1], [FA, 1], [SOL, 1], [LA, 1], [SI, 1], [DO2, 2],
             [LA, 1], [FA, 1], [SOL, 1], [LA, 1], [FA, 1], [FA, 1], [DO, 2]] },
+  { id: "rockclassico", nome: "Rock clássico", onda: "sawtooth", batida: 0.19,
+    pares: [[mi0, 1], [mi0, 1], [sol0, 1], [la0, 1], [la0, 1], [sol0, 1], [mi0, 1], [re0, 1],
+            [mi0, 1], [mi0, 1], [sol0, 1], [la0, 1], [si_ / 2, 1], [la0, 1], [sol0, 1], [mi0, 2]] },
   { id: "greensleeves", nome: "Greensleeves", onda: "triangle", batida: 0.3,
+
     pares: [[la_, 1], [DO, 2], [RE, 1], [MI, 1.5], [FA, 0.5], [MI, 2],
             [RE, 1], [si_, 2], [sol_, 1], [la_, 1.5], [si_, 0.5], [DO, 2],
             [la_, 1], [la_, 1.5], [sol_, 0.5], [la_, 1], [si_, 1], [DO, 2]] },
