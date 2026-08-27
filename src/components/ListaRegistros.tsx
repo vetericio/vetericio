@@ -1,5 +1,5 @@
-import { formatarRegistro, nomeAnimal, type Medicacao, type Registro } from "@/lib/ficha";
-import { Medicacoes } from "@/components/Medicacoes";
+import { formatarRegistro, nomeAnimal, type Registro } from "@/lib/ficha";
+
 
 
 type Props = {
@@ -9,8 +9,8 @@ type Props = {
   onExcluir: (id: string) => void;
   onCopiar: (r: Registro) => void;
   onObito: (r: Registro) => void;
-  onMedicacoes: (id: string, medicacoes: Medicacao[]) => void;
 };
+
 
 export function ListaRegistros({
   registros,
@@ -19,8 +19,8 @@ export function ListaRegistros({
   onExcluir,
   onCopiar,
   onObito,
-  onMedicacoes,
 }: Props) {
+
   if (registros.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -88,9 +88,8 @@ export function ListaRegistros({
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted-foreground">
             {formatarRegistro(r).split("\n").slice(1).join("\n")}
           </pre>
-
-          <Medicacoes lista={r.medicacoes ?? []} onChange={(m) => onMedicacoes(r.id, m)} somenteLeitura />
         </article>
+
       ))}
     </div>
   );

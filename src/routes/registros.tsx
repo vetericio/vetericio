@@ -14,9 +14,9 @@ import {
   formatarRegistro,
   formatarTodos,
   type ChaveAtualizavel,
-  type Medicacao,
   type Registro,
 } from "@/lib/ficha";
+
 
 import { exportarPdf } from "@/lib/pdf";
 import {
@@ -160,9 +160,6 @@ function Registros() {
     finalizar();
   };
 
-  const onMedicacoes = (id: string, medicacoes: Medicacao[]) => {
-    setRegistros((rs) => rs.map((r) => (r.id === id ? { ...r, medicacoes } : r)));
-  };
 
 
   const apagarTudo = () => {
@@ -291,8 +288,8 @@ function Registros() {
                   onObito={abrirObito}
                   onAtualizar={onAtualizar}
                   onExcluir={onExcluir}
-                  onMedicacoes={onMedicacoes}
                 />
+
               )}
             </div>
             <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
