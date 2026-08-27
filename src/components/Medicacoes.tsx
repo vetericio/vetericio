@@ -16,7 +16,8 @@ type Unidade = (typeof UNIDADES)[number];
 
 const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias"] as const;
 const DURACAO_OUTROS = "outros";
-type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS;
+type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS | "";
+
 
 function lerComoDataUrl(arquivo: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -45,14 +46,16 @@ function parseDose(dose: string): { quantidade: string; unidade: Unidade } {
 /** Define o modo do radio a partir da duração salva. */
 function parseDuracao(duracao: string): { modo: DuracaoPadrao; outros: string } {
   const valor = duracao.trim();
+  if (!valor) return { modo: "", outros: "" };
   if ((DURACOES_PADRAO as readonly string[]).includes(valor)) {
     return { modo: valor as DuracaoPadrao, outros: "" };
   }
   if (valor) {
     return { modo: DURACAO_OUTROS, outros: valor };
   }
-  return { modo: "8h", outros: "" };
+  return { modo: "", outros: "" };
 }
+
 
 function montarDose(quantidade: string, unidade: Unidade): string {
   const q = quantidade.trim();
@@ -73,7 +76,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const [nome, setNome] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
-  const [duracao, setDuracao] = useState<DuracaoPadrao>("8h");
+  const [duracao, setDuracao] = useState<DuracaoPadrao>("");
   const [duracaoOutros, setDuracaoOutros] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
@@ -86,10 +89,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     setNome("");
     setQuantidade("");
     setUnidade("mL");
-    setDuracao("8h");
+    setDuracao("");
     setDuracaoOutros("");
     setEditando(null);
   };
+
 
   const enviar = () => {
     const nomeLimpo = nome.trim();
@@ -98,11 +102,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
       return;
     }
     const dose = montarDose(quantidade, unidade);
-    const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
       return;
     }
+    const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
     const item: Medicacao = { nome: nomeLimpo, dose, duracao: duracaoSalva };
 
     if (editando === null) {
@@ -115,6 +119,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     resetForm();
     setAberto(true);
   };
+
 
   const editar = (indice: number) => {
     const item = lista[indice];
