@@ -388,8 +388,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 })}
                 {duracao === DURACAO_OUTROS && (
                   <input
+                    ref={outrosRef}
                     value={duracaoOutros}
                     onChange={(e) => setDuracaoOutros(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        enviar();
+                      }
+                    }}
+                    enterKeyHint="send"
                     placeholder="Especifique"
                     className={`${campo} min-w-[7rem] flex-1 text-xs`}
                   />
