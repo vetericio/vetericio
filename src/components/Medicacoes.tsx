@@ -14,9 +14,19 @@ type Props = {
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
 type Unidade = (typeof UNIDADES)[number];
 
-const DURACOES_PADRAO = ["8h", "12h", "24h", "48h", "7 dias"] as const;
+const DURACOES_PADRAO = ["8h", "12h", "24h"] as const;
 const DURACAO_OUTROS = "outros";
 type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS | "";
+
+/** Máscara de centavos para mL: digita de trás para frente (5 -> 0,05 / 50 -> 0,50). */
+function mascaraMl(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").replace(/^0+(?=\d{3,})/, "");
+  if (!digitos) return "";
+  const cheio = digitos.padStart(3, "0");
+  const inteiro = cheio.slice(0, -2).replace(/^0+(?=\d)/, "");
+  return `${inteiro},${cheio.slice(-2)}`;
+}
+
 
 
 function lerComoDataUrl(arquivo: File): Promise<string> {
