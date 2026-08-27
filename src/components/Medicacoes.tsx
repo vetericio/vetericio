@@ -423,6 +423,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
               )}
             </div>
           </div>
+          )}
 
           {textoBruto && (
             <details className="rounded-lg bg-secondary p-2">
