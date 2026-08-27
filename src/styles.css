@@ -451,6 +451,178 @@
   --chart-2: oklch(0.72 0.14 85);
 }
 
+/* Tema de Natal. */
+.tema-natal {
+  --background: oklch(0.97 0.02 145);
+  --foreground: oklch(0.25 0.05 150);
+  --card: oklch(1 0.008 145);
+  --card-foreground: oklch(0.25 0.05 150);
+  --popover: oklch(1 0.008 145);
+  --popover-foreground: oklch(0.25 0.05 150);
+  --primary: oklch(0.45 0.14 150);
+  --primary-foreground: oklch(0.99 0.01 145);
+  --secondary: oklch(0.92 0.04 30);
+  --secondary-foreground: oklch(0.34 0.12 28);
+  --muted: oklch(0.94 0.02 145);
+  --muted-foreground: oklch(0.5 0.04 150);
+  --accent: oklch(0.62 0.2 27);
+  --accent-foreground: oklch(0.99 0.01 30);
+  --border: oklch(0.88 0.03 145);
+  --input: oklch(0.87 0.035 145);
+  --ring: oklch(0.55 0.17 27);
+  --chart-1: oklch(0.45 0.14 150);
+  --chart-2: oklch(0.6 0.2 27);
+}
+
+.tema-natal body {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Ctext x='18' y='44' font-size='26' opacity='0.16'%3E%F0%9F%8E%84%3C/text%3E%3Ctext x='94' y='92' font-size='22' opacity='0.14'%3E%E2%9D%84%3C/text%3E%3Ctext x='30' y='128' font-size='22' opacity='0.13'%3E%F0%9F%8E%81%3C/text%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-repeat: repeat;
+}
+
+/* Tema Jack Skellington (uso pessoal, não comercial). */
+.tema-jack {
+  --background: oklch(0.16 0.02 300);
+  --foreground: oklch(0.95 0.01 90);
+  --card: oklch(0.21 0.03 300);
+  --card-foreground: oklch(0.95 0.01 90);
+  --popover: oklch(0.21 0.03 300);
+  --popover-foreground: oklch(0.95 0.01 90);
+  --primary: oklch(0.62 0.19 305);
+  --primary-foreground: oklch(0.14 0.02 300);
+  --secondary: oklch(0.27 0.03 300);
+  --secondary-foreground: oklch(0.93 0.01 90);
+  --muted: oklch(0.26 0.025 300);
+  --muted-foreground: oklch(0.72 0.02 300);
+  --accent: oklch(0.75 0.16 90);
+  --accent-foreground: oklch(0.16 0.02 300);
+  --border: oklch(0.33 0.03 300);
+  --input: oklch(0.33 0.03 300);
+  --ring: oklch(0.62 0.19 305);
+  --chart-1: oklch(0.75 0.16 90);
+  --chart-2: oklch(0.62 0.19 305);
+}
+
+.tema-jack body {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Ctext x='16' y='42' font-size='26' opacity='0.22'%3E%F0%9F%A6%87%3C/text%3E%3Ctext x='104' y='96' font-size='22' opacity='0.2'%3E%F0%9F%8C%99%3C/text%3E%3Ctext x='34' y='140' font-size='24' opacity='0.18'%3E%F0%9F%90%B6%3C/text%3E%3Ctext x='118' y='40' font-size='18' opacity='0.16'%3E%E2%9C%A6%3C/text%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-repeat: repeat;
+}
+
+/* Tema cansado: contraste baixo, sem brilho. */
+.tema-cansado {
+  --background: oklch(0.28 0.012 260);
+  --foreground: oklch(0.82 0.01 260);
+  --card: oklch(0.32 0.012 260);
+  --card-foreground: oklch(0.82 0.01 260);
+  --popover: oklch(0.32 0.012 260);
+  --popover-foreground: oklch(0.82 0.01 260);
+  --primary: oklch(0.55 0.05 250);
+  --primary-foreground: oklch(0.95 0.01 260);
+  --secondary: oklch(0.36 0.012 260);
+  --secondary-foreground: oklch(0.8 0.01 260);
+  --muted: oklch(0.35 0.01 260);
+  --muted-foreground: oklch(0.66 0.01 260);
+  --accent: oklch(0.44 0.03 250);
+  --accent-foreground: oklch(0.88 0.01 260);
+  --border: oklch(0.4 0.012 260);
+  --input: oklch(0.4 0.012 260);
+  --ring: oklch(0.55 0.05 250);
+  --chart-1: oklch(0.6 0.06 250);
+  --chart-2: oklch(0.62 0.05 200);
+}
+
+/* Tema feliz: cores vivas. */
+.tema-feliz {
+  --background: oklch(0.98 0.04 95);
+  --foreground: oklch(0.28 0.08 300);
+  --card: oklch(1 0.02 95);
+  --card-foreground: oklch(0.28 0.08 300);
+  --popover: oklch(1 0.02 95);
+  --popover-foreground: oklch(0.28 0.08 300);
+  --primary: oklch(0.66 0.21 340);
+  --primary-foreground: oklch(0.99 0.01 340);
+  --secondary: oklch(0.92 0.11 190);
+  --secondary-foreground: oklch(0.3 0.08 240);
+  --muted: oklch(0.95 0.05 95);
+  --muted-foreground: oklch(0.52 0.07 300);
+  --accent: oklch(0.86 0.16 95);
+  --accent-foreground: oklch(0.3 0.09 60);
+  --border: oklch(0.89 0.07 95);
+  --input: oklch(0.88 0.08 190);
+  --ring: oklch(0.66 0.21 340);
+  --chart-1: oklch(0.66 0.21 340);
+  --chart-2: oklch(0.7 0.16 190);
+  --radius: 1.1rem;
+}
+
+.tema-feliz body {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Ctext x='18' y='40' font-size='22' opacity='0.15'%3E%E2%98%80%3C/text%3E%3Ctext x='88' y='96' font-size='20' opacity='0.14'%3E%F0%9F%8C%88%3C/text%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-repeat: repeat;
+}
+
+/* Tema rock. */
+.tema-rock {
+  --background: oklch(0.18 0.005 260);
+  --foreground: oklch(0.95 0.005 260);
+  --card: oklch(0.23 0.008 260);
+  --card-foreground: oklch(0.95 0.005 260);
+  --popover: oklch(0.23 0.008 260);
+  --popover-foreground: oklch(0.95 0.005 260);
+  --primary: oklch(0.55 0.22 25);
+  --primary-foreground: oklch(0.98 0.01 25);
+  --secondary: oklch(0.3 0.008 260);
+  --secondary-foreground: oklch(0.93 0.005 260);
+  --muted: oklch(0.28 0.006 260);
+  --muted-foreground: oklch(0.74 0.008 260);
+  --accent: oklch(0.68 0.01 260);
+  --accent-foreground: oklch(0.18 0.005 260);
+  --border: oklch(0.36 0.008 260);
+  --input: oklch(0.36 0.008 260);
+  --ring: oklch(0.55 0.22 25);
+  --chart-1: oklch(0.6 0.22 25);
+  --chart-2: oklch(0.8 0.01 260);
+  --radius: 0.4rem;
+}
+
+.tema-rock body {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Ctext x='18' y='44' font-size='26' opacity='0.2'%3E%F0%9F%8E%B8%3C/text%3E%3Ctext x='100' y='98' font-size='22' opacity='0.18'%3E%E2%9A%A1%3C/text%3E%3Ctext x='34' y='138' font-size='22' opacity='0.16'%3E%F0%9F%A4%98%3C/text%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-repeat: repeat;
+}
+
+/* Tema Veterício: cores e padrão da logo (laranja + azul-petróleo). */
+.tema-veterico {
+  --background: oklch(0.98 0.008 200);
+  --foreground: oklch(0.3 0.05 220);
+  --card: oklch(1 0.004 200);
+  --card-foreground: oklch(0.3 0.05 220);
+  --popover: oklch(1 0.004 200);
+  --popover-foreground: oklch(0.3 0.05 220);
+  --primary: oklch(0.58 0.09 205);
+  --primary-foreground: oklch(0.99 0.01 200);
+  --secondary: oklch(0.94 0.025 200);
+  --secondary-foreground: oklch(0.34 0.05 215);
+  --muted: oklch(0.95 0.015 200);
+  --muted-foreground: oklch(0.53 0.03 215);
+  --accent: oklch(0.7 0.16 45);
+  --accent-foreground: oklch(0.99 0.01 45);
+  --border: oklch(0.9 0.02 205);
+  --input: oklch(0.88 0.025 205);
+  --ring: oklch(0.65 0.17 45);
+  --chart-1: oklch(0.65 0.17 45);
+  --chart-2: oklch(0.58 0.09 205);
+  --radius: 1rem;
+}
+
+.tema-veterico body {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cg fill='none' stroke='%2372b4b8' stroke-width='2' opacity='0.35'%3E%3Ccircle cx='34' cy='34' r='13'/%3E%3Ccircle cx='108' cy='96' r='16'/%3E%3Cpath d='M18 108h26M28 96v26'/%3E%3C/g%3E%3Cg fill='%23e07a4a' opacity='0.18'%3E%3Ccircle cx='120' cy='30' r='5'/%3E%3Ccircle cx='132' cy='42' r='4'/%3E%3Ccircle cx='108' cy='40' r='4'/%3E%3Cellipse cx='120' cy='54' rx='9' ry='7'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-repeat: repeat;
+}
+
+
 
 @layer base {
   * {
