@@ -421,7 +421,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                     }}
                     enterKeyHint="send"
                     placeholder="Especifique"
-                    className={`${campo} min-w-[7rem] flex-1 text-xs`}
+                    className={`${campo} w-full text-xs`}
                   />
                 )}
               </div>
