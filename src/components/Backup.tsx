@@ -146,15 +146,19 @@ export function Backup() {
       const link = `${window.location.origin}/?transfer=${novo}`;
       setCodigo(novo);
       setQr(await gerarImagemQr(link));
-    } catch {
+    } catch (e) {
+      const motivo = e instanceof Error && e.message ? e.message : "";
       setAviso({
         tipo: "erro",
-        texto: "Não foi possível enviar. Verifique a internet ou use o arquivo de backup.",
+        texto: motivo
+          ? `Não foi possível enviar. ${motivo}`
+          : "Não foi possível enviar. Verifique a internet ou use o arquivo de backup.",
       });
     } finally {
       setOcupado(false);
     }
   };
+
 
   const apagarNuvem = async () => {
     if (!codigo) return;

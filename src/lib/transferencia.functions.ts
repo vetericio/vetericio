@@ -22,9 +22,10 @@ export const enviarTransferencia = createServerFn({ method: "POST" })
         .from("transferencias")
         .insert({ codigo, dados: data.dados as never });
       if (!error) return { codigo };
-      if (error.code !== "23505") throw new Error("Não foi possível enviar o backup.");
+      if (error.code !== "23505") throw new Error(`Falha do servidor: ${error.message}`);
     }
     throw new Error("Não foi possível gerar um código. Tente novamente.");
+
   });
 
 /** Busca o backup pelo código. Devolve null quando não existe ou expirou. */
