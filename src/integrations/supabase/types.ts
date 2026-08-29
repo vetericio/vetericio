@@ -16,18 +16,21 @@ export type Database = {
     Tables: {
       transferencias: {
         Row: {
+          codigo: string
           criado_em: string
           dados: Json
           expira_em: string
           id: string
         }
         Insert: {
+          codigo: string
           criado_em?: string
           dados: Json
           expira_em?: string
           id?: string
         }
         Update: {
+          codigo?: string
           criado_em?: string
           dados?: Json
           expira_em?: string
