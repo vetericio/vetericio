@@ -30,16 +30,16 @@ export const enviarTransferencia = createServerFn({ method: "POST" })
 /** Busca o backup pelo código. Devolve null quando não existe ou expirou. */
 export const buscarTransferencia = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => codigoSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{ json: string | null }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: linha } = await supabaseAdmin
       .from("transferencias")
       .select("dados, expira_em")
       .eq("codigo", data.codigo)
       .maybeSingle();
-    if (!linha) return { dados: null };
-    if (new Date(linha.expira_em).getTime() < Date.now()) return { dados: null };
-    return { dados: linha.dados as unknown };
+    if (!linha) return { json: null };
+    if (new Date(linha.expira_em).getTime() < Date.now()) return { json: null };
+    return { json: JSON.stringify(linha.dados) };
   });
 
 /** Apaga o backup enviado. */
