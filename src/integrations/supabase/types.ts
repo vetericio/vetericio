@@ -14,7 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      transferencias: {
+        Row: {
+          criado_em: string
+          dados: Json
+          expira_em: string
+          id: string
+        }
+        Insert: {
+          criado_em?: string
+          dados: Json
+          expira_em?: string
+          id?: string
+        }
+        Update: {
+          criado_em?: string
+          dados?: Json
+          expira_em?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
