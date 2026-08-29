@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Backup } from "@/components/Backup";
 import {
   CORES_RAPIDAS,
   TEMAS,
@@ -96,6 +97,8 @@ export function Rodape() {
           )}
         </div>
       )}
+
+      <Backup />
 
       <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
         Todos os direitos reservados a Veterício Serviços Veterinários LTDA. 31995512795.
