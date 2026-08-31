@@ -38,6 +38,20 @@ export const Route = createFileRoute("/medicacoes")({
 const campo =
   "w-full rounded-xl border border-input bg-background px-3 py-3 text-base text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-ring";
 
+/** Digitação estilo centavos: guarda só dígitos (3 casas decimais). 3600 → "3600" (3,600 kg). */
+function lerDigitosPeso(texto: string): string {
+  return texto.replace(/\D/g, "").slice(0, 6);
+}
+
+function formatarPeso(digitos: string): string {
+  if (!digitos) return "";
+  const n = Number(digitos) / 1000;
+  return n.toLocaleString("pt-BR", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+}
+
 function PaginaMedicacoes() {
   const { medicamentos, salvar, remover, carregado } = useMedicamentos();
   const [busca, setBusca] = useState("");
@@ -68,25 +82,31 @@ function PaginaMedicacoes() {
     <div className="relative mx-auto w-full max-w-2xl px-4 pb-24">
       {/* Peso e espécie: pertencem ao animal, não ao cadastro do medicamento. */}
       <section className="sticky top-0 z-30 -mx-4 border-b border-border bg-background/95 px-4 pb-3 pt-4 backdrop-blur">
-        <label
-          className="block text-xs font-bold uppercase tracking-wide text-muted-foreground"
-          htmlFor="peso-topo"
-        >
-          Peso do animal
-        </label>
-        <div className="mt-1 flex items-center gap-2">
-          <input
-            id="peso-topo"
-            value={peso}
-            onChange={(e) => setPeso(e.target.value)}
-            inputMode="decimal"
-            placeholder="0"
-            className={`${campo} text-2xl font-bold`}
-          />
-          <span className="text-lg font-semibold text-muted-foreground">kg</span>
-        </div>
-        <div className="mt-2">
-          <SeletorEspecie valor={especie} onChange={setEspecie} />
+        <div className="flex items-end gap-2">
+          <div className="w-32 shrink-0">
+            <label
+              className="block text-xs font-bold uppercase tracking-wide text-muted-foreground"
+              htmlFor="peso-topo"
+            >
+              Peso
+            </label>
+            <div className="relative mt-1">
+              <input
+                id="peso-topo"
+                value={formatarPeso(peso)}
+                onChange={(e) => setPeso(lerDigitosPeso(e.target.value))}
+                inputMode="numeric"
+                placeholder="0,000"
+                className={`${campo} pr-9 text-xl font-bold`}
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                kg
+              </span>
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <SeletorEspecie valor={especie} onChange={setEspecie} compacto />
+          </div>
         </div>
         <input
           value={busca}
