@@ -10,6 +10,7 @@ import { SeletorEspecie } from "@/components/medicamentos/SeletorEspecie";
 import {
   calcularDose,
   doseDaEspecie,
+  viasDe,
   type Especie,
   type Medicamento,
 } from "@/lib/medicamentos";
@@ -63,6 +64,7 @@ export function CalculadoraDose({ medicamento, onFechar }: Props) {
           <div className="rounded-xl bg-secondary/60 px-3 py-2 text-sm text-foreground">
             <p>Dose cadastrada: {dose.dose ? `${dose.dose} mg/kg` : "—"}</p>
             <p>Intervalo: {dose.intervalo ? `a cada ${dose.intervalo} horas` : "—"}</p>
+            <p>Via: {viasDe(medicamento).join(" · ") || "—"}</p>
             <p>
               Concentração:{" "}
               {medicamento.concentracaoValor
