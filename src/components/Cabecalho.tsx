@@ -12,12 +12,12 @@ const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:
 
 const LINKS = [
   { to: "/", rotulo: "Início", exato: true },
-  { to: "/registros", rotulo: "Animais internados" },
-  { to: "/medicacoes", rotulo: "Medicações" },
-  { to: "/evolucao", rotulo: "Evolução" },
-  { to: "/curva", rotulo: "Curva" },
-  { to: "/alarmes", rotulo: "Alarmes" },
-  { to: "/plantoes", rotulo: "Plantões" },
+  { to: "/registros", rotulo: "Animais internados", exato: false },
+  { to: "/medicacoes", rotulo: "Medicações", exato: false },
+  { to: "/evolucao", rotulo: "Evolução", exato: false },
+  { to: "/curva", rotulo: "Curva", exato: false },
+  { to: "/alarmes", rotulo: "Alarmes", exato: false },
+  { to: "/plantoes", rotulo: "Plantões", exato: false },
 ] as const;
 
 export function Cabecalho() {
