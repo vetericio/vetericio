@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as EvolucaoRouteImport } from './routes/evolucao'
+import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as RegistrosRouteImport } from './routes/registros'
 
@@ -36,6 +37,11 @@ const EvolucaoRoute = EvolucaoRouteImport.update({
   path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MedicacoesRoute = MedicacoesRouteImport.update({
+  id: '/medicacoes',
+  path: '/medicacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlantoesRoute = PlantoesRouteImport.update({
   id: '/plantoes',
   path: '/plantoes',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/alarmes': typeof AlarmesRoute
   '/curva': typeof CurvaRoute
   '/evolucao': typeof EvolucaoRoute
+  '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/alarmes': typeof AlarmesRoute
   '/curva': typeof CurvaRoute
   '/evolucao': typeof EvolucaoRoute
+  '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
@@ -69,21 +77,36 @@ export interface FileRoutesById {
   '/alarmes': typeof AlarmesRoute
   '/curva': typeof CurvaRoute
   '/evolucao': typeof EvolucaoRoute
+  '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/alarmes' | '/curva' | '/evolucao' | '/plantoes' | '/registros'
+    | '/'
+    | '/alarmes'
+    | '/curva'
+    | '/evolucao'
+    | '/medicacoes'
+    | '/plantoes'
+    | '/registros'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/alarmes' | '/curva' | '/evolucao' | '/plantoes' | '/registros'
+  to:
+    | '/'
+    | '/alarmes'
+    | '/curva'
+    | '/evolucao'
+    | '/medicacoes'
+    | '/plantoes'
+    | '/registros'
   id:
     | '__root__'
     | '/'
     | '/alarmes'
     | '/curva'
     | '/evolucao'
+    | '/medicacoes'
     | '/plantoes'
     | '/registros'
   fileRoutesById: FileRoutesById
@@ -93,6 +116,7 @@ export interface RootRouteChildren {
   AlarmesRoute: typeof AlarmesRoute
   CurvaRoute: typeof CurvaRoute
   EvolucaoRoute: typeof EvolucaoRoute
+  MedicacoesRoute: typeof MedicacoesRoute
   PlantoesRoute: typeof PlantoesRoute
   RegistrosRoute: typeof RegistrosRoute
 }
@@ -127,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EvolucaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/medicacoes': {
+      id: '/medicacoes'
+      path: '/medicacoes'
+      fullPath: '/medicacoes'
+      preLoaderRoute: typeof MedicacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plantoes': {
       id: '/plantoes'
       path: '/plantoes'
@@ -149,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlarmesRoute: AlarmesRoute,
   CurvaRoute: CurvaRoute,
   EvolucaoRoute: EvolucaoRoute,
+  MedicacoesRoute: MedicacoesRoute,
   PlantoesRoute: PlantoesRoute,
   RegistrosRoute: RegistrosRoute,
 }

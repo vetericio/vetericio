@@ -104,6 +104,15 @@ export function Cabecalho() {
               Animais internados
             </Link>
             <Link
+              to="/medicacoes"
+              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              inactiveProps={{
+                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+              }}
+            >
+              Medicações
+            </Link>
+            <Link
               to="/evolucao"
               activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
               inactiveProps={{
