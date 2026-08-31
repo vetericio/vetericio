@@ -60,6 +60,7 @@ export function medicamentoVazio(): Medicamento {
     concentracaoUnidade: "mg/mL",
     resumo: "",
     classificacao: "",
+    vias: [],
     cao: { dose: "", intervalo: "" },
     gato: { dose: "", intervalo: "" },
   };
@@ -205,6 +206,7 @@ const TESTE: Medicamento[] = [
     concentracaoUnidade: "mg/mL",
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
+    vias: ["IV"],
     cao: { dose: "5", intervalo: "12" },
     gato: { dose: "2", intervalo: "24" },
     teste: true,
@@ -216,6 +218,7 @@ const TESTE: Medicamento[] = [
     concentracaoUnidade: "mg/comprimido",
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
+    vias: ["IV"],
     cao: { dose: "10", intervalo: "8" },
     gato: { dose: "5", intervalo: "12" },
     teste: true,
@@ -227,6 +230,7 @@ const TESTE: Medicamento[] = [
     concentracaoUnidade: "mg/10 mL",
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
+    vias: ["IV"],
     cao: { dose: "1", intervalo: "24" },
     gato: { dose: "1", intervalo: "24" },
     teste: true,
@@ -234,7 +238,7 @@ const TESTE: Medicamento[] = [
 ];
 
 export function medicamentosDeTeste(): Medicamento[] {
-  return TESTE.map((m) => ({ ...m, cao: { ...m.cao }, gato: { ...m.gato } }));
+  return TESTE.map((m) => ({ ...m, vias: [...m.vias], cao: { ...m.cao }, gato: { ...m.gato } }));
 }
 
 export function carregarMedicamentos(): Medicamento[] {
