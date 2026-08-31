@@ -10,6 +10,16 @@ import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
+const LINKS = [
+  { to: "/", rotulo: "Início", exato: true },
+  { to: "/registros", rotulo: "Animais internados" },
+  { to: "/medicacoes", rotulo: "Medicações" },
+  { to: "/evolucao", rotulo: "Evolução" },
+  { to: "/curva", rotulo: "Curva" },
+  { to: "/alarmes", rotulo: "Alarmes" },
+  { to: "/plantoes", rotulo: "Plantões" },
+] as const;
+
 export function Cabecalho() {
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
