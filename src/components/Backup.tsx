@@ -38,6 +38,7 @@ function linhaResumo(r: ResumoBackup): string {
     `${r.plantoes} plantão(ões)`,
     `${r.curvas} curva(s)`,
     `${r.alarmes} alarme(s)`,
+    `${r.medicamentos} medicamento(s)`,
   ].join(" · ");
 }
 
