@@ -8,7 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   UNIDADES_CONCENTRACAO,
+  VIAS,
   medicamentoVazio,
+  viasDe,
   type Medicamento,
 } from "@/lib/medicamentos";
 
@@ -68,20 +70,51 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) 
           </div>
 
           <div>
+            <span className={rotulo}>Via</span>
+            <div className="grid grid-cols-3 gap-2">
+              {VIAS.map((v) => {
+                const ativo = item.vias.includes(v);
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={ativo}
+                    onClick={() =>
+                      setItem({
+                        ...item,
+                        vias: ativo
+                          ? item.vias.filter((x) => x !== v)
+                          : VIAS.filter((x) => x === v || item.vias.includes(x)),
+                      })
+                    }
+                    className={`rounded-xl border px-2 py-2 text-sm font-semibold transition-colors ${
+                      ativo
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
             <span className={rotulo}>Concentração</span>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
               <input
                 value={item.concentracaoValor}
                 onChange={(e) => setItem({ ...item, concentracaoValor: e.target.value })}
                 inputMode="decimal"
-                className={`${campo} min-w-0 flex-1`}
+                className={`${campo} min-w-0`}
                 placeholder="50"
               />
               <input
                 list="unidades-concentracao"
                 value={item.concentracaoUnidade}
                 onChange={(e) => setItem({ ...item, concentracaoUnidade: e.target.value })}
-                className={`${campo} w-32 shrink-0`}
+                className={`${campo} min-w-0`}
                 placeholder="mg/mL"
               />
               <datalist id="unidades-concentracao">
