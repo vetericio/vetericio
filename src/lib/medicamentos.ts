@@ -8,6 +8,16 @@ export const CHAVE_MEDICAMENTOS = "veterico-medicamentos-v1";
 
 export type Especie = "cao" | "gato";
 
+/** Vias de administração, sempre nesta ordem. */
+export const VIAS = ["IV", "IM", "SC", "VO", "OF", "OT"] as const;
+export type Via = (typeof VIAS)[number];
+
+/** Lê as vias de um medicamento salvo antes deste campo existir. */
+export function viasDe(m: Medicamento): Via[] {
+  const brutas = Array.isArray(m.vias) ? m.vias : [];
+  return VIAS.filter((v) => brutas.includes(v));
+}
+
 export type DoseEspecie = {
   /** mg/kg — texto livre para aceitar vírgula. */
   dose: string;
@@ -22,6 +32,7 @@ export type Medicamento = {
   concentracaoUnidade: string;
   resumo: string;
   classificacao: string;
+  vias: Via[];
   cao: DoseEspecie;
   gato: DoseEspecie;
   teste?: boolean;
@@ -49,6 +60,7 @@ export function medicamentoVazio(): Medicamento {
     concentracaoUnidade: "mg/mL",
     resumo: "",
     classificacao: "",
+    vias: [],
     cao: { dose: "", intervalo: "" },
     gato: { dose: "", intervalo: "" },
   };
@@ -194,6 +206,7 @@ const TESTE: Medicamento[] = [
     concentracaoUnidade: "mg/mL",
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
+    vias: ["IV"],
     cao: { dose: "5", intervalo: "12" },
     gato: { dose: "2", intervalo: "24" },
     teste: true,
@@ -205,6 +218,7 @@ const TESTE: Medicamento[] = [
     concentracaoUnidade: "mg/comprimido",
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
+    vias: ["VO"],
     cao: { dose: "10", intervalo: "8" },
     gato: { dose: "5", intervalo: "12" },
     teste: true,
@@ -216,6 +230,7 @@ const TESTE: Medicamento[] = [
     concentracaoUnidade: "mg/10 mL",
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
+    vias: ["SC", "IM"],
     cao: { dose: "1", intervalo: "24" },
     gato: { dose: "1", intervalo: "24" },
     teste: true,
@@ -223,7 +238,7 @@ const TESTE: Medicamento[] = [
 ];
 
 export function medicamentosDeTeste(): Medicamento[] {
-  return TESTE.map((m) => ({ ...m, cao: { ...m.cao }, gato: { ...m.gato } }));
+  return TESTE.map((m) => ({ ...m, vias: [...m.vias], cao: { ...m.cao }, gato: { ...m.gato } }));
 }
 
 export function carregarMedicamentos(): Medicamento[] {

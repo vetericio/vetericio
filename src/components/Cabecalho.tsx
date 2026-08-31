@@ -10,6 +10,16 @@ import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
+const LINKS = [
+  { to: "/", rotulo: "Início", exato: true },
+  { to: "/registros", rotulo: "Animais internados", exato: false },
+  { to: "/medicacoes", rotulo: "Medicações", exato: false },
+  { to: "/evolucao", rotulo: "Evolução", exato: false },
+  { to: "/curva", rotulo: "Curva", exato: false },
+  { to: "/alarmes", rotulo: "Alarmes", exato: false },
+  { to: "/plantoes", rotulo: "Plantões", exato: false },
+] as const;
+
 export function Cabecalho() {
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
@@ -82,76 +92,21 @@ export function Cabecalho() {
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
 
-        <nav className="mt-3 space-y-2">
-          <div className="flex flex-wrap justify-center gap-2">
+        <nav className="mx-auto mt-3 grid max-w-md grid-cols-2 gap-2">
+          {LINKS.map((item) => (
             <Link
-              to="/"
-              activeOptions={{ exact: true }}
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+              key={item.to}
+              to={item.to}
+              {...(item.exato ? { activeOptions: { exact: true } } : {})}
+              activeProps={{ className: `${base} block bg-primary text-primary-foreground` }}
               inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+                className: `${base} block bg-secondary text-secondary-foreground hover:bg-secondary/70`,
               }}
+              className="last:odd:col-span-2"
             >
-              Início
+              {item.rotulo}
             </Link>
-            <Link
-              to="/registros"
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-            >
-              Animais internados
-            </Link>
-            <Link
-              to="/medicacoes"
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-            >
-              Medicações
-            </Link>
-            <Link
-              to="/evolucao"
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-            >
-              Evolução
-            </Link>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-2">
-            <Link
-              to="/curva"
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-            >
-              Curva
-            </Link>
-            <Link
-              to="/alarmes"
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-            >
-              Alarmes
-            </Link>
-            <Link
-              to="/plantoes"
-              activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-            >
-              Plantões
-            </Link>
-          </div>
+          ))}
         </nav>
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
