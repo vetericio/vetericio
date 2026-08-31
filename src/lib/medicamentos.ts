@@ -225,6 +225,79 @@ export function doseDaEspecie(m: Medicamento, especie: Especie): DoseEspecie {
   return especie === "cao" ? m.cao : m.gato;
 }
 
+/* ---------- cálculo com faixa (mínima/máxima) ---------- */
+
+export type ResultadoFaixa =
+  | {
+      ok: true;
+      /** ex.: "72 – 90 mg" */
+      doseTexto: string;
+      /** ex.: "20 – 25 mg/kg" */
+      referencia: string;
+      /** ex.: "0,14 – 0,18" (null quando não dá para converter) */
+      volumeTexto: string | null;
+      unidade: string | null;
+      motivoVolume?: string;
+    }
+  | { ok: false; motivo: string };
+
+/**
+ * Calcula dose total e volume para a faixa cadastrada.
+ * Em mg/animal a dose não é multiplicada pelo peso.
+ */
+export function calcularFaixaDose(params: {
+  peso: string;
+  dose: DoseEspecie;
+  concentracaoValor: string;
+  concentracaoUnidade: string;
+}): ResultadoFaixa {
+  const f = faixaDe(params.dose);
+  const min = numero(f.min);
+  const max = numero(f.max);
+  if (min === null || min <= 0) return { ok: false, motivo: "Nenhuma dose cadastrada para esta espécie." };
+
+  const peso = numero(params.peso);
+  if (!f.porAnimal && (peso === null || peso <= 0))
+    return { ok: false, motivo: "Informe o peso do animal." };
+
+  const fator = f.porAnimal ? 1 : (peso as number);
+  const totalMin = min * fator;
+  const totalMax = max !== null && max > min ? max * fator : null;
+
+  const doseTexto =
+    totalMax !== null
+      ? `${arredondar(totalMin, 2)} – ${arredondar(totalMax, 2)} mg`
+      : `${arredondar(totalMin, 2)} mg`;
+
+  const forma = interpretarConcentracao(params.concentracaoValor, params.concentracaoUnidade);
+  if (!forma)
+    return {
+      ok: true,
+      doseTexto,
+      referencia: referenciaDose(params.dose),
+      volumeTexto: null,
+      unidade: null,
+      motivoVolume: AVISO_SEM_CALCULO,
+    };
+
+  const volMin = totalMin / forma.mgPorUnidade;
+  const volMax = totalMax !== null ? totalMax / forma.mgPorUnidade : null;
+  const referenciaVolume = volMax ?? volMin;
+  const volumeTexto =
+    volMax !== null
+      ? `${arredondar(volMin, casas(forma.unidade))} – ${arredondar(volMax, casas(forma.unidade))}`
+      : arredondar(volMin, casas(forma.unidade));
+
+  return {
+    ok: true,
+    doseTexto,
+    referencia: referenciaDose(params.dose),
+    volumeTexto,
+    unidade: plural(forma.unidade, referenciaVolume),
+  };
+}
+
+
 /* ---------- persistência ---------- */
 
 const TESTE: Medicamento[] = [
