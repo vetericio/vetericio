@@ -19,11 +19,39 @@ export function viasDe(m: Medicamento): Via[] {
 }
 
 export type DoseEspecie = {
-  /** mg/kg — texto livre para aceitar vírgula. */
-  dose: string;
+  /** Campo antigo (dose única). Mantido para ler cadastros anteriores. */
+  dose?: string;
+  /** dose mínima — texto livre para aceitar vírgula */
+  doseMin?: string;
+  /** dose máxima — opcional */
+  doseMax?: string;
+  /** true = dose fixa por animal (não multiplica pelo peso) */
+  porAnimal?: boolean;
   /** horas */
   intervalo: string;
 };
+
+/** Lê a faixa de dose, tolerando cadastros antigos que só tinham `dose`. */
+export function faixaDe(d: DoseEspecie): {
+  min: string;
+  max: string;
+  porAnimal: boolean;
+  unidade: string;
+} {
+  const min = (d.doseMin ?? d.dose ?? "").trim();
+  const max = (d.doseMax ?? "").trim();
+  const porAnimal = d.porAnimal === true;
+  return { min, max, porAnimal, unidade: porAnimal ? "mg/animal" : "mg/kg" };
+}
+
+/** Texto da dose cadastrada, ex.: "20 – 25 mg/kg". */
+export function referenciaDose(d: DoseEspecie): string {
+  const f = faixaDe(d);
+  if (!f.min && !f.max) return "";
+  const valores = f.max && f.max !== f.min ? `${f.min} – ${f.max}` : f.min;
+  return `${valores} ${f.unidade}`;
+}
+
 
 export type Medicamento = {
   id: string;
