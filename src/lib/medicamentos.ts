@@ -89,8 +89,9 @@ export function medicamentoVazio(): Medicamento {
     resumo: "",
     classificacao: "",
     vias: [],
-    cao: { dose: "", intervalo: "" },
-    gato: { dose: "", intervalo: "" },
+    cao: { doseMin: "", doseMax: "", porAnimal: false, intervalo: "" },
+    gato: { doseMin: "", doseMax: "", porAnimal: false, intervalo: "" },
+
   };
 }
 
