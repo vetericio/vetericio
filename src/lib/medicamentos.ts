@@ -8,6 +8,16 @@ export const CHAVE_MEDICAMENTOS = "veterico-medicamentos-v1";
 
 export type Especie = "cao" | "gato";
 
+/** Vias de administração, sempre nesta ordem. */
+export const VIAS = ["IV", "IM", "SC", "VO", "OF", "OT"] as const;
+export type Via = (typeof VIAS)[number];
+
+/** Lê as vias de um medicamento salvo antes deste campo existir. */
+export function viasDe(m: Medicamento): Via[] {
+  const brutas = Array.isArray(m.vias) ? m.vias : [];
+  return VIAS.filter((v) => brutas.includes(v));
+}
+
 export type DoseEspecie = {
   /** mg/kg — texto livre para aceitar vírgula. */
   dose: string;
@@ -22,6 +32,7 @@ export type Medicamento = {
   concentracaoUnidade: string;
   resumo: string;
   classificacao: string;
+  vias: Via[];
   cao: DoseEspecie;
   gato: DoseEspecie;
   teste?: boolean;
