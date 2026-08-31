@@ -94,7 +94,7 @@ export function Cabecalho() {
 
         <nav className="mx-auto mt-3 flex max-w-2xl flex-col gap-2">
           <div className="flex flex-wrap justify-center gap-2">
-            {LINKS.slice(0, 4).map((item) => (
+            {LINKS.slice(0, 3).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -109,7 +109,7 @@ export function Cabecalho() {
             ))}
           </div>
           <div className="flex flex-wrap justify-center gap-2">
-            {LINKS.slice(4).map((item) => (
+            {LINKS.slice(3).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
