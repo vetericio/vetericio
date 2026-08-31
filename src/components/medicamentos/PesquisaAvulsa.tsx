@@ -88,19 +88,19 @@ export function PesquisaAvulsa({ aberto, onFechar }: Props) {
 
           <div>
             <span className={rotulo}>Concentração</span>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
               <input
                 value={concentracao}
                 onChange={(e) => setConcentracao(e.target.value)}
                 inputMode="decimal"
                 placeholder="50"
-                className={`${campo} min-w-0 flex-1`}
+                className={`${campo} min-w-0`}
               />
               <input
                 list="avulsa-unidades-conc"
                 value={unidadeConcentracao}
                 onChange={(e) => setUnidadeConcentracao(e.target.value)}
-                className={`${campo} w-28 shrink-0`}
+                className={`${campo} min-w-0`}
                 placeholder="mg/mL"
               />
               <datalist id="avulsa-unidades-conc">

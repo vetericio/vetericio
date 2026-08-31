@@ -34,7 +34,16 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) 
   const alvo = `${aberto}-${inicial?.id ?? "novo"}`;
   if (alvo !== chave) {
     setChave(alvo);
-    setItem(inicial ? { ...inicial, cao: { ...inicial.cao }, gato: { ...inicial.gato } } : medicamentoVazio());
+    setItem(
+      inicial
+        ? {
+            ...inicial,
+            vias: viasDe(inicial),
+            cao: { ...inicial.cao },
+            gato: { ...inicial.gato },
+          }
+        : medicamentoVazio(),
+    );
   }
 
   const salvar = () => {
