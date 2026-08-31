@@ -1,18 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useMemo, useState } from "react";
 import { FormMedicamento } from "@/components/medicamentos/FormMedicamento";
-import { CalculadoraDose } from "@/components/medicamentos/CalculadoraDose";
 import { PesquisaAvulsa } from "@/components/medicamentos/PesquisaAvulsa";
 import { SeletorEspecie } from "@/components/medicamentos/SeletorEspecie";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import {
-  calcularDose,
+  calcularFaixaDose,
   doseDaEspecie,
   ordenarMedicamentos,
   viasDe,
@@ -27,13 +20,13 @@ export const Route = createFileRoute("/medicacoes")({
       {
         name: "description",
         content:
-          "Cadastro de medicamentos com dose separada para cão e gato, pesquisa por nome e calculadora de dose e volume por peso.",
+          "Calculadora de doses veterinárias: peso fixo no topo, busca por medicação e volume a aplicar calculado para cão e gato.",
       },
       { property: "og:title", content: "Medicações — Veterício" },
       {
         property: "og:description",
         content:
-          "Cadastre medicamentos, guarde a dose de cão e gato e calcule o volume a aplicar pelo peso do animal.",
+          "Informe o peso uma única vez e veja a dose e o volume a aplicar de todos os medicamentos cadastrados.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -52,7 +45,6 @@ function PaginaMedicacoes() {
   const [especie, setEspecie] = useState<Especie>("cao");
   const [formAberto, setFormAberto] = useState(false);
   const [editando, setEditando] = useState<Medicamento | null>(null);
-  const [calculando, setCalculando] = useState<Medicamento | null>(null);
   const [avulsaAberta, setAvulsaAberta] = useState(false);
 
   const lista = useMemo(() => {
@@ -73,36 +65,35 @@ function PaginaMedicacoes() {
   };
 
   return (
-    <div className="relative mx-auto w-full max-w-2xl px-4 pb-24 pt-4">
-      <h1 className="font-display text-xl font-semibold text-foreground">Medicações</h1>
-
-      <input
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-        placeholder="Pesquisar medicação"
-        className={`${campo} mt-3`}
-      />
-
-      {/* Calculadora do topo: um peso, uma espécie, todas as medicações. */}
-      <section className="mt-3 rounded-2xl border border-border bg-card/60 p-3">
-        <h2 className="text-sm font-semibold text-foreground">Calcular dose</h2>
-        <label className="mt-2 block text-xs font-semibold text-muted-foreground" htmlFor="peso-topo">
-          Peso do animal (kg)
+    <div className="relative mx-auto w-full max-w-2xl px-4 pb-24">
+      {/* Peso e espécie: pertencem ao animal, não ao cadastro do medicamento. */}
+      <section className="sticky top-0 z-30 -mx-4 border-b border-border bg-background/95 px-4 pb-3 pt-4 backdrop-blur">
+        <label
+          className="block text-xs font-bold uppercase tracking-wide text-muted-foreground"
+          htmlFor="peso-topo"
+        >
+          Peso do animal
         </label>
-        <input
-          id="peso-topo"
-          value={peso}
-          onChange={(e) => setPeso(e.target.value)}
-          inputMode="decimal"
-          placeholder="0"
-          className={`${campo} text-lg font-semibold`}
-        />
+        <div className="mt-1 flex items-center gap-2">
+          <input
+            id="peso-topo"
+            value={peso}
+            onChange={(e) => setPeso(e.target.value)}
+            inputMode="decimal"
+            placeholder="0"
+            className={`${campo} text-2xl font-bold`}
+          />
+          <span className="text-lg font-semibold text-muted-foreground">kg</span>
+        </div>
         <div className="mt-2">
           <SeletorEspecie valor={especie} onChange={setEspecie} />
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Com o peso preenchido, cada medicação abaixo mostra o volume a aplicar.
-        </p>
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="🔎 Buscar medicação..."
+          className={`${campo} mt-2`}
+        />
       </section>
 
       <ul className="mt-3 space-y-2">
@@ -112,15 +103,13 @@ function PaginaMedicacoes() {
           </li>
         )}
         {lista.map((m) => (
-          <ItemMedicamento
+          <CardMedicamento
             key={m.id}
             medicamento={m}
             peso={peso}
             especie={especie}
             onEditar={() => abrirEdicao(m)}
-            onCalcular={() => setCalculando(m)}
             onAvulsa={() => setAvulsaAberta(true)}
-            onExcluir={() => remover(m.id)}
           />
         ))}
       </ul>
@@ -129,7 +118,7 @@ function PaginaMedicacoes() {
         type="button"
         onClick={abrirNovo}
         aria-label="Inserir novo medicamento"
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground shadow-lg hover:bg-primary/90"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground shadow-lg hover:bg-primary/90"
       >
         +
       </button>
@@ -139,142 +128,86 @@ function PaginaMedicacoes() {
         inicial={editando}
         onFechar={() => setFormAberto(false)}
         onSalvar={salvar}
+        onExcluir={remover}
       />
-      <CalculadoraDose medicamento={calculando} onFechar={() => setCalculando(null)} />
       <PesquisaAvulsa aberto={avulsaAberta} onFechar={() => setAvulsaAberta(false)} />
     </div>
   );
 }
 
-type ItemProps = {
+type CardProps = {
   medicamento: Medicamento;
   peso: string;
   especie: Especie;
   onEditar: () => void;
-  onCalcular: () => void;
   onAvulsa: () => void;
-  onExcluir: () => void;
 };
 
-function ItemMedicamento({
-  medicamento: m,
-  peso,
-  especie,
-  onEditar,
-  onCalcular,
-  onAvulsa,
-  onExcluir,
-}: ItemProps) {
-  const [menuAberto, setMenuAberto] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const iniciarToque = () => {
-    timer.current = setTimeout(() => setMenuAberto(true), 500);
-  };
-  const cancelarToque = () => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-  };
-
+function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa }: CardProps) {
   const dose = doseDaEspecie(m, especie);
-  const resultado = peso.trim()
-    ? calcularDose({
-        peso,
-        dose: dose.dose,
-        concentracaoValor: m.concentracaoValor,
-        concentracaoUnidade: m.concentracaoUnidade,
-      })
-    : null;
+  const resultado = calcularFaixaDose({
+    peso,
+    dose,
+    concentracaoValor: m.concentracaoValor,
+    concentracaoUnidade: m.concentracaoUnidade,
+  });
+
+  const cabecalho = [
+    viasDe(m).join("/"),
+    m.concentracaoValor ? `${m.concentracaoValor} ${m.concentracaoUnidade}` : "",
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <li className="rounded-2xl border border-border bg-card/60 p-3">
-      <DropdownMenu open={menuAberto} onOpenChange={setMenuAberto}>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            onPointerDown={iniciarToque}
-            onPointerUp={cancelarToque}
-            onPointerLeave={cancelarToque}
-            onContextMenu={(e) => e.preventDefault()}
-            className="w-full text-left"
-          >
-            <span className="block text-base font-bold uppercase leading-tight text-foreground">
-              {m.nome}
-            </span>
-            {m.classificacao && (
-              <span className="block text-[11px] italic text-muted-foreground">
-                {m.classificacao}
-              </span>
-            )}
-            {viasDe(m).length > 0 && (
-              <span className="mt-1 flex flex-wrap gap-1">
-                {viasDe(m).map((v) => (
-                  <span
-                    key={v}
-                    className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-foreground"
-                  >
-                    {v}
-                  </span>
-                ))}
-              </span>
-            )}
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Concentração:{" "}
-              {m.concentracaoValor ? `${m.concentracaoValor} ${m.concentracaoUnidade}` : "—"}
-            </span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onSelect={onEditar}>Editar medicamento</DropdownMenuItem>
-          <DropdownMenuItem onSelect={onCalcular}>Calcular dose</DropdownMenuItem>
-          <DropdownMenuItem onSelect={onAvulsa}>Pesquisa avulsa</DropdownMenuItem>
-          <DropdownMenuItem onSelect={onExcluir} className="text-destructive">
-            Excluir
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <button type="button" onClick={onEditar} className="block w-full text-left">
+        <span className="block text-base font-bold uppercase leading-tight text-foreground">
+          {m.nome}
+        </span>
+        {cabecalho && (
+          <span className="mt-0.5 block text-xs text-muted-foreground">{cabecalho}</span>
+        )}
+      </button>
 
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <div className="rounded-xl bg-secondary/60 px-2.5 py-1.5">
-          <p className="text-xs font-semibold text-foreground">🐶 Cão</p>
-          <p className="text-sm text-foreground">
-            {m.cao.dose ? `${m.cao.dose} mg/kg` : "—"}
-            {m.cao.intervalo ? ` — a cada ${m.cao.intervalo} horas` : ""}
-          </p>
-        </div>
-        <div className="rounded-xl bg-primary/10 px-2.5 py-1.5">
-          <p className="text-xs font-semibold text-foreground">🐱 Gato</p>
-          <p className="text-sm text-foreground">
-            {m.gato.dose ? `${m.gato.dose} mg/kg` : "—"}
-            {m.gato.intervalo ? ` — a cada ${m.gato.intervalo} horas` : ""}
-          </p>
-        </div>
+      <div className="mt-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Dose</p>
+        {resultado.ok ? (
+          <>
+            <p className="text-lg font-bold leading-tight text-foreground">{resultado.doseTexto}</p>
+            {resultado.referencia && (
+              <p className="text-xs text-muted-foreground">{resultado.referencia}</p>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">{resultado.motivo}</p>
+        )}
+        {dose.intervalo && (
+          <p className="mt-0.5 text-xs text-muted-foreground">a cada {dose.intervalo} horas</p>
+        )}
       </div>
 
-      {resultado && (
-        <div className="mt-2">
-          {resultado.ok ? (
-            <p className="rounded-xl border border-primary bg-primary/10 px-3 py-2 text-center text-lg font-bold text-foreground">
-              💉 APLICAR: {resultado.volumeTexto} {resultado.unidade}
-            </p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">{resultado.motivo}</p>
-          )}
-        </div>
-      )}
+      <div className="mt-2 rounded-xl border-2 border-primary bg-primary/10 px-3 py-2 text-center">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          Quantidade a aplicar
+        </p>
+        {resultado.ok && resultado.volumeTexto ? (
+          <p className="text-4xl font-bold leading-none text-foreground">
+            {resultado.volumeTexto}
+            <span className="ml-1 text-lg font-semibold">{resultado.unidade}</span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {resultado.ok ? resultado.motivoVolume : resultado.motivo}
+          </p>
+        )}
+      </div>
 
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={onCalcular}
-          className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-        >
-          Calcular dose
-        </button>
-        <button
-          type="button"
           onClick={onEditar}
-          className="rounded-lg bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-background/70"
+          className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
         >
           Editar
         </button>

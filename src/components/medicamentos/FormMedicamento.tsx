@@ -7,10 +7,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   UNIDADES_CONCENTRACAO,
   VIAS,
+  faixaDe,
   medicamentoVazio,
   viasDe,
+  type DoseEspecie,
   type Medicamento,
 } from "@/lib/medicamentos";
 
@@ -20,15 +32,28 @@ type Props = {
   inicial: Medicamento | null;
   onFechar: () => void;
   onSalvar: (item: Medicamento) => void;
+  onExcluir?: (id: string) => void;
 };
 
 const campo =
   "w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-ring";
 const rotulo = "block text-xs font-semibold text-muted-foreground";
 
-export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) {
+/** Normaliza a dose para o formato novo (mín/máx/porAnimal). */
+function normalizarDose(d: DoseEspecie): DoseEspecie {
+  const f = faixaDe(d);
+  return {
+    doseMin: f.min,
+    doseMax: f.max,
+    porAnimal: f.porAnimal,
+    intervalo: d.intervalo ?? "",
+  };
+}
+
+export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir }: Props) {
   const [item, setItem] = useState<Medicamento>(() => inicial ?? medicamentoVazio());
   const [chave, setChave] = useState("");
+  const [confirmando, setConfirmando] = useState(false);
 
   // Reinicia o formulário quando o alvo muda.
   const alvo = `${aberto}-${inicial?.id ?? "novo"}`;
@@ -39,8 +64,8 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) 
         ? {
             ...inicial,
             vias: viasDe(inicial),
-            cao: { ...inicial.cao },
-            gato: { ...inicial.gato },
+            cao: normalizarDose(inicial.cao),
+            gato: normalizarDose(inicial.gato),
           }
         : medicamentoVazio(),
     );
@@ -55,6 +80,85 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) 
     onSalvar({ ...item, nome, teste: false });
     toast.success(inicial ? "Medicamento atualizado." : "Medicamento cadastrado.");
     onFechar();
+  };
+
+  const excluir = () => {
+    if (!inicial || !onExcluir) return;
+    onExcluir(inicial.id);
+    toast.success("Medicamento excluído.");
+    setConfirmando(false);
+    onFechar();
+  };
+
+  const blocoDose = (especie: "cao" | "gato", titulo: string, fundo: string) => {
+    const dose = item[especie];
+    const f = faixaDe(dose);
+    const atualizar = (partes: Partial<DoseEspecie>) =>
+      setItem({ ...item, [especie]: { ...normalizarDose(dose), ...partes } });
+    return (
+      <fieldset className={`rounded-xl border border-border ${fundo} p-3`}>
+        <legend className="px-1 text-sm font-semibold text-foreground">{titulo}</legend>
+
+        <div className="mb-2 grid grid-cols-2 gap-2">
+          {(
+            [
+              { valor: false, rotulo: "mg/kg" },
+              { valor: true, rotulo: "mg/animal" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.rotulo}
+              type="button"
+              aria-pressed={f.porAnimal === o.valor}
+              onClick={() => atualizar({ porAnimal: o.valor })}
+              className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
+                f.porAnimal === o.valor
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-foreground hover:bg-secondary"
+              }`}
+            >
+              {o.rotulo}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <span className={rotulo}>Dose mínima</span>
+            <input
+              value={f.min}
+              onChange={(e) => atualizar({ doseMin: e.target.value })}
+              inputMode="decimal"
+              className={`${campo} min-w-0`}
+              placeholder="20"
+            />
+          </div>
+          <div>
+            <span className={rotulo}>Dose máxima</span>
+            <input
+              value={f.max}
+              onChange={(e) => atualizar({ doseMax: e.target.value })}
+              inputMode="decimal"
+              className={`${campo} min-w-0`}
+              placeholder="25"
+            />
+          </div>
+          <div>
+            <span className={rotulo}>Intervalo (h)</span>
+            <input
+              value={dose.intervalo}
+              onChange={(e) => atualizar({ intervalo: e.target.value })}
+              inputMode="decimal"
+              className={`${campo} min-w-0`}
+              placeholder="8"
+            />
+          </div>
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Pode preencher só a mínima: nesse caso vale como dose única.
+        </p>
+      </fieldset>
+    );
   };
 
   return (
@@ -161,59 +265,8 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) 
             />
           </div>
 
-          <fieldset className="rounded-xl border border-border bg-secondary/40 p-3">
-            <legend className="px-1 text-sm font-semibold text-foreground">🐶 Cão</legend>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className={rotulo}>Dose (mg/kg)</span>
-                <input
-                  value={item.cao.dose}
-                  onChange={(e) => setItem({ ...item, cao: { ...item.cao, dose: e.target.value } })}
-                  inputMode="decimal"
-                  className={campo}
-                />
-              </div>
-              <div>
-                <span className={rotulo}>Intervalo (horas)</span>
-                <input
-                  value={item.cao.intervalo}
-                  onChange={(e) =>
-                    setItem({ ...item, cao: { ...item.cao, intervalo: e.target.value } })
-                  }
-                  inputMode="decimal"
-                  className={campo}
-                />
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset className="rounded-xl border border-border bg-primary/5 p-3">
-            <legend className="px-1 text-sm font-semibold text-foreground">🐱 Gato</legend>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className={rotulo}>Dose (mg/kg)</span>
-                <input
-                  value={item.gato.dose}
-                  onChange={(e) =>
-                    setItem({ ...item, gato: { ...item.gato, dose: e.target.value } })
-                  }
-                  inputMode="decimal"
-                  className={campo}
-                />
-              </div>
-              <div>
-                <span className={rotulo}>Intervalo (horas)</span>
-                <input
-                  value={item.gato.intervalo}
-                  onChange={(e) =>
-                    setItem({ ...item, gato: { ...item.gato, intervalo: e.target.value } })
-                  }
-                  inputMode="decimal"
-                  className={campo}
-                />
-              </div>
-            </div>
-          </fieldset>
+          {blocoDose("cao", "🐶 Cão", "bg-secondary/40")}
+          {blocoDose("gato", "🐱 Gato", "bg-primary/5")}
 
           <div className="flex gap-2 pt-1">
             <button
@@ -231,7 +284,32 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar }: Props) 
               Cancelar
             </button>
           </div>
+
+          {inicial && onExcluir && (
+            <button
+              type="button"
+              onClick={() => setConfirmando(true)}
+              className="w-full rounded-xl border border-destructive px-4 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10"
+            >
+              Excluir medicamento
+            </button>
+          )}
         </div>
+
+        <AlertDialog open={confirmando} onOpenChange={setConfirmando}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir medicamento?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir {inicial?.nome}? Essa ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={excluir}>Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
