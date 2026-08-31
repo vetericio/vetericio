@@ -35,6 +35,8 @@ export function useMedicamentos() {
     if (!iniciado) {
       iniciado = true;
       estado = carregarMedicamentos();
+      // Grava já na primeira vez para que exclusões não voltem no próximo acesso.
+      salvarMedicamentos(estado);
       notificar();
     }
     setCarregado(true);
