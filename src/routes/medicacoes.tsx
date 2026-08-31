@@ -126,7 +126,7 @@ function PaginaMedicacoes() {
           <CardMedicamento
             key={m.id}
             medicamento={m}
-            peso={peso}
+            peso={formatarPeso(peso)}
             especie={especie}
             onEditar={() => abrirEdicao(m)}
             onAvulsa={() => setAvulsaAberta(true)}
