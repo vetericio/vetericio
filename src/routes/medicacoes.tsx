@@ -15,6 +15,7 @@ import {
   calcularDose,
   doseDaEspecie,
   ordenarMedicamentos,
+  viasDe,
   type Especie,
   type Medicamento,
 } from "@/lib/medicamentos";
@@ -203,6 +204,18 @@ function ItemMedicamento({
             {m.classificacao && (
               <span className="block text-[11px] italic text-muted-foreground">
                 {m.classificacao}
+              </span>
+            )}
+            {viasDe(m).length > 0 && (
+              <span className="mt-1 flex flex-wrap gap-1">
+                {viasDe(m).map((v) => (
+                  <span
+                    key={v}
+                    className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                  >
+                    {v}
+                  </span>
+                ))}
               </span>
             )}
             <span className="mt-0.5 block text-xs text-muted-foreground">
