@@ -309,8 +309,8 @@ const TESTE: Medicamento[] = [
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
     vias: ["IV"],
-    cao: { dose: "5", intervalo: "12" },
-    gato: { dose: "2", intervalo: "24" },
+    cao: { doseMin: "3", doseMax: "5", porAnimal: false, intervalo: "12" },
+    gato: { doseMin: "2", doseMax: "", porAnimal: false, intervalo: "24" },
     teste: true,
   },
   {
@@ -321,8 +321,8 @@ const TESTE: Medicamento[] = [
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
     vias: ["VO"],
-    cao: { dose: "10", intervalo: "8" },
-    gato: { dose: "5", intervalo: "12" },
+    cao: { doseMin: "10", doseMax: "20", porAnimal: false, intervalo: "8" },
+    gato: { doseMin: "5", doseMax: "", porAnimal: false, intervalo: "12" },
     teste: true,
   },
   {
@@ -333,8 +333,8 @@ const TESTE: Medicamento[] = [
     resumo: "Medicamento fictício apenas para testar o cálculo.",
     classificacao: "Dados de teste",
     vias: ["SC", "IM"],
-    cao: { dose: "1", intervalo: "24" },
-    gato: { dose: "1", intervalo: "24" },
+    cao: { doseMin: "1", doseMax: "", porAnimal: false, intervalo: "24" },
+    gato: { doseMin: "1", doseMax: "", porAnimal: false, intervalo: "24" },
     teste: true,
   },
 ];
