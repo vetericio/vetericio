@@ -92,21 +92,37 @@ export function Cabecalho() {
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
 
-        <nav className="mx-auto mt-3 grid max-w-md grid-cols-2 gap-2">
-          {LINKS.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              {...(item.exato ? { activeOptions: { exact: true } } : {})}
-              activeProps={{ className: `${base} block bg-primary text-primary-foreground` }}
-              inactiveProps={{
-                className: `${base} block bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-              }}
-              className="last:odd:col-span-2"
-            >
-              {item.rotulo}
-            </Link>
-          ))}
+        <nav className="mx-auto mt-3 flex max-w-2xl flex-col gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
+            {LINKS.slice(0, 4).map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                {...(item.exato ? { activeOptions: { exact: true } } : {})}
+                activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+                inactiveProps={{
+                  className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+                }}
+              >
+                {item.rotulo}
+              </Link>
+            ))}
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {LINKS.slice(4).map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                {...(item.exato ? { activeOptions: { exact: true } } : {})}
+                activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+                inactiveProps={{
+                  className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+                }}
+              >
+                {item.rotulo}
+              </Link>
+            ))}
+          </div>
         </nav>
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
