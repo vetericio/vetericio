@@ -308,6 +308,8 @@ export type OpcoesFormato = {
   obsPadrao?: boolean;
   /** Curvas guardadas no plantão; sem isso, lê as curvas atuais do aparelho. */
   curvas?: Curva[];
+  /** Anamneses guardadas; sem isso, lê as anamneses atuais do aparelho. */
+  anamneses?: Anamnese[];
 };
 
 export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
