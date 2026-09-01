@@ -42,21 +42,15 @@ export type Registro = {
   obito?: { hora: string; motivo: string };
 };
 
-/** "Dipirona - 0,5 mL - 3 dias" */
+/** "Dipirona 500 - 0,14 mL / IV / a cada 8h" */
 export function linhaMedicacao(m: Medicacao): string {
-  const hora = m.aplicadoEm
-    ? new Date(m.aplicadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    : "";
-  return [
-    m.nome.trim(),
-    (m.quantidade ?? "").trim(),
-    m.dose.trim(),
-    (m.via ?? "").trim(),
-    m.duracao.trim(),
-    hora ? `aplicado às ${hora}` : "",
-  ]
-    .filter(Boolean)
-    .join(" - ");
+  const nome = m.nome.trim();
+  const quantidade = (m.quantidade ?? "").trim();
+  const resto = [(m.via ?? "").trim(), m.duracao.trim()].filter(Boolean).join(" / ");
+  if (!quantidade && !resto) return nome;
+  if (!resto) return `${nome} - ${quantidade}`;
+  if (!quantidade) return `${nome} / ${resto}`;
+  return `${nome} - ${quantidade} / ${resto}`;
 }
 
 
