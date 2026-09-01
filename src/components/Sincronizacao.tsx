@@ -53,7 +53,7 @@ export function Sincronizacao() {
   };
 
   return (
-    <div className="w-full">
+    <div className="text-center">
       <button
         type="button"
         onClick={() => setAberto((v) => !v)}
