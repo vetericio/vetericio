@@ -10,6 +10,7 @@ Card de medicação reorganizado em uma grade compacta, sem esconder informaçã
 ```text
 ┌──────────────────────────────────────────────┐
 │ DIPIRONA        💉 IV IM   500 mg/mL   8h   │
+│ (mais escuro e maior que os outros dados)   │
 │ Aplicar   0,28 mL        Dose  72–90 mg     │
 │ (grande, destaque)       ref. 20–25 mg/kg   │
 │ [Aplicar]  [Editar]                          │
