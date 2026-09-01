@@ -1,3 +1,4 @@
+import { agendarSync } from "@/lib/sync";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { carregarRegistros, salvarRegistros, type Registro } from "@/lib/ficha";
 
@@ -22,6 +23,7 @@ const getServerSnapshot = () => estado;
 function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   estado = typeof valor === "function" ? (valor as (a: Registro[]) => Registro[])(estado) : valor;
   salvarRegistros(estado);
+  agendarSync();
   notificar();
 }
 

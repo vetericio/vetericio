@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Backup } from "@/components/Backup";
+import { Sincronizacao } from "@/components/Sincronizacao";
 import {
   CORES_RAPIDAS,
   TEMAS,
@@ -48,6 +49,7 @@ export function Rodape() {
           Temas
         </button>
         <Backup />
+        <Sincronizacao />
       </div>
 
       {aberto && (

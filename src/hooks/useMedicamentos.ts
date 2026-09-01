@@ -1,3 +1,4 @@
+import { agendarSync } from "@/lib/sync";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   carregarMedicamentos,
@@ -24,6 +25,7 @@ const getServerSnapshot = () => estado;
 function definir(valor: Medicamento[] | ((atual: Medicamento[]) => Medicamento[])) {
   estado = typeof valor === "function" ? (valor as (a: Medicamento[]) => Medicamento[])(estado) : valor;
   salvarMedicamentos(estado);
+  agendarSync();
   notificar();
 }
 

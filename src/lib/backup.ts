@@ -37,7 +37,7 @@ export type ResumoBackup = {
   temTema: boolean;
 };
 
-function lerBruto(chave: string): unknown {
+export function lerBruto(chave: string): unknown {
   if (typeof window === "undefined") return undefined;
   try {
     const bruto = window.localStorage.getItem(chave);
@@ -52,7 +52,7 @@ function lerBruto(chave: string): unknown {
   }
 }
 
-function escreverBruto(chave: string, valor: unknown) {
+export function escreverBruto(chave: string, valor: unknown) {
   if (typeof window === "undefined") return;
   try {
     const texto = typeof valor === "string" ? valor : JSON.stringify(valor);

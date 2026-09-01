@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      sync_salas: {
+        Row: {
+          atualizado_em: string
+          codigo_hash: string
+          dados: Json
+        }
+        Insert: {
+          atualizado_em?: string
+          codigo_hash: string
+          dados?: Json
+        }
+        Update: {
+          atualizado_em?: string
+          codigo_hash?: string
+          dados?: Json
+        }
+        Relationships: []
+      }
       transferencias: {
         Row: {
           codigo: string

@@ -178,7 +178,7 @@ export function FormAvaliacao({
         <input
           value={valores.animal}
           onChange={(e) => {
-            set("animal", e.target.value);
+            onChange({ ...valores, animal: e.target.value, anamneseId: "" });
             setSugerindo(true);
           }}
           onFocus={() => setSugerindo(true)}
@@ -198,6 +198,7 @@ export function FormAvaliacao({
                       ...valores,
                       animal: a.animal.trim(),
                       especie: a.especie || valores.especie || "",
+                      anamneseId: a.id,
                     });
                     setSugerindo(false);
                   }}

@@ -1,4 +1,6 @@
 import { formatarRegistro, nomeAnimal, type Registro } from "@/lib/ficha";
+import { useAnamneses } from "@/hooks/useAnamneses";
+import type { Anamnese } from "@/lib/anamnese";
 
 
 
@@ -20,6 +22,7 @@ export function ListaRegistros({
   onCopiar,
   onObito,
 }: Props) {
+  const { anamneses } = useAnamneses();
 
   if (registros.length === 0) {
     return (
@@ -85,6 +88,8 @@ export function ListaRegistros({
             )}
           </h3>
 
+          <FichaAnamnese anamnese={anamneses.find((a) => a.id === r.anamneseId)} />
+
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted-foreground">
             {formatarRegistro(r).split("\n").slice(1).join("\n")}
           </pre>
@@ -92,5 +97,27 @@ export function ListaRegistros({
 
       ))}
     </div>
+  );
+}
+
+/** Queixa, conduta e ponto de atenção vindos da anamnese vinculada. */
+function FichaAnamnese({ anamnese }: { anamnese: Anamnese | undefined }) {
+  if (!anamnese) return null;
+  const linhas: [string, string][] = [
+    ["Queixa", anamnese.queixa.trim()],
+    ["Conduta", anamnese.conduta.trim()],
+    ["Atenção", anamnese.atencao.trim()],
+  ];
+  const visiveis = linhas.filter(([, v]) => v);
+  if (visiveis.length === 0) return null;
+  return (
+    <dl className="mt-2 space-y-0.5 rounded-lg bg-secondary/50 px-2.5 py-2 text-xs text-muted-foreground">
+      {visiveis.map(([rotulo, valor]) => (
+        <div key={rotulo} className="flex gap-1.5">
+          <dt className="font-semibold text-foreground">{rotulo}:</dt>
+          <dd className="min-w-0 flex-1">{valor}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

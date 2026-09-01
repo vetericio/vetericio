@@ -8,7 +8,14 @@ export type Medicacao = {
   nome: string;
   dose: string;
   duracao: string;
+  /** Via de administração (IV, IM, SC, VO, OF, OT). */
+  via?: string;
+  /** Quantidade a ministrar já formatada, ex.: "0,28 mL" ou "½ comprimido". */
+  quantidade?: string;
+  /** Momento da aplicação (ISO), quando registrada pela tela de Medicações. */
+  aplicadoEm?: string;
 };
+
 
 export type Registro = {
   id: string;
@@ -29,14 +36,29 @@ export type Registro = {
   observacoes: string;
   /** Medicações do animal (manuais ou lidas de uma foto). */
   medicacoes?: Medicacao[];
+  /** Anamnese de origem do animal, quando veio da sugestão do Início. */
+  anamneseId?: string;
   /** Registro de óbito do animal, quando houver. */
   obito?: { hora: string; motivo: string };
 };
 
 /** "Dipirona - 0,5 mL - 3 dias" */
 export function linhaMedicacao(m: Medicacao): string {
-  return [m.nome.trim(), m.dose.trim(), m.duracao.trim()].filter(Boolean).join(" - ");
+  const hora = m.aplicadoEm
+    ? new Date(m.aplicadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : "";
+  return [
+    m.nome.trim(),
+    (m.quantidade ?? "").trim(),
+    m.dose.trim(),
+    (m.via ?? "").trim(),
+    m.duracao.trim(),
+    hora ? `aplicado às ${hora}` : "",
+  ]
+    .filter(Boolean)
+    .join(" - ");
 }
+
 
 /** Bloco de texto das medicações, vazio quando não houver nenhuma. */
 export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
