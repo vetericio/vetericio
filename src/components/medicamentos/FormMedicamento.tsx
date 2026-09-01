@@ -47,7 +47,23 @@ function normalizarDose(d: DoseEspecie): DoseEspecie {
     doseMax: f.max,
     porAnimal: f.porAnimal,
     intervalo: d.intervalo ?? "",
+    proibido: d.proibido === true,
   };
+}
+
+/** Cadastros antigos: trata como "mesma dose" quando cão e gato coincidem. */
+function unificadoInicial(m: Medicamento): boolean {
+  if (typeof m.doseUnificada === "boolean") return m.doseUnificada;
+  const a = normalizarDose(m.cao);
+  const b = normalizarDose(m.gato);
+  if (a.proibido || b.proibido) return false;
+  if (!b.doseMin && !b.doseMax) return true;
+  return (
+    a.doseMin === b.doseMin &&
+    a.doseMax === b.doseMax &&
+    a.porAnimal === b.porAnimal &&
+    a.intervalo === b.intervalo
+  );
 }
 
 export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir }: Props) {
@@ -66,6 +82,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
             vias: viasDe(inicial),
             cao: normalizarDose(inicial.cao),
             gato: normalizarDose(inicial.gato),
+            doseUnificada: unificadoInicial(inicial),
           }
         : medicamentoVazio(),
     );
@@ -77,7 +94,10 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
       toast.error("Escreva o nome do medicamento.");
       return;
     }
-    onSalvar({ ...item, nome, teste: false });
+    const doses = item.doseUnificada
+      ? { cao: { ...item.cao, proibido: false }, gato: { ...item.cao, proibido: false } }
+      : { cao: item.cao, gato: item.gato };
+    onSalvar({ ...item, ...doses, nome, teste: false });
     toast.success(inicial ? "Medicamento atualizado." : "Medicamento cadastrado.");
     onFechar();
   };
@@ -93,11 +113,28 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
   const blocoDose = (especie: "cao" | "gato", titulo: string, fundo: string) => {
     const dose = item[especie];
     const f = faixaDe(dose);
+    const proibido = dose.proibido === true && !item.doseUnificada;
     const atualizar = (partes: Partial<DoseEspecie>) =>
       setItem({ ...item, [especie]: { ...normalizarDose(dose), ...partes } });
     return (
-      <fieldset className={`rounded-xl border border-border ${fundo} p-3`}>
+      <fieldset
+        className={`rounded-xl border p-3 ${
+          proibido ? "border-destructive bg-destructive/5" : `border-border ${fundo}`
+        }`}
+      >
         <legend className="px-1 text-sm font-semibold text-foreground">{titulo}</legend>
+
+        {!item.doseUnificada && (
+          <label className="mb-2 flex items-start gap-2 text-xs font-semibold text-destructive">
+            <input
+              type="checkbox"
+              checked={proibido}
+              onChange={(e) => atualizar({ proibido: e.target.checked })}
+              className="mt-0.5 h-4 w-4 accent-[hsl(var(--destructive))]"
+            />
+            Não pode ser ministrado nesta espécie
+          </label>
+        )}
 
         <div className="mb-2 grid grid-cols-2 gap-2">
           {(
@@ -111,6 +148,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
               type="button"
               aria-pressed={f.porAnimal === o.valor}
               onClick={() => atualizar({ porAnimal: o.valor })}
+              disabled={proibido}
               className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
                 f.porAnimal === o.valor
                   ? "border-primary bg-primary text-primary-foreground"
@@ -129,7 +167,8 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
               value={f.min}
               onChange={(e) => atualizar({ doseMin: e.target.value })}
               inputMode="decimal"
-              className={`${campo} min-w-0`}
+              disabled={proibido}
+              className={`${campo} min-w-0 disabled:opacity-50`}
               placeholder="20"
             />
           </div>
@@ -139,7 +178,8 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
               value={f.max}
               onChange={(e) => atualizar({ doseMax: e.target.value })}
               inputMode="decimal"
-              className={`${campo} min-w-0`}
+              disabled={proibido}
+              className={`${campo} min-w-0 disabled:opacity-50`}
               placeholder="25"
             />
           </div>
@@ -149,7 +189,8 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
               value={dose.intervalo}
               onChange={(e) => atualizar({ intervalo: e.target.value })}
               inputMode="decimal"
-              className={`${campo} min-w-0`}
+              disabled={proibido}
+              className={`${campo} min-w-0 disabled:opacity-50`}
               placeholder="8"
             />
           </div>
@@ -265,8 +306,43 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
             />
           </div>
 
-          {blocoDose("cao", "🐶 Cão", "bg-secondary/40")}
-          {blocoDose("gato", "🐱 Gato", "bg-primary/5")}
+          <div>
+            <span className={rotulo}>Dose</span>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { valor: true, rotulo: "🐶🐱 Mesma dose" },
+                  { valor: false, rotulo: "🐶 / 🐱 Separar" },
+                ] as const
+              ).map((o) => {
+                const ativo = (item.doseUnificada === true) === o.valor;
+                return (
+                  <button
+                    key={o.rotulo}
+                    type="button"
+                    aria-pressed={ativo}
+                    onClick={() => setItem({ ...item, doseUnificada: o.valor })}
+                    className={`rounded-xl border px-2 py-2 text-sm font-semibold transition-colors ${
+                      ativo
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {o.rotulo}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {item.doseUnificada ? (
+            blocoDose("cao", "🐶🐱 Cão e gato", "bg-secondary/40")
+          ) : (
+            <>
+              {blocoDose("cao", "🐶 Cão", "bg-secondary/40")}
+              {blocoDose("gato", "🐱 Gato", "bg-primary/5")}
+            </>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button
