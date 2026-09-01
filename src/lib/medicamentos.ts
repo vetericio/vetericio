@@ -285,6 +285,9 @@ export type ResultadoFaixa =
       unidade: string | null;
       /** forma base: mL, comprimido, cápsula, gota */
       forma: string | null;
+      /** valores numéricos da faixa de volume, para pré-preencher a quantidade */
+      volMin: number | null;
+      volMax: number | null;
       /** valor decimal exato, para conferência de comprimidos */
       exatoTexto: string | null;
       motivoVolume?: string;
