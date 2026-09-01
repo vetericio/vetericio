@@ -29,6 +29,8 @@ export type DoseEspecie = {
   porAnimal?: boolean;
   /** horas */
   intervalo: string;
+  /** true = medicamento não pode ser ministrado nesta espécie */
+  proibido?: boolean;
 };
 
 /** Lê a faixa de dose, tolerando cadastros antigos que só tinham `dose`. */
@@ -63,6 +65,8 @@ export type Medicamento = {
   vias: Via[];
   cao: DoseEspecie;
   gato: DoseEspecie;
+  /** true = mesma dose para cão e gato (bloco único no cadastro) */
+  doseUnificada?: boolean;
   teste?: boolean;
 };
 
@@ -91,6 +95,7 @@ export function medicamentoVazio(): Medicamento {
     vias: [],
     cao: { doseMin: "", doseMax: "", porAnimal: false, intervalo: "" },
     gato: { doseMin: "", doseMax: "", porAnimal: false, intervalo: "" },
+    doseUnificada: true,
 
   };
 }
@@ -221,6 +226,14 @@ export function calcularDose(params: {
   };
 }
 
+/** true quando o cadastro marcou a espécie como proibida. */
+export function especieBloqueada(m: Medicamento, especie: Especie): boolean {
+  if (m.doseUnificada) return false;
+  return doseDaEspecie(m, especie).proibido === true;
+}
+
+export const NOME_ESPECIE: Record<Especie, string> = { cao: "cão", gato: "gato" };
+
 export function doseDaEspecie(m: Medicamento, especie: Especie): DoseEspecie {
   return especie === "cao" ? m.cao : m.gato;
 }
@@ -305,6 +318,8 @@ export function calcularFaixaDose(params: {
   concentracaoUnidade: string;
 }): ResultadoFaixa {
   const f = faixaDe(params.dose);
+  if (params.dose.proibido === true)
+    return { ok: false, motivo: "Não pode ser ministrado nesta espécie." };
   const min = numero(f.min);
   const max = numero(f.max);
   if (min === null || min <= 0) return { ok: false, motivo: "Nenhuma dose cadastrada para esta espécie." };

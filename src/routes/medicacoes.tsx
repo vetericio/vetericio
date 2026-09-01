@@ -17,6 +17,8 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import {
   calcularFaixaDose,
   doseDaEspecie,
+  especieBloqueada,
+  NOME_ESPECIE,
   ordenarMedicamentos,
   viasDe,
   type Especie,
@@ -181,6 +183,7 @@ type CardProps = {
 function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, onAplicar }: CardProps) {
   const [pendente, setPendente] = useState<QuantidadePendente | null>(null);
   const dose = doseDaEspecie(m, especie);
+  const bloqueado = especieBloqueada(m, especie);
   const vias = viasDe(m);
   const resultado = calcularFaixaDose({
     peso,
@@ -193,7 +196,7 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
     ? `${m.concentracaoValor} ${m.concentracaoUnidade}`
     : "";
   const frequencia = dose.intervalo ? `${dose.intervalo}h` : "";
-  const podeAplicar = resultado.ok && Boolean(resultado.volumeTexto);
+  const podeAplicar = !bloqueado && resultado.ok && Boolean(resultado.volumeTexto);
 
   const ministrar = () => {
     if (!resultado.ok || !resultado.volumeTexto) return;
@@ -232,8 +235,16 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
       </div>
 
       <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-        <span className="truncate">{resultado.ok ? resultado.referencia : resultado.motivo}</span>
-        {resultado.ok && <span className="shrink-0">Dose {resultado.doseTexto}</span>}
+        <span className={`truncate ${bloqueado ? "font-semibold text-destructive" : ""}`}>
+          {bloqueado
+            ? `Não pode ser ministrado em ${NOME_ESPECIE[especie]}`
+            : resultado.ok
+              ? resultado.referencia
+              : resultado.motivo}
+        </span>
+        {!bloqueado && resultado.ok && (
+          <span className="shrink-0">Dose {resultado.doseTexto}</span>
+        )}
       </div>
 
       <button
@@ -254,8 +265,14 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
             </span>
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">
-            {resultado.ok ? resultado.motivoVolume : resultado.motivo}
+          <span
+            className={`text-xs ${bloqueado ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+          >
+            {bloqueado
+              ? `Não pode ser ministrado em ${NOME_ESPECIE[especie]}`
+              : resultado.ok
+                ? resultado.motivoVolume
+                : resultado.motivo}
           </span>
         )}
       </button>
