@@ -1,0 +1,242 @@
+/**
+ * Sincronização entre aparelhos.
+ * O app continua funcionando 100% offline: tudo fica salvo no aparelho e, quando
+ * há internet, as alterações sobem e descem por um código secreto compartilhado.
+ */
+import { CHAVES_BACKUP, escreverBruto, lerBruto, type ChaveBackup } from "./backup";
+
+const CHAVE_CODIGO = "veterico-sync-codigo-v1";
+const CHAVE_PENDENTE = "veterico-sync-pendente-v1";
+const CHAVE_ULTIMO = "veterico-sync-ultimo-v1";
+
+/** Listas que são mescladas item por item (pelo id). */
+const LISTAS: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
+/** Valores únicos: fica o mais recente que chegou. */
+const SIMPLES: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
+
+export type EstadoSync =
+  | "sem-codigo"
+  | "sincronizado"
+  | "sincronizando"
+  | "pendente"
+  | "erro";
+
+/* ---------- código secreto ---------- */
+
+/** Código longo e secreto (24 caracteres), usado como endereço dos dados. */
+export function gerarCodigo(): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(36).padStart(2, "0"))
+    .join("")
+    .slice(0, 24);
+}
+
+export function lerCodigo(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(CHAVE_CODIGO) ?? "";
+}
+
+export function salvarCodigo(codigo: string) {
+  if (typeof window === "undefined") return;
+  const limpo = normalizarCodigo(codigo);
+  if (limpo) window.localStorage.setItem(CHAVE_CODIGO, limpo);
+}
+
+export function esquecerCodigo() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(CHAVE_CODIGO);
+}
+
+export function normalizarCodigo(texto: string): string {
+  return texto.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function codigoValido(codigo: string): boolean {
+  return /^[a-z0-9]{16,64}$/.test(normalizarCodigo(codigo));
+}
+
+/** Texto do QR lido no outro aparelho. */
+export function textoQrSync(codigo: string): string {
+  return `VETSYNC1:${codigo}`;
+}
+
+export function codigoDoQr(texto: string): string {
+  const limpo = texto.trim();
+  const bruto = limpo.startsWith("VETSYNC1:") ? limpo.slice(9) : limpo;
+  return normalizarCodigo(bruto);
+}
+
+/* ---------- estado da fila offline ---------- */
+
+export function temPendencia(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(CHAVE_PENDENTE) === "1";
+}
+
+export function marcarPendente(valor: boolean) {
+  if (typeof window === "undefined") return;
+  if (valor) window.localStorage.setItem(CHAVE_PENDENTE, "1");
+  else window.localStorage.removeItem(CHAVE_PENDENTE);
+}
+
+export function ultimaSync(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(CHAVE_ULTIMO) ?? "";
+}
+
+function registrarSync(quando: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CHAVE_ULTIMO, quando);
+}
+
+/* ---------- mesclagem ---------- */
+
+type Item = Record<string, unknown> & { id?: unknown };
+
+function comoLista(valor: unknown): Item[] {
+  return Array.isArray(valor) ? (valor as Item[]) : [];
+}
+
+function quando(item: Item): number {
+  const campos = ["atualizadoEm", "aplicadoEm", "criadoEm", "data", "fechadoEm"];
+  for (const campo of campos) {
+    const valor = item[campo];
+    if (typeof valor === "string") {
+      const t = new Date(valor).getTime();
+      if (!Number.isNaN(t)) return t;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Junta duas listas por id, mantendo a versão mais recente de cada item.
+ * Nada é apagado só porque não veio na outra lista e nada é duplicado.
+ */
+export function mesclarListas(local: unknown, remoto: unknown): Item[] {
+  const mapa = new Map<string, Item>();
+  const por = (item: Item, indice: number) => String(item?.id ?? `sem-id-${indice}`);
+
+  comoLista(local).forEach((item, i) => mapa.set(por(item, i), item));
+  comoLista(remoto).forEach((item, i) => {
+    const chave = por(item, i);
+    const atual = mapa.get(chave);
+    if (!atual || quando(item) > quando(atual)) mapa.set(chave, item);
+  });
+  return [...mapa.values()];
+}
+
+export type PacoteSync = {
+  atualizadoEm: string;
+  dados: Partial<Record<ChaveBackup, unknown>>;
+};
+
+/** Lê tudo deste aparelho no formato enviado para a nuvem. */
+export function pacoteLocal(): PacoteSync {
+  const dados: Partial<Record<ChaveBackup, unknown>> = {};
+  for (const [nome, chave] of Object.entries(CHAVES_BACKUP) as [ChaveBackup, string][]) {
+    const valor = lerBruto(chave);
+    if (valor !== undefined) dados[nome] = valor;
+  }
+  return { atualizadoEm: new Date().toISOString(), dados };
+}
+
+function validarPacote(bruto: unknown): PacoteSync | null {
+  if (!bruto || typeof bruto !== "object") return null;
+  const p = bruto as Record<string, unknown>;
+  const dados = p["dados"];
+  if (!dados || typeof dados !== "object") return null;
+  return {
+    atualizadoEm: typeof p["atualizadoEm"] === "string" ? p["atualizadoEm"] : "",
+    dados: dados as Partial<Record<ChaveBackup, unknown>>,
+  };
+}
+
+/** Mescla o pacote remoto com o local, grava no aparelho e devolve o resultado. */
+export function mesclarPacote(remoto: PacoteSync): PacoteSync {
+  const local = pacoteLocal();
+  const resultado: Partial<Record<ChaveBackup, unknown>> = { ...local.dados };
+
+  for (const nome of LISTAS) {
+    const juntas = mesclarListas(local.dados[nome], remoto.dados[nome]);
+    if (juntas.length > 0 || remoto.dados[nome] !== undefined) resultado[nome] = juntas;
+  }
+
+  const remotoMaisNovo =
+    new Date(remoto.atualizadoEm || 0).getTime() > new Date(ultimaSync() || 0).getTime();
+  for (const nome of SIMPLES) {
+    const valor = remoto.dados[nome];
+    if (valor === undefined) continue;
+    if (local.dados[nome] === undefined || remotoMaisNovo) resultado[nome] = valor;
+  }
+
+  for (const nome of Object.keys(resultado) as ChaveBackup[]) {
+    escreverBruto(CHAVES_BACKUP[nome], resultado[nome]);
+  }
+
+  return { atualizadoEm: new Date().toISOString(), dados: resultado };
+}
+
+/* ---------- ciclo de sincronização ---------- */
+
+export type ResultadoSync =
+  | { ok: true; atualizadoEm: string }
+  | { ok: false; motivo: string };
+
+/**
+ * Um ciclo completo: baixa o que está na nuvem, mescla com o aparelho e sobe o
+ * resultado. Sem internet, marca as alterações como pendentes.
+ */
+export async function sincronizarAgora(): Promise<ResultadoSync> {
+  const codigo = lerCodigo();
+  if (!codigoValido(codigo)) return { ok: false, motivo: "Nenhum código de sincronização." };
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    marcarPendente(true);
+    return { ok: false, motivo: "Sem internet: alterações pendentes." };
+  }
+
+  try {
+    const { puxarSala, enviarSala } = await import("./sync.functions");
+    const remoto = await puxarSala({ data: { codigo } });
+    const pacoteRemoto = remoto.dadosJson ? validarPacote(JSON.parse(remoto.dadosJson)) : null;
+    const final = pacoteRemoto ? mesclarPacote(pacoteRemoto) : pacoteLocal();
+    const enviado = await enviarSala({
+      data: { codigo, dadosJson: JSON.stringify(final) },
+    });
+    marcarPendente(false);
+    registrarSync(enviado.atualizadoEm);
+    return { ok: true, atualizadoEm: enviado.atualizadoEm };
+  } catch (erro) {
+    marcarPendente(true);
+    return { ok: false, motivo: erro instanceof Error ? erro.message : "Erro ao sincronizar." };
+  }
+}
+
+/** Formata o horário da última sincronização. */
+export function quandoSync(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+let temporizador: ReturnType<typeof setTimeout> | null = null;
+
+/** Chamado após cada gravação: agrupa mudanças e sincroniza pouco depois. */
+export function agendarSync() {
+  if (typeof window === "undefined") return;
+  if (!codigoValido(lerCodigo())) return;
+  marcarPendente(true);
+  if (temporizador) clearTimeout(temporizador);
+  temporizador = setTimeout(() => {
+    temporizador = null;
+    void sincronizarAgora();
+  }, 2500);
+}

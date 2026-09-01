@@ -225,6 +225,52 @@ export function doseDaEspecie(m: Medicamento, especie: Especie): DoseEspecie {
   return especie === "cao" ? m.cao : m.gato;
 }
 
+/* ---------- formatação de quantidade ---------- */
+
+/** Líquidos: 2 casas (0,28 mL); abaixo de 0,1 usa 3 casas (0,125 mL). */
+export function formatarVolume(valor: number): string {
+  return arredondar(valor, valor > 0 && valor < 0.1 ? 3 : 2);
+}
+
+const FRACOES: { valor: number; texto: string }[] = [
+  { valor: 0, texto: "" },
+  { valor: 1 / 4, texto: "¼" },
+  { valor: 1 / 3, texto: "⅓" },
+  { valor: 1 / 2, texto: "½" },
+  { valor: 2 / 3, texto: "⅔" },
+  { valor: 3 / 4, texto: "¾" },
+];
+
+/**
+ * Converte 0,56 comprimido em "½", 1,3 em "1⅓" etc.
+ * Nunca devolve decimais: comprimido é administrado em fração prática.
+ */
+export function fracaoComprimido(valor: number): string {
+  if (valor <= 0) return "0";
+  const inteiro = Math.floor(valor);
+  const resto = valor - inteiro;
+  let melhor = FRACOES[0]!;
+  for (const f of FRACOES) {
+    if (Math.abs(resto - f.valor) < Math.abs(resto - melhor.valor)) melhor = f;
+  }
+  // Resto muito próximo de 1: sobe para o inteiro seguinte.
+  if (Math.abs(resto - 1) < Math.abs(resto - melhor.valor)) return String(inteiro + 1);
+  if (inteiro === 0) return melhor.texto || "¼";
+  return `${inteiro}${melhor.texto}`;
+}
+
+/** true quando a apresentação é sólida (comprimido/cápsula) e usa fração. */
+export function usaFracao(unidade: string): boolean {
+  return unidade === "comprimido" || unidade === "cápsula";
+}
+
+/** Texto da quantidade a ministrar, já no formato certo para a forma. */
+export function textoQuantidade(valor: number, unidade: string): string {
+  if (usaFracao(unidade)) return fracaoComprimido(valor);
+  if (unidade === "gota") return arredondar(valor, 0);
+  return formatarVolume(valor);
+}
+
 /* ---------- cálculo com faixa (mínima/máxima) ---------- */
 
 export type ResultadoFaixa =
@@ -234,9 +280,13 @@ export type ResultadoFaixa =
       doseTexto: string;
       /** ex.: "20 – 25 mg/kg" */
       referencia: string;
-      /** ex.: "0,14 – 0,18" (null quando não dá para converter) */
+      /** ex.: "0,28 – 0,56" ou "½ – 1" (null quando não dá para converter) */
       volumeTexto: string | null;
       unidade: string | null;
+      /** forma base: mL, comprimido, cápsula, gota */
+      forma: string | null;
+      /** valor decimal exato, para conferência de comprimidos */
+      exatoTexto: string | null;
       motivoVolume?: string;
     }
   | { ok: false; motivo: string };
@@ -277,16 +327,21 @@ export function calcularFaixaDose(params: {
       referencia: referenciaDose(params.dose),
       volumeTexto: null,
       unidade: null,
+      forma: null,
+      exatoTexto: null,
       motivoVolume: AVISO_SEM_CALCULO,
     };
 
   const volMin = totalMin / forma.mgPorUnidade;
   const volMax = totalMax !== null ? totalMax / forma.mgPorUnidade : null;
   const referenciaVolume = volMax ?? volMin;
-  const volumeTexto =
-    volMax !== null
-      ? `${arredondar(volMin, casas(forma.unidade))} – ${arredondar(volMax, casas(forma.unidade))}`
-      : arredondar(volMin, casas(forma.unidade));
+  const parte = (v: number) => textoQuantidade(v, forma.unidade);
+  const volumeTexto = volMax !== null ? `${parte(volMin)} – ${parte(volMax)}` : parte(volMin);
+  const exatoTexto = usaFracao(forma.unidade)
+    ? volMax !== null
+      ? `${arredondar(volMin, 2)} – ${arredondar(volMax, 2)}`
+      : arredondar(volMin, 2)
+    : null;
 
   return {
     ok: true,
@@ -294,8 +349,11 @@ export function calcularFaixaDose(params: {
     referencia: referenciaDose(params.dose),
     volumeTexto,
     unidade: plural(forma.unidade, referenciaVolume),
+    forma: forma.unidade,
+    exatoTexto,
   };
 }
+
 
 
 /* ---------- persistência ---------- */

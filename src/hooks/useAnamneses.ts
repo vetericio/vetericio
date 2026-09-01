@@ -1,3 +1,4 @@
+import { agendarSync } from "@/lib/sync";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { carregarAnamneses, salvarAnamneses, type Anamnese } from "@/lib/anamnese";
 
@@ -19,6 +20,7 @@ const getSnapshot = () => estado;
 function definir(valor: Anamnese[] | ((atual: Anamnese[]) => Anamnese[])) {
   estado = typeof valor === "function" ? (valor as (a: Anamnese[]) => Anamnese[])(estado) : valor;
   salvarAnamneses(estado);
+  agendarSync();
   notificar();
 }
 
