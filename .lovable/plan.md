@@ -40,8 +40,9 @@ Formatação de volumes:
 Comprimidos e cápsulas:
 
 - resultado convertido em fração prática: ¼, ⅓, ½, ¾, 1, 1¼, 1½, 1¾, 2…
-  (aproximação para a fração administrável mais próxima, com o valor exato
-  em texto pequeno ao lado, para conferência).
+  (ex.: `Ministrar ½ comprimido`), nunca `0,28 comprimidos`; o valor exato fica
+  em texto pequeno ao lado, para conferência. A área continua clicável.
+
 
 Vias com ícone pequeno (linha, não emoji grande): seringa para IV/IM/SC,
 comprimido para VO, spray para OT, conta-gotas para OF.
