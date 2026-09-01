@@ -197,7 +197,7 @@ export function FormAvaliacao({
                     onChange({
                       ...valores,
                       animal: a.animal.trim(),
-                      especie: a.especie || valores.especie,
+                      especie: a.especie || valores.especie || "",
                     });
                     setSugerindo(false);
                   }}
