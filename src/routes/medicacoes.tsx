@@ -276,6 +276,12 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
           Editar
         </button>
       </div>
+
+      <DialogoQuantidade
+        pendente={pendente}
+        onFechar={() => setPendente(null)}
+        onConfirmar={confirmarQuantidade}
+      />
     </li>
   );
 }
