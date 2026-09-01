@@ -5,6 +5,8 @@ import { ListaRegistros } from "@/components/ListaRegistros";
 import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
 import { AtualizarEmBloco } from "@/components/AtualizarEmBloco";
 import { AnimaisAtencao } from "@/components/AnimaisAtencao";
+import { EvolucaoAnimais } from "@/components/EvolucaoAnimais";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { alteracoesDoRegistro } from "@/lib/ficha";
 import { useRegistros } from "@/hooks/useRegistros";
