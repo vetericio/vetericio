@@ -1,3 +1,4 @@
+import { carregarAnamneses, type Anamnese } from "./anamnese";
 import { blocoCurvasDoRegistro, type Curva } from "./curva";
 import { resumoRegistro } from "./resumo";
 
@@ -59,6 +60,32 @@ export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
   const lista = (r.medicacoes ?? []).filter((m) => linhaMedicacao(m));
   if (lista.length === 0) return [];
   return ["Medicações:", ...lista.map((m) => `- ${linhaMedicacao(m)}`)];
+}
+
+/** Bloco de texto da anamnese vinculada, vazio quando não houver. */
+export function blocoAnamnese(
+  r: Pick<Registro, "anamneseId">,
+  anamneses?: Anamnese[],
+): string[] {
+  if (!r.anamneseId) return [];
+  const lista = anamneses ?? carregarAnamneses();
+  const a = lista.find((x) => x.id === r.anamneseId);
+  if (!a) return [];
+  const pendencias = (a.pendencias ?? [])
+    .filter((p) => p.texto.trim())
+    .map((p) => `${p.feito ? "[x]" : "[ ]"} ${p.texto.trim()}`)
+    .join("; ");
+  const itens: [string, string][] = [
+    ["Queixa", a.queixa.trim()],
+    ["Relato", a.relato.trim()],
+    ["Exames", a.exames.trim()],
+    ["Conduta", a.conduta.trim()],
+    ["Atenção", a.atencao.trim()],
+    ["Pendências", pendencias],
+  ];
+  const visiveis = itens.filter(([, v]) => v);
+  if (visiveis.length === 0) return [];
+  return ["Anamnese:", ...visiveis.map(([k, v]) => `- ${k}: ${v}`)];
 }
 
 export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
@@ -281,6 +308,8 @@ export type OpcoesFormato = {
   obsPadrao?: boolean;
   /** Curvas guardadas no plantão; sem isso, lê as curvas atuais do aparelho. */
   curvas?: Curva[];
+  /** Anamneses guardadas; sem isso, lê as anamneses atuais do aparelho. */
+  anamneses?: Anamnese[];
 };
 
 export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
@@ -310,6 +339,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
     titulo,
     ...linhas,
     ...blocoMedicacoes(r),
+    ...blocoAnamnese(r, opcoes?.anamneses),
     ...(curvas ? curvas.split("\n") : []),
     ...(obito ? [obito] : []),
     `Observações: ${textoObs}`,
