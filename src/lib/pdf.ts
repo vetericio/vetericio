@@ -209,7 +209,7 @@ export async function exportarPdf(
       }
 
       // Bloco de medicações: título em negrito e itens recuados.
-      const tituloMedicacao = /^Medicações:$/.test(linha);
+      const tituloMedicacao = /^(Medicações|Anamnese):$/.test(linha);
       const itemMedicacao = /^- /.test(linha);
       if (tituloMedicacao) y += 6;
 
