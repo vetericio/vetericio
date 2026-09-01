@@ -331,6 +331,8 @@ export function calcularFaixaDose(params: {
       volumeTexto: null,
       unidade: null,
       forma: null,
+      volMin: null,
+      volMax: null,
       exatoTexto: null,
       motivoVolume: AVISO_SEM_CALCULO,
     };
