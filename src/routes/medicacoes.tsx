@@ -8,6 +8,10 @@ import {
   DialogoAplicar,
   type AplicacaoPendente,
 } from "@/components/medicamentos/DialogoAplicar";
+import {
+  DialogoQuantidade,
+  type QuantidadePendente,
+} from "@/components/medicamentos/DialogoQuantidade";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 
 import {
