@@ -81,6 +81,11 @@ export function FormAvaliacao({
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
   const [outroAberto, setOutroAberto] = useState(false);
+  const [sugerindo, setSugerindo] = useState(false);
+  const { anamneses } = useAnamneses();
+  const sugestoes =
+    sugerindo && !anterior && !editando ? sugerirAnamneses(anamneses, valores.animal) : [];
+
 
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
