@@ -32,26 +32,34 @@ const FRACOES = [
   { texto: "2", valor: 2 },
 ];
 
+const CHAVE_PRECISAO = "veterico:precisao-ml";
+
+function lerPrecisao(): 2 | 3 {
+  if (typeof window === "undefined") return 2;
+  return window.localStorage.getItem(CHAVE_PRECISAO) === "3" ? 3 : 2;
+}
+
 function digitos(texto: string): string {
   return texto.replace(/\D/g, "").slice(0, 6);
 }
 
-function formatar3(d: string): string {
+function formatar(d: string, casas: 2 | 3): string {
   if (!d) return "";
-  return (Number(d) / 1000).toLocaleString("pt-BR", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+  return (Number(d) / 10 ** casas).toLocaleString("pt-BR", {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
   });
 }
 
-function paraDigitos(valor: number): string {
-  return String(Math.round(valor * 1000));
+function paraDigitos(valor: number, casas: 2 | 3): string {
+  return String(Math.round(valor * 10 ** casas));
 }
 
 /** Escolha da quantidade que realmente será administrada. O cálculo é só referência. */
 export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
   const solido = pendente ? usaFracao(pendente.resultado.forma ?? "") : false;
   const sugerido = pendente?.resultado.volMax ?? pendente?.resultado.volMin ?? null;
+  const [casas, setCasas] = useState<2 | 3>(2);
   const [liquido, setLiquido] = useState("");
   const [fracao, setFracao] = useState<number | null>(null);
 
@@ -64,19 +72,39 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
       );
       setFracao(perto.valor);
       setLiquido("");
-    } else {
-      setLiquido(sugerido ? paraDigitos(sugerido) : "");
-      setFracao(null);
+      return;
     }
+    // volumes muito pequenos exigem 3 casas para não perder precisão
+    const precisao: 2 | 3 = sugerido !== null && sugerido > 0 && sugerido < 0.1 ? 3 : lerPrecisao();
+    setCasas(precisao);
+    setLiquido(sugerido ? paraDigitos(sugerido, precisao) : "");
+    setFracao(null);
   }, [pendente, solido, sugerido]);
 
+  const trocarCasas = (novo: 2 | 3) => {
+    if (novo === casas) return;
+    const valor = liquido ? Number(liquido) / 10 ** casas : 0;
+    setCasas(novo);
+    setLiquido(valor > 0 ? paraDigitos(valor, novo) : "");
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CHAVE_PRECISAO, String(novo));
+    }
+  };
+
   const atalhos = useMemo(() => {
-    if (!pendente || solido) return [] as number[];
+    if (!pendente || solido) return [] as { rotulo: string; valor: number }[];
     const { volMin, volMax } = pendente.resultado;
-    const vals = [volMin, volMax].filter((v): v is number => typeof v === "number" && v > 0);
-    const extra = vals.length ? Math.round((vals[vals.length - 1] as number) * 100) / 100 : null;
-    if (extra && !vals.some((v) => Math.abs(v - extra) < 0.0005)) vals.push(extra);
-    return Array.from(new Set(vals.map((v) => Math.round(v * 1000)))).map((d) => d / 1000);
+    const min = typeof volMin === "number" && volMin > 0 ? volMin : null;
+    const max = typeof volMax === "number" && volMax > 0 ? volMax : null;
+    if (min === null && max === null) return [];
+    if (min === null || max === null || Math.abs((max ?? 0) - (min ?? 0)) < 0.0005) {
+      return [{ rotulo: "Dose calculada", valor: (max ?? min) as number }];
+    }
+    return [
+      { rotulo: "Mínimo", valor: min },
+      { rotulo: "Médio", valor: (min + max) / 2 },
+      { rotulo: "Máximo", valor: max },
+    ];
   }, [pendente, solido]);
 
   if (!pendente) return null;
@@ -89,7 +117,7 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
       ? `${textoFracao} ${unidadeBase}`
       : ""
     : liquido && Number(liquido) > 0
-      ? `${formatar3(liquido)} ${unidadeBase || "mL"}`
+      ? `${formatar(liquido, casas)} ${unidadeBase || "mL"}`
       : "";
 
   const confirmar = () => {
@@ -118,9 +146,30 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
         </div>
 
         <div className="rounded-2xl border-2 border-primary bg-primary/10 p-3">
-          <p className="text-center text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            Quantidade a ministrar
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Quantidade a ministrar
+            </p>
+            {!solido && (
+              <div className="flex overflow-hidden rounded-lg border border-border">
+                {([2, 3] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => trocarCasas(c)}
+                    aria-label={`Usar ${c} casas decimais`}
+                    className={`px-2 py-1 text-[11px] font-bold ${
+                      casas === c
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground"
+                    }`}
+                  >
+                    {c === 2 ? "0,00" : "0,000"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {solido ? (
             <div className="mt-2 grid grid-cols-3 gap-2">
@@ -147,10 +196,10 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
               <div className="relative mt-2">
                 <input
                   autoFocus
-                  value={formatar3(liquido)}
+                  value={formatar(liquido, casas)}
                   onChange={(e) => setLiquido(digitos(e.target.value))}
                   inputMode="numeric"
-                  placeholder="0,000"
+                  placeholder={casas === 2 ? "0,00" : "0,000"}
                   aria-label="Quantidade a ministrar"
                   className="w-full rounded-xl border border-input bg-background px-3 py-3 pr-14 text-center text-3xl font-bold text-foreground outline-none focus:border-ring"
                 />
@@ -159,17 +208,27 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
                 </span>
               </div>
               {atalhos.length > 0 && (
-                <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  {atalhos.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setLiquido(paraDigitos(v))}
-                      className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-                    >
-                      {formatar3(paraDigitos(v))}
-                    </button>
-                  ))}
+                <div className="mt-2">
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Atalhos rápidos (referência calculada)
+                  </p>
+                  <div className="mt-1 flex flex-wrap justify-center gap-2">
+                    {atalhos.map((a) => (
+                      <button
+                        key={a.rotulo}
+                        type="button"
+                        onClick={() => setLiquido(paraDigitos(a.valor, casas))}
+                        className="rounded-lg bg-secondary px-2.5 py-1 text-center text-secondary-foreground hover:bg-secondary/70"
+                      >
+                        <span className="block text-[10px] font-semibold uppercase opacity-75">
+                          {a.rotulo}
+                        </span>
+                        <span className="block text-xs font-bold">
+                          {formatar(paraDigitos(a.valor, casas), casas)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
