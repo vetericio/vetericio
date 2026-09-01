@@ -8,20 +8,29 @@ hierarquia clara, ícones pequenos e funcionais, textos curtos e menos espaço v
 Card de medicação reorganizado em uma grade compacta, sem esconder informação:
 
 ```text
-┌──────────────────────────────────────────────┐
-│ **DIPIRONA**    💉 IV IM   500 mg/mL   8h   │
-│ (destaque maior e mais escuro)               │
-│ Aplicar   0,28 mL        Dose  72–90 mg     │
-│ (grande, destaque)       ref. 20–25 mg/kg   │
-│ [Aplicar]  [Editar]                          │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│ DIPIRONA                                           │
+│                                                    │
+│ 500 mg/mL             💉 IV / IM              12h  │
+│ 20–25 mg/kg                Dose 72–90 mg           │
+│                                                    │
+│         💉 Ministrar 0,28–0,56 mL                  │
+│            ↑ toque para aplicar                    │
+│                                                    │
+│                        [Editar]                    │
+└────────────────────────────────────────────────────┘
 ```
 
-- Nome + vias + concentração + intervalo em uma única linha de cabeçalho.
-- "Quantidade a aplicar" continua sendo o elemento de maior destaque, mas em
-  bloco menor, ao lado da dose (não mais uma caixa larga separada).
-- mg/kg e dose total ficam com peso visual menor (texto secundário).
-- Altura do card cai cerca de 40%, sem remover nenhum dado.
+- Nome do medicamento é o maior destaque: fonte maior e cor mais escura.
+- Segunda linha: concentração à esquerda, via no centro (com ícone pequeno),
+  frequência à direita.
+- Terceira linha: dose de referência (`20–25 mg/kg`) à esquerda e dose
+  calculada para o peso (`Dose 72–90 mg`) à direita, em texto secundário.
+- "Ministrar …" é o segundo maior destaque e é a própria área clicável: ao
+  tocar, abre "Para qual animal?" e registra em Animais internados → Medicações.
+  Não existe um botão grande separado escrito "Aplicar".
+- Ficha mais horizontal e mais baixa que a atual, sem remover nenhum dado.
+
 
 Formatação de volumes:
 
@@ -31,8 +40,9 @@ Formatação de volumes:
 Comprimidos e cápsulas:
 
 - resultado convertido em fração prática: ¼, ⅓, ½, ¾, 1, 1¼, 1½, 1¾, 2…
-  (aproximação para a fração administrável mais próxima, com o valor exato
-  em texto pequeno ao lado, para conferência).
+  (ex.: `Ministrar ½ comprimido`), nunca `0,28 comprimidos`; o valor exato fica
+  em texto pequeno ao lado, para conferência. A área continua clicável.
+
 
 Vias com ícone pequeno (linha, não emoji grande): seringa para IV/IM/SC,
 comprimido para VO, spray para OT, conta-gotas para OF.
