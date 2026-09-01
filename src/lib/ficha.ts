@@ -339,6 +339,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
     titulo,
     ...linhas,
     ...blocoMedicacoes(r),
+    ...blocoAnamnese(r, opcoes?.anamneses),
     ...(curvas ? curvas.split("\n") : []),
     ...(obito ? [obito] : []),
     `Observações: ${textoObs}`,
