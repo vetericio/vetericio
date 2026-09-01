@@ -355,6 +355,8 @@ export function calcularFaixaDose(params: {
     volumeTexto,
     unidade: plural(forma.unidade, referenciaVolume),
     forma: forma.unidade,
+    volMin,
+    volMax,
     exatoTexto,
   };
 }
