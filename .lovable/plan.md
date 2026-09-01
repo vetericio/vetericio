@@ -8,20 +8,29 @@ hierarquia clara, ícones pequenos e funcionais, textos curtos e menos espaço v
 Card de medicação reorganizado em uma grade compacta, sem esconder informação:
 
 ```text
-┌──────────────────────────────────────────────┐
-│ **DIPIRONA**    💉 IV IM   500 mg/mL   8h   │
-│ (destaque maior e mais escuro)               │
-│ Aplicar   0,28 mL        Dose  72–90 mg     │
-│ (grande, destaque)       ref. 20–25 mg/kg   │
-│ [Aplicar]  [Editar]                          │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│ DIPIRONA                                           │
+│                                                    │
+│ 500 mg/mL             💉 IV / IM              12h  │
+│ 20–25 mg/kg                Dose 72–90 mg           │
+│                                                    │
+│         💉 Ministrar 0,28–0,56 mL                  │
+│            ↑ toque para aplicar                    │
+│                                                    │
+│                        [Editar]                    │
+└────────────────────────────────────────────────────┘
 ```
 
-- Nome + vias + concentração + intervalo em uma única linha de cabeçalho.
-- "Quantidade a aplicar" continua sendo o elemento de maior destaque, mas em
-  bloco menor, ao lado da dose (não mais uma caixa larga separada).
-- mg/kg e dose total ficam com peso visual menor (texto secundário).
-- Altura do card cai cerca de 40%, sem remover nenhum dado.
+- Nome do medicamento é o maior destaque: fonte maior e cor mais escura.
+- Segunda linha: concentração à esquerda, via no centro (com ícone pequeno),
+  frequência à direita.
+- Terceira linha: dose de referência (`20–25 mg/kg`) à esquerda e dose
+  calculada para o peso (`Dose 72–90 mg`) à direita, em texto secundário.
+- "Ministrar …" é o segundo maior destaque e é a própria área clicável: ao
+  tocar, abre "Para qual animal?" e registra em Animais internados → Medicações.
+  Não existe um botão grande separado escrito "Aplicar".
+- Ficha mais horizontal e mais baixa que a atual, sem remover nenhum dado.
+
 
 Formatação de volumes:
 
