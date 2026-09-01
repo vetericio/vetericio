@@ -268,9 +268,10 @@ function Registros() {
       )}
 
       <Tabs defaultValue="todos" className="mt-4">
-        <TabsList>
+        <TabsList className="flex w-full flex-wrap">
           <TabsTrigger value="todos">Todos</TabsTrigger>
           <TabsTrigger value="atencao">Animais em atenção ({emAtencao.length})</TabsTrigger>
+          <TabsTrigger value="evolucao">Evolução</TabsTrigger>
         </TabsList>
 
         <TabsContent value="todos">
@@ -306,7 +307,12 @@ function Registros() {
             onExcluir={onExcluir}
           />
         </TabsContent>
+
+        <TabsContent value="evolucao">
+          <EvolucaoAnimais />
+        </TabsContent>
       </Tabs>
+
 
       <AtualizarEmBloco
         aberto={blocoAberto}
