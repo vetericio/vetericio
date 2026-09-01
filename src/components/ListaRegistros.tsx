@@ -88,10 +88,8 @@ export function ListaRegistros({
             )}
           </h3>
 
-          <FichaAnamnese anamnese={anamneses.find((a) => a.id === r.anamneseId)} />
-
           <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted-foreground">
-            {formatarRegistro(r).split("\n").slice(1).join("\n")}
+            {formatarRegistro(r, { anamneses }).split("\n").slice(1).join("\n")}
           </pre>
         </article>
 
