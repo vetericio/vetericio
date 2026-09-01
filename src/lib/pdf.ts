@@ -199,7 +199,7 @@ export async function exportarPdf(
     let naCurva = false;
     for (const linha of resto) {
       const tituloCurvaLinha = /^Curva /.test(linha);
-      const fimDaCurva = /^(Observações|Resumo|Óbito):/.test(linha);
+      const fimDaCurva = /^(Observações|Resumo|Óbito|Anamnese):/.test(linha);
       if (tituloCurvaLinha) {
         naCurva = true;
         y += 10;
