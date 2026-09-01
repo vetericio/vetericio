@@ -8,6 +8,10 @@ import {
   DialogoAplicar,
   type AplicacaoPendente,
 } from "@/components/medicamentos/DialogoAplicar";
+import {
+  DialogoQuantidade,
+  type QuantidadePendente,
+} from "@/components/medicamentos/DialogoQuantidade";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 
 import {
@@ -175,6 +179,7 @@ type CardProps = {
 };
 
 function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, onAplicar }: CardProps) {
+  const [pendente, setPendente] = useState<QuantidadePendente | null>(null);
   const dose = doseDaEspecie(m, especie);
   const vias = viasDe(m);
   const resultado = calcularFaixaDose({
@@ -192,14 +197,27 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
 
   const ministrar = () => {
     if (!resultado.ok || !resultado.volumeTexto) return;
-    onAplicar({
+    setPendente({
       nome: m.nome,
-      dose: `${resultado.doseTexto}${resultado.referencia ? ` (${resultado.referencia})` : ""}`,
-      quantidade: `${resultado.volumeTexto} ${resultado.unidade ?? ""}`.trim(),
       via: vias.join("/"),
       duracao: frequencia ? `a cada ${frequencia}` : "",
+      resultado,
     });
   };
+
+  const confirmarQuantidade = (quantidade: string) => {
+    if (!pendente) return;
+    const r = pendente.resultado;
+    onAplicar({
+      nome: pendente.nome,
+      dose: `${r.doseTexto}${r.referencia ? ` (${r.referencia})` : ""}`,
+      quantidade,
+      via: pendente.via,
+      duracao: pendente.duracao,
+    });
+    setPendente(null);
+  };
+
 
   return (
     <li className="rounded-2xl border border-border bg-card/60 px-3 py-2.5">
@@ -258,6 +276,12 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
           Editar
         </button>
       </div>
+
+      <DialogoQuantidade
+        pendente={pendente}
+        onFechar={() => setPendente(null)}
+        onConfirmar={confirmarQuantidade}
+      />
     </li>
   );
 }

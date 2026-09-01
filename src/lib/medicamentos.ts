@@ -285,6 +285,9 @@ export type ResultadoFaixa =
       unidade: string | null;
       /** forma base: mL, comprimido, cápsula, gota */
       forma: string | null;
+      /** valores numéricos da faixa de volume, para pré-preencher a quantidade */
+      volMin: number | null;
+      volMax: number | null;
       /** valor decimal exato, para conferência de comprimidos */
       exatoTexto: string | null;
       motivoVolume?: string;
@@ -328,6 +331,8 @@ export function calcularFaixaDose(params: {
       volumeTexto: null,
       unidade: null,
       forma: null,
+      volMin: null,
+      volMax: null,
       exatoTexto: null,
       motivoVolume: AVISO_SEM_CALCULO,
     };
@@ -350,6 +355,8 @@ export function calcularFaixaDose(params: {
     volumeTexto,
     unidade: plural(forma.unidade, referenciaVolume),
     forma: forma.unidade,
+    volMin,
+    volMax,
     exatoTexto,
   };
 }
