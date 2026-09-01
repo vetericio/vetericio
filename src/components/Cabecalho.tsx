@@ -13,12 +13,13 @@ const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:
 const LINKS = [
   { to: "/", rotulo: "Início", exato: true },
   { to: "/registros", rotulo: "Animais internados", exato: false },
+  { to: "/anamnese", rotulo: "Anamnese", exato: false },
   { to: "/medicacoes", rotulo: "Medicações", exato: false },
-  { to: "/evolucao", rotulo: "Evolução", exato: false },
   { to: "/curva", rotulo: "Curva", exato: false },
   { to: "/alarmes", rotulo: "Alarmes", exato: false },
   { to: "/plantoes", rotulo: "Plantões", exato: false },
 ] as const;
+
 
 export function Cabecalho() {
   const { registros } = useRegistros();

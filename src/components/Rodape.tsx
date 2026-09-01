@@ -39,16 +39,20 @@ export function Rodape() {
 
   return (
     <footer className="mx-auto w-full max-w-5xl px-4 pb-8 text-center">
-      <button
-        type="button"
-        onClick={() => setAberto((v) => !v)}
-        className="text-[11px] font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
-      >
-        Temas
-      </button>
+      <div className="flex flex-wrap items-start justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => setAberto((v) => !v)}
+          className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
+        >
+          Temas
+        </button>
+        <Backup />
+      </div>
 
       {aberto && (
         <div className="mx-auto mt-2 max-w-md">
+
           <div className="flex flex-wrap justify-center gap-2">
             {TEMAS.map((t) => (
               <button
@@ -98,7 +102,7 @@ export function Rodape() {
         </div>
       )}
 
-      <Backup />
+
 
       <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
         Todos os direitos reservados a Veterício Serviços Veterinários LTDA. 31995512795.

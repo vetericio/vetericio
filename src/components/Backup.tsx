@@ -215,14 +215,15 @@ export function Backup() {
     "rounded-lg bg-secondary px-3 py-2 text-[12px] font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-50";
 
   return (
-    <div className="mt-2">
+    <div>
       <button
         type="button"
         onClick={() => setAberto((v) => !v)}
-        className="text-[11px] font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
       >
         Backup
       </button>
+
 
       {aberto && (
         <div className="mx-auto mt-2 max-w-md rounded-xl bg-secondary/60 p-3 text-left">

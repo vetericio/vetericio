@@ -25,6 +25,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Medicacoes } from "@/components/Medicacoes";
+import { useAnamneses } from "@/hooks/useAnamneses";
+import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
+
 
 type Props = {
   valores: Omit<Registro, "id">;
@@ -81,6 +84,11 @@ export function FormAvaliacao({
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
   const [outroAberto, setOutroAberto] = useState(false);
+  const [sugerindo, setSugerindo] = useState(false);
+  const { anamneses } = useAnamneses();
+  const sugestoes =
+    sugerindo && !anterior && !editando ? sugerirAnamneses(anamneses, valores.animal) : [];
+
 
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
@@ -163,18 +171,51 @@ export function FormAvaliacao({
         </div>
       )}
 
-      <label className="block">
+      <div className="block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Animal
         </span>
         <input
           value={valores.animal}
-          onChange={(e) => set("animal", e.target.value)}
+          onChange={(e) => {
+            set("animal", e.target.value);
+            setSugerindo(true);
+          }}
+          onFocus={() => setSugerindo(true)}
           placeholder="Nome do animal"
           readOnly={Boolean(anterior)}
+          autoComplete="off"
           className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-lg font-semibold text-foreground outline-none focus:border-ring"
         />
-      </label>
+        {sugestoes.length > 0 && (
+          <ul className="mt-1.5 overflow-hidden rounded-lg border border-border bg-card">
+            {sugestoes.map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({
+                      ...valores,
+                      animal: a.animal.trim(),
+                      especie: a.especie || valores.especie || "",
+                    });
+                    setSugerindo(false);
+                  }}
+                  className="flex w-full items-baseline justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/60"
+                >
+                  <span className="font-semibold text-foreground">
+                    {emojiEspecie(a.especie)} {a.animal.trim()}
+                  </span>
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    {a.queixa.trim() || "anamnese"}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
 
       <div className="mt-3">
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
+import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as CurvaRouteImport } from './routes/curva'
-import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as RegistrosRouteImport } from './routes/registros'
@@ -27,14 +27,14 @@ const AlarmesRoute = AlarmesRouteImport.update({
   path: '/alarmes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnamneseRoute = AnamneseRouteImport.update({
+  id: '/anamnese',
+  path: '/anamnese',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CurvaRoute = CurvaRouteImport.update({
   id: '/curva',
   path: '/curva',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EvolucaoRoute = EvolucaoRouteImport.update({
-  id: '/evolucao',
-  path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MedicacoesRoute = MedicacoesRouteImport.update({
@@ -56,8 +56,8 @@ const RegistrosRoute = RegistrosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alarmes': typeof AlarmesRoute
+  '/anamnese': typeof AnamneseRoute
   '/curva': typeof CurvaRoute
-  '/evolucao': typeof EvolucaoRoute
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
@@ -65,8 +65,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alarmes': typeof AlarmesRoute
+  '/anamnese': typeof AnamneseRoute
   '/curva': typeof CurvaRoute
-  '/evolucao': typeof EvolucaoRoute
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
@@ -75,8 +75,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/alarmes': typeof AlarmesRoute
+  '/anamnese': typeof AnamneseRoute
   '/curva': typeof CurvaRoute
-  '/evolucao': typeof EvolucaoRoute
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
@@ -86,8 +86,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/alarmes'
+    | '/anamnese'
     | '/curva'
-    | '/evolucao'
     | '/medicacoes'
     | '/plantoes'
     | '/registros'
@@ -95,8 +95,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/alarmes'
+    | '/anamnese'
     | '/curva'
-    | '/evolucao'
     | '/medicacoes'
     | '/plantoes'
     | '/registros'
@@ -104,8 +104,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/alarmes'
+    | '/anamnese'
     | '/curva'
-    | '/evolucao'
     | '/medicacoes'
     | '/plantoes'
     | '/registros'
@@ -114,8 +114,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlarmesRoute: typeof AlarmesRoute
+  AnamneseRoute: typeof AnamneseRoute
   CurvaRoute: typeof CurvaRoute
-  EvolucaoRoute: typeof EvolucaoRoute
   MedicacoesRoute: typeof MedicacoesRoute
   PlantoesRoute: typeof PlantoesRoute
   RegistrosRoute: typeof RegistrosRoute
@@ -137,18 +137,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlarmesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/anamnese': {
+      id: '/anamnese'
+      path: '/anamnese'
+      fullPath: '/anamnese'
+      preLoaderRoute: typeof AnamneseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/curva': {
       id: '/curva'
       path: '/curva'
       fullPath: '/curva'
       preLoaderRoute: typeof CurvaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/evolucao': {
-      id: '/evolucao'
-      path: '/evolucao'
-      fullPath: '/evolucao'
-      preLoaderRoute: typeof EvolucaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/medicacoes': {
@@ -178,8 +178,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlarmesRoute: AlarmesRoute,
+  AnamneseRoute: AnamneseRoute,
   CurvaRoute: CurvaRoute,
-  EvolucaoRoute: EvolucaoRoute,
   MedicacoesRoute: MedicacoesRoute,
   PlantoesRoute: PlantoesRoute,
   RegistrosRoute: RegistrosRoute,
