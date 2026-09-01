@@ -25,6 +25,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Medicacoes } from "@/components/Medicacoes";
+import { useAnamneses } from "@/hooks/useAnamneses";
+import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
+
 
 type Props = {
   valores: Omit<Registro, "id">;
