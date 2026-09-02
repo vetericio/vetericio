@@ -372,14 +372,6 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
     plantaoFinal = remotoPlantao ?? localPlantao;
   }
 
-  // Animais de um plantão que já foi arquivado no histórico não voltam para a
-  // lista de internados (foram guardados, não excluídos).
-  const arquivados = new Set(
-    plantoes
-      .flatMap((p) => [String(p.id ?? ""), String(p["plantaoId"] ?? "")])
-      .filter((id) => id !== ""),
-  );
-  registros = registros.filter((r) => !arquivados.has(String(r["plantaoId"] ?? "")));
 
   resultado.registros = registros;
   resultado.plantoes = plantoes;

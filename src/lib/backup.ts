@@ -134,23 +134,27 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
-  const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)) as Array<{
-    id?: unknown;
-    excluidoEm?: unknown;
-  }>;
-  if (exclusoes.length > 0) {
-    const apagados = new Set(exclusoes.map((e) => String(e.id ?? "")));
-    const registros = lista(lerBruto(CHAVES_BACKUP.registros)).filter(
-      (r) => !apagados.has(String(r.id ?? "")),
+  // Restaurar é um pedido claro de trazer estes animais de volta: marcas antigas
+  // de exclusão não podem apagá-los outra vez (nem agora, nem na sincronização).
+  const idsRestaurados = new Set(lista(b.dados.registros).map((r) => String(r?.id ?? "")));
+  if (idsRestaurados.size > 0) {
+    const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)).filter(
+      (e) => !idsRestaurados.has(String(e?.id ?? "")),
     );
-    escreverBruto(CHAVES_BACKUP.registros, registros);
+    escreverBruto(CHAVES_BACKUP.exclusoes, exclusoes);
   }
 
   const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
   for (const nome of simples) {
     const novo = b.dados[nome];
     if (novo === undefined) continue;
-    const jaTem = lerBruto(CHAVES_BACKUP[nome]) !== undefined;
+    const atual = lerBruto(CHAVES_BACKUP[nome]);
+    let jaTem = atual !== undefined;
+    if (nome === "plantaoAtual" && jaTem) {
+      // Um plantão já finalizado não bloqueia o plantão que veio no backup.
+      const p = atual as Record<string, unknown> | null;
+      if (!p || p["finalizadoEm"]) jaTem = false;
+    }
     if (modo === "juntar" && jaTem) continue;
     escreverBruto(CHAVES_BACKUP[nome], novo);
   }
