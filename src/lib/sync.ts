@@ -293,11 +293,13 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
     if (juntas.length > 0 || remoto.dados[nome] !== undefined) resultado[nome] = juntas;
   }
 
-  let exclusoes = lerExclusoes(resultado.exclusoes);
+  const exclusoes = lerExclusoes(resultado.exclusoes);
   const exclusaoPorId = new Map(exclusoes.map((e) => [e.id, e]));
   let registros = comoLista(resultado.registros).filter((r) => {
     const exclusao = exclusaoPorId.get(String(r.id ?? ""));
-    return !exclusao;
+    if (!exclusao) return true;
+    // A exclusão só vence se for mais recente que a última alteração do animal.
+    return iso(r["atualizadoEm"]) > iso(exclusao.excluidoEm);
   });
   let plantoes = comoLista(resultado.plantoes);
   const curvas = comoLista(resultado.curvas);
