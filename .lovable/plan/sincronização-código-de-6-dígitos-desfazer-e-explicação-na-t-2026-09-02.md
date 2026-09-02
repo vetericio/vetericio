@@ -2,12 +2,12 @@
 
 ## 1. Código curto (6 dígitos)
 
-- Ao gerar o código deste aparelho, o app cria um número de 6 dígitos (ex: `482913`).
+- Ao gerar o código deste aparelho, o app cria um código de 7 dígitos, uma letra e 6 números (ex:  j965459).
 - Antes de usar, o app confere se aquele código já está ocupado na nuvem; se estiver, gera outro (até 8 tentativas).
-- O QR continua funcionando, e o campo "já tenho um código" passa a aceitar só os 6 dígitos, com teclado numérico no celular.
+- O QR continua funcionando, e o campo "já tenho um código" passa a aceitar só os 6 dígitos, com teclado numérico no celular. Abre a opção de ler um qr
 - Códigos longos já existentes continuam válidos (quem já pareou não precisa refazer nada).
 
-Observação: um código de 6 dígitos é bem mais fácil de digitar, mas também mais fácil de alguém acertar por tentativa. Por isso o aviso na tela vai lembrar de sincronizar e, quando terminar, tocar em "Desconectar".
+Observação: um código de 7 dígitos é bem mais fácil de digitar, mas também mais fácil de alguém acertar por tentativa. Por isso o aviso na tela vai lembrar de sincronizar e, quando terminar, tocar em "Desconectar".
 
 ## 2. Desfazer a sincronização
 
