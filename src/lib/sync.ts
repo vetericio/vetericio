@@ -23,12 +23,7 @@ const LISTAS: ChaveBackup[] = [
 /** Valores únicos: fica o mais recente que chegou. */
 const SIMPLES: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
 
-export type EstadoSync =
-  | "sem-codigo"
-  | "sincronizado"
-  | "sincronizando"
-  | "pendente"
-  | "erro";
+export type EstadoSync = "sem-codigo" | "sincronizado" | "sincronizando" | "pendente" | "erro";
 
 /* ---------- código secreto ---------- */
 
@@ -62,7 +57,10 @@ export function esquecerCodigo() {
 }
 
 export function normalizarCodigo(texto: string): string {
-  return texto.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  return texto
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 /** Aceita o código curto novo e também os códigos longos já em uso. */
@@ -81,7 +79,6 @@ export function codigoDoQr(texto: string): string {
   const bruto = limpo.startsWith("VETSYNC1:") ? limpo.slice(9) : limpo;
   return normalizarCodigo(bruto);
 }
-
 
 /* ---------- estado da fila offline ---------- */
 
@@ -155,7 +152,15 @@ function comoLista(valor: unknown): Item[] {
 }
 
 function quando(item: Item): number {
-  const campos = ["excluidoEm", "finalizadoEm", "atualizadoEm", "aplicadoEm", "criadoEm", "data", "fechadoEm"];
+  const campos = [
+    "excluidoEm",
+    "finalizadoEm",
+    "atualizadoEm",
+    "aplicadoEm",
+    "criadoEm",
+    "data",
+    "fechadoEm",
+  ];
   for (const campo of campos) {
     const valor = item[campo];
     if (typeof valor === "string") {
@@ -212,7 +217,11 @@ function arquivarPlantao(
   if (doPlantao.length === 0) return { registros, plantoes, exclusoes: [] };
   const chaves = new Set(
     doPlantao.map((r) => {
-      const nome = String(r["animal"] ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const nome = String(r["animal"] ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
       return `${nome}|${String(r["especie"] ?? "")}`;
     }),
   );
@@ -227,9 +236,7 @@ function arquivarPlantao(
     criadoEm: antigo.abertoEm,
     atualizadoEm: new Date().toISOString(),
   };
-  const semDuplicata = plantoes.filter(
-    (p) => p.id !== antigo.id && p["plantaoId"] !== antigo.id,
-  );
+  const semDuplicata = plantoes.filter((p) => p.id !== antigo.id && p["plantaoId"] !== antigo.id);
   const agora = new Date().toISOString();
   return {
     registros: registros.filter((r) => r["plantaoId"] !== antigo.id),
@@ -301,18 +308,22 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
 
   if (localPlantao && remotoPlantao) {
     if (mesmoPlantao(localPlantao, remotoPlantao)) {
-      plantaoFinal = iso(remotoPlantao.atualizadoEm) > iso(localPlantao.atualizadoEm)
-        ? remotoPlantao
-        : localPlantao;
+      plantaoFinal =
+        iso(remotoPlantao.atualizadoEm) > iso(localPlantao.atualizadoEm)
+          ? remotoPlantao
+          : localPlantao;
       const idFinal = plantaoFinal.id;
       registros = registros.map((r) => {
         const pid = r["plantaoId"];
-        return pid === localPlantao.id || pid === remotoPlantao.id ? { ...r, plantaoId: idFinal } : r;
+        return pid === localPlantao.id || pid === remotoPlantao.id
+          ? { ...r, plantaoId: idFinal }
+          : r;
       });
     } else if (!localPlantao.finalizadoEm && !remotoPlantao.finalizadoEm) {
       const localMaisNovo =
         localPlantao.dia > remotoPlantao.dia ||
-        (localPlantao.dia === remotoPlantao.dia && iso(localPlantao.abertoEm) >= iso(remotoPlantao.abertoEm));
+        (localPlantao.dia === remotoPlantao.dia &&
+          iso(localPlantao.abertoEm) >= iso(remotoPlantao.abertoEm));
       const novo = localMaisNovo ? localPlantao : remotoPlantao;
       const antigo = localMaisNovo ? remotoPlantao : localPlantao;
       const arquivado = arquivarPlantao(antigo, registros, plantoes, curvas);
@@ -322,7 +333,11 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
       plantaoFinal = novo;
     } else {
       const abertos = [localPlantao, remotoPlantao].filter((p) => !p.finalizadoEm);
-      plantaoFinal = abertos[0] ?? (iso(remotoPlantao.atualizadoEm) > iso(localPlantao.atualizadoEm) ? remotoPlantao : localPlantao);
+      plantaoFinal =
+        abertos[0] ??
+        (iso(remotoPlantao.atualizadoEm) > iso(localPlantao.atualizadoEm)
+          ? remotoPlantao
+          : localPlantao);
     }
   } else {
     plantaoFinal = remotoPlantao ?? localPlantao;
@@ -348,7 +363,6 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
 
   return { atualizadoEm: new Date().toISOString(), dados: resultado };
 }
-
 
 /* ---------- desfazer ---------- */
 
@@ -399,9 +413,7 @@ export function pausar(valor: boolean) {
 
 /* ---------- ciclo de sincronização ---------- */
 
-export type ResultadoSync =
-  | { ok: true; atualizadoEm: string }
-  | { ok: false; motivo: string };
+export type ResultadoSync = { ok: true; atualizadoEm: string } | { ok: false; motivo: string };
 
 /**
  * Um ciclo completo: baixa o que está na nuvem, mescla com o aparelho e sobe o
@@ -437,7 +449,6 @@ export async function sincronizarAgora(manual = false): Promise<ResultadoSync> {
     return { ok: false, motivo: erro instanceof Error ? erro.message : "Erro ao sincronizar." };
   }
 }
-
 
 /** Formata o horário da última sincronização. */
 export function quandoSync(iso: string): string {

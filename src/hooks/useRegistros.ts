@@ -22,7 +22,8 @@ const getServerSnapshot = () => estado;
 
 function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   const anterior = estado;
-  const proximo = typeof valor === "function" ? (valor as (a: Registro[]) => Registro[])(estado) : valor;
+  const proximo =
+    typeof valor === "function" ? (valor as (a: Registro[]) => Registro[])(estado) : valor;
   const ids = new Set(proximo.map((r) => r.id));
   marcarRegistrosExcluidos(anterior.filter((r) => !ids.has(r.id)).map((r) => r.id));
   const agora = new Date().toISOString();

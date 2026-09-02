@@ -19,7 +19,6 @@ import {
   type Registro,
 } from "@/lib/ficha";
 
-
 import { exportarPdf } from "@/lib/pdf";
 import {
   AlertDialog,
@@ -83,9 +82,7 @@ function Registros() {
       }),
     );
     setBlocoAberto(false);
-    toast.success(
-      contador === 1 ? "1 animal atualizado." : `${contador} animais atualizados.`,
-    );
+    toast.success(contador === 1 ? "1 animal atualizado." : `${contador} animais atualizados.`);
   };
 
   const horaAgora = () => {
@@ -166,8 +163,6 @@ function Registros() {
     finalizar();
   };
 
-
-
   const apagarTudo = () => {
     if (registros.length === 0) {
       toast.info("Não há registros salvos.");
@@ -189,7 +184,6 @@ function Registros() {
       toast.error("Não foi possível copiar.");
     }
   };
-
 
   const exportar = async () => {
     try {
@@ -217,7 +211,6 @@ function Registros() {
     setRegistros((rs) => rs.filter((x) => x.id !== id));
     toast.success("Registro excluído.");
   };
-
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
@@ -296,7 +289,6 @@ function Registros() {
                   onAtualizar={onAtualizar}
                   onExcluir={onExcluir}
                 />
-
               )}
             </div>
             <IndiceAlfabetico letras={letras} ativa={letraAtiva} onSelecionar={irParaLetra} />
@@ -319,15 +311,12 @@ function Registros() {
         </TabsContent>
       </Tabs>
 
-
       <AtualizarEmBloco
         aberto={blocoAberto}
         onFechar={() => setBlocoAberto(false)}
         registros={registros}
         onAplicar={aplicarBloco}
       />
-
-
 
       <AlertDialog open={Boolean(obitoAlvo)} onOpenChange={(o) => !o && setObitoAlvo(null)}>
         <AlertDialogContent>
@@ -369,7 +358,9 @@ function Registros() {
       {registros.length > 0 && (
         <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-display text-base font-semibold text-foreground">Texto exportado</h2>
+            <h2 className="font-display text-base font-semibold text-foreground">
+              Texto exportado
+            </h2>
             <button
               type="button"
               onClick={() => copiarTexto(formatarTodos(registros))}
