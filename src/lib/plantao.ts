@@ -83,16 +83,38 @@ export function nomeArquivoPdf(dia: string, turno?: string): string {
   return t ? `Plantão ${t} ${curtaPontos}.pdf` : `Plantão ${curtaPontos}.pdf`;
 }
 
+/**
+ * O que fica guardado na chave do plantão: ou o plantão ativo, ou a marca de
+ * plantão finalizado. A marca é persistente para que recarregar o app (ou
+ * restaurar um backup) nunca reabra um plantão já finalizado.
+ */
+export type PlantaoSalvo = PlantaoAtual | { finalizadoEm: string };
+
+export function plantaoFinalizado(bruto: unknown): boolean {
+  return (
+    !!bruto &&
+    typeof bruto === "object" &&
+    typeof (bruto as { finalizadoEm?: unknown }).finalizadoEm === "string"
+  );
+}
+
+function valido(dados: unknown): PlantaoAtual | null {
+  const d = dados as PlantaoAtual | null;
+  if (!d?.dia || typeof d.dia !== "string") return null;
+  if (d.turno !== "diurno" && d.turno !== "noturno") return null;
+  return d;
+}
+
 export function carregarPlantaoAtual(): PlantaoAtual | null {
   if (typeof window === "undefined") return null;
   try {
     const bruto = window.localStorage.getItem(CHAVE);
     if (!bruto) return null;
-    const dados = JSON.parse(bruto) as PlantaoAtual;
+    const dados: unknown = JSON.parse(bruto);
+    // Plantão finalizado nunca volta a ser lido como ativo.
+    if (plantaoFinalizado(dados)) return null;
     // O plantão vale até ser finalizado (ou alterado), mesmo virando o dia.
-    if (!dados?.dia || typeof dados.dia !== "string") return null;
-    if (dados.turno !== "diurno" && dados.turno !== "noturno") return null;
-    return dados;
+    return valido(dados);
   } catch {
     return null;
   }
@@ -101,9 +123,10 @@ export function carregarPlantaoAtual(): PlantaoAtual | null {
 export function salvarPlantaoAtual(p: PlantaoAtual | null) {
   if (typeof window === "undefined") return;
   try {
-    if (!p) window.localStorage.removeItem(CHAVE);
-    else window.localStorage.setItem(CHAVE, JSON.stringify(p));
+    const valor: PlantaoSalvo = p ?? { finalizadoEm: new Date().toISOString() };
+    window.localStorage.setItem(CHAVE, JSON.stringify(valor));
   } catch {
     /* armazenamento indisponível */
   }
 }
+
