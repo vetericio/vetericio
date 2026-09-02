@@ -103,6 +103,33 @@ function registrarSync(quando: string) {
   window.localStorage.setItem(CHAVE_ULTIMO, quando);
 }
 
+/** Resumo do que chegou na última junção, mostrado na tela de Sincronização. */
+export type ResumoSync = { animais: number; plantoes: number; quando: string };
+
+const CHAVE_RESUMO = "veterico-sync-resumo-v1";
+
+function guardarResumo(resumo: ResumoSync) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHAVE_RESUMO, JSON.stringify(resumo));
+  } catch {
+    /* sem espaço: seguimos sem resumo */
+  }
+}
+
+export function ultimoResumo(): ResumoSync | null {
+  if (typeof window === "undefined") return null;
+  const bruto = window.localStorage.getItem(CHAVE_RESUMO);
+  if (!bruto) return null;
+  try {
+    const r = JSON.parse(bruto) as Partial<ResumoSync>;
+    if (typeof r.animais !== "number" || typeof r.plantoes !== "number") return null;
+    return { animais: r.animais, plantoes: r.plantoes, quando: String(r.quando ?? "") };
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- mesclagem ---------- */
 
 type Item = Record<string, unknown> & { id?: unknown };
