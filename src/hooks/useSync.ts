@@ -45,6 +45,8 @@ export function useSync() {
     setErro("");
     const r = await sincronizarAgora(manual);
     setTemDesfazer(podeDesfazer());
+    setPausada(sincronizacaoPausada());
+    setResumo(ultimoResumo());
     if (r.ok) {
       setUltima(r.atualizadoEm);
       setEstado("sincronizado");
