@@ -170,7 +170,7 @@ function Registros() {
       return;
     }
     if (window.confirm("Apagar todos os registros salvos neste aparelho?")) {
-      setRegistros([]);
+      excluirTodosRegistros();
       toast.success("Todos os registros foram apagados.");
     }
   };
