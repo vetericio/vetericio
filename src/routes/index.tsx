@@ -183,7 +183,7 @@ function Index() {
             ? {
                 ...valores,
                 id: editandoId,
-                plantaoId: r.plantaoId,
+                ...(r.plantaoId ? { plantaoId: r.plantaoId } : {}),
                 atualizadoEm: new Date().toISOString(),
               }
             : r,
