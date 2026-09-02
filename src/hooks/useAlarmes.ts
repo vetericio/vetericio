@@ -128,6 +128,12 @@ export function useAlarmes() {
       intervalo = window.setInterval(verificar, 1000);
     }
     setCarregado(true);
+    const recarregar = () => {
+      alarmes = carregarAlarmes();
+      notificar();
+    };
+    window.addEventListener("veterico-sync-atualizado", recarregar);
+    return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
   return {

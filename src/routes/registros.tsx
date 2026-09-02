@@ -79,7 +79,7 @@ function Registros() {
         const valor = (valores[r.id] ?? "").trim();
         if (!valor || r.obito) return r;
         contador += 1;
-        return aplicarAtualizacao(r, chave, valor);
+        return { ...aplicarAtualizacao(r, chave, valor), atualizadoEm: new Date().toISOString() };
       }),
     );
     setBlocoAberto(false);
@@ -101,7 +101,7 @@ function Registros() {
         rs.map((x) => {
           if (x.id !== r.id) return x;
           const { obito: _removido, ...resto } = x;
-          return resto as Registro;
+          return { ...resto, atualizadoEm: new Date().toISOString() } as Registro;
         }),
       );
       toast.success("Registro de óbito desfeito.");
@@ -117,7 +117,11 @@ function Registros() {
     const hora = obitoHora.trim() || horaAgora();
     const motivo = obitoMotivo.trim();
     setRegistros((rs) =>
-      rs.map((x) => (x.id === obitoAlvo.id ? { ...x, obito: { hora, motivo } } : x)),
+      rs.map((x) =>
+        x.id === obitoAlvo.id
+          ? { ...x, obito: { hora, motivo }, atualizadoEm: new Date().toISOString() }
+          : x,
+      ),
     );
     setObitoAlvo(null);
     toast.success("Óbito registrado na ficha.");

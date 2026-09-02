@@ -250,6 +250,12 @@ export function pacoteLocal(): PacoteSync {
     const valor = lerBruto(chave);
     if (valor !== undefined) dados[nome] = valor;
   }
+  const plantao = comoPlantao(dados.plantaoAtual);
+  if (plantao && Array.isArray(dados.registros)) {
+    dados.registros = (dados.registros as Item[]).map((r) =>
+      typeof r["plantaoId"] === "string" ? r : { ...r, plantaoId: plantao.id },
+    );
+  }
   return { atualizadoEm: new Date().toISOString(), dados };
 }
 
@@ -267,6 +273,12 @@ function validarPacote(bruto: unknown): PacoteSync | null {
 /** Mescla o pacote remoto com o local, grava no aparelho e devolve o resultado. */
 export function mesclarPacote(remoto: PacoteSync): PacoteSync {
   const local = pacoteLocal();
+  const remotoAtivo = comoPlantao(remoto.dados.plantaoAtual);
+  if (remotoAtivo && Array.isArray(remoto.dados.registros)) {
+    remoto.dados.registros = (remoto.dados.registros as Item[]).map((r) =>
+      typeof r["plantaoId"] === "string" ? r : { ...r, plantaoId: remotoAtivo.id },
+    );
+  }
   const resultado: Partial<Record<ChaveBackup, unknown>> = { ...local.dados };
 
   for (const nome of LISTAS) {
