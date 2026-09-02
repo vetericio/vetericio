@@ -212,9 +212,9 @@ function arquivarPlantao(
   registros: Item[],
   plantoes: Item[],
   curvas: Item[],
-): { registros: Item[]; plantoes: Item[]; exclusoes: Exclusao[] } {
+): { registros: Item[]; plantoes: Item[] } {
   const doPlantao = registros.filter((r) => r["plantaoId"] === antigo.id);
-  if (doPlantao.length === 0) return { registros, plantoes, exclusoes: [] };
+  if (doPlantao.length === 0) return { registros, plantoes };
   const chaves = new Set(
     doPlantao.map((r) => {
       const nome = String(r["animal"] ?? "")
@@ -237,11 +237,11 @@ function arquivarPlantao(
     atualizadoEm: new Date().toISOString(),
   };
   const semDuplicata = plantoes.filter((p) => p.id !== antigo.id && p["plantaoId"] !== antigo.id);
-  const agora = new Date().toISOString();
+  // Arquivar não é excluir: nada de marcas de exclusão aqui, senão o outro
+  // aparelho perde para sempre os animais do plantão que foi guardado.
   return {
     registros: registros.filter((r) => r["plantaoId"] !== antigo.id),
     plantoes: [historico, ...semDuplicata],
-    exclusoes: doPlantao.map((r) => ({ id: String(r.id), tipo: "registro", excluidoEm: agora })),
   };
 }
 
