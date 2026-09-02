@@ -473,7 +473,13 @@ export async function sincronizarAgora(manual = false): Promise<ResultadoSync> {
     const remoto = await puxarSala({ data: { codigo } });
     const pacoteRemoto = remoto.dadosJson ? validarPacote(JSON.parse(remoto.dadosJson)) : null;
     if (pacoteRemoto) guardarDesfazer(pacoteLocal());
-    const final = pacoteRemoto ? mesclarPacote(pacoteRemoto) : pacoteLocal();
+    let final: PacoteSync;
+    if (pacoteRemoto) {
+      final = mesclarPacote(pacoteRemoto);
+    } else {
+      final = pacoteLocal();
+      guardarResumo({ animais: 0, plantoes: 0, quando: new Date().toISOString() });
+    }
     const enviado = await enviarSala({
       data: { codigo, dadosJson: JSON.stringify(final) },
     });
