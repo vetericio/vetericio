@@ -331,7 +331,7 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
       const arquivado = arquivarPlantao(antigo, registros, plantoes, curvas);
       registros = arquivado.registros;
       plantoes = arquivado.plantoes;
-      exclusoes = mesclarListas(exclusoes, arquivado.exclusoes) as Exclusao[];
+      
       plantaoFinal = novo;
     } else {
       const abertos = [localPlantao, remotoPlantao].filter((p) => !p.finalizadoEm);
