@@ -9,6 +9,7 @@ const CHAVE_CODIGO = "veterico-sync-codigo-v1";
 const CHAVE_PENDENTE = "veterico-sync-pendente-v1";
 const CHAVE_ULTIMO = "veterico-sync-ultimo-v1";
 const CHAVE_DESFAZER = "veterico-sync-desfazer-v1";
+const CHAVE_PAUSA = "veterico-sync-pausa-v1";
 
 /** Listas que são mescladas item por item (pelo id). */
 const LISTAS: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
