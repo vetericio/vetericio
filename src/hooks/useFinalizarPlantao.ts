@@ -4,6 +4,7 @@ import { useRegistros } from "./useRegistros";
 import { usePlantoes } from "./usePlantoes";
 import { usePlantaoAtual } from "./usePlantaoAtual";
 import { useCurvas } from "./useCurvas";
+import { useAnamneses } from "./useAnamneses";
 import { encerrarTodosAlarmes } from "./useAlarmes";
 import { chaveDoAnimal } from "@/lib/curva";
 import { diaDeHoje } from "@/lib/plantao";
@@ -15,6 +16,7 @@ export function useFinalizarPlantao() {
   const { setPlantoes } = usePlantoes();
   const { plantao, limparPlantao } = usePlantaoAtual();
   const { curvas, setCurvas } = useCurvas();
+  const { setAnamneses } = useAnamneses();
   const navigate = useNavigate();
 
   return () => {
