@@ -154,6 +154,20 @@ export function Sincronizacao() {
             {ultima ? ` • ${quandoSync(ultima)}` : ""}
           </p>
           {erro && <p className="mt-1 text-[11px] text-muted-foreground">{erro}</p>}
+          {pausada && codigo && (
+            <p className="mt-1 rounded-lg bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-600">
+              Sincronização automática pausada depois de “Desfazer”. Toque em “Sincronizar agora”
+              para religar.
+            </p>
+          )}
+          {resumo && codigo && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Última junção: {resumo.animais === 1 ? "1 animal novo" : `${resumo.animais} animais novos`}
+              {resumo.plantoes > 0
+                ? ` • ${resumo.plantoes === 1 ? "1 plantão novo" : `${resumo.plantoes} plantões novos`}`
+                : ""}
+            </p>
+          )}
 
           {codigo ? (
             <>
