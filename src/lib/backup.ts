@@ -130,10 +130,14 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
   for (const nome of simples) {
     const novo = b.dados[nome];
     if (novo === undefined) continue;
-    const jaTem = lerBruto(CHAVES_BACKUP[nome]) !== undefined;
+    const atual = lerBruto(CHAVES_BACKUP[nome]);
+    // Um plantão finalizado neste aparelho não volta a abrir por causa de um backup.
+    if (nome === "plantaoAtual" && plantaoFinalizado(atual)) continue;
+    const jaTem = atual !== undefined;
     if (modo === "juntar" && jaTem) continue;
     escreverBruto(CHAVES_BACKUP[nome], novo);
   }
+
 }
 
 /** "veterico-backup-29.08.26.json" */
