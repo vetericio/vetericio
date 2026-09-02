@@ -32,7 +32,7 @@ Correção:
 
 ## 3. Versão do app
 
-No rodapé, abaixo do texto institucional, um texto pequeno e discreto centralizado: `Versão 1.xx`, incrementado a cada rodada de alterações (esta rodada fica em 1.01 se hoje for 1.00).
+No rodapé, abaixo do texto institucional, um texto pequeno e discreto centralizado: `Versão 1.xx`, incrementado a cada rodada de alterações (esta rodada fica em 1.01 se hoje for 1.00). Mas deveria atualizar todas as versões desde início.
 
 ## Detalhes técnicos
 
