@@ -32,6 +32,7 @@ export function PesquisaAvulsa({ aberto, onFechar }: Props) {
   const resultado = calcularDose({
     peso,
     dose,
+    unidadeDose,
     concentracaoValor: concentracao,
     concentracaoUnidade: unidadeConcentracao,
   });

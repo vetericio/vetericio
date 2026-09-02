@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAnamneses } from "@/hooks/useAnamneses";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import { ExigePlantao } from "@/components/ExigePlantao";
+import { GuardaSaida } from "@/components/GuardaSaida";
 import { ESPECIES, type Especie } from "@/lib/ficha";
 import {
   ANAMNESE_VAZIA,
@@ -38,11 +41,35 @@ const campo =
   "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring";
 
 function AnamnesePagina() {
+  const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
+  if (!plantaoCarregado) return null;
+  if (!plantao)
+    return (
+      <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
+        <ExigePlantao funcao="A anamnese" />
+      </main>
+    );
+  return <AnamneseConteudo />;
+}
+
+function AnamneseConteudo() {
   const { anamneses, setAnamneses, carregado } = useAnamneses();
   const [form, setForm] = useState<Omit<Anamnese, "id" | "atualizadoEm">>(ANAMNESE_VAZIA);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
+
+  // Só considera "não salvo" quando o formulário difere do que está guardado.
+  const salvo = editandoId
+    ? (() => {
+        const alvo = anamneses.find((a) => a.id === editandoId);
+        if (!alvo) return ANAMNESE_VAZIA;
+        const { id: _i, atualizadoEm: _q, ...resto } = alvo;
+        return resto;
+      })()
+    : ANAMNESE_VAZIA;
+  const sujo =
+    JSON.stringify(form) !== JSON.stringify(salvo) || novaPendencia.trim().length > 0;
 
   const set = <K extends keyof typeof form>(chave: K, valor: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [chave]: valor }));
@@ -117,6 +144,7 @@ function AnamnesePagina() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
+      <GuardaSaida sujo={sujo} />
       <h1 className="font-display text-lg font-semibold text-foreground">Anamnese</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Cadastre o animal aqui. Ele só vai para Animais internados depois que a ficha for enviada
