@@ -305,6 +305,16 @@ export function Backup() {
             </button>
           </div>
 
+          <div className="mt-2 grid gap-2">
+            <button
+              type="button"
+              onClick={() => void compartilharBackup()}
+              className={botao}
+            >
+              Compartilhar backup
+            </button>
+          </div>
+
           {digitando && (
             <div className="mt-2 flex gap-2">
               <input
