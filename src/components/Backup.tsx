@@ -97,30 +97,36 @@ export function Backup() {
 
   const compartilharBackup = async () => {
     setAviso(null);
+    // Gera o backup na hora do clique e usa esse resultado direto — nunca depende de estado anterior.
+    const dados = montarBackup();
+    const texto = JSON.stringify(dados, null, 2);
+    const nome = nomeArquivoBackup();
     try {
-      const dados = montarBackup();
-      const texto = JSON.stringify(dados, null, 2);
-      const arquivo = new File([texto], nomeArquivoBackup(), { type: "application/json" });
-      if (typeof navigator === "undefined" || !navigator.share) {
-        setAviso({
-          tipo: "erro",
-          texto: "Compartilhamento de arquivo não é compatível com este navegador/dispositivo. Use o arquivo de backup.",
-        });
+      const arquivo = new File([texto], nome, { type: "application/json" });
+      const podeCompartilhar =
+        typeof navigator !== "undefined" &&
+        Boolean(navigator.share) &&
+        (!navigator.canShare || navigator.canShare({ files: [arquivo] }));
+      if (podeCompartilhar) {
+        await navigator.share({ files: [arquivo], title: "Backup Veterício" });
         return;
       }
-      if (navigator.canShare && !navigator.canShare({ files: [arquivo] })) {
-        setAviso({
-          tipo: "erro",
-          texto: "Este dispositivo/navegador não permite compartilhar arquivos. Use o arquivo de backup.",
-        });
-        return;
-      }
-      await navigator.share({ files: [arquivo], title: "Backup Veterício" });
+      // Sem compartilhamento de arquivo: salva o backup recém-gerado no aparelho.
+      baixarBackup(dados);
+      setAviso({
+        tipo: "ok",
+        texto: `Este navegador não abre o menu de compartilhamento. O backup ${nome} foi salvo no aparelho — envie-o pelo app que preferir.`,
+      });
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
-      setAviso({ tipo: "erro", texto: "Não foi possível compartilhar. Tente gerar o arquivo de backup." });
+      baixarBackup(dados);
+      setAviso({
+        tipo: "ok",
+        texto: `Não foi possível abrir o menu de compartilhamento. O backup ${nome} foi salvo no aparelho.`,
+      });
     }
   };
+
 
   const escolherArquivo = async (arquivo: File | undefined) => {
     if (!arquivo) return;
