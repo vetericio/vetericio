@@ -20,6 +20,10 @@ export type Medicacao = {
 
 export type Registro = {
   id: string;
+  /** Plantão aberto ao qual este animal pertence. */
+  plantaoId?: string;
+  /** Versão usada para resolver alterações feitas em aparelhos diferentes. */
+  atualizadoEm?: string;
   animal: string;
   especie?: Especie;
   criadoEm?: string;
@@ -396,6 +400,8 @@ export const MAX_PLANTOES = 50;
 
 export type Plantao = {
   id: string;
+  /** Identidade do plantão de origem, preservada entre aparelhos. */
+  plantaoId?: string;
   data: string;
   turno: string;
   registros: Registro[];

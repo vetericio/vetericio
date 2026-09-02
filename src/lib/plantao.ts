@@ -1,11 +1,16 @@
 export type Turno = "diurno" | "noturno";
 
 export type PlantaoAtual = {
+  /** Identidade estável para a sincronização entre aparelhos. */
+  id: string;
   /** Dia do plantão no formato AAAA-MM-DD (pode ser escolhido manualmente). */
   dia: string;
   turno: Turno;
   /** Dia do aparelho em que a escolha foi feita (AAAA-MM-DD). */
   escolhidoEm?: string;
+  abertoEm: string;
+  atualizadoEm: string;
+  finalizadoEm?: string;
 };
 
 const CHAVE = "veterico-plantao-v1";
@@ -88,11 +93,22 @@ export function carregarPlantaoAtual(): PlantaoAtual | null {
   try {
     const bruto = window.localStorage.getItem(CHAVE);
     if (!bruto) return null;
-    const dados = JSON.parse(bruto) as PlantaoAtual;
+    const dados = JSON.parse(bruto) as Partial<PlantaoAtual>;
     // O plantão vale até ser finalizado (ou alterado), mesmo virando o dia.
     if (!dados?.dia || typeof dados.dia !== "string") return null;
     if (dados.turno !== "diurno" && dados.turno !== "noturno") return null;
-    return dados;
+    if (dados.finalizadoEm) return null;
+    const agora = new Date().toISOString();
+    const normalizado: PlantaoAtual = {
+      id: typeof dados.id === "string" && dados.id ? dados.id : crypto.randomUUID(),
+      dia: dados.dia,
+      turno: dados.turno,
+      escolhidoEm: dados.escolhidoEm,
+      abertoEm: typeof dados.abertoEm === "string" ? dados.abertoEm : agora,
+      atualizadoEm: typeof dados.atualizadoEm === "string" ? dados.atualizadoEm : agora,
+    };
+    if (!dados.id || !dados.abertoEm || !dados.atualizadoEm) salvarPlantaoAtual(normalizado);
+    return normalizado;
   } catch {
     return null;
   }
@@ -106,4 +122,14 @@ export function salvarPlantaoAtual(p: PlantaoAtual | null) {
   } catch {
     /* armazenamento indisponível */
   }
+}
+
+/** Mantém um marcador de encerramento para um aparelho desatualizado não reabrir o plantão. */
+export function finalizarPlantaoAtual(p: PlantaoAtual) {
+  if (typeof window === "undefined") return;
+  const agora = new Date().toISOString();
+  window.localStorage.setItem(
+    CHAVE,
+    JSON.stringify({ ...p, atualizadoEm: agora, finalizadoEm: agora }),
+  );
 }
