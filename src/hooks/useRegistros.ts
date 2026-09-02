@@ -91,5 +91,11 @@ export function useRegistros() {
     return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
-  return { registros, setRegistros: definir, carregado };
+  return {
+    registros,
+    setRegistros: definir,
+    excluirRegistros,
+    excluirTodosRegistros,
+    carregado,
+  };
 }
