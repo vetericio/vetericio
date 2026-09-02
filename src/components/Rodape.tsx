@@ -50,7 +50,7 @@ export function Rodape() {
           Temas
         </button>
         <Backup />
-        <Sincronizacao />
+        
       </div>
 
       {aberto && (
