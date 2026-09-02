@@ -284,18 +284,17 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
                 className={`${campo} min-w-0`}
                 placeholder="50"
               />
-              <input
-                list="unidades-concentracao"
+              <select
                 value={item.concentracaoUnidade}
                 onChange={(e) => setItem({ ...item, concentracaoUnidade: e.target.value })}
-                className={`${campo} min-w-0`}
-                placeholder="mg/mL"
-              />
-              <datalist id="unidades-concentracao">
+                className={`${campo} min-w-0 appearance-none`}
+              >
                 {UNIDADES_CONCENTRACAO.map((u) => (
-                  <option key={u} value={u} />
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
                 ))}
-              </datalist>
+              </select>
             </div>
           </div>
 
