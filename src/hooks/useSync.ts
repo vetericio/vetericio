@@ -113,6 +113,7 @@ export function useSync() {
   const desfazer = useCallback(() => {
     const ok = desfazerUltimaSync();
     setTemDesfazer(podeDesfazer());
+    setPausada(sincronizacaoPausada());
     if (ok) setEstado("pendente");
     return ok;
   }, []);
@@ -121,6 +122,7 @@ export function useSync() {
     esquecerCodigo();
     marcarPendente(false);
     pausar(false);
+    setPausada(false);
     setCodigo("");
     setEstado("sem-codigo");
   }, []);
@@ -131,6 +133,8 @@ export function useSync() {
     ultima,
     erro,
     temDesfazer,
+    pausada,
+    resumo,
     sincronizar,
     criarCodigo,
     usarCodigo,
