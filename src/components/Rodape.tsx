@@ -110,6 +110,8 @@ export function Rodape() {
       <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
         Todos os direitos reservados a Veterício Serviços Veterinários LTDA. 31995512795.
       </p>
+      <p className="mt-1 text-center text-[9px] text-muted-foreground/70">Versão {VERSAO}</p>
+
     </footer>
   );
 }
