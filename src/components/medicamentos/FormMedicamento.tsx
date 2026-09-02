@@ -153,28 +153,26 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
           </label>
         )}
 
-        <div className="mb-2 grid grid-cols-2 gap-2">
-          {(
-            [
-              { valor: false, rotulo: "mg/kg" },
-              { valor: true, rotulo: "mg/animal" },
-            ] as const
-          ).map((o) => (
-            <button
-              key={o.rotulo}
-              type="button"
-              aria-pressed={f.porAnimal === o.valor}
-              onClick={() => atualizar({ porAnimal: o.valor })}
-              disabled={proibido}
-              className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
-                f.porAnimal === o.valor
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-foreground hover:bg-secondary"
-              }`}
-            >
-              {o.rotulo}
-            </button>
-          ))}
+        <div className="mb-2">
+          <span className={rotulo}>Unidade da dose</span>
+          <input
+            list="unidades-dose"
+            value={f.unidade}
+            onChange={(e) =>
+              atualizar({
+                unidade: e.target.value,
+                porAnimal: /animal\s*$/i.test(e.target.value),
+              })
+            }
+            disabled={proibido}
+            className={`${campo} disabled:opacity-50`}
+            placeholder="mg/kg"
+          />
+          <datalist id="unidades-dose">
+            {UNIDADES_DOSE.map((u) => (
+              <option key={u} value={u} />
+            ))}
+          </datalist>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
