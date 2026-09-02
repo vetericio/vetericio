@@ -56,3 +56,18 @@ export const enviarSala = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { atualizadoEm };
   });
+
+/** Diz se o código ainda está livre na nuvem (usado ao gerar um código curto). */
+export const codigoLivre = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => puxarSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const hash = await hashCodigo(data.codigo);
+    const { data: linha, error } = await supabaseAdmin
+      .from("sync_salas")
+      .select("codigo_hash")
+      .eq("codigo_hash", hash)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { livre: !linha };
+  });
