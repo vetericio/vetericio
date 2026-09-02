@@ -18,7 +18,9 @@ function subscribe(fn: () => void) {
 }
 
 const getSnapshot = () => estado;
-const getServerSnapshot = () => estado;
+// No servidor não existe aparelho: o plantão só é conhecido depois da hidratação.
+const getServerSnapshot = () => null;
+
 
 function definir(turno: Turno | null, dia?: string) {
   estado = turno ? { dia: dia || diaDeHoje(), turno, escolhidoEm: diaDeHoje() } : null;
