@@ -154,10 +154,11 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
         exclusoes.map((e) => [String(e.id ?? ""), String(e.excluidoEm ?? "")]),
       );
       const registros = lista(lerBruto(CHAVES_BACKUP.registros)).filter((r) => {
-        const excluidoEm = quando.get(String(r?.id ?? ""));
+        const item = (r ?? {}) as Record<string, unknown>;
+        const excluidoEm = quando.get(String(item["id"] ?? ""));
         if (excluidoEm === undefined) return true;
         // A exclusão só vence se for mais recente que a última alteração do animal.
-        return String(r?.["atualizadoEm"] ?? "") > excluidoEm;
+        return String(item["atualizadoEm"] ?? "") > excluidoEm;
       });
       escreverBruto(CHAVES_BACKUP.registros, registros);
     }
