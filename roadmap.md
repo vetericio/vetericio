@@ -4,4 +4,4 @@
 - [x] Propagar exclusões definitivas pela sincronização e pelo backup
 - [x] Arquivar automaticamente o plantão mais antigo em conflitos
 - [x] Atualizar stores após sincronização
-- [ ] Validar cenários de exclusão e conflito
+- [x] Validar cenários de exclusão e conflito
