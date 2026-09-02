@@ -218,7 +218,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
   };
 
   return (
-    <Dialog open={aberto} onOpenChange={(v) => !v && onFechar()}>
+    <Dialog open={aberto} onOpenChange={(v) => !v && tentarFechar()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{inicial ? "Editar medicamento" : "Inserir novo"}</DialogTitle>
@@ -248,6 +248,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
                     key={v}
                     type="button"
                     aria-pressed={ativo}
+                    title={NOME_VIA[v]}
                     onClick={() =>
                       setItem({
                         ...item,
@@ -256,13 +257,17 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
                           : VIAS.filter((x) => x === v || item.vias.includes(x)),
                       })
                     }
-                    className={`rounded-xl border px-2 py-2 text-sm font-semibold transition-colors ${
+                    className={`flex flex-col items-center gap-0.5 rounded-xl border px-2 py-2 text-xs font-semibold transition-colors ${
                       ativo
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-foreground hover:bg-secondary"
                     }`}
                   >
-                    {v}
+                    <span className="flex items-center gap-1">
+                      <IconeVia via={v} />
+                      {ROTULO_VIA[v]}
+                    </span>
+                    <span className="text-[10px] font-normal opacity-70">{NOME_VIA[v]}</span>
                   </button>
                 );
               })}
