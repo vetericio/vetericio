@@ -8,6 +8,8 @@ import { CHAVES_BACKUP, escreverBruto, lerBruto, type ChaveBackup } from "./back
 const CHAVE_CODIGO = "veterico-sync-codigo-v1";
 const CHAVE_PENDENTE = "veterico-sync-pendente-v1";
 const CHAVE_ULTIMO = "veterico-sync-ultimo-v1";
+const CHAVE_DESFAZER = "veterico-sync-desfazer-v1";
+const CHAVE_PAUSA = "veterico-sync-pausa-v1";
 
 /** Listas que são mescladas item por item (pelo id). */
 const LISTAS: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
@@ -23,14 +25,17 @@ export type EstadoSync =
 
 /* ---------- código secreto ---------- */
 
-/** Código longo e secreto (24 caracteres), usado como endereço dos dados. */
+const LETRAS = "abcdefghijkmnpqrstuvwxyz";
+
+/** Código curto: uma letra e 6 números (ex: j965459). */
 export function gerarCodigo(): string {
-  const bytes = new Uint8Array(12);
+  const bytes = new Uint8Array(7);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes)
-    .map((b) => b.toString(36).padStart(2, "0"))
-    .join("")
-    .slice(0, 24);
+  const letra = LETRAS[bytes[0]! % LETRAS.length]!;
+  const numeros = Array.from(bytes.slice(1))
+    .map((b) => String(b % 10))
+    .join("");
+  return `${letra}${numeros}`;
 }
 
 export function lerCodigo(): string {
@@ -53,8 +58,10 @@ export function normalizarCodigo(texto: string): string {
   return texto.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+/** Aceita o código curto novo e também os códigos longos já em uso. */
 export function codigoValido(codigo: string): boolean {
-  return /^[a-z0-9]{16,64}$/.test(normalizarCodigo(codigo));
+  const limpo = normalizarCodigo(codigo);
+  return /^[a-z][0-9]{6}$/.test(limpo) || /^[a-z0-9]{16,64}$/.test(limpo);
 }
 
 /** Texto do QR lido no outro aparelho. */
@@ -67,6 +74,7 @@ export function codigoDoQr(texto: string): string {
   const bruto = limpo.startsWith("VETSYNC1:") ? limpo.slice(9) : limpo;
   return normalizarCodigo(bruto);
 }
+
 
 /* ---------- estado da fila offline ---------- */
 
@@ -179,6 +187,54 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
   return { atualizadoEm: new Date().toISOString(), dados: resultado };
 }
 
+
+/* ---------- desfazer ---------- */
+
+/** Guarda o estado atual do aparelho, para o caso de a junção não agradar. */
+function guardarDesfazer(pacote: PacoteSync) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHAVE_DESFAZER, JSON.stringify(pacote));
+  } catch {
+    /* espaço cheio: seguimos sem cópia */
+  }
+}
+
+export function podeDesfazer(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!window.localStorage.getItem(CHAVE_DESFAZER);
+}
+
+/**
+ * Volta os dados deste aparelho ao estado anterior à última sincronização e
+ * pausa a sincronização automática, para que os dados não voltem sozinhos.
+ */
+export function desfazerUltimaSync(): boolean {
+  if (typeof window === "undefined") return false;
+  const bruto = window.localStorage.getItem(CHAVE_DESFAZER);
+  if (!bruto) return false;
+  const pacote = validarPacote(JSON.parse(bruto));
+  if (!pacote) return false;
+  for (const [nome, chave] of Object.entries(CHAVES_BACKUP) as [ChaveBackup, string][]) {
+    escreverBruto(chave, pacote.dados[nome]);
+  }
+  window.localStorage.removeItem(CHAVE_DESFAZER);
+  marcarPendente(false);
+  pausar(true);
+  return true;
+}
+
+export function sincronizacaoPausada(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(CHAVE_PAUSA) === "1";
+}
+
+export function pausar(valor: boolean) {
+  if (typeof window === "undefined") return;
+  if (valor) window.localStorage.setItem(CHAVE_PAUSA, "1");
+  else window.localStorage.removeItem(CHAVE_PAUSA);
+}
+
 /* ---------- ciclo de sincronização ---------- */
 
 export type ResultadoSync =
@@ -189,9 +245,13 @@ export type ResultadoSync =
  * Um ciclo completo: baixa o que está na nuvem, mescla com o aparelho e sobe o
  * resultado. Sem internet, marca as alterações como pendentes.
  */
-export async function sincronizarAgora(): Promise<ResultadoSync> {
+export async function sincronizarAgora(manual = false): Promise<ResultadoSync> {
   const codigo = lerCodigo();
   if (!codigoValido(codigo)) return { ok: false, motivo: "Nenhum código de sincronização." };
+  if (sincronizacaoPausada() && !manual) {
+    return { ok: false, motivo: "Sincronização pausada depois de desfazer." };
+  }
+  if (manual) pausar(false);
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     marcarPendente(true);
     return { ok: false, motivo: "Sem internet: alterações pendentes." };
@@ -201,6 +261,7 @@ export async function sincronizarAgora(): Promise<ResultadoSync> {
     const { puxarSala, enviarSala } = await import("./sync.functions");
     const remoto = await puxarSala({ data: { codigo } });
     const pacoteRemoto = remoto.dadosJson ? validarPacote(JSON.parse(remoto.dadosJson)) : null;
+    if (pacoteRemoto) guardarDesfazer(pacoteLocal());
     const final = pacoteRemoto ? mesclarPacote(pacoteRemoto) : pacoteLocal();
     const enviado = await enviarSala({
       data: { codigo, dadosJson: JSON.stringify(final) },
@@ -213,6 +274,7 @@ export async function sincronizarAgora(): Promise<ResultadoSync> {
     return { ok: false, motivo: erro instanceof Error ? erro.message : "Erro ao sincronizar." };
   }
 }
+
 
 /** Formata o horário da última sincronização. */
 export function quandoSync(iso: string): string {

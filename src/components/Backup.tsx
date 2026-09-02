@@ -228,9 +228,18 @@ export function Backup() {
       {aberto && (
         <div className="mx-auto mt-2 max-w-md rounded-xl bg-secondary/60 p-3 text-left">
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Transfira os dados para outro aparelho: pelo arquivo (sem internet, envie como quiser) ou
-            pelo QR, que usa a internet nos dois aparelhos.
+            <span className="font-semibold text-foreground">Backup:</span> uma cópia congelada dos
+            dados (uma foto do momento), em arquivo ou por QR. Serve para guardar ou levar tudo para
+            outro aparelho uma vez. Não fica se atualizando.
+            <br />
+            <span className="font-semibold text-foreground">Sincronização</span> é diferente: dois
+            aparelhos com o mesmo código ficam sempre iguais, atualizando sozinhos.
           </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Qual escolher? Guardar ou mudar de aparelho → Backup. Usar dois aparelhos ao mesmo tempo →
+            Sincronização.
+          </p>
+
 
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <button

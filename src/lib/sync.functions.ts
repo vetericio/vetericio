@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const codigoSchema = z.string().regex(/^[a-z0-9]{16,64}$/);
+/** Códigos curtos novos (letra + 6 números) e os longos já em uso. */
+const codigoSchema = z.string().regex(/^([a-z][0-9]{6}|[a-z0-9]{16,64})$/);
 
 const puxarSchema = z.object({ codigo: codigoSchema });
 const enviarSchema = z.object({
@@ -54,4 +55,19 @@ export const enviarSala = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
     return { atualizadoEm };
+  });
+
+/** Diz se o código ainda está livre na nuvem (usado ao gerar um código curto). */
+export const codigoLivre = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => puxarSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const hash = await hashCodigo(data.codigo);
+    const { data: linha, error } = await supabaseAdmin
+      .from("sync_salas")
+      .select("codigo_hash")
+      .eq("codigo_hash", hash)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { livre: !linha };
   });
