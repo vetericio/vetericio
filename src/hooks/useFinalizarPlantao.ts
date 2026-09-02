@@ -38,6 +38,8 @@ export function useFinalizarPlantao() {
     // As curvas valem até o fim do plantão: encerra todas e desliga todos os alarmes.
     setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
     encerrarTodosAlarmes();
+    // A anamnese vale só para um plantão: some ao fechar (histórico fica em Evolução).
+    setAnamneses([]);
     limparPlantao();
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
