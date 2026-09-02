@@ -374,7 +374,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
             </button>
             <button
               type="button"
-              onClick={onFechar}
+              onClick={tentarFechar}
               className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
             >
               Cancelar
@@ -403,6 +403,28 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={excluir}>Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={saindo} onOpenChange={setSaindo}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Existem alterações que ainda não foram salvas.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setSaindo(false);
+                  onFechar();
+                }}
+              >
+                Sair sem salvar
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
