@@ -28,6 +28,8 @@ export function Sincronizacao() {
     ultima,
     erro,
     temDesfazer,
+    pausada,
+    resumo,
     sincronizar,
     criarCodigo,
     usarCodigo,
