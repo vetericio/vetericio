@@ -6,6 +6,7 @@ import {
   gerarImagemQr,
   lerArquivoBackup,
   montarBackup,
+  nomeArquivoBackup,
   resumirBackup,
   validarBackup,
   type Backup as DadosBackup,
@@ -92,6 +93,33 @@ export function Backup() {
   const gerar = () => {
     baixarBackup();
     setAviso({ tipo: "ok", texto: "Backup gerado. Envie o arquivo para o outro aparelho." });
+  };
+
+  const compartilharBackup = async () => {
+    setAviso(null);
+    try {
+      const dados = montarBackup();
+      const texto = JSON.stringify(dados, null, 2);
+      const arquivo = new File([texto], nomeArquivoBackup(), { type: "application/json" });
+      if (typeof navigator === "undefined" || !navigator.share) {
+        setAviso({
+          tipo: "erro",
+          texto: "Compartilhamento de arquivo não é compatível com este navegador/dispositivo. Use o arquivo de backup.",
+        });
+        return;
+      }
+      if (navigator.canShare && !navigator.canShare({ files: [arquivo] })) {
+        setAviso({
+          tipo: "erro",
+          texto: "Este dispositivo/navegador não permite compartilhar arquivos. Use o arquivo de backup.",
+        });
+        return;
+      }
+      await navigator.share({ files: [arquivo], title: "Backup Veterício" });
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      setAviso({ tipo: "erro", texto: "Não foi possível compartilhar. Tente gerar o arquivo de backup." });
+    }
   };
 
   const escolherArquivo = async (arquivo: File | undefined) => {
@@ -274,6 +302,16 @@ export function Backup() {
               className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
             >
               Tenho um código
+            </button>
+          </div>
+
+          <div className="mt-2 grid gap-2">
+            <button
+              type="button"
+              onClick={() => void compartilharBackup()}
+              className={botao}
+            >
+              Compartilhar backup
             </button>
           </div>
 
