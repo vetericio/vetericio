@@ -24,14 +24,17 @@ export type EstadoSync =
 
 /* ---------- código secreto ---------- */
 
-/** Código longo e secreto (24 caracteres), usado como endereço dos dados. */
+const LETRAS = "abcdefghijkmnpqrstuvwxyz";
+
+/** Código curto: uma letra e 6 números (ex: j965459). */
 export function gerarCodigo(): string {
-  const bytes = new Uint8Array(12);
+  const bytes = new Uint8Array(7);
   crypto.getRandomValues(bytes);
-  return Array.from(bytes)
-    .map((b) => b.toString(36).padStart(2, "0"))
-    .join("")
-    .slice(0, 24);
+  const letra = LETRAS[bytes[0]! % LETRAS.length]!;
+  const numeros = Array.from(bytes.slice(1))
+    .map((b) => String(b % 10))
+    .join("");
+  return `${letra}${numeros}`;
 }
 
 export function lerCodigo(): string {
@@ -54,8 +57,10 @@ export function normalizarCodigo(texto: string): string {
   return texto.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+/** Aceita o código curto novo e também os códigos longos já em uso. */
 export function codigoValido(codigo: string): boolean {
-  return /^[a-z0-9]{16,64}$/.test(normalizarCodigo(codigo));
+  const limpo = normalizarCodigo(codigo);
+  return /^[a-z][0-9]{6}$/.test(limpo) || /^[a-z0-9]{16,64}$/.test(limpo);
 }
 
 /** Texto do QR lido no outro aparelho. */
@@ -68,6 +73,7 @@ export function codigoDoQr(texto: string): string {
   const bruto = limpo.startsWith("VETSYNC1:") ? limpo.slice(9) : limpo;
   return normalizarCodigo(bruto);
 }
+
 
 /* ---------- estado da fila offline ---------- */
 
