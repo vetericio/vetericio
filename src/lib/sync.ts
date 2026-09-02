@@ -186,11 +186,6 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
   return { atualizadoEm: new Date().toISOString(), dados: resultado };
 }
 
-/* ---------- ciclo de sincronização ---------- */
-
-export type ResultadoSync =
-  | { ok: true; atualizadoEm: string }
-  | { ok: false; motivo: string };
 
 /* ---------- desfazer ---------- */
 
