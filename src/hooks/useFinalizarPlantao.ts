@@ -20,8 +20,7 @@ export function useFinalizarPlantao() {
   return () => {
     if (registros.length > 0) {
       const novo: Plantao = {
-        id: plantao?.id ?? crypto.randomUUID(),
-        ...(plantao?.id ? { plantaoId: plantao.id } : {}),
+        id: crypto.randomUUID(),
         data: plantao?.dia ?? diaDeHoje(),
         turno: plantao?.turno ?? "",
         registros,

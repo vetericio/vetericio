@@ -29,12 +29,6 @@ export function useCurvas() {
       ouvintes.forEach((fn) => fn());
     }
     setCarregado(true);
-    const recarregar = () => {
-      estado = carregarCurvas();
-      ouvintes.forEach((fn) => fn());
-    };
-    window.addEventListener("veterico-sync-atualizado", recarregar);
-    return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
   return { curvas, setCurvas: definir, carregado };

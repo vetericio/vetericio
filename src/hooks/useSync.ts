@@ -9,13 +9,10 @@ import {
   pausar,
   podeDesfazer,
   salvarCodigo,
-  sincronizacaoPausada,
   sincronizarAgora,
   temPendencia,
   ultimaSync,
-  ultimoResumo,
   type EstadoSync,
-  type ResumoSync,
 } from "@/lib/sync";
 
 /** Estado e ações da sincronização entre aparelhos. */
@@ -25,16 +22,12 @@ export function useSync() {
   const [ultima, setUltima] = useState("");
   const [erro, setErro] = useState("");
   const [temDesfazer, setTemDesfazer] = useState(false);
-  const [pausada, setPausada] = useState(false);
-  const [resumo, setResumo] = useState<ResumoSync | null>(null);
 
   const atualizarEstado = useCallback(() => {
     const c = lerCodigo();
     setCodigo(c);
     setUltima(ultimaSync());
     setTemDesfazer(podeDesfazer());
-    setPausada(sincronizacaoPausada());
-    setResumo(ultimoResumo());
     if (!codigoValido(c)) return setEstado("sem-codigo");
     setEstado(temPendencia() ? "pendente" : "sincronizado");
   }, []);
@@ -45,8 +38,6 @@ export function useSync() {
     setErro("");
     const r = await sincronizarAgora(manual);
     setTemDesfazer(podeDesfazer());
-    setPausada(sincronizacaoPausada());
-    setResumo(ultimoResumo());
     if (r.ok) {
       setUltima(r.atualizadoEm);
       setEstado("sincronizado");
@@ -113,7 +104,6 @@ export function useSync() {
   const desfazer = useCallback(() => {
     const ok = desfazerUltimaSync();
     setTemDesfazer(podeDesfazer());
-    setPausada(sincronizacaoPausada());
     if (ok) setEstado("pendente");
     return ok;
   }, []);
@@ -122,7 +112,6 @@ export function useSync() {
     esquecerCodigo();
     marcarPendente(false);
     pausar(false);
-    setPausada(false);
     setCodigo("");
     setEstado("sem-codigo");
   }, []);
@@ -133,8 +122,6 @@ export function useSync() {
     ultima,
     erro,
     temDesfazer,
-    pausada,
-    resumo,
     sincronizar,
     criarCodigo,
     usarCodigo,

@@ -57,11 +57,7 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
       rs.map((r) => {
         if (r.id !== id) return r;
         nomeAnimal = r.animal;
-        return {
-          ...r,
-          medicacoes: [...(r.medicacoes ?? []), nova],
-          atualizadoEm: agora.toISOString(),
-        };
+        return { ...r, medicacoes: [...(r.medicacoes ?? []), nova] };
       }),
     );
     toast.success(`${aplicacao.nome} registrado em ${nomeAnimal || "animal"} às ${hora}`);

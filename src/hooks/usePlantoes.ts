@@ -1,6 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { carregarPlantoes, salvarPlantoes, type Plantao } from "@/lib/ficha";
-import { agendarSync } from "@/lib/sync";
 
 let estado: Plantao[] = [];
 let iniciado = false;
@@ -21,7 +20,6 @@ const getServerSnapshot = () => estado;
 function definir(valor: Plantao[] | ((atual: Plantao[]) => Plantao[])) {
   estado = typeof valor === "function" ? (valor as (a: Plantao[]) => Plantao[])(estado) : valor;
   salvarPlantoes(estado);
-  agendarSync();
   notificar();
 }
 
@@ -36,12 +34,6 @@ export function usePlantoes() {
       notificar();
     }
     setCarregado(true);
-    const recarregar = () => {
-      estado = carregarPlantoes();
-      notificar();
-    };
-    window.addEventListener("veterico-sync-atualizado", recarregar);
-    return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
   return { plantoes, setPlantoes: definir, carregado };

@@ -11,7 +11,6 @@ export const CHAVES_BACKUP = {
   curvas: "veterico-curvas-v1",
   alarmes: "veterico-alarmes-v1",
   medicamentos: "veterico-medicamentos-v1",
-  exclusoes: "veterico-sync-exclusoes-v1",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
 } as const;
@@ -118,14 +117,7 @@ function juntarPorId(atual: unknown, novo: unknown): unknown {
 
 /** Grava o backup neste aparelho. */
 export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
-  const listas: ChaveBackup[] = [
-    "registros",
-    "plantoes",
-    "curvas",
-    "alarmes",
-    "medicamentos",
-    "exclusoes",
-  ];
+  const listas: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
 
   for (const nome of listas) {
     const novo = b.dados[nome];
@@ -134,27 +126,11 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
-  // Restaurar é um pedido claro de trazer estes animais de volta: marcas antigas
-  // de exclusão não podem apagá-los outra vez (nem agora, nem na sincronização).
-  const idsRestaurados = new Set(lista(b.dados.registros).map((r) => String(r?.id ?? "")));
-  if (idsRestaurados.size > 0) {
-    const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)).filter(
-      (e) => !idsRestaurados.has(String(e?.id ?? "")),
-    );
-    escreverBruto(CHAVES_BACKUP.exclusoes, exclusoes);
-  }
-
   const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
   for (const nome of simples) {
     const novo = b.dados[nome];
     if (novo === undefined) continue;
-    const atual = lerBruto(CHAVES_BACKUP[nome]);
-    let jaTem = atual !== undefined;
-    if (nome === "plantaoAtual" && jaTem) {
-      // Um plantão já finalizado não bloqueia o plantão que veio no backup.
-      const p = atual as Record<string, unknown> | null;
-      if (!p || p["finalizadoEm"]) jaTem = false;
-    }
+    const jaTem = lerBruto(CHAVES_BACKUP[nome]) !== undefined;
     if (modo === "juntar" && jaTem) continue;
     escreverBruto(CHAVES_BACKUP[nome], novo);
   }

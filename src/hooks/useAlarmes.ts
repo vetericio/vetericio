@@ -44,7 +44,9 @@ function avisarSistema(a: Alarme) {
 function verificar() {
   if (tocando) return;
   const agora = Date.now();
-  const vencido = alarmes.find((a) => a.ativo && new Date(a.proximo).getTime() <= agora);
+  const vencido = alarmes.find(
+    (a) => a.ativo && new Date(a.proximo).getTime() <= agora,
+  );
   if (!vencido) return;
   tocando = vencido;
   alarmes = alarmes.map((a) => (a.id === vencido.id ? reprogramar(a) : a));
@@ -79,7 +81,9 @@ export function ativarJejumNoturno() {
   const ligado: Alarme = jejum
     ? { ...jejum, ativo: true, proximo: proximoDisparo(jejum.hora) }
     : { ...padraoJejum(), ativo: true };
-  alarmes = jejum ? alarmes.map((a) => (a.id === "jejum-00h" ? ligado : a)) : [ligado, ...alarmes];
+  alarmes = jejum
+    ? alarmes.map((a) => (a.id === "jejum-00h" ? ligado : a))
+    : [ligado, ...alarmes];
   salvarAlarmes(alarmes);
   notificar();
 }
@@ -102,7 +106,9 @@ export function encerrarTodosAlarmes() {
     alarmes = carregarAlarmes();
   }
   tocando = null;
-  alarmes = alarmes.filter((a) => !a.curvaId).map((a) => (a.ativo ? { ...a, ativo: false } : a));
+  alarmes = alarmes
+    .filter((a) => !a.curvaId)
+    .map((a) => (a.ativo ? { ...a, ativo: false } : a));
   salvarAlarmes(alarmes);
   notificar();
 }
@@ -122,12 +128,6 @@ export function useAlarmes() {
       intervalo = window.setInterval(verificar, 1000);
     }
     setCarregado(true);
-    const recarregar = () => {
-      alarmes = carregarAlarmes();
-      notificar();
-    };
-    window.addEventListener("veterico-sync-atualizado", recarregar);
-    return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
   return {

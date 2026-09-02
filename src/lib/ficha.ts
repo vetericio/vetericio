@@ -17,12 +17,9 @@ export type Medicacao = {
   aplicadoEm?: string;
 };
 
+
 export type Registro = {
   id: string;
-  /** Plantão aberto ao qual este animal pertence. */
-  plantaoId?: string;
-  /** Versão usada para resolver alterações feitas em aparelhos diferentes. */
-  atualizadoEm?: string;
   animal: string;
   especie?: Especie;
   criadoEm?: string;
@@ -57,6 +54,7 @@ export function linhaMedicacao(m: Medicacao): string {
   return `${nome} - ${quantidade} / ${resto}`;
 }
 
+
 /** Bloco de texto das medicações, vazio quando não houver nenhuma. */
 export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
   const lista = (r.medicacoes ?? []).filter((m) => linhaMedicacao(m));
@@ -65,7 +63,10 @@ export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
 }
 
 /** Bloco de texto da anamnese vinculada, vazio quando não houver. */
-export function blocoAnamnese(r: Pick<Registro, "anamneseId">, anamneses?: Anamnese[]): string[] {
+export function blocoAnamnese(
+  r: Pick<Registro, "anamneseId">,
+  anamneses?: Anamnese[],
+): string[] {
   if (!r.anamneseId) return [];
   const lista = anamneses ?? carregarAnamneses();
   const a = lista.find((x) => x.id === r.anamneseId);
@@ -175,7 +176,11 @@ export function removerFraseDoParametro(observacoes: string, chave: ChaveNumeric
 }
 
 /** "Temperatura atualizada às 12h para 40,2 °C." */
-export function fraseAtualizacao(chave: ChaveNumerica, valor: string, data = new Date()): string {
+export function fraseAtualizacao(
+  chave: ChaveNumerica,
+  valor: string,
+  data = new Date(),
+): string {
   const { rotulo, unidade } = ROTULOS_NUMERICOS[chave];
   const hora = `${String(data.getHours()).padStart(2, "0")}h${String(data.getMinutes()).padStart(2, "0")}`;
   return `${rotulo} atualizada às ${hora} para ${comVirgula(valor.trim())} ${unidade}.`;
@@ -197,6 +202,7 @@ export function comLinha(observacoes: string, linhaNova: string): string {
   return base ? `${base}\n${linhaNova}` : linhaNova;
 }
 
+
 /** Resumo das faixas da espécie, para referência rápida. */
 export function resumoFaixas(especie: Especie | undefined): string {
   if (especie !== "Cachorro" && especie !== "Gato") return "";
@@ -208,6 +214,7 @@ export function resumoFaixas(especie: Especie | undefined): string {
     })
     .join(" · ");
 }
+
 
 /** Identidade do animal: nome normalizado + espécie. */
 export function chaveAnimal(r: Pick<Registro, "animal" | "especie">): string {
@@ -228,6 +235,7 @@ export function proximoNomeDuplicado(nome: string, registros: Registro[]): strin
   return `${baseLimpa} (${n})`;
 }
 
+
 export const OPCOES = {
   alimentacao: [
     "Ração",
@@ -241,6 +249,7 @@ export const OPCOES = {
     "Frango",
     "Iogurte",
     "Sonda",
+
   ],
   comportamento: [
     "Responsivo",
@@ -338,6 +347,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   ].join("\n");
 }
 
+
 /** Emoji da espécie: 🐶 ou 🐱. */
 export function emojiEspecie(especie: Especie | undefined): string {
   if (especie === "Cachorro") return "🐶";
@@ -360,6 +370,7 @@ export function nomeAnimalTexto(r: Pick<Registro, "animal" | "especie">): string
   return base;
 }
 
+
 /** Data e hora da avaliação (ex.: 07/08 09:05). Vazio quando não houver data salva. */
 export function dataHoraRegistro(r: Registro): string {
   if (!r.criadoEm) return "";
@@ -377,6 +388,7 @@ export function formatarTodos(registros: Registro[], opcoes?: OpcoesFormato): st
   return registros.map((r) => formatarRegistro(r, opcoes)).join("\n\n");
 }
 
+
 const CHAVE = "veterico-registros-v1";
 const CHAVE_PLANTOES = "veterico-plantoes-v1";
 
@@ -384,8 +396,6 @@ export const MAX_PLANTOES = 50;
 
 export type Plantao = {
   id: string;
-  /** Identidade do plantão de origem, preservada entre aparelhos. */
-  plantaoId?: string;
   data: string;
   turno: string;
   registros: Registro[];
@@ -436,6 +446,7 @@ function escrever(chave: string, valor: unknown) {
     /* armazenamento indisponível */
   }
 }
+
 
 export type ChaveCategoria = keyof typeof OPCOES;
 export type ChaveAtualizavel = ChaveNumerica | ChaveCategoria;
@@ -495,10 +506,7 @@ export type Alteracao = {
 
 /** Último valor de um campo que pode ter histórico ("37,2 / 39,8"). */
 export function ultimoValor(campo: string): string {
-  const partes = (campo ?? "")
-    .split("/")
-    .map((p) => p.trim())
-    .filter(Boolean);
+  const partes = (campo ?? "").split("/").map((p) => p.trim()).filter(Boolean);
   return partes[partes.length - 1] ?? "";
 }
 
