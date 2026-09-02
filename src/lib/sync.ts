@@ -192,13 +192,70 @@ export type ResultadoSync =
   | { ok: true; atualizadoEm: string }
   | { ok: false; motivo: string };
 
+/* ---------- desfazer ---------- */
+
+/** Guarda o estado atual do aparelho, para o caso de a junção não agradar. */
+function guardarDesfazer(pacote: PacoteSync) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHAVE_DESFAZER, JSON.stringify(pacote));
+  } catch {
+    /* espaço cheio: seguimos sem cópia */
+  }
+}
+
+export function podeDesfazer(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!window.localStorage.getItem(CHAVE_DESFAZER);
+}
+
+/**
+ * Volta os dados deste aparelho ao estado anterior à última sincronização e
+ * pausa a sincronização automática, para que os dados não voltem sozinhos.
+ */
+export function desfazerUltimaSync(): boolean {
+  if (typeof window === "undefined") return false;
+  const bruto = window.localStorage.getItem(CHAVE_DESFAZER);
+  if (!bruto) return false;
+  const pacote = validarPacote(JSON.parse(bruto));
+  if (!pacote) return false;
+  for (const [nome, chave] of Object.entries(CHAVES_BACKUP) as [ChaveBackup, string][]) {
+    escreverBruto(chave, pacote.dados[nome]);
+  }
+  window.localStorage.removeItem(CHAVE_DESFAZER);
+  marcarPendente(false);
+  pausar(true);
+  return true;
+}
+
+export function sincronizacaoPausada(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(CHAVE_PAUSA) === "1";
+}
+
+export function pausar(valor: boolean) {
+  if (typeof window === "undefined") return;
+  if (valor) window.localStorage.setItem(CHAVE_PAUSA, "1");
+  else window.localStorage.removeItem(CHAVE_PAUSA);
+}
+
+/* ---------- ciclo de sincronização ---------- */
+
+export type ResultadoSync =
+  | { ok: true; atualizadoEm: string }
+  | { ok: false; motivo: string };
+
 /**
  * Um ciclo completo: baixa o que está na nuvem, mescla com o aparelho e sobe o
  * resultado. Sem internet, marca as alterações como pendentes.
  */
-export async function sincronizarAgora(): Promise<ResultadoSync> {
+export async function sincronizarAgora(manual = false): Promise<ResultadoSync> {
   const codigo = lerCodigo();
   if (!codigoValido(codigo)) return { ok: false, motivo: "Nenhum código de sincronização." };
+  if (sincronizacaoPausada() && !manual) {
+    return { ok: false, motivo: "Sincronização pausada depois de desfazer." };
+  }
+  if (manual) pausar(false);
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     marcarPendente(true);
     return { ok: false, motivo: "Sem internet: alterações pendentes." };
@@ -208,6 +265,7 @@ export async function sincronizarAgora(): Promise<ResultadoSync> {
     const { puxarSala, enviarSala } = await import("./sync.functions");
     const remoto = await puxarSala({ data: { codigo } });
     const pacoteRemoto = remoto.dadosJson ? validarPacote(JSON.parse(remoto.dadosJson)) : null;
+    if (pacoteRemoto) guardarDesfazer(pacoteLocal());
     const final = pacoteRemoto ? mesclarPacote(pacoteRemoto) : pacoteLocal();
     const enviado = await enviarSala({
       data: { codigo, dadosJson: JSON.stringify(final) },
@@ -220,6 +278,7 @@ export async function sincronizarAgora(): Promise<ResultadoSync> {
     return { ok: false, motivo: erro instanceof Error ? erro.message : "Erro ao sincronizar." };
   }
 }
+
 
 /** Formata o horário da última sincronização. */
 export function quandoSync(iso: string): string {
