@@ -6,6 +6,7 @@ import {
   gerarImagemQr,
   lerArquivoBackup,
   montarBackup,
+  nomeArquivoBackup,
   resumirBackup,
   validarBackup,
   type Backup as DadosBackup,
