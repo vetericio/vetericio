@@ -1,11 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   carregarPlantaoAtual,
+  finalizarPlantaoAtual,
   salvarPlantaoAtual,
   diaDeHoje,
   type PlantaoAtual,
   type Turno,
 } from "@/lib/plantao";
+import { agendarSync } from "@/lib/sync";
 import { ativarJejumNoturno } from "./useAlarmes";
 
 let estado: PlantaoAtual | null = null;
@@ -21,8 +23,22 @@ const getSnapshot = () => estado;
 const getServerSnapshot = () => estado;
 
 function definir(turno: Turno | null, dia?: string) {
-  estado = turno ? { dia: dia || diaDeHoje(), turno, escolhidoEm: diaDeHoje() } : null;
-  salvarPlantaoAtual(estado);
+  const anterior = estado;
+  const agora = new Date().toISOString();
+  estado = turno
+    ? {
+        id: crypto.randomUUID(),
+        dia: dia || diaDeHoje(),
+        turno,
+        escolhidoEm: diaDeHoje(),
+        abertoEm: agora,
+        atualizadoEm: agora,
+      }
+    : null;
+  if (estado) salvarPlantaoAtual(estado);
+  else if (anterior) finalizarPlantaoAtual(anterior);
+  else salvarPlantaoAtual(null);
+  agendarSync();
   if (turno === "noturno") ativarJejumNoturno();
   ouvintes.forEach((fn) => fn());
 }
@@ -38,6 +54,12 @@ export function usePlantaoAtual() {
       ouvintes.forEach((fn) => fn());
     }
     setCarregado(true);
+    const recarregar = () => {
+      estado = carregarPlantaoAtual();
+      ouvintes.forEach((fn) => fn());
+    };
+    window.addEventListener("veterico-sync-atualizado", recarregar);
+    return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
   return { plantao, definirTurno: definir, limparPlantao: () => definir(null), carregado };

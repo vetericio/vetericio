@@ -165,7 +165,11 @@ function Index() {
   const salvar = (valores: Omit<Registro, "id">) => {
     if (anterior) {
       const atualizado = mesclarAvaliacao(anterior, valores);
-      setRegistros((rs) => rs.map((r) => (r.id === anterior.id ? atualizado : r)));
+      setRegistros((rs) =>
+        rs.map((r) =>
+          r.id === anterior.id ? { ...atualizado, atualizadoEm: new Date().toISOString() } : r,
+        ),
+      );
       limpar();
       toast.success("Informações acrescentadas.");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -174,7 +178,16 @@ function Index() {
     }
     if (editandoId) {
       setRegistros((rs) =>
-        rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)),
+        rs.map((r) =>
+          r.id === editandoId
+            ? {
+                ...valores,
+                id: editandoId,
+                ...(r.plantaoId ? { plantaoId: r.plantaoId } : {}),
+                atualizadoEm: new Date().toISOString(),
+              }
+            : r,
+        ),
       );
       setEditandoId(null);
       toast.success("Registro atualizado.");

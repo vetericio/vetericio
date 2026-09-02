@@ -11,6 +11,7 @@ export const CHAVES_BACKUP = {
   curvas: "veterico-curvas-v1",
   alarmes: "veterico-alarmes-v1",
   medicamentos: "veterico-medicamentos-v1",
+  exclusoes: "veterico-sync-exclusoes-v1",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
 } as const;
@@ -117,13 +118,32 @@ function juntarPorId(atual: unknown, novo: unknown): unknown {
 
 /** Grava o backup neste aparelho. */
 export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
-  const listas: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
+  const listas: ChaveBackup[] = [
+    "registros",
+    "plantoes",
+    "curvas",
+    "alarmes",
+    "medicamentos",
+    "exclusoes",
+  ];
 
   for (const nome of listas) {
     const novo = b.dados[nome];
     if (novo === undefined) continue;
     const valor = modo === "substituir" ? novo : juntarPorId(lerBruto(CHAVES_BACKUP[nome]), novo);
     escreverBruto(CHAVES_BACKUP[nome], valor);
+  }
+
+  const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)) as Array<{
+    id?: unknown;
+    excluidoEm?: unknown;
+  }>;
+  if (exclusoes.length > 0) {
+    const apagados = new Set(exclusoes.map((e) => String(e.id ?? "")));
+    const registros = lista(lerBruto(CHAVES_BACKUP.registros)).filter(
+      (r) => !apagados.has(String(r.id ?? "")),
+    );
+    escreverBruto(CHAVES_BACKUP.registros, registros);
   }
 
   const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
