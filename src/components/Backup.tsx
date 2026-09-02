@@ -230,15 +230,9 @@ export function Backup() {
           <p className="text-[11px] leading-relaxed text-muted-foreground">
             <span className="font-semibold text-foreground">Backup:</span> uma cópia congelada dos
             dados (uma foto do momento), em arquivo ou por QR. Serve para guardar ou levar tudo para
-            outro aparelho uma vez. Não fica se atualizando.
-            <br />
-            <span className="font-semibold text-foreground">Sincronização</span> é diferente: dois
-            aparelhos com o mesmo código ficam sempre iguais, atualizando sozinhos.
+            outro aparelho. Não fica se atualizando sozinho: sempre que quiser, gere um novo.
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Qual escolher? Guardar ou mudar de aparelho → Backup. Usar dois aparelhos ao mesmo tempo →
-            Sincronização.
-          </p>
+
 
 
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
