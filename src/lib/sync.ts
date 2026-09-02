@@ -363,6 +363,14 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
     escreverBruto(CHAVES_BACKUP[nome], resultado[nome]);
   }
 
+  const idsLocais = new Set(comoLista(local.dados.registros).map((r) => String(r.id ?? "")));
+  const plantoesLocais = new Set(comoLista(local.dados.plantoes).map((p) => String(p.id ?? "")));
+  guardarResumo({
+    animais: registros.filter((r) => !idsLocais.has(String(r.id ?? ""))).length,
+    plantoes: plantoes.filter((p) => !plantoesLocais.has(String(p.id ?? ""))).length,
+    quando: new Date().toISOString(),
+  });
+
   return { atualizadoEm: new Date().toISOString(), dados: resultado };
 }
 
