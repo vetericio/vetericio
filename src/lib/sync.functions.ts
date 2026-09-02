@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const codigoSchema = z.string().regex(/^[a-z0-9]{16,64}$/);
+/** Códigos curtos novos (letra + 6 números) e os longos já em uso. */
+const codigoSchema = z.string().regex(/^([a-z][0-9]{6}|[a-z0-9]{16,64})$/);
 
 const puxarSchema = z.object({ codigo: codigoSchema });
 const enviarSchema = z.object({
