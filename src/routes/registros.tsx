@@ -61,7 +61,8 @@ function normalizar(texto: string) {
 }
 
 function Registros() {
-  const { registros, setRegistros, carregado } = useRegistros();
+  const { registros, setRegistros, excluirRegistros, excluirTodosRegistros, carregado } =
+    useRegistros();
   const finalizar = useFinalizarPlantao();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
