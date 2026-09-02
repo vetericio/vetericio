@@ -5,6 +5,7 @@ import { Calculadora } from "@/components/Calculadora";
 import { FerramentasClinicas } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
+import { GuardaSaida } from "@/components/GuardaSaida";
 import { useRegistros } from "@/hooks/useRegistros";
 import { useCurvas } from "@/hooks/useCurvas";
 import { definirAlarmes } from "@/hooks/useAlarmes";
@@ -85,9 +86,23 @@ function Index() {
   const [anterior, setAnterior] = useState<Registro | null>(null);
   const [duplicado, setDuplicado] = useState<Registro | null>(null);
   const [fazerCurva, setFazerCurva] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const { setCurvas } = useCurvas();
 
   const navigate = useNavigate();
+
+  // "Tem certeza?" só quando existe conteúdo digitado e ainda não salvo.
+  const baseForm: Omit<Registro, "id"> = editandoId
+    ? (() => {
+        const alvo = registros.find((r) => r.id === editandoId);
+        if (!alvo) return REGISTRO_VAZIO;
+        const { id: _i, ...resto } = alvo;
+        return resto;
+      })()
+    : anterior
+      ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "" }
+      : REGISTRO_VAZIO;
+  const sujo = !salvando && JSON.stringify(form) !== JSON.stringify(baseForm);
 
   // Abre em modo edição ou atualização quando vem da página de registros.
   useEffect(() => {
@@ -189,8 +204,10 @@ function Index() {
       setForm(REGISTRO_VAZIO);
       setFazerCurva(false);
       setDuplicado(null);
+      // Já salvou: não pode perguntar "tem certeza?" ao recarregar.
+      setSalvando(true);
       // Recarrega o início: formulário limpo e total do cabeçalho atualizado.
-      window.location.assign("/");
+      setTimeout(() => window.location.assign("/"), 0);
       return;
     }
     setForm(REGISTRO_VAZIO);
@@ -217,6 +234,7 @@ function Index() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
+      <GuardaSaida sujo={sujo} />
       <section className="grid grid-cols-2 items-stretch gap-2 sm:gap-3">
         <div className="min-w-0">
           <Calculadora />

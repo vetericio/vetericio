@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Medicacoes } from "@/components/Medicacoes";
 import { useAnamneses } from "@/hooks/useAnamneses";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
 
 
@@ -86,6 +87,9 @@ export function FormAvaliacao({
   const [outroAberto, setOutroAberto] = useState(false);
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
+  const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
+  // Adicionar paciente só com plantão ativo.
+  const semPlantao = plantaoCarregado && !plantao;
   const sugestoes =
     sugerindo && !anterior && !editando ? sugerirAnamneses(anamneses, valores.animal) : [];
 
@@ -405,9 +409,17 @@ export function FormAvaliacao({
         <button
           type="button"
           onClick={onEnviar}
-          className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
+          disabled={semPlantao}
+          title={semPlantao ? "Inicie o plantão para usar esta função" : undefined}
+          className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-secondary/50 disabled:text-muted-foreground disabled:opacity-60"
         >
-          {anterior ? "Acrescentar informação" : editando ? "Salvar alterações" : "Enviar ficha"}
+          {semPlantao
+            ? "Inicie o plantão para usar esta função"
+            : anterior
+              ? "Acrescentar informação"
+              : editando
+                ? "Salvar alterações"
+                : "Enviar ficha"}
         </button>
         {(editando || anterior) && (
           <button

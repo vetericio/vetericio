@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Alarmes } from "@/components/Alarmes";
+import { ExigePlantao } from "@/components/ExigePlantao";
 
 export const Route = createFileRoute("/alarmes")({
   head: () => ({
@@ -32,7 +33,9 @@ function PaginaAlarmes() {
         noturno. Você pode criar quantos alarmes quiser e escolher entre 55 músicas.
       </p>
       <div className="mt-4">
-        <Alarmes />
+        <ExigePlantao funcao="Os alarmes">
+          <Alarmes />
+        </ExigePlantao>
       </div>
     </main>
   );

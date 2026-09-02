@@ -7,6 +7,7 @@ import {
   salvarAlarmes,
   type Alarme,
 } from "@/lib/alarmes";
+import { carregarPlantaoAtual } from "@/lib/plantao";
 
 let alarmes: Alarme[] = [];
 let tocando: Alarme | null = null;
@@ -43,6 +44,8 @@ function avisarSistema(a: Alarme) {
 
 function verificar() {
   if (tocando) return;
+  // Sem plantão ativo os alarmes não tocam.
+  if (!carregarPlantaoAtual()) return;
   const agora = Date.now();
   const vencido = alarmes.find(
     (a) => a.ativo && new Date(a.proximo).getTime() <= agora,

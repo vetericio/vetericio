@@ -11,6 +11,8 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { useRegistros } from "@/hooks/useRegistros";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
+import { ExigePlantao } from "@/components/ExigePlantao";
 import { useCurvas } from "@/hooks/useCurvas";
 import { definirAlarmes } from "@/hooks/useAlarmes";
 import { criarAlarme, horaDe, horaDeAgoraMais } from "@/lib/alarmes";
@@ -50,6 +52,18 @@ export const Route = createFileRoute("/curva")({
 const INTERVALOS = [1, 2, 3, 4];
 
 function PaginaCurva() {
+  const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
+  if (!plantaoCarregado) return null;
+  if (!plantao)
+    return (
+      <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-5">
+        <ExigePlantao funcao="A curva glicêmica e de PAS" />
+      </main>
+    );
+  return <CurvaConteudo />;
+}
+
+function CurvaConteudo() {
   const { registros, carregado } = useRegistros();
   const { curvas, setCurvas } = useCurvas();
 

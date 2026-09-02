@@ -17,7 +17,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  NOME_VIA,
+  ROTULO_VIA,
   UNIDADES_CONCENTRACAO,
+  UNIDADES_DOSE,
   VIAS,
   faixaDe,
   medicamentoVazio,
@@ -25,6 +28,7 @@ import {
   type DoseEspecie,
   type Medicamento,
 } from "@/lib/medicamentos";
+import { IconeVia } from "@/components/medicamentos/IconeVia";
 
 type Props = {
   aberto: boolean;
@@ -46,6 +50,7 @@ function normalizarDose(d: DoseEspecie): DoseEspecie {
     doseMin: f.min,
     doseMax: f.max,
     porAnimal: f.porAnimal,
+    unidade: f.unidade,
     intervalo: d.intervalo ?? "",
     proibido: d.proibido === true,
   };
