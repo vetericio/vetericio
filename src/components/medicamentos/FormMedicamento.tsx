@@ -75,23 +75,35 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
   const [item, setItem] = useState<Medicamento>(() => inicial ?? medicamentoVazio());
   const [chave, setChave] = useState("");
   const [confirmando, setConfirmando] = useState(false);
+  const [saindo, setSaindo] = useState(false);
+
+  const base: Medicamento = inicial
+    ? {
+        ...inicial,
+        vias: viasDe(inicial),
+        cao: normalizarDose(inicial.cao),
+        gato: normalizarDose(inicial.gato),
+        doseUnificada: unificadoInicial(inicial),
+      }
+    : { ...medicamentoVazio(), id: item.id };
 
   // Reinicia o formulário quando o alvo muda.
   const alvo = `${aberto}-${inicial?.id ?? "novo"}`;
   if (alvo !== chave) {
     setChave(alvo);
-    setItem(
-      inicial
-        ? {
-            ...inicial,
-            vias: viasDe(inicial),
-            cao: normalizarDose(inicial.cao),
-            gato: normalizarDose(inicial.gato),
-            doseUnificada: unificadoInicial(inicial),
-          }
-        : medicamentoVazio(),
-    );
+    setItem(inicial ? base : medicamentoVazio());
   }
+
+  const sujo = JSON.stringify(item) !== JSON.stringify(base);
+
+  /** Só pergunta "Tem certeza?" quando existe alteração não salva. */
+  const tentarFechar = () => {
+    if (sujo) {
+      setSaindo(true);
+      return;
+    }
+    onFechar();
+  };
 
   const salvar = () => {
     const nome = item.nome.trim();
