@@ -103,7 +103,7 @@ export function carregarPlantaoAtual(): PlantaoAtual | null {
       id: typeof dados.id === "string" && dados.id ? dados.id : crypto.randomUUID(),
       dia: dados.dia,
       turno: dados.turno,
-      escolhidoEm: dados.escolhidoEm,
+      ...(typeof dados.escolhidoEm === "string" ? { escolhidoEm: dados.escolhidoEm } : {}),
       abertoEm: typeof dados.abertoEm === "string" ? dados.abertoEm : agora,
       atualizadoEm: typeof dados.atualizadoEm === "string" ? dados.atualizadoEm : agora,
     };

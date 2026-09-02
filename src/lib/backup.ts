@@ -134,6 +134,18 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
+  const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)) as Array<{
+    id?: unknown;
+    excluidoEm?: unknown;
+  }>;
+  if (exclusoes.length > 0) {
+    const apagados = new Set(exclusoes.map((e) => String(e.id ?? "")));
+    const registros = lista(lerBruto(CHAVES_BACKUP.registros)).filter(
+      (r) => !apagados.has(String(r.id ?? "")),
+    );
+    escreverBruto(CHAVES_BACKUP.registros, registros);
+  }
+
   const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
   for (const nome of simples) {
     const novo = b.dados[nome];
