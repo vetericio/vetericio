@@ -3,6 +3,8 @@
  * Nada é enviado para a internet: gera um arquivo (ou um QR) com o conteúdo
  * guardado no próprio aparelho e permite abrir esse conteúdo em outro.
  */
+import { plantaoFinalizado } from "./plantao";
+
 
 export const CHAVES_BACKUP = {
   registros: "veterico-registros-v1",
