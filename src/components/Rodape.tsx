@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Backup } from "@/components/Backup";
-import { Sincronizacao } from "@/components/Sincronizacao";
+import { VERSAO } from "@/lib/versao";
+
 import {
   CORES_RAPIDAS,
   TEMAS,
