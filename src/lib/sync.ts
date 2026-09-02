@@ -297,7 +297,7 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
   const exclusaoPorId = new Map(exclusoes.map((e) => [e.id, e]));
   let registros = comoLista(resultado.registros).filter((r) => {
     const exclusao = exclusaoPorId.get(String(r.id ?? ""));
-    return !exclusao || iso(exclusao.excluidoEm) < quando(r);
+    return !exclusao;
   });
   let plantoes = comoLista(resultado.plantoes);
   const curvas = comoLista(resultado.curvas);
