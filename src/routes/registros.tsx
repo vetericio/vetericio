@@ -61,7 +61,8 @@ function normalizar(texto: string) {
 }
 
 function Registros() {
-  const { registros, setRegistros, carregado } = useRegistros();
+  const { registros, setRegistros, excluirRegistros, excluirTodosRegistros, carregado } =
+    useRegistros();
   const finalizar = useFinalizarPlantao();
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
@@ -169,7 +170,7 @@ function Registros() {
       return;
     }
     if (window.confirm("Apagar todos os registros salvos neste aparelho?")) {
-      setRegistros([]);
+      excluirTodosRegistros();
       toast.success("Todos os registros foram apagados.");
     }
   };
@@ -208,7 +209,7 @@ function Registros() {
   const onExcluir = (id: string) => {
     const alvo = registros.find((r) => r.id === id);
     if (!window.confirm(`Excluir o registro de ${alvo?.animal.trim() || "sem nome"}?`)) return;
-    setRegistros((rs) => rs.filter((x) => x.id !== id));
+    excluirRegistros([id]);
     toast.success("Registro excluído.");
   };
 

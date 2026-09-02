@@ -20,12 +20,16 @@ function subscribe(fn: () => void) {
 const getSnapshot = () => estado;
 const getServerSnapshot = () => estado;
 
+/** Compara o conteúdo do animal, ignorando o carimbo de hora. */
+function mesmoConteudo(a: Registro, b: Registro) {
+  const limpar = ({ atualizadoEm: _ignorado, ...resto }: Registro) => resto;
+  return JSON.stringify(limpar(a)) === JSON.stringify(limpar(b));
+}
+
 function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   const anterior = estado;
   const proximo =
     typeof valor === "function" ? (valor as (a: Registro[]) => Registro[])(estado) : valor;
-  const ids = new Set(proximo.map((r) => r.id));
-  marcarRegistrosExcluidos(anterior.filter((r) => !ids.has(r.id)).map((r) => r.id));
   const agora = new Date().toISOString();
   let plantaoId = "";
   try {
@@ -38,7 +42,9 @@ function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   const porId = new Map(anterior.map((r) => [r.id, r]));
   estado = proximo.map((r) => {
     const antes = porId.get(r.id);
-    const mudou = !antes || antes !== r;
+    // Só o animal que realmente mudou recebe hora nova: assim uma edição feita
+    // no outro aparelho não é descartada na hora de juntar os dados.
+    const mudou = !antes || !mesmoConteudo(antes, r);
     return {
       ...r,
       ...(r.plantaoId || !plantaoId ? {} : { plantaoId }),
@@ -48,6 +54,22 @@ function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   salvarRegistros(estado);
   agendarSync();
   notificar();
+}
+
+/**
+ * Exclusão pedida pelo usuário: grava a marca de exclusão (para não voltar em
+ * outra sincronização) e remove os animais deste aparelho.
+ */
+export function excluirRegistros(ids: string[]) {
+  if (ids.length === 0) return;
+  marcarRegistrosExcluidos(ids);
+  const alvos = new Set(ids);
+  definir(estado.filter((r) => !alvos.has(r.id)));
+}
+
+/** "Limpar todos os dados": exclusão definitiva e propagada. */
+export function excluirTodosRegistros() {
+  excluirRegistros(estado.map((r) => r.id));
 }
 
 export function useRegistros() {
@@ -69,5 +91,11 @@ export function useRegistros() {
     return () => window.removeEventListener("veterico-sync-atualizado", recarregar);
   }, []);
 
-  return { registros, setRegistros: definir, carregado };
+  return {
+    registros,
+    setRegistros: definir,
+    excluirRegistros,
+    excluirTodosRegistros,
+    carregado,
+  };
 }

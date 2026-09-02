@@ -103,6 +103,33 @@ function registrarSync(quando: string) {
   window.localStorage.setItem(CHAVE_ULTIMO, quando);
 }
 
+/** Resumo do que chegou na última junção, mostrado na tela de Sincronização. */
+export type ResumoSync = { animais: number; plantoes: number; quando: string };
+
+const CHAVE_RESUMO = "veterico-sync-resumo-v1";
+
+function guardarResumo(resumo: ResumoSync) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHAVE_RESUMO, JSON.stringify(resumo));
+  } catch {
+    /* sem espaço: seguimos sem resumo */
+  }
+}
+
+export function ultimoResumo(): ResumoSync | null {
+  if (typeof window === "undefined") return null;
+  const bruto = window.localStorage.getItem(CHAVE_RESUMO);
+  if (!bruto) return null;
+  try {
+    const r = JSON.parse(bruto) as Partial<ResumoSync>;
+    if (typeof r.animais !== "number" || typeof r.plantoes !== "number") return null;
+    return { animais: r.animais, plantoes: r.plantoes, quando: String(r.quando ?? "") };
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- mesclagem ---------- */
 
 type Item = Record<string, unknown> & { id?: unknown };
@@ -212,9 +239,9 @@ function arquivarPlantao(
   registros: Item[],
   plantoes: Item[],
   curvas: Item[],
-): { registros: Item[]; plantoes: Item[]; exclusoes: Exclusao[] } {
+): { registros: Item[]; plantoes: Item[] } {
   const doPlantao = registros.filter((r) => r["plantaoId"] === antigo.id);
-  if (doPlantao.length === 0) return { registros, plantoes, exclusoes: [] };
+  if (doPlantao.length === 0) return { registros, plantoes };
   const chaves = new Set(
     doPlantao.map((r) => {
       const nome = String(r["animal"] ?? "")
@@ -237,11 +264,11 @@ function arquivarPlantao(
     atualizadoEm: new Date().toISOString(),
   };
   const semDuplicata = plantoes.filter((p) => p.id !== antigo.id && p["plantaoId"] !== antigo.id);
-  const agora = new Date().toISOString();
+  // Arquivar não é excluir: nada de marcas de exclusão aqui, senão o outro
+  // aparelho perde para sempre os animais do plantão que foi guardado.
   return {
     registros: registros.filter((r) => r["plantaoId"] !== antigo.id),
     plantoes: [historico, ...semDuplicata],
-    exclusoes: doPlantao.map((r) => ({ id: String(r.id), tipo: "registro", excluidoEm: agora })),
   };
 }
 
@@ -293,11 +320,13 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
     if (juntas.length > 0 || remoto.dados[nome] !== undefined) resultado[nome] = juntas;
   }
 
-  let exclusoes = lerExclusoes(resultado.exclusoes);
+  const exclusoes = lerExclusoes(resultado.exclusoes);
   const exclusaoPorId = new Map(exclusoes.map((e) => [e.id, e]));
   let registros = comoLista(resultado.registros).filter((r) => {
     const exclusao = exclusaoPorId.get(String(r.id ?? ""));
-    return !exclusao;
+    if (!exclusao) return true;
+    // A exclusão só vence se for mais recente que a última alteração do animal.
+    return iso(r["atualizadoEm"]) > iso(exclusao.excluidoEm);
   });
   let plantoes = comoLista(resultado.plantoes);
   const curvas = comoLista(resultado.curvas);
@@ -329,7 +358,7 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
       const arquivado = arquivarPlantao(antigo, registros, plantoes, curvas);
       registros = arquivado.registros;
       plantoes = arquivado.plantoes;
-      exclusoes = mesclarListas(exclusoes, arquivado.exclusoes) as Exclusao[];
+      
       plantaoFinal = novo;
     } else {
       const abertos = [localPlantao, remotoPlantao].filter((p) => !p.finalizadoEm);
@@ -342,6 +371,15 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
   } else {
     plantaoFinal = remotoPlantao ?? localPlantao;
   }
+
+  // Animais de um plantão que já foi arquivado no histórico não voltam para a
+  // lista de internados (foram guardados, não excluídos).
+  const arquivados = new Set(
+    plantoes
+      .flatMap((p) => [String(p.id ?? ""), String(p["plantaoId"] ?? "")])
+      .filter((id) => id !== ""),
+  );
+  registros = registros.filter((r) => !arquivados.has(String(r["plantaoId"] ?? "")));
 
   resultado.registros = registros;
   resultado.plantoes = plantoes;
@@ -360,6 +398,14 @@ export function mesclarPacote(remoto: PacoteSync): PacoteSync {
   for (const nome of Object.keys(resultado) as ChaveBackup[]) {
     escreverBruto(CHAVES_BACKUP[nome], resultado[nome]);
   }
+
+  const idsLocais = new Set(comoLista(local.dados.registros).map((r) => String(r.id ?? "")));
+  const plantoesLocais = new Set(comoLista(local.dados.plantoes).map((p) => String(p.id ?? "")));
+  guardarResumo({
+    animais: registros.filter((r) => !idsLocais.has(String(r.id ?? ""))).length,
+    plantoes: plantoes.filter((p) => !plantoesLocais.has(String(p.id ?? ""))).length,
+    quando: new Date().toISOString(),
+  });
 
   return { atualizadoEm: new Date().toISOString(), dados: resultado };
 }
@@ -436,7 +482,13 @@ export async function sincronizarAgora(manual = false): Promise<ResultadoSync> {
     const remoto = await puxarSala({ data: { codigo } });
     const pacoteRemoto = remoto.dadosJson ? validarPacote(JSON.parse(remoto.dadosJson)) : null;
     if (pacoteRemoto) guardarDesfazer(pacoteLocal());
-    const final = pacoteRemoto ? mesclarPacote(pacoteRemoto) : pacoteLocal();
+    let final: PacoteSync;
+    if (pacoteRemoto) {
+      final = mesclarPacote(pacoteRemoto);
+    } else {
+      final = pacoteLocal();
+      guardarResumo({ animais: 0, plantoes: 0, quando: new Date().toISOString() });
+    }
     const enviado = await enviarSala({
       data: { codigo, dadosJson: JSON.stringify(final) },
     });
