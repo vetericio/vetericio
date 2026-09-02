@@ -134,16 +134,33 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
-  const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)) as Array<{
-    id?: unknown;
-    excluidoEm?: unknown;
-  }>;
-  if (exclusoes.length > 0) {
-    const apagados = new Set(exclusoes.map((e) => String(e.id ?? "")));
-    const registros = lista(lerBruto(CHAVES_BACKUP.registros)).filter(
-      (r) => !apagados.has(String(r.id ?? "")),
+  const registrosRestaurados = lista(b.dados.registros);
+  const idsRestaurados = new Set(registrosRestaurados.map((r) => String(r?.id ?? "")));
+
+  if (modo === "substituir") {
+    // Restaurar por cima é definitivo: marcas antigas de exclusão não podem
+    // apagar de novo os animais que acabaram de voltar do backup.
+    const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)).filter(
+      (e) => !idsRestaurados.has(String(e?.id ?? "")),
     );
-    escreverBruto(CHAVES_BACKUP.registros, registros);
+    escreverBruto(CHAVES_BACKUP.exclusoes, exclusoes);
+  } else {
+    const exclusoes = lista(lerBruto(CHAVES_BACKUP.exclusoes)) as Array<{
+      id?: unknown;
+      excluidoEm?: unknown;
+    }>;
+    if (exclusoes.length > 0) {
+      const quando = new Map(
+        exclusoes.map((e) => [String(e.id ?? ""), String(e.excluidoEm ?? "")]),
+      );
+      const registros = lista(lerBruto(CHAVES_BACKUP.registros)).filter((r) => {
+        const excluidoEm = quando.get(String(r?.id ?? ""));
+        if (excluidoEm === undefined) return true;
+        // A exclusão só vence se for mais recente que a última alteração do animal.
+        return String(r?.["atualizadoEm"] ?? "") > excluidoEm;
+      });
+      escreverBruto(CHAVES_BACKUP.registros, registros);
+    }
   }
 
   const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
