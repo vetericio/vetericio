@@ -31,7 +31,9 @@ function definir(turno: Turno | null, dia?: string) {
 
 export function usePlantaoAtual() {
   const plantao = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const [carregado, setCarregado] = useState(iniciado);
+  // Começa sempre em false para o HTML do servidor bater com o do aparelho.
+  const [carregado, setCarregado] = useState(false);
+
 
   useEffect(() => {
     if (!iniciado) {
