@@ -1,5 +1,5 @@
 /** Palavras de ligação que ficam em minúscula no meio do nome. */
-const LIGACOES = new Set(["de", "da", "do", "das", "dos", "e", "em", "por"]);
+const LIGACOES = new Set(["de", "da", "do", "das", "dos", "e", "em", "por", "com"]);
 
 /**
  * Padroniza o nome de um medicamento: primeira letra de cada palavra relevante
