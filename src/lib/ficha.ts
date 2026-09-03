@@ -1,4 +1,5 @@
 import { carregarAnamneses, type Anamnese } from "./anamnese";
+import { normalizarNomeMedicamento } from "./nomes";
 import { blocoCurvasDoRegistro, type Curva } from "./curva";
 import { resumoRegistro } from "./resumo";
 
