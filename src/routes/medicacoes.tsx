@@ -12,6 +12,8 @@ import {
   DialogoQuantidade,
   type QuantidadePendente,
 } from "@/components/medicamentos/DialogoQuantidade";
+import { DialogoEscolherMedicamento } from "@/components/medicamentos/DialogoEscolherMedicamento";
+import { CompletarInsercao } from "@/components/medicamentos/CompletarInsercao";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 
