@@ -76,6 +76,9 @@ function PaginaMedicacoes() {
   const [editando, setEditando] = useState<Medicamento | null>(null);
   const [avulsaAberta, setAvulsaAberta] = useState(false);
   const [aplicacao, setAplicacao] = useState<AplicacaoPendente | null>(null);
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [escolhaAberta, setEscolhaAberta] = useState(false);
+  const [completarAberto, setCompletarAberto] = useState(false);
 
   const lista = useMemo(() => {
     const termo = busca.trim().toLowerCase();
