@@ -5,6 +5,8 @@ import { useAnamneses } from "@/hooks/useAnamneses";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { ExigePlantao } from "@/components/ExigePlantao";
 import { GuardaSaida } from "@/components/GuardaSaida";
+import { BlocoNotas } from "@/components/BlocoNotas";
+
 import { ESPECIES, type Especie } from "@/lib/ficha";
 import {
   ANAMNESE_VAZIA,
