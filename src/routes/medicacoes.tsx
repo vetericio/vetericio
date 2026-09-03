@@ -150,14 +150,62 @@ function PaginaMedicacoes() {
         ))}
       </ul>
 
-      <button
-        type="button"
-        onClick={abrirNovo}
-        aria-label="Inserir novo medicamento"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground shadow-lg hover:bg-primary/90"
-      >
-        +
-      </button>
+      {menuAberto && (
+        <button
+          type="button"
+          aria-label="Fechar ações"
+          onClick={() => setMenuAberto(false)}
+          className="fixed inset-0 z-30 bg-background/40"
+        />
+      )}
+
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
+        {menuAberto &&
+          (
+            [
+              { rotulo: "Adicionar medicamento", icone: "＋", acao: abrirNovo },
+              {
+                rotulo: "Atualizar medicamento",
+                icone: "✎",
+                acao: () => setEscolhaAberta(true),
+              },
+              {
+                rotulo: "Completar inserção",
+                icone: "✔",
+                acao: () => setCompletarAberto(true),
+              },
+            ] as const
+          ).map((o) => (
+            <div key={o.rotulo} className="flex items-center gap-2">
+              <span className="rounded-lg bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground shadow">
+                {o.rotulo}
+              </span>
+              <button
+                type="button"
+                aria-label={o.rotulo}
+                onClick={() => {
+                  setMenuAberto(false);
+                  o.acao();
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground shadow-lg hover:bg-primary/90"
+              >
+                {o.icone}
+              </button>
+            </div>
+          ))}
+
+        <button
+          type="button"
+          onClick={() => setMenuAberto((v) => !v)}
+          aria-expanded={menuAberto}
+          aria-label="Ações de medicamento"
+          className={`flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 ${
+            menuAberto ? "rotate-45" : ""
+          }`}
+        >
+          +
+        </button>
+      </div>
 
       <FormMedicamento
         aberto={formAberto}
@@ -165,6 +213,21 @@ function PaginaMedicacoes() {
         onFechar={() => setFormAberto(false)}
         onSalvar={salvar}
         onExcluir={remover}
+      />
+      <DialogoEscolherMedicamento
+        aberto={escolhaAberta}
+        medicamentos={medicamentos}
+        onFechar={() => setEscolhaAberta(false)}
+        onEscolher={(m) => {
+          setEscolhaAberta(false);
+          abrirEdicao(m);
+        }}
+      />
+      <CompletarInsercao
+        aberto={completarAberto}
+        medicamentos={medicamentos}
+        onFechar={() => setCompletarAberto(false)}
+        onSalvar={salvar}
       />
       <PesquisaAvulsa aberto={avulsaAberta} onFechar={() => setAvulsaAberta(false)} />
       <DialogoAplicar aplicacao={aplicacao} onFechar={() => setAplicacao(null)} />
