@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lerReceitaComIA } from "@/lib/medicacoes.functions";
 import type { Medicacao } from "@/lib/ficha";
+import { normalizarNomeMedicamento } from "@/lib/nomes";
 
 type Props = {
   lista: Medicacao[];
@@ -84,6 +85,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const [textoBruto, setTextoBruto] = useState("");
   const [editando, setEditando] = useState<number | null>(null);
   const [nome, setNome] = useState("");
+  const [nomeMenor, setNomeMenor] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
   const [duracao, setDuracao] = useState<DuracaoPadrao>("");
@@ -97,6 +99,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
 
   const resetForm = () => {
     setNome("");
+    setNomeMenor("");
     setQuantidade("");
     setUnidade("mL");
     setDuracao("");
@@ -106,7 +109,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
 
 
   const enviar = () => {
-    const nomeLimpo = nome.trim();
+    const nomeLimpo = normalizarNomeMedicamento(nome);
+    const menorLimpo = normalizarNomeMedicamento(nomeMenor);
     if (!nomeLimpo) {
       toast.error("Escreva o nome da medicação.");
       return;
@@ -118,6 +122,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     }
     const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
     const item: Medicacao = { nome: nomeLimpo, dose, duracao: duracaoSalva };
+    if (menorLimpo) item.nomeMenor = menorLimpo;
 
     if (editando === null) {
       onChange([...lista, item]);
@@ -137,6 +142,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     const { quantidade: q, unidade: u } = parseDose(item.dose);
     const { modo, outros } = parseDuracao(item.duracao);
     setNome(item.nome);
+    setNomeMenor(item.nomeMenor ?? "");
     setQuantidade(q);
     setUnidade(u);
     setDuracao(modo);
@@ -192,7 +198,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
           const resultado = await lerIA({ data: { imagem } });
           encontradas = resultado.medicacoes.map((m) => {
             const { modo, outros } = classificarDuracao(m.duracao);
-            return { ...m, duracao: modo === DURACAO_OUTROS && outros ? outros : modo };
+            return {
+              ...m,
+              nome: normalizarNomeMedicamento(m.nome),
+              duracao: modo === DURACAO_OUTROS && outros ? outros : modo,
+            };
           });
           usouIA = true;
         } catch {
@@ -206,7 +216,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
           if (encontradas.length === 0) {
             encontradas = offline.encontradas.map((m) => {
               const { modo, outros } = classificarDuracao(m.duracao);
-              return { ...m, duracao: modo === DURACAO_OUTROS && outros ? outros : modo };
+              return {
+              ...m,
+              nome: normalizarNomeMedicamento(m.nome),
+              duracao: modo === DURACAO_OUTROS && outros ? outros : modo,
+            };
             });
           }
           texto = offline.texto;
@@ -310,7 +324,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/60 px-2.5 py-1.5"
                 >
                   <span className="min-w-0 text-sm text-foreground">
-                    <span className="block truncate">{[m.nome, m.dose, m.duracao].filter(Boolean).join(" · ")}</span>
+                    {m.nomeMenor && (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {normalizarNomeMedicamento(m.nomeMenor)}
+                      </span>
+                    )}
+                    <span className="block truncate">
+                      {[normalizarNomeMedicamento(m.nome), m.dose, m.duracao]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </span>
                   {!somenteLeitura && (
                     <span className="flex shrink-0 gap-1.5">
@@ -338,6 +361,20 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
           {!somenteLeitura && (
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
             <div className="grid gap-1.5 sm:grid-cols-3">
+              <div className="flex min-w-0 flex-col gap-1">
+                <input
+                  value={nomeMenor}
+                  onChange={(e) => setNomeMenor(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      nomeRef.current?.focus();
+                    }
+                  }}
+                  enterKeyHint="next"
+                  placeholder="Nome menor (opcional)"
+                  className={`${campo} py-1 text-xs`}
+                />
               <input
                 ref={nomeRef}
                 value={nome}
@@ -352,6 +389,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 placeholder="Medicação"
                 className={campo}
               />
+              </div>
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}
