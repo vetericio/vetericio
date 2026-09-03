@@ -6,6 +6,7 @@ import { usePlantaoAtual } from "./usePlantaoAtual";
 import { useCurvas } from "./useCurvas";
 import { useAnamneses } from "./useAnamneses";
 import { encerrarTodosAlarmes } from "./useAlarmes";
+import { CHAVE_BLOCO_NOTAS } from "@/components/BlocoNotas";
 import { chaveDoAnimal } from "@/lib/curva";
 import { diaDeHoje } from "@/lib/plantao";
 import type { Plantao } from "@/lib/ficha";
@@ -40,6 +41,11 @@ export function useFinalizarPlantao() {
     encerrarTodosAlarmes();
     // A anamnese vale só para um plantão: some ao fechar (histórico fica em Evolução).
     setAnamneses([]);
+    try {
+      window.localStorage.removeItem(CHAVE_BLOCO_NOTAS);
+    } catch {
+      /* sem acesso: ignora */
+    }
     limparPlantao();
     toast.success("Plantão finalizado.");
     navigate({ to: "/plantoes" });
