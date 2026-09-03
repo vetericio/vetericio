@@ -411,6 +411,9 @@ function AnamneseConteudo() {
           </ul>
         </section>
       )}
+
+      <BlocoNotas />
     </main>
+
   );
 }
