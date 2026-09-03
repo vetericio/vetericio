@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRegistros } from "@/hooks/useRegistros";
 import { emojiEspecie, normalizarNome } from "@/lib/anamnese";
-import type { Medicacao } from "@/lib/ficha";
+import { nomeMedicacao, type Medicacao } from "@/lib/ficha";
 
 export type AplicacaoPendente = {
   nome: string;
@@ -63,7 +63,7 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
         return { ...r, medicacoes: [...(r.medicacoes ?? []), nova] };
       }),
     );
-    toast.success(`${aplicacao.nome} registrado em ${nomeAnimal || "animal"} às ${hora}`);
+    toast.success(`${nomeMedicacao(aplicacao)} registrado em ${nomeAnimal || "animal"} às ${hora}`);
     setBusca("");
     onFechar();
   };
@@ -75,7 +75,7 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
           <DialogTitle>Para qual animal?</DialogTitle>
           <DialogDescription>
             {aplicacao
-              ? `${aplicacao.nome} — ${aplicacao.quantidade}${aplicacao.via ? ` • ${aplicacao.via}` : ""}`
+              ? `${nomeMedicacao(aplicacao)} — ${aplicacao.quantidade}${aplicacao.via ? ` • ${aplicacao.via}` : ""}`
               : ""}
           </DialogDescription>
         </DialogHeader>

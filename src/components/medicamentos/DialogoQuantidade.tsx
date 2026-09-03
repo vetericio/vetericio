@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usaFracao, type ResultadoFaixa } from "@/lib/medicamentos";
+import { normalizarNomeMedicamento } from "@/lib/nomes";
 
 /** Contexto da medicação escolhida, enquanto a quantidade não foi confirmada. */
 export type QuantidadePendente = {
@@ -131,7 +132,12 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
     <Dialog open onOpenChange={(v) => !v && onFechar()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{pendente.nome}</DialogTitle>
+          <DialogTitle>
+            {[pendente.nomeMenor, pendente.nome]
+              .map((n) => normalizarNomeMedicamento(n ?? ""))
+              .filter(Boolean)
+              .join(" ")}
+          </DialogTitle>
           <DialogDescription>
             Cálculo apenas para referência. Você escolhe a quantidade que vai administrar.
           </DialogDescription>
