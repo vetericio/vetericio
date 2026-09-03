@@ -13,6 +13,8 @@ import type { Medicacao } from "@/lib/ficha";
 
 export type AplicacaoPendente = {
   nome: string;
+  /** Complemento opcional exibido antes do nome, ex.: "Besilato de". */
+  nomeMenor?: string;
   /** ex.: "72 – 90 mg (20 – 25 mg/kg)" */
   dose: string;
   /** ex.: "0,28 – 0,56 mL" ou "½ comprimido" */
@@ -46,6 +48,7 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
     const hora = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const nova: Medicacao = {
       nome: aplicacao.nome,
+      ...(aplicacao.nomeMenor ? { nomeMenor: aplicacao.nomeMenor } : {}),
       dose: aplicacao.dose,
       duracao: aplicacao.duracao,
       via: aplicacao.via,

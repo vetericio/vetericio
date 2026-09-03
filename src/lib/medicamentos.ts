@@ -129,6 +129,8 @@ export function referenciaDose(d: DoseEspecie): string {
 export type Medicamento = {
   id: string;
   nome: string;
+  /** Complemento opcional exibido antes do nome, ex.: "Besilato de". */
+  nomeMenor?: string;
   concentracaoValor: string;
   concentracaoUnidade: string;
   resumo: string;
@@ -205,6 +207,7 @@ export function medicamentoVazio(): Medicamento {
         ? crypto.randomUUID()
         : `med-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     nome: "",
+    nomeMenor: "",
     concentracaoValor: "",
     concentracaoUnidade: "mg/mL",
     resumo: "",

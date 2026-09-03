@@ -11,6 +11,8 @@ import { usaFracao, type ResultadoFaixa } from "@/lib/medicamentos";
 /** Contexto da medicação escolhida, enquanto a quantidade não foi confirmada. */
 export type QuantidadePendente = {
   nome: string;
+  /** Complemento opcional exibido antes do nome, ex.: "Besilato de". */
+  nomeMenor?: string;
   via: string;
   duracao: string;
   resultado: Extract<ResultadoFaixa, { ok: true }>;
