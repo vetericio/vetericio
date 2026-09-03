@@ -202,7 +202,7 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
     if (!resultado.ok || !resultado.volumeTexto) return;
     setPendente({
       nome: m.nome,
-      nomeMenor: m.nomeMenor,
+      ...(m.nomeMenor ? { nomeMenor: m.nomeMenor } : {}),
       via: vias.join("/"),
       duracao: frequencia ? `a cada ${frequencia}` : "",
       resultado,
@@ -214,7 +214,7 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
     const r = pendente.resultado;
     onAplicar({
       nome: pendente.nome,
-      nomeMenor: pendente.nomeMenor,
+      ...(pendente.nomeMenor ? { nomeMenor: pendente.nomeMenor } : {}),
       dose: `${r.doseTexto}${r.referencia ? ` (${r.referencia})` : ""}`,
       quantidade,
       via: pendente.via,
