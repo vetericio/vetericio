@@ -4,7 +4,7 @@ Um bloco de notas simples, livre, dentro da aba Anamnese. Serve para rascunho pe
 
 ## Como funciona
 
-- Fica no fim da página Anamnese, em um card próprio com o título "Bloco de notas".
+- Fica no final da página Anamnese, em um card próprio com o título "Bloco de notas".
 - Uma área de texto grande, digitação livre, sem campos nem formatação.
 - Salva sozinho no aparelho enquanto você digita (offline, igual ao resto do app).
 - Mostra "salvo" discreto embaixo e um botão "Limpar" com confirmação.
