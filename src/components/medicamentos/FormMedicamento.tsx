@@ -228,9 +228,13 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
           {inicial?.nome && (
             <div className="mt-1 leading-tight">
               {inicial.nomeMenor?.trim() && (
-                <p className="text-[11px] text-muted-foreground">{inicial.nomeMenor}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {normalizarNomeMedicamento(inicial.nomeMenor)}
+                </p>
               )}
-              <p className="text-sm font-semibold text-foreground">{inicial.nome}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {normalizarNomeMedicamento(inicial.nome)}
+              </p>
             </div>
           )}
         </DialogHeader>
