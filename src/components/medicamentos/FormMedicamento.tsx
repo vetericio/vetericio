@@ -236,7 +236,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
         </DialogHeader>
 
         <div className="space-y-3">
-          <div>
+          <div className="w-1/2 min-w-[140px]">
             <label className={rotulo} htmlFor="med-nome-menor">
               Nome menor (opcional)
             </label>
@@ -245,7 +245,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
               value={item.nomeMenor ?? ""}
               onChange={(e) => setItem({ ...item, nomeMenor: e.target.value })}
               className={`${campo} text-sm`}
-              placeholder="Besilato de, Cloridrato de..."
+              placeholder="Besilato de..."
             />
           </div>
           <div>
