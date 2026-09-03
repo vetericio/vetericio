@@ -7,6 +7,8 @@ export type Especie = "Cachorro" | "Gato" | "";
 /** Uma linha da tabela de medicações do animal. */
 export type Medicacao = {
   nome: string;
+  /** Complemento opcional exibido antes do nome, ex.: "Besilato de". */
+  nomeMenor?: string;
   dose: string;
   duracao: string;
   /** Via de administração (IV, IM, SC, VO, OF, OT). */
@@ -43,9 +45,16 @@ export type Registro = {
   obito?: { hora: string; motivo: string };
 };
 
+/** Nome exibido/exportado: complemento opcional + nome principal, padronizados. */
+export function nomeMedicacao(m: Medicacao): string {
+  const menor = normalizarNomeMedicamento(m.nomeMenor ?? "");
+  const principal = normalizarNomeMedicamento(m.nome);
+  return [menor, principal].filter(Boolean).join(" ");
+}
+
 /** "Dipirona 500 - 0,14 mL / IV / a cada 8h" */
 export function linhaMedicacao(m: Medicacao): string {
-  const nome = m.nome.trim();
+  const nome = nomeMedicacao(m);
   const quantidade = (m.quantidade ?? "").trim();
   const resto = [(m.via ?? "").trim(), m.duracao.trim()].filter(Boolean).join(" / ");
   if (!quantidade && !resto) return nome;
@@ -53,6 +62,7 @@ export function linhaMedicacao(m: Medicacao): string {
   if (!quantidade) return `${nome} / ${resto}`;
   return `${nome} - ${quantidade} / ${resto}`;
 }
+
 
 
 /** Bloco de texto das medicações, vazio quando não houver nenhuma. */
