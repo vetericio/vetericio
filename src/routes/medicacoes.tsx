@@ -224,9 +224,12 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
 
   return (
     <li className="rounded-2xl border border-border bg-card/60 px-3 py-2.5">
-      <p className="text-lg font-bold uppercase leading-tight tracking-tight text-foreground">
-        {m.nome}
-      </p>
+      <div className="leading-tight">
+        {m.nomeMenor?.trim() && (
+          <p className="text-[11px] font-medium text-muted-foreground">{m.nomeMenor}</p>
+        )}
+        <p className="text-lg font-bold uppercase tracking-tight text-foreground">{m.nome}</p>
+      </div>
 
       <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="truncate font-semibold">{concentracao || "—"}</span>

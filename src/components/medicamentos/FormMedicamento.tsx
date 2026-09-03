@@ -81,6 +81,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
   const base: Medicamento = inicial
     ? {
         ...inicial,
+        nomeMenor: inicial.nomeMenor ?? "",
         vias: viasDe(inicial),
         cao: normalizarDose(inicial.cao),
         gato: normalizarDose(inicial.gato),
@@ -107,15 +108,16 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
   };
 
   const salvar = () => {
-    const nome = item.nome.trim();
+    const nome = normalizarNomeMedicamento(item.nome);
     if (!nome) {
       toast.error("Escreva o nome do medicamento.");
       return;
     }
+    const nomeMenor = normalizarNomeMedicamento(item.nomeMenor ?? "");
     const doses = item.doseUnificada
       ? { cao: { ...item.cao, proibido: false }, gato: { ...item.cao, proibido: false } }
       : { cao: item.cao, gato: item.gato };
-    onSalvar({ ...item, ...doses, nome, teste: false });
+    onSalvar({ ...item, ...doses, nome, nomeMenor, teste: false });
     toast.success(inicial ? "Medicamento atualizado." : "Medicamento cadastrado.");
     onFechar();
   };
@@ -223,19 +225,39 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{inicial ? "Editar medicamento" : "Inserir novo"}</DialogTitle>
+          {inicial?.nome && (
+            <div className="mt-1 leading-tight">
+              {inicial.nomeMenor?.trim() && (
+                <p className="text-[11px] text-muted-foreground">{inicial.nomeMenor}</p>
+              )}
+              <p className="text-sm font-semibold text-foreground">{inicial.nome}</p>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="space-y-3">
           <div>
+            <label className={rotulo} htmlFor="med-nome-menor">
+              Nome menor (opcional)
+            </label>
+            <input
+              id="med-nome-menor"
+              value={item.nomeMenor ?? ""}
+              onChange={(e) => setItem({ ...item, nomeMenor: e.target.value })}
+              className={`${campo} text-sm`}
+              placeholder="Besilato de, Cloridrato de..."
+            />
+          </div>
+          <div>
             <label className={rotulo} htmlFor="med-nome">
-              Nome do medicamento
+              Medicação
             </label>
             <input
               id="med-nome"
               value={item.nome}
               onChange={(e) => setItem({ ...item, nome: e.target.value })}
               className={campo}
-              placeholder="Nome"
+              placeholder="Nome principal"
             />
           </div>
 
