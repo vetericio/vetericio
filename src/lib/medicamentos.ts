@@ -207,6 +207,7 @@ export function medicamentoVazio(): Medicamento {
         ? crypto.randomUUID()
         : `med-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     nome: "",
+    nomeMenor: "",
     concentracaoValor: "",
     concentracaoUnidade: "mg/mL",
     resumo: "",
