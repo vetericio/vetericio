@@ -28,6 +28,7 @@ import {
   type DoseEspecie,
   type Medicamento,
 } from "@/lib/medicamentos";
+import { normalizarNomeMedicamento } from "@/lib/nomes";
 import { IconeVia } from "@/components/medicamentos/IconeVia";
 
 type Props = {
