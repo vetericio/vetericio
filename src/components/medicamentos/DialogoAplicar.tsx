@@ -48,7 +48,7 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
     const hora = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const nova: Medicacao = {
       nome: aplicacao.nome,
-      nomeMenor: aplicacao.nomeMenor,
+      ...(aplicacao.nomeMenor ? { nomeMenor: aplicacao.nomeMenor } : {}),
       dose: aplicacao.dose,
       duracao: aplicacao.duracao,
       via: aplicacao.via,
