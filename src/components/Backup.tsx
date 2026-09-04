@@ -398,7 +398,7 @@ export function Backup() {
         onClick={() => setAberto((v) => !v)}
         className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
       >
-        Backup
+        Sincronização
       </button>
 
 
