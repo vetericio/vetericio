@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import { CalculadoraNorep } from "@/components/CalculadoraNorep";
 import { Cronometro } from "@/components/Cronometro";
 import { TaxaInfusao } from "@/components/TaxaInfusao";
 import { TransfusaoSanguinea } from "@/components/TransfusaoSanguinea";
 
-/** Banner deslizável com as ferramentas clínicas (cronômetro/taxa e transfusão). */
+/** Banner deslizável com as ferramentas clínicas (cronômetro/taxa, transfusão e NOREP). */
 export function FerramentasClinicas() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", containScroll: "trimSnaps" });
   const [ativo, setAtivo] = useState(0);
@@ -43,11 +44,16 @@ export function FerramentasClinicas() {
               <TransfusaoSanguinea />
             </div>
           </div>
+          <div className="min-w-0 flex-[0_0_100%]">
+            <div className="flex h-full min-w-0 flex-col">
+              <CalculadoraNorep />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="mt-2 flex shrink-0 items-center justify-center gap-1.5">
-        {[0, 1].map((i) => (
+        {[0, 1, 2].map((i) => (
           <button
             key={i}
             type="button"

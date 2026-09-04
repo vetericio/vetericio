@@ -1,6 +1,7 @@
 # Adicionar calculadora de Norepinefrina (NOREP)
 
 ## Objetivo
+
 Incluir uma nova calculadora específica de NOREP no bloco de ferramentas da página inicial, sem alterar ou remover a calculadora geral, o cronômetro, a taxa de infusão ou a transfusão sanguínea.
 
 ## Layout
@@ -24,7 +25,7 @@ Incluir uma nova calculadora específica de NOREP no bloco de ferramentas da pá
 
 ## Componente `src/components/CalculadoraNorep.tsx`
 
-- Título: **Norepinefrina (NOREP)**
+- Título: **Norepinefrina**
 - Subtítulo fixo: **Diluição: 4 mL de norepinefrina + 96 mL de SF = 40 mcg/mL**
 - Campos:
   1. **Peso (kg)** — obrigatório, aceita vírgula ou ponto.
@@ -65,13 +66,15 @@ Incluir uma nova calculadora específica de NOREP no bloco de ferramentas da pá
 
 Após implementação, validar os seguintes pares:
 
-| Peso | Dose | Taxa esperada |
-|------|------|---------------|
-| 3 kg | 0,2 | 0,90 mL/h |
-| 5 kg | 0,2 | 1,50 mL/h |
-| 10 kg | 0,2 | 3,00 mL/h |
-| 20 kg | 0,4 | 12,00 mL/h |
-| 30 kg | 1,0 | 45,00 mL/h |
+
+| Peso  | Dose | Taxa esperada |
+| ----- | ---- | ------------- |
+| 3 kg  | 0,2  | 0,90 mL/h     |
+| 5 kg  | 0,2  | 1,50 mL/h     |
+| 10 kg | 0,2  | 3,00 mL/h     |
+| 20 kg | 0,4  | 12,00 mL/h    |
+| 30 kg | 1,0  | 45,00 mL/h    |
+
 
 E o sentido inverso: 5,3 kg + 1,59 mL/h → 0,20 mcg/kg/min.
 
