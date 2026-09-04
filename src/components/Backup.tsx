@@ -17,6 +17,41 @@ import {
   buscarTransferencia,
   enviarTransferencia,
 } from "@/lib/transferencia.functions";
+import {
+  apagarSala,
+  criarSala,
+  enviarSala,
+  puxarSala,
+} from "@/lib/sincronizacao.functions";
+
+const CHAVE_SALA = "veterico-sala-v1";
+const FORMATO_SALA = /^[A-Z][0-9]{5}$/;
+
+function salaGuardada(): string | null {
+  if (typeof window === "undefined") return null;
+  const v = window.localStorage.getItem(CHAVE_SALA) ?? "";
+  return FORMATO_SALA.test(v) ? v : null;
+}
+
+function guardarSala(codigo: string | null) {
+  if (typeof window === "undefined") return;
+  if (codigo) window.localStorage.setItem(CHAVE_SALA, codigo);
+  else window.localStorage.removeItem(CHAVE_SALA);
+}
+
+/** Aceita o código digitado ou o link do QR de sincronização. */
+function salaDoTexto(texto: string): string | null {
+  const bruto = texto.trim().toUpperCase();
+  if (FORMATO_SALA.test(bruto)) return bruto;
+  try {
+    const url = new URL(texto.trim());
+    const c = (url.searchParams.get("sala") ?? "").toUpperCase();
+    return FORMATO_SALA.test(c) ? c : null;
+  } catch {
+    return null;
+  }
+}
+
 
 type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
 
