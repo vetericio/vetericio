@@ -13,6 +13,8 @@ export const CHAVES_BACKUP = {
   curvas: "veterico-curvas-v1",
   alarmes: "veterico-alarmes-v1",
   medicamentos: "veterico-medicamentos-v1",
+  anamneses: "veterico-anamneses",
+  notas: "veterico-bloco-notas",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
 } as const;
@@ -35,6 +37,8 @@ export type ResumoBackup = {
   curvas: number;
   alarmes: number;
   medicamentos: number;
+  anamneses: number;
+  temNotas: boolean;
   temPlantaoAtual: boolean;
   temTema: boolean;
 };
