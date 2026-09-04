@@ -544,3 +544,19 @@ export function alteracoesDoRegistro(r: Registro): Alteracao[] {
   }
   return lista;
 }
+
+/** Diz se uma linha formatada (ex.: "Temperatura: 32,5 / 37,9 °C") representa
+ *  um parâmetro numérico fora da faixa da espécie. */
+export function linhaEstaForaDaFaixa(r: Registro, linha: string): boolean {
+  const match = linha.match(/^([^:]+):\s*(.+)$/);
+  if (!match) return false;
+  const rotulo = match[1]!.trim();
+  const resto = match[2]!.trim();
+  const entrada = (Object.entries(ROTULOS_NUMERICOS) as [ChaveNumerica, { rotulo: string; unidade: string }][])
+    .find(([_, v]) => v.rotulo === rotulo);
+  if (!entrada) return false;
+  const [chave] = entrada;
+  const ultimo = ultimoValor(resto);
+  const numero = ultimo.match(/^([0-9]+[,.]?[0-9]*)/)?.[1] ?? ultimo;
+  return avaliarValor(chave, numero, r.especie).fora;
+}

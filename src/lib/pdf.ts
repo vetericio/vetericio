@@ -2,7 +2,7 @@ import type { Registro } from "./ficha";
 import { LOGO_PDF_DATA_URL } from "./logo";
 
 import type { Curva } from "./curva";
-import { formatarTodos, paraNumero } from "./ficha";
+import { formatarTodos, linhaEstaForaDaFaixa, paraNumero } from "./ficha";
 import { carregarCurvas, curvasDoAnimal, horaDaMedicao, ROTULO_PARAMETRO, tituloCurva } from "./curva";
 import {
   carregarPlantaoAtual,
@@ -182,6 +182,7 @@ export async function exportarPdf(
   doc.setFontSize(11);
   const ALTURA_LINHA = 21;
   blocos.forEach((bloco, indice) => {
+    const r = registros[indice];
     const [cabecalho = "", ...resto] = bloco.split("\n");
     novaPaginaSeNecessario(ALTURA_LINHA * 2);
 
@@ -215,18 +216,25 @@ export async function exportarPdf(
 
       const recuo = naCurva || itemMedicacao ? 14 : 0;
       const negrito = tituloCurvaLinha || tituloMedicacao;
-      doc.setFont("helvetica", negrito ? "bold" : "normal");
+      const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
+      if (fora) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(114, 47, 55);
+      } else {
+        doc.setFont("helvetica", negrito ? "bold" : "normal");
+        doc.setTextColor(0);
+      }
       const partes = doc.splitTextToSize(linha, largura - recuo) as string[];
       for (const l of partes) {
         novaPaginaSeNecessario(ALTURA_LINHA);
         doc.text(l, margem + recuo, y, { baseline: "alphabetic", maxWidth: largura - recuo });
         y += ALTURA_LINHA;
       }
+      doc.setTextColor(0);
       doc.setFont("helvetica", "normal");
     }
 
     // Gráfico da curva logo abaixo das medições do animal.
-    const r = registros[indice];
     if (r) {
       for (const c of curvasDoAnimal(listaCurvas, r.animal, r.especie)) {
         novaPaginaSeNecessario(140);
