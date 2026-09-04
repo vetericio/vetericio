@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import { CalculadoraNorep } from "@/components/CalculadoraNorep";
 import { Cronometro } from "@/components/Cronometro";
 import { TaxaInfusao } from "@/components/TaxaInfusao";
 import { TransfusaoSanguinea } from "@/components/TransfusaoSanguinea";
 
-/** Banner deslizável com as ferramentas clínicas (cronômetro/taxa e transfusão). */
+/** Banner deslizável com as ferramentas clínicas (cronômetro/taxa, transfusão e NOREP). */
 export function FerramentasClinicas() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", containScroll: "trimSnaps" });
   const [ativo, setAtivo] = useState(0);
