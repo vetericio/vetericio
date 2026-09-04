@@ -106,6 +106,8 @@ export function resumirBackup(b: Backup): ResumoBackup {
     curvas: lista(b.dados.curvas).length,
     alarmes: lista(b.dados.alarmes).length,
     medicamentos: lista(b.dados.medicamentos).length,
+    anamneses: lista(b.dados.anamneses).length,
+    temNotas: Boolean(b.dados.notas),
     temPlantaoAtual: Boolean(b.dados.plantaoAtual),
     temTema: Boolean(b.dados.tema),
   };
