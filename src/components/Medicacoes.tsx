@@ -126,7 +126,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
 
   const enviar = () => {
     const nomeLimpo = normalizarNomeMedicamento(nome);
-    const menorLimpo = normalizarNomeMedicamento(nomeMenor);
     if (!nomeLimpo) {
       toast.error("Escreva o nome da medicação.");
       return;
@@ -138,7 +137,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     }
     const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
     const item: Medicacao = { nome: nomeLimpo, dose, duracao: duracaoSalva };
-    if (menorLimpo) item.nomeMenor = menorLimpo;
 
     if (editando === null) {
       onChange([...lista, item]);
@@ -158,7 +156,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     const { quantidade: q, unidade: u } = parseDose(item.dose);
     const { modo, outros } = parseDuracao(item.duracao);
     setNome(item.nome);
-    setNomeMenor(item.nomeMenor ?? "");
     setQuantidade(q);
     setUnidade(u);
     setDuracao(modo);
