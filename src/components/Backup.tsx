@@ -197,6 +197,97 @@ export function Backup() {
     window.location.assign("/");
   };
 
+  /* ---------- Sincronização entre aparelhos ---------- */
+
+  /** Cria o vínculo neste aparelho e já envia os dados atuais. */
+  async function criarVinculo() {
+    setAviso(null);
+    setOcupado(true);
+    try {
+      const { codigo: nova } = await criarSala();
+      await enviarSala({ data: { codigo: nova, dados: montarBackup() } });
+      guardarSala(nova);
+      setSala(nova);
+      setQrSala(await gerarImagemQr(`${window.location.origin}/?sala=${nova}`));
+      setAviso({ tipo: "ok", texto: "Vínculo criado e dados enviados." });
+    } catch {
+      setAviso({ tipo: "erro", texto: "Não foi possível criar o vínculo. Verifique a internet." });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Entra em um vínculo existente (código digitado ou QR) e traz os dados. */
+  async function vincular(valor: string) {
+    const cod = salaDoTexto(valor);
+    if (!cod) {
+      setAviso({ tipo: "erro", texto: "Código inválido. Ex.: H78096." });
+      return;
+    }
+    guardarSala(cod);
+    setSala(cod);
+    setDigitandoSala(false);
+    setSalaManual("");
+    await trazerDoVinculo(cod);
+  }
+
+  /** Envia os dados deste aparelho para o vínculo. */
+  async function enviarParaVinculo(cod = sala) {
+    if (!cod) return;
+    setAviso(null);
+    setOcupado(true);
+    try {
+      await enviarSala({ data: { codigo: cod, dados: montarBackup() } });
+      setAviso({ tipo: "ok", texto: "Dados deste aparelho enviados para o outro." });
+    } catch {
+      setAviso({ tipo: "erro", texto: "Não foi possível enviar. Verifique a internet." });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Traz os dados do outro aparelho e mostra o resumo antes de aplicar. */
+  async function trazerDoVinculo(cod = sala) {
+    if (!cod) return;
+    setAviso(null);
+    setOcupado(true);
+    try {
+      const { json } = await puxarSala({ data: { codigo: cod } });
+      if (!json) {
+        setAviso({
+          tipo: "erro",
+          texto: "Nada para trazer ainda. No outro aparelho, toque em “Enviar deste aparelho”.",
+        });
+        return;
+      }
+      const dados = validarBackup(JSON.parse(json));
+      if (!dados) {
+        setAviso({ tipo: "erro", texto: "Esses dados não são do app." });
+        return;
+      }
+      setPendente(dados);
+    } catch {
+      setAviso({ tipo: "erro", texto: "Não foi possível trazer. Verifique a internet." });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Desfaz o vínculo e apaga os dados guardados na nuvem. */
+  async function desvincular() {
+    const cod = sala;
+    guardarSala(null);
+    setSala(null);
+    setQrSala(null);
+    if (cod) await apagarSala({ data: { codigo: cod } }).catch(() => undefined);
+    setAviso({ tipo: "ok", texto: "Vínculo desfeito. Os dados deste aparelho continuam aqui." });
+  }
+
+  async function mostrarQrSala() {
+    if (!sala) return;
+    setQrSala(await gerarImagemQr(`${window.location.origin}/?sala=${sala}`));
+  }
+
   async function receberPorCodigo(valor: string) {
     setOcupado(true);
     setAviso(null);
