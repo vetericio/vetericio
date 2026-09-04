@@ -44,11 +44,16 @@ export function FerramentasClinicas() {
               <TransfusaoSanguinea />
             </div>
           </div>
+          <div className="min-w-0 flex-[0_0_100%]">
+            <div className="flex h-full min-w-0 flex-col">
+              <CalculadoraNorep />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="mt-2 flex shrink-0 items-center justify-center gap-1.5">
-        {[0, 1].map((i) => (
+        {[0, 1, 2].map((i) => (
           <button
             key={i}
             type="button"
