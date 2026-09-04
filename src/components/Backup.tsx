@@ -371,8 +371,10 @@ export function Backup() {
           const achado = jsQR(imagem.data, canvas.width, canvas.height);
           if (achado?.data) {
             const c = codigoDaUrl(achado.data);
+            const s = salaDoTexto(achado.data);
             pararCamera();
             if (c) await receberPorCodigo(c);
+            else if (s) await vincular(s);
             else setAviso({ tipo: "erro", texto: "Esse QR não é um backup do app." });
             return;
           }
