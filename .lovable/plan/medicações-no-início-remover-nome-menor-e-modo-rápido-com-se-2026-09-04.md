@@ -10,8 +10,8 @@ Alteração restrita ao bloco de medicações do formulário da página inicial 
 ## 2. Setinha no topo do formulário
 
 - Pequena seta (▸/▾) no topo do quadro de inserção, alternando entre dois modos:
-  - **Setinha recolhida (padrão):** formulário exatamente como hoje (Medicação, Quantidade, unidade, duração 8h/12h/24h/outros, botão Adicionar).
-  - **Setinha aberta — modo rápido:** só nomes.
+  - **Setinha aberta:** formulário exatamente como hoje (Medicação, Quantidade, unidade, duração 8h/12h/24h/outros, botão Adicionar).
+  - **Setinha recolhida (padrão) — modo rápido:** só nomes.
 
 ## 3. Modo rápido (setinha aberta)
 
