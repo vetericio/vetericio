@@ -235,7 +235,6 @@ export async function exportarPdf(
     }
 
     // Gráfico da curva logo abaixo das medições do animal.
-    const r = registros[indice];
     if (r) {
       for (const c of curvasDoAnimal(listaCurvas, r.animal, r.especie)) {
         novaPaginaSeNecessario(140);
