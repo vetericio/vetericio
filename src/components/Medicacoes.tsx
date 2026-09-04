@@ -85,11 +85,13 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const [textoBruto, setTextoBruto] = useState("");
   const [editando, setEditando] = useState<number | null>(null);
   const [nome, setNome] = useState("");
-  const [nomeMenor, setNomeMenor] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
   const [duracao, setDuracao] = useState<DuracaoPadrao>("");
   const [duracaoOutros, setDuracaoOutros] = useState("");
+  // Padrão: modo rápido (só nomes). A setinha abre o formulário completo.
+  const [formCompleto, setFormCompleto] = useState(false);
+  const [nomesRapidos, setNomesRapidos] = useState<string[]>(["", ""]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
@@ -99,7 +101,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
 
   const resetForm = () => {
     setNome("");
-    setNomeMenor("");
     setQuantidade("");
     setUnidade("mL");
     setDuracao("");
@@ -107,10 +108,24 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     setEditando(null);
   };
 
+  const enviarRapido = () => {
+    const itens: Medicacao[] = nomesRapidos
+      .map((n) => normalizarNomeMedicamento(n))
+      .filter(Boolean)
+      .map((n) => ({ nome: n, dose: "", duracao: "" }));
+    if (itens.length === 0) {
+      toast.error("Escreva o nome de ao menos uma medicação.");
+      return;
+    }
+    onChange([...lista, ...itens]);
+    setNomesRapidos(["", ""]);
+    toast.success(
+      itens.length === 1 ? "Medicação adicionada." : `${itens.length} medicações adicionadas.`,
+    );
+  };
 
   const enviar = () => {
     const nomeLimpo = normalizarNomeMedicamento(nome);
-    const menorLimpo = normalizarNomeMedicamento(nomeMenor);
     if (!nomeLimpo) {
       toast.error("Escreva o nome da medicação.");
       return;
@@ -122,7 +137,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     }
     const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
     const item: Medicacao = { nome: nomeLimpo, dose, duracao: duracaoSalva };
-    if (menorLimpo) item.nomeMenor = menorLimpo;
 
     if (editando === null) {
       onChange([...lista, item]);
@@ -142,12 +156,12 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     const { quantidade: q, unidade: u } = parseDose(item.dose);
     const { modo, outros } = parseDuracao(item.duracao);
     setNome(item.nome);
-    setNomeMenor(item.nomeMenor ?? "");
     setQuantidade(q);
     setUnidade(u);
     setDuracao(modo);
     setDuracaoOutros(outros);
     setEditando(indice);
+    setFormCompleto(true);
     setAberto(true);
   };
 
@@ -360,21 +374,63 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
 
           {!somenteLeitura && (
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (editando !== null) return;
+                setFormCompleto((v) => !v);
+              }}
+              className="flex w-full items-center gap-1.5 text-left text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              <span aria-hidden>{formCompleto ? "▾" : "▸"}</span>
+              {formCompleto
+                ? "Formulário completo (dose e duração)"
+                : "Adicionar várias de uma vez (só o nome)"}
+            </button>
+
+            {!formCompleto && editando === null ? (
+              <>
+                <div className="space-y-1.5">
+                  {nomesRapidos.map((valor, i) => (
+                    <input
+                      key={i}
+                      value={valor}
+                      onChange={(e) =>
+                        setNomesRapidos((atual) =>
+                          atual.map((n, j) => (j === i ? e.target.value : n)),
+                        )
+                      }
+                      onFocus={() => {
+                        if (i === nomesRapidos.length - 1)
+                          setNomesRapidos((atual) => [...atual, ""]);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const campos =
+                            e.currentTarget.parentElement?.querySelectorAll("input");
+                          campos?.[i + 1]?.focus();
+                        }
+                      }}
+                      enterKeyHint="next"
+                      placeholder={`Medicação ${i + 1}`}
+                      className={`${campo} w-full`}
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-end border-t border-border pt-2">
+                  <button
+                    type="button"
+                    onClick={enviarRapido}
+                    className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                  >
+                    Adicionar tudo
+                  </button>
+                </div>
+              </>
+            ) : (
+            <>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              <div className="flex min-w-0 flex-col gap-1">
-                <input
-                  value={nomeMenor}
-                  onChange={(e) => setNomeMenor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      nomeRef.current?.focus();
-                    }
-                  }}
-                  enterKeyHint="next"
-                  placeholder="Nome menor (opcional)"
-                  className={`${campo} py-1 text-xs`}
-                />
               <input
                 ref={nomeRef}
                 value={nome}
@@ -389,7 +445,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 placeholder="Medicação"
                 className={campo}
               />
-              </div>
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}
@@ -482,6 +537,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 </button>
               )}
             </div>
+            </>
+            )}
 
           </div>
           )}
