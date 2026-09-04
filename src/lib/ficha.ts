@@ -550,8 +550,8 @@ export function alteracoesDoRegistro(r: Registro): Alteracao[] {
 export function linhaEstaForaDaFaixa(r: Registro, linha: string): boolean {
   const match = linha.match(/^([^:]+):\s*(.+)$/);
   if (!match) return false;
-  const rotulo = match[1].trim();
-  const resto = match[2].trim();
+  const rotulo = match[1]!.trim();
+  const resto = match[2]!.trim();
   const entrada = (Object.entries(ROTULOS_NUMERICOS) as [ChaveNumerica, { rotulo: string; unidade: string }][])
     .find(([_, v]) => v.rotulo === rotulo);
   if (!entrada) return false;
