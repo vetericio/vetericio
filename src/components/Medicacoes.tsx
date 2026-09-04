@@ -85,11 +85,13 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const [textoBruto, setTextoBruto] = useState("");
   const [editando, setEditando] = useState<number | null>(null);
   const [nome, setNome] = useState("");
-  const [nomeMenor, setNomeMenor] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
   const [duracao, setDuracao] = useState<DuracaoPadrao>("");
   const [duracaoOutros, setDuracaoOutros] = useState("");
+  // Padrão: modo rápido (só nomes). A setinha abre o formulário completo.
+  const [formCompleto, setFormCompleto] = useState(false);
+  const [nomesRapidos, setNomesRapidos] = useState<string[]>(["", ""]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
@@ -99,7 +101,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
 
   const resetForm = () => {
     setNome("");
-    setNomeMenor("");
     setQuantidade("");
     setUnidade("mL");
     setDuracao("");
@@ -107,6 +108,21 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
     setEditando(null);
   };
 
+  const enviarRapido = () => {
+    const itens: Medicacao[] = nomesRapidos
+      .map((n) => normalizarNomeMedicamento(n))
+      .filter(Boolean)
+      .map((n) => ({ nome: n, dose: "", duracao: "" }));
+    if (itens.length === 0) {
+      toast.error("Escreva o nome de ao menos uma medicação.");
+      return;
+    }
+    onChange([...lista, ...itens]);
+    setNomesRapidos(["", ""]);
+    toast.success(
+      itens.length === 1 ? "Medicação adicionada." : `${itens.length} medicações adicionadas.`,
+    );
+  };
 
   const enviar = () => {
     const nomeLimpo = normalizarNomeMedicamento(nome);
