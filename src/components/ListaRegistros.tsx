@@ -87,9 +87,25 @@ export function ListaRegistros({
             )}
           </h3>
 
-          <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted-foreground">
-            {formatarRegistro(r, { anamneses }).split("\n").slice(1).join("\n")}
-          </pre>
+          <div className="mt-2 space-y-1">
+            {formatarRegistro(r, { anamneses })
+              .split("\n")
+              .slice(1)
+              .map((linha, i) => {
+                const fora = linhaEstaForaDaFaixa(r, linha);
+                return (
+                  <p
+                    key={i}
+                    className={
+                      "whitespace-pre-wrap font-sans text-sm leading-relaxed " +
+                      (fora ? "font-bold text-[#722F37]" : "text-muted-foreground")
+                    }
+                  >
+                    {linha}
+                  </p>
+                );
+              })}
+          </div>
         </article>
 
       ))}
