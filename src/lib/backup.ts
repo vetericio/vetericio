@@ -125,7 +125,14 @@ function juntarPorId(atual: unknown, novo: unknown): unknown {
 
 /** Grava o backup neste aparelho. */
 export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
-  const listas: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
+  const listas: ChaveBackup[] = [
+    "registros",
+    "plantoes",
+    "curvas",
+    "alarmes",
+    "medicamentos",
+    "anamneses",
+  ];
 
   for (const nome of listas) {
     const novo = b.dados[nome];
@@ -134,7 +141,7 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
-  const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
+  const simples: ChaveBackup[] = ["plantaoAtual", "notas", "tema", "cor"];
   for (const nome of simples) {
     const novo = b.dados[nome];
     if (novo === undefined) continue;
