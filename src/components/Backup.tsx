@@ -75,6 +75,8 @@ function linhaResumo(r: ResumoBackup): string {
     `${r.curvas} curva(s)`,
     `${r.alarmes} alarme(s)`,
     `${r.medicamentos} medicamento(s)`,
+    `${r.anamneses} anamnese(s)`,
+    ...(r.temNotas ? ["bloco de notas"] : []),
   ].join(" · ");
 }
 
