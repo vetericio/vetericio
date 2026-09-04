@@ -537,6 +537,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 </button>
               )}
             </div>
+            </>
+            )}
 
           </div>
           )}
