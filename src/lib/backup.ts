@@ -13,6 +13,8 @@ export const CHAVES_BACKUP = {
   curvas: "veterico-curvas-v1",
   alarmes: "veterico-alarmes-v1",
   medicamentos: "veterico-medicamentos-v1",
+  anamneses: "veterico-anamneses",
+  notas: "veterico-bloco-notas",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
 } as const;
@@ -35,6 +37,8 @@ export type ResumoBackup = {
   curvas: number;
   alarmes: number;
   medicamentos: number;
+  anamneses: number;
+  temNotas: boolean;
   temPlantaoAtual: boolean;
   temTema: boolean;
 };
@@ -102,6 +106,8 @@ export function resumirBackup(b: Backup): ResumoBackup {
     curvas: lista(b.dados.curvas).length,
     alarmes: lista(b.dados.alarmes).length,
     medicamentos: lista(b.dados.medicamentos).length,
+    anamneses: lista(b.dados.anamneses).length,
+    temNotas: Boolean(b.dados.notas),
     temPlantaoAtual: Boolean(b.dados.plantaoAtual),
     temTema: Boolean(b.dados.tema),
   };
@@ -119,7 +125,14 @@ function juntarPorId(atual: unknown, novo: unknown): unknown {
 
 /** Grava o backup neste aparelho. */
 export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
-  const listas: ChaveBackup[] = ["registros", "plantoes", "curvas", "alarmes", "medicamentos"];
+  const listas: ChaveBackup[] = [
+    "registros",
+    "plantoes",
+    "curvas",
+    "alarmes",
+    "medicamentos",
+    "anamneses",
+  ];
 
   for (const nome of listas) {
     const novo = b.dados[nome];
@@ -128,7 +141,7 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
-  const simples: ChaveBackup[] = ["plantaoAtual", "tema", "cor"];
+  const simples: ChaveBackup[] = ["plantaoAtual", "notas", "tema", "cor"];
   for (const nome of simples) {
     const novo = b.dados[nome];
     if (novo === undefined) continue;
