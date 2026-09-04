@@ -105,6 +105,10 @@ export function Backup() {
   const inputArquivo = useRef<HTMLInputElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const trilha = useRef<MediaStream | null>(null);
+  const [sala, setSala] = useState<string | null>(null);
+  const [qrSala, setQrSala] = useState<string | null>(null);
+  const [salaManual, setSalaManual] = useState("");
+  const [digitandoSala, setDigitandoSala] = useState(false);
 
   const pararCamera = () => {
     trilha.current?.getTracks().forEach((t) => t.stop());
