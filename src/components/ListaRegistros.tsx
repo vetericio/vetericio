@@ -1,4 +1,4 @@
-import { formatarRegistro, nomeAnimal, type Registro } from "@/lib/ficha";
+import { formatarRegistro, linhaEstaForaDaFaixa, nomeAnimal, type Registro } from "@/lib/ficha";
 import { useAnamneses } from "@/hooks/useAnamneses";
 
 
