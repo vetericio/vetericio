@@ -182,6 +182,7 @@ export async function exportarPdf(
   doc.setFontSize(11);
   const ALTURA_LINHA = 21;
   blocos.forEach((bloco, indice) => {
+    const r = registros[indice];
     const [cabecalho = "", ...resto] = bloco.split("\n");
     novaPaginaSeNecessario(ALTURA_LINHA * 2);
 
