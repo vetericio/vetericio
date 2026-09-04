@@ -464,6 +464,119 @@ export function Backup() {
             </button>
           </div>
 
+          <div className="mt-4 border-t border-input pt-3">
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground">Sincronizar:</span> liga os dois
+              aparelhos com um código de 6 caracteres (ex.: H78096). Depois de ligados, você pode
+              enviar ou trazer tudo — animais, plantão aberto, plantões salvos, medicações, alarmes,
+              anamneses e bloco de notas — sempre que quiser. Precisa de internet nos dois.
+            </p>
+
+            {!sala ? (
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => void criarVinculo()}
+                  className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  Sincronizar este aparelho
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDigitandoSala((v) => !v)}
+                  className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
+                >
+                  Tenho um código
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2">
+                <p className="text-[12px] text-foreground">
+                  Vinculado ao código{" "}
+                  <span className="font-bold tracking-[0.2em]">{sala}</span>
+                </p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    disabled={ocupado}
+                    onClick={() => void enviarParaVinculo()}
+                    className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Enviar deste aparelho
+                  </button>
+                  <button
+                    type="button"
+                    disabled={ocupado}
+                    onClick={() => void trazerDoVinculo()}
+                    className={botao}
+                  >
+                    Trazer do outro aparelho
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void mostrarQrSala()}
+                    className="text-[11px] font-semibold underline"
+                  >
+                    Mostrar QR do código
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void desvincular()}
+                    className="text-[11px] font-semibold underline"
+                  >
+                    Desvincular
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {digitandoSala && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={salaManual}
+                  onChange={(e) =>
+                    setSalaManual(
+                      e.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9]/g, "")
+                        .slice(0, 6),
+                    )
+                  }
+                  placeholder="H78096"
+                  aria-label="Código de sincronização"
+                  className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-[13px] tracking-widest"
+                />
+                <button
+                  type="button"
+                  disabled={ocupado || !FORMATO_SALA.test(salaManual)}
+                  onClick={() => void vincular(salaManual)}
+                  className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  Conectar
+                </button>
+              </div>
+            )}
+
+            {qrSala && (
+              <div className="mt-3 text-center">
+                <img
+                  src={qrSala}
+                  alt="QR do código de sincronização"
+                  className="mx-auto w-48 rounded-lg bg-white p-2"
+                />
+                <p className="mt-1 text-[15px] font-bold tracking-[0.3em] text-foreground">{sala}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  No outro aparelho, toque em “Ler QR” ou em “Tenho um código”.
+                </p>
+              </div>
+            )}
+          </div>
+
+
+
           {digitando && (
             <div className="mt-2 flex gap-2">
               <input
