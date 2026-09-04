@@ -215,13 +215,21 @@ export async function exportarPdf(
 
       const recuo = naCurva || itemMedicacao ? 14 : 0;
       const negrito = tituloCurvaLinha || tituloMedicacao;
-      doc.setFont("helvetica", negrito ? "bold" : "normal");
+      const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
+      if (fora) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(114, 47, 55);
+      } else {
+        doc.setFont("helvetica", negrito ? "bold" : "normal");
+        doc.setTextColor(0);
+      }
       const partes = doc.splitTextToSize(linha, largura - recuo) as string[];
       for (const l of partes) {
         novaPaginaSeNecessario(ALTURA_LINHA);
         doc.text(l, margem + recuo, y, { baseline: "alphabetic", maxWidth: largura - recuo });
         y += ALTURA_LINHA;
       }
+      doc.setTextColor(0);
       doc.setFont("helvetica", "normal");
     }
 
