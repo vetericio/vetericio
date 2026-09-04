@@ -2,7 +2,7 @@ import type { Registro } from "./ficha";
 import { LOGO_PDF_DATA_URL } from "./logo";
 
 import type { Curva } from "./curva";
-import { formatarTodos, paraNumero } from "./ficha";
+import { formatarTodos, linhaEstaForaDaFaixa, paraNumero } from "./ficha";
 import { carregarCurvas, curvasDoAnimal, horaDaMedicao, ROTULO_PARAMETRO, tituloCurva } from "./curva";
 import {
   carregarPlantaoAtual,
