@@ -120,14 +120,23 @@ export function Backup() {
 
   // Abre a restauração direto quando o link do QR foi aberto no navegador.
   useEffect(() => {
-    const c = new URLSearchParams(window.location.search).get("transfer");
+    setSala(salaGuardada());
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("transfer");
+    const s = (params.get("sala") ?? "").toUpperCase();
     if (c && /^[0-9]{6}$/.test(c)) {
       setAberto(true);
       void receberPorCodigo(c);
-      const limpa = new URL(window.location.href);
-      limpa.searchParams.delete("transfer");
-      window.history.replaceState(null, "", limpa.toString());
+    } else if (FORMATO_SALA.test(s)) {
+      setAberto(true);
+      void vincular(s);
+    } else {
+      return;
     }
+    const limpa = new URL(window.location.href);
+    limpa.searchParams.delete("transfer");
+    limpa.searchParams.delete("sala");
+    window.history.replaceState(null, "", limpa.toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
