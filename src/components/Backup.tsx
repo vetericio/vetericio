@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   aplicarBackup,
   baixarBackup,
   gerarImagemQr,
+  juntarSincronizacao,
   lerArquivoBackup,
   montarBackup,
   nomeArquivoBackup,
@@ -12,20 +13,13 @@ import {
   type Backup as DadosBackup,
   type ResumoBackup,
 } from "@/lib/backup";
-import {
-  apagarTransferencia,
-  buscarTransferencia,
-  enviarTransferencia,
-} from "@/lib/transferencia.functions";
-import {
-  apagarSala,
-  criarSala,
-  enviarSala,
-  puxarSala,
-} from "@/lib/sincronizacao.functions";
+import { apagarTransferencia, buscarTransferencia } from "@/lib/transferencia.functions";
+import { apagarSala, criarSala, enviarSala, puxarSala } from "@/lib/sincronizacao.functions";
 
 const CHAVE_SALA = "veterico-sala-v1";
 const FORMATO_SALA = /^[A-Z][0-9]{5}$/;
+/** Intervalo da sincronização automática. */
+const INTERVALO = 15000;
 
 function salaGuardada(): string | null {
   if (typeof window === "undefined") return null;
@@ -52,8 +46,8 @@ function salaDoTexto(texto: string): string | null {
   }
 }
 
-
 type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
+type Aba = "gerar" | "restaurar" | "conectar";
 
 function dataCurta(iso: string): string {
   if (!iso) return "";
@@ -66,6 +60,10 @@ function dataCurta(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function horaCurta(d: Date): string {
+  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function linhaResumo(r: ResumoBackup): string {
@@ -94,12 +92,10 @@ function codigoDaUrl(texto: string): string | null {
 
 export function Backup() {
   const [aberto, setAberto] = useState(false);
+  const [aba, setAba] = useState<Aba>("gerar");
   const [aviso, setAviso] = useState<Aviso>(null);
   const [pendente, setPendente] = useState<DadosBackup | null>(null);
-  const [qr, setQr] = useState<string | null>(null);
   const [codigo, setCodigo] = useState<string | null>(null);
-  const [digitando, setDigitando] = useState(false);
-  const [codigoManual, setCodigoManual] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [lendo, setLendo] = useState(false);
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -109,6 +105,8 @@ export function Backup() {
   const [qrSala, setQrSala] = useState<string | null>(null);
   const [salaManual, setSalaManual] = useState("");
   const [digitandoSala, setDigitandoSala] = useState(false);
+  const [conectado, setConectado] = useState(false);
+  const [ultima, setUltima] = useState<string | null>(null);
 
   const pararCamera = () => {
     trilha.current?.getTracks().forEach((t) => t.stop());
@@ -118,7 +116,60 @@ export function Backup() {
 
   useEffect(() => pararCamera, []);
 
-  // Abre a restauração direto quando o link do QR foi aberto no navegador.
+  /* ---------- Sincronização automática nos dois sentidos ---------- */
+
+  /**
+   * Traz o que existe no vínculo, junta com o que há aqui (sem apagar nada)
+   * e devolve o resultado para o outro aparelho. O plantão aberto recebido
+   * é adotado quando este aparelho não tem plantão em andamento.
+   */
+  const sincronizar = useCallback(async (cod: string) => {
+    const { json } = await puxarSala({ data: { codigo: cod } });
+    let mudou = false;
+    if (json) {
+      const remoto = validarBackup(JSON.parse(json));
+      if (remoto) mudou = juntarSincronizacao(remoto);
+    }
+    await enviarSala({ data: { codigo: cod, dados: montarBackup() } });
+    setConectado(true);
+    setUltima(horaCurta(new Date()));
+    return mudou;
+  }, []);
+
+  /** Laço automático: sincroniza sozinho enquanto houver vínculo. */
+  useEffect(() => {
+    if (!sala) return;
+    let vivo = true;
+    let recarregando = false;
+
+    const passo = async () => {
+      if (!vivo || recarregando || typeof document === "undefined") return;
+      if (document.visibilityState === "hidden") return;
+      try {
+        const mudou = await sincronizar(sala);
+        if (mudou && vivo) {
+          recarregando = true;
+          window.location.reload();
+        }
+      } catch {
+        if (vivo) setConectado(false);
+      }
+    };
+
+    void passo();
+    const id = window.setInterval(() => void passo(), INTERVALO);
+    const aoVoltar = () => void passo();
+    window.addEventListener("online", aoVoltar);
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => {
+      vivo = false;
+      window.clearInterval(id);
+      window.removeEventListener("online", aoVoltar);
+      document.removeEventListener("visibilitychange", aoVoltar);
+    };
+  }, [sala, sincronizar]);
+
+  // Abre a restauração/conexão direto quando o link do QR foi aberto no navegador.
   useEffect(() => {
     setSala(salaGuardada());
     const params = new URLSearchParams(window.location.search);
@@ -126,10 +177,12 @@ export function Backup() {
     const s = (params.get("sala") ?? "").toUpperCase();
     if (c && /^[0-9]{6}$/.test(c)) {
       setAberto(true);
+      setAba("restaurar");
       void receberPorCodigo(c);
     } else if (FORMATO_SALA.test(s)) {
       setAberto(true);
-      void vincular(s);
+      setAba("conectar");
+      void conectar(s);
     } else {
       return;
     }
@@ -140,43 +193,33 @@ export function Backup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const gerar = () => {
-    baixarBackup();
-    setAviso({ tipo: "ok", texto: "Backup gerado. Envie o arquivo para o outro aparelho." });
-  };
+  /* ---------- 1. Gerar backup ---------- */
 
-  const compartilharBackup = async () => {
+  const gerar = async () => {
     setAviso(null);
-    // Gera o backup na hora do clique e usa esse resultado direto — nunca depende de estado anterior.
     const dados = montarBackup();
-    const texto = JSON.stringify(dados, null, 2);
     const nome = nomeArquivoBackup();
     try {
-      const arquivo = new File([texto], nome, { type: "application/json" });
+      const arquivo = new File([JSON.stringify(dados, null, 2)], nome, {
+        type: "application/json",
+      });
       const podeCompartilhar =
         typeof navigator !== "undefined" &&
         Boolean(navigator.share) &&
         (!navigator.canShare || navigator.canShare({ files: [arquivo] }));
       if (podeCompartilhar) {
         await navigator.share({ files: [arquivo], title: "Backup Veterício" });
+        setAviso({ tipo: "ok", texto: `Backup ${nome} pronto.` });
         return;
       }
-      // Sem compartilhamento de arquivo: salva o backup recém-gerado no aparelho.
-      baixarBackup(dados);
-      setAviso({
-        tipo: "ok",
-        texto: `Este navegador não abre o menu de compartilhamento. O backup ${nome} foi salvo no aparelho — envie-o pelo app que preferir.`,
-      });
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
-      baixarBackup(dados);
-      setAviso({
-        tipo: "ok",
-        texto: `Não foi possível abrir o menu de compartilhamento. O backup ${nome} foi salvo no aparelho.`,
-      });
     }
+    baixarBackup(dados);
+    setAviso({ tipo: "ok", texto: `Backup ${nome} salvo neste aparelho.` });
   };
 
+  /* ---------- 2. Restaurar backup ---------- */
 
   const escolherArquivo = async (arquivo: File | undefined) => {
     if (!arquivo) return;
@@ -197,97 +240,6 @@ export function Backup() {
     window.location.assign("/");
   };
 
-  /* ---------- Sincronização entre aparelhos ---------- */
-
-  /** Cria o vínculo neste aparelho e já envia os dados atuais. */
-  async function criarVinculo() {
-    setAviso(null);
-    setOcupado(true);
-    try {
-      const { codigo: nova } = await criarSala();
-      await enviarSala({ data: { codigo: nova, dados: montarBackup() } });
-      guardarSala(nova);
-      setSala(nova);
-      setQrSala(await gerarImagemQr(`${window.location.origin}/?sala=${nova}`));
-      setAviso({ tipo: "ok", texto: "Vínculo criado e dados enviados." });
-    } catch {
-      setAviso({ tipo: "erro", texto: "Não foi possível criar o vínculo. Verifique a internet." });
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  /** Entra em um vínculo existente (código digitado ou QR) e traz os dados. */
-  async function vincular(valor: string) {
-    const cod = salaDoTexto(valor);
-    if (!cod) {
-      setAviso({ tipo: "erro", texto: "Código inválido. Ex.: H78096." });
-      return;
-    }
-    guardarSala(cod);
-    setSala(cod);
-    setDigitandoSala(false);
-    setSalaManual("");
-    await trazerDoVinculo(cod);
-  }
-
-  /** Envia os dados deste aparelho para o vínculo. */
-  async function enviarParaVinculo(cod = sala) {
-    if (!cod) return;
-    setAviso(null);
-    setOcupado(true);
-    try {
-      await enviarSala({ data: { codigo: cod, dados: montarBackup() } });
-      setAviso({ tipo: "ok", texto: "Dados deste aparelho enviados para o outro." });
-    } catch {
-      setAviso({ tipo: "erro", texto: "Não foi possível enviar. Verifique a internet." });
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  /** Traz os dados do outro aparelho e mostra o resumo antes de aplicar. */
-  async function trazerDoVinculo(cod = sala) {
-    if (!cod) return;
-    setAviso(null);
-    setOcupado(true);
-    try {
-      const { json } = await puxarSala({ data: { codigo: cod } });
-      if (!json) {
-        setAviso({
-          tipo: "erro",
-          texto: "Nada para trazer ainda. No outro aparelho, toque em “Enviar deste aparelho”.",
-        });
-        return;
-      }
-      const dados = validarBackup(JSON.parse(json));
-      if (!dados) {
-        setAviso({ tipo: "erro", texto: "Esses dados não são do app." });
-        return;
-      }
-      setPendente(dados);
-    } catch {
-      setAviso({ tipo: "erro", texto: "Não foi possível trazer. Verifique a internet." });
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  /** Desfaz o vínculo e apaga os dados guardados na nuvem. */
-  async function desvincular() {
-    const cod = sala;
-    guardarSala(null);
-    setSala(null);
-    setQrSala(null);
-    if (cod) await apagarSala({ data: { codigo: cod } }).catch(() => undefined);
-    setAviso({ tipo: "ok", texto: "Vínculo desfeito. Os dados deste aparelho continuam aqui." });
-  }
-
-  async function mostrarQrSala() {
-    if (!sala) return;
-    setQrSala(await gerarImagemQr(`${window.location.origin}/?sala=${sala}`));
-  }
-
   async function receberPorCodigo(valor: string) {
     setOcupado(true);
     setAviso(null);
@@ -303,7 +255,6 @@ export function Backup() {
         return;
       }
       setCodigo(valor);
-      setDigitando(false);
       setPendente(dados);
     } catch {
       setAviso({ tipo: "erro", texto: "Sem internet ou falha ao baixar. Use o arquivo de backup." });
@@ -312,41 +263,96 @@ export function Backup() {
     }
   }
 
-  const enviarNuvem = async () => {
-    setQr(null);
-    setCodigo(null);
+  /* ---------- 3. Conectar ---------- */
+
+  /** Cria a conexão neste aparelho, mostra o código e o QR. */
+  async function criarConexao() {
     setAviso(null);
     setOcupado(true);
     try {
-      const { codigo: novo } = await enviarTransferencia({ data: { dados: montarBackup() } });
-      const link = `${window.location.origin}/?transfer=${novo}`;
-      setCodigo(novo);
-      setQr(await gerarImagemQr(link));
-    } catch (e) {
-      const motivo = e instanceof Error && e.message ? e.message : "";
-      setAviso({
-        tipo: "erro",
-        texto: motivo
-          ? `Não foi possível enviar. ${motivo}`
-          : "Não foi possível enviar. Verifique a internet ou use o arquivo de backup.",
-      });
+      const { codigo: nova } = await criarSala();
+      await enviarSala({ data: { codigo: nova, dados: montarBackup() } });
+      guardarSala(nova);
+      setSala(nova);
+      setConectado(true);
+      setUltima(horaCurta(new Date()));
+      setQrSala(await gerarImagemQr(`${window.location.origin}/?sala=${nova}`));
+      setAviso({ tipo: "ok", texto: "Conectado. Use este código no outro aparelho." });
+    } catch {
+      setConectado(false);
+      setAviso({ tipo: "erro", texto: "Não foi possível conectar. Verifique a internet." });
     } finally {
       setOcupado(false);
     }
-  };
+  }
 
+  /** Entra em uma conexão existente (código digitado ou QR). */
+  async function conectar(valor: string) {
+    const cod = salaDoTexto(valor);
+    if (!cod) {
+      setAviso({ tipo: "erro", texto: "Código inválido. Ex.: H78096." });
+      return;
+    }
+    setAviso(null);
+    setOcupado(true);
+    setDigitandoSala(false);
+    setSalaManual("");
+    try {
+      const mudou = await sincronizar(cod);
+      guardarSala(cod);
+      setSala(cod);
+      setAviso({ tipo: "ok", texto: "Conectado. Os dados dos dois aparelhos foram juntados." });
+      if (mudou) {
+        window.location.reload();
+        return;
+      }
+    } catch {
+      setConectado(false);
+      setAviso({ tipo: "erro", texto: "Não foi possível conectar. Verifique a internet." });
+    } finally {
+      setOcupado(false);
+    }
+  }
 
-  const apagarNuvem = async () => {
-    if (!codigo) return;
-    await apagarTransferencia({ data: { codigo } }).catch(() => undefined);
-    setQr(null);
-    setCodigo(null);
-    setAviso({ tipo: "ok", texto: "Backup apagado da nuvem." });
-  };
+  /** Sincroniza agora, sem esperar o próximo ciclo. */
+  async function sincronizarAgora() {
+    if (!sala) return;
+    setAviso(null);
+    setOcupado(true);
+    try {
+      const mudou = await sincronizar(sala);
+      if (mudou) {
+        window.location.reload();
+        return;
+      }
+      setAviso({ tipo: "ok", texto: "Tudo sincronizado." });
+    } catch {
+      setConectado(false);
+      setAviso({ tipo: "erro", texto: "Sem conexão agora. Vamos tentar de novo sozinhos." });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Desconecta os aparelhos e apaga a cópia guardada na nuvem. */
+  async function desconectar() {
+    const cod = sala;
+    guardarSala(null);
+    setSala(null);
+    setQrSala(null);
+    setConectado(false);
+    setUltima(null);
+    if (cod) await apagarSala({ data: { codigo: cod } }).catch(() => undefined);
+    setAviso({ tipo: "ok", texto: "Desconectado. Os dados deste aparelho continuam aqui." });
+  }
+
+  async function mostrarQrSala() {
+    if (!sala) return;
+    setQrSala(await gerarImagemQr(`${window.location.origin}/?sala=${sala}`));
+  }
 
   const lerQr = async () => {
     setAviso(null);
-    setQr(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -370,12 +376,12 @@ export function Backup() {
           const imagem = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const achado = jsQR(imagem.data, canvas.width, canvas.height);
           if (achado?.data) {
-            const c = codigoDaUrl(achado.data);
             const s = salaDoTexto(achado.data);
+            const c = codigoDaUrl(achado.data);
             pararCamera();
-            if (c) await receberPorCodigo(c);
-            else if (s) await vincular(s);
-            else setAviso({ tipo: "erro", texto: "Esse QR não é um backup do app." });
+            if (s) await conectar(s);
+            else if (c) await receberPorCodigo(c);
+            else setAviso({ tipo: "erro", texto: "Esse QR não é do app." });
             return;
           }
         }
@@ -390,6 +396,15 @@ export function Backup() {
 
   const botao =
     "rounded-lg bg-secondary px-3 py-2 text-[12px] font-semibold text-secondary-foreground hover:bg-secondary/70 disabled:opacity-50";
+  const principal =
+    "rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50";
+
+  const abaClasse = (a: Aba) =>
+    `flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold ${
+      aba === a
+        ? "bg-primary text-primary-foreground"
+        : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+    }`;
 
   return (
     <div>
@@ -401,200 +416,162 @@ export function Backup() {
         Sincronização
       </button>
 
-
       {aberto && (
         <div className="mx-auto mt-2 max-w-md rounded-xl bg-secondary/60 p-3 text-left">
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            <span className="font-semibold text-foreground">Backup:</span> uma cópia congelada dos
-            dados (uma foto do momento), em arquivo ou por QR. Serve para guardar ou levar tudo para
-            outro aparelho. Não fica se atualizando sozinho: sempre que quiser, gere um novo.
-          </p>
+          {sala && (
+            <p className="mb-2 text-[11px] font-semibold text-foreground">
+              {conectado ? "🟢 Conectado" : "⚪ Desconectado — tentando reconectar"} ·{" "}
+              <span className="tracking-[0.2em]">{sala}</span>
+              {ultima ? ` · última sincronização ${ultima}` : ""}
+            </p>
+          )}
 
-
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <button
-              type="button"
-              onClick={gerar}
-              className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground"
-            >
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setAba("gerar")} className={abaClasse("gerar")}>
               Gerar backup
             </button>
             <button
               type="button"
-              onClick={() => inputArquivo.current?.click()}
-              className={botao}
+              onClick={() => setAba("restaurar")}
+              className={abaClasse("restaurar")}
             >
               Restaurar backup
             </button>
             <button
               type="button"
-              disabled={ocupado}
-              onClick={() => void enviarNuvem()}
-              className={botao}
+              onClick={() => setAba("conectar")}
+              className={abaClasse("conectar")}
             >
-              Enviar por QR
+              Conectar
             </button>
           </div>
 
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => void lerQr()}
-              className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
-            >
-              Ler QR
-            </button>
-            <button
-              type="button"
-              onClick={() => setDigitando((v) => !v)}
-              className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
-            >
-              Tenho um código
-            </button>
-          </div>
+          {aba === "gerar" && (
+            <div className="mt-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Salva no aparelho uma cópia de tudo: animais, fichas, plantão aberto, plantões
+                salvos, medicações, alarmes, curvas, anamneses e bloco de notas.
+              </p>
+              <button type="button" onClick={() => void gerar()} className={`${principal} mt-2 w-full`}>
+                Gerar backup
+              </button>
+            </div>
+          )}
 
-          <div className="mt-2 grid gap-2">
-            <button
-              type="button"
-              onClick={() => void compartilharBackup()}
-              className={botao}
-            >
-              Compartilhar backup
-            </button>
-          </div>
+          {aba === "restaurar" && (
+            <div className="mt-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Escolha um arquivo de backup. Nada é apagado sem você confirmar.
+              </p>
+              <button
+                type="button"
+                onClick={() => inputArquivo.current?.click()}
+                className={`${botao} mt-2 w-full`}
+              >
+                Escolher arquivo
+              </button>
+            </div>
+          )}
 
-          <div className="mt-4 border-t border-input pt-3">
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              <span className="font-semibold text-foreground">Sincronizar:</span> liga os dois
-              aparelhos com um código de 6 caracteres (ex.: H78096). Depois de ligados, você pode
-              enviar ou trazer tudo — animais, plantão aberto, plantões salvos, medicações, alarmes,
-              anamneses e bloco de notas — sempre que quiser. Precisa de internet nos dois.
-            </p>
+          {aba === "conectar" && (
+            <div className="mt-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Liga dois aparelhos por um código de 6 caracteres (ex.: H78096) ou pelo QR. Depois de
+                conectados, tudo se sincroniza sozinho nos dois sentidos — inclusive o plantão em
+                andamento, que o segundo aparelho assume como está, sem começar outro. Precisa de
+                internet nos dois.
+              </p>
 
-            {!sala ? (
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() => void criarVinculo()}
-                  className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
-                >
-                  Sincronizar este aparelho
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDigitandoSala((v) => !v)}
-                  className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
-                >
-                  Tenho um código
-                </button>
-              </div>
-            ) : (
-              <div className="mt-2">
-                <p className="text-[12px] text-foreground">
-                  Vinculado ao código{" "}
-                  <span className="font-bold tracking-[0.2em]">{sala}</span>
-                </p>
+              {!sala ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    disabled={ocupado}
+                    onClick={() => void criarConexao()}
+                    className={principal}
+                  >
+                    Criar conexão
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDigitandoSala((v) => !v)}
+                    className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
+                  >
+                    Tenho um código
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void lerQr()}
+                    className="rounded-lg border border-input px-3 py-2 text-[12px] font-semibold text-foreground"
+                  >
+                    Ler QR
+                  </button>
+                </div>
+              ) : (
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
                     disabled={ocupado}
-                    onClick={() => void enviarParaVinculo()}
-                    className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+                    onClick={() => void sincronizarAgora()}
+                    className={principal}
                   >
-                    Enviar deste aparelho
+                    Sincronizar agora
+                  </button>
+                  <button type="button" onClick={() => void mostrarQrSala()} className={botao}>
+                    Mostrar código e QR
                   </button>
                   <button
                     type="button"
-                    disabled={ocupado}
-                    onClick={() => void trazerDoVinculo()}
-                    className={botao}
-                  >
-                    Trazer do outro aparelho
-                  </button>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void mostrarQrSala()}
+                    onClick={() => void desconectar()}
                     className="text-[11px] font-semibold underline"
                   >
-                    Mostrar QR do código
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void desvincular()}
-                    className="text-[11px] font-semibold underline"
-                  >
-                    Desvincular
+                    Desconectar
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {digitandoSala && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  value={salaManual}
-                  onChange={(e) =>
-                    setSalaManual(
-                      e.target.value
-                        .toUpperCase()
-                        .replace(/[^A-Z0-9]/g, "")
-                        .slice(0, 6),
-                    )
-                  }
-                  placeholder="H78096"
-                  aria-label="Código de sincronização"
-                  className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-[13px] tracking-widest"
-                />
-                <button
-                  type="button"
-                  disabled={ocupado || !FORMATO_SALA.test(salaManual)}
-                  onClick={() => void vincular(salaManual)}
-                  className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
-                >
-                  Conectar
-                </button>
-              </div>
-            )}
+              {digitandoSala && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={salaManual}
+                    onChange={(e) =>
+                      setSalaManual(
+                        e.target.value
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9]/g, "")
+                          .slice(0, 6),
+                      )
+                    }
+                    placeholder="H78096"
+                    aria-label="Código de sincronização"
+                    className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-[13px] tracking-widest"
+                  />
+                  <button
+                    type="button"
+                    disabled={ocupado || !FORMATO_SALA.test(salaManual)}
+                    onClick={() => void conectar(salaManual)}
+                    className={principal}
+                  >
+                    Conectar
+                  </button>
+                </div>
+              )}
 
-            {qrSala && (
-              <div className="mt-3 text-center">
-                <img
-                  src={qrSala}
-                  alt="QR do código de sincronização"
-                  className="mx-auto w-48 rounded-lg bg-white p-2"
-                />
-                <p className="mt-1 text-[15px] font-bold tracking-[0.3em] text-foreground">{sala}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  No outro aparelho, toque em “Ler QR” ou em “Tenho um código”.
-                </p>
-              </div>
-            )}
-          </div>
-
-
-
-          {digitando && (
-            <div className="mt-2 flex gap-2">
-              <input
-                value={codigoManual}
-                onChange={(e) => setCodigoManual(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                inputMode="numeric"
-                placeholder="000000"
-                aria-label="Código de 6 dígitos"
-                className="w-28 rounded-lg border border-input bg-background px-3 py-2 text-center text-[13px] tracking-widest"
-              />
-              <button
-                type="button"
-                disabled={ocupado || codigoManual.length !== 6}
-                onClick={() => void receberPorCodigo(codigoManual)}
-                className="rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                Buscar
-              </button>
+              {qrSala && (
+                <div className="mt-3 text-center">
+                  <img
+                    src={qrSala}
+                    alt="QR do código de sincronização"
+                    className="mx-auto w-48 rounded-lg bg-white p-2"
+                  />
+                  <p className="mt-1 text-[15px] font-bold tracking-[0.3em] text-foreground">
+                    {sala}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    No outro aparelho, toque em “Ler QR” ou em “Tenho um código”.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -608,32 +585,6 @@ export function Backup() {
               e.target.value = "";
             }}
           />
-
-          {qr && (
-            <div className="mt-3 text-center">
-              <img
-                src={qr}
-                alt="QR com o link do backup"
-                className="mx-auto w-48 rounded-lg bg-white p-2"
-              />
-              {codigo && (
-                <p className="mt-1 text-[15px] font-bold tracking-[0.3em] text-foreground">
-                  {codigo}
-                </p>
-              )}
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                No outro aparelho, toque em “Ler QR” ou digite o código. Válido por 24 horas. Precisa
-                de internet nos dois aparelhos.
-              </p>
-              <button
-                type="button"
-                onClick={() => void apagarNuvem()}
-                className="mt-1 text-[11px] font-semibold underline"
-              >
-                Apagar agora
-              </button>
-            </div>
-          )}
 
           {lendo && (
             <div className="mt-3 text-center">
@@ -659,17 +610,17 @@ export function Backup() {
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => restaurar("juntar")}
+                  className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground"
+                >
+                  Juntar (recomendado)
+                </button>
+                <button
+                  type="button"
                   onClick={() => restaurar("substituir")}
                   className="rounded-lg bg-destructive px-3 py-1.5 text-[12px] font-semibold text-destructive-foreground"
                 >
                   Substituir tudo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => restaurar("juntar")}
-                  className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground"
-                >
-                  Juntar
                 </button>
                 <button
                   type="button"
