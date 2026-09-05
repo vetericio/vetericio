@@ -21,12 +21,18 @@ export const CHAVES_BACKUP = {
 
 export type ChaveBackup = keyof typeof CHAVES_BACKUP;
 
+export type Carimbo = { hash: string; quando: string };
+export type Carimbos = Record<string, Carimbo>;
+
 export type Backup = {
   app: "veterico";
   versao: 1;
   criadoEm: string;
   dados: Partial<Record<ChaveBackup, unknown>>;
+  /** Marca de "mudou às tantas horas" por item, usada só na sincronização. */
+  carimbos?: Carimbos;
 };
+
 
 export type ModoRestauracao = "substituir" | "juntar";
 
