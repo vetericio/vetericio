@@ -155,6 +155,17 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
 
 }
 
+/**
+ * Sincronização segura: junta o que veio do outro aparelho com o que existe aqui,
+ * sem apagar nada. Devolve true quando algo mudou neste aparelho.
+ */
+export function juntarSincronizacao(remoto: Backup): boolean {
+  const antes = JSON.stringify(montarBackup().dados);
+  aplicarBackup(remoto, "juntar");
+  return JSON.stringify(montarBackup().dados) !== antes;
+}
+
+
 /** "veterico-backup-29.08.26.json" */
 export function nomeArquivoBackup(data = new Date()): string {
   const dois = (n: number) => String(n).padStart(2, "0");
