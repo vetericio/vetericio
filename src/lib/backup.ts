@@ -109,19 +109,46 @@ function gravarCarimbos(c: Carimbos) {
   escreverBruto(CHAVE_CARIMBOS, c);
 }
 
+const CHAVE_APAGADOS = "veterico-sync-apagados-v1";
+/** Marcas de apagado mais velhas que isto são descartadas (30 dias). */
+const VALIDADE_APAGADO = 30 * 24 * 60 * 60 * 1000;
+
+function lerApagados(): Apagados {
+  const bruto = lerBruto(CHAVE_APAGADOS);
+  if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return {};
+  const limite = Date.now() - VALIDADE_APAGADO;
+  const saida: Apagados = {};
+  for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
+    if (typeof v !== "string") continue;
+    const t = Date.parse(v);
+    if (Number.isNaN(t) || t < limite) continue;
+    saida[k] = v;
+  }
+  return saida;
+}
+
+function gravarApagados(a: Apagados) {
+  escreverBruto(CHAVE_APAGADOS, a);
+}
+
 /**
  * Atualiza as marcas de "mudou às tantas horas" comparando o conteúdo atual
- * com o hash guardado. Nenhum outro ponto do app precisa carimbar nada.
+ * com o hash guardado, e anota o que desapareceu daqui como apagado de propósito.
+ * Nenhum outro ponto do app precisa carimbar nada.
  */
-function carimbarLocal(): Carimbos {
+function carimbarLocal(): { carimbos: Carimbos; apagados: Apagados } {
   const c = lerCarimbos();
+  const apagados = lerApagados();
   const agora = new Date().toISOString();
+  const presentes = new Set<string>();
 
   for (const nome of LISTAS) {
     for (const item of lista(lerBruto(CHAVES_BACKUP[nome]))) {
       const id = String(item?.id ?? "");
       if (!id) continue;
       const k = `${nome}:${id}`;
+      presentes.add(k);
+      delete apagados[k];
       const hash = hashTexto(JSON.stringify(item));
       if (c[k]?.hash !== hash) c[k] = { hash, quando: agora };
     }
@@ -129,15 +156,31 @@ function carimbarLocal(): Carimbos {
 
   for (const nome of SIMPLES) {
     const valor = lerBruto(CHAVES_BACKUP[nome]);
-    if (valor === undefined) continue;
     const k = `simples:${nome}`;
+    if (valor === undefined) continue;
+    presentes.add(k);
+    delete apagados[k];
     const hash = hashTexto(JSON.stringify(valor));
     if (c[k]?.hash !== hash) c[k] = { hash, quando: agora };
   }
 
+  // Tinha carimbo e não está mais aqui: foi apagado neste aparelho.
+  for (const k of Object.keys(c)) {
+    if (presentes.has(k)) continue;
+    if (k === "simples:plantaoAtual") {
+      // O plantão atual tem tratamento próprio (finalizado x aberto).
+      delete c[k];
+      continue;
+    }
+    if (!apagados[k]) apagados[k] = agora;
+    delete c[k];
+  }
+
   gravarCarimbos(c);
-  return c;
+  gravarApagados(apagados);
+  return { carimbos: c, apagados };
 }
+
 
 function maisNovo(a: Carimbo | undefined, b: Carimbo | undefined): boolean {
   if (!b) return false;
