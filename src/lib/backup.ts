@@ -362,7 +362,7 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
       const apagadoAqui = quandoApagado(apagadosLocais, k);
       const mudouLa = remotos[k]?.quando ?? "";
       // Apagado aqui de propósito: não volta pela sincronização.
-      if (atual === undefined && apagadoAqui && apagadoAqui > mudouLa) continue;
+      if (atual === undefined && apagadoAqui && apagadoAqui >= mudouLa) continue;
     }
 
     if (novo === undefined) continue;
