@@ -281,9 +281,8 @@ function juntarPorId(
     const id = String(item?.id ?? "");
     const k = `${nome}:${id}`;
     const apagadoRemoto = quandoApagado(apagadosRemotos, k);
-    const mudouAqui = locais[k]?.quando ?? "";
-    // Foi apagado no outro aparelho depois da última mudança daqui: apaga aqui também.
-    if (apagadoRemoto && apagadoRemoto > mudouAqui) {
+    // Foi apagado de propósito no outro aparelho: apaga aqui também.
+    if (apagadoRemoto) {
       apagadosLocais[k] = apagadoRemoto;
       delete locais[k];
       continue;
@@ -302,15 +301,13 @@ function juntarPorId(
     const id = String(item?.id ?? "");
     if (vistos.has(id)) continue;
     const k = `${nome}:${id}`;
-    const apagadoAqui = quandoApagado(apagadosLocais, k);
-    const mudouLa = remotos[k]?.quando ?? "";
     // Apagado aqui de propósito: não volta pela sincronização.
-    if (apagadoAqui && apagadoAqui >= mudouLa) continue;
+    if (quandoApagado(apagadosLocais, k)) continue;
     const remoto = remotos[k];
     if (remoto) locais[k] = remoto;
-    delete apagadosLocais[k];
     resultado.push(item);
   }
+
   return resultado;
 }
 
