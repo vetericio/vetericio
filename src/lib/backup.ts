@@ -195,13 +195,16 @@ export function montarBackup(): Backup {
     const valor = lerBruto(chave);
     if (valor !== undefined) dados[nome] = valor;
   }
+  const marcas = carimbarLocal();
   return {
     app: "veterico",
     versao: 1,
     criadoEm: new Date().toISOString(),
     dados,
-    carimbos: carimbarLocal(),
+    carimbos: marcas.carimbos,
+    apagados: marcas.apagados,
   };
+
 }
 
 /** Valida o conteúdo lido de um arquivo/QR. Devolve null quando não é do app. */
