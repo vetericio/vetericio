@@ -216,6 +216,7 @@ export function validarBackup(bruto: unknown): Backup | null {
   const dados = b["dados"];
   if (!dados || typeof dados !== "object") return null;
   const carimbos = b["carimbos"];
+  const apagados = b["apagados"];
   return {
     app: "veterico",
     versao: 1,
@@ -224,7 +225,11 @@ export function validarBackup(bruto: unknown): Backup | null {
     ...(carimbos && typeof carimbos === "object" && !Array.isArray(carimbos)
       ? { carimbos: carimbos as Carimbos }
       : {}),
+    ...(apagados && typeof apagados === "object" && !Array.isArray(apagados)
+      ? { apagados: apagados as Apagados }
+      : {}),
   };
+
 }
 
 function lista(valor: unknown): { id?: unknown }[] {
