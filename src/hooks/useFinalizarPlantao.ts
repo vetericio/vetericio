@@ -36,8 +36,9 @@ export function useFinalizarPlantao() {
       setPlantoes((ps) => [novo, ...ps]);
       setRegistros([]);
     }
-    // As curvas valem até o fim do plantão: encerra todas e desliga todos os alarmes.
-    setCurvas((lista) => lista.map((c) => (c.ativa ? { ...c, ativa: false } : c)));
+    // As curvas valem até o fim do plantão: apaga todas e todos os alarmes
+    // (a foto das curvas destes animais já ficou guardada no histórico acima).
+    setCurvas([]);
     encerrarTodosAlarmes();
     // A anamnese vale só para um plantão: some ao fechar (histórico fica em Evolução).
     setAnamneses([]);

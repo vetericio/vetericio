@@ -102,16 +102,11 @@ export function limparAlarmesDeCurva() {
   notificar();
 }
 
-/** Encerra todos os alarmes (ao finalizar o plantão): desliga e remove os de curva. */
+/** Apaga todos os alarmes (ao finalizar o plantão): o próximo começa em branco. */
 export function encerrarTodosAlarmes() {
-  if (!iniciado) {
-    iniciado = true;
-    alarmes = carregarAlarmes();
-  }
+  if (!iniciado) iniciado = true;
   tocando = null;
-  alarmes = alarmes
-    .filter((a) => !a.curvaId)
-    .map((a) => (a.ativo ? { ...a, ativo: false } : a));
+  alarmes = [];
   salvarAlarmes(alarmes);
   notificar();
 }
