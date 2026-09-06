@@ -23,6 +23,8 @@ export type ChaveBackup = keyof typeof CHAVES_BACKUP;
 
 export type Carimbo = { hash: string; quando: string };
 export type Carimbos = Record<string, Carimbo>;
+/** Marca de "este item foi apagado às tantas horas" (chave -> data ISO). */
+export type Apagados = Record<string, string>;
 
 export type Backup = {
   app: "veterico";
@@ -31,7 +33,10 @@ export type Backup = {
   dados: Partial<Record<ChaveBackup, unknown>>;
   /** Marca de "mudou às tantas horas" por item, usada só na sincronização. */
   carimbos?: Carimbos;
+  /** Itens apagados de propósito: não voltam na sincronização. */
+  apagados?: Apagados;
 };
+
 
 
 export type ModoRestauracao = "substituir" | "juntar";
@@ -104,19 +109,46 @@ function gravarCarimbos(c: Carimbos) {
   escreverBruto(CHAVE_CARIMBOS, c);
 }
 
+const CHAVE_APAGADOS = "veterico-sync-apagados-v1";
+/** Marcas de apagado mais velhas que isto são descartadas (30 dias). */
+const VALIDADE_APAGADO = 30 * 24 * 60 * 60 * 1000;
+
+function lerApagados(): Apagados {
+  const bruto = lerBruto(CHAVE_APAGADOS);
+  if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return {};
+  const limite = Date.now() - VALIDADE_APAGADO;
+  const saida: Apagados = {};
+  for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
+    if (typeof v !== "string") continue;
+    const t = Date.parse(v);
+    if (Number.isNaN(t) || t < limite) continue;
+    saida[k] = v;
+  }
+  return saida;
+}
+
+function gravarApagados(a: Apagados) {
+  escreverBruto(CHAVE_APAGADOS, a);
+}
+
 /**
  * Atualiza as marcas de "mudou às tantas horas" comparando o conteúdo atual
- * com o hash guardado. Nenhum outro ponto do app precisa carimbar nada.
+ * com o hash guardado, e anota o que desapareceu daqui como apagado de propósito.
+ * Nenhum outro ponto do app precisa carimbar nada.
  */
-function carimbarLocal(): Carimbos {
+function carimbarLocal(): { carimbos: Carimbos; apagados: Apagados } {
   const c = lerCarimbos();
+  const apagados = lerApagados();
   const agora = new Date().toISOString();
+  const presentes = new Set<string>();
 
   for (const nome of LISTAS) {
     for (const item of lista(lerBruto(CHAVES_BACKUP[nome]))) {
       const id = String(item?.id ?? "");
       if (!id) continue;
       const k = `${nome}:${id}`;
+      presentes.add(k);
+      delete apagados[k];
       const hash = hashTexto(JSON.stringify(item));
       if (c[k]?.hash !== hash) c[k] = { hash, quando: agora };
     }
@@ -124,15 +156,31 @@ function carimbarLocal(): Carimbos {
 
   for (const nome of SIMPLES) {
     const valor = lerBruto(CHAVES_BACKUP[nome]);
-    if (valor === undefined) continue;
     const k = `simples:${nome}`;
+    if (valor === undefined) continue;
+    presentes.add(k);
+    delete apagados[k];
     const hash = hashTexto(JSON.stringify(valor));
     if (c[k]?.hash !== hash) c[k] = { hash, quando: agora };
   }
 
+  // Tinha carimbo e não está mais aqui: foi apagado neste aparelho.
+  for (const k of Object.keys(c)) {
+    if (presentes.has(k)) continue;
+    if (k === "simples:plantaoAtual") {
+      // O plantão atual tem tratamento próprio (finalizado x aberto).
+      delete c[k];
+      continue;
+    }
+    if (!apagados[k]) apagados[k] = agora;
+    delete c[k];
+  }
+
   gravarCarimbos(c);
-  return c;
+  gravarApagados(apagados);
+  return { carimbos: c, apagados };
 }
+
 
 function maisNovo(a: Carimbo | undefined, b: Carimbo | undefined): boolean {
   if (!b) return false;
@@ -147,13 +195,16 @@ export function montarBackup(): Backup {
     const valor = lerBruto(chave);
     if (valor !== undefined) dados[nome] = valor;
   }
+  const marcas = carimbarLocal();
   return {
     app: "veterico",
     versao: 1,
     criadoEm: new Date().toISOString(),
     dados,
-    carimbos: carimbarLocal(),
+    carimbos: marcas.carimbos,
+    apagados: marcas.apagados,
   };
+
 }
 
 /** Valida o conteúdo lido de um arquivo/QR. Devolve null quando não é do app. */
@@ -165,6 +216,7 @@ export function validarBackup(bruto: unknown): Backup | null {
   const dados = b["dados"];
   if (!dados || typeof dados !== "object") return null;
   const carimbos = b["carimbos"];
+  const apagados = b["apagados"];
   return {
     app: "veterico",
     versao: 1,
@@ -173,7 +225,11 @@ export function validarBackup(bruto: unknown): Backup | null {
     ...(carimbos && typeof carimbos === "object" && !Array.isArray(carimbos)
       ? { carimbos: carimbos as Carimbos }
       : {}),
+    ...(apagados && typeof apagados === "object" && !Array.isArray(apagados)
+      ? { apagados: apagados as Apagados }
+      : {}),
   };
+
 }
 
 function lista(valor: unknown): { id?: unknown }[] {
@@ -195,9 +251,16 @@ export function resumirBackup(b: Backup): ResumoBackup {
   };
 }
 
+/** Data do apagado, ou "" quando não há marca. */
+function quandoApagado(mapa: Apagados, k: string): string {
+  const v = mapa[k];
+  return typeof v === "string" ? v : "";
+}
+
 /**
  * Junta duas listas por `id`. Para itens que existem nos dois aparelhos,
- * vence a versão alterada mais recentemente; itens só remotos são acrescentados.
+ * vence a versão alterada mais recentemente; itens só remotos são acrescentados,
+ * a não ser que tenham sido apagados de propósito depois disso.
  */
 function juntarPorId(
   atual: unknown,
@@ -205,75 +268,117 @@ function juntarPorId(
   nome: ChaveBackup,
   locais: Carimbos,
   remotos: Carimbos,
+  apagadosLocais: Apagados,
+  apagadosRemotos: Apagados,
 ): unknown {
   const a = lista(atual);
   const n = lista(novo);
-  if (a.length === 0) {
-    for (const item of n) {
-      const k = `${nome}:${String(item?.id ?? "")}`;
-      const remoto = remotos[k];
-      if (remoto) locais[k] = remoto;
-    }
-    return n;
-  }
-
   const porId = new Map(n.map((item) => [String(item?.id ?? ""), item]));
-  const resultado = a.map((item) => {
+
+  const resultado: { id?: unknown }[] = [];
+
+  for (const item of a) {
     const id = String(item?.id ?? "");
-    const remotoItem = porId.get(id);
-    if (!remotoItem) return item;
     const k = `${nome}:${id}`;
-    if (maisNovo(locais[k], remotos[k])) {
-      locais[k] = remotos[k]!;
-      return remotoItem;
+    const apagadoRemoto = quandoApagado(apagadosRemotos, k);
+    // Foi apagado de propósito no outro aparelho: apaga aqui também.
+    if (apagadoRemoto) {
+      apagadosLocais[k] = apagadoRemoto;
+      delete locais[k];
+      continue;
     }
-    return item;
-  });
+    const remotoItem = porId.get(id);
+    if (remotoItem && maisNovo(locais[k], remotos[k])) {
+      locais[k] = remotos[k]!;
+      resultado.push(remotoItem);
+      continue;
+    }
+    resultado.push(item);
+  }
 
   const vistos = new Set(a.map((item) => String(item?.id ?? "")));
   for (const item of n) {
     const id = String(item?.id ?? "");
     if (vistos.has(id)) continue;
     const k = `${nome}:${id}`;
+    // Apagado aqui de propósito: não volta pela sincronização.
+    if (quandoApagado(apagadosLocais, k)) continue;
     const remoto = remotos[k];
     if (remoto) locais[k] = remoto;
     resultado.push(item);
   }
+
   return resultado;
 }
 
 /** Grava o backup neste aparelho. */
 export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
   const remotos = b.carimbos ?? {};
-  const locais = modo === "juntar" ? carimbarLocal() : {};
+  const apagadosRemotos = b.apagados ?? {};
+  const marcas = modo === "juntar" ? carimbarLocal() : null;
+  const locais: Carimbos = marcas ? marcas.carimbos : {};
+  const apagadosLocais: Apagados = marcas ? marcas.apagados : {};
 
   for (const nome of LISTAS) {
     const novo = b.dados[nome];
-    if (novo === undefined) continue;
+    if (novo === undefined && modo === "substituir") continue;
     const valor =
       modo === "substituir"
         ? novo
-        : juntarPorId(lerBruto(CHAVES_BACKUP[nome]), novo, nome, locais, remotos);
+        : juntarPorId(
+            lerBruto(CHAVES_BACKUP[nome]),
+            novo ?? [],
+            nome,
+            locais,
+            remotos,
+            apagadosLocais,
+            apagadosRemotos,
+          );
     escreverBruto(CHAVES_BACKUP[nome], valor);
   }
 
   for (const nome of SIMPLES) {
-    const novo = b.dados[nome];
-    if (novo === undefined) continue;
+    const k = `simples:${nome}`;
     const atual = lerBruto(CHAVES_BACKUP[nome]);
+    const novo = b.dados[nome];
+
+    // O bloco de notas é apagado ao finalizar o plantão: a exclusão se propaga.
+    if (modo === "juntar" && nome === "notas") {
+      const apagadoRemoto = quandoApagado(apagadosRemotos, k);
+      if (atual !== undefined && apagadoRemoto) {
+        try {
+          window.localStorage.removeItem(CHAVES_BACKUP[nome]);
+        } catch {
+          /* armazenamento indisponível */
+        }
+        apagadosLocais[k] = apagadoRemoto;
+        delete locais[k];
+        continue;
+      }
+      // Apagado aqui de propósito: não volta pela sincronização.
+      if (atual === undefined && quandoApagado(apagadosLocais, k)) continue;
+    }
+
+    if (novo === undefined) continue;
     // Um plantão finalizado neste aparelho não volta a abrir por causa de um backup.
     if (nome === "plantaoAtual" && plantaoFinalizado(atual)) continue;
     if (modo === "juntar" && atual !== undefined) {
-      const k = `simples:${nome}`;
       if (!maisNovo(locais[k], remotos[k])) continue;
       locais[k] = remotos[k]!;
     }
     escreverBruto(CHAVES_BACKUP[nome], novo);
+
   }
 
-  if (modo === "juntar") gravarCarimbos(locais);
-  else escreverBruto(CHAVE_CARIMBOS, remotos);
+  if (modo === "juntar") {
+    gravarCarimbos(locais);
+    gravarApagados(apagadosLocais);
+  } else {
+    escreverBruto(CHAVE_CARIMBOS, remotos);
+    escreverBruto(CHAVE_APAGADOS, apagadosRemotos);
+  }
 }
+
 
 
 /**
