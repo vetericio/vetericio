@@ -10,7 +10,7 @@ Ao finalizar o plantão, apagar de vez:
 
 - **Todos os alarmes** — a aba Alarmes volta ao estado de fábrica (lista vazia; o alarme de jejum das 00h só reaparece desligado, como padrão, e liga sozinho se o próximo plantão for noturno, como já acontece hoje).
 - **Todas as curvas** — a aba Curva começa vazia (hoje ficam guardadas encerradas).
-- **Anamnese** — já é apagada hoje, sem mudança.
+- **Anamnese** — apagar todos os animais.
 - **Bloco de notas** — já é apagado hoje, sem mudança.
 
 Assim, ao iniciar o próximo plantão está tudo em branco: Início, Animais internados, Anamnese, Curva e Alarmes.
