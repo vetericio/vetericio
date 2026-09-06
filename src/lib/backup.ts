@@ -305,7 +305,7 @@ function juntarPorId(
     const apagadoAqui = quandoApagado(apagadosLocais, k);
     const mudouLa = remotos[k]?.quando ?? "";
     // Apagado aqui de propósito: não volta pela sincronização.
-    if (apagadoAqui && apagadoAqui > mudouLa) continue;
+    if (apagadoAqui && apagadoAqui >= mudouLa) continue;
     const remoto = remotos[k];
     if (remoto) locais[k] = remoto;
     delete apagadosLocais[k];
