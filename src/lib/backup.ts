@@ -23,6 +23,8 @@ export type ChaveBackup = keyof typeof CHAVES_BACKUP;
 
 export type Carimbo = { hash: string; quando: string };
 export type Carimbos = Record<string, Carimbo>;
+/** Marca de "este item foi apagado às tantas horas" (chave -> data ISO). */
+export type Apagados = Record<string, string>;
 
 export type Backup = {
   app: "veterico";
@@ -31,7 +33,10 @@ export type Backup = {
   dados: Partial<Record<ChaveBackup, unknown>>;
   /** Marca de "mudou às tantas horas" por item, usada só na sincronização. */
   carimbos?: Carimbos;
+  /** Itens apagados de propósito: não voltam na sincronização. */
+  apagados?: Apagados;
 };
+
 
 
 export type ModoRestauracao = "substituir" | "juntar";
