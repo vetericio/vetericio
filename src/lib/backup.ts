@@ -342,11 +342,10 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
     const atual = lerBruto(CHAVES_BACKUP[nome]);
     const novo = b.dados[nome];
 
-    if (modo === "juntar" && nome !== "plantaoAtual") {
+    // O bloco de notas é apagado ao finalizar o plantão: a exclusão se propaga.
+    if (modo === "juntar" && nome === "notas") {
       const apagadoRemoto = quandoApagado(apagadosRemotos, k);
-      const mudouAqui = locais[k]?.quando ?? "";
-      // Apagado no outro aparelho: apaga aqui também (ex.: bloco de notas).
-      if (atual !== undefined && apagadoRemoto && apagadoRemoto > mudouAqui) {
+      if (atual !== undefined && apagadoRemoto) {
         try {
           window.localStorage.removeItem(CHAVES_BACKUP[nome]);
         } catch {
@@ -356,10 +355,8 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
         delete locais[k];
         continue;
       }
-      const apagadoAqui = quandoApagado(apagadosLocais, k);
-      const mudouLa = remotos[k]?.quando ?? "";
       // Apagado aqui de propósito: não volta pela sincronização.
-      if (atual === undefined && apagadoAqui && apagadoAqui >= mudouLa) continue;
+      if (atual === undefined && quandoApagado(apagadosLocais, k)) continue;
     }
 
     if (novo === undefined) continue;
@@ -369,8 +366,8 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
       if (!maisNovo(locais[k], remotos[k])) continue;
       locais[k] = remotos[k]!;
     }
-    delete apagadosLocais[k];
     escreverBruto(CHAVES_BACKUP[nome], novo);
+
   }
 
   if (modo === "juntar") {
