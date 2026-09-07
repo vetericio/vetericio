@@ -26,6 +26,8 @@ type Props = {
   /** Quando vem de um cartão, os campos já entram preenchidos. */
   medicamento?: Medicamento | null;
   especieInicial?: Especie;
+  /** Peso do topo da tela, já formatado. */
+  pesoInicial?: string;
 };
 
 const campo =
@@ -33,7 +35,13 @@ const campo =
 const rotulo = "block text-xs font-semibold text-muted-foreground";
 
 /** Calculadora independente: não salva nada. */
-export function PesquisaAvulsa({ aberto, onFechar, medicamento, especieInicial }: Props) {
+export function PesquisaAvulsa({
+  aberto,
+  onFechar,
+  medicamento,
+  especieInicial,
+  pesoInicial,
+}: Props) {
   const [peso, setPeso] = useState("");
   const [especie, setEspecie] = useState<Especie>(especieInicial ?? "cao");
   const [dose, setDose] = useState("");
@@ -48,6 +56,7 @@ export function PesquisaAvulsa({ aberto, onFechar, medicamento, especieInicial }
   useEffect(() => {
     if (!aberto) return;
     if (especieInicial) setEspecie(especieInicial);
+    if (pesoInicial) setPeso(pesoInicial);
     if (!medicamento) return;
     const alvo = especieInicial ?? "cao";
     const f = faixaDe(doseDaEspecie(medicamento, alvo));
@@ -56,7 +65,8 @@ export function PesquisaAvulsa({ aberto, onFechar, medicamento, especieInicial }
     setConcentracao(medicamento.concentracaoValor);
     setUnidadeConcentracao(medicamento.concentracaoUnidade || "mg/mL");
     setVia(viasDe(medicamento)[0] ?? "");
-  }, [aberto, medicamento, especieInicial]);
+  }, [aberto, medicamento, especieInicial, pesoInicial]);
+
 
   // Trocar a espécie no diálogo atualiza a dose cadastrada correspondente.
   const trocarEspecie = (e: Especie) => {
