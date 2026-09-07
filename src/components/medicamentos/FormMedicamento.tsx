@@ -68,6 +68,7 @@ function unificadoInicial(m: Medicamento): boolean {
   return (
     a.doseMin === b.doseMin &&
     a.doseMax === b.doseMax &&
+    a.dosePadrao === b.dosePadrao &&
     a.porAnimal === b.porAnimal &&
     a.intervalo === b.intervalo
   );
