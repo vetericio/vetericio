@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { FormMedicamento } from "@/components/medicamentos/FormMedicamento";
 import { PesquisaAvulsa } from "@/components/medicamentos/PesquisaAvulsa";
 import { SeletorEspecie } from "@/components/medicamentos/SeletorEspecie";
-import { IconeVia, Vias } from "@/components/medicamentos/IconeVia";
+import { IconeVia } from "@/components/medicamentos/IconeVia";
 import {
   DialogoAplicar,
   type AplicacaoPendente,
@@ -33,9 +33,11 @@ import {
 import {
   calcularFaixaDose,
   doseDaEspecie,
+  doseEfetiva,
   especieBloqueada,
   faixaDe,
   numero,
+  referenciaDose,
   textoQuantidade,
   NOME_ESPECIE,
   ordenarMedicamentos,
