@@ -337,7 +337,7 @@ function CardMedicamento({
   const unidadeDose = resultado.ok ? (resultado.unidade ?? forma) : forma;
 
   return (
-    <li className="rounded-2xl border border-border bg-card/60 px-3 py-2.5">
+    <li className="rounded-2xl border border-border bg-card/60 px-3 pt-2 pb-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 leading-tight">
           {m.nomeMenor?.trim() && (
@@ -374,7 +374,7 @@ function CardMedicamento({
         </DropdownMenu>
       </div>
 
-      <div className="mt-2 flex gap-3">
+      <div className="mt-1 flex gap-2">
         {/* Coluna esquerda: resumo, intervalo e vias */}
         <div className="min-w-0 flex-1 space-y-2 text-xs">
           <div>
