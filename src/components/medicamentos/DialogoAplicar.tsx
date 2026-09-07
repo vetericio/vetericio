@@ -22,7 +22,12 @@ export type AplicacaoPendente = {
   via: string;
   /** ex.: "12h" */
   duracao: string;
+  /** peso do animal no momento, ex.: "3,500 kg" */
+  peso?: string;
+  /** observação livre */
+  observacao?: string;
 };
+
 
 type Props = {
   aplicacao: AplicacaoPendente | null;
