@@ -37,7 +37,6 @@ import {
   especieBloqueada,
   faixaDe,
   numero,
-  referenciaDose,
   textoQuantidade,
   NOME_ESPECIE,
   ordenarMedicamentos,
