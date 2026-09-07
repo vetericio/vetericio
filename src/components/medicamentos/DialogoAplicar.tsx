@@ -22,7 +22,12 @@ export type AplicacaoPendente = {
   via: string;
   /** ex.: "12h" */
   duracao: string;
+  /** peso do animal no momento, ex.: "3,500 kg" */
+  peso?: string;
+  /** observação livre */
+  observacao?: string;
 };
+
 
 type Props = {
   aplicacao: AplicacaoPendente | null;
@@ -53,8 +58,11 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
       duracao: aplicacao.duracao,
       via: aplicacao.via,
       quantidade: aplicacao.quantidade,
+      ...(aplicacao.peso ? { peso: aplicacao.peso } : {}),
+      ...(aplicacao.observacao ? { observacao: aplicacao.observacao } : {}),
       aplicadoEm: agora.toISOString(),
     };
+
     let nomeAnimal = "";
     setRegistros((rs) =>
       rs.map((r) => {
