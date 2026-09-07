@@ -245,13 +245,23 @@ type CardProps = {
   peso: string;
   especie: Especie;
   onEditar: () => void;
+  onExcluir: () => void;
   onAvulsa: () => void;
-  onAplicar: (a: AplicacaoPendente) => void;
+  onMinistrar: () => void;
 };
 
-function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, onAplicar }: CardProps) {
-  const [pendente, setPendente] = useState<QuantidadePendente | null>(null);
+function CardMedicamento({
+  medicamento: m,
+  peso,
+  especie,
+  onEditar,
+  onExcluir,
+  onAvulsa,
+  onMinistrar,
+}: CardProps) {
+  const [confirmando, setConfirmando] = useState(false);
   const dose = doseDaEspecie(m, especie);
+  const faixa = faixaDe(dose);
   const bloqueado = especieBloqueada(m, especie);
   const vias = viasDe(m);
   const resultado = calcularFaixaDose({
@@ -267,43 +277,48 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
   const frequencia = dose.intervalo ? `${dose.intervalo}h` : "";
   const podeAplicar = !bloqueado && resultado.ok && Boolean(resultado.volumeTexto);
 
-  const ministrar = () => {
-    if (!resultado.ok || !resultado.volumeTexto) return;
-    setPendente({
-      nome: m.nome,
-      ...(m.nomeMenor ? { nomeMenor: m.nomeMenor } : {}),
-      via: vias.join("/"),
-      duracao: frequencia ? `a cada ${frequencia}` : "",
-      resultado,
-    });
-  };
+  const forma = resultado.ok ? (resultado.forma ?? "mL") : "mL";
+  const volMin = resultado.ok ? resultado.volMin : null;
+  const volMax = resultado.ok ? resultado.volMax : null;
+  const volPadrao =
+    volMin !== null && volMax !== null ? (volMin + volMax) / 2 : (volMax ?? volMin);
+  const dMin = numero(faixa.min);
+  const dMax = numero(faixa.max);
+  const dPadrao = dMin !== null && dMax !== null && dMax > dMin ? (dMin + dMax) / 2 : dMin;
 
-  const confirmarQuantidade = (quantidade: string) => {
-    if (!pendente) return;
-    const r = pendente.resultado;
-    onAplicar({
-      nome: pendente.nome,
-      ...(pendente.nomeMenor ? { nomeMenor: pendente.nomeMenor } : {}),
-      dose: `${r.doseTexto}${r.referencia ? ` (${r.referencia})` : ""}`,
-      quantidade,
-      via: pendente.via,
-      duracao: pendente.duracao,
-    });
-    setPendente(null);
-  };
-
+  const textoDose = (v: number | null) =>
+    v === null ? "—" : `${v.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}`;
 
   return (
     <li className="rounded-2xl border border-border bg-card/60 px-3 py-2.5">
-      <div className="leading-tight">
-        {m.nomeMenor?.trim() && (
-          <p className="text-[11px] font-medium text-muted-foreground">
-            {normalizarNomeMedicamento(m.nomeMenor)}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 leading-tight">
+          {m.nomeMenor?.trim() && (
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {normalizarNomeMedicamento(m.nomeMenor)}
+            </p>
+          )}
+          <p className="text-lg font-bold tracking-tight text-foreground">
+            {normalizarNomeMedicamento(m.nome)}
           </p>
-        )}
-        <p className="text-lg font-bold tracking-tight text-foreground">
-          {normalizarNomeMedicamento(m.nome)}
-        </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Ações de ${m.nome}`}
+              className="-mr-1 shrink-0 rounded-lg px-2 py-1 text-lg leading-none text-muted-foreground hover:bg-secondary/70"
+            >
+              ⋯
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={onEditar}>✏️ Editar medicação</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setConfirmando(true)}>
+              🗑️ Excluir medicação
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -312,72 +327,89 @@ function CardMedicamento({ medicamento: m, peso, especie, onEditar, onAvulsa, on
         <span className="shrink-0 font-semibold">{frequencia || "—"}</span>
       </div>
 
-      <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-        <span className={`truncate ${bloqueado ? "font-semibold text-destructive" : ""}`}>
+      {podeAplicar && resultado.ok ? (
+        <div className="mt-2 grid grid-cols-3 items-end gap-2 text-center">
+          <div>
+            <p className="text-[10px] font-semibold uppercase text-muted-foreground">Mín.</p>
+            <p className="text-sm font-semibold text-foreground">
+              {volMin !== null ? textoQuantidade(volMin, forma) : "—"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">({textoDose(dMin)})</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Dose ({resultado.unidade ?? forma})
+            </p>
+            <p className="text-3xl font-bold leading-none text-foreground">
+              {volPadrao !== null ? textoQuantidade(volPadrao, forma) : "—"}
+            </p>
+            <p className="text-[11px] text-muted-foreground">({textoDose(dPadrao)})</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase text-muted-foreground">Máx.</p>
+            <p className="text-sm font-semibold text-foreground">
+              {volMax !== null
+                ? textoQuantidade(volMax, forma)
+                : volMin !== null
+                  ? textoQuantidade(volMin, forma)
+                  : "—"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              ({textoDose(dMax !== null && dMin !== null && dMax > dMin ? dMax : dMin)})
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p
+          className={`mt-2 text-xs ${bloqueado ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+        >
           {bloqueado
             ? `Não pode ser ministrado em ${NOME_ESPECIE[especie]}`
             : resultado.ok
-              ? resultado.referencia
+              ? resultado.motivoVolume
               : resultado.motivo}
-        </span>
-        {!bloqueado && resultado.ok && (
-          <span className="shrink-0">Dose {resultado.doseTexto}</span>
-        )}
-      </div>
+        </p>
+      )}
 
-      <button
-        type="button"
-        onClick={ministrar}
-        disabled={!podeAplicar}
-        className="mt-2 block w-full rounded-xl border-2 border-primary bg-primary/10 px-3 py-2 text-center disabled:cursor-default disabled:border-border disabled:bg-secondary/50"
-      >
-        {podeAplicar && resultado.ok ? (
-          <>
-            <span className="flex items-center justify-center gap-1.5 text-2xl font-bold leading-none text-foreground">
-              <IconeVia via={vias[0] ?? ""} className="h-5 w-5" />
-              Ministrar {resultado.volumeTexto}
-              <span className="text-base font-semibold">{resultado.unidade}</span>
-            </span>
-            <span className="mt-0.5 block text-[11px] text-muted-foreground">
-              {resultado.exatoTexto ? `exato ${resultado.exatoTexto} • ` : ""}toque para aplicar
-            </span>
-          </>
-        ) : (
-          <span
-            className={`text-xs ${bloqueado ? "font-semibold text-destructive" : "text-muted-foreground"}`}
-          >
-            {bloqueado
-              ? `Não pode ser ministrado em ${NOME_ESPECIE[especie]}`
-              : resultado.ok
-                ? resultado.motivoVolume
-                : resultado.motivo}
-          </span>
-        )}
-      </button>
-
-      <div className="mt-2 flex justify-end gap-2">
+      <div className="mt-2 flex flex-wrap justify-end gap-2">
         <button
           type="button"
           onClick={onAvulsa}
-          className="rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-secondary/70"
+          className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
         >
-          Pesquisa avulsa
+          🧮 Consulta avulsa
         </button>
         <button
           type="button"
-          onClick={onEditar}
-          className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+          onClick={onMinistrar}
+          disabled={!podeAplicar}
+          className="flex items-center gap-1.5 rounded-xl border-2 border-primary bg-primary/10 px-3 py-2 text-sm font-bold text-foreground disabled:cursor-default disabled:border-border disabled:bg-secondary/50 disabled:text-muted-foreground"
         >
-          Editar
+          <IconeVia via={vias[0] ?? ""} className="h-4 w-4" />
+          Ministrar
+          {podeAplicar && volPadrao !== null ? ` ${textoQuantidade(volPadrao, forma)}` : ""}
+          {podeAplicar && resultado.ok ? (
+            <span className="text-xs font-semibold">{resultado.unidade}</span>
+          ) : null}
         </button>
       </div>
 
-      <DialogoQuantidade
-        pendente={pendente}
-        onFechar={() => setPendente(null)}
-        onConfirmar={confirmarQuantidade}
-      />
+      <AlertDialog open={confirmando} onOpenChange={setConfirmando}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir esta medicação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {normalizarNomeMedicamento(m.nome)} sairá da lista de medicações.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onExcluir}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
+
 
