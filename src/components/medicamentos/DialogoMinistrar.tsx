@@ -95,7 +95,14 @@ export function DialogoMinistrar({
   }, [medicamento, especie, peso]);
 
   const solido = resultado?.ok ? usaFracao(resultado.forma ?? "") : false;
-  const sugerido = resultado?.ok ? (resultado.volMax ?? resultado.volMin ?? null) : null;
+  // pré-preenche a dose padrão do cartão (média da faixa)
+  const sugerido = useMemo(() => {
+    if (!resultado?.ok) return null;
+    const { volMin, volMax } = resultado;
+    if (volMin !== null && volMax !== null) return (volMin + volMax) / 2;
+    return volMax ?? volMin ?? null;
+  }, [resultado]);
+
 
   useEffect(() => {
     if (!medicamento) return;
