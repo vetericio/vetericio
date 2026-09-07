@@ -258,6 +258,8 @@ function PaginaMedicacoes() {
         aberto={Boolean(avulsa)}
         medicamento={avulsa}
         especieInicial={especie}
+        pesoInicial={formatarPeso(peso)}
+
         onFechar={() => setAvulsa(null)}
       />
       <DialogoMinistrar
