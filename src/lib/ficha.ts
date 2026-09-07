@@ -18,7 +18,12 @@ export type Medicacao = {
   quantidade?: string;
   /** Momento da aplicação (ISO), quando registrada pela tela de Medicações. */
   aplicadoEm?: string;
+  /** Peso do animal no momento da ministração, ex.: "3,500 kg". */
+  peso?: string;
+  /** Observação livre digitada na confirmação da ministração. */
+  observacao?: string;
 };
+
 
 
 export type Registro = {
