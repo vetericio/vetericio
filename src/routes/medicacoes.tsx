@@ -254,8 +254,24 @@ function PaginaMedicacoes() {
         onFechar={() => setCompletarAberto(false)}
         onSalvar={salvar}
       />
-      <PesquisaAvulsa aberto={avulsaAberta} onFechar={() => setAvulsaAberta(false)} />
+      <PesquisaAvulsa
+        aberto={Boolean(avulsa)}
+        medicamento={avulsa}
+        especieInicial={especie}
+        onFechar={() => setAvulsa(null)}
+      />
+      <DialogoMinistrar
+        medicamento={ministrando}
+        especie={especie}
+        pesoInicial={formatarPeso(peso)}
+        onFechar={() => setMinistrando(null)}
+        onConfirmar={(a) => {
+          setMinistrando(null);
+          setAplicacao(a);
+        }}
+      />
       <DialogoAplicar aplicacao={aplicacao} onFechar={() => setAplicacao(null)} />
+
     </div>
   );
 }
