@@ -318,14 +318,26 @@ function CardMedicamento({
   const forma = resultado.ok ? (resultado.forma ?? "mL") : "mL";
   const volMin = resultado.ok ? resultado.volMin : null;
   const volMax = resultado.ok ? resultado.volMax : null;
-  const volPadrao =
-    volMin !== null && volMax !== null ? (volMin + volMax) / 2 : (volMax ?? volMin);
   const dMin = numero(faixa.min);
   const dMax = numero(faixa.max);
-  const dPadrao = dMin !== null && dMax !== null && dMax > dMin ? (dMin + dMax) / 2 : dMin;
+  // Dose padrão cadastrada; sem ela, média entre mínima e máxima.
+  const dPadrao = doseEfetiva(dose);
+  // O volume é linear na dose: projeta a partir da mínima calculada.
+  const volPadrao =
+    volMin !== null && dMin !== null && dMin > 0 && dPadrao !== null
+      ? volMin * (dPadrao / dMin)
+      : volMin !== null && volMax !== null
+        ? (volMin + volMax) / 2
+        : (volMax ?? volMin);
 
   const textoDose = (v: number | null) =>
     v === null ? "—" : `${v.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}`;
+
+  const doseBase = dose.dosePadrao?.trim()
+    ? `${dose.dosePadrao.trim()} ${faixa.unidade}`
+    : referenciaDose(dose);
+
+  const unidadeDose = resultado.ok ? (resultado.unidade ?? forma) : forma;
 
   return (
     <li className="rounded-2xl border border-border bg-card/60 px-3 py-2.5">
@@ -339,6 +351,7 @@ function CardMedicamento({
           <p className="text-lg font-bold tracking-tight text-foreground">
             {normalizarNomeMedicamento(m.nome)}
           </p>
+          <p className="text-xs font-semibold text-muted-foreground">{concentracao || "—"}</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -359,69 +372,101 @@ function CardMedicamento({
         </DropdownMenu>
       </div>
 
-      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="truncate font-semibold">{concentracao || "—"}</span>
-        <Vias vias={vias} />
-        <span className="shrink-0 font-semibold">{frequencia || "—"}</span>
-      </div>
-
-      {podeAplicar && resultado.ok ? (
-        <div className="mt-2 grid grid-cols-3 items-end gap-2 text-center">
+      <div className="mt-2 flex gap-3">
+        {/* Coluna esquerda: indicação, intervalo, dose base, via */}
+        <div className="min-w-0 flex-1 space-y-2 text-xs">
           <div>
-            <p className="text-[10px] font-semibold uppercase text-muted-foreground">Mín.</p>
-            <p className="text-sm font-semibold text-foreground">
-              {volMin !== null ? textoQuantidade(volMin, forma) : "—"}
-            </p>
-            <p className="text-[10px] text-muted-foreground">({textoDose(dMin)})</p>
+            <p className="font-semibold text-muted-foreground">Indicação</p>
+            <p className="text-foreground">{m.resumo?.trim() || "—"}</p>
           </div>
+          <p className="flex items-center gap-1.5 font-semibold text-foreground">
+            <span aria-hidden="true">🕐</span> {frequencia || "—"}
+          </p>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              Dose ({resultado.unidade ?? forma})
-            </p>
-            <p className="text-3xl font-bold leading-none text-foreground">
-              {volPadrao !== null ? textoQuantidade(volPadrao, forma) : "—"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">({textoDose(dPadrao)})</p>
+            <p className="font-semibold text-muted-foreground">Dose base</p>
+            <p className="font-semibold text-foreground">{doseBase || "—"}</p>
           </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase text-muted-foreground">Máx.</p>
-            <p className="text-sm font-semibold text-foreground">
-              {volMax !== null
-                ? textoQuantidade(volMax, forma)
-                : volMin !== null
-                  ? textoQuantidade(volMin, forma)
-                  : "—"}
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              ({textoDose(dMax !== null && dMin !== null && dMax > dMin ? dMax : dMin)})
-            </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-semibold text-muted-foreground">Via</span>
+            {vias.length === 0 ? (
+              <span className="text-muted-foreground">—</span>
+            ) : (
+              vias.map((v) => (
+                <span
+                  key={v}
+                  className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground"
+                >
+                  {v}
+                </span>
+              ))
+            )}
           </div>
         </div>
-      ) : (
-        <p
-          className={`mt-2 text-xs ${bloqueado ? "font-semibold text-destructive" : "text-muted-foreground"}`}
-        >
-          {bloqueado
-            ? `Não pode ser ministrado em ${NOME_ESPECIE[especie]}`
-            : resultado.ok
-              ? resultado.motivoVolume
-              : resultado.motivo}
-        </p>
-      )}
 
-      <div className="mt-2 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={onAvulsa}
-          className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
-        >
-          🧮 Consulta avulsa
-        </button>
+        {/* Coluna direita: caixas Dose / Mín. / Máx. */}
+        <div className="w-[47%] shrink-0">
+          {bloqueado ? (
+            <p className="text-xs font-semibold text-destructive">
+              Não pode ser ministrado em {NOME_ESPECIE[especie]}
+            </p>
+          ) : (
+            <div className="grid grid-cols-[1.25fr_1fr_1fr] gap-1.5 text-center">
+              <div className="rounded-xl bg-secondary/60 px-1.5 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Dose ({unidadeDose})
+                </p>
+                <p className="text-2xl font-bold leading-tight text-foreground">
+                  {volPadrao !== null ? textoQuantidade(volPadrao, forma) : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {dPadrao !== null && volPadrao !== null
+                    ? `(${textoDose(dPadrao)})`
+                    : "Não definida"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-secondary/60 px-1 py-2">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Mín.</p>
+                <p className="text-sm font-bold text-foreground">
+                  {volMin !== null ? textoQuantidade(volMin, forma) : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {dMin !== null ? `(${textoDose(dMin)})` : "Não informada"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-secondary/60 px-1 py-2">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Máx.</p>
+                <p className="text-sm font-bold text-foreground">
+                  {volMax !== null
+                    ? textoQuantidade(volMax, forma)
+                    : volMin !== null
+                      ? textoQuantidade(volMin, forma)
+                      : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {dMax !== null && dMin !== null && dMax > dMin
+                    ? `(${textoDose(dMax)})`
+                    : dMin !== null
+                      ? `(${textoDose(dMin)})`
+                      : "Não informada"}
+                </p>
+              </div>
+            </div>
+          )}
+          {!bloqueado && !resultado.ok && (
+            <p className="mt-1 text-[11px] text-muted-foreground">{resultado.motivo}</p>
+          )}
+          {!bloqueado && resultado.ok && !resultado.volumeTexto && (
+            <p className="mt-1 text-[11px] text-muted-foreground">{resultado.motivoVolume}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-2 flex gap-2">
         <button
           type="button"
           onClick={onMinistrar}
           disabled={!podeAplicar}
-          className="flex items-center gap-1.5 rounded-xl border-2 border-primary bg-primary/10 px-3 py-2 text-sm font-bold text-foreground disabled:cursor-default disabled:border-border disabled:bg-secondary/50 disabled:text-muted-foreground"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:cursor-default disabled:bg-secondary/50 disabled:text-muted-foreground"
         >
           <IconeVia via={vias[0] ?? ""} className="h-4 w-4" />
           Ministrar
@@ -429,6 +474,13 @@ function CardMedicamento({
           {podeAplicar && resultado.ok ? (
             <span className="text-xs font-semibold">{resultado.unidade}</span>
           ) : null}
+        </button>
+        <button
+          type="button"
+          onClick={onAvulsa}
+          className="shrink-0 rounded-xl border-2 border-primary bg-transparent px-3 py-2 text-xs font-bold text-foreground hover:bg-primary/5"
+        >
+          🧮 Consulta avulsa
         </button>
       </div>
 
