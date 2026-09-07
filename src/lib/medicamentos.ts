@@ -91,6 +91,8 @@ export type DoseEspecie = {
   doseMin?: string;
   /** dose máxima — opcional */
   doseMax?: string;
+  /** dose padrão — opcional; vazia = média entre mínima e máxima */
+  dosePadrao?: string;
   /** true = dose fixa por animal (não multiplica pelo peso) */
   porAnimal?: boolean;
   /** unidade da dose, ex.: "mg/kg", "UI/kg", "mcg/animal". Ausente = mg/kg (ou mg/animal). */
@@ -100,6 +102,20 @@ export type DoseEspecie = {
   /** true = medicamento não pode ser ministrado nesta espécie */
   proibido?: boolean;
 };
+
+/**
+ * Dose usada no cálculo principal: a padrão cadastrada; se vazia, a média
+ * entre mínima e máxima (ou a única que existir).
+ */
+export function doseEfetiva(d: DoseEspecie): number | null {
+  const padrao = numero(d.dosePadrao ?? "");
+  if (padrao !== null && padrao > 0) return padrao;
+  const f = faixaDe(d);
+  const min = numero(f.min);
+  const max = numero(f.max);
+  if (min !== null && max !== null && max > min) return (min + max) / 2;
+  return min ?? max;
+}
 
 /** Lê a faixa de dose, tolerando cadastros antigos que só tinham `dose`. */
 export function faixaDe(d: DoseEspecie): {
