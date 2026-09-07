@@ -165,11 +165,12 @@ function PaginaMedicacoes() {
             peso={formatarPeso(peso)}
             especie={especie}
             onEditar={() => abrirEdicao(m)}
-            onAvulsa={() => setAvulsaAberta(true)}
-            onAplicar={setAplicacao}
+            onExcluir={() => remover(m.id)}
+            onAvulsa={() => setAvulsa(m)}
+            onMinistrar={() => setMinistrando(m)}
           />
-
         ))}
+
       </ul>
 
       {menuAberto && (
