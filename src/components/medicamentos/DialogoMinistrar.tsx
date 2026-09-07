@@ -20,6 +20,7 @@ import {
 } from "@/lib/medicamentos";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 import type { AplicacaoPendente } from "@/components/medicamentos/DialogoAplicar";
+import { IconeVia } from "@/components/medicamentos/IconeVia";
 
 type Props = {
   medicamento: Medicamento | null;
@@ -100,6 +101,7 @@ export function DialogoMinistrar({
   // pré-preenche a dose padrão (cadastrada; sem ela, média da faixa)
   const dPadrao = dose ? doseEfetiva(dose) : null;
   const dMin = faixa ? numero(faixa.min) : null;
+  const dMax = faixa ? numero(faixa.max) : null;
   const sugerido = useMemo(() => {
     if (!resultado?.ok) return null;
     const { volMin, volMax } = resultado;
@@ -156,11 +158,11 @@ export function DialogoMinistrar({
       return [{ rotulo: "Dose calculada", valor: (max ?? min) as number }];
     }
     return [
-      { rotulo: "Mínimo", valor: min },
-      { rotulo: "Médio", valor: (min + max) / 2 },
-      { rotulo: "Máximo", valor: max },
+      { rotulo: "Mín.", valor: min },
+      { rotulo: "Máx.", valor: max },
+      { rotulo: "Dose padrão", valor: sugerido ?? (min + max) / 2 },
     ];
-  }, [resultado, solido]);
+  }, [resultado, solido, sugerido]);
 
   if (!medicamento || !dose || !faixa) return null;
 
@@ -211,19 +213,29 @@ export function DialogoMinistrar({
           <p>
             <span className="font-semibold text-foreground">{nome}</span> • {concentracao}
           </p>
-          <p>
-            Dose cadastrada ({NOME_ESPECIE[especie]}): {faixa.min || "—"}
-            {faixa.max && faixa.max !== faixa.min ? ` – ${faixa.max}` : ""} {faixa.unidade}
-          </p>
-          {dose.dosePadrao?.trim() ? (
-            <p>
-              Dose padrão: {dose.dosePadrao.trim()} {faixa.unidade}
-            </p>
-          ) : null}
-          <p>
-            Mínima: {faixa.min || "—"} {faixa.unidade} • Máxima: {faixa.max || faixa.min || "—"}{" "}
-            {faixa.unidade}
-          </p>
+          <p>Dose cadastrada ({NOME_ESPECIE[especie]})</p>
+          <div className="grid grid-cols-2 gap-2 pt-1 text-center">
+            <div className="rounded-lg bg-background px-2 py-1.5">
+              <span className="block text-[10px] font-bold uppercase">Mín.</span>
+              <span className="font-semibold text-foreground">
+                {dMin !== null ? `${dMin.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}` : "—"}
+              </span>
+            </div>
+            <div className="rounded-lg bg-background px-2 py-1.5">
+              <span className="block text-[10px] font-bold uppercase">Máx.</span>
+              <span className="font-semibold text-foreground">
+                {(dMax ?? dMin) !== null ? `${(dMax ?? dMin)?.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}` : "—"}
+              </span>
+            </div>
+            <div className="col-span-2 border-t border-border pt-1.5">
+              <div className="rounded-lg bg-background px-2 py-1.5">
+                <span className="block text-[10px] font-bold uppercase">Dose padrão</span>
+                <span className="font-bold text-foreground">
+                  {dPadrao !== null ? `${dPadrao.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}` : "—"}
+                </span>
+              </div>
+            </div>
+          </div>
           <p>Intervalo: {frequencia || "—"}</p>
           {resultado?.ok ? (
             <>
@@ -258,22 +270,27 @@ export function DialogoMinistrar({
             <label className={rotulo} htmlFor="ministrar-via">
               Via
             </label>
-            {vias.length > 1 ? (
-              <select
-                id="ministrar-via"
-                value={via}
-                onChange={(e) => setVia(e.target.value)}
-                className={`${campo} mt-1`}
-              >
-                {vias.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className={`${campo} mt-1`}>{vias[0] ?? "—"}</p>
-            )}
+            <div className="relative mt-1">
+              {via && (
+                <IconeVia via={via} className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              )}
+              {vias.length > 1 ? (
+                <select
+                  id="ministrar-via"
+                  value={via}
+                  onChange={(e) => setVia(e.target.value)}
+                  className={`${campo} pl-9`}
+                >
+                  {vias.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className={`${campo} pl-9`}>{vias[0] ?? "—"}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -341,13 +358,15 @@ export function DialogoMinistrar({
                   <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Atalhos rápidos (referência calculada)
                   </p>
-                  <div className="mt-1 flex flex-wrap justify-center gap-2">
+                  <div className="mt-1 grid grid-cols-2 gap-2">
                     {atalhos.map((a) => (
                       <button
                         key={a.rotulo}
                         type="button"
                         onClick={() => setLiquido(paraDigitos(a.valor, casas))}
-                        className="rounded-lg bg-secondary px-2.5 py-1 text-center text-secondary-foreground hover:bg-secondary/70"
+                        className={`rounded-lg bg-secondary px-2.5 py-1 text-center text-secondary-foreground hover:bg-secondary/70 ${
+                          a.rotulo === "Dose padrão" ? "col-span-2 border-t border-border" : ""
+                        }`}
                       >
                         <span className="block text-[10px] font-semibold uppercase opacity-75">
                           {a.rotulo}

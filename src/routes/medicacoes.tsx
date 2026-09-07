@@ -37,7 +37,6 @@ import {
   especieBloqueada,
   faixaDe,
   numero,
-  referenciaDose,
   textoQuantidade,
   NOME_ESPECIE,
   ordenarMedicamentos,
@@ -335,10 +334,6 @@ function CardMedicamento({
   const textoDose = (v: number | null) =>
     v === null ? "—" : `${v.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}`;
 
-  const doseBase = dose.dosePadrao?.trim()
-    ? `${dose.dosePadrao.trim()} ${faixa.unidade}`
-    : referenciaDose(dose);
-
   const unidadeDose = resultado.ok ? (resultado.unidade ?? forma) : forma;
 
   return (
@@ -353,6 +348,11 @@ function CardMedicamento({
           <p className="text-lg font-bold tracking-tight text-foreground">
             {normalizarNomeMedicamento(m.nome)}
           </p>
+          {m.classificacao?.trim() && (
+            <p className="mt-0.5 text-[11px] italic text-muted-foreground">
+              {m.classificacao.trim()}
+            </p>
+          )}
           <p className="text-xs font-semibold text-muted-foreground">{concentracao || "—"}</p>
         </div>
         <DropdownMenu>
@@ -375,19 +375,15 @@ function CardMedicamento({
       </div>
 
       <div className="mt-2 flex gap-3">
-        {/* Coluna esquerda: indicação, intervalo, dose base, via */}
+        {/* Coluna esquerda: resumo, intervalo e vias */}
         <div className="min-w-0 flex-1 space-y-2 text-xs">
           <div>
-            <p className="font-semibold text-muted-foreground">Indicação</p>
+            <p className="font-semibold text-muted-foreground">Resumo</p>
             <p className="text-foreground">{m.resumo?.trim() || "—"}</p>
           </div>
           <p className="flex items-center gap-1.5 font-semibold text-foreground">
             <span aria-hidden="true">🕐</span> {frequencia || "—"}
           </p>
-          <div>
-            <p className="font-semibold text-muted-foreground">Dose base</p>
-            <p className="font-semibold text-foreground">{doseBase || "—"}</p>
-          </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-semibold text-muted-foreground">Via</span>
             {vias.length === 0 ? (
@@ -396,8 +392,9 @@ function CardMedicamento({
               vias.map((v) => (
                 <span
                   key={v}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground"
+                  className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground"
                 >
+                  <IconeVia via={v} />
                   {v}
                 </span>
               ))
@@ -405,29 +402,16 @@ function CardMedicamento({
           </div>
         </div>
 
-        {/* Coluna direita: caixas Dose / Mín. / Máx. */}
+        {/* Coluna direita: mínima e máxima acima, padrão em destaque abaixo. */}
         <div className="w-[47%] shrink-0">
           {bloqueado ? (
             <p className="text-xs font-semibold text-destructive">
               Não pode ser ministrado em {NOME_ESPECIE[especie]}
             </p>
           ) : (
-            <div className="grid grid-cols-[1.25fr_1fr_1fr] gap-1.5 text-center">
-              <div className="rounded-xl bg-secondary/60 px-1.5 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Dose ({unidadeDose})
-                </p>
-                <p className="text-2xl font-bold leading-tight text-foreground">
-                  {volPadrao !== null ? textoQuantidade(volPadrao, forma) : "—"}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {dPadrao !== null && volPadrao !== null
-                    ? `(${textoDose(dPadrao)})`
-                    : "Não definida"}
-                </p>
-              </div>
+            <div className="grid grid-cols-2 gap-1.5 text-center">
               <div className="rounded-xl bg-secondary/60 px-1 py-2">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Mín.</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Dose mín.</p>
                 <p className="text-sm font-bold text-foreground">
                   {volMin !== null ? textoQuantidade(volMin, forma) : "—"}
                 </p>
@@ -436,7 +420,7 @@ function CardMedicamento({
                 </p>
               </div>
               <div className="rounded-xl bg-secondary/60 px-1 py-2">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Máx.</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Dose máx.</p>
                 <p className="text-sm font-bold text-foreground">
                   {volMax !== null
                     ? textoQuantidade(volMax, forma)
@@ -451,6 +435,21 @@ function CardMedicamento({
                       ? `(${textoDose(dMin)})`
                       : "Não informada"}
                 </p>
+              </div>
+              <div className="col-span-2 border-t border-border pt-1.5">
+                <div className="rounded-xl bg-secondary/60 px-1.5 py-2">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Dose padrão ({unidadeDose})
+                  </p>
+                  <p className="text-2xl font-bold leading-tight text-foreground">
+                    {volPadrao !== null ? textoQuantidade(volPadrao, forma) : "—"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {dPadrao !== null && volPadrao !== null
+                      ? `(${textoDose(dPadrao)})`
+                      : "Não definida"}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -480,7 +479,7 @@ function CardMedicamento({
         <button
           type="button"
           onClick={onAvulsa}
-          className="shrink-0 rounded-xl border-2 border-primary bg-transparent px-3 py-2 text-xs font-bold text-foreground hover:bg-primary/5"
+          className="shrink-0 self-center rounded-lg border border-primary bg-transparent px-2.5 py-1.5 text-[11px] font-bold text-foreground hover:bg-primary/5"
         >
           🧮 Consulta avulsa
         </button>
