@@ -50,6 +50,7 @@ function normalizarDose(d: DoseEspecie): DoseEspecie {
   return {
     doseMin: f.min,
     doseMax: f.max,
+    dosePadrao: d.dosePadrao ?? "",
     porAnimal: f.porAnimal,
     unidade: f.unidade,
     intervalo: d.intervalo ?? "",
@@ -67,6 +68,7 @@ function unificadoInicial(m: Medicamento): boolean {
   return (
     a.doseMin === b.doseMin &&
     a.doseMax === b.doseMax &&
+    a.dosePadrao === b.dosePadrao &&
     a.porAnimal === b.porAnimal &&
     a.intervalo === b.intervalo
   );
@@ -191,6 +193,17 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
             />
           </div>
           <div>
+            <span className={rotulo}>Dose padrão</span>
+            <input
+              value={dose.dosePadrao ?? ""}
+              onChange={(e) => atualizar({ dosePadrao: e.target.value })}
+              inputMode="decimal"
+              disabled={proibido}
+              className={`${campo} min-w-0 disabled:opacity-50`}
+              placeholder="média"
+            />
+          </div>
+          <div>
             <span className={rotulo}>Dose máxima</span>
             <input
               value={f.max}
@@ -201,20 +214,21 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
               placeholder="25"
             />
           </div>
-          <div>
-            <span className={rotulo}>Intervalo (h)</span>
-            <input
-              value={dose.intervalo}
-              onChange={(e) => atualizar({ intervalo: e.target.value })}
-              inputMode="decimal"
-              disabled={proibido}
-              className={`${campo} min-w-0 disabled:opacity-50`}
-              placeholder="8"
-            />
-          </div>
+        </div>
+        <div className="mt-2 w-1/3 min-w-[110px]">
+          <span className={rotulo}>Intervalo (h)</span>
+          <input
+            value={dose.intervalo}
+            onChange={(e) => atualizar({ intervalo: e.target.value })}
+            inputMode="decimal"
+            disabled={proibido}
+            className={`${campo} min-w-0 disabled:opacity-50`}
+            placeholder="8"
+          />
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Pode preencher só a mínima: nesse caso vale como dose única.
+          Dose padrão vazia usa a média entre mínima e máxima. Só com a mínima, ela vale como dose
+          única.
         </p>
       </fieldset>
     );

@@ -9,7 +9,9 @@ import {
 import {
   calcularFaixaDose,
   doseDaEspecie,
+  doseEfetiva,
   faixaDe,
+  numero,
   usaFracao,
   viasDe,
   NOME_ESPECIE,
@@ -95,13 +97,18 @@ export function DialogoMinistrar({
   }, [medicamento, especie, peso]);
 
   const solido = resultado?.ok ? usaFracao(resultado.forma ?? "") : false;
-  // pré-preenche a dose padrão do cartão (média da faixa)
+  // pré-preenche a dose padrão (cadastrada; sem ela, média da faixa)
+  const dPadrao = dose ? doseEfetiva(dose) : null;
+  const dMin = faixa ? numero(faixa.min) : null;
   const sugerido = useMemo(() => {
     if (!resultado?.ok) return null;
     const { volMin, volMax } = resultado;
+    // O volume é linear na dose: projeta a partir da mínima calculada.
+    if (volMin !== null && dMin !== null && dMin > 0 && dPadrao !== null)
+      return volMin * (dPadrao / dMin);
     if (volMin !== null && volMax !== null) return (volMin + volMax) / 2;
     return volMax ?? volMin ?? null;
-  }, [resultado]);
+  }, [resultado, dMin, dPadrao]);
 
 
   useEffect(() => {
@@ -208,6 +215,11 @@ export function DialogoMinistrar({
             Dose cadastrada ({NOME_ESPECIE[especie]}): {faixa.min || "—"}
             {faixa.max && faixa.max !== faixa.min ? ` – ${faixa.max}` : ""} {faixa.unidade}
           </p>
+          {dose.dosePadrao?.trim() ? (
+            <p>
+              Dose padrão: {dose.dosePadrao.trim()} {faixa.unidade}
+            </p>
+          ) : null}
           <p>
             Mínima: {faixa.min || "—"} {faixa.unidade} • Máxima: {faixa.max || faixa.min || "—"}{" "}
             {faixa.unidade}
