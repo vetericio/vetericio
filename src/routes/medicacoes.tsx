@@ -91,8 +91,10 @@ function PaginaMedicacoes() {
   const [especie, setEspecie] = useState<Especie>("cao");
   const [formAberto, setFormAberto] = useState(false);
   const [editando, setEditando] = useState<Medicamento | null>(null);
-  const [avulsaAberta, setAvulsaAberta] = useState(false);
+  const [avulsa, setAvulsa] = useState<Medicamento | null>(null);
+  const [ministrando, setMinistrando] = useState<Medicamento | null>(null);
   const [aplicacao, setAplicacao] = useState<AplicacaoPendente | null>(null);
+
   const [menuAberto, setMenuAberto] = useState(false);
   const [escolhaAberta, setEscolhaAberta] = useState(false);
   const [completarAberto, setCompletarAberto] = useState(false);
