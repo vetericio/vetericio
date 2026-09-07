@@ -215,6 +215,11 @@ export function DialogoMinistrar({
             Dose cadastrada ({NOME_ESPECIE[especie]}): {faixa.min || "—"}
             {faixa.max && faixa.max !== faixa.min ? ` – ${faixa.max}` : ""} {faixa.unidade}
           </p>
+          {dose.dosePadrao?.trim() ? (
+            <p>
+              Dose padrão: {dose.dosePadrao.trim()} {faixa.unidade}
+            </p>
+          ) : null}
           <p>
             Mínima: {faixa.min || "—"} {faixa.unidade} • Máxima: {faixa.max || faixa.min || "—"}{" "}
             {faixa.unidade}

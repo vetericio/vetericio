@@ -13,6 +13,7 @@ import {
   UNIDADES_DOSE,
   calcularDose,
   doseDaEspecie,
+  doseEfetiva,
   faixaDe,
   viasDe,
   type Especie,
@@ -59,8 +60,10 @@ export function PesquisaAvulsa({
     if (pesoInicial) setPeso(pesoInicial);
     if (!medicamento) return;
     const alvo = especieInicial ?? "cao";
-    const f = faixaDe(doseDaEspecie(medicamento, alvo));
-    setDose(f.min);
+    const d = doseDaEspecie(medicamento, alvo);
+    const f = faixaDe(d);
+    const efetiva = doseEfetiva(d);
+    setDose(efetiva !== null ? String(efetiva).replace(".", ",") : f.min);
     setUnidadeDose(f.unidade);
     setConcentracao(medicamento.concentracaoValor);
     setUnidadeConcentracao(medicamento.concentracaoUnidade || "mg/mL");
@@ -72,8 +75,10 @@ export function PesquisaAvulsa({
   const trocarEspecie = (e: Especie) => {
     setEspecie(e);
     if (!medicamento) return;
-    const f = faixaDe(doseDaEspecie(medicamento, e));
-    setDose(f.min);
+    const d = doseDaEspecie(medicamento, e);
+    const f = faixaDe(d);
+    const efetiva = doseEfetiva(d);
+    setDose(efetiva !== null ? String(efetiva).replace(".", ",") : f.min);
     setUnidadeDose(f.unidade);
   };
 
