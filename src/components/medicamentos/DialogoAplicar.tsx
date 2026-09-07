@@ -58,8 +58,11 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
       duracao: aplicacao.duracao,
       via: aplicacao.via,
       quantidade: aplicacao.quantidade,
+      ...(aplicacao.peso ? { peso: aplicacao.peso } : {}),
+      ...(aplicacao.observacao ? { observacao: aplicacao.observacao } : {}),
       aplicadoEm: agora.toISOString(),
     };
+
     let nomeAnimal = "";
     setRegistros((rs) =>
       rs.map((r) => {
