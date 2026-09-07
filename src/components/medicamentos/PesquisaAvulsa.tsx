@@ -139,19 +139,20 @@ export function PesquisaAvulsa({ aberto, onFechar, medicamento, especieInicial }
 
           <div>
             <span className={rotulo}>Dose</span>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
               <input
                 value={dose}
                 onChange={(e) => setDose(e.target.value)}
                 inputMode="decimal"
                 placeholder="5"
-                className={`${campo} min-w-0 flex-1`}
+                className={`${campo} min-w-0`}
               />
               <input
                 list="avulsa-unidades-dose"
                 value={unidadeDose}
                 onChange={(e) => setUnidadeDose(e.target.value)}
-                className={`${campo} w-28 shrink-0`}
+                className={`${campo} min-w-0`}
+
                 placeholder="mg/kg"
               />
               <datalist id="avulsa-unidades-dose">
