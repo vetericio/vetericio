@@ -62,12 +62,17 @@ export function nomeMedicacao(m: Medicacao): string {
 export function linhaMedicacao(m: Medicacao): string {
   const nome = nomeMedicacao(m);
   const quantidade = (m.quantidade ?? "").trim();
-  const resto = [(m.via ?? "").trim(), m.duracao.trim()].filter(Boolean).join(" / ");
-  if (!quantidade && !resto) return nome;
-  if (!resto) return `${nome} - ${quantidade}`;
-  if (!quantidade) return `${nome} / ${resto}`;
-  return `${nome} - ${quantidade} / ${resto}`;
+  const resto = [(m.via ?? "").trim(), m.duracao.trim(), (m.peso ?? "").trim()]
+    .filter(Boolean)
+    .join(" / ");
+  const obs = (m.observacao ?? "").trim();
+  const sufixo = obs ? ` (${obs})` : "";
+  if (!quantidade && !resto) return `${nome}${sufixo}`;
+  if (!resto) return `${nome} - ${quantidade}${sufixo}`;
+  if (!quantidade) return `${nome} / ${resto}${sufixo}`;
+  return `${nome} - ${quantidade} / ${resto}${sufixo}`;
 }
+
 
 
 
