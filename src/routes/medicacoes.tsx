@@ -8,25 +8,42 @@ import {
   DialogoAplicar,
   type AplicacaoPendente,
 } from "@/components/medicamentos/DialogoAplicar";
-import {
-  DialogoQuantidade,
-  type QuantidadePendente,
-} from "@/components/medicamentos/DialogoQuantidade";
+import { DialogoMinistrar } from "@/components/medicamentos/DialogoMinistrar";
 import { DialogoEscolherMedicamento } from "@/components/medicamentos/DialogoEscolherMedicamento";
 import { CompletarInsercao } from "@/components/medicamentos/CompletarInsercao";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   calcularFaixaDose,
   doseDaEspecie,
   especieBloqueada,
+  faixaDe,
+  numero,
+  textoQuantidade,
   NOME_ESPECIE,
   ordenarMedicamentos,
   viasDe,
   type Especie,
   type Medicamento,
 } from "@/lib/medicamentos";
+
 
 export const Route = createFileRoute("/medicacoes")({
   head: () => ({
