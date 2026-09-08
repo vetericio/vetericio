@@ -90,8 +90,9 @@ function codigoDaUrl(texto: string): string | null {
   }
 }
 
-export function Backup() {
+export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {}) {
   const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
   const [aba, setAba] = useState<Aba>("gerar");
   const [aviso, setAviso] = useState<Aviso>(null);
   const [pendente, setPendente] = useState<DadosBackup | null>(null);
@@ -115,6 +116,19 @@ export function Backup() {
   };
 
   useEffect(() => pararCamera, []);
+
+  // O menu lateral pede para abrir esta área.
+  useEffect(() => {
+    const abrir = () => {
+      setAberto(true);
+      window.setTimeout(
+        () => caixa.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        80,
+      );
+    };
+    window.addEventListener("veterico-abrir-sincronizacao", abrir);
+    return () => window.removeEventListener("veterico-abrir-sincronizacao", abrir);
+  }, []);
 
   /* ---------- Sincronização automática nos dois sentidos ---------- */
 
@@ -407,14 +421,17 @@ export function Backup() {
     }`;
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setAberto((v) => !v)}
-        className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
-      >
-        Sincronização
-      </button>
+    <div ref={caixa}>
+      {mostrarBotao && (
+        <button
+          type="button"
+          onClick={() => setAberto((v) => !v)}
+          className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
+        >
+          Sincronização
+        </button>
+      )}
+
 
       {aberto && (
         <div className="mx-auto mt-2 max-w-md rounded-xl bg-secondary/60 p-3 text-left">

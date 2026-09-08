@@ -1,5 +1,6 @@
 import type { Registro } from "./ficha";
 import { LOGO_PDF_DATA_URL } from "./logo";
+import { lerSelo } from "./assinatura";
 
 import type { Curva } from "./curva";
 import { formatarTodos, linhaEstaForaDaFaixa, paraNumero } from "./ficha";
@@ -120,7 +121,7 @@ function desenharGrafico(doc: Doc, c: Curva, x: number, y: number, largura: numb
 
 export async function exportarPdf(
   registros: Registro[],
-  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[] },
+  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; assinadoEm?: string },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -252,6 +253,45 @@ export async function exportarPdf(
 
     y += 18;
   });
+
+  // Assinatura e carimbo guardados no aparelho, no fim do documento.
+  const assinatura = lerSelo("assinatura");
+  const carimbo = lerSelo("carimbo");
+  const assinadoEm =
+    opcoes?.assinadoEm ??
+    new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+  novaPaginaSeNecessario(150);
+  y += 16;
+
+  const desenharSelo = (dataUrl: string, x: number, maxL: number, maxA: number) => {
+    try {
+      const props = doc.getImageProperties(dataUrl);
+      const escala = Math.min(maxL / props.width, maxA / props.height);
+      const l = props.width * escala;
+      const a = props.height * escala;
+      doc.addImage(dataUrl, "PNG", x, y + (maxA - a), l, a);
+    } catch {
+      /* selo inválido: segue sem imagem */
+    }
+  };
+
+  if (assinatura || carimbo) {
+    const alturaSelo = 60;
+    if (assinatura) desenharSelo(assinatura, margem, 170, alturaSelo);
+    if (carimbo) desenharSelo(carimbo, margem + 190, 150, alturaSelo);
+    y += alturaSelo + 6;
+  }
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.8);
+  doc.line(margem, y, margem + 240, y);
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Data: ${assinadoEm}`, margem, y);
+  y += 14;
+  doc.text("Assinatura / carimbo", margem, y);
 
   const atual = carregarPlantaoAtual();
   doc.save(opcoes?.arquivo ?? nomeArquivoPdf(atual?.dia ?? diaDeHoje(), atual?.turno));
