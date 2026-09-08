@@ -188,8 +188,11 @@ function Registros() {
 
 
   const exportar = async () => {
+    const agora = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    const assinadoEm = window.prompt("Data e hora da assinatura (pode editar):", agora);
+    if (assinadoEm === null) return;
     try {
-      await exportarPdf(registros);
+      await exportarPdf(registros, { assinadoEm: assinadoEm.trim() || agora });
       toast.success("PDF gerado.");
     } catch {
       toast.error("Não foi possível gerar o PDF.");
