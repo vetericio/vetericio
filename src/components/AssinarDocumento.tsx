@@ -113,7 +113,8 @@ export function AssinarDocumento() {
           paginas: [{ imagem: dataUrl, largura, altura: Math.round(largura / prop) }],
         });
       }
-    } catch {
+    } catch (e) {
+      console.error("abrir documento", e);
       toast.error("Não foi possível abrir este arquivo");
     } finally {
       setCarregando(false);
