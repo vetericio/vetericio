@@ -38,8 +38,8 @@ const ROTULO: Record<TipoSelo, string> = { assinatura: "Assinatura", carimbo: "C
 
 async function pdfParaPaginas(bytes: ArrayBuffer): Promise<Pagina[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const worker = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  const { default: WorkerPdf } = await import("pdfjs-dist/build/pdf.worker.min.mjs?worker");
+  pdfjs.GlobalWorkerOptions.workerPort = new WorkerPdf();
 
   const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) }).promise;
   const paginas: Pagina[] = [];
