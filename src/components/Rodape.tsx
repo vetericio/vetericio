@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Backup } from "@/components/Backup";
 import { VERSAO } from "@/lib/versao";
 
