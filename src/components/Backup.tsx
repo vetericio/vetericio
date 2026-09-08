@@ -173,7 +173,7 @@ export function Backup({
       window.removeEventListener("online", aoVoltar);
       document.removeEventListener("visibilitychange", aoVoltar);
     };
-  }, [sala, sincronizar]);
+  }, [sala, sincronizar, semAuto]);
 
   // Abre a restauração/conexão direto quando o link do QR foi aberto no navegador.
   useEffect(() => {
