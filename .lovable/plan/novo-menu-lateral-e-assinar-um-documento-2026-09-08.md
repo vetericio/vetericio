@@ -60,6 +60,10 @@ Nome do arquivo (assinado vetericio).pdf
 - Se o arquivo veio de uma foto, o nome segue o mesmo padrão, terminando em `.pdf`.
 - Tudo acontece no próprio aparelho, sem internet e sem enviar o documento para nenhum lugar.
 
+&nbsp;
+
+Atualizar a versão no final do app
+
 ## O que não muda
 
 Fichas, plantões, medicações, alarmes, curvas, anamnese, calculadoras, backup e sincronização continuam funcionando exatamente como hoje.

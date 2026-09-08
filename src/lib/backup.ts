@@ -17,6 +17,8 @@ export const CHAVES_BACKUP = {
   notas: "veterico-bloco-notas",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
+  assinatura: "veterico-assinatura-v1",
+  carimbo: "veterico-carimbo-v1",
 } as const;
 
 export type ChaveBackup = keyof typeof CHAVES_BACKUP;
@@ -92,7 +94,14 @@ const LISTAS: ChaveBackup[] = [
   "anamneses",
 ];
 
-const SIMPLES: ChaveBackup[] = ["plantaoAtual", "notas", "tema", "cor"];
+const SIMPLES: ChaveBackup[] = [
+  "plantaoAtual",
+  "notas",
+  "tema",
+  "cor",
+  "assinatura",
+  "carimbo",
+];
 
 function hashTexto(texto: string): string {
   let h = 5381;

@@ -6,22 +6,12 @@ import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
+import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
-const LINKS = [
-  { to: "/", rotulo: "Início", exato: true },
-  { to: "/registros", rotulo: "Animais internados", exato: false },
-  { to: "/anamnese", rotulo: "Anamnese", exato: false },
-  { to: "/medicacoes", rotulo: "Medicações", exato: false },
-  { to: "/curva", rotulo: "Curva", exato: false },
-  { to: "/alarmes", rotulo: "Alarmes", exato: false },
-  { to: "/plantoes", rotulo: "Plantões", exato: false },
-] as const;
-
-/** Abas que só funcionam com plantão ativo. */
-const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes"];
+import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 
 
 export function Cabecalho() {
@@ -45,7 +35,8 @@ export function Cabecalho() {
   }, []);
 
   return (
-    <header className="border-b border-border bg-card/60">
+    <header className="relative border-b border-border bg-card/60">
+      <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <img
           src={logoVeterico.url}
@@ -96,38 +87,34 @@ export function Cabecalho() {
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
 
-        <nav className="mx-auto mt-3 flex max-w-2xl flex-col gap-2">
-          {[LINKS.slice(0, 3), LINKS.slice(3)].map((linha, i) => (
-            <div key={i} className="flex flex-wrap justify-center gap-2">
-              {linha.map((item) => {
-                const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
-                if (bloqueado)
-                  return (
-                    <span
-                      key={item.to}
-                      aria-disabled="true"
-                      title="Inicie o plantão para usar esta função"
-                      className={`${base} pointer-events-none cursor-not-allowed bg-secondary/40 text-muted-foreground opacity-50`}
-                    >
-                      {item.rotulo}
-                    </span>
-                  );
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    {...(item.exato ? { activeOptions: { exact: true } } : {})}
-                    activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-                    inactiveProps={{
-                      className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-                    }}
-                  >
-                    {item.rotulo}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+        <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
+          {LINKS.map((item) => {
+            const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
+            if (bloqueado)
+              return (
+                <span
+                  key={item.to}
+                  aria-disabled="true"
+                  title="Inicie o plantão para usar esta função"
+                  className={`${base} pointer-events-none cursor-not-allowed bg-secondary/40 text-muted-foreground opacity-50`}
+                >
+                  {item.rotulo}
+                </span>
+              );
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                {...(item.exato ? { activeOptions: { exact: true } } : {})}
+                activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+                inactiveProps={{
+                  className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+                }}
+              >
+                {item.rotulo}
+              </Link>
+            );
+          })}
         </nav>
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
