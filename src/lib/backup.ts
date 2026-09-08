@@ -94,7 +94,14 @@ const LISTAS: ChaveBackup[] = [
   "anamneses",
 ];
 
-const SIMPLES: ChaveBackup[] = ["plantaoAtual", "notas", "tema", "cor"];
+const SIMPLES: ChaveBackup[] = [
+  "plantaoAtual",
+  "notas",
+  "tema",
+  "cor",
+  "assinatura",
+  "carimbo",
+];
 
 function hashTexto(texto: string): string {
   let h = 5381;
