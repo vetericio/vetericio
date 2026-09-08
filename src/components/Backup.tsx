@@ -90,8 +90,9 @@ function codigoDaUrl(texto: string): string | null {
   }
 }
 
-export function Backup() {
+export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {}) {
   const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
   const [aba, setAba] = useState<Aba>("gerar");
   const [aviso, setAviso] = useState<Aviso>(null);
   const [pendente, setPendente] = useState<DadosBackup | null>(null);
