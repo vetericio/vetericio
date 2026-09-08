@@ -63,27 +63,6 @@ export function MenuLateral() {
               </Link>
             );
           })}
-
-          <button
-            type="button"
-            onClick={() => {
-              setAberto(false);
-              window.dispatchEvent(new Event("veterico-abrir-temas"));
-            }}
-            className="rounded-xl bg-secondary px-3 py-2.5 text-left text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
-          >
-            Temas
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAberto(false);
-              window.dispatchEvent(new Event("veterico-abrir-sincronizacao"));
-            }}
-            className="rounded-xl bg-secondary px-3 py-2.5 text-left text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
-          >
-            Sincronização
-          </button>
         </nav>
       </SheetContent>
     </Sheet>
