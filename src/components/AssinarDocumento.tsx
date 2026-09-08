@@ -37,8 +37,8 @@ type Item = {
 const ROTULO: Record<TipoSelo, string> = { assinatura: "Assinatura", carimbo: "Carimbo" };
 
 async function pdfParaPaginas(bytes: ArrayBuffer): Promise<Pagina[]> {
-  const pdfjs = await import("pdfjs-dist");
-  const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const worker = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
 
   const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) }).promise;
@@ -53,7 +53,7 @@ async function pdfParaPaginas(bytes: ArrayBuffer): Promise<Pagina[]> {
     canvas.height = Math.floor(viewport.height);
     const ctx = canvas.getContext("2d");
     if (!ctx) continue;
-    await pagina.render({ canvas, canvasContext: ctx, viewport }).promise;
+    await pagina.render({ canvasContext: ctx, viewport }).promise;
     paginas.push({ imagem: canvas.toDataURL("image/jpeg", 0.85), largura: base.width, altura: base.height });
   }
   return paginas;
