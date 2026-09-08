@@ -121,7 +121,7 @@ function desenharGrafico(doc: Doc, c: Curva, x: number, y: number, largura: numb
 
 export async function exportarPdf(
   registros: Registro[],
-  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[] },
+  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; assinadoEm?: string },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
