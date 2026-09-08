@@ -85,38 +85,34 @@ export function Cabecalho() {
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
 
-        <nav className="mx-auto mt-3 flex max-w-2xl flex-col gap-2">
-          {[LINKS.slice(0, 3), LINKS.slice(3)].map((linha, i) => (
-            <div key={i} className="flex flex-wrap justify-center gap-2">
-              {linha.map((item) => {
-                const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
-                if (bloqueado)
-                  return (
-                    <span
-                      key={item.to}
-                      aria-disabled="true"
-                      title="Inicie o plantão para usar esta função"
-                      className={`${base} pointer-events-none cursor-not-allowed bg-secondary/40 text-muted-foreground opacity-50`}
-                    >
-                      {item.rotulo}
-                    </span>
-                  );
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    {...(item.exato ? { activeOptions: { exact: true } } : {})}
-                    activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-                    inactiveProps={{
-                      className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-                    }}
-                  >
-                    {item.rotulo}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+        <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
+          {LINKS.map((item) => {
+            const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
+            if (bloqueado)
+              return (
+                <span
+                  key={item.to}
+                  aria-disabled="true"
+                  title="Inicie o plantão para usar esta função"
+                  className={`${base} pointer-events-none cursor-not-allowed bg-secondary/40 text-muted-foreground opacity-50`}
+                >
+                  {item.rotulo}
+                </span>
+              );
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                {...(item.exato ? { activeOptions: { exact: true } } : {})}
+                activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+                inactiveProps={{
+                  className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+                }}
+              >
+                {item.rotulo}
+              </Link>
+            );
+          })}
         </nav>
 
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
