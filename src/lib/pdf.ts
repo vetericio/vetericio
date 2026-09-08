@@ -1,5 +1,6 @@
 import type { Registro } from "./ficha";
 import { LOGO_PDF_DATA_URL } from "./logo";
+import { lerSelo } from "./assinatura";
 
 import type { Curva } from "./curva";
 import { formatarTodos, linhaEstaForaDaFaixa, paraNumero } from "./ficha";
