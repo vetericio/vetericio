@@ -421,14 +421,17 @@ export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {})
     }`;
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setAberto((v) => !v)}
-        className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
-      >
-        Sincronização
-      </button>
+    <div ref={caixa}>
+      {mostrarBotao && (
+        <button
+          type="button"
+          onClick={() => setAberto((v) => !v)}
+          className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
+        >
+          Sincronização
+        </button>
+      )}
+
 
       {aberto && (
         <div className="mx-auto mt-2 max-w-md rounded-xl bg-secondary/60 p-3 text-left">
