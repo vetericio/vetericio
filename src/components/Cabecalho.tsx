@@ -34,7 +34,8 @@ export function Cabecalho() {
   }, []);
 
   return (
-    <header className="border-b border-border bg-card/60">
+    <header className="relative border-b border-border bg-card/60">
+      <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <img
           src={logoVeterico.url}
