@@ -15,6 +15,7 @@ import {
 
 export function Rodape() {
   const [aberto, setAberto] = useState(false);
+  const areaTemas = useRef<HTMLDivElement>(null);
   const [tema, setTema] = useState<TemaId>("original");
   const [cor, setCor] = useState("#2f7d76");
 
