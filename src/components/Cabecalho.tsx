@@ -6,6 +6,7 @@ import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
+import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
