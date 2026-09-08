@@ -144,7 +144,7 @@ export function Backup({
 
   /** Laço automático: sincroniza sozinho enquanto houver vínculo. */
   useEffect(() => {
-    if (!sala) return;
+    if (!sala || semAuto) return;
     let vivo = true;
     let recarregando = false;
 
