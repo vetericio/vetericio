@@ -90,8 +90,12 @@ function codigoDaUrl(texto: string): string | null {
   }
 }
 
-export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {}) {
-  const [aberto, setAberto] = useState(false);
+export function Backup({
+  mostrarBotao = true,
+  sempreAberto = false,
+  semAuto = false,
+}: { mostrarBotao?: boolean; sempreAberto?: boolean; semAuto?: boolean } = {}) {
+  const [aberto, setAberto] = useState(sempreAberto);
   const caixa = useRef<HTMLDivElement>(null);
   const [aba, setAba] = useState<Aba>("gerar");
   const [aviso, setAviso] = useState<Aviso>(null);
@@ -117,18 +121,6 @@ export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {})
 
   useEffect(() => pararCamera, []);
 
-  // O menu lateral pede para abrir esta área.
-  useEffect(() => {
-    const abrir = () => {
-      setAberto(true);
-      window.setTimeout(
-        () => caixa.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-        80,
-      );
-    };
-    window.addEventListener("veterico-abrir-sincronizacao", abrir);
-    return () => window.removeEventListener("veterico-abrir-sincronizacao", abrir);
-  }, []);
 
   /* ---------- Sincronização automática nos dois sentidos ---------- */
 
@@ -152,7 +144,7 @@ export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {})
 
   /** Laço automático: sincroniza sozinho enquanto houver vínculo. */
   useEffect(() => {
-    if (!sala) return;
+    if (!sala || semAuto) return;
     let vivo = true;
     let recarregando = false;
 
@@ -181,7 +173,7 @@ export function Backup({ mostrarBotao = true }: { mostrarBotao?: boolean } = {})
       window.removeEventListener("online", aoVoltar);
       document.removeEventListener("visibilitychange", aoVoltar);
     };
-  }, [sala, sincronizar]);
+  }, [sala, sincronizar, semAuto]);
 
   // Abre a restauração/conexão direto quando o link do QR foi aberto no navegador.
   useEffect(() => {

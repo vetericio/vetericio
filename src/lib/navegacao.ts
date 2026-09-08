@@ -15,4 +15,6 @@ export const LINKS_MENU = [
   { to: "/alarmes", rotulo: "Alarmes" },
   { to: "/plantoes", rotulo: "Plantões" },
   { to: "/assinar", rotulo: "Assinar um documento" },
+  { to: "/temas", rotulo: "Temas" },
+  { to: "/sincronizacao", rotulo: "Sincronização" },
 ] as const;

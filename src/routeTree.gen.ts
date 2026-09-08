@@ -17,6 +17,8 @@ import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as RegistrosRouteImport } from './routes/registros'
+import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
+import { Route as TemasRouteImport } from './routes/temas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +60,16 @@ const RegistrosRoute = RegistrosRouteImport.update({
   path: '/registros',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SincronizacaoRoute = SincronizacaoRouteImport.update({
+  id: '/sincronizacao',
+  path: '/sincronizacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemasRoute = TemasRouteImport.update({
+  id: '/temas',
+  path: '/temas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +80,8 @@ export interface FileRoutesByFullPath {
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
+  '/sincronizacao': typeof SincronizacaoRoute
+  '/temas': typeof TemasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +92,8 @@ export interface FileRoutesByTo {
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
+  '/sincronizacao': typeof SincronizacaoRoute
+  '/temas': typeof TemasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +105,8 @@ export interface FileRoutesById {
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
+  '/sincronizacao': typeof SincronizacaoRoute
+  '/temas': typeof TemasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +119,8 @@ export interface FileRouteTypes {
     | '/medicacoes'
     | '/plantoes'
     | '/registros'
+    | '/sincronizacao'
+    | '/temas'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +131,8 @@ export interface FileRouteTypes {
     | '/medicacoes'
     | '/plantoes'
     | '/registros'
+    | '/sincronizacao'
+    | '/temas'
   id:
     | '__root__'
     | '/'
@@ -121,6 +143,8 @@ export interface FileRouteTypes {
     | '/medicacoes'
     | '/plantoes'
     | '/registros'
+    | '/sincronizacao'
+    | '/temas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +156,8 @@ export interface RootRouteChildren {
   MedicacoesRoute: typeof MedicacoesRoute
   PlantoesRoute: typeof PlantoesRoute
   RegistrosRoute: typeof RegistrosRoute
+  SincronizacaoRoute: typeof SincronizacaoRoute
+  TemasRoute: typeof TemasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,6 +218,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegistrosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sincronizacao': {
+      id: '/sincronizacao'
+      path: '/sincronizacao'
+      fullPath: '/sincronizacao'
+      preLoaderRoute: typeof SincronizacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/temas': {
+      id: '/temas'
+      path: '/temas'
+      fullPath: '/temas'
+      preLoaderRoute: typeof TemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,6 +244,8 @@ const rootRouteChildren: RootRouteChildren = {
   MedicacoesRoute: MedicacoesRoute,
   PlantoesRoute: PlantoesRoute,
   RegistrosRoute: RegistrosRoute,
+  SincronizacaoRoute: SincronizacaoRoute,
+  TemasRoute: TemasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
