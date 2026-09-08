@@ -121,18 +121,6 @@ export function Backup({
 
   useEffect(() => pararCamera, []);
 
-  // O menu lateral pede para abrir esta área.
-  useEffect(() => {
-    const abrir = () => {
-      setAberto(true);
-      window.setTimeout(
-        () => caixa.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-        80,
-      );
-    };
-    window.addEventListener("veterico-abrir-sincronizacao", abrir);
-    return () => window.removeEventListener("veterico-abrir-sincronizacao", abrir);
-  }, []);
 
   /* ---------- Sincronização automática nos dois sentidos ---------- */
 
