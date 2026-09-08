@@ -10,18 +10,7 @@ import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
-const LINKS = [
-  { to: "/", rotulo: "Início", exato: true },
-  { to: "/registros", rotulo: "Animais internados", exato: false },
-  { to: "/anamnese", rotulo: "Anamnese", exato: false },
-  { to: "/medicacoes", rotulo: "Medicações", exato: false },
-  { to: "/curva", rotulo: "Curva", exato: false },
-  { to: "/alarmes", rotulo: "Alarmes", exato: false },
-  { to: "/plantoes", rotulo: "Plantões", exato: false },
-] as const;
-
-/** Abas que só funcionam com plantão ativo. */
-const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes"];
+import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 
 
 export function Cabecalho() {

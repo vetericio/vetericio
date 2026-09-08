@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
+import { Route as AssinarRouteImport } from './routes/assinar'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
@@ -30,6 +31,11 @@ const AlarmesRoute = AlarmesRouteImport.update({
 const AnamneseRoute = AnamneseRouteImport.update({
   id: '/anamnese',
   path: '/anamnese',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssinarRoute = AssinarRouteImport.update({
+  id: '/assinar',
+  path: '/assinar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CurvaRoute = CurvaRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
+  '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
+  '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
+  '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
   '/medicacoes': typeof MedicacoesRoute
   '/plantoes': typeof PlantoesRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alarmes'
     | '/anamnese'
+    | '/assinar'
     | '/curva'
     | '/medicacoes'
     | '/plantoes'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alarmes'
     | '/anamnese'
+    | '/assinar'
     | '/curva'
     | '/medicacoes'
     | '/plantoes'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alarmes'
     | '/anamnese'
+    | '/assinar'
     | '/curva'
     | '/medicacoes'
     | '/plantoes'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlarmesRoute: typeof AlarmesRoute
   AnamneseRoute: typeof AnamneseRoute
+  AssinarRoute: typeof AssinarRoute
   CurvaRoute: typeof CurvaRoute
   MedicacoesRoute: typeof MedicacoesRoute
   PlantoesRoute: typeof PlantoesRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/anamnese'
       fullPath: '/anamnese'
       preLoaderRoute: typeof AnamneseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assinar': {
+      id: '/assinar'
+      path: '/assinar'
+      fullPath: '/assinar'
+      preLoaderRoute: typeof AssinarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/curva': {
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlarmesRoute: AlarmesRoute,
   AnamneseRoute: AnamneseRoute,
+  AssinarRoute: AssinarRoute,
   CurvaRoute: CurvaRoute,
   MedicacoesRoute: MedicacoesRoute,
   PlantoesRoute: PlantoesRoute,
