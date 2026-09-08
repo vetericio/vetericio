@@ -17,6 +17,8 @@ export const CHAVES_BACKUP = {
   notas: "veterico-bloco-notas",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
+  assinatura: "veterico-assinatura-v1",
+  carimbo: "veterico-carimbo-v1",
 } as const;
 
 export type ChaveBackup = keyof typeof CHAVES_BACKUP;
