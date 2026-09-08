@@ -40,22 +40,26 @@ export function Rodape() {
     aplicarCorPersonalizada(nova);
   };
 
+  // O menu lateral pede para abrir os temas.
+  useEffect(() => {
+    const abrir = () => {
+      setAberto(true);
+      window.setTimeout(
+        () => areaTemas.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        80,
+      );
+    };
+    window.addEventListener("veterico-abrir-temas", abrir);
+    return () => window.removeEventListener("veterico-abrir-temas", abrir);
+  }, []);
+
   return (
     <footer className="mx-auto w-full max-w-5xl px-4 pb-8 text-center">
-      <div className="flex flex-wrap items-start justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => setAberto((v) => !v)}
-          className="rounded-lg bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/70"
-        >
-          Temas
-        </button>
-        <Backup />
-        
-      </div>
+      <Backup mostrarBotao={false} />
 
       {aberto && (
-        <div className="mx-auto mt-2 max-w-md">
+        <div ref={areaTemas} className="mx-auto mt-2 max-w-md">
+
 
           <div className="flex flex-wrap justify-center gap-2">
             {TEMAS.map((t) => (
