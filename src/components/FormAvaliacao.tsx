@@ -249,8 +249,8 @@ export function FormAvaliacao({
       </div>
 
 
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="flex-1">
+      <div className="mt-3 flex flex-row items-start gap-3">
+        <div className="flex-1 min-w-0">
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Espécie
           </p>
@@ -276,7 +276,7 @@ export function FormAvaliacao({
           </div>
         </div>
 
-        <div className="shrink-0 sm:w-32">
+        <div className="shrink-0 w-28">
           <label className="block">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Peso (kg)
