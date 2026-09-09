@@ -1,15 +1,19 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lerReceitaComIA } from "@/lib/medicacoes.functions";
-import type { Medicacao } from "@/lib/ficha";
+import type { Especie as EspecieFicha, Medicacao } from "@/lib/ficha";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { doseDaEspecie, doseEfetiva, faixaDe, viasDe } from "@/lib/medicamentos";
 
 type Props = {
   lista: Medicacao[];
   onChange: (medicacoes: Medicacao[]) => void;
   /** No card do animal (Animais internados) a lista é só para leitura. */
   somenteLeitura?: boolean;
+  /** Espécie do animal, usada para puxar a dose padrão cadastrada. */
+  especie?: EspecieFicha;
 };
 
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
