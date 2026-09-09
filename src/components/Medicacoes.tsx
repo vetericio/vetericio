@@ -248,6 +248,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const [refCalculo, setRefCalculo] = useState<Sugestao | null>(null);
   /** Dose usada neste lançamento (editável, sem alterar o cadastro). */
   const [doseUsada, setDoseUsada] = useState("");
+  /** Modo rápido: medicação do cadastro escolhida por linha. */
+  const [refsRapidos, setRefsRapidos] = useState<Record<number, Sugestao | null>>({});
+  /** Modo rápido: dose deste atendimento por linha (editável). */
+  const [dosesRapidas, setDosesRapidas] = useState<Record<number, string>>({});
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
@@ -327,6 +331,36 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const volumeCalculado = calculo?.ok ? `${calculo.volumeTexto}` : "";
   const unidadeCalculada = calculo?.ok ? calculo.unidade : "";
 
+  /** Medicação cadastrada correspondente à linha do modo rápido. */
+  const refDaLinha = (i: number): Sugestao | null => {
+    const escolhido = refsRapidos[i];
+    if (escolhido) return escolhido;
+    const termo = (nomesRapidos[i] ?? "").trim().toLocaleLowerCase("pt-BR");
+    if (!termo) return null;
+    return sugestoes.find((s) => s.nome.toLocaleLowerCase("pt-BR") === termo) ?? null;
+  };
+
+  const doseDaLinha = (i: number, ref: Sugestao | null): string =>
+    dosesRapidas[i] ?? ref?.dosePadrao ?? "";
+
+  /** mL da linha do modo rápido, sempre com os dados cadastrados. */
+  const calculoDaLinha = (i: number, ref: Sugestao | null) => {
+    if (!ref) return null;
+    const dose = doseDaLinha(i, ref);
+    if (!dose.trim() || !ref.concValor.trim())
+      return {
+        ok: false as const,
+        motivo: "Cálculo indisponível: falta dose ou concentração cadastrada.",
+      };
+    return calcularDose({
+      peso,
+      dose,
+      concentracaoValor: ref.concValor,
+      concentracaoUnidade: ref.concUnidade,
+      unidadeDose: ref.unidadeDose,
+    });
+  };
+
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
   const usarEspecial = (item: (typeof especiais)[number]) => {
     const conta =
@@ -364,16 +398,28 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   };
 
   const enviarRapido = () => {
-    const itens: Medicacao[] = nomesRapidos
-      .map((n) => normalizarNomeMedicamento(n))
-      .filter(Boolean)
-      .map((n) => ({ nome: n, dose: "", duracao: "" }));
+    const itens: Medicacao[] = [];
+    nomesRapidos.forEach((n, i) => {
+      const nomeLimpo = normalizarNomeMedicamento(n);
+      if (!nomeLimpo) return;
+      const ref = refDaLinha(i);
+      const dose = doseDaLinha(i, ref);
+      const conta = calculoDaLinha(i, ref);
+      itens.push({
+        nome: nomeLimpo,
+        dose: ref && dose.trim() ? `${dose} ${ref.unidadeDose}`.trim() : "",
+        duracao: ref?.intervalo ? `${ref.intervalo}h` : "",
+        ...(conta?.ok ? { quantidade: `${conta.volumeTexto} ${conta.unidade}` } : {}),
+      });
+    });
     if (itens.length === 0) {
       toast.error("Escreva o nome de ao menos uma medicação.");
       return;
     }
     onChange([...lista, ...itens]);
     setNomesRapidos(["", ""]);
+    setRefsRapidos({});
+    setDosesRapidas({});
     toast.success(
       itens.length === 1 ? "Medicação adicionada." : `${itens.length} medicações adicionadas.`,
     );
@@ -675,26 +721,90 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
             {!formCompleto && editando === null ? (
               <>
                 <div className="space-y-1.5" ref={rapidosRef}>
-                  {nomesRapidos.map((valor, i) => (
-                    <CampoNomeMedicacao
-                      key={i}
-                      value={valor}
-                      opcoes={sugestoes}
-                      onChange={(v) =>
-                        setNomesRapidos((atual) => atual.map((n, j) => (j === i ? v : n)))
-                      }
-                      onFocus={() => {
-                        if (i === nomesRapidos.length - 1)
-                          setNomesRapidos((atual) => [...atual, ""]);
-                      }}
-                      onEnter={() => {
-                        const campos = rapidosRef.current?.querySelectorAll("input");
-                        campos?.[i + 1]?.focus();
-                      }}
-                      placeholder={`Medicação ${i + 1}`}
-                      className={`${campo} w-full`}
-                    />
-                  ))}
+                  {nomesRapidos.map((valor, i) => {
+                    const ref = refDaLinha(i);
+                    const dose = doseDaLinha(i, ref);
+                    const conta = calculoDaLinha(i, ref);
+                    return (
+                      <div key={i} className="space-y-1">
+                        <CampoNomeMedicacao
+                          value={valor}
+                          opcoes={sugestoes}
+                          onChange={(v) => {
+                            setNomesRapidos((atual) => atual.map((n, j) => (j === i ? v : n)));
+                            setRefsRapidos((atual) => ({ ...atual, [i]: null }));
+                            setDosesRapidas((atual) => {
+                              const copia = { ...atual };
+                              delete copia[i];
+                              return copia;
+                            });
+                          }}
+                          onEscolher={(s) => {
+                            setRefsRapidos((atual) => ({ ...atual, [i]: s }));
+                            setDosesRapidas((atual) => {
+                              const copia = { ...atual };
+                              delete copia[i];
+                              return copia;
+                            });
+                          }}
+                          onFocus={() => {
+                            if (i === nomesRapidos.length - 1)
+                              setNomesRapidos((atual) => [...atual, ""]);
+                          }}
+                          onEnter={() => {
+                            const campos = rapidosRef.current?.querySelectorAll("input");
+                            campos?.[i + 1]?.focus();
+                          }}
+                          placeholder={`Medicação ${i + 1}`}
+                          className={`${campo} w-full`}
+                        />
+
+                        {ref && (
+                          <div className="rounded-lg bg-secondary/60 p-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="flex items-center gap-1.5 text-xs text-foreground">
+                                Dose neste atendimento
+                                <input
+                                  value={dose}
+                                  onChange={(e) => {
+                                    const v = e.target.value
+                                      .replace(/[^\d,.]/g, "")
+                                      .replace(".", ",");
+                                    setDosesRapidas((atual) => ({ ...atual, [i]: v }));
+                                  }}
+                                  inputMode="decimal"
+                                  className={`${campo} w-20 tabular-nums`}
+                                />
+                                <span className="text-muted-foreground">{ref.unidadeDose}</span>
+                              </label>
+                              {ref.dosePadrao && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  dose padrão cadastrada: {ref.dosePadrao} {ref.unidadeDose}
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1.5 text-xs">
+                              {conta?.ok ? (
+                                <span className="font-semibold text-foreground">
+                                  {conta.volumeTexto} {conta.unidade}
+                                  <span className="ml-1.5 font-normal text-muted-foreground">
+                                    ({peso.trim() || "peso ?"} kg × {dose} {ref.unidadeDose} ÷{" "}
+                                    {ref.concValor} {ref.concUnidade})
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {conta && !conta.ok
+                                    ? conta.motivo
+                                    : "Cálculo indisponível: falta dose ou concentração cadastrada."}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="flex justify-end border-t border-border pt-2">
