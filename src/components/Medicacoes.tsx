@@ -428,6 +428,28 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
                 : "Adicionar várias de uma vez (só o nome)"}
             </button>
 
+            {especiais.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  ⭐ Medicações cadastradas (toque para puxar com a dose padrão)
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {especiais.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => usarEspecial(m)}
+                      className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                    >
+                      {m.nome}
+                      {m.dose ? ` · ${m.dose}` : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+
             {!formCompleto && editando === null ? (
               <>
                 <div className="space-y-1.5">
