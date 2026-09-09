@@ -460,6 +460,12 @@ export function FormAvaliacao({
       </div>
 
 
+      <DialogoAlerta
+        regra={alerta}
+        onFechar={() => setAlerta(null)}
+        onConfirmar={confirmarAlerta}
+      />
+
       <AlertDialog open={Boolean(pendente)} onOpenChange={(o) => !o && setPendente(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
