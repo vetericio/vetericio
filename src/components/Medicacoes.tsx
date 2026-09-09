@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lerReceitaComIA } from "@/lib/medicacoes.functions";
@@ -109,7 +109,7 @@ function CampoNomeMedicacao({
   opcoes: Sugestao[];
   placeholder?: string;
   className?: string;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
+  inputRef?: RefObject<HTMLInputElement | null>;
   onEnter?: () => void;
   onFocus?: () => void;
 }) {
