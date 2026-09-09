@@ -171,8 +171,10 @@ function PaginaMedicacoes() {
             onExcluir={() => remover(m.id)}
             onAvulsa={() => setAvulsa(m)}
             onMinistrar={() => setMinistrando(m)}
+            onAlternarEspecial={() => salvar({ ...m, especial: !m.especial })}
           />
         ))}
+
 
       </ul>
 
