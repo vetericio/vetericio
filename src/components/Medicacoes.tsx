@@ -5,7 +5,13 @@ import { lerReceitaComIA } from "@/lib/medicacoes.functions";
 import type { Especie as EspecieFicha, Medicacao } from "@/lib/ficha";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { doseDaEspecie, doseEfetiva, faixaDe, viasDe } from "@/lib/medicamentos";
+import {
+  calcularDose,
+  doseDaEspecie,
+  doseEfetiva,
+  faixaDe,
+  viasDe,
+} from "@/lib/medicamentos";
 
 type Props = {
   lista: Medicacao[];
@@ -14,6 +20,8 @@ type Props = {
   somenteLeitura?: boolean;
   /** Espécie do animal, usada para puxar a dose padrão cadastrada. */
   especie?: EspecieFicha;
+  /** Peso do animal (kg) vindo do cadastro; base do cálculo do volume. */
+  peso?: string;
 };
 
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
@@ -89,7 +97,20 @@ type Sugestao = {
   /** Concentração cadastrada, só como pista visual. */
   detalhe: string;
   intervalo: string;
+  /** Dose padrão cadastrada (só número), editável no lançamento. */
+  dosePadrao: string;
+  /** Unidade da dose cadastrada, ex.: "mg/kg". */
+  unidadeDose: string;
+  concValor: string;
+  concUnidade: string;
 };
+
+/** Rótulo curto da espécie, como pedido: "Cão" / "Gato". */
+function rotuloEspecie(e: EspecieFicha | undefined): string {
+  if (e === "Cachorro") return "Cão";
+  if (e === "Gato") return "Gato";
+  return "";
+}
 
 
 /** Campo de nome com sugestões vindas apenas do cadastro do Veterício. */
@@ -208,7 +229,7 @@ function CampoNomeMedicacao({
   );
 }
 
-export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }: Props) {
+export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, peso = "" }: Props) {
 
   const { medicamentos } = useMedicamentos();
   const [aberto, setAberto] = useState(true);
@@ -223,6 +244,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
   // Padrão: modo rápido (só nomes). A setinha abre o formulário completo.
   const [formCompleto, setFormCompleto] = useState(false);
   const [nomesRapidos, setNomesRapidos] = useState<string[]>(["", ""]);
+  /** Medicação do cadastro escolhida no formulário: base do cálculo do volume. */
+  const [refCalculo, setRefCalculo] = useState<Sugestao | null>(null);
+  /** Dose usada neste lançamento (editável, sem alterar o cadastro). */
+  const [doseUsada, setDoseUsada] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
@@ -248,6 +273,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
           dose,
           via: viasDe(m)[0] ?? "",
           intervalo: (d.intervalo ?? "").trim(),
+          dosePadrao: padrao === null ? "" : String(padrao),
+          unidadeDose: f.unidade,
+          concValor: m.concentracaoValor ?? "",
+          concUnidade: m.concentracaoUnidade ?? "",
         };
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -260,6 +289,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       .filter((m) => m.nome.trim())
       .map((m) => {
         const d = doseDaEspecie(m, chave);
+        const f = faixaDe(d);
+        const padrao = doseEfetiva(d);
         return {
           id: m.id,
           nome: normalizarNomeMedicamento(m.nome),
@@ -267,6 +298,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
             ? `${m.concentracaoValor} ${m.concentracaoUnidade ?? ""}`.trim()
             : "",
           intervalo: (d.intervalo ?? "").trim(),
+          dosePadrao: padrao === null ? "" : String(padrao).replace(".", ","),
+          unidadeDose: f.unidade,
+          concValor: m.concentracaoValor ?? "",
+          concUnidade: m.concentracaoUnidade ?? "",
         };
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -274,8 +309,36 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
 
 
 
+  /** mL = peso × dose ÷ concentração, sempre com os dados cadastrados. */
+  const calculo = useMemo(() => {
+    if (!refCalculo) return null;
+    if (!doseUsada.trim() || !refCalculo.concValor.trim()) {
+      return { ok: false as const, motivo: "Cálculo indisponível: falta dose ou concentração cadastrada." };
+    }
+    return calcularDose({
+      peso,
+      dose: doseUsada,
+      concentracaoValor: refCalculo.concValor,
+      concentracaoUnidade: refCalculo.concUnidade,
+      unidadeDose: refCalculo.unidadeDose,
+    });
+  }, [refCalculo, doseUsada, peso]);
+
+  const volumeCalculado = calculo?.ok ? `${calculo.volumeTexto}` : "";
+  const unidadeCalculada = calculo?.ok ? calculo.unidade : "";
+
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
   const usarEspecial = (item: (typeof especiais)[number]) => {
+    const conta =
+      item.dosePadrao && item.concValor
+        ? calcularDose({
+            peso,
+            dose: item.dosePadrao,
+            concentracaoValor: item.concValor,
+            concentracaoUnidade: item.concUnidade,
+            unidadeDose: item.unidadeDose,
+          })
+        : null;
     onChange([
       ...lista,
       {
@@ -283,6 +346,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
         dose: item.dose,
         duracao: item.intervalo ? `${item.intervalo}h` : "",
         ...(item.via ? { via: item.via } : {}),
+        ...(conta?.ok ? { quantidade: `${conta.volumeTexto} ${conta.unidade}` } : {}),
       },
     ]);
     toast.success(`${item.nome} adicionada. A dose padrão continua editável.`);
@@ -295,6 +359,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
     setDuracao("");
     setDuracaoOutros("");
     setEditando(null);
+    setRefCalculo(null);
+    setDoseUsada("");
   };
 
   const enviarRapido = () => {
@@ -319,7 +385,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       toast.error("Escreva o nome da medicação.");
       return;
     }
-    const dose = montarDose(quantidade, unidade);
+    const quantidadeFinal = quantidade.trim() || volumeCalculado;
+    const dose = montarDose(quantidadeFinal, unidade);
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
       return;
@@ -577,6 +644,12 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
                 : "Adicionar várias de uma vez (só o nome)"}
             </button>
 
+            <p className="text-[11px] font-semibold text-muted-foreground">
+              {rotuloEspecie(especie) ? `Espécie: ${rotuloEspecie(especie)}` : "Espécie: não informada"}
+              {" | "}
+              {peso.trim() ? `Peso: ${peso.trim()} kg` : "Peso: não informado na ficha"}
+            </p>
+
             {especiais.length > 0 && (
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground">
@@ -643,6 +716,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
                 opcoes={sugestoes}
                 onChange={setNome}
                 onEscolher={(s) => {
+                  setRefCalculo(s);
+                  setDoseUsada(s.dosePadrao);
+                  setQuantidade("");
                   const alvo = `${s.intervalo}h`;
                   if ((DURACOES_PADRAO as readonly string[]).includes(alvo))
                     setDuracao(alvo as DuracaoPadrao);
@@ -661,7 +737,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}
-                  value={quantidade}
+                  value={quantidade || volumeCalculado}
                   onChange={(e) =>
                     setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value)
                   }
@@ -732,6 +808,48 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
                 )}
               </div>
             </div>
+            {refCalculo && (
+              <div className="rounded-lg bg-secondary/60 p-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-foreground">
+                    Dose neste atendimento
+                    <input
+                      value={doseUsada}
+                      onChange={(e) => {
+                        setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
+                        setQuantidade("");
+                      }}
+                      inputMode="decimal"
+                      className={`${campo} w-20 tabular-nums`}
+                    />
+                    <span className="text-muted-foreground">{refCalculo.unidadeDose}</span>
+                  </label>
+                  {refCalculo.dosePadrao && (
+                    <span className="text-[11px] text-muted-foreground">
+                      dose padrão cadastrada: {refCalculo.dosePadrao} {refCalculo.unidadeDose}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs">
+                  {calculo?.ok ? (
+                    <span className="font-semibold text-foreground">
+                      {volumeCalculado} {unidadeCalculada}
+                      <span className="ml-1.5 font-normal text-muted-foreground">
+                        ({peso.trim()} kg × {doseUsada} {refCalculo.unidadeDose} ÷{" "}
+                        {refCalculo.concValor} {refCalculo.concUnidade})
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {calculo && !calculo.ok
+                        ? calculo.motivo
+                        : "Cálculo indisponível: falta dose ou concentração cadastrada."}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 border-t border-border pt-2">
               <button
                 type="button"

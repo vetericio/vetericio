@@ -100,7 +100,7 @@ function Index() {
         return resto;
       })()
     : anterior
-      ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "" }
+      ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" }
       : REGISTRO_VAZIO;
   const sujo = !salvando && JSON.stringify(form) !== JSON.stringify(baseForm);
 
@@ -125,7 +125,7 @@ function Index() {
       const alvo = registros.find((r) => r.id === idAtualizar);
       if (alvo) {
         setAnterior(alvo);
-        setForm({ ...REGISTRO_VAZIO, animal: alvo.animal, especie: alvo.especie ?? "" });
+        setForm({ ...REGISTRO_VAZIO, animal: alvo.animal, especie: alvo.especie ?? "", peso: alvo.peso ?? "" });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
