@@ -104,6 +104,41 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
   const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
 
+  /** ⭐ Medicações especiais do cadastro, em ordem alfabética, com a dose padrão. */
+  const especiais = useMemo(() => {
+    const chave = especie === "Gato" ? "gato" : "cao";
+    return medicamentos
+      .filter((m) => m.especial && m.nome.trim())
+      .map((m) => {
+        const d = doseDaEspecie(m, chave);
+        const f = faixaDe(d);
+        const padrao = doseEfetiva(d);
+        const dose = padrao === null ? "" : `${String(padrao).replace(".", ",")} ${f.unidade}`;
+        return {
+          id: m.id,
+          nome: normalizarNomeMedicamento(m.nome),
+          dose,
+          via: viasDe(m)[0] ?? "",
+          intervalo: (d.intervalo ?? "").trim(),
+        };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [medicamentos, especie]);
+
+  /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
+  const usarEspecial = (item: (typeof especiais)[number]) => {
+    onChange([
+      ...lista,
+      {
+        nome: item.nome,
+        dose: item.dose,
+        duracao: item.intervalo ? `${item.intervalo}h` : "",
+        ...(item.via ? { via: item.via } : {}),
+      },
+    ]);
+    toast.success(`${item.nome} adicionada. A dose padrão continua editável.`);
+  };
+
   const resetForm = () => {
     setNome("");
     setQuantidade("");
