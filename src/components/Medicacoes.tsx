@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lerReceitaComIA } from "@/lib/medicacoes.functions";
@@ -83,7 +83,133 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
   return modo;
 }
 
+type Sugestao = {
+  id: string;
+  nome: string;
+  /** Concentração cadastrada, só como pista visual. */
+  detalhe: string;
+  intervalo: string;
+};
+
+
+/** Campo de nome com sugestões vindas apenas do cadastro do Veterício. */
+function CampoNomeMedicacao({
+  value,
+  onChange,
+  onEscolher,
+  opcoes,
+  placeholder,
+  className,
+  inputRef,
+  onEnter,
+  onFocus,
+}: {
+  value: string;
+  onChange: (valor: string) => void;
+  onEscolher?: (s: Sugestao) => void;
+  opcoes: Sugestao[];
+  placeholder?: string;
+  className?: string;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  onEnter?: () => void;
+  onFocus?: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [ativo, setAtivo] = useState(0);
+
+  const filtradas = useMemo(() => {
+    const termo = value.trim().toLocaleLowerCase("pt-BR");
+    if (termo.length < 2) return [];
+    const comeca: Sugestao[] = [];
+    const contem: Sugestao[] = [];
+    for (const o of opcoes) {
+      const alvo = o.nome.toLocaleLowerCase("pt-BR");
+      if (alvo === termo) continue;
+      if (alvo.startsWith(termo)) comeca.push(o);
+      else if (alvo.includes(termo)) contem.push(o);
+    }
+    return [...comeca, ...contem].slice(0, 8);
+  }, [opcoes, value]);
+
+  const mostrar = aberto && filtradas.length > 0;
+
+  const escolher = (s: Sugestao) => {
+    onChange(s.nome);
+    onEscolher?.(s);
+    setAberto(false);
+    setAtivo(0);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setAberto(true);
+          setAtivo(0);
+        }}
+        onFocus={() => {
+          setAberto(true);
+          onFocus?.();
+        }}
+        onBlur={() => window.setTimeout(() => setAberto(false), 120)}
+        onKeyDown={(e) => {
+          if (mostrar && e.key === "ArrowDown") {
+            e.preventDefault();
+            setAtivo((i) => (i + 1) % filtradas.length);
+            return;
+          }
+          if (mostrar && e.key === "ArrowUp") {
+            e.preventDefault();
+            setAtivo((i) => (i - 1 + filtradas.length) % filtradas.length);
+            return;
+          }
+          if (e.key === "Escape") {
+            setAberto(false);
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const alvo = mostrar ? filtradas[ativo] : undefined;
+            if (alvo) escolher(alvo);
+            else onEnter?.();
+            return;
+          }
+        }}
+        enterKeyHint="next"
+        placeholder={placeholder}
+        className={className}
+      />
+      {mostrar && (
+        <ul className="absolute left-0 right-0 top-full z-40 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+          {filtradas.map((s, i) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => escolher(s)}
+                className={`block w-full px-2.5 py-1.5 text-left text-sm text-foreground ${
+                  i === ativo ? "bg-secondary" : "hover:bg-secondary/60"
+                }`}
+              >
+                {s.nome}
+                {s.detalhe ? (
+                  <span className="text-xs text-muted-foreground"> · {s.detalhe}</span>
+                ) : null}
+
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }: Props) {
+
   const { medicamentos } = useMedicamentos();
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
@@ -100,6 +226,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
+  const rapidosRef = useRef<HTMLDivElement>(null);
+
   const quantidadeRef = useRef<HTMLInputElement>(null);
   const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
@@ -124,6 +252,27 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [medicamentos, especie]);
+
+  /** Sugestões ao digitar: só o que está cadastrado no Veterício. */
+  const sugestoes = useMemo<Sugestao[]>(() => {
+    const chave = especie === "Gato" ? "gato" : "cao";
+    return medicamentos
+      .filter((m) => m.nome.trim())
+      .map((m) => {
+        const d = doseDaEspecie(m, chave);
+        return {
+          id: m.id,
+          nome: normalizarNomeMedicamento(m.nome),
+          detalhe: m.concentracaoValor
+            ? `${m.concentracaoValor} ${m.concentracaoUnidade ?? ""}`.trim()
+            : "",
+          intervalo: (d.intervalo ?? "").trim(),
+        };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [medicamentos, especie]);
+
+
 
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
   const usarEspecial = (item: (typeof especiais)[number]) => {
@@ -452,34 +601,29 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
 
             {!formCompleto && editando === null ? (
               <>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" ref={rapidosRef}>
                   {nomesRapidos.map((valor, i) => (
-                    <input
+                    <CampoNomeMedicacao
                       key={i}
                       value={valor}
-                      onChange={(e) =>
-                        setNomesRapidos((atual) =>
-                          atual.map((n, j) => (j === i ? e.target.value : n)),
-                        )
+                      opcoes={sugestoes}
+                      onChange={(v) =>
+                        setNomesRapidos((atual) => atual.map((n, j) => (j === i ? v : n)))
                       }
                       onFocus={() => {
                         if (i === nomesRapidos.length - 1)
                           setNomesRapidos((atual) => [...atual, ""]);
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const campos =
-                            e.currentTarget.parentElement?.querySelectorAll("input");
-                          campos?.[i + 1]?.focus();
-                        }
+                      onEnter={() => {
+                        const campos = rapidosRef.current?.querySelectorAll("input");
+                        campos?.[i + 1]?.focus();
                       }}
-                      enterKeyHint="next"
                       placeholder={`Medicação ${i + 1}`}
                       className={`${campo} w-full`}
                     />
                   ))}
                 </div>
+
                 <div className="flex justify-end border-t border-border pt-2">
                   <button
                     type="button"
@@ -493,20 +637,27 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
             ) : (
             <>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              <input
-                ref={nomeRef}
+              <CampoNomeMedicacao
+                inputRef={nomeRef}
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    quantidadeRef.current?.focus();
+                opcoes={sugestoes}
+                onChange={setNome}
+                onEscolher={(s) => {
+                  const alvo = `${s.intervalo}h`;
+                  if ((DURACOES_PADRAO as readonly string[]).includes(alvo))
+                    setDuracao(alvo as DuracaoPadrao);
+                  else if (s.intervalo) {
+                    setDuracao(DURACAO_OUTROS);
+                    setDuracaoOutros(alvo);
                   }
+                  quantidadeRef.current?.focus();
                 }}
-                enterKeyHint="next"
+
+                onEnter={() => quantidadeRef.current?.focus()}
                 placeholder="Medicação"
                 className={campo}
               />
+
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}

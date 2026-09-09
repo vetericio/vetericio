@@ -171,8 +171,10 @@ function PaginaMedicacoes() {
             onExcluir={() => remover(m.id)}
             onAvulsa={() => setAvulsa(m)}
             onMinistrar={() => setMinistrando(m)}
+            onAlternarEspecial={() => salvar({ ...m, especial: !m.especial })}
           />
         ))}
+
 
       </ul>
 
@@ -287,6 +289,7 @@ type CardProps = {
   onExcluir: () => void;
   onAvulsa: () => void;
   onMinistrar: () => void;
+  onAlternarEspecial: () => void;
 };
 
 function CardMedicamento({
@@ -297,7 +300,9 @@ function CardMedicamento({
   onExcluir,
   onAvulsa,
   onMinistrar,
+  onAlternarEspecial,
 }: CardProps) {
+
   const [confirmando, setConfirmando] = useState(false);
   const dose = doseDaEspecie(m, especie);
   const faixa = faixaDe(dose);
@@ -355,7 +360,25 @@ function CardMedicamento({
           )}
           <p className="text-xs font-semibold text-muted-foreground">{concentracao || "—"}</p>
         </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+        <button
+          type="button"
+          onClick={onAlternarEspecial}
+          aria-pressed={Boolean(m.especial)}
+          aria-label={
+            m.especial
+              ? `Tirar ${m.nome} dos atalhos da ficha`
+              : `Colocar ${m.nome} nos atalhos da ficha`
+          }
+          title="Atalho na ficha do animal"
+          className={`rounded-lg px-1.5 py-1 text-base leading-none hover:bg-secondary/70 ${
+            m.especial ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          {m.especial ? "★" : "☆"}
+        </button>
         <DropdownMenu>
+
           <DropdownMenuTrigger asChild>
             <button
               type="button"
@@ -372,6 +395,8 @@ function CardMedicamento({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
+
       </div>
 
       <div className="mt-1 flex gap-2">
