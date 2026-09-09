@@ -646,7 +646,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                       </span>
                     )}
                     <span className="block truncate">
-                      {[normalizarNomeMedicamento(m.nome), m.dose, m.duracao]
+                      {[normalizarNomeMedicamento(m.nome), m.dose, m.quantidade, m.duracao]
                         .filter(Boolean)
                         .join(" · ")}
                     </span>
@@ -783,23 +783,32 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1.5 text-xs">
+                            <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-xs">
                               {conta?.ok ? (
-                                <span className="font-semibold text-foreground">
-                                  {conta.volumeTexto} {conta.unidade}
-                                  <span className="ml-1.5 font-normal text-muted-foreground">
-                                    ({peso.trim() || "peso ?"} kg × {dose} {ref.unidadeDose} ÷{" "}
-                                    {ref.concValor} {ref.concUnidade})
-                                  </span>
-                                </span>
+                                <>
+                                  <div className="rounded-md bg-background px-2 py-1.5">
+                                    <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Dose</span>
+                                    <strong className="text-foreground">{dose} {ref.unidadeDose}</strong>
+                                    <span className="block text-[10px] text-muted-foreground">
+                                      Total: {conta.doseTotalTexto}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-md bg-background px-2 py-1.5">
+                                    <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Volume</span>
+                                    <strong className="text-foreground">{conta.volumeTexto} {conta.unidade}</strong>
+                                    <span className="block text-[10px] text-muted-foreground">
+                                      {peso.trim()} kg × {dose} ÷ {ref.concValor}
+                                    </span>
+                                  </div>
+                                </>
                               ) : (
-                                <span className="text-muted-foreground">
+                                <span className="col-span-2 text-muted-foreground">
                                   {conta && !conta.ok
                                     ? conta.motivo
                                     : "Cálculo indisponível: falta dose ou concentração cadastrada."}
                                 </span>
                               )}
-                            </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -940,23 +949,32 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                     </span>
                   )}
                 </div>
-                <p className="mt-1.5 text-xs">
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-xs">
                   {calculo?.ok ? (
-                    <span className="font-semibold text-foreground">
-                      {volumeCalculado} {unidadeCalculada}
-                      <span className="ml-1.5 font-normal text-muted-foreground">
-                        ({peso.trim()} kg × {doseUsada} {refCalculo.unidadeDose} ÷{" "}
-                        {refCalculo.concValor} {refCalculo.concUnidade})
-                      </span>
-                    </span>
+                    <>
+                      <div className="rounded-md bg-background px-2 py-1.5">
+                        <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Dose</span>
+                        <strong className="text-foreground">{doseUsada} {refCalculo.unidadeDose}</strong>
+                        <span className="block text-[10px] text-muted-foreground">
+                          Total: {calculo.doseTotalTexto}
+                        </span>
+                      </div>
+                      <div className="rounded-md bg-background px-2 py-1.5">
+                        <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Volume</span>
+                        <strong className="text-foreground">{volumeCalculado} {unidadeCalculada}</strong>
+                        <span className="block text-[10px] text-muted-foreground">
+                          {peso.trim()} kg × {doseUsada} ÷ {refCalculo.concValor}
+                        </span>
+                      </div>
+                    </>
                   ) : (
-                    <span className="text-muted-foreground">
+                    <span className="col-span-2 text-muted-foreground">
                       {calculo && !calculo.ok
                         ? calculo.motivo
                         : "Cálculo indisponível: falta dose ou concentração cadastrada."}
                     </span>
                   )}
-                </p>
+                </div>
               </div>
             )}
 
