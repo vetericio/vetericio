@@ -637,20 +637,20 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
             ) : (
             <>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              <input
-                ref={nomeRef}
+              <CampoNomeMedicacao
+                inputRef={nomeRef}
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    quantidadeRef.current?.focus();
-                  }
+                opcoes={sugestoes}
+                onChange={setNome}
+                onEscolher={(s) => {
+                  if (s.intervalo) setDuracao(`${s.intervalo}h` as DuracaoPadrao);
+                  quantidadeRef.current?.focus();
                 }}
-                enterKeyHint="next"
+                onEnter={() => quantidadeRef.current?.focus()}
                 placeholder="Medicação"
                 className={campo}
               />
+
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}
