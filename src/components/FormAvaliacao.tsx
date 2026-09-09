@@ -249,45 +249,47 @@ export function FormAvaliacao({
       </div>
 
 
-      <div className="mt-3">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Espécie
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {ESPECIES.map((esp) => {
-            const ativo = valores.especie === esp;
-            return (
-              <button
-                key={esp}
-                type="button"
-                onClick={() => onChange({ ...valores, especie: (ativo ? "" : esp) as Especie })}
-                className={[
-                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                  ativo
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-                ].join(" ")}
-              >
-                {esp}
-              </button>
-            );
-          })}
+      <div className="mt-3 flex flex-row items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Espécie
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {ESPECIES.map((esp) => {
+              const ativo = valores.especie === esp;
+              return (
+                <button
+                  key={esp}
+                  type="button"
+                  onClick={() => onChange({ ...valores, especie: (ativo ? "" : esp) as Especie })}
+                  className={[
+                    "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                    ativo
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
+                  ].join(" ")}
+                >
+                  {esp}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-3">
-        <label className="block">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Peso (kg)
-          </span>
-          <input
-            value={valores.peso ?? ""}
-            onChange={(e) => set("peso", e.target.value.replace(/[^\d,.]/g, "").replace(".", ","))}
-            inputMode="decimal"
-            placeholder="Ex.: 9,9"
-            className="mt-1 w-32 rounded-lg border border-input bg-background px-3 py-2 text-sm font-semibold tabular-nums text-foreground outline-none focus:border-ring"
-          />
-        </label>
+        <div className="shrink-0 w-28">
+          <label className="block">
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Peso (kg)
+            </span>
+            <input
+              value={valores.peso ?? ""}
+              onChange={(e) => set("peso", e.target.value.replace(/[^\d,.]/g, "").replace(".", ","))}
+              inputMode="decimal"
+              placeholder="Ex.: 9,9"
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-semibold tabular-nums text-foreground outline-none focus:border-ring"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="mt-5 space-y-4">
