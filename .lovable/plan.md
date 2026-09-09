@@ -1,44 +1,50 @@
-# Módulo Pendências
+# Aba Pendências
 
-Nova aba do Veterício onde fica tudo que precisa de acompanhamento ou cobrança durante a internação: pendências comuns, medicamentos especiais e procedimentos cobráveis por ocorrência.
+Uma página nova onde fica tudo que precisa de acompanhamento e de cobrança ao tutor: as pendências da anamnese, os medicamentos especiais e os procedimentos que acontecem várias vezes (glicose, oxigênio, aquecimento).
 
-## O que você vai ver
+## O que muda para você
 
-**Nova página "Pendências"** (no menu das três barrinhas, disponível só com plantão ativo):
-- Lista agrupada por animal, usando os animais que já existem (internados + anamneses do plantão).
-- Cada cartão de animal mostra quantas pendências estão abertas, quantas foram concluídas e o total cobrável.
-- Três aparências diferentes: pendência comum (neutra), medicamento especial (destaque de cobrança ao tutor) e procedimento especial (com contador).
-- Botão **+** grande e fixo na tela. Ao tocar, escolhe: "Pendência", "Medicamento especial" ou "Procedimento especial".
-- Em cada item: editar, concluir, reabrir e excluir (com confirmação).
+**Nova aba "Pendências"** no menu das três barrinhas (disponível com plantão ativo):
+- Lista separada por animal, usando os animais que já existem no Veterício (internados e anamneses) — sem cadastrar animal de novo.
+- Em cada animal: quantas pendências estão abertas, quantas foram feitas e a contagem de cobranças.
+- Aparência diferente para os três tipos: pendência comum, medicamento especial (marcado como cobrança ao tutor) e procedimento especial (com contador).
+- Editar, concluir, reabrir e excluir cada item (excluir pede confirmação).
 
-**Contador de ocorrências**: procedimentos como Glicose, Oxigênio e Aquecimento mostram "Glicose — 3 realizadas — 3 cobranças" com botão "+ registrar" que soma uma ocorrência na hora (data e hora gravadas, observação opcional). Cada ocorrência pode ser apagada e o total se recalcula.
+**Pendências da anamnese**: continuam sendo escritas na anamnese como hoje, mas passam a aparecer também aqui — e **saem do PDF/exportação da ficha**. As que você já tem são trazidas para a aba automaticamente, sem perder nada.
 
-**Valor de cobrança opcional**: se você preencher o valor unitário, o app mostra ocorrências × valor. Sem valor, mostra apenas a contagem.
+**Botão +** grande na aba, com três opções:
+- Pendência do animal (texto livre).
+- Medicamento especial (nome, dose/quantidade, unidade, via quando fizer sentido, observação).
+- Procedimento especial (glicose, oxigênio, aquecimento ou outro nome que você digitar).
 
-**Avisos inteligentes na ficha**: ao digitar um valor fora do limite, aparece uma janelinha de confirmação:
-- Temperatura baixa → "Animal apresentou temperatura baixa. Foi para o aquecimento?" → Sim, registrar / Não / Agora não.
-- PAS baixa → "PAS baixa. Foi iniciada norepinefrina?" → mesma escolha.
-Nada é criado sem o seu "Sim". Os limites vêm das faixas por espécie que já existem no app e ficam ajustáveis na própria página de Pendências (não fixos no código). A estrutura aceita novas regras (glicemia etc.) no futuro.
+**Contagem de ocorrências**: cada execução é uma cobrança. O item mostra "Glicose — 3 realizadas — 3 cobranças", com botão "+ registrar" que soma uma na hora, guardando data e hora (observação opcional). Dá para apagar uma ocorrência errada e o total se ajusta sozinho.
 
-**Medicações do animal**: ao lançar uma medicação já cadastrada, a dose padrão do cadastro é carregada e mostrada como "dose padrão"; ao lado, um campo "dose usada agora" editável. Alterar aqui não muda o cadastro. O histórico continua guardando o que foi realmente administrado.
+**Avisos automáticos na ficha**: ao digitar um valor baixo aparece uma janelinha:
+- Temperatura abaixo do limite → "Animal apresentou temperatura baixa. Foi para o aquecimento?" — Sim, registrar / Não / Agora não.
+- PAS abaixo do limite → "PAS baixa. Foi iniciada norepinefrina?" — mesmas opções.
+Nada é criado sem o seu "Sim, registrar". Os limites usam as faixas por espécie que já existem no app e podem ser ajustados na própria aba Pendências; a estrutura aceita novos parâmetros (glicemia etc.) depois.
 
-**PDF**: as pendências da anamnese saem do PDF/exportação da ficha. Todo o resto do PDF fica igual. Pendências, medicamentos e procedimentos especiais não entram no PDF clínico.
+**Medicações do animal**: ao lançar uma medicação já cadastrada, a dose padrão do cadastro aparece como referência e ao lado um campo "dose usada agora", editável. Mudar aqui não altera o cadastro, e o histórico guarda o que foi realmente administrado.
 
-O app nunca inventa dose: usa só o que está cadastrado; sem cadastro, o campo fica aberto para você preencher.
+**PDF**: só uma mudança — a lista de pendências sai. Medicamentos e procedimentos especiais não entram no PDF clínico; a aba Pendências guarda os dados separados para ter o próprio resumo/exportação no futuro.
+
+O app não inventa dose: usa apenas o que está cadastrado; sem cadastro, o campo fica em branco para você preencher.
+
+Pendências entram no backup e na sincronização entre aparelhos.
 
 ## Detalhes técnicos
 
 - `src/lib/pendencias.ts` — tipos e persistência em `localStorage` (`veterico-pendencias-v1`), independentes da ficha:
-  `ItemPendencia { id, animalChave, animalNome, especie, categoria: "pendencia" | "medicamento" | "procedimento", nome, unidade?, dose?, doseUsada?, via?, observacao?, status: "pendente" | "realizado" | "cancelado", valorUnitario?, ocorrencias: { id, em, observacao? }[], criadoEm, atualizadoEm }`.
-  Helpers: `totalOcorrencias`, `totalCobranca`, `registrarOcorrencia`, `removerOcorrencia`, `pendenciasPorAnimal`, catálogo padrão de procedimentos (Glicose, Oxigênio, Aquecimento) e regras de alerta em `REGRAS_ALERTA` (parâmetro, condição abaixo/acima, pergunta, item gerado) com limites salvos em `veterico-alertas-v1`.
-- `src/hooks/usePendencias.ts` — store no mesmo padrão de `useAnamneses`/`useMedicamentos` (`useSyncExternalStore`).
-- `src/routes/pendencias.tsx` + componentes em `src/components/pendencias/` (`CartaoAnimal`, `ItemLinha`, `DialogoNovoItem`, `DialogoAlerta`), protegidos por `ExigePlantao`.
-- `src/lib/navegacao.ts`: novo link `/pendencias` em `LINKS_MENU` e em `SO_COM_PLANTAO`.
-- `src/lib/ficha.ts`: `blocoAnamnese` deixa de emitir a linha "Pendências" (única mudança de exportação; `pdf.ts` não muda).
-- `src/routes/anamnese.tsx`: pendências digitadas na anamnese passam a ser gravadas também no módulo (migração única das pendências já existentes, sem apagar nada da anamnese).
-- `src/components/FormAvaliacao.tsx`: ao sair de um campo numérico com valor fora do limite, dispara `DialogoAlerta`; "Sim, registrar" cria a ocorrência.
-- `src/components/medicamentos/DialogoMinistrar.tsx` / `DialogoAplicar.tsx`: rótulo "dose padrão" (somente leitura) + campo "dose usada agora"; cadastro intacto.
-- `src/lib/backup.ts`: `pendencias` e `alertas` entram em `CHAVES_BACKUP` (lista por id + carimbo), para backup e sincronização entre aparelhos.
+  `ItemPendencia { id, animalChave, animalNome, especie, categoria: "pendencia" | "medicamento" | "procedimento", nome, unidade?, dose?, via?, observacao?, status: "pendente" | "realizado" | "cancelado", ocorrencias: { id, em, observacao? }[], origem?: "anamnese", criadoEm, atualizadoEm }`.
+  Helpers `totalOcorrencias`, `registrarOcorrencia`, `removerOcorrencia`, `agruparPorAnimal`, catálogo `PROCEDIMENTOS_PADRAO` (Glicose, Oxigênio, Aquecimento) e `REGRAS_ALERTA` (parâmetro, lado abaixo/acima, pergunta, item gerado) com limites em `veterico-alertas-v1`.
+- `src/hooks/usePendencias.ts` — store `useSyncExternalStore` no mesmo padrão de `useAnamneses`.
+- `src/routes/pendencias.tsx` + `src/components/pendencias/` (`CartaoAnimal`, `LinhaItem`, `DialogoNovoItem`, `DialogoAlerta`), envolvido por `ExigePlantao`.
+- `src/lib/navegacao.ts`: `/pendencias` em `LINKS_MENU` e em `SO_COM_PLANTAO`.
+- `src/lib/ficha.ts`: `blocoAnamnese` deixa de emitir a linha "Pendências"; `pdf.ts` não muda.
+- `src/routes/anamnese.tsx`: ao salvar, espelha as pendências no módulo (`origem: "anamnese"`, sem duplicar por id) e migra uma vez as já existentes.
+- `src/components/FormAvaliacao.tsx`: valor numérico fora do limite abre `DialogoAlerta`; "Sim, registrar" cria a ocorrência no animal correspondente.
+- `src/components/medicamentos/DialogoMinistrar.tsx`: rótulo "dose padrão" (referência) + campo "dose usada agora" já preenchido com ela; cadastro do medicamento intacto. Marcação "especial" no medicamento envia o lançamento para Pendências em vez da lista padrão.
+- `src/lib/backup.ts`: `pendencias` e `alertas` em `CHAVES_BACKUP` (lista por id com carimbo) para backup e sincronização.
 - `src/lib/versao.ts` → 1.50.
 
-Validação: `bunx tsgo --noEmit` e teste do fluxo no preview (temperatura 35,8 → aquecimento; PAS 75 → norepinefrina; glicose 1x/2x/3x; PDF sem pendências).
+Validação: `bunx tsgo --noEmit` e teste no preview (temperatura 35,8 → aquecimento; PAS 75 → norepinefrina; glicose 1x/2x/3x; PDF sem pendências).
