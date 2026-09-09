@@ -86,10 +86,11 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
 type Sugestao = {
   id: string;
   nome: string;
-  quantidade: string;
-  unidade: Unidade;
+  /** Concentração cadastrada, só como pista visual. */
+  detalhe: string;
   intervalo: string;
 };
+
 
 /** Campo de nome com sugestões vindas apenas do cadastro do Veterício. */
 function CampoNomeMedicacao({
@@ -194,12 +195,10 @@ function CampoNomeMedicacao({
                 }`}
               >
                 {s.nome}
-                {s.quantidade ? (
-                  <span className="text-xs text-muted-foreground">
-                    {" "}
-                    · {s.quantidade} {s.unidade}
-                  </span>
+                {s.detalhe ? (
+                  <span className="text-xs text-muted-foreground"> · {s.detalhe}</span>
                 ) : null}
+
               </button>
             </li>
           ))}
