@@ -432,13 +432,22 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       return;
     }
     const quantidadeFinal = quantidade.trim() || volumeCalculado;
-    const dose = montarDose(quantidadeFinal, unidade);
+    const dose = refCalculo && doseUsada.trim()
+      ? `${doseUsada.trim()} ${refCalculo.unidadeDose}`
+      : montarDose(quantidadeFinal, unidade);
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
       return;
     }
     const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
-    const item: Medicacao = { nome: nomeLimpo, dose, duracao: duracaoSalva };
+    const item: Medicacao = {
+      nome: nomeLimpo,
+      dose,
+      duracao: duracaoSalva,
+      ...(refCalculo && quantidadeFinal
+        ? { quantidade: `${quantidadeFinal} ${unidadeCalculada || unidade}` }
+        : {}),
+    };
 
     if (editando === null) {
       onChange([...lista, item]);
