@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAnamneses } from "@/hooks/useAnamneses";
+import { espelharAnamneses } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { ExigePlantao } from "@/components/ExigePlantao";
 import { GuardaSaida } from "@/components/GuardaSaida";
@@ -60,6 +61,12 @@ function AnamneseConteudo() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
+
+  // As pendências daqui também vivem na aba Pendências (e saem do PDF).
+  useEffect(() => {
+    espelharAnamneses(anamneses);
+  }, [anamneses]);
+
 
   // Só considera "não salvo" quando o formulário difere do que está guardado.
   const salvo = editandoId

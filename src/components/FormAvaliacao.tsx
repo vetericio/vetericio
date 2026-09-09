@@ -25,9 +25,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Medicacoes } from "@/components/Medicacoes";
+import { DialogoAlerta } from "@/components/pendencias/DialogoAlerta";
 import { useAnamneses } from "@/hooks/useAnamneses";
+import { garantirItemERegistrar } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
+import { carregarLimites, regraDisparada, type RegraAlerta } from "@/lib/pendencias";
+import { toast } from "sonner";
 
 
 type Props = {
@@ -84,6 +88,8 @@ export function FormAvaliacao({
   const iniciais = useRef(valores);
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
+  const [alerta, setAlerta] = useState<RegraAlerta | null>(null);
+  const [alertados, setAlertados] = useState<ChaveNumerica[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
@@ -113,12 +119,33 @@ export function FormAvaliacao({
   };
 
   const aoSairDoCampo = (chave: ChaveNumerica) => {
+    verificarAlerta(chave);
     if (!editando) return;
     if (perguntados.includes(chave)) return;
     const antes = (iniciais.current[chave] ?? "").trim();
     const agora = (valores[chave] ?? "").trim();
     if (!agora || antes === agora) return;
     setPendente(chave);
+  };
+
+  /** Valor fora do limite abre o quadro de confirmação (uma vez por campo). */
+  const verificarAlerta = (chave: ChaveNumerica) => {
+    if (alertados.includes(chave)) return;
+    const regra = regraDisparada(chave, valores[chave] ?? "", carregarLimites());
+    if (!regra) return;
+    setAlerta(regra);
+    setAlertados((a) => [...a, chave]);
+  };
+
+  const confirmarAlerta = (regra: RegraAlerta) => {
+    garantirItemERegistrar({
+      animalNome: valores.animal,
+      especie: valores.especie ?? "",
+      categoria: regra.itemCategoria,
+      nome: regra.itemNome,
+    });
+    setAlerta(null);
+    toast.success(`${regra.itemNome} registrado em Pendências.`);
   };
 
   const responder = (substituir: boolean) => {
@@ -401,6 +428,7 @@ export function FormAvaliacao({
         </span>
         <Medicacoes
           lista={valores.medicacoes ?? []}
+          especie={valores.especie ?? ""}
           onChange={(medicacoes) => onChange({ ...valores, medicacoes })}
         />
       </div>
@@ -432,6 +460,12 @@ export function FormAvaliacao({
         )}
       </div>
 
+
+      <DialogoAlerta
+        regra={alerta}
+        onFechar={() => setAlerta(null)}
+        onConfirmar={confirmarAlerta}
+      />
 
       <AlertDialog open={Boolean(pendente)} onOpenChange={(o) => !o && setPendente(null)}>
         <AlertDialogContent>

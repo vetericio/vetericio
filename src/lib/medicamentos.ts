@@ -156,6 +156,8 @@ export type Medicamento = {
   gato: DoseEspecie;
   /** true = mesma dose para cão e gato (bloco único no cadastro) */
   doseUnificada?: boolean;
+  /** ⭐ true = medicação especial: aparece nas medicações do animal e em Pendências. */
+  especial?: boolean;
   teste?: boolean;
 };
 

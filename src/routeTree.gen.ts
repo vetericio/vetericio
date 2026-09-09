@@ -15,6 +15,7 @@ import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AssinarRouteImport } from './routes/assinar'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
+import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
@@ -50,6 +51,11 @@ const MedicacoesRoute = MedicacoesRouteImport.update({
   path: '/medicacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PendenciasRoute = PendenciasRouteImport.update({
+  id: '/pendencias',
+  path: '/pendencias',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlantoesRoute = PlantoesRouteImport.update({
   id: '/plantoes',
   path: '/plantoes',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/assinar'
     | '/curva'
     | '/medicacoes'
+    | '/pendencias'
     | '/plantoes'
     | '/registros'
     | '/sincronizacao'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/assinar'
     | '/curva'
     | '/medicacoes'
+    | '/pendencias'
     | '/plantoes'
     | '/registros'
     | '/sincronizacao'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/assinar'
     | '/curva'
     | '/medicacoes'
+    | '/pendencias'
     | '/plantoes'
     | '/registros'
     | '/sincronizacao'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   AssinarRoute: typeof AssinarRoute
   CurvaRoute: typeof CurvaRoute
   MedicacoesRoute: typeof MedicacoesRoute
+  PendenciasRoute: typeof PendenciasRoute
   PlantoesRoute: typeof PlantoesRoute
   RegistrosRoute: typeof RegistrosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MedicacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pendencias': {
+      id: '/pendencias'
+      path: '/pendencias'
+      fullPath: '/pendencias'
+      preLoaderRoute: typeof PendenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plantoes': {
       id: '/plantoes'
       path: '/plantoes'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   AssinarRoute: AssinarRoute,
   CurvaRoute: CurvaRoute,
   MedicacoesRoute: MedicacoesRoute,
+  PendenciasRoute: PendenciasRoute,
   PlantoesRoute: PlantoesRoute,
   RegistrosRoute: RegistrosRoute,
   SincronizacaoRoute: SincronizacaoRoute,

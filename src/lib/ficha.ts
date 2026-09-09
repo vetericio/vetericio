@@ -92,17 +92,13 @@ export function blocoAnamnese(
   const lista = anamneses ?? carregarAnamneses();
   const a = lista.find((x) => x.id === r.anamneseId);
   if (!a) return [];
-  const pendencias = (a.pendencias ?? [])
-    .filter((p) => p.texto.trim())
-    .map((p) => `${p.feito ? "[x]" : "[ ]"} ${p.texto.trim()}`)
-    .join("; ");
+  // As pendências ficam só na aba Pendências: não entram no PDF/exportação.
   const itens: [string, string][] = [
     ["Queixa", a.queixa.trim()],
     ["Relato", a.relato.trim()],
     ["Exames", a.exames.trim()],
     ["Conduta", a.conduta.trim()],
     ["Atenção", a.atencao.trim()],
-    ["Pendências", pendencias],
   ];
   const visiveis = itens.filter(([, v]) => v);
   if (visiveis.length === 0) return [];

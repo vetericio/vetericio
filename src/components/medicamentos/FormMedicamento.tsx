@@ -367,6 +367,22 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
           </div>
 
           <div>
+            <span className={rotulo}>Medicação especial</span>
+            <button
+              type="button"
+              aria-pressed={item.especial === true}
+              onClick={() => setItem({ ...item, especial: item.especial !== true })}
+              className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                item.especial
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-foreground hover:bg-secondary"
+              }`}
+            >
+              {item.especial ? "⭐ Especial (cobrança ao tutor)" : "☆ Marcar como especial"}
+            </button>
+          </div>
+
+          <div>
             <span className={rotulo}>Dose</span>
             <div className="grid grid-cols-2 gap-2">
               {(

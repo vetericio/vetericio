@@ -1,15 +1,19 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lerReceitaComIA } from "@/lib/medicacoes.functions";
-import type { Medicacao } from "@/lib/ficha";
+import type { Especie as EspecieFicha, Medicacao } from "@/lib/ficha";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
+import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { doseDaEspecie, doseEfetiva, faixaDe, viasDe } from "@/lib/medicamentos";
 
 type Props = {
   lista: Medicacao[];
   onChange: (medicacoes: Medicacao[]) => void;
   /** No card do animal (Animais internados) a lista é só para leitura. */
   somenteLeitura?: boolean;
+  /** Espécie do animal, usada para puxar a dose padrão cadastrada. */
+  especie?: EspecieFicha;
 };
 
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
@@ -79,7 +83,8 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
   return modo;
 }
 
-export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
+export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }: Props) {
+  const { medicamentos } = useMedicamentos();
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
@@ -98,6 +103,41 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
   const quantidadeRef = useRef<HTMLInputElement>(null);
   const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
+
+  /** ⭐ Medicações especiais do cadastro, em ordem alfabética, com a dose padrão. */
+  const especiais = useMemo(() => {
+    const chave = especie === "Gato" ? "gato" : "cao";
+    return medicamentos
+      .filter((m) => m.especial && m.nome.trim())
+      .map((m) => {
+        const d = doseDaEspecie(m, chave);
+        const f = faixaDe(d);
+        const padrao = doseEfetiva(d);
+        const dose = padrao === null ? "" : `${String(padrao).replace(".", ",")} ${f.unidade}`;
+        return {
+          id: m.id,
+          nome: normalizarNomeMedicamento(m.nome),
+          dose,
+          via: viasDe(m)[0] ?? "",
+          intervalo: (d.intervalo ?? "").trim(),
+        };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [medicamentos, especie]);
+
+  /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
+  const usarEspecial = (item: (typeof especiais)[number]) => {
+    onChange([
+      ...lista,
+      {
+        nome: item.nome,
+        dose: item.dose,
+        duracao: item.intervalo ? `${item.intervalo}h` : "",
+        ...(item.via ? { via: item.via } : {}),
+      },
+    ]);
+    toast.success(`${item.nome} adicionada. A dose padrão continua editável.`);
+  };
 
   const resetForm = () => {
     setNome("");
@@ -387,6 +427,28 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
                 ? "Formulário completo (dose e duração)"
                 : "Adicionar várias de uma vez (só o nome)"}
             </button>
+
+            {especiais.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  ⭐ Medicações cadastradas (toque para puxar com a dose padrão)
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {especiais.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => usarEspecial(m)}
+                      className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                    >
+                      {m.nome}
+                      {m.dose ? ` · ${m.dose}` : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
             {!formCompleto && editando === null ? (
               <>
