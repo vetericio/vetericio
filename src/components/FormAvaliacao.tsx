@@ -428,7 +428,7 @@ export function FormAvaliacao({
         </span>
         <Medicacoes
           lista={valores.medicacoes ?? []}
-          especie={valores.especie}
+          especie={valores.especie ?? ""}
           onChange={(medicacoes) => onChange({ ...valores, medicacoes })}
         />
       </div>
