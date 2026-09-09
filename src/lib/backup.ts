@@ -14,6 +14,8 @@ export const CHAVES_BACKUP = {
   alarmes: "veterico-alarmes-v1",
   medicamentos: "veterico-medicamentos-v1",
   anamneses: "veterico-anamneses",
+  pendencias: "veterico-pendencias-v1",
+  alertas: "veterico-alertas-v1",
   notas: "veterico-bloco-notas",
   tema: "veterico-tema-v1",
   cor: "veterico-tema-cor-v1",
@@ -92,6 +94,7 @@ const LISTAS: ChaveBackup[] = [
   "alarmes",
   "medicamentos",
   "anamneses",
+  "pendencias",
 ];
 
 const SIMPLES: ChaveBackup[] = [
@@ -101,6 +104,7 @@ const SIMPLES: ChaveBackup[] = [
   "cor",
   "assinatura",
   "carimbo",
+  "alertas",
 ];
 
 function hashTexto(texto: string): string {

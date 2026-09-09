@@ -1,5 +1,5 @@
 /** Abas que só funcionam com plantão ativo. */
-export const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes"];
+export const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes", "/pendencias"];
 
 /** Links do menu de cima. */
 export const LINKS_TOPO = [
@@ -10,6 +10,7 @@ export const LINKS_TOPO = [
 
 /** Links do menu das três barrinhas. */
 export const LINKS_MENU = [
+  { to: "/pendencias", rotulo: "Pendências" },
   { to: "/medicacoes", rotulo: "Medicações" },
   { to: "/curva", rotulo: "Curva" },
   { to: "/alarmes", rotulo: "Alarmes" },
