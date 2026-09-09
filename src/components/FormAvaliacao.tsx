@@ -275,6 +275,21 @@ export function FormAvaliacao({
         </div>
       </div>
 
+      <div className="mt-3">
+        <label className="block">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Peso (kg)
+          </span>
+          <input
+            value={valores.peso ?? ""}
+            onChange={(e) => set("peso", e.target.value.replace(/[^\d,.]/g, "").replace(".", ","))}
+            inputMode="decimal"
+            placeholder="Ex.: 9,9"
+            className="mt-1 w-32 rounded-lg border border-input bg-background px-3 py-2 text-sm font-semibold tabular-nums text-foreground outline-none focus:border-ring"
+          />
+        </label>
+      </div>
+
       <div className="mt-5 space-y-4">
         {GRUPOS.map(({ chave, rotulo }) => {
           const opcoesFixas = OPCOES[chave] as readonly string[];
