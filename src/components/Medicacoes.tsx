@@ -5,7 +5,13 @@ import { lerReceitaComIA } from "@/lib/medicacoes.functions";
 import type { Especie as EspecieFicha, Medicacao } from "@/lib/ficha";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
-import { doseDaEspecie, doseEfetiva, faixaDe, viasDe } from "@/lib/medicamentos";
+import {
+  calcularDose,
+  doseDaEspecie,
+  doseEfetiva,
+  faixaDe,
+  viasDe,
+} from "@/lib/medicamentos";
 
 type Props = {
   lista: Medicacao[];
@@ -14,6 +20,8 @@ type Props = {
   somenteLeitura?: boolean;
   /** Espécie do animal, usada para puxar a dose padrão cadastrada. */
   especie?: EspecieFicha;
+  /** Peso do animal (kg) vindo do cadastro; base do cálculo do volume. */
+  peso?: string;
 };
 
 const UNIDADES = ["mL", "cápsula/comprimido"] as const;
