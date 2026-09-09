@@ -97,7 +97,20 @@ type Sugestao = {
   /** Concentração cadastrada, só como pista visual. */
   detalhe: string;
   intervalo: string;
+  /** Dose padrão cadastrada (só número), editável no lançamento. */
+  dosePadrao: string;
+  /** Unidade da dose cadastrada, ex.: "mg/kg". */
+  unidadeDose: string;
+  concValor: string;
+  concUnidade: string;
 };
+
+/** Rótulo curto da espécie, como pedido: "Cão" / "Gato". */
+function rotuloEspecie(e: EspecieFicha | undefined): string {
+  if (e === "Cachorro") return "Cão";
+  if (e === "Gato") return "Gato";
+  return "";
+}
 
 
 /** Campo de nome com sugestões vindas apenas do cadastro do Veterício. */
@@ -256,6 +269,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
           dose,
           via: viasDe(m)[0] ?? "",
           intervalo: (d.intervalo ?? "").trim(),
+          dosePadrao: padrao === null ? "" : String(padrao),
+          unidadeDose: f.unidade,
+          concValor: m.concentracaoValor ?? "",
+          concUnidade: m.concentracaoUnidade ?? "",
         };
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -268,6 +285,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       .filter((m) => m.nome.trim())
       .map((m) => {
         const d = doseDaEspecie(m, chave);
+        const f = faixaDe(d);
+        const padrao = doseEfetiva(d);
         return {
           id: m.id,
           nome: normalizarNomeMedicamento(m.nome),
@@ -275,6 +294,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
             ? `${m.concentracaoValor} ${m.concentracaoUnidade ?? ""}`.trim()
             : "",
           intervalo: (d.intervalo ?? "").trim(),
+          dosePadrao: padrao === null ? "" : String(padrao).replace(".", ","),
+          unidadeDose: f.unidade,
+          concValor: m.concentracaoValor ?? "",
+          concUnidade: m.concentracaoUnidade ?? "",
         };
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
