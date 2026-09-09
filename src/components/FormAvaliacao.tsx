@@ -444,6 +444,7 @@ export function FormAvaliacao({
         <Medicacoes
           lista={valores.medicacoes ?? []}
           especie={valores.especie ?? ""}
+          peso={valores.peso ?? ""}
           onChange={(medicacoes) => onChange({ ...valores, medicacoes })}
         />
       </div>
