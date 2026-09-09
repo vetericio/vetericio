@@ -252,6 +252,26 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [medicamentos, especie]);
 
+  /** Sugestões ao digitar: só o que está cadastrado no Veterício. */
+  const sugestoes = useMemo<Sugestao[]>(() => {
+    const chave = especie === "Gato" ? "gato" : "cao";
+    return medicamentos
+      .filter((m) => m.nome.trim())
+      .map((m) => {
+        const d = doseDaEspecie(m, chave);
+        const padrao = doseEfetiva(d);
+        return {
+          id: m.id,
+          nome: normalizarNomeMedicamento(m.nome),
+          quantidade: padrao === null ? "" : String(padrao).replace(".", ","),
+          unidade: "mL" as Unidade,
+          intervalo: (d.intervalo ?? "").trim(),
+        };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [medicamentos, especie]);
+
+
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
   const usarEspecial = (item: (typeof especiais)[number]) => {
     onChange([
