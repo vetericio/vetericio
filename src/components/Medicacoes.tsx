@@ -644,6 +644,12 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 : "Adicionar várias de uma vez (só o nome)"}
             </button>
 
+            <p className="text-[11px] font-semibold text-muted-foreground">
+              {rotuloEspecie(especie) ? `Espécie: ${rotuloEspecie(especie)}` : "Espécie: não informada"}
+              {" | "}
+              {peso.trim() ? `Peso: ${peso.trim()} kg` : "Peso: não informado na ficha"}
+            </p>
+
             {especiais.length > 0 && (
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground">
@@ -802,6 +808,48 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 )}
               </div>
             </div>
+            {refCalculo && (
+              <div className="rounded-lg bg-secondary/60 p-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-foreground">
+                    Dose neste atendimento
+                    <input
+                      value={doseUsada}
+                      onChange={(e) => {
+                        setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
+                        setQuantidade("");
+                      }}
+                      inputMode="decimal"
+                      className={`${campo} w-20 tabular-nums`}
+                    />
+                    <span className="text-muted-foreground">{refCalculo.unidadeDose}</span>
+                  </label>
+                  {refCalculo.dosePadrao && (
+                    <span className="text-[11px] text-muted-foreground">
+                      dose padrão cadastrada: {refCalculo.dosePadrao} {refCalculo.unidadeDose}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs">
+                  {calculo?.ok ? (
+                    <span className="font-semibold text-foreground">
+                      {volumeCalculado} {unidadeCalculada}
+                      <span className="ml-1.5 font-normal text-muted-foreground">
+                        ({peso.trim()} kg × {doseUsada} {refCalculo.unidadeDose} ÷{" "}
+                        {refCalculo.concValor} {refCalculo.concUnidade})
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {calculo && !calculo.ok
+                        ? calculo.motivo
+                        : "Cálculo indisponível: falta dose ou concentração cadastrada."}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 border-t border-border pt-2">
               <button
                 type="button"
