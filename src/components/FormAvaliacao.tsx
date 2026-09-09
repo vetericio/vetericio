@@ -88,6 +88,8 @@ export function FormAvaliacao({
   const iniciais = useRef(valores);
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
+  const [alerta, setAlerta] = useState<RegraAlerta | null>(null);
+  const [alertados, setAlertados] = useState<ChaveNumerica[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
@@ -117,12 +119,33 @@ export function FormAvaliacao({
   };
 
   const aoSairDoCampo = (chave: ChaveNumerica) => {
+    verificarAlerta(chave);
     if (!editando) return;
     if (perguntados.includes(chave)) return;
     const antes = (iniciais.current[chave] ?? "").trim();
     const agora = (valores[chave] ?? "").trim();
     if (!agora || antes === agora) return;
     setPendente(chave);
+  };
+
+  /** Valor fora do limite abre o quadro de confirmação (uma vez por campo). */
+  const verificarAlerta = (chave: ChaveNumerica) => {
+    if (alertados.includes(chave)) return;
+    const regra = regraDisparada(chave, valores[chave] ?? "", carregarLimites());
+    if (!regra) return;
+    setAlerta(regra);
+    setAlertados((a) => [...a, chave]);
+  };
+
+  const confirmarAlerta = (regra: RegraAlerta) => {
+    garantirItemERegistrar({
+      animalNome: valores.animal,
+      especie: valores.especie ?? "",
+      categoria: regra.itemCategoria,
+      nome: regra.itemNome,
+    });
+    setAlerta(null);
+    toast.success(`${regra.itemNome} registrado em Pendências.`);
   };
 
   const responder = (substituir: boolean) => {
