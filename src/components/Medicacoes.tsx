@@ -226,6 +226,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
+  const rapidosRef = useRef<HTMLDivElement>(null);
+
   const quantidadeRef = useRef<HTMLInputElement>(null);
   const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
