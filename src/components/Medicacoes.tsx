@@ -229,7 +229,7 @@ function CampoNomeMedicacao({
   );
 }
 
-export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }: Props) {
+export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, peso = "" }: Props) {
 
   const { medicamentos } = useMedicamentos();
   const [aberto, setAberto] = useState(true);
@@ -244,6 +244,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
   // Padrão: modo rápido (só nomes). A setinha abre o formulário completo.
   const [formCompleto, setFormCompleto] = useState(false);
   const [nomesRapidos, setNomesRapidos] = useState<string[]>(["", ""]);
+  /** Medicação do cadastro escolhida no formulário: base do cálculo do volume. */
+  const [refCalculo, setRefCalculo] = useState<Sugestao | null>(null);
+  /** Dose usada neste lançamento (editável, sem alterar o cadastro). */
+  const [doseUsada, setDoseUsada] = useState("");
   const cameraRef = useRef<HTMLInputElement>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const nomeRef = useRef<HTMLInputElement>(null);
@@ -305,8 +309,36 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
 
 
 
+  /** mL = peso × dose ÷ concentração, sempre com os dados cadastrados. */
+  const calculo = useMemo(() => {
+    if (!refCalculo) return null;
+    if (!doseUsada.trim() || !refCalculo.concValor.trim()) {
+      return { ok: false as const, motivo: "Cálculo indisponível: falta dose ou concentração cadastrada." };
+    }
+    return calcularDose({
+      peso,
+      dose: doseUsada,
+      concentracaoValor: refCalculo.concValor,
+      concentracaoUnidade: refCalculo.concUnidade,
+      unidadeDose: refCalculo.unidadeDose,
+    });
+  }, [refCalculo, doseUsada, peso]);
+
+  const volumeCalculado = calculo?.ok ? `${calculo.volumeTexto}` : "";
+  const unidadeCalculada = calculo?.ok ? calculo.unidade : "";
+
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
   const usarEspecial = (item: (typeof especiais)[number]) => {
+    const conta =
+      item.dosePadrao && item.concValor
+        ? calcularDose({
+            peso,
+            dose: item.dosePadrao,
+            concentracaoValor: item.concValor,
+            concentracaoUnidade: item.concUnidade,
+            unidadeDose: item.unidadeDose,
+          })
+        : null;
     onChange([
       ...lista,
       {
@@ -314,6 +346,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
         dose: item.dose,
         duracao: item.intervalo ? `${item.intervalo}h` : "",
         ...(item.via ? { via: item.via } : {}),
+        ...(conta?.ok ? { quantidade: `${conta.volumeTexto} ${conta.unidade}` } : {}),
       },
     ]);
     toast.success(`${item.nome} adicionada. A dose padrão continua editável.`);
@@ -326,6 +359,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
     setDuracao("");
     setDuracaoOutros("");
     setEditando(null);
+    setRefCalculo(null);
+    setDoseUsada("");
   };
 
   const enviarRapido = () => {
@@ -350,7 +385,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       toast.error("Escreva o nome da medicação.");
       return;
     }
-    const dose = montarDose(quantidade, unidade);
+    const quantidadeFinal = quantidade.trim() || volumeCalculado;
+    const dose = montarDose(quantidadeFinal, unidade);
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
       return;
@@ -674,6 +710,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
                 opcoes={sugestoes}
                 onChange={setNome}
                 onEscolher={(s) => {
+                  setRefCalculo(s);
+                  setDoseUsada(s.dosePadrao);
+                  setQuantidade("");
                   const alvo = `${s.intervalo}h`;
                   if ((DURACOES_PADRAO as readonly string[]).includes(alvo))
                     setDuracao(alvo as DuracaoPadrao);
@@ -692,7 +731,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}
-                  value={quantidade}
+                  value={quantidade || volumeCalculado}
                   onChange={(e) =>
                     setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value)
                   }
