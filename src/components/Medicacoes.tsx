@@ -643,9 +643,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
                 opcoes={sugestoes}
                 onChange={setNome}
                 onEscolher={(s) => {
-                  if (s.intervalo) setDuracao(`${s.intervalo}h` as DuracaoPadrao);
+                  const alvo = `${s.intervalo}h`;
+                  if ((DURACOES_PADRAO as readonly string[]).includes(alvo))
+                    setDuracao(alvo as DuracaoPadrao);
+                  else if (s.intervalo) {
+                    setDuracao(DURACAO_OUTROS);
+                    setDuracaoOutros(alvo);
+                  }
                   quantidadeRef.current?.focus();
                 }}
+
                 onEnter={() => quantidadeRef.current?.focus()}
                 placeholder="Medicação"
                 className={campo}
