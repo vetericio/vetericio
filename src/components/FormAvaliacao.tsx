@@ -25,9 +25,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Medicacoes } from "@/components/Medicacoes";
+import { DialogoAlerta } from "@/components/pendencias/DialogoAlerta";
 import { useAnamneses } from "@/hooks/useAnamneses";
+import { garantirItemERegistrar } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
+import { carregarLimites, regraDisparada, type RegraAlerta } from "@/lib/pendencias";
+import { toast } from "sonner";
 
 
 type Props = {
