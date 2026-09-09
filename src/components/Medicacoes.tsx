@@ -599,34 +599,29 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
 
             {!formCompleto && editando === null ? (
               <>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" ref={rapidosRef}>
                   {nomesRapidos.map((valor, i) => (
-                    <input
+                    <CampoNomeMedicacao
                       key={i}
                       value={valor}
-                      onChange={(e) =>
-                        setNomesRapidos((atual) =>
-                          atual.map((n, j) => (j === i ? e.target.value : n)),
-                        )
+                      opcoes={sugestoes}
+                      onChange={(v) =>
+                        setNomesRapidos((atual) => atual.map((n, j) => (j === i ? v : n)))
                       }
                       onFocus={() => {
                         if (i === nomesRapidos.length - 1)
                           setNomesRapidos((atual) => [...atual, ""]);
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const campos =
-                            e.currentTarget.parentElement?.querySelectorAll("input");
-                          campos?.[i + 1]?.focus();
-                        }
+                      onEnter={() => {
+                        const campos = rapidosRef.current?.querySelectorAll("input");
+                        campos?.[i + 1]?.focus();
                       }}
-                      enterKeyHint="next"
                       placeholder={`Medicação ${i + 1}`}
                       className={`${campo} w-full`}
                     />
                   ))}
                 </div>
+
                 <div className="flex justify-end border-t border-border pt-2">
                   <button
                     type="button"
