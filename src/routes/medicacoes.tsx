@@ -395,6 +395,8 @@ function CardMedicamento({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
+
       </div>
 
       <div className="mt-1 flex gap-2">
