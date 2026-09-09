@@ -83,7 +83,8 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
   return modo;
 }
 
-export function Medicacoes({ lista, onChange, somenteLeitura = false }: Props) {
+export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }: Props) {
+  const { medicamentos } = useMedicamentos();
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
