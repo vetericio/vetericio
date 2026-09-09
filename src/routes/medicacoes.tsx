@@ -289,6 +289,7 @@ type CardProps = {
   onExcluir: () => void;
   onAvulsa: () => void;
   onMinistrar: () => void;
+  onAlternarEspecial: () => void;
 };
 
 function CardMedicamento({
@@ -299,7 +300,9 @@ function CardMedicamento({
   onExcluir,
   onAvulsa,
   onMinistrar,
+  onAlternarEspecial,
 }: CardProps) {
+
   const [confirmando, setConfirmando] = useState(false);
   const dose = doseDaEspecie(m, especie);
   const faixa = faixaDe(dose);
