@@ -83,7 +83,134 @@ function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
   return modo;
 }
 
+type Sugestao = {
+  id: string;
+  nome: string;
+  quantidade: string;
+  unidade: Unidade;
+  intervalo: string;
+};
+
+/** Campo de nome com sugestões vindas apenas do cadastro do Veterício. */
+function CampoNomeMedicacao({
+  value,
+  onChange,
+  onEscolher,
+  opcoes,
+  placeholder,
+  className,
+  inputRef,
+  onEnter,
+  onFocus,
+}: {
+  value: string;
+  onChange: (valor: string) => void;
+  onEscolher?: (s: Sugestao) => void;
+  opcoes: Sugestao[];
+  placeholder?: string;
+  className?: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+  onEnter?: () => void;
+  onFocus?: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [ativo, setAtivo] = useState(0);
+
+  const filtradas = useMemo(() => {
+    const termo = value.trim().toLocaleLowerCase("pt-BR");
+    if (termo.length < 2) return [];
+    const comeca: Sugestao[] = [];
+    const contem: Sugestao[] = [];
+    for (const o of opcoes) {
+      const alvo = o.nome.toLocaleLowerCase("pt-BR");
+      if (alvo === termo) continue;
+      if (alvo.startsWith(termo)) comeca.push(o);
+      else if (alvo.includes(termo)) contem.push(o);
+    }
+    return [...comeca, ...contem].slice(0, 8);
+  }, [opcoes, value]);
+
+  const mostrar = aberto && filtradas.length > 0;
+
+  const escolher = (s: Sugestao) => {
+    onChange(s.nome);
+    onEscolher?.(s);
+    setAberto(false);
+    setAtivo(0);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setAberto(true);
+          setAtivo(0);
+        }}
+        onFocus={() => {
+          setAberto(true);
+          onFocus?.();
+        }}
+        onBlur={() => window.setTimeout(() => setAberto(false), 120)}
+        onKeyDown={(e) => {
+          if (mostrar && e.key === "ArrowDown") {
+            e.preventDefault();
+            setAtivo((i) => (i + 1) % filtradas.length);
+            return;
+          }
+          if (mostrar && e.key === "ArrowUp") {
+            e.preventDefault();
+            setAtivo((i) => (i - 1 + filtradas.length) % filtradas.length);
+            return;
+          }
+          if (e.key === "Escape") {
+            setAberto(false);
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const alvo = mostrar ? filtradas[ativo] : undefined;
+            if (alvo) escolher(alvo);
+            else onEnter?.();
+            return;
+          }
+        }}
+        enterKeyHint="next"
+        placeholder={placeholder}
+        className={className}
+      />
+      {mostrar && (
+        <ul className="absolute left-0 right-0 top-full z-40 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-background shadow-lg">
+          {filtradas.map((s, i) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => escolher(s)}
+                className={`block w-full px-2.5 py-1.5 text-left text-sm text-foreground ${
+                  i === ativo ? "bg-secondary" : "hover:bg-secondary/60"
+                }`}
+              >
+                {s.nome}
+                {s.quantidade ? (
+                  <span className="text-xs text-muted-foreground">
+                    {" "}
+                    · {s.quantidade} {s.unidade}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }: Props) {
+
   const { medicamentos } = useMedicamentos();
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
