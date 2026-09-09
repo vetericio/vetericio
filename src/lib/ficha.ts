@@ -30,6 +30,8 @@ export type Registro = {
   id: string;
   animal: string;
   especie?: Especie;
+  /** Peso do animal em kg, ex.: "9,9". Usado no cálculo das medicações. */
+  peso?: string;
   criadoEm?: string;
   alimentacao: string;
   comportamento: string;
@@ -286,6 +288,7 @@ export const OPCOES = {
 export const REGISTRO_VAZIO: Omit<Registro, "id"> = {
   animal: "",
   especie: "",
+  peso: "",
   alimentacao: "",
 
   comportamento: "",
