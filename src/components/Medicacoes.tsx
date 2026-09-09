@@ -258,17 +258,18 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie }:
       .filter((m) => m.nome.trim())
       .map((m) => {
         const d = doseDaEspecie(m, chave);
-        const padrao = doseEfetiva(d);
         return {
           id: m.id,
           nome: normalizarNomeMedicamento(m.nome),
-          quantidade: padrao === null ? "" : String(padrao).replace(".", ","),
-          unidade: "mL" as Unidade,
+          detalhe: m.concentracaoValor
+            ? `${m.concentracaoValor} ${m.concentracaoUnidade ?? ""}`.trim()
+            : "",
           intervalo: (d.intervalo ?? "").trim(),
         };
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [medicamentos, especie]);
+
 
 
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
