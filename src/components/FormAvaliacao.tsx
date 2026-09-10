@@ -30,7 +30,7 @@ import { useAnamneses } from "@/hooks/useAnamneses";
 import { garantirItemERegistrar } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
-import { carregarLimites, regraDisparada, type RegraAlerta } from "@/lib/pendencias";
+import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
 
 
@@ -88,8 +88,9 @@ export function FormAvaliacao({
   const iniciais = useRef(valores);
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
-  const [alerta, setAlerta] = useState<RegraAlerta | null>(null);
-  const [alertados, setAlertados] = useState<ChaveNumerica[]>([]);
+  // Fila de perguntas: se um valor dispara mais de uma regra, aparecem em sequência.
+  const [fila, setFila] = useState<RegraAlerta[]>([]);
+  const [alertados, setAlertados] = useState<string[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
@@ -104,6 +105,8 @@ export function FormAvaliacao({
     onChange({ ...valores, [chave]: valor });
 
   const setNumero = (chave: ChaveNumerica, valor: string) => {
+    // Valor novo no campo: pode perguntar de novo sobre ele.
+    setAlertados((a) => a.filter((k) => !k.startsWith(`${chave}:`)));
     // Em modo edição, as observações só mudam depois da pergunta (substituir/acrescentar).
     if (editando) {
       onChange({ ...valores, [chave]: valor });
@@ -128,14 +131,17 @@ export function FormAvaliacao({
     setPendente(chave);
   };
 
-  /** Valor fora do limite abre o quadro de confirmação (uma vez por campo). */
+  /** Regras cadastradas pelo usuário: abrem o quadro de confirmação, uma vez por valor. */
   const verificarAlerta = (chave: ChaveNumerica) => {
-    if (alertados.includes(chave)) return;
-    const regra = regraDisparada(chave, valores[chave] ?? "", carregarLimites());
-    if (!regra) return;
-    setAlerta(regra);
-    setAlertados((a) => [...a, chave]);
+    const disparadas = regrasDisparadas(chave, valores[chave] ?? "", carregarRegras()).filter(
+      (r) => !alertados.includes(`${chave}:${r.id}`),
+    );
+    if (disparadas.length === 0) return;
+    setAlertados((a) => [...a, ...disparadas.map((r) => `${chave}:${r.id}`)]);
+    setFila((f) => [...f, ...disparadas]);
   };
+
+  const proximaPergunta = () => setFila((f) => f.slice(1));
 
   const confirmarAlerta = (regra: RegraAlerta) => {
     garantirItemERegistrar({
@@ -144,7 +150,7 @@ export function FormAvaliacao({
       categoria: regra.itemCategoria,
       nome: regra.itemNome,
     });
-    setAlerta(null);
+    proximaPergunta();
     toast.success(`${regra.itemNome} registrado em Pendências.`);
   };
 
@@ -480,8 +486,8 @@ export function FormAvaliacao({
 
 
       <DialogoAlerta
-        regra={alerta}
-        onFechar={() => setAlerta(null)}
+        regra={fila[0] ?? null}
+        onFechar={proximaPergunta}
         onConfirmar={confirmarAlerta}
       />
 

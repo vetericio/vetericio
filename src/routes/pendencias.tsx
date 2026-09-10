@@ -3,27 +3,27 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 
-import { ExigePlantao } from "@/components/ExigePlantao";
 import { DialogoNovoItem, type AnimalOpcao } from "@/components/pendencias/DialogoNovoItem";
+import { DialogoRegra } from "@/components/pendencias/DialogoRegra";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { espelharAnamneses } from "@/hooks/usePendencias";
 import { usePendencias } from "@/hooks/usePendencias";
 import { useRegistros } from "@/hooks/useRegistros";
 import {
   ANIMAL_GERAL,
-  REGRAS_ALERTA,
   ROTULO_CATEGORIA,
+  ROTULO_CONDICAO,
+  ROTULO_PARAMETRO,
   agruparPorAnimal,
-  carregarLimites,
+  carregarRegras,
   chaveDoAnimal,
   itemVazio,
-  limiteDaRegra,
   quandoCurto,
-  salvarLimites,
+  salvarRegras,
   totalOcorrencias,
   type CategoriaPendencia,
   type ItemPendencia,
-  type LimitesAlerta,
+  type RegraAlerta,
 } from "@/lib/pendencias";
 
 export const Route = createFileRoute("/pendencias")({
@@ -62,10 +62,7 @@ const SELOS: Record<CategoriaPendencia, string> = {
 function PendenciasPagina() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6">
-      <ExigePlantao funcao="Pendências">
-        <Conteudo />
-      </ExigePlantao>
-      
+      <Conteudo />
     </main>
   );
 }
@@ -76,9 +73,21 @@ function Conteudo() {
   const { anamneses } = useAnamneses();
   const [dialogo, setDialogo] = useState<ItemPendencia | null>(null);
   const [escolhendo, setEscolhendo] = useState(false);
-  const [limites, setLimites] = useState<LimitesAlerta>(() => carregarLimites());
+  const [regras, setRegras] = useState<RegraAlerta[]>([]);
+  const [regraEditando, setRegraEditando] = useState<RegraAlerta | null>(null);
+  const [dialogoRegra, setDialogoRegra] = useState(false);
   const [ajustando, setAjustando] = useState(false);
   const confirmacao = usarConfirmacao();
+
+  // As regras vivem no aparelho: só podem ser lidas depois da hidratação.
+  useEffect(() => {
+    setRegras(carregarRegras());
+  }, []);
+
+  const gravarRegras = (lista: RegraAlerta[]) => {
+    setRegras(lista);
+    salvarRegras(lista);
+  };
 
   // Traz (e mantém) as pendências escritas na anamnese para dentro do módulo.
   useEffect(() => {
@@ -138,13 +147,36 @@ function Conteudo() {
     });
   };
 
-  const gravarLimite = (chave: string, valor: string) => {
-    const n = Number(valor.replace(",", ".").trim());
-    const novos: LimitesAlerta = { ...limites };
-    if (Number.isFinite(n) && valor.trim()) novos[chave as keyof LimitesAlerta] = n;
-    else delete novos[chave as keyof LimitesAlerta];
-    setLimites(novos);
-    salvarLimites(novos);
+  const salvarRegra = (regra: RegraAlerta) => {
+    const existe = regras.some((r) => r.id === regra.id);
+    gravarRegras(existe ? regras.map((r) => (r.id === regra.id ? regra : r)) : [...regras, regra]);
+    toast.success("Aviso salvo.");
+  };
+
+  const alternarRegra = (regra: RegraAlerta) =>
+    gravarRegras(regras.map((r) => (r.id === regra.id ? { ...r, ativo: !r.ativo } : r)));
+
+  const excluirRegra = (regra: RegraAlerta) => {
+    confirmacao.pedir({
+      titulo: "Excluir este aviso?",
+      descricao: `O app deixa de perguntar sobre ${ROTULO_PARAMETRO[regra.parametro]}. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir aviso",
+      destrutivo: true,
+      onConfirmar: () => {
+        const antes = regras;
+        gravarRegras(regras.filter((r) => r.id !== regra.id));
+        toast.success("Aviso excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              gravarRegras(antes);
+              toast.success("Aviso de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   return (
@@ -306,28 +338,79 @@ function Conteudo() {
         <button
           type="button"
           onClick={() => setAjustando((a) => !a)}
-          className="text-sm font-semibold text-foreground"
+          className="min-h-11 text-sm font-semibold text-foreground"
         >
-          Limites dos avisos automáticos {ajustando ? "▲" : "▼"}
+          Avisos automáticos {ajustando ? "▲" : "▼"}
         </button>
         {ajustando && (
-          <div className="mt-3 space-y-3">
-            {REGRAS_ALERTA.map((r) => (
-              <label key={r.chave} className="block">
-                <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {r.pergunta}
-                </span>
-                <input
-                  defaultValue={String(limiteDaRegra(r, limites)).replace(".", ",")}
-                  onBlur={(e) => gravarLimite(r.chave, e.target.value)}
-                  inputMode="decimal"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-ring"
-                />
-              </label>
-            ))}
+          <div className="mt-3 space-y-2">
             <p className="text-[11px] text-muted-foreground">
-              O aviso aparece quando o valor da ficha fica abaixo do limite.
+              Escolha quando o app deve perguntar se algo vai para a cobrança. A pergunta aparece
+              na ficha do animal e nada é registrado sem o seu “Sim”.
             </p>
+
+            {regras.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+                Nenhum aviso cadastrado.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {regras.map((r) => (
+                  <li
+                    key={r.id}
+                    className={`rounded-xl border border-border p-3 ${r.ativo ? "bg-card" : "bg-secondary/40 opacity-70"}`}
+                  >
+                    <p className="text-sm font-semibold text-foreground">
+                      {ROTULO_PARAMETRO[r.parametro]} ·{" "}
+                      {r.condicao === "sempre"
+                        ? ROTULO_CONDICAO.sempre
+                        : `${ROTULO_CONDICAO[r.condicao]} ${String(r.limite ?? "").replace(".", ",")}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{r.pergunta}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Cobra: {r.itemNome} ({ROTULO_CATEGORIA[r.itemCategoria]})
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => alternarRegra(r)}
+                        className="min-h-11 rounded-lg bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                      >
+                        {r.ativo ? "Desligar" : "Ligar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegraEditando(r);
+                          setDialogoRegra(true);
+                        }}
+                        className="min-h-11 rounded-lg bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => excluirRegra(r)}
+                        className="min-h-11 rounded-lg bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setRegraEditando(null);
+                setDialogoRegra(true);
+              }}
+              className="min-h-11 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              Nova regra de aviso
+            </button>
           </div>
         )}
       </section>
@@ -342,6 +425,17 @@ function Conteudo() {
           toast.success("Pendência salva.");
         }}
       />
+
+      <DialogoRegra
+        aberto={dialogoRegra}
+        onFechar={() => {
+          setDialogoRegra(false);
+          setRegraEditando(null);
+        }}
+        inicial={regraEditando}
+        onSalvar={salvarRegra}
+      />
+
 
       <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </>
