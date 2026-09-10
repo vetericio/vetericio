@@ -156,43 +156,98 @@ export function quandoCurto(iso: string): string {
   });
 }
 
-/* ---------- regras de alerta ---------- */
+/* ---------- regras de alerta (cadastradas pelo usuário) ---------- */
 
-export type ChaveAlerta = "temperatura" | "pas" | "glicemia";
+export const CHAVE_REGRAS = "veterico-regras-alerta-v1";
+
+export type ParametroAlerta = "temperatura" | "fc" | "fr" | "pas" | "glicemia";
+
+export type CondicaoAlerta = "sempre" | "abaixo" | "acima";
 
 export type RegraAlerta = {
-  chave: ChaveAlerta;
-  /** "abaixo" dispara quando o valor for menor que o limite. */
-  lado: "abaixo" | "acima";
+  id: string;
+  parametro: ParametroAlerta;
+  /** "sempre" pergunta a cada valor preenchido. */
+  condicao: CondicaoAlerta;
+  limite?: number;
   pergunta: string;
-  /** Item criado quando o usuário confirma. */
   itemNome: string;
   itemCategoria: CategoriaPendencia;
-  /** Limite padrão, usado quando o usuário não configurou nada. */
-  limitePadrao: number;
+  ativo: boolean;
 };
 
-export const REGRAS_ALERTA: RegraAlerta[] = [
-  {
-    chave: "temperatura",
-    lado: "abaixo",
-    pergunta: "Animal apresentou temperatura baixa. Foi para o aquecimento?",
-    itemNome: "Aquecimento",
-    itemCategoria: "procedimento",
-    limitePadrao: 37.5,
-  },
-  {
-    chave: "pas",
-    lado: "abaixo",
-    pergunta: "PAS baixa. Foi iniciada norepinefrina?",
-    itemNome: "Norepinefrina",
-    itemCategoria: "medicamento",
-    limitePadrao: 90,
-  },
+export const ROTULO_PARAMETRO: Record<ParametroAlerta, string> = {
+  temperatura: "Temperatura (°C)",
+  fc: "FC (bpm)",
+  fr: "FR (mpm)",
+  pas: "PAS (mmHg)",
+  glicemia: "Glicemia (mg/dL)",
+};
+
+export const ROTULO_CONDICAO: Record<CondicaoAlerta, string> = {
+  sempre: "Sempre que eu preencher",
+  abaixo: "Abaixo de",
+  acima: "Acima de",
+};
+
+export const PARAMETROS_ALERTA: ParametroAlerta[] = [
+  "temperatura",
+  "fc",
+  "fr",
+  "pas",
+  "glicemia",
 ];
 
-export type LimitesAlerta = Partial<Record<ChaveAlerta, number>>;
+export function regraVazia(): RegraAlerta {
+  return {
+    id: novoId(),
+    parametro: "glicemia",
+    condicao: "sempre",
+    pergunta: "Registrar para cobrança?",
+    itemNome: "",
+    itemCategoria: "procedimento",
+    ativo: true,
+  };
+}
 
+/** Regras que já vêm prontas (o usuário pode editar todas). */
+export function regrasIniciais(limites: LimitesAlerta = {}): RegraAlerta[] {
+  return [
+    {
+      id: novoId(),
+      parametro: "glicemia",
+      condicao: "sempre",
+      pergunta: "Registrar a glicemia para cobrança?",
+      itemNome: "Glicose",
+      itemCategoria: "procedimento",
+      ativo: true,
+    },
+    {
+      id: novoId(),
+      parametro: "pas",
+      condicao: "abaixo",
+      limite: typeof limites.pas === "number" ? limites.pas : 90,
+      pergunta: "PAS baixa. Foi iniciada norepinefrina?",
+      itemNome: "Norepinefrina",
+      itemCategoria: "medicamento",
+      ativo: true,
+    },
+    {
+      id: novoId(),
+      parametro: "temperatura",
+      condicao: "abaixo",
+      limite: typeof limites.temperatura === "number" ? limites.temperatura : 37.5,
+      pergunta: "Animal apresentou temperatura baixa. Foi para o aquecimento?",
+      itemNome: "Aquecimento",
+      itemCategoria: "procedimento",
+      ativo: true,
+    },
+  ];
+}
+
+export type LimitesAlerta = Partial<Record<ParametroAlerta, number>>;
+
+/** Limites da versão anterior — usados só para migrar. */
 export function carregarLimites(): LimitesAlerta {
   if (typeof window === "undefined") return {};
   try {
@@ -207,35 +262,53 @@ export function carregarLimites(): LimitesAlerta {
   }
 }
 
-export function salvarLimites(limites: LimitesAlerta) {
+export function salvarRegras(regras: RegraAlerta[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE_ALERTAS, JSON.stringify(limites));
+    window.localStorage.setItem(CHAVE_REGRAS, JSON.stringify(regras));
   } catch {
     /* armazenamento indisponível */
   }
 }
 
-export function limiteDaRegra(regra: RegraAlerta, limites: LimitesAlerta): number {
-  const salvo = limites[regra.chave];
-  return typeof salvo === "number" && Number.isFinite(salvo) ? salvo : regra.limitePadrao;
+/** Lê as regras salvas; na primeira vez semeia as prontas migrando os limites antigos. */
+export function carregarRegras(): RegraAlerta[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const bruto = window.localStorage.getItem(CHAVE_REGRAS);
+    if (bruto) {
+      const lista = JSON.parse(bruto);
+      if (Array.isArray(lista)) {
+        return (lista as RegraAlerta[])
+          .filter((r) => r && r.id && r.parametro)
+          .map((r) => ({ ...r, ativo: r.ativo !== false }));
+      }
+    }
+  } catch {
+    /* conteúdo inválido: recomeça */
+  }
+  const iniciais = regrasIniciais(carregarLimites());
+  salvarRegras(iniciais);
+  return iniciais;
 }
 
-/** Regra disparada por um valor digitado, ou null. */
-export function regraDisparada(
-  chave: string,
+/** Todas as regras ativas disparadas por um valor digitado. */
+export function regrasDisparadas(
+  parametro: string,
   valor: string,
-  limites: LimitesAlerta,
-): RegraAlerta | null {
-  const regra = REGRAS_ALERTA.find((r) => r.chave === chave);
-  if (!regra) return null;
+  regras: RegraAlerta[],
+): RegraAlerta[] {
   // Em campos com histórico ("35,8 / 38,1") vale o último valor digitado.
   const ultimo = valor.split("/").pop() ?? "";
+  if (!ultimo.trim()) return [];
   const n = Number(ultimo.replace(",", ".").trim());
-  if (!Number.isFinite(n) || !ultimo.trim()) return null;
-  const limite = limiteDaRegra(regra, limites);
-  if (regra.lado === "abaixo" ? n < limite : n > limite) return regra;
-  return null;
+  if (!Number.isFinite(n)) return [];
+  return regras.filter((r) => {
+    if (!r.ativo || r.parametro !== parametro) return false;
+    if (r.condicao === "sempre") return true;
+    if (typeof r.limite !== "number" || !Number.isFinite(r.limite)) return false;
+    return r.condicao === "abaixo" ? n < r.limite : n > r.limite;
+  });
 }
 
 /* ---------- persistência ---------- */
