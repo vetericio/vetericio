@@ -174,9 +174,23 @@ function PaginaMedicacoes() {
             onAlternarEspecial={() => salvar({ ...m, especial: !m.especial })}
           />
         ))}
-
-
       </ul>
+
+      {medicamentos.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={async () => {
+              const { exportarPdfMedicamentos } = await import("@/lib/pdf-medicamentos");
+              await exportarPdfMedicamentos(medicamentos);
+            }}
+            className="rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary"
+          >
+            📄 Baixar medicações em PDF
+          </button>
+        </div>
+      )}
+
 
       {menuAberto && (
         <button
