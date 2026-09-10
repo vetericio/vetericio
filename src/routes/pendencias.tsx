@@ -114,9 +114,25 @@ function Conteudo() {
     });
 
   const excluir = (item: ItemPendencia) => {
-    if (!window.confirm(`Excluir "${item.nome}"?`)) return;
-    excluirItem(item.id);
-    toast.success("Item excluído.");
+    confirmacao.pedir({
+      titulo: "Excluir este item?",
+      descricao: `${item.nome} sai da lista de pendências. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir item",
+      destrutivo: true,
+      onConfirmar: () => {
+        excluirItem(item.id);
+        toast.success("Item excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              salvarItem(item);
+              toast.success("Item de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const gravarLimite = (chave: string, valor: string) => {

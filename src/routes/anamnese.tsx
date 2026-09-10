@@ -125,10 +125,26 @@ function AnamneseConteudo() {
   };
 
   const excluir = (a: Anamnese) => {
-    if (!window.confirm(`Excluir a anamnese de ${a.animal.trim()}?`)) return;
-    setAnamneses((lista) => lista.filter((x) => x.id !== a.id));
-    if (editandoId === a.id) limpar();
-    toast.success("Anamnese excluída.");
+    confirmacao.pedir({
+      titulo: "Excluir esta anamnese?",
+      descricao: `Anamnese de ${a.animal.trim()}. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir anamnese",
+      destrutivo: true,
+      onConfirmar: () => {
+        setAnamneses((lista) => lista.filter((x) => x.id !== a.id));
+        if (editandoId === a.id) limpar();
+        toast.success("Anamnese excluída.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setAnamneses((lista) => (lista.some((x) => x.id === a.id) ? lista : [a, ...lista]));
+              toast.success("Anamnese de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const alternarPendencia = (a: Anamnese, pid: string) =>
