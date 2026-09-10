@@ -486,8 +486,8 @@ export function FormAvaliacao({
 
 
       <DialogoAlerta
-        regra={alerta}
-        onFechar={() => setAlerta(null)}
+        regra={fila[0] ?? null}
+        onFechar={proximaPergunta}
         onConfirmar={confirmarAlerta}
       />
 

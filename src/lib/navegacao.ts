@@ -1,5 +1,5 @@
 /** Abas que só funcionam com plantão ativo. */
-export const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes", "/pendencias"];
+export const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes"];
 
 /** Links do menu de cima. */
 export const LINKS_TOPO = [
@@ -28,7 +28,6 @@ export const GRUPOS_MENU = [
       { to: "/", rotulo: "Início" },
       { to: "/registros", rotulo: "Animais internados" },
       { to: "/anamnese", rotulo: "Anamnese" },
-      { to: "/pendencias", rotulo: "Pendências" },
       { to: "/curva", rotulo: "Curva" },
       { to: "/alarmes", rotulo: "Alarmes" },
     ],
@@ -36,6 +35,7 @@ export const GRUPOS_MENU = [
   {
     titulo: "Consultas e documentos",
     itens: [
+      { to: "/pendencias", rotulo: "Pendências" },
       { to: "/medicacoes", rotulo: "Medicações" },
       { to: "/plantoes", rotulo: "Plantões" },
       { to: "/assinar", rotulo: "Assinar um documento" },
