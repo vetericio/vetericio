@@ -65,7 +65,7 @@ function PendenciasPagina() {
       <ExigePlantao funcao="Pendências">
         <Conteudo />
       </ExigePlantao>
-      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
+      
     </main>
   );
 }
@@ -342,6 +342,8 @@ function Conteudo() {
           toast.success("Pendência salva.");
         }}
       />
+
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </>
   );
 }
