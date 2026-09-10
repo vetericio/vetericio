@@ -95,7 +95,7 @@ export function FormAvaliacao({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const mudarMedicacoes = useCallback(
-    (medicacoes: Registro["medicacoes"]) =>
+    (medicacoes: NonNullable<Registro["medicacoes"]>) =>
       onChangeRef.current({ ...valoresRef.current, medicacoes }),
     [],
   );
