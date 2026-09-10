@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { ExigePlantao } from "@/components/ExigePlantao";
@@ -73,6 +74,7 @@ function CurvaConteudo() {
   const [toque, setToque] = useState<ToqueId>("urgente");
   const [novos, setNovos] = useState<Record<string, { glicemia: string; pas: string }>>({});
   const [comAlarme, setComAlarme] = useState(true);
+  const confirmacao = usarConfirmacao();
 
   const animais = useMemo(() => {
     const mapa = new Map<string, { chave: string; rotulo: string; animal: string; especie: string }>();
@@ -168,9 +170,26 @@ function CurvaConteudo() {
   };
 
   const excluirCurva = (c: Curva) => {
-    if (!window.confirm(`Apagar a curva de ${c.animal}?`)) return;
-    setCurvas((lista) => lista.filter((x) => x.id !== c.id));
-    if (c.alarmeId) definirAlarmes((lista) => lista.filter((a) => a.id !== c.alarmeId));
+    confirmacao.pedir({
+      titulo: "Apagar esta curva?",
+      descricao: `Curva de ${c.animal}, com ${c.medicoes.length} medição(ões). Você tem 6 segundos para desfazer.`,
+      acao: "Apagar curva",
+      destrutivo: true,
+      onConfirmar: () => {
+        setCurvas((lista) => lista.filter((x) => x.id !== c.id));
+        if (c.alarmeId) definirAlarmes((lista) => lista.filter((a) => a.id !== c.alarmeId));
+        toast.success("Curva apagada.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setCurvas((lista) => (lista.some((x) => x.id === c.id) ? lista : [c, ...lista]));
+              toast.success("Curva de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const excluirMedicao = (c: Curva, idMedicao: string) => {
@@ -437,6 +456,7 @@ function CurvaConteudo() {
           );
         })}
       </div>
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 
 import { ExigePlantao } from "@/components/ExigePlantao";
 import { DialogoNovoItem, type AnimalOpcao } from "@/components/pendencias/DialogoNovoItem";
@@ -64,6 +65,7 @@ function PendenciasPagina() {
       <ExigePlantao funcao="Pendências">
         <Conteudo />
       </ExigePlantao>
+      
     </main>
   );
 }
@@ -76,6 +78,7 @@ function Conteudo() {
   const [escolhendo, setEscolhendo] = useState(false);
   const [limites, setLimites] = useState<LimitesAlerta>(() => carregarLimites());
   const [ajustando, setAjustando] = useState(false);
+  const confirmacao = usarConfirmacao();
 
   // Traz (e mantém) as pendências escritas na anamnese para dentro do módulo.
   useEffect(() => {
@@ -114,9 +117,25 @@ function Conteudo() {
     });
 
   const excluir = (item: ItemPendencia) => {
-    if (!window.confirm(`Excluir "${item.nome}"?`)) return;
-    excluirItem(item.id);
-    toast.success("Item excluído.");
+    confirmacao.pedir({
+      titulo: "Excluir este item?",
+      descricao: `${item.nome} sai da lista de pendências. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir item",
+      destrutivo: true,
+      onConfirmar: () => {
+        excluirItem(item.id);
+        toast.success("Item excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              salvarItem(item);
+              toast.success("Item de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const gravarLimite = (chave: string, valor: string) => {
@@ -323,6 +342,8 @@ function Conteudo() {
           toast.success("Pendência salva.");
         }}
       />
+
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </>
   );
 }

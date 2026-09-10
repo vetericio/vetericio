@@ -62,6 +62,26 @@ const CHAVE = "veterico-tema-v1";
 const CHAVE_COR = "veterico-tema-cor-v1";
 const CLASSES = TEMAS.map((t) => t.classe).filter(Boolean);
 
+/** Temas calmos, de cores neutras — separados dos divertidos na tela de Temas. */
+export const TEMAS_SOBRIOS: TemaId[] = [
+  "original",
+  "sobrio",
+  "cinza",
+  "escuro",
+  "noite",
+  "black",
+  "pro",
+  "verde-cinza",
+  "cansado",
+  "vet",
+  "veterico",
+  "minha-cor",
+];
+
+export function grupoDoTema(id: TemaId): "sobrio" | "divertido" {
+  return TEMAS_SOBRIOS.includes(id) ? "sobrio" : "divertido";
+}
+
 export const COR_PADRAO = "#2f7d76";
 
 /** Atalhos de cor para quem não quer abrir o seletor. */
@@ -170,8 +190,9 @@ const ok = (l: number, c: number, h: number) =>
 export function aplicarCorPersonalizada(hex: string) {
   if (typeof document === "undefined") return;
   const { l, c, h } = hexParaOklch(hex);
-  const base = Math.min(Math.max(l, 0.25), 0.72);
-  const croma = Math.min(c, 0.19);
+  // Clareza limitada: garante que o texto continue legível sobre o fundo claro.
+  const base = Math.min(Math.max(l, 0.3), 0.62);
+  const croma = Math.min(c, 0.16);
   const s = document.documentElement.style;
 
   const par: [string, string][] = [

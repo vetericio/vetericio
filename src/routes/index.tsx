@@ -6,6 +6,7 @@ import { FerramentasClinicas } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { GuardaSaida } from "@/components/GuardaSaida";
+import { useConforto } from "@/hooks/useConforto";
 import { useRegistros } from "@/hooks/useRegistros";
 import { useCurvas } from "@/hooks/useCurvas";
 import { definirAlarmes } from "@/hooks/useAlarmes";
@@ -87,6 +88,10 @@ function Index() {
   const [duplicado, setDuplicado] = useState<Registro | null>(null);
   const [fazerCurva, setFazerCurva] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const { conforto, atualizar } = useConforto();
+  const ferramentas = conforto.ferramentasAbertas;
+  const setFerramentas = (fn: (v: boolean) => boolean) =>
+    atualizar({ ferramentasAbertas: fn(conforto.ferramentasAbertas) });
   const { setCurvas } = useCurvas();
 
   const navigate = useNavigate();
@@ -235,12 +240,21 @@ function Index() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
       <GuardaSaida sujo={sujo} />
-      <section className="grid grid-cols-2 items-stretch gap-2 sm:gap-3">
-        <div className="min-w-0">
-          <Calculadora />
-        </div>
-        <FerramentasClinicas />
-      </section>
+      <button
+        type="button"
+        onClick={() => setFerramentas((v) => !v)}
+        className="min-h-11 w-full rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
+      >
+        {ferramentas ? "Esconder calculadora e ferramentas" : "Mostrar calculadora e ferramentas"}
+      </button>
+      {ferramentas && (
+        <section className="mt-3 grid grid-cols-2 items-stretch gap-2 sm:gap-3">
+          <div className="min-w-0">
+            <Calculadora />
+          </div>
+          <FerramentasClinicas />
+        </section>
+      )}
 
       <div className="mt-5">
         <FormAvaliacao

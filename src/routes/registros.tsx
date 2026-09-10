@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
 import { AtualizarEmBloco } from "@/components/AtualizarEmBloco";
 import { AnimaisAtencao } from "@/components/AnimaisAtencao";
@@ -71,6 +72,9 @@ function Registros() {
   const [obitoHora, setObitoHora] = useState("");
   const [obitoMotivo, setObitoMotivo] = useState("");
   const [blocoAberto, setBlocoAberto] = useState(false);
+  const [assinarAberto, setAssinarAberto] = useState(false);
+  const [assinadoEm, setAssinadoEm] = useState("");
+  const confirmacao = usarConfirmacao();
 
   const aplicarBloco = (chave: ChaveAtualizavel, valores: Record<string, string>) => {
     let contador = 0;
@@ -96,15 +100,21 @@ function Registros() {
 
   const abrirObito = (r: Registro) => {
     if (r.obito) {
-      if (!window.confirm(`Desfazer o registro de óbito de ${r.animal.trim()}?`)) return;
-      setRegistros((rs) =>
-        rs.map((x) => {
-          if (x.id !== r.id) return x;
-          const { obito: _removido, ...resto } = x;
-          return resto as Registro;
-        }),
-      );
-      toast.success("Registro de óbito desfeito.");
+      confirmacao.pedir({
+        titulo: "Desfazer o registro de óbito?",
+        descricao: `${r.animal.trim()} volta a aparecer como internado. O resto da ficha continua igual.`,
+        acao: "Desfazer óbito",
+        onConfirmar: () => {
+          setRegistros((rs) =>
+            rs.map((x) => {
+              if (x.id !== r.id) return x;
+              const { obito: _removido, ...resto } = x;
+              return resto as Registro;
+            }),
+          );
+          toast.success("Registro de óbito desfeito.");
+        },
+      });
       return;
     }
     setObitoHora(horaAgora());
@@ -158,8 +168,12 @@ function Registros() {
       toast.info("Não há animais para finalizar o plantão.");
       return;
     }
-    if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
-    finalizar();
+    confirmacao.pedir({
+      titulo: "Finalizar o plantão agora?",
+      descricao: `${registros.length} animal(is) vão para o histórico de plantões. Nada é apagado.`,
+      acao: "Finalizar plantão",
+      onConfirmar: finalizar,
+    });
   };
 
 
@@ -169,10 +183,28 @@ function Registros() {
       toast.info("Não há registros salvos.");
       return;
     }
-    if (window.confirm("Apagar todos os registros salvos neste aparelho?")) {
-      setRegistros([]);
-      toast.success("Todos os registros foram apagados.");
-    }
+    confirmacao.pedir({
+      titulo: `Apagar os ${registros.length} animais desta lista?`,
+      descricao:
+        "Eles saem da lista de hoje deste aparelho. Você tem 6 segundos para desfazer depois.",
+      acao: "Apagar tudo",
+      palavra: "APAGAR",
+      destrutivo: true,
+      onConfirmar: () => {
+        const copia = registros;
+        setRegistros([]);
+        toast.success("Todos os registros foram apagados.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setRegistros(copia);
+              toast.success("Registros de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const copiarTexto = async (texto: string) => {
@@ -187,12 +219,19 @@ function Registros() {
   };
 
 
-  const exportar = async () => {
-    const agora = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-    const assinadoEm = window.prompt("Data e hora da assinatura (pode editar):", agora);
-    if (assinadoEm === null) return;
+  const agoraTexto = () =>
+    new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+  const exportar = () => {
+    setAssinadoEm(agoraTexto());
+    setAssinarAberto(true);
+  };
+
+  const gerarPdf = async () => {
+    const quando = assinadoEm.trim() || agoraTexto();
+    setAssinarAberto(false);
     try {
-      await exportarPdf(registros, { assinadoEm: assinadoEm.trim() || agora });
+      await exportarPdf(registros, { assinadoEm: quando });
       toast.success("PDF gerado.");
     } catch {
       toast.error("Não foi possível gerar o PDF.");
@@ -212,9 +251,26 @@ function Registros() {
   };
   const onExcluir = (id: string) => {
     const alvo = registros.find((r) => r.id === id);
-    if (!window.confirm(`Excluir o registro de ${alvo?.animal.trim() || "sem nome"}?`)) return;
-    setRegistros((rs) => rs.filter((x) => x.id !== id));
-    toast.success("Registro excluído.");
+    if (!alvo) return;
+    confirmacao.pedir({
+      titulo: "Excluir esta ficha?",
+      descricao: `${alvo.animal.trim() || "sem nome"} sai da lista de hoje. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir ficha",
+      destrutivo: true,
+      onConfirmar: () => {
+        setRegistros((rs) => rs.filter((x) => x.id !== id));
+        toast.success("Registro excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setRegistros((rs) => (rs.some((x) => x.id === id) ? rs : [...rs, alvo]));
+              toast.success("Ficha de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
 
@@ -364,6 +420,32 @@ function Registros() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={assinarAberto} onOpenChange={setAssinarAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Data e hora da assinatura</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vem preenchido com agora. Você pode mudar antes de gerar o PDF.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <input
+            value={assinadoEm}
+            onChange={(e) => setAssinadoEm(e.target.value)}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground outline-none focus:border-ring"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="min-h-11" onClick={gerarPdf}>
+              Gerar PDF
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
+
+
 
       {registros.length > 0 && (
         <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm">

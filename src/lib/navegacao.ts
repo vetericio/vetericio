@@ -19,3 +19,33 @@ export const LINKS_MENU = [
   { to: "/temas", rotulo: "Temas" },
   { to: "/sincronizacao", rotulo: "Sincronização" },
 ] as const;
+
+/** Todo o app agrupado por assunto, para o menu das três barrinhas. */
+export const GRUPOS_MENU = [
+  {
+    titulo: "No plantão",
+    itens: [
+      { to: "/", rotulo: "Início" },
+      { to: "/registros", rotulo: "Animais internados" },
+      { to: "/anamnese", rotulo: "Anamnese" },
+      { to: "/pendencias", rotulo: "Pendências" },
+      { to: "/curva", rotulo: "Curva" },
+      { to: "/alarmes", rotulo: "Alarmes" },
+    ],
+  },
+  {
+    titulo: "Consultas e documentos",
+    itens: [
+      { to: "/medicacoes", rotulo: "Medicações" },
+      { to: "/plantoes", rotulo: "Plantões" },
+      { to: "/assinar", rotulo: "Assinar um documento" },
+    ],
+  },
+  {
+    titulo: "Ajustes",
+    itens: [
+      { to: "/temas", rotulo: "Temas e modo calmo" },
+      { to: "/sincronizacao", rotulo: "Sincronização" },
+    ],
+  },
+] as const;

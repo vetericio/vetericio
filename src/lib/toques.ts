@@ -389,7 +389,21 @@ let ctx: Ctx | null = null;
 let mestre: GainNode | null = null;
 let repetidor: number | null = null;
 let ativos: [OscillatorNode, GainNode][] = [];
+/** Volume geral escolhido pelo usuário (0 a 1). */
+let volume = 1;
 
+/** Ajusta o volume de tudo que toca no app. */
+export function definirVolume(v: number) {
+  volume = Math.min(Math.max(v, 0), 1);
+  if (mestre && ctx) {
+    mestre.gain.cancelScheduledValues(ctx.currentTime);
+    mestre.gain.setValueAtTime(volume, ctx.currentTime);
+  }
+}
+
+export function volumeAtual(): number {
+  return volume;
+}
 
 function obterCtx(): Ctx | null {
   if (typeof window === "undefined") return null;
@@ -400,7 +414,7 @@ function obterCtx(): Ctx | null {
   if (!ctx) {
     ctx = new Classe() as Ctx;
     mestre = ctx.createGain();
-    mestre.gain.value = 1;
+    mestre.gain.value = volume;
     mestre.connect(ctx.destination);
   }
   return ctx;
@@ -443,9 +457,22 @@ function tocarCiclo(id: ToqueId) {
   }
 }
 
-/** Toca o toque escolhido; em loop quando `loop` (alarme soando). */
+/**
+ * Toca o toque escolhido; em loop quando `loop` (alarme soando).
+ * No loop o som entra suave em 3 segundos, para não assustar.
+ */
 export function tocarToque(id: ToqueId, loop = false) {
   pararToque();
+  const c = obterCtx();
+  if (c && mestre) {
+    mestre.gain.cancelScheduledValues(c.currentTime);
+    if (loop) {
+      mestre.gain.setValueAtTime(Math.max(volume * 0.08, 0.0001), c.currentTime);
+      mestre.gain.linearRampToValueAtTime(volume, c.currentTime + 3);
+    } else {
+      mestre.gain.setValueAtTime(volume, c.currentTime);
+    }
+  }
   tocarCiclo(id);
   if (!loop) return;
   repetidor = window.setInterval(() => tocarCiclo(id), PADROES[id].ciclo * 1000);
@@ -481,14 +508,13 @@ export function pararToque() {
 }
 
 
-/** Vibração longa, repetida, enquanto o alarme estiver soando. */
+/** Vibração curta, avisando uma vez quando o alarme começa. */
 let vibrando = false;
 
 export function vibrar() {
   if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
   vibrando = true;
-  const padrao: number[] = [];
-  for (let i = 0; i < 30; i += 1) padrao.push(600, 300);
+  const padrao: number[] = [400, 200, 400];
   try {
     navigator.vibrate(padrao);
   } catch {
