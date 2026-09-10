@@ -219,12 +219,19 @@ function Registros() {
   };
 
 
-  const exportar = async () => {
-    const agora = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-    const assinadoEm = window.prompt("Data e hora da assinatura (pode editar):", agora);
-    if (assinadoEm === null) return;
+  const agoraTexto = () =>
+    new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+  const exportar = () => {
+    setAssinadoEm(agoraTexto());
+    setAssinarAberto(true);
+  };
+
+  const gerarPdf = async () => {
+    const quando = assinadoEm.trim() || agoraTexto();
+    setAssinarAberto(false);
     try {
-      await exportarPdf(registros, { assinadoEm: assinadoEm.trim() || agora });
+      await exportarPdf(registros, { assinadoEm: quando });
       toast.success("PDF gerado.");
     } catch {
       toast.error("Não foi possível gerar o PDF.");
@@ -244,9 +251,26 @@ function Registros() {
   };
   const onExcluir = (id: string) => {
     const alvo = registros.find((r) => r.id === id);
-    if (!window.confirm(`Excluir o registro de ${alvo?.animal.trim() || "sem nome"}?`)) return;
-    setRegistros((rs) => rs.filter((x) => x.id !== id));
-    toast.success("Registro excluído.");
+    if (!alvo) return;
+    confirmacao.pedir({
+      titulo: "Excluir esta ficha?",
+      descricao: `${alvo.animal.trim() || "sem nome"} sai da lista de hoje. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir ficha",
+      destrutivo: true,
+      onConfirmar: () => {
+        setRegistros((rs) => rs.filter((x) => x.id !== id));
+        toast.success("Registro excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setRegistros((rs) => (rs.some((x) => x.id === id) ? rs : [...rs, alvo]));
+              toast.success("Ficha de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
 
