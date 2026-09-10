@@ -147,13 +147,36 @@ function Conteudo() {
     });
   };
 
-  const gravarLimite = (chave: string, valor: string) => {
-    const n = Number(valor.replace(",", ".").trim());
-    const novos: LimitesAlerta = { ...limites };
-    if (Number.isFinite(n) && valor.trim()) novos[chave as keyof LimitesAlerta] = n;
-    else delete novos[chave as keyof LimitesAlerta];
-    setLimites(novos);
-    salvarLimites(novos);
+  const salvarRegra = (regra: RegraAlerta) => {
+    const existe = regras.some((r) => r.id === regra.id);
+    gravarRegras(existe ? regras.map((r) => (r.id === regra.id ? regra : r)) : [...regras, regra]);
+    toast.success("Aviso salvo.");
+  };
+
+  const alternarRegra = (regra: RegraAlerta) =>
+    gravarRegras(regras.map((r) => (r.id === regra.id ? { ...r, ativo: !r.ativo } : r)));
+
+  const excluirRegra = (regra: RegraAlerta) => {
+    confirmacao.pedir({
+      titulo: "Excluir este aviso?",
+      descricao: `O app deixa de perguntar sobre ${ROTULO_PARAMETRO[regra.parametro]}. Você tem 6 segundos para desfazer.`,
+      acao: "Excluir aviso",
+      destrutivo: true,
+      onConfirmar: () => {
+        const antes = regras;
+        gravarRegras(regras.filter((r) => r.id !== regra.id));
+        toast.success("Aviso excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              gravarRegras(antes);
+              toast.success("Aviso de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   return (
