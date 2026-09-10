@@ -171,7 +171,7 @@ function PaginaMedicacoes() {
             onExcluir={() => remover(m.id)}
             onAvulsa={() => setAvulsa(m)}
             onMinistrar={() => setMinistrando(m)}
-            onAlternarEspecial={() => salvar({ ...m, especial: !m.especial })}
+            onAlternarEspecial={() => salvar({ ...m, favorito: !m.favorito })}
           />
         ))}
       </ul>
@@ -373,23 +373,28 @@ function CardMedicamento({
             </p>
           )}
           <p className="text-xs font-semibold text-muted-foreground">{concentracao || "—"}</p>
+          {m.especial && (
+            <span className="mt-0.5 inline-block rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary-foreground">
+              Cobrada
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
         <button
           type="button"
           onClick={onAlternarEspecial}
-          aria-pressed={Boolean(m.especial)}
+          aria-pressed={Boolean(m.favorito)}
           aria-label={
-            m.especial
-              ? `Tirar ${m.nome} dos atalhos da ficha`
-              : `Colocar ${m.nome} nos atalhos da ficha`
+            m.favorito
+              ? `Tirar ${m.nome} das favoritas`
+              : `Marcar ${m.nome} como favorita`
           }
-          title="Atalho na ficha do animal"
+          title="Favorita: fica no início da lista"
           className={`rounded-lg px-1.5 py-1 text-base leading-none hover:bg-secondary/70 ${
-            m.especial ? "text-primary" : "text-muted-foreground"
+            m.favorito ? "text-primary" : "text-muted-foreground"
           }`}
         >
-          {m.especial ? "★" : "☆"}
+          {m.favorito ? "★" : "☆"}
         </button>
         <DropdownMenu>
 
