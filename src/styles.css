@@ -637,3 +637,12 @@
 
 }
 
+
+/* Modo calmo: sem animações nem transições, para menos estímulo visual. */
+.modo-calmo *,
+.modo-calmo *::before,
+.modo-calmo *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

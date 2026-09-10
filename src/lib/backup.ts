@@ -21,6 +21,7 @@ export const CHAVES_BACKUP = {
   cor: "veterico-tema-cor-v1",
   assinatura: "veterico-assinatura-v1",
   carimbo: "veterico-carimbo-v1",
+  conforto: "veterico-conforto-v1",
 } as const;
 
 export type ChaveBackup = keyof typeof CHAVES_BACKUP;
