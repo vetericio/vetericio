@@ -508,14 +508,13 @@ export function pararToque() {
 }
 
 
-/** Vibração longa, repetida, enquanto o alarme estiver soando. */
+/** Vibração curta, avisando uma vez quando o alarme começa. */
 let vibrando = false;
 
 export function vibrar() {
   if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
   vibrando = true;
-  const padrao: number[] = [];
-  for (let i = 0; i < 30; i += 1) padrao.push(600, 300);
+  const padrao: number[] = [400, 200, 400];
   try {
     navigator.vibrate(padrao);
   } catch {
