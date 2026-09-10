@@ -338,28 +338,79 @@ function Conteudo() {
         <button
           type="button"
           onClick={() => setAjustando((a) => !a)}
-          className="text-sm font-semibold text-foreground"
+          className="min-h-11 text-sm font-semibold text-foreground"
         >
-          Limites dos avisos automáticos {ajustando ? "▲" : "▼"}
+          Avisos automáticos {ajustando ? "▲" : "▼"}
         </button>
         {ajustando && (
-          <div className="mt-3 space-y-3">
-            {REGRAS_ALERTA.map((r) => (
-              <label key={r.chave} className="block">
-                <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {r.pergunta}
-                </span>
-                <input
-                  defaultValue={String(limiteDaRegra(r, limites)).replace(".", ",")}
-                  onBlur={(e) => gravarLimite(r.chave, e.target.value)}
-                  inputMode="decimal"
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm tabular-nums text-foreground outline-none focus:border-ring"
-                />
-              </label>
-            ))}
+          <div className="mt-3 space-y-2">
             <p className="text-[11px] text-muted-foreground">
-              O aviso aparece quando o valor da ficha fica abaixo do limite.
+              Escolha quando o app deve perguntar se algo vai para a cobrança. A pergunta aparece
+              na ficha do animal e nada é registrado sem o seu “Sim”.
             </p>
+
+            {regras.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+                Nenhum aviso cadastrado.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {regras.map((r) => (
+                  <li
+                    key={r.id}
+                    className={`rounded-xl border border-border p-3 ${r.ativo ? "bg-card" : "bg-secondary/40 opacity-70"}`}
+                  >
+                    <p className="text-sm font-semibold text-foreground">
+                      {ROTULO_PARAMETRO[r.parametro]} ·{" "}
+                      {r.condicao === "sempre"
+                        ? ROTULO_CONDICAO.sempre
+                        : `${ROTULO_CONDICAO[r.condicao]} ${String(r.limite ?? "").replace(".", ",")}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{r.pergunta}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Cobra: {r.itemNome} ({ROTULO_CATEGORIA[r.itemCategoria]})
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => alternarRegra(r)}
+                        className="min-h-11 rounded-lg bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                      >
+                        {r.ativo ? "Desligar" : "Ligar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegraEditando(r);
+                          setDialogoRegra(true);
+                        }}
+                        className="min-h-11 rounded-lg bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => excluirRegra(r)}
+                        className="min-h-11 rounded-lg bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setRegraEditando(null);
+                setDialogoRegra(true);
+              }}
+              className="min-h-11 w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              Nova regra de aviso
+            </button>
           </div>
         )}
       </section>
@@ -374,6 +425,17 @@ function Conteudo() {
           toast.success("Pendência salva.");
         }}
       />
+
+      <DialogoRegra
+        aberto={dialogoRegra}
+        onFechar={() => {
+          setDialogoRegra(false);
+          setRegraEditando(null);
+        }}
+        inicial={regraEditando}
+        onSalvar={salvarRegra}
+      />
+
 
       <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </>
