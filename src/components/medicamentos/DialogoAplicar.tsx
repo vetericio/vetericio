@@ -26,6 +26,8 @@ export type AplicacaoPendente = {
   peso?: string;
   /** observação livre */
   observacao?: string;
+  /** true = Medicação Cobrada: também gera item em Pendências para lançar ao tutor. */
+  cobrada?: boolean;
 };
 
 

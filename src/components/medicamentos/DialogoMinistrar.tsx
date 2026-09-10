@@ -196,6 +196,7 @@ export function DialogoMinistrar({
       duracao: frequencia ? `a cada ${frequencia}` : "",
       ...(peso.trim() ? { peso: `${peso.trim()} kg` } : {}),
       ...(observacao.trim() ? { observacao: observacao.trim() } : {}),
+      ...(medicamento.especial ? { cobrada: true } : {}),
     });
   };
 
