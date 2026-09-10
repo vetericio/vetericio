@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ListaRegistros } from "@/components/ListaRegistros";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { IndiceAlfabetico } from "@/components/IndiceAlfabetico";
 import { AtualizarEmBloco } from "@/components/AtualizarEmBloco";
 import { AnimaisAtencao } from "@/components/AnimaisAtencao";
@@ -96,15 +97,21 @@ function Registros() {
 
   const abrirObito = (r: Registro) => {
     if (r.obito) {
-      if (!window.confirm(`Desfazer o registro de óbito de ${r.animal.trim()}?`)) return;
-      setRegistros((rs) =>
-        rs.map((x) => {
-          if (x.id !== r.id) return x;
-          const { obito: _removido, ...resto } = x;
-          return resto as Registro;
-        }),
-      );
-      toast.success("Registro de óbito desfeito.");
+      confirmacao.pedir({
+        titulo: "Desfazer o registro de óbito?",
+        descricao: `${r.animal.trim()} volta a aparecer como internado. O resto da ficha continua igual.`,
+        acao: "Desfazer óbito",
+        onConfirmar: () => {
+          setRegistros((rs) =>
+            rs.map((x) => {
+              if (x.id !== r.id) return x;
+              const { obito: _removido, ...resto } = x;
+              return resto as Registro;
+            }),
+          );
+          toast.success("Registro de óbito desfeito.");
+        },
+      });
       return;
     }
     setObitoHora(horaAgora());
@@ -158,8 +165,12 @@ function Registros() {
       toast.info("Não há animais para finalizar o plantão.");
       return;
     }
-    if (!window.confirm("Finalizar o plantão e guardar estes animais no histórico?")) return;
-    finalizar();
+    confirmacao.pedir({
+      titulo: "Finalizar o plantão agora?",
+      descricao: `${registros.length} animal(is) vão para o histórico de plantões. Nada é apagado.`,
+      acao: "Finalizar plantão",
+      onConfirmar: finalizar,
+    });
   };
 
 
@@ -169,10 +180,28 @@ function Registros() {
       toast.info("Não há registros salvos.");
       return;
     }
-    if (window.confirm("Apagar todos os registros salvos neste aparelho?")) {
-      setRegistros([]);
-      toast.success("Todos os registros foram apagados.");
-    }
+    confirmacao.pedir({
+      titulo: `Apagar os ${registros.length} animais desta lista?`,
+      descricao:
+        "Eles saem da lista de hoje deste aparelho. Você tem 6 segundos para desfazer depois.",
+      acao: "Apagar tudo",
+      palavra: "APAGAR",
+      destrutivo: true,
+      onConfirmar: () => {
+        const copia = registros;
+        setRegistros([]);
+        toast.success("Todos os registros foram apagados.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setRegistros(copia);
+              toast.success("Registros de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const copiarTexto = async (texto: string) => {
