@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Calculadora } from "@/components/Calculadora";
-import { FerramentasClinicas } from "@/components/FerramentasClinicas";
+import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
+import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
-import { InstalarApp } from "@/components/InstalarApp";
+import { InstalarApp as InstalarAppBase } from "@/components/InstalarApp";
 import { GuardaSaida } from "@/components/GuardaSaida";
 import { useConforto } from "@/hooks/useConforto";
 import { useRegistros } from "@/hooks/useRegistros";
@@ -54,6 +54,12 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
+
+// Ferramentas e calculadora não dependem do formulário: não precisam ser
+// redesenhadas a cada tecla digitada.
+const Calculadora = memo(CalculadoraBase);
+const FerramentasClinicas = memo(FerramentasClinicasBase);
+const InstalarApp = memo(InstalarAppBase);
 
 const NUMS: ChaveNumerica[] = ["temperatura", "fc", "fr", "pas", "glicemia"];
 const CATEGORIAS = ["alimentacao", "comportamento", "fezes", "mucosas", "urina", "vomito"] as const;
@@ -107,7 +113,10 @@ function Index() {
     : anterior
       ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" }
       : REGISTRO_VAZIO;
-  const sujo = !salvando && JSON.stringify(form) !== JSON.stringify(baseForm);
+  const sujo = useMemo(
+    () => !salvando && JSON.stringify(form) !== JSON.stringify(baseForm),
+    [salvando, form, baseForm],
+  );
 
   // Abre em modo edição ou atualização quando vem da página de registros.
   useEffect(() => {
@@ -211,8 +220,11 @@ function Index() {
       setDuplicado(null);
       // Já salvou: não pode perguntar "tem certeza?" ao recarregar.
       setSalvando(true);
-      // Recarrega o início: formulário limpo e total do cabeçalho atualizado.
-      setTimeout(() => window.location.assign("/"), 0);
+      setEditandoId(null);
+      setAnterior(null);
+      toast.success("Registro salvo.");
+      window.scrollTo({ top: 0, behavior: "auto" });
+      setSalvando(false);
       return;
     }
     setForm(REGISTRO_VAZIO);
