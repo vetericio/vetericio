@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 
 import { ExigePlantao } from "@/components/ExigePlantao";
 import { DialogoNovoItem, type AnimalOpcao } from "@/components/pendencias/DialogoNovoItem";
@@ -64,6 +65,7 @@ function PendenciasPagina() {
       <ExigePlantao funcao="Pendências">
         <Conteudo />
       </ExigePlantao>
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </main>
   );
 }
@@ -76,6 +78,7 @@ function Conteudo() {
   const [escolhendo, setEscolhendo] = useState(false);
   const [limites, setLimites] = useState<LimitesAlerta>(() => carregarLimites());
   const [ajustando, setAjustando] = useState(false);
+  const confirmacao = usarConfirmacao();
 
   // Traz (e mantém) as pendências escritas na anamnese para dentro do módulo.
   useEffect(() => {

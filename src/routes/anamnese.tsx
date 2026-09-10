@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { espelharAnamneses } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
@@ -61,6 +62,7 @@ function AnamneseConteudo() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
+  const confirmacao = usarConfirmacao();
 
   // As pendências daqui também vivem na aba Pendências (e saem do PDF).
   useEffect(() => {
@@ -438,6 +440,7 @@ function AnamneseConteudo() {
       )}
 
       <BlocoNotas />
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </main>
 
   );

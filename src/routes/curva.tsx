@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { ExigePlantao } from "@/components/ExigePlantao";
@@ -73,6 +74,7 @@ function CurvaConteudo() {
   const [toque, setToque] = useState<ToqueId>("urgente");
   const [novos, setNovos] = useState<Record<string, { glicemia: string; pas: string }>>({});
   const [comAlarme, setComAlarme] = useState(true);
+  const confirmacao = usarConfirmacao();
 
   const animais = useMemo(() => {
     const mapa = new Map<string, { chave: string; rotulo: string; animal: string; especie: string }>();
@@ -454,6 +456,7 @@ function CurvaConteudo() {
           );
         })}
       </div>
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </main>
   );
 }
