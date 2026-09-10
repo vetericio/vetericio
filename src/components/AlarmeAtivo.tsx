@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { adiarAlarmeAtivo, pararAlarmeAtivo, useAlarmes } from "@/hooks/useAlarmes";
-import { pararToque, pararVibracao, tocarToque, vibrar } from "@/lib/toques";
+import { useConforto } from "@/hooks/useConforto";
+import { definirVolume, pararToque, pararVibracao, tocarToque, vibrar } from "@/lib/toques";
 
 export function AlarmeAtivo() {
   const { alarmeTocando } = useAlarmes();
+  const { conforto } = useConforto();
 
   useEffect(() => {
     if (!alarmeTocando) {
@@ -11,15 +13,15 @@ export function AlarmeAtivo() {
       pararVibracao();
       return;
     }
+    definirVolume(conforto.volume);
+    // O som entra suave em 3 segundos; a vibração avisa só uma vez.
     tocarToque(alarmeTocando.toque, true);
-    vibrar();
-    const revibrar = window.setInterval(vibrar, 18000);
+    if (conforto.vibracao) vibrar();
     return () => {
-      window.clearInterval(revibrar);
       pararToque();
       pararVibracao();
     };
-  }, [alarmeTocando]);
+  }, [alarmeTocando, conforto.volume, conforto.vibracao]);
 
   if (!alarmeTocando) return null;
 
