@@ -3,27 +3,27 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 
-import { ExigePlantao } from "@/components/ExigePlantao";
 import { DialogoNovoItem, type AnimalOpcao } from "@/components/pendencias/DialogoNovoItem";
+import { DialogoRegra } from "@/components/pendencias/DialogoRegra";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { espelharAnamneses } from "@/hooks/usePendencias";
 import { usePendencias } from "@/hooks/usePendencias";
 import { useRegistros } from "@/hooks/useRegistros";
 import {
   ANIMAL_GERAL,
-  REGRAS_ALERTA,
   ROTULO_CATEGORIA,
+  ROTULO_CONDICAO,
+  ROTULO_PARAMETRO,
   agruparPorAnimal,
-  carregarLimites,
+  carregarRegras,
   chaveDoAnimal,
   itemVazio,
-  limiteDaRegra,
   quandoCurto,
-  salvarLimites,
+  salvarRegras,
   totalOcorrencias,
   type CategoriaPendencia,
   type ItemPendencia,
-  type LimitesAlerta,
+  type RegraAlerta,
 } from "@/lib/pendencias";
 
 export const Route = createFileRoute("/pendencias")({
