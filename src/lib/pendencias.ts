@@ -169,7 +169,7 @@ export type RegraAlerta = {
   parametro: ParametroAlerta;
   /** "sempre" pergunta a cada valor preenchido. */
   condicao: CondicaoAlerta;
-  limite?: number;
+  limite?: number | undefined;
   pergunta: string;
   itemNome: string;
   itemCategoria: CategoriaPendencia;
