@@ -72,6 +72,9 @@ function Registros() {
   const [obitoHora, setObitoHora] = useState("");
   const [obitoMotivo, setObitoMotivo] = useState("");
   const [blocoAberto, setBlocoAberto] = useState(false);
+  const [assinarAberto, setAssinarAberto] = useState(false);
+  const [assinadoEm, setAssinadoEm] = useState("");
+  const confirmacao = usarConfirmacao();
 
   const aplicarBloco = (chave: ChaveAtualizavel, valores: Record<string, string>) => {
     let contador = 0;
