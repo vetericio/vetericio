@@ -62,10 +62,7 @@ const SELOS: Record<CategoriaPendencia, string> = {
 function PendenciasPagina() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6">
-      <ExigePlantao funcao="Pendências">
-        <Conteudo />
-      </ExigePlantao>
-      
+      <Conteudo />
     </main>
   );
 }
@@ -76,9 +73,21 @@ function Conteudo() {
   const { anamneses } = useAnamneses();
   const [dialogo, setDialogo] = useState<ItemPendencia | null>(null);
   const [escolhendo, setEscolhendo] = useState(false);
-  const [limites, setLimites] = useState<LimitesAlerta>(() => carregarLimites());
+  const [regras, setRegras] = useState<RegraAlerta[]>([]);
+  const [regraEditando, setRegraEditando] = useState<RegraAlerta | null>(null);
+  const [dialogoRegra, setDialogoRegra] = useState(false);
   const [ajustando, setAjustando] = useState(false);
   const confirmacao = usarConfirmacao();
+
+  // As regras vivem no aparelho: só podem ser lidas depois da hidratação.
+  useEffect(() => {
+    setRegras(carregarRegras());
+  }, []);
+
+  const gravarRegras = (lista: RegraAlerta[]) => {
+    setRegras(lista);
+    salvarRegras(lista);
+  };
 
   // Traz (e mantém) as pendências escritas na anamnese para dentro do módulo.
   useEffect(() => {
