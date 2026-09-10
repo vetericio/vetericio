@@ -6,6 +6,7 @@ import { FerramentasClinicas } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp } from "@/components/InstalarApp";
 import { GuardaSaida } from "@/components/GuardaSaida";
+import { useConforto } from "@/hooks/useConforto";
 import { useRegistros } from "@/hooks/useRegistros";
 import { useCurvas } from "@/hooks/useCurvas";
 import { definirAlarmes } from "@/hooks/useAlarmes";
@@ -87,6 +88,10 @@ function Index() {
   const [duplicado, setDuplicado] = useState<Registro | null>(null);
   const [fazerCurva, setFazerCurva] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const { conforto, atualizar } = useConforto();
+  const ferramentas = conforto.ferramentasAbertas;
+  const setFerramentas = (fn: (v: boolean) => boolean) =>
+    atualizar({ ferramentasAbertas: fn(conforto.ferramentasAbertas) });
   const { setCurvas } = useCurvas();
 
   const navigate = useNavigate();
