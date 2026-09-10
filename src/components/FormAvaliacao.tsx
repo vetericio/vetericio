@@ -30,7 +30,7 @@ import { useAnamneses } from "@/hooks/useAnamneses";
 import { garantirItemERegistrar } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
-import { carregarLimites, regraDisparada, type RegraAlerta } from "@/lib/pendencias";
+import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
 
 
@@ -88,8 +88,9 @@ export function FormAvaliacao({
   const iniciais = useRef(valores);
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
-  const [alerta, setAlerta] = useState<RegraAlerta | null>(null);
-  const [alertados, setAlertados] = useState<ChaveNumerica[]>([]);
+  // Fila de perguntas: se um valor dispara mais de uma regra, aparecem em sequência.
+  const [fila, setFila] = useState<RegraAlerta[]>([]);
+  const [alertados, setAlertados] = useState<string[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
