@@ -51,6 +51,7 @@ function Plantoes() {
   const entradaArquivo = useRef<HTMLInputElement | null>(null);
   const [previa, setPrevia] = useState<ResultadoImportacao | null>(null);
   const [lendo, setLendo] = useState(false);
+  const confirmacao = usarConfirmacao();
 
   const escolherArquivo = async (arquivo: File | undefined) => {
     if (!arquivo) return;
