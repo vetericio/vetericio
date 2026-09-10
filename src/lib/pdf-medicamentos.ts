@@ -104,7 +104,7 @@ export async function exportarPdfMedicamentos(medicamentos: Medicamento[]) {
       detalhes.push(`Concentração: ${m.concentracaoValor} ${m.concentracaoUnidade}`);
     const vias = viasDe(m);
     if (vias.length > 0) detalhes.push(`Via: ${vias.join(", ")}`);
-    if (m.especial) detalhes.push("Medicação especial");
+    if (m.especial) detalhes.push("Medicação cobrada");
     detalhes.push(...linhasDose(m));
     if (m.resumo?.trim()) detalhes.push(`Obs.: ${m.resumo.trim()}`);
 
