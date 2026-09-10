@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import logoVeterico from "@/assets/logo-veterico.png.asset.json";
 
 import { Link } from "@tanstack/react-router";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
@@ -9,7 +10,8 @@ import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
-const base = "rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
+const base =
+  "min-h-11 flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
 import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 
@@ -18,16 +20,20 @@ export function Cabecalho() {
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
   const finalizar = useFinalizarPlantao();
+  const confirmacao = usarConfirmacao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
 
   const finalizarPlantao = () => {
     const quantos = registros.length;
-    const aviso = quantos
-      ? `Tem certeza que deseja finalizar o plantão? ${quantos} animal(is) irão para o histórico de plantões.`
-      : "Tem certeza que deseja finalizar o plantão?";
-    if (!window.confirm(aviso)) return;
-    finalizar();
+    confirmacao.pedir({
+      titulo: "Finalizar o plantão agora?",
+      descricao: quantos
+        ? `${quantos} animal(is) vão para o histórico de plantões. Nada é apagado: você continua vendo tudo em Plantões.`
+        : "Nenhum animal na lista de hoje. Nada é apagado.",
+      acao: "Finalizar plantão",
+      onConfirmar: finalizar,
+    });
   };
 
   useEffect(() => {
