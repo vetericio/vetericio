@@ -19,7 +19,7 @@ import { apagarSala, criarSala, enviarSala, puxarSala } from "@/lib/sincronizaca
 const CHAVE_SALA = "veterico-sala-v1";
 const FORMATO_SALA = /^[A-Z][0-9]{5}$/;
 /** Intervalo da sincronização automática. */
-const INTERVALO = 15000;
+const INTERVALO = 30000;
 
 function salaGuardada(): string | null {
   if (typeof window === "undefined") return null;
