@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useRef, useState } from "react";
 import {
   ESPECIES,
   OPCOES,
@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Medicacoes } from "@/components/Medicacoes";
+import { Medicacoes as MedicacoesBase } from "@/components/Medicacoes";
 import { DialogoAlerta } from "@/components/pendencias/DialogoAlerta";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { garantirItemERegistrar } from "@/hooks/usePendencias";
@@ -46,6 +46,9 @@ type Props = {
   fazerCurva?: boolean;
   onFazerCurva?: (valor: boolean) => void;
 };
+
+// A lista de medicações só é redesenhada quando ela mesma (ou espécie/peso) muda.
+const Medicacoes = memo(MedicacoesBase);
 
 const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
   { chave: "temperatura", rotulo: "Temperatura", unidade: "°C" },
@@ -86,6 +89,16 @@ export function FormAvaliacao({
   onFazerCurva,
 }: Props) {
   const iniciais = useRef(valores);
+  // Callback estável para as medicações: evita redesenhar a lista a cada tecla.
+  const valoresRef = useRef(valores);
+  valoresRef.current = valores;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const mudarMedicacoes = useCallback(
+    (medicacoes: Registro["medicacoes"]) =>
+      onChangeRef.current({ ...valoresRef.current, medicacoes }),
+    [],
+  );
   const [perguntados, setPerguntados] = useState<ChaveNumerica[]>([]);
   const [pendente, setPendente] = useState<ChaveNumerica | null>(null);
   // Fila de perguntas: se um valor dispara mais de uma regra, aparecem em sequência.
@@ -453,7 +466,7 @@ export function FormAvaliacao({
           lista={valores.medicacoes ?? []}
           especie={valores.especie ?? ""}
           peso={valores.peso ?? ""}
-          onChange={(medicacoes) => onChange({ ...valores, medicacoes })}
+          onChange={mudarMedicacoes}
         />
       </div>
 

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
 import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
