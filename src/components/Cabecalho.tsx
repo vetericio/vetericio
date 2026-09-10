@@ -98,14 +98,14 @@ export function Cabecalho() {
             const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
             if (bloqueado)
               return (
-                <span
+                <button
                   key={item.to}
-                  aria-disabled="true"
-                  title="Inicie o plantão para usar esta função"
-                  className={`${base} pointer-events-none cursor-not-allowed bg-secondary/40 text-muted-foreground opacity-50`}
+                  type="button"
+                  onClick={() => setIniciarAberto(true)}
+                  className={`${base} bg-secondary/40 text-muted-foreground`}
                 >
-                  {item.rotulo}
-                </span>
+                  {item.rotulo} · inicie o plantão
+                </button>
               );
             return (
               <Link
