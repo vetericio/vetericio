@@ -126,6 +126,8 @@ export function Cabecalho() {
         <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
           Total de registros do plantão de hoje: {registros.length}
         </p>
+
+        <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
       </div>
     </header>
   );
