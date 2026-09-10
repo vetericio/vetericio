@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { usePlantoes } from "@/hooks/usePlantoes";
 import { formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
 import { nomeArquivoPdf, rotuloPlantaoPdfDe } from "@/lib/plantao";
@@ -131,26 +132,50 @@ function Plantoes() {
       toast.info("Nenhum plantão salvo.");
       return;
     }
-    const perguntas = [
-      "Apagar todos os plantões salvos?",
-      "Tem certeza? Isso remove o histórico completo.",
-      "Esta ação é permanente e não pode ser desfeita.",
-      "Última confirmação: apagar para sempre?",
-    ];
-    for (const q of perguntas) {
-      if (!window.confirm(q)) {
-        toast.info("Nada foi apagado.");
-        return;
-      }
-    }
-    setPlantoes([]);
-    toast.success("Todos os plantões foram apagados.");
+    confirmacao.pedir({
+      titulo: `Apagar os ${plantoes.length} plantões salvos?`,
+      descricao:
+        "O histórico inteiro sai deste aparelho e não volta. Se quiser guardar antes, use Baixar todos os plantões (PDF).",
+      acao: "Apagar tudo",
+      palavra: "APAGAR",
+      destrutivo: true,
+      onConfirmar: () => {
+        const copia = plantoes;
+        setPlantoes([]);
+        toast.success("Todos os plantões foram apagados.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setPlantoes(copia);
+              toast.success("Plantões de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   const excluir = (p: Plantao) => {
-    if (!window.confirm(`Excluir o plantão de ${rotuloPlantao(p)}?`)) return;
-    setPlantoes((ps) => ps.filter((x) => x.id !== p.id));
-    toast.success("Plantão excluído.");
+    confirmacao.pedir({
+      titulo: "Excluir este plantão?",
+      descricao: `${rotuloPlantao(p)} — ${p.registros.length} animal(is). Você tem 6 segundos para desfazer.`,
+      acao: "Excluir plantão",
+      destrutivo: true,
+      onConfirmar: () => {
+        setPlantoes((ps) => ps.filter((x) => x.id !== p.id));
+        toast.success("Plantão excluído.", {
+          duration: 6000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              setPlantoes((ps) => (ps.some((x) => x.id === p.id) ? ps : [p, ...ps]));
+              toast.success("Plantão de volta.");
+            },
+          },
+        });
+      },
+    });
   };
 
   return (
@@ -270,6 +295,8 @@ function Plantoes() {
           ))}
         </div>
       )}
+
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </main>
   );
 }
