@@ -390,7 +390,7 @@ function CardMedicamento({
               : `Marcar ${m.nome} como favorita`
           }
           title="Favorita: fica no início da lista"
-          className={`rounded-lg px-1.5 py-1 text-base leading-none hover:bg-secondary/70 ${
+          className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg text-lg leading-none hover:bg-secondary/70 ${
             m.favorito ? "text-primary" : "text-muted-foreground"
           }`}
         >
@@ -402,7 +402,7 @@ function CardMedicamento({
             <button
               type="button"
               aria-label={`Ações de ${m.nome}`}
-              className="-mr-1 shrink-0 rounded-lg px-2 py-1 text-lg leading-none text-muted-foreground hover:bg-secondary/70"
+              className="-mr-1 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-lg leading-none text-muted-foreground hover:bg-secondary/70"
             >
               ⋯
             </button>
