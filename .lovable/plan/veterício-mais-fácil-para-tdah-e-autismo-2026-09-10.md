@@ -21,18 +21,18 @@ Li todas as telas do app. Ele funciona bem, mas hoje pede muita atenção de uma
 - "Apagar todos os plantões": **uma única** janela, com a frase do que será perdido e o passo indicado ("passo 1 de 2" quando fizer sentido digitar APAGAR para confirmar).
 - Iniciar plantão deixa de perguntar "Tem certeza?" e passa a ser uma tela simples de escolha do turno.
 - **Desfazer de 6 segundos** no aviso após excluir medicação, medição da curva, pendência e alarme.
-- Deixar as janelas todas com o mesmo comportamento de teclado (fecha com Esc, foco no lugar certo).
+- Deixar as janelas todas com o mesmo comportamento de teclado (fecha com X no celular, foco no lugar certo).
 
 ## Etapa 2 — Modo calmo
 
-- Novo botão **"Modo calmo"** na tela de Temas, que de uma vez: usa um tema sóbrio de bom contraste, tira animações, deixa alarme em volume baixo, desliga vibração repetida e esconde as ferramentas extras do Início.
+- Nova função no **"Modo calmo"** , que de uma vez: usa um tema sóbrio de bom contraste, tira animações, deixa alarme em volume baixo, desliga vibração repetida e esconde as ferramentas extras do Início.
+- Haverá então dois modos Modo Veterício e modo calmo. (Modo vetericio será o app exatamente como agora, modo calmo será ele com essas mudança. Haverá dois botões "Veterício/Calmo" em temas. O app será exatamente igual, sem mudar nada em Vetericio.
 - Reorganizar Temas em dois grupos claros: **Sóbrios** e **Divertidos**.
 - Em "Minha cor", ajustar automaticamente para o texto continuar legível.
 
 ## Etapa 3 — Menos coisa na tela
 
 - No Início, calculadora e ferramentas clínicas passam a ficar recolhidas, abrindo com um toque, e lembram a escolha.
-- No cartão de medicação: informação essencial visível (nome, concentração, dose e volume) e o resto em "ver detalhes".
 - Estrela e "⋯" ganham área de toque maior; os pontinhos do carrossel também.
 
 ## Etapa 4 — Alarme sob controle
