@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 
+import { useConforto } from "@/hooks/useConforto";
+import { TEMA_CALMO } from "@/lib/conforto";
 import {
   CORES_RAPIDAS,
   TEMAS,
@@ -8,6 +11,7 @@ import {
   aplicarTema,
   carregarCor,
   carregarTema,
+  grupoDoTema,
   salvarCor,
   type TemaId,
 } from "@/lib/tema";
