@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { garantirItemERegistrar } from "@/hooks/usePendencias";
 import { useRegistros } from "@/hooks/useRegistros";
 import { emojiEspecie, normalizarNome } from "@/lib/anamnese";
 import { nomeMedicacao, type Medicacao } from "@/lib/ficha";
@@ -65,15 +66,23 @@ export function DialogoAplicar({ aplicacao, onFechar }: Props) {
       aplicadoEm: agora.toISOString(),
     };
 
-    let nomeAnimal = "";
+    const escolhido = registros.find((r) => r.id === id);
+    const nomeAnimal = escolhido?.animal ?? "";
     setRegistros((rs) =>
-      rs.map((r) => {
-        if (r.id !== id) return r;
-        nomeAnimal = r.animal;
-        return { ...r, medicacoes: [...(r.medicacoes ?? []), nova] };
-      }),
+      rs.map((r) => (r.id === id ? { ...r, medicacoes: [...(r.medicacoes ?? []), nova] } : r)),
     );
     toast.success(`${nomeMedicacao(aplicacao)} registrado em ${nomeAnimal || "animal"} às ${hora}`);
+
+    // Medicação Cobrada: cada ministração é uma cobrança em Pendências.
+    if (aplicacao.cobrada) {
+      garantirItemERegistrar({
+        animalNome: nomeAnimal,
+        especie: escolhido?.especie ?? "",
+        categoria: "medicamento",
+        nome: nomeMedicacao(aplicacao),
+      });
+      toast.success("Lançado em Pendências para cobrança.");
+    }
     setBusca("");
     onFechar();
   };
