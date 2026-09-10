@@ -156,8 +156,10 @@ export type Medicamento = {
   gato: DoseEspecie;
   /** true = mesma dose para cão e gato (bloco único no cadastro) */
   doseUnificada?: boolean;
-  /** ⭐ true = medicação especial: aparece nas medicações do animal e em Pendências. */
+  /** 💰 true = Medicação Cobrada: ao ministrar, entra em Pendências para lançar ao tutor. */
   especial?: boolean;
+  /** ⭐ true = favorita: fica no início da lista e nos atalhos da ficha. */
+  favorito?: boolean;
   teste?: boolean;
 };
 
@@ -705,7 +707,11 @@ export function carregarMedicamentos(): Medicamento[] {
     const bruto = window.localStorage.getItem(CHAVE_MEDICAMENTOS);
     if (!bruto) return medicamentosDeTeste();
     const lido = JSON.parse(bruto);
-    return Array.isArray(lido) ? (lido as Medicamento[]) : [];
+    if (!Array.isArray(lido)) return [];
+    // Quem já usava a estrela (antes ligada a "especial") continua com a favorita marcada.
+    return (lido as Medicamento[]).map((m) =>
+      m.favorito === undefined && m.especial ? { ...m, favorito: true } : m,
+    );
   } catch {
     return [];
   }
@@ -720,6 +726,12 @@ export function salvarMedicamentos(lista: Medicamento[]) {
   }
 }
 
+/** Favoritas primeiro; dentro de cada grupo, ordem alfabética. */
 export function ordenarMedicamentos(lista: Medicamento[]): Medicamento[] {
-  return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  return [...lista].sort((a, b) => {
+    const fa = a.favorito ? 0 : 1;
+    const fb = b.favorito ? 0 : 1;
+    if (fa !== fb) return fa - fb;
+    return a.nome.localeCompare(b.nome, "pt-BR");
+  });
 }

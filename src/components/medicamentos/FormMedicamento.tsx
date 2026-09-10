@@ -367,7 +367,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
           </div>
 
           <div>
-            <span className={rotulo}>Medicação especial</span>
+            <span className={rotulo}>Medicação Cobrada</span>
             <button
               type="button"
               aria-pressed={item.especial === true}
@@ -378,7 +378,9 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
                   : "border-border bg-background text-foreground hover:bg-secondary"
               }`}
             >
-              {item.especial ? "⭐ Especial (cobrança ao tutor)" : "☆ Marcar como especial"}
+              {item.especial
+                ? "💰 Cobrada (vai para Pendências ao ministrar)"
+                : "Marcar como Medicação Cobrada"}
             </button>
           </div>
 

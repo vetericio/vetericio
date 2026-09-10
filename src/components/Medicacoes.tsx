@@ -261,11 +261,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
 
-  /** ⭐ Medicações especiais do cadastro, em ordem alfabética, com a dose padrão. */
+  /** ⭐ Medicações favoritas do cadastro, em ordem alfabética, com a dose padrão. */
   const especiais = useMemo(() => {
     const chave = especie === "Gato" ? "gato" : "cao";
     return medicamentos
-      .filter((m) => m.especial && m.nome.trim())
+      .filter((m) => m.favorito && m.nome.trim())
       .map((m) => {
         const d = doseDaEspecie(m, chave);
         const f = faixaDe(d);
