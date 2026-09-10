@@ -162,12 +162,8 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
                   <button
                     type="button"
                     aria-label={`Ouvir ${t.nome}`}
-                    onClick={() => {
-                      desbloquearAudio();
-                      tocarToque(t.id);
-                      window.setTimeout(pararToque, duracaoToque(t.id));
-                    }}
-                    className="text-xs opacity-70 hover:opacity-100"
+                    onClick={() => ouvir(t.id)}
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm opacity-70 hover:opacity-100"
                   >
                     ▶
                   </button>
@@ -228,7 +224,18 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
                 {a.id !== "jejum-00h" && (
                   <button
                     type="button"
-                    onClick={() => excluir(a.id)}
+                    onClick={() =>
+                      confirmacao.pedir({
+                        titulo: "Excluir este alarme?",
+                        descricao: `${a.hora} — ${a.rotulo}. Os outros alarmes continuam como estão.`,
+                        acao: "Excluir alarme",
+                        destrutivo: true,
+                        onConfirmar: () => {
+                          excluir(a.id);
+                          toast.success("Alarme excluído.");
+                        },
+                      })
+                    }
                     className="rounded-lg bg-background px-2.5 py-1 text-xs font-semibold text-destructive hover:bg-background/70"
                   >
                     Excluir
@@ -240,7 +247,31 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
       </ul>
 
       {!compacto && (
-        <div className="mt-3 space-y-2 rounded-xl border border-dashed border-border p-3">
+        <div className="mt-3 space-y-3 rounded-xl border border-dashed border-border p-3">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground" htmlFor="volume-alarme">
+              Volume do alarme: {Math.round(conforto.volume * 100)}%
+            </label>
+            <input
+              id="volume-alarme"
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={Math.round(conforto.volume * 100)}
+              onChange={(e) => atualizar({ volume: Number(e.target.value) / 100 })}
+              className="mt-2 h-11 w-full"
+            />
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={conforto.vibracao}
+              onChange={(e) => atualizar({ vibracao: e.target.checked })}
+              className="h-5 w-5"
+            />
+            Vibrar uma vez quando o alarme começar
+          </label>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
             Para tocar garantido, deixe o app aberto e o volume de mídia ligado. Um app
             instalado pela web não pode furar o modo silencioso do aparelho nem tocar com o app
@@ -250,12 +281,14 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
           <button
             type="button"
             onClick={pedirNotificacoes}
-            className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+            className="min-h-11 rounded-lg bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
           >
             Liberar notificações
           </button>
         </div>
       )}
+
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </section>
   );
 }
