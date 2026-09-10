@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useAlarmes } from "@/hooks/useAlarmes";
+import { useConforto } from "@/hooks/useConforto";
 import {
   criarAlarme,
   proximoDisparo,
@@ -9,6 +11,7 @@ import {
 } from "@/lib/alarmes";
 import {
   TOQUES,
+  definirVolume,
   desbloquearAudio,
   duracaoToque,
   pararToque,
@@ -18,6 +21,8 @@ import {
 
 export function Alarmes({ compacto = false }: { compacto?: boolean }) {
   const { alarmes, setAlarmes } = useAlarmes();
+  const { conforto, atualizar } = useConforto();
+  const confirmacao = usarConfirmacao();
   const [montado, setMontado] = useState(false);
   const [aberto, setAberto] = useState(false);
   const [hora, setHora] = useState("00:00");
@@ -28,9 +33,22 @@ export function Alarmes({ compacto = false }: { compacto?: boolean }) {
 
   useEffect(() => setMontado(true), []);
 
+  useEffect(() => {
+    definirVolume(conforto.volume);
+  }, [conforto.volume]);
+
   const toquesFiltrados = busca.trim()
     ? TOQUES.filter((t) => t.nome.toLowerCase().includes(busca.trim().toLowerCase()))
     : TOQUES;
+
+  /** Prévia curta: no máximo 3 segundos e só um som por vez. */
+  const ouvir = (id: ToqueId) => {
+    desbloquearAudio();
+    definirVolume(conforto.volume);
+    pararToque();
+    tocarToque(id);
+    window.setTimeout(pararToque, Math.min(duracaoToque(id), 3000));
+  };
 
   const alternar = (a: Alarme) => {
     desbloquearAudio();
