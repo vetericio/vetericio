@@ -421,6 +421,32 @@ function Registros() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={assinarAberto} onOpenChange={setAssinarAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Data e hora da assinatura</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vem preenchido com agora. Você pode mudar antes de gerar o PDF.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <input
+            value={assinadoEm}
+            onChange={(e) => setAssinadoEm(e.target.value)}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground outline-none focus:border-ring"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="min-h-11" onClick={gerarPdf}>
+              Gerar PDF
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
+
+
+
       {registros.length > 0 && (
         <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
