@@ -480,33 +480,51 @@
   background-repeat: repeat;
 }
 
-/* Tema Jack Skellington (uso pessoal, não comercial). */
+/* Tema Jack Skellington — visual particular do app. */
 .tema-jack {
-  --background: oklch(0.16 0.02 300);
-  --foreground: oklch(0.95 0.01 90);
-  --card: oklch(0.21 0.03 300);
+  --background: oklch(0.12 0.025 292);
+  --foreground: oklch(0.96 0.008 90);
+  --card: oklch(0.18 0.035 292);
   --card-foreground: oklch(0.95 0.01 90);
-  --popover: oklch(0.21 0.03 300);
+  --popover: oklch(0.18 0.035 292);
   --popover-foreground: oklch(0.95 0.01 90);
-  --primary: oklch(0.62 0.19 305);
-  --primary-foreground: oklch(0.14 0.02 300);
-  --secondary: oklch(0.27 0.03 300);
+  --primary: oklch(0.68 0.19 305);
+  --primary-foreground: oklch(0.12 0.02 292);
+  --secondary: oklch(0.25 0.04 292);
   --secondary-foreground: oklch(0.93 0.01 90);
-  --muted: oklch(0.26 0.025 300);
-  --muted-foreground: oklch(0.72 0.02 300);
-  --accent: oklch(0.75 0.16 90);
-  --accent-foreground: oklch(0.16 0.02 300);
-  --border: oklch(0.33 0.03 300);
-  --input: oklch(0.33 0.03 300);
-  --ring: oklch(0.62 0.19 305);
-  --chart-1: oklch(0.75 0.16 90);
-  --chart-2: oklch(0.62 0.19 305);
+  --muted: oklch(0.23 0.03 292);
+  --muted-foreground: oklch(0.76 0.02 292);
+  --accent: oklch(0.73 0.17 70);
+  --accent-foreground: oklch(0.13 0.02 292);
+  --border: oklch(0.38 0.05 292);
+  --input: oklch(0.34 0.04 292);
+  --ring: oklch(0.68 0.19 305);
+  --chart-1: oklch(0.73 0.17 70);
+  --chart-2: oklch(0.68 0.19 305);
+  --radius: 0.55rem;
 }
 
 .tema-jack body {
-  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Ctext x='16' y='42' font-size='26' opacity='0.22'%3E%F0%9F%A6%87%3C/text%3E%3Ctext x='104' y='96' font-size='22' opacity='0.2'%3E%F0%9F%8C%99%3C/text%3E%3Ctext x='34' y='140' font-size='24' opacity='0.18'%3E%F0%9F%90%B6%3C/text%3E%3Ctext x='118' y='40' font-size='18' opacity='0.16'%3E%E2%9C%A6%3C/text%3E%3C/svg%3E");
+  background-color: oklch(0.12 0.025 292);
+  background-image:
+    radial-gradient(circle at 82% 12%, oklch(0.78 0.025 90 / 22%) 0 28px, transparent 29px),
+    radial-gradient(circle at 82% 12%, transparent 0 36px, oklch(0.72 0.03 90 / 12%) 37px 39px, transparent 40px),
+    linear-gradient(155deg, transparent 0 62%, oklch(0.27 0.08 292 / 30%) 62% 64%, transparent 64%),
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='190' viewBox='0 0 190 190'%3E%3Cg fill='none' stroke='%23d8d2dc' stroke-width='2' opacity='.18'%3E%3Cpath d='M20 35l8-8 8 8-8 8zM145 118l7-7 7 7-7 7z'/%3E%3Cpath d='M34 95c8-12 18-12 26 0-8-5-18-5-26 0zm26 0c8-12 18-12 26 0-8-5-18-5-26 0z'/%3E%3C/g%3E%3Cg fill='%23e87832' opacity='.24'%3E%3Cpath d='M105 36c-9-8-23-1-20 11 3 12 17 17 29 17 12 0 26-5 29-17 3-12-11-19-20-11-4-7-14-7-18 0z'/%3E%3Cpath d='M110 39v22M97 43l6 16M123 43l-6 16' stroke='%23221b2e' stroke-width='3'/%3E%3C/g%3E%3C/svg%3E");
   background-attachment: fixed;
-  background-repeat: repeat;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  background-size: auto, auto, 100% 100%, 190px 190px;
+}
+
+.tema-jack button:hover,
+.tema-jack a:hover {
+  filter: drop-shadow(0 0 7px oklch(0.72 0.17 70 / 35%));
+}
+
+.tema-jack input,
+.tema-jack textarea,
+.tema-jack select {
+  border-style: dashed;
 }
 
 /* Tema cansado: contraste baixo, sem brilho. */
