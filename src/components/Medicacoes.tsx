@@ -34,11 +34,23 @@ type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS | 
 
 /** Máscara de centavos para mL: digita de trás para frente (5 -> 0,05 / 50 -> 0,50). */
 function mascaraMl(valor: string): string {
-  const digitos = valor.replace(/\D/g, "").replace(/^0+(?=\d{3,})/, "");
+  const digitado = valor.replace(/\s/g, "").replace(/\./g, ",");
+  if (digitado.includes(",")) {
+    const [inteiroBruto, decimalBruto = ""] = digitado.split(",");
+    const inteiro = inteiroBruto.replace(/\D/g, "") || "0";
+    const decimal = decimalBruto.replace(/\D/g, "").slice(0, 3);
+    return decimal ? `${inteiro},${decimal}` : `${inteiro},`;
+  }
+  const digitos = digitado.replace(/\D/g, "").replace(/^0+(?=\d{3,})/, "");
   if (!digitos) return "";
   const cheio = digitos.padStart(3, "0");
   const inteiro = cheio.slice(0, -2).replace(/^0+(?=\d)/, "");
   return `${inteiro},${cheio.slice(-2)}`;
+}
+
+function exibirMl(valor: number): string {
+  const casas = Math.abs(valor * 1000 - Math.round(valor * 100) * 10) > 0.001 ? 3 : 2;
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
 }
 
 
@@ -365,7 +377,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     });
   }, [refCalculo, doseExibida, peso]);
 
-  const volumeCalculado = calculo?.ok ? `${calculo.volumeTexto}` : "";
+  const volumeCalculado = calculo?.ok && typeof calculo.volume === "number" ? exibirMl(calculo.volume) : "";
   const unidadeCalculada = calculo?.ok ? calculo.unidade : "";
 
   /** Medicação cadastrada correspondente à linha do modo rápido. */
