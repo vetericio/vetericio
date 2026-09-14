@@ -881,19 +881,15 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 className={campo}
               />
 
-              <div className="flex min-w-0 gap-1.5">
-                <input
+              <div className="grid min-w-0 gap-1.5 sm:grid-cols-2">
+                <label className="min-w-0">
+                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Dose ({refCalculo?.unidadeDose ?? "mg/kg"})</span>
+                  <input
                   ref={quantidadeRef}
-                  value={modoQuantidade === "dose" ? doseUsada : quantidade || volumeCalculado}
+                  value={doseExibida}
                   onChange={(e) => {
-                    if (modoQuantidade === "dose") {
-                      setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
-                      setQuantidade("");
-                    } else {
-                      setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value);
-                      // O volume passou a ser a fonte do cálculo; a dose será obtida abaixo.
-                      if (unidade === "mL") setDoseUsada("");
-                    }
+                    setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
+                    setQuantidade("");
                   }}
 
                   onKeyDown={(e) => {
@@ -904,26 +900,24 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                     }
                   }}
                   enterKeyHint="next"
-                  placeholder={modoQuantidade === "dose" ? "Dose" : "Quantidade"}
+                  placeholder="Dose"
                   className={`${campo} min-w-0 flex-1`}
-                />
-                {refCalculo && unidade === "mL" ? (
-                  <div className="flex shrink-0 overflow-hidden rounded-xl border border-input">
-                    <button type="button" onClick={() => { setModoQuantidade("ml"); setDoseUsada(""); }} className={`px-3 text-xs font-bold ${modoQuantidade === "ml" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}>mL</button>
-                    <button type="button" onClick={() => { setModoQuantidade("dose"); setQuantidade(""); setDoseUsada(doseExibida); }} className={`px-3 text-xs font-bold ${modoQuantidade === "dose" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}>Dose</button>
-                  </div>
-                ) : (<select
-                  value={unidade}
-                  onChange={(e) => setUnidade(e.target.value as Unidade)}
-                  className={`${campo} shrink-0`}
-                  style={{ width: "auto", minWidth: "5.5rem" }}
-                >
-                  {UNIDADES.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>)}
+                  />
+                </label>
+                <label className="min-w-0">
+                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">mL</span>
+                  <input
+                  value={quantidade || volumeCalculado}
+                  onChange={(e) => {
+                    setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value);
+                    setDoseUsada("");
+                  }}
+                  inputMode="decimal"
+                  placeholder="mL"
+                  aria-label="Volume em mL"
+                  className={`${campo} min-w-0`}
+                  />
+                </label>
               </div>
               <div className={`${campo} space-y-1.5`}>
                 <div className="grid grid-cols-4 gap-1">
@@ -967,57 +961,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 )}
               </div>
             </div>
-            {refCalculo && (
-              <div className="rounded-lg bg-secondary/60 p-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="flex items-center gap-1.5 text-xs text-foreground">
-                    Dose neste atendimento
-                    <input
-                      value={doseExibida}
-                      onChange={(e) => {
-                        setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
-                        setQuantidade("");
-                      }}
-                      inputMode="decimal"
-                      className={`${campo} w-20 tabular-nums`}
-                    />
-                    <span className="text-muted-foreground">{refCalculo.unidadeDose}</span>
-                  </label>
-                  {refCalculo.dosePadrao && (
-                    <span className="text-[11px] text-muted-foreground">
-                      dose padrão cadastrada: {refCalculo.dosePadrao} {refCalculo.unidadeDose}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-xs">
-                  {calculo?.ok ? (
-                    <>
-                      <div className="rounded-md bg-background px-2 py-1.5">
-                        <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Dose</span>
-                        <strong className="text-foreground">{doseExibida} {refCalculo.unidadeDose}</strong>
-                        <span className="block text-[10px] text-muted-foreground">
-                          Total: {calculo.doseTotalTexto}
-                        </span>
-                      </div>
-                      <div className="rounded-md bg-background px-2 py-1.5">
-                        <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Volume</span>
-                        <strong className="text-foreground">{volumeCalculado} {unidadeCalculada}</strong>
-                        <span className="block text-[10px] text-muted-foreground">
-                          {quantidade
-                            ? `${quantidade} mL × ${refCalculo.concValor} ÷ ${peso.trim()} kg`
-                            : `${peso.trim()} kg × ${doseExibida} ÷ ${refCalculo.concValor}`}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="col-span-2 text-muted-foreground">
-                      {calculo && !calculo.ok
-                        ? calculo.motivo
-                        : "Cálculo indisponível: falta dose ou concentração cadastrada."}
-                    </span>
-                  )}
-                </div>
-              </div>
+            {refCalculo && !calculo?.ok && (
+              <p className="text-[11px] text-muted-foreground">
+                {calculo?.motivo ?? "Informe a dose ou o volume para calcular."}
+              </p>
             )}
 
             <div className="flex justify-end gap-2 border-t border-border pt-2">
