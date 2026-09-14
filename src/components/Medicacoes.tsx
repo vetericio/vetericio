@@ -499,12 +499,19 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const editar = (indice: number) => {
     const item = lista[indice];
     if (!item) return;
-    const { quantidade: q, unidade: u } = parseDose(item.dose);
+    const doseSalva = item.dose.trim();
+    const doseNumerica = doseSalva.match(/[\d,.]+/)?.[0] ?? "";
+    const doseEhVolume = /\bml\b/i.test(doseSalva);
+    const quantidadeSalva = item.quantidade?.trim() ?? "";
+    const volumeNumerico = quantidadeSalva.match(/[\d,.]+/)?.[0] ?? "";
+    const quantidadeEhVolume = /\bml\b/i.test(quantidadeSalva);
+    const { quantidade: qAntiga, unidade: uAntiga } = parseDose(item.dose);
     const { modo, outros } = parseDuracao(item.duracao);
     setNome(item.nome);
-    setQuantidade(q);
-    setUnidade(u);
-    setModoQuantidade(u === "mL" ? "ml" : "dose");
+    setDoseUsada(doseEhVolume ? "" : doseNumerica);
+    setQuantidade(quantidadeEhVolume ? volumeNumerico : doseEhVolume ? qAntiga : "");
+    setUnidade(quantidadeEhVolume || doseEhVolume ? "mL" : uAntiga);
+    setModoQuantidade("ml");
     setDuracao(modo);
     setDuracaoOutros(outros);
     setEditando(indice);
