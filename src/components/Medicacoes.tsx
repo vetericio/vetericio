@@ -240,6 +240,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const [nome, setNome] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
+  const [modoQuantidade, setModoQuantidade] = useState<"ml" | "dose">("ml");
   const [duracao, setDuracao] = useState<DuracaoPadrao>("");
   const [duracaoOutros, setDuracaoOutros] = useState("");
   // Padrão: modo rápido (só nomes). A setinha abre o formulário completo.
@@ -406,6 +407,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setNome("");
     setQuantidade("");
     setUnidade("mL");
+    setModoQuantidade("ml");
     setDuracao("");
     setDuracaoOutros("");
     setEditando(null);
@@ -447,7 +449,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       toast.error("Escreva o nome da medicação.");
       return;
     }
-    const quantidadeFinal = quantidade.trim() || volumeCalculado;
+    const quantidadeFinal = modoQuantidade === "dose" ? volumeCalculado : quantidade.trim() || volumeCalculado;
     const dose = refCalculo && doseExibida.trim()
       ? `${doseExibida.trim()} ${refCalculo.unidadeDose}`
       : montarDose(quantidadeFinal, unidade);
@@ -485,6 +487,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setNome(item.nome);
     setQuantidade(q);
     setUnidade(u);
+    setModoQuantidade(u === "mL" ? "ml" : "dose");
     setDuracao(modo);
     setDuracaoOutros(outros);
     setEditando(indice);
@@ -881,11 +884,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
               <div className="flex min-w-0 gap-1.5">
                 <input
                   ref={quantidadeRef}
-                  value={quantidade || volumeCalculado}
+                  value={modoQuantidade === "dose" ? doseUsada : quantidade || volumeCalculado}
                   onChange={(e) => {
-                    setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value);
-                    // O volume passou a ser a fonte do cálculo; a dose será obtida abaixo.
-                    if (unidade === "mL") setDoseUsada("");
+                    if (modoQuantidade === "dose") {
+                      setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
+                      setQuantidade("");
+                    } else {
+                      setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value);
+                      // O volume passou a ser a fonte do cálculo; a dose será obtida abaixo.
+                      if (unidade === "mL") setDoseUsada("");
+                    }
                   }}
 
                   onKeyDown={(e) => {
@@ -896,10 +904,15 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                     }
                   }}
                   enterKeyHint="next"
-                  placeholder="Quantidade"
+                  placeholder={modoQuantidade === "dose" ? "Dose" : "Quantidade"}
                   className={`${campo} min-w-0 flex-1`}
                 />
-                <select
+                {refCalculo && unidade === "mL" ? (
+                  <div className="flex shrink-0 overflow-hidden rounded-xl border border-input">
+                    <button type="button" onClick={() => { setModoQuantidade("ml"); setDoseUsada(""); }} className={`px-3 text-xs font-bold ${modoQuantidade === "ml" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}>mL</button>
+                    <button type="button" onClick={() => { setModoQuantidade("dose"); setQuantidade(""); setDoseUsada(doseExibida); }} className={`px-3 text-xs font-bold ${modoQuantidade === "dose" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}>Dose</button>
+                  </div>
+                ) : (<select
                   value={unidade}
                   onChange={(e) => setUnidade(e.target.value as Unidade)}
                   className={`${campo} shrink-0`}
@@ -910,7 +923,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                       {u}
                     </option>
                   ))}
-                </select>
+                </select>)}
               </div>
               <div className={`${campo} space-y-1.5`}>
                 <div className="grid grid-cols-4 gap-1">
