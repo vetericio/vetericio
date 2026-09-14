@@ -507,7 +507,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     const quantidadeEhVolume = /\bml\b/i.test(quantidadeSalva);
     const { quantidade: qAntiga, unidade: uAntiga } = parseDose(item.dose);
     const { modo, outros } = parseDuracao(item.duracao);
+    const referencia = sugestoes.find(
+      (s) => s.nome.toLocaleLowerCase("pt-BR") === item.nome.toLocaleLowerCase("pt-BR"),
+    );
     setNome(item.nome);
+    setRefCalculo(referencia ?? null);
     setDoseUsada(doseEhVolume ? "" : doseNumerica);
     setQuantidade(quantidadeEhVolume ? volumeNumerico : doseEhVolume ? qAntiga : "");
     setUnidade(quantidadeEhVolume || doseEhVolume ? "mL" : uAntiga);
