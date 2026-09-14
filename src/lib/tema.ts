@@ -44,7 +44,7 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
     id: "jack",
     nome: "Jack Skellington",
     classe: "tema-jack",
-    descricao: "Morcegos e o Zero ao fundo",
+    descricao: "Jack, Zero e a Cidade do Halloween",
   },
   { id: "cansado", nome: "Cansado", classe: "tema-cansado", descricao: "Contraste suave" },
   { id: "feliz", nome: "Feliz", classe: "tema-feliz", descricao: "Cores alegres" },
