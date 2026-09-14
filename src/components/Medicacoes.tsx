@@ -327,8 +327,19 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     });
   }, [refCalculo, peso, quantidade, unidade]);
 
-  /** A dose digitada tem prioridade; sem ela, mostra a dose obtida pelo volume. */
-  const doseExibida = doseUsada || (dosePeloVolume?.ok ? dosePeloVolume.doseTexto : "");
+  /** Dose total do animal em mg: a dose cadastrada em mg/kg é convertida pelo peso. */
+  const doseTotalPeloCadastro = useMemo(() => {
+    if (!refCalculo || !refCalculo.dosePadrao) return "";
+    const valor = Number(refCalculo.dosePadrao.replace(",", "."));
+    const pesoNumero = Number(peso.replace(",", "."));
+    if (!Number.isFinite(valor) || valor <= 0) return "";
+    const porAnimal = /animal\s*$/i.test(refCalculo.unidadeDose);
+    const total = porAnimal ? valor : valor * pesoNumero;
+    return total > 0 ? String(total).replace(".", ",") : "";
+  }, [refCalculo, peso]);
+
+  /** A dose digitada tem prioridade; sem ela, mostra a dose total obtida pelo volume. */
+  const doseExibida = doseUsada || (dosePeloVolume?.ok ? String(dosePeloVolume.doseTotal).replace(".", ",") : doseTotalPeloCadastro);
 
   /** mL = peso × dose ÷ concentração, sempre com os dados cadastrados. */
   const calculo = useMemo(() => {
@@ -336,12 +347,18 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     if (!doseExibida.trim() || !refCalculo.concValor.trim()) {
       return { ok: false as const, motivo: "Cálculo indisponível: falta dose ou concentração cadastrada." };
     }
+    const pesoNumero = Number(peso.replace(",", "."));
+    const porAnimal = /animal\s*$/i.test(refCalculo.unidadeDose);
+    const doseNumero = Number(doseExibida.replace(",", "."));
+    if (!Number.isFinite(doseNumero) || doseNumero <= 0 || (!porAnimal && pesoNumero <= 0)) {
+      return { ok: false as const, motivo: "Informe o peso e a dose em mg." };
+    }
     return calcularDose({
       peso,
-      dose: doseExibida,
+      dose: String(porAnimal ? doseNumero : doseNumero / pesoNumero),
       concentracaoValor: refCalculo.concValor,
       concentracaoUnidade: refCalculo.concUnidade,
-      unidadeDose: refCalculo.unidadeDose,
+      unidadeDose: porAnimal ? "mg/animal" : "mg/kg",
     });
   }, [refCalculo, doseExibida, peso]);
 
@@ -451,7 +468,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     }
     const quantidadeFinal = modoQuantidade === "dose" ? volumeCalculado : quantidade.trim() || volumeCalculado;
     const dose = refCalculo && doseExibida.trim()
-      ? `${doseExibida.trim()} ${refCalculo.unidadeDose}`
+      ? `${doseExibida.trim()} mg`
       : montarDose(quantidadeFinal, unidade);
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
@@ -864,7 +881,13 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 onChange={setNome}
                 onEscolher={(s) => {
                   setRefCalculo(s);
-                  setDoseUsada(s.dosePadrao);
+                  const doseBase = Number(s.dosePadrao.replace(",", "."));
+                  const pesoNumero = Number(peso.replace(",", "."));
+                  const porAnimal = /animal\s*$/i.test(s.unidadeDose);
+                  const total = doseBase > 0 && (porAnimal || pesoNumero > 0)
+                    ? doseBase * (porAnimal ? 1 : pesoNumero)
+                    : 0;
+                  setDoseUsada(total > 0 ? String(total).replace(".", ",") : "");
                   setQuantidade("");
                   const alvo = `${s.intervalo}h`;
                   if ((DURACOES_PADRAO as readonly string[]).includes(alvo))
@@ -883,7 +906,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
               <div className="grid min-w-0 gap-1.5 sm:grid-cols-2">
                 <label className="min-w-0">
-                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Dose ({refCalculo?.unidadeDose ?? "mg/kg"})</span>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Dose (mg)</span>
                   <input
                   ref={quantidadeRef}
                   value={doseExibida}
