@@ -484,6 +484,58 @@ export function calcularDose(params: {
   };
 }
 
+/**
+ * Caminho inverso de calcularDose: a partir do volume informado, encontra a
+ * dose por kg (ou por animal). É usado na ficha para que dose e mL possam ser
+ * preenchidos em qualquer ordem.
+ */
+export function calcularDosePeloVolume(params: {
+  peso: string;
+  volume: string;
+  concentracaoValor: string;
+  concentracaoUnidade: string;
+  unidadeDose?: string;
+}):
+  | { ok: true; dose: number; doseTexto: string; doseTotal: number; doseTotalTexto: string }
+  | { ok: false; motivo: string } {
+  const volume = numero(params.volume);
+  const formaDose = interpretarUnidadeDose(params.unidadeDose ?? "mg/kg");
+  if (!formaDose) return { ok: false, motivo: AVISO_INCOMPATIVEL };
+  if (volume === null || volume <= 0) return { ok: false, motivo: "Informe o volume em mL." };
+
+  const peso = numero(params.peso);
+  if (!formaDose.porAnimal && (peso === null || peso <= 0))
+    return { ok: false, motivo: "Informe o peso do animal." };
+
+  // Uma dose já expressa em mL não depende da concentração.
+  if (formaDose.grandeza === "volume") {
+    const fator = formaDose.porAnimal ? 1 : (peso as number);
+    const dose = volume / fator;
+    return {
+      ok: true,
+      dose,
+      doseTexto: arredondar(dose, 3),
+      doseTotal: volume,
+      doseTotalTexto: `${arredondar(volume, 2)} mL`,
+    };
+  }
+
+  const forma = interpretarConcentracao(params.concentracaoValor, params.concentracaoUnidade);
+  if (!forma || forma.unidade !== "mL") return { ok: false, motivo: AVISO_SEM_CALCULO };
+  if (forma.grandeza !== formaDose.grandeza) return { ok: false, motivo: AVISO_INCOMPATIVEL };
+
+  const doseTotalBase = volume * forma.porUnidade;
+  const divisor = (formaDose.porAnimal ? 1 : (peso as number)) * formaDose.fator;
+  const dose = doseTotalBase / divisor;
+  return {
+    ok: true,
+    dose,
+    doseTexto: arredondar(dose, 3),
+    doseTotal: doseTotalBase / formaDose.fator,
+    doseTotalTexto: `${arredondar(doseTotalBase / formaDose.fator, 2)} ${formaDose.numerador}`,
+  };
+}
+
 /** true quando o cadastro marcou a espécie como proibida. */
 export function especieBloqueada(m: Medicamento, especie: Especie): boolean {
   if (m.doseUnificada) return false;
