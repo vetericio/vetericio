@@ -20,6 +20,8 @@ export type TemaId =
   | "veterico"
   | "minha-cor";
 
+export type TemaPersonalizado = { id: string; nome: string; cor: string; fundo: string };
+
 export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: string }[] = [
   { id: "original", nome: "Original", classe: "", descricao: "Como o app nasceu" },
   { id: "vet", nome: "Veterinário", classe: "tema-vet", descricao: "Verde clínico" },
@@ -60,6 +62,7 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
 
 const CHAVE = "veterico-tema-v2";
 const CHAVE_COR = "veterico-tema-cor-v1";
+const CHAVE_PERSONALIZADOS = "veterico-temas-personalizados-v1";
 const CLASSES = TEMAS.map((t) => t.classe).filter(Boolean);
 
 /** Temas calmos, de cores neutras — separados dos divertidos na tela de Temas. */
@@ -124,6 +127,11 @@ const VARS_CUSTOM = [
 export function carregarTema(): TemaId {
   if (typeof window === "undefined") return "jack";
   const salvo = window.localStorage.getItem(CHAVE);
+  if (salvo?.startsWith("personalizado:")) {
+    const personalizado = carregarTemasPersonalizados().find((t) => salvo === `personalizado:${t.id}`);
+    if (personalizado) aplicarTemaPersonalizado(personalizado);
+    return "jack";
+  }
   return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "jack";
 }
 
@@ -142,10 +150,47 @@ export function salvarCor(cor: string) {
   }
 }
 
+export function carregarTemasPersonalizados(): TemaPersonalizado[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const valor = JSON.parse(window.localStorage.getItem(CHAVE_PERSONALIZADOS) ?? "[]");
+    return Array.isArray(valor) ? valor.slice(0, 15) : [];
+  } catch { return []; }
+}
+
+export function salvarTemaPersonalizado(tema: TemaPersonalizado): boolean {
+  if (typeof window === "undefined") return false;
+  const temas = carregarTemasPersonalizados();
+  if (temas.length >= 15 && !temas.some((t) => t.id === tema.id)) return false;
+  const novos = [tema, ...temas.filter((t) => t.id !== tema.id)].slice(0, 15);
+  try { window.localStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(novos)); return true; } catch { return false; }
+}
+
+export function excluirTemaPersonalizado(id: string) {
+  if (typeof window === "undefined") return;
+  const temas = carregarTemasPersonalizados().filter((t) => t.id !== id);
+  window.localStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(temas));
+}
+
+export function aplicarTemaPersonalizado(tema: TemaPersonalizado) {
+  aplicarCorPersonalizada(tema.cor);
+  const alvo = document.documentElement;
+  alvo.classList.remove(...CLASSES);
+  alvo.style.setProperty("--tema-fundo-imagem", `url(${JSON.stringify(tema.fundo)})`);
+  document.body.style.backgroundImage = `linear-gradient(oklch(0.08 0.02 270 / 35%), oklch(0.08 0.02 270 / 35%)), url(${JSON.stringify(tema.fundo)})`;
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundAttachment = "fixed";
+  document.body.style.backgroundPosition = "center";
+  try { window.localStorage.setItem(CHAVE, `personalizado:${tema.id}`); } catch { /* ignore */ }
+}
+
 export function aplicarTema(id: TemaId, cor = carregarCor()) {
   if (typeof document === "undefined") return;
   const alvo = document.documentElement;
   alvo.classList.remove(...CLASSES);
+  document.body.style.backgroundImage = "";
+  document.body.style.backgroundSize = "";
+  document.body.style.backgroundAttachment = "";
   for (const v of VARS_CUSTOM) alvo.style.removeProperty(v);
 
   const tema = TEMAS.find((t) => t.id === id);
