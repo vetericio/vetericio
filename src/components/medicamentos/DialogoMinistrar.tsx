@@ -7,6 +7,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  calcularDose,
+  calcularDosePeloVolume,
   calcularFaixaDose,
   doseDaEspecie,
   doseEfetiva,
@@ -80,6 +82,8 @@ export function DialogoMinistrar({
   const [observacao, setObservacao] = useState("");
   const [casas, setCasas] = useState<2 | 3>(2);
   const [liquido, setLiquido] = useState("");
+  const [doseMg, setDoseMg] = useState("");
+  const [modoQuantidade, setModoQuantidade] = useState<"ml" | "dose">("ml");
   const [fracao, setFracao] = useState<number | null>(null);
 
   const dose = medicamento ? doseDaEspecie(medicamento, especie) : null;
@@ -96,6 +100,36 @@ export function DialogoMinistrar({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [medicamento, especie, peso]);
+
+  // O formulário trabalha com dose total em mg e volume em mL.
+  // A dose cadastrada continua sendo mg/kg (ou mg/animal).
+  const resultadoManual = useMemo(() => {
+    if (!medicamento || !dose) return null;
+    if (modoQuantidade === "ml") {
+      return liquido
+        ? calcularDosePeloVolume({
+            peso,
+            volume: formatar(liquido, casas),
+            concentracaoValor: medicamento.concentracaoValor,
+            concentracaoUnidade: medicamento.concentracaoUnidade,
+            unidadeDose: faixa?.unidade,
+          })
+        : null;
+    }
+    const mg = Number(doseMg.replace(",", "."));
+    const pesoNumero = Number(peso.replace(",", "."));
+    const porAnimal = /animal\s*$/i.test(faixa?.unidade ?? "");
+    const doseCalculada = mg > 0 && (porAnimal || pesoNumero > 0) ? mg / (porAnimal ? 1 : pesoNumero) : 0;
+    return doseCalculada > 0
+      ? calcularDose({
+          peso,
+          dose: String(doseCalculada),
+          concentracaoValor: medicamento.concentracaoValor,
+          concentracaoUnidade: medicamento.concentracaoUnidade,
+          unidadeDose: faixa?.unidade,
+        })
+      : null;
+  }, [medicamento, dose, peso, liquido, doseMg, modoQuantidade, faixa]);
 
   const solido = resultado?.ok ? usaFracao(resultado.forma ?? "") : false;
   // pré-preenche a dose padrão (cadastrada; sem ela, média da faixa)
@@ -118,6 +152,8 @@ export function DialogoMinistrar({
     setPeso(pesoInicial);
     setObservacao("");
     setVia(viasDe(medicamento)[0] ?? "");
+    setModoQuantidade("ml");
+    setDoseMg("");
   }, [medicamento, pesoInicial]);
 
   // Pré-preenche a quantidade sugerida (o usuário pode mudar).
@@ -135,8 +171,54 @@ export function DialogoMinistrar({
     const precisao: 2 | 3 = sugerido !== null && sugerido > 0 && sugerido < 0.1 ? 3 : lerPrecisao();
     setCasas(precisao);
     setLiquido(sugerido ? paraDigitos(sugerido, precisao) : "");
+    if (resultado?.ok && resultado.doseTotal > 0) {
+      setDoseMg(String(resultado.doseTotal).replace(".", ","));
+    }
     setFracao(null);
   }, [medicamento, solido, sugerido]);
+
+  const trocarModoQuantidade = (novo: "ml" | "dose") => {
+    setModoQuantidade(novo);
+    if (novo === "dose" && resultadoManual?.ok && "doseTotal" in resultadoManual) {
+      setDoseMg(String(resultadoManual.doseTotal).replace(".", ","));
+    }
+  };
+
+  const alterarMl = (valor: string) => {
+    const novo = digitos(valor);
+    setLiquido(novo);
+    const inverso = medicamento && faixa
+      ? calcularDosePeloVolume({
+          peso,
+          volume: formatar(novo, casas),
+          concentracaoValor: medicamento.concentracaoValor,
+          concentracaoUnidade: medicamento.concentracaoUnidade,
+          unidadeDose: faixa.unidade,
+        })
+      : null;
+    if (inverso?.ok) setDoseMg(String(inverso.doseTotal).replace(".", ","));
+  };
+
+  const alterarDoseMg = (valor: string) => {
+    const limpa = valor.replace(/[^0-9,.-]/g, "");
+    setDoseMg(limpa);
+    const mg = Number(limpa.replace(",", "."));
+    const pesoNumero = Number(peso.replace(",", "."));
+    const porAnimal = /animal\s*$/i.test(faixa?.unidade ?? "");
+    const doseCalculada = mg > 0 && (porAnimal || pesoNumero > 0) ? mg / (porAnimal ? 1 : pesoNumero) : 0;
+    if (medicamento && faixa && doseCalculada > 0) {
+      const calculado = calcularDose({
+        peso,
+        dose: String(doseCalculada),
+        concentracaoValor: medicamento.concentracaoValor,
+        concentracaoUnidade: medicamento.concentracaoUnidade,
+        unidadeDose: faixa.unidade,
+      });
+      if (calculado.ok && typeof calculado.volume === "number") {
+        setLiquido(paraDigitos(calculado.volume, casas));
+      }
+    }
+  };
 
   const trocarCasas = (novo: 2 | 3) => {
     if (novo === casas) return;
@@ -341,19 +423,38 @@ export function DialogoMinistrar({
             </div>
           ) : (
             <>
+              <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-background p-1">
+                <button
+                  type="button"
+                  onClick={() => trocarModoQuantidade("ml")}
+                  className={`rounded-lg px-2 py-2 text-sm font-bold ${modoQuantidade === "ml" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  mL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => trocarModoQuantidade("dose")}
+                  className={`rounded-lg px-2 py-2 text-sm font-bold ${modoQuantidade === "dose" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                >
+                  Dose (mg)
+                </button>
+              </div>
               <div className="relative mt-2">
                 <input
-                  value={formatar(liquido, casas)}
-                  onChange={(e) => setLiquido(digitos(e.target.value))}
-                  inputMode="numeric"
-                  placeholder={casas === 2 ? "0,00" : "0,000"}
-                  aria-label="Quantidade a ministrar"
+                  value={modoQuantidade === "ml" ? formatar(liquido, casas) : doseMg}
+                  onChange={(e) => modoQuantidade === "ml" ? alterarMl(e.target.value) : alterarDoseMg(e.target.value)}
+                  inputMode="decimal"
+                  placeholder={modoQuantidade === "ml" ? (casas === 2 ? "0,00" : "0,000") : "0,00"}
+                  aria-label={modoQuantidade === "ml" ? "Volume em mL" : "Dose em miligramas"}
                   className="w-full rounded-xl border border-input bg-background px-3 py-3 pr-14 text-center text-3xl font-bold text-foreground outline-none focus:border-ring"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-                  {unidadeBase || "mL"}
+                  {modoQuantidade === "ml" ? unidadeBase || "mL" : "mg"}
                 </span>
               </div>
+              <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                {modoQuantidade === "ml" ? "A dose em mg é calculada automaticamente." : "O volume em mL é calculado automaticamente."}
+              </p>
               {atalhos.length > 0 && (
                 <div className="mt-2">
                   <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
