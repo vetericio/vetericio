@@ -9,10 +9,15 @@ import {
   TEMAS,
   aplicarCorPersonalizada,
   aplicarTema,
+  aplicarTemaPersonalizado,
+  carregarTemasPersonalizados,
   carregarCor,
   carregarTema,
   grupoDoTema,
   salvarCor,
+  salvarTemaPersonalizado,
+  excluirTemaPersonalizado,
+  type TemaPersonalizado,
   type TemaId,
 } from "@/lib/tema";
 
@@ -40,6 +45,9 @@ export const Route = createFileRoute("/temas")({
 function PaginaTemas() {
   const [tema, setTema] = useState<TemaId>("original");
   const [cor, setCor] = useState("#2f7d76");
+  const [personalizados, setPersonalizados] = useState<TemaPersonalizado[]>([]);
+  const [foto, setFoto] = useState("");
+  const [nomePersonalizado, setNomePersonalizado] = useState("");
   const { conforto, definirModo } = useConforto();
 
   useEffect(() => {
@@ -47,6 +55,7 @@ function PaginaTemas() {
     const corSalva = carregarCor();
     setTema(salvo);
     setCor(corSalva);
+    setPersonalizados(carregarTemasPersonalizados());
     aplicarTema(salvo, corSalva);
   }, []);
 
@@ -61,6 +70,27 @@ function PaginaTemas() {
     setTema("minha-cor");
     aplicarTema("minha-cor", nova);
     aplicarCorPersonalizada(nova);
+  };
+
+  const lerFoto = (arquivo: File) => {
+    const leitor = new FileReader();
+    leitor.onload = () => setFoto(String(leitor.result));
+    leitor.readAsDataURL(arquivo);
+  };
+
+  const salvarPersonalizado = () => {
+    if (!foto) { toast.error("Envie uma foto para o fundo."); return; }
+    const novo: TemaPersonalizado = {
+      id: crypto.randomUUID(),
+      nome: nomePersonalizado.trim() || `Meu tema ${personalizados.length + 1}`,
+      cor,
+      fundo: foto,
+    };
+    if (!salvarTemaPersonalizado(novo)) { toast.error("Você já atingiu o limite de 15 temas."); return; }
+    setPersonalizados(carregarTemasPersonalizados());
+    aplicarTemaPersonalizado(novo);
+    setNomePersonalizado("");
+    toast.success("Tema personalizado salvo.");
   };
 
   const escolherModo = (modo: "veterico" | "calmo") => {
@@ -185,6 +215,24 @@ function PaginaTemas() {
           </div>
         </div>
       )}
+
+      <section className="mt-6 rounded-2xl border border-border bg-card p-3">
+        <h2 className="text-sm font-bold text-foreground">Tema personalizado</h2>
+        <p className="mt-1 text-[11px] text-muted-foreground">Envie a foto para o fundo e escolha a cor principal.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-background px-3 py-4 text-sm font-semibold text-foreground">
+            {foto ? "Trocar foto do fundo" : "Enviar foto para fundo"}
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) lerFoto(f); }} />
+          </label>
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-background p-2">
+            <input type="color" value={cor} onChange={(e) => setCor(e.target.value)} className="h-10 w-12 cursor-pointer rounded-lg" aria-label="Escolher cor do tema" />
+            <input value={nomePersonalizado} onChange={(e) => setNomePersonalizado(e.target.value)} placeholder="Nome do tema" className="min-w-0 flex-1 bg-transparent px-2 text-sm text-foreground outline-none" />
+          </div>
+        </div>
+        {foto && <img src={foto} alt="Prévia do fundo" className="mt-3 h-28 w-full rounded-xl object-cover" />}
+        <button type="button" onClick={salvarPersonalizado} className="mt-3 w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground">Salvar tema ({personalizados.length}/15)</button>
+        {personalizados.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{personalizados.map((p) => <div key={p.id} className="overflow-hidden rounded-xl border border-border bg-background"><button type="button" onClick={() => aplicarTemaPersonalizado(p)} className="block w-full text-left"><img src={p.fundo} alt="" className="h-20 w-full object-cover" /><span className="block truncate px-2 py-1.5 text-xs font-semibold text-foreground">{p.nome}</span></button><button type="button" onClick={() => { excluirTemaPersonalizado(p.id); setPersonalizados(carregarTemasPersonalizados()); }} className="w-full border-t border-border px-2 py-1 text-[10px] text-destructive">Excluir</button></div>)}</div>}
+      </section>
     </main>
   );
 }
