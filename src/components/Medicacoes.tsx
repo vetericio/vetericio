@@ -7,6 +7,7 @@ import { normalizarNomeMedicamento } from "@/lib/nomes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import {
   calcularDose,
+  calcularDosePeloVolume,
   doseDaEspecie,
   doseEfetiva,
   faixaDe,
@@ -313,20 +314,35 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
 
 
-  /** mL = peso × dose ÷ concentração, sempre com os dados cadastrados. */
-  const calculo = useMemo(() => {
-    if (!refCalculo) return null;
-    if (!doseUsada.trim() || !refCalculo.concValor.trim()) {
-      return { ok: false as const, motivo: "Cálculo indisponível: falta dose ou concentração cadastrada." };
-    }
-    return calcularDose({
+  /** Quando o volume é digitado, encontra a dose equivalente usando peso e concentração. */
+  const dosePeloVolume = useMemo(() => {
+    if (!refCalculo || !quantidade.trim() || unidade !== "mL") return null;
+    return calcularDosePeloVolume({
       peso,
-      dose: doseUsada,
+      volume: quantidade,
       concentracaoValor: refCalculo.concValor,
       concentracaoUnidade: refCalculo.concUnidade,
       unidadeDose: refCalculo.unidadeDose,
     });
-  }, [refCalculo, doseUsada, peso]);
+  }, [refCalculo, peso, quantidade, unidade]);
+
+  /** A dose digitada tem prioridade; sem ela, mostra a dose obtida pelo volume. */
+  const doseExibida = doseUsada || (dosePeloVolume?.ok ? dosePeloVolume.doseTexto : "");
+
+  /** mL = peso × dose ÷ concentração, sempre com os dados cadastrados. */
+  const calculo = useMemo(() => {
+    if (!refCalculo) return null;
+    if (!doseExibida.trim() || !refCalculo.concValor.trim()) {
+      return { ok: false as const, motivo: "Cálculo indisponível: falta dose ou concentração cadastrada." };
+    }
+    return calcularDose({
+      peso,
+      dose: doseExibida,
+      concentracaoValor: refCalculo.concValor,
+      concentracaoUnidade: refCalculo.concUnidade,
+      unidadeDose: refCalculo.unidadeDose,
+    });
+  }, [refCalculo, doseExibida, peso]);
 
   const volumeCalculado = calculo?.ok ? `${calculo.volumeTexto}` : "";
   const unidadeCalculada = calculo?.ok ? calculo.unidade : "";
@@ -432,8 +448,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       return;
     }
     const quantidadeFinal = quantidade.trim() || volumeCalculado;
-    const dose = refCalculo && doseUsada.trim()
-      ? `${doseUsada.trim()} ${refCalculo.unidadeDose}`
+    const dose = refCalculo && doseExibida.trim()
+      ? `${doseExibida.trim()} ${refCalculo.unidadeDose}`
       : montarDose(quantidadeFinal, unidade);
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
@@ -866,9 +882,11 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 <input
                   ref={quantidadeRef}
                   value={quantidade || volumeCalculado}
-                  onChange={(e) =>
-                    setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value)
-                  }
+                  onChange={(e) => {
+                    setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value);
+                    // O volume passou a ser a fonte do cálculo; a dose será obtida abaixo.
+                    if (unidade === "mL") setDoseUsada("");
+                  }}
 
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -942,7 +960,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                   <label className="flex items-center gap-1.5 text-xs text-foreground">
                     Dose neste atendimento
                     <input
-                      value={doseUsada}
+                      value={doseExibida}
                       onChange={(e) => {
                         setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
                         setQuantidade("");
@@ -963,7 +981,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                     <>
                       <div className="rounded-md bg-background px-2 py-1.5">
                         <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Dose</span>
-                        <strong className="text-foreground">{doseUsada} {refCalculo.unidadeDose}</strong>
+                        <strong className="text-foreground">{doseExibida} {refCalculo.unidadeDose}</strong>
                         <span className="block text-[10px] text-muted-foreground">
                           Total: {calculo.doseTotalTexto}
                         </span>
@@ -972,7 +990,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                         <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Volume</span>
                         <strong className="text-foreground">{volumeCalculado} {unidadeCalculada}</strong>
                         <span className="block text-[10px] text-muted-foreground">
-                          {peso.trim()} kg × {doseUsada} ÷ {refCalculo.concValor}
+                          {quantidade
+                            ? `${quantidade} mL × ${refCalculo.concValor} ÷ ${peso.trim()} kg`
+                            : `${peso.trim()} kg × ${doseExibida} ÷ ${refCalculo.concValor}`}
                         </span>
                       </div>
                     </>
