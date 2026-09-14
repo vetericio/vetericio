@@ -58,7 +58,7 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   { id: "minha-cor", nome: "Minha cor", classe: "tema-minha-cor", descricao: "Você escolhe a cor" },
 ];
 
-const CHAVE = "veterico-tema-v1";
+const CHAVE = "veterico-tema-v2";
 const CHAVE_COR = "veterico-tema-cor-v1";
 const CLASSES = TEMAS.map((t) => t.classe).filter(Boolean);
 
@@ -122,9 +122,9 @@ const VARS_CUSTOM = [
 ];
 
 export function carregarTema(): TemaId {
-  if (typeof window === "undefined") return "original";
+  if (typeof window === "undefined") return "jack";
   const salvo = window.localStorage.getItem(CHAVE);
-  return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "original";
+  return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "jack";
 }
 
 export function carregarCor(): string {
