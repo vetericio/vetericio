@@ -250,6 +250,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const [refCalculo, setRefCalculo] = useState<Sugestao | null>(null);
   /** Dose usada neste lançamento (editável, sem alterar o cadastro). */
   const [doseUsada, setDoseUsada] = useState("");
+  const [doseFoiEditada, setDoseFoiEditada] = useState(false);
   /** Modo rápido: medicação do cadastro escolhida por linha. */
   const [refsRapidos, setRefsRapidos] = useState<Record<number, Sugestao | null>>({});
   /** Modo rápido: dose deste atendimento por linha (editável). */
@@ -339,7 +340,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   }, [refCalculo, peso]);
 
   /** A dose digitada tem prioridade; sem ela, mostra a dose total obtida pelo volume. */
-  const doseExibida = doseUsada || (dosePeloVolume?.ok ? String(dosePeloVolume.doseTotal).replace(".", ",") : doseTotalPeloCadastro);
+  const doseExibida = doseFoiEditada
+    ? doseUsada
+    : doseUsada || (dosePeloVolume?.ok ? String(dosePeloVolume.doseTotal).replace(".", ",") : doseTotalPeloCadastro);
 
   /** mL = peso × dose ÷ concentração, sempre com os dados cadastrados. */
   const calculo = useMemo(() => {
@@ -430,6 +433,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setEditando(null);
     setRefCalculo(null);
     setDoseUsada("");
+    setDoseFoiEditada(false);
   };
 
   const enviarRapido = () => {
@@ -513,6 +517,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setNome(item.nome);
     setRefCalculo(referencia ?? null);
     setDoseUsada(doseEhVolume ? "" : doseNumerica);
+    setDoseFoiEditada(false);
     setQuantidade(quantidadeEhVolume ? volumeNumerico : doseEhVolume ? qAntiga : "");
     setUnidade(quantidadeEhVolume || doseEhVolume ? "mL" : uAntiga);
     setModoQuantidade("ml");
@@ -899,6 +904,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                     ? doseBase * (porAnimal ? 1 : pesoNumero)
                     : 0;
                   setDoseUsada(total > 0 ? String(total).replace(".", ",") : "");
+                  setDoseFoiEditada(false);
                   setQuantidade("");
                   const alvo = `${s.intervalo}h`;
                   if ((DURACOES_PADRAO as readonly string[]).includes(alvo))
@@ -922,7 +928,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                   ref={quantidadeRef}
                   value={doseExibida}
                   onChange={(e) => {
-                    setDoseUsada(e.target.value.replace(/[^\d,.]/g, "").replace(".", ","));
+                    setDoseFoiEditada(true);
+                    setDoseUsada(e.target.value.replace(/[^\d.,]/g, "").replace(/\./g, ","));
                     setQuantidade("");
                   }}
 
@@ -945,6 +952,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                   onChange={(e) => {
                     setQuantidade(unidade === "mL" ? mascaraMl(e.target.value) : e.target.value);
                     setDoseUsada("");
+                    setDoseFoiEditada(false);
                   }}
                   inputMode="decimal"
                   placeholder="mL"
