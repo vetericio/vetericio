@@ -527,6 +527,22 @@
   border-style: dashed;
 }
 
+.tema-jack .rounded-xl,
+.tema-jack .rounded-2xl {
+  border-color: oklch(0.52 0.12 300 / 58%);
+  box-shadow: 0 0 0 1px oklch(0.18 0.04 292 / 70%), 0 8px 24px oklch(0.04 0.02 292 / 35%);
+}
+
+.tema-jack h1,
+.tema-jack h2,
+.tema-jack h3 {
+  text-shadow: 0 0 14px oklch(0.7 0.2 305 / 45%);
+}
+
+.tema-jack .bg-primary {
+  box-shadow: 0 0 16px oklch(0.68 0.19 305 / 35%);
+}
+
 /* Tema cansado: contraste baixo, sem brilho. */
 .tema-cansado {
   --background: oklch(0.28 0.012 260);
