@@ -216,8 +216,8 @@ function PaginaTemas() {
         </div>
       )}
 
-      <section className="mt-6 rounded-2xl border border-border bg-card p-3">
-        <h2 className="text-sm font-bold text-foreground">Tema personalizado</h2>
+      <section className="mt-6 rounded-2xl border-2 border-primary bg-card p-3 shadow-md">
+        <h2 className="text-sm font-bold text-foreground">CRIAR TEMA: FOTO + COR</h2>
         <p className="mt-1 text-[11px] text-muted-foreground">Envie a foto para o fundo e escolha a cor principal.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-background px-3 py-4 text-sm font-semibold text-foreground">
