@@ -125,14 +125,14 @@ const VARS_CUSTOM = [
 ];
 
 export function carregarTema(): TemaId {
-  if (typeof window === "undefined") return "jack";
+  if (typeof window === "undefined") return "veterico";
   const salvo = window.localStorage.getItem(CHAVE);
   if (salvo?.startsWith("personalizado:")) {
     const personalizado = carregarTemasPersonalizados().find((t) => salvo === `personalizado:${t.id}`);
     if (personalizado) aplicarTemaPersonalizado(personalizado);
     return "jack";
   }
-  return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "jack";
+  return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "veterico";
 }
 
 export function carregarCor(): string {
