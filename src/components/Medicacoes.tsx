@@ -34,18 +34,16 @@ type DuracaoPadrao = (typeof DURACOES_PADRAO)[number] | typeof DURACAO_OUTROS | 
 
 /** Máscara de centavos para mL: digita de trás para frente (5 -> 0,05 / 50 -> 0,50). */
 function mascaraMl(valor: string): string {
-  const digitado = valor.replace(/\s/g, "").replace(/\./g, ",");
-  if (digitado.includes(",")) {
-    const [inteiroBruto, decimalBruto = ""] = digitado.split(",");
-    const inteiro = inteiroBruto.replace(/\D/g, "") || "0";
-    const decimal = decimalBruto.replace(/\D/g, "").slice(0, 3);
-    return decimal ? `${inteiro},${decimal}` : `${inteiro},`;
-  }
-  const digitos = digitado.replace(/\D/g, "").replace(/^0+(?=\d{3,})/, "");
-  if (!digitos) return "";
-  const cheio = digitos.padStart(3, "0");
-  const inteiro = cheio.slice(0, -2).replace(/^0+(?=\d)/, "");
-  return `${inteiro},${cheio.slice(-2)}`;
+  // Aceita entrada natural no celular/PC: 1, 1,0, 1.0, 0,75.
+  // A máscara anterior tratava cada dígito como centavo e transformava
+  // “1” em “0,01”, causando erro e alterando a dose.
+  const normalizado = valor.replace(/\s/g, "").replace(/\./g, ",").replace(/[^\d,]/g, "");
+  const partes = normalizado.split(",");
+  const inteiro = (partes.shift() ?? "").replace(/\D/g, "");
+  const decimal = partes.join("").replace(/\D/g, "").slice(0, 3);
+  if (!inteiro && !decimal) return "";
+  if (normalizado.includes(",")) return `${inteiro || "0"},${decimal}`;
+  return inteiro || "0";
 }
 
 function exibirMl(valor: number): string {
