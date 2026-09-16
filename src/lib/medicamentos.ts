@@ -243,7 +243,7 @@ export function medicamentoVazio(): Medicamento {
 
 export function numero(valor: string): number | null {
   const limpo = valor.replace(/\s/g, "").replace(",", ".");
-  if (!limpo) return null;
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(limpo)) return null;
   const n = Number(limpo);
   return Number.isFinite(n) ? n : null;
 }
@@ -447,12 +447,12 @@ export function calcularDose(params: {
 
   const fator = formaDose.porAnimal ? 1 : (peso as number);
   const doseTotal = dose * fator;
-  const doseTotalTexto = `${arredondar(doseTotal, 2)} ${formaDose.numerador}`;
+  const doseTotalTexto = `${textoDecimal(doseTotal)} ${formaDose.numerador}`;
   const contaDose = `${arredondar(fator, 3)} × ${arredondar(dose, 3)} = ${doseTotalTexto}`;
 
   // Dose já em volume: nada a converter.
   if (formaDose.grandeza === "volume") {
-    const volumeTexto = arredondar(doseTotal, 2);
+    const volumeTexto = textoDecimal(doseTotal);
     return {
       ok: true,
       doseTotal,
@@ -471,7 +471,7 @@ export function calcularDose(params: {
 
   const volume = (doseTotal * formaDose.fator) / forma.porUnidade;
   const unidade = plural(forma.unidade, volume);
-  const volumeTexto = arredondar(volume, casas(forma.unidade));
+  const volumeTexto = textoDecimal(volume);
   return {
     ok: true,
     doseTotal,
@@ -495,6 +495,8 @@ export function calcularDosePeloVolume(params: {
   concentracaoValor: string;
   concentracaoUnidade: string;
   unidadeDose?: string;
+  /** Quando informado, permite quantidade na apresentação cadastrada (não só mL). */
+  unidadeQuantidade?: string;
 }):
   | { ok: true; dose: number; doseTexto: string; doseTotal: number; doseTotalTexto: string }
   | { ok: false; motivo: string } {
@@ -521,7 +523,7 @@ export function calcularDosePeloVolume(params: {
   }
 
   const forma = interpretarConcentracao(params.concentracaoValor, params.concentracaoUnidade);
-  if (!forma || forma.unidade !== "mL") return { ok: false, motivo: AVISO_SEM_CALCULO };
+  if (!forma || forma.unidade !== (params.unidadeQuantidade ?? "mL")) return { ok: false, motivo: AVISO_SEM_CALCULO };
   if (forma.grandeza !== formaDose.grandeza) return { ok: false, motivo: AVISO_INCOMPATIVEL };
 
   const doseTotalBase = volume * forma.porUnidade;
@@ -545,14 +547,49 @@ export function especieBloqueada(m: Medicamento, especie: Especie): boolean {
 export const NOME_ESPECIE: Record<Especie, string> = { cao: "cão", gato: "gato" };
 
 export function doseDaEspecie(m: Medicamento, especie: Especie): DoseEspecie {
-  return especie === "cao" ? m.cao : m.gato;
+  return m.doseUnificada || especie === "cao" ? m.cao : m.gato;
+}
+
+/** Sem agrupamento de milhares e sem arredondar o valor usado na conta. */
+export function textoDecimal(valor: number): string {
+  return valor.toLocaleString("pt-BR", { useGrouping: false, maximumSignificantDigits: 15 });
+}
+
+export type EntradaCalculo = {
+  peso: string;
+  dose: string;
+  quantidade: string;
+  origem: "dose" | "quantidade";
+  unidadeDose: string;
+  concentracaoValor: string;
+  concentracaoUnidade: string;
+};
+
+/** Uma única fonte de verdade: somente o campo digitado governa o cálculo. */
+export function calcularEntrada(p: EntradaCalculo) {
+  const formaDose = interpretarUnidadeDose(p.unidadeDose);
+  const forma = interpretarConcentracao(p.concentracaoValor, p.concentracaoUnidade);
+  const unidadeQuantidade = formaDose?.grandeza === "volume" ? "mL" : forma?.unidade ?? "";
+  const inverso = p.origem === "quantidade"
+    ? calcularDosePeloVolume({ ...p, volume: p.quantidade, unidadeQuantidade })
+    : null;
+  const dose = p.origem === "dose" ? p.dose : inverso?.ok ? textoDecimal(inverso.dose) : "";
+  const resultado = p.origem === "quantidade" && inverso && !inverso.ok
+    ? inverso
+    : calcularDose({ ...p, dose });
+  return {
+    dose,
+    quantidade: p.origem === "quantidade" ? p.quantidade : resultado.ok ? textoDecimal(resultado.volume) : "",
+    unidadeQuantidade,
+    resultado,
+  };
 }
 
 /* ---------- formatação de quantidade ---------- */
 
 /** Líquidos: 2 casas (0,28 mL); abaixo de 0,1 usa 3 casas (0,125 mL). */
 export function formatarVolume(valor: number): string {
-  return arredondar(valor, valor > 0 && valor < 0.1 ? 3 : 2);
+  return textoDecimal(valor);
 }
 
 const FRACOES: { valor: number; texto: string }[] = [
@@ -589,8 +626,7 @@ export function usaFracao(unidade: string): boolean {
 
 /** Texto da quantidade a ministrar, já no formato certo para a forma. */
 export function textoQuantidade(valor: number, unidade: string): string {
-  if (usaFracao(unidade)) return fracaoComprimido(valor);
-  if (unidade === "gota") return arredondar(valor, 0);
+  // Não arredondar automaticamente para uma fração/quantidade diferente.
   return formatarVolume(valor);
 }
 

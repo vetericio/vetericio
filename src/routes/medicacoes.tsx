@@ -73,16 +73,11 @@ const campo =
 
 /** Digitação estilo centavos: guarda só dígitos (3 casas decimais). 3600 → "3600" (3,600 kg). */
 function lerDigitosPeso(texto: string): string {
-  return texto.replace(/\D/g, "").slice(0, 6);
+  return texto;
 }
 
 function formatarPeso(digitos: string): string {
-  if (!digitos) return "";
-  const n = Number(digitos) / 1000;
-  return n.toLocaleString("pt-BR", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
+  return digitos;
 }
 
 function PaginaMedicacoes() {
@@ -134,7 +129,7 @@ function PaginaMedicacoes() {
                 id="peso-topo"
                 value={formatarPeso(peso)}
                 onChange={(e) => setPeso(lerDigitosPeso(e.target.value))}
-                inputMode="numeric"
+                inputMode="decimal"
                 placeholder="0,000"
                 className={`${campo} pr-9 text-xl font-bold`}
               />
@@ -546,5 +541,6 @@ function CardMedicamento({
     </li>
   );
 }
+
 
 

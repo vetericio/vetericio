@@ -12,6 +12,7 @@ import {
   UNIDADES_CONCENTRACAO,
   UNIDADES_DOSE,
   calcularDose,
+  calcularEntrada,
   doseDaEspecie,
   doseEfetiva,
   faixaDe,
@@ -46,6 +47,8 @@ export function PesquisaAvulsa({
   const [peso, setPeso] = useState("");
   const [especie, setEspecie] = useState<Especie>(especieInicial ?? "cao");
   const [dose, setDose] = useState("");
+  const [quantidade, setQuantidade] = useState("");
+  const [origem, setOrigem] = useState<"dose" | "quantidade">("dose");
   const [unidadeDose, setUnidadeDose] = useState<string>("mg/kg");
   const [concentracao, setConcentracao] = useState("");
   const [unidadeConcentracao, setUnidadeConcentracao] = useState<string>("mg/mL");
@@ -56,6 +59,8 @@ export function PesquisaAvulsa({
   // Pré-preenche a partir do medicamento tocado no cartão.
   useEffect(() => {
     if (!aberto) return;
+    setOrigem("dose");
+    setQuantidade("");
     if (especieInicial) setEspecie(especieInicial);
     if (pesoInicial) setPeso(pesoInicial);
     if (!medicamento) return;
@@ -74,6 +79,7 @@ export function PesquisaAvulsa({
   // Trocar a espécie no diálogo atualiza a dose cadastrada correspondente.
   const trocarEspecie = (e: Especie) => {
     setEspecie(e);
+    setOrigem("dose");
     if (!medicamento) return;
     const d = doseDaEspecie(medicamento, e);
     const f = faixaDe(d);
@@ -93,7 +99,11 @@ export function PesquisaAvulsa({
       concentracaoUnidade: unidadeConcentracao,
     });
 
-  const resultado = calcular(dose);
+  const entrada = calcularEntrada({
+    peso, dose, quantidade, origem, unidadeDose,
+    concentracaoValor: concentracao, concentracaoUnidade: unidadeConcentracao,
+  });
+  const resultado = entrada.resultado;
   const resMin = faixa?.min ? calcular(faixa.min) : null;
   const resMax = faixa?.max && faixa.max !== faixa.min ? calcular(faixa.max) : null;
 
@@ -156,8 +166,8 @@ export function PesquisaAvulsa({
             <span className={rotulo}>Dose</span>
             <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
               <input
-                value={dose}
-                onChange={(e) => setDose(e.target.value)}
+                value={entrada.dose}
+                onChange={(e) => { setOrigem("dose"); setDose(e.target.value); }}
                 inputMode="decimal"
                 placeholder="5"
                 className={`${campo} min-w-0`}
@@ -203,6 +213,10 @@ export function PesquisaAvulsa({
             </div>
           </div>
 
+          <label className={rotulo}>Quantidade ({entrada.unidadeQuantidade || "apresentação"})
+            <input value={entrada.quantidade} inputMode="decimal" className={campo}
+              onChange={(e) => { setOrigem("quantidade"); setQuantidade(e.target.value); }} />
+          </label>
           <ResultadoAplicar resultado={resultado} />
 
           {faixa && (resMin || resMax) && (

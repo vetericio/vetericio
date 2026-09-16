@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { usaFracao, type ResultadoFaixa } from "@/lib/medicamentos";
+import { usaFracao, numero, textoDecimal, type ResultadoFaixa } from "@/lib/medicamentos";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 
 /** Contexto da medicação escolhida, enquanto a quantidade não foi confirmada. */
@@ -42,21 +42,11 @@ function lerPrecisao(): 2 | 3 {
   return window.localStorage.getItem(CHAVE_PRECISAO) === "3" ? 3 : 2;
 }
 
-function digitos(texto: string): string {
-  return texto.replace(/\D/g, "").slice(0, 6);
-}
+function digitos(texto: string): string { return texto; }
 
-function formatar(d: string, casas: 2 | 3): string {
-  if (!d) return "";
-  return (Number(d) / 10 ** casas).toLocaleString("pt-BR", {
-    minimumFractionDigits: casas,
-    maximumFractionDigits: casas,
-  });
-}
+function formatar(d: string, _casas: 2 | 3): string { return d; }
 
-function paraDigitos(valor: number, casas: 2 | 3): string {
-  return String(Math.round(valor * 10 ** casas));
-}
+function paraDigitos(valor: number, _casas: 2 | 3): string { return textoDecimal(valor); }
 
 /** Escolha da quantidade que realmente será administrada. O cálculo é só referência. */
 export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
@@ -86,7 +76,7 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
 
   const trocarCasas = (novo: 2 | 3) => {
     if (novo === casas) return;
-    const valor = liquido ? Number(liquido) / 10 ** casas : 0;
+    const valor = numero(liquido) ?? 0;
     setCasas(novo);
     setLiquido(valor > 0 ? paraDigitos(valor, novo) : "");
     if (typeof window !== "undefined") {
@@ -119,7 +109,7 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
     ? textoFracao
       ? `${textoFracao} ${unidadeBase}`
       : ""
-    : liquido && Number(liquido) > 0
+    : liquido && (numero(liquido) ?? 0) > 0
       ? `${formatar(liquido, casas)} ${unidadeBase || "mL"}`
       : "";
 
@@ -206,7 +196,7 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
                   autoFocus
                   value={formatar(liquido, casas)}
                   onChange={(e) => setLiquido(digitos(e.target.value))}
-                  inputMode="numeric"
+                  inputMode="decimal"
                   placeholder={casas === 2 ? "0,00" : "0,000"}
                   aria-label="Quantidade a ministrar"
                   className="w-full rounded-xl border border-input bg-background px-3 py-3 pr-14 text-center text-3xl font-bold text-foreground outline-none focus:border-ring"
