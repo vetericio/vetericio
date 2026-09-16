@@ -95,16 +95,19 @@ export function blocoAnamnese(
   const a = lista.find((x) => x.id === r.anamneseId);
   if (!a) return [];
   // As pendências ficam só na aba Pendências: não entram no PDF/exportação.
+  const outras = [
+    a.queixa.trim() ? `Queixa: ${a.queixa.trim()}` : "",
+    a.conduta.trim() ? `Conduta: ${a.conduta.trim()}` : "",
+    a.atencao.trim() ? `Atenção: ${a.atencao.trim()}` : "",
+  ].filter(Boolean).join(" · ");
   const itens: [string, string][] = [
-    ["Queixa", a.queixa.trim()],
     ["Relato", a.relato.trim()],
-    ["Exames", a.exames.trim()],
-    ["Conduta", a.conduta.trim()],
-    ["Atenção", a.atencao.trim()],
+    ["Exame", a.exames.trim()],
+    ["Outras informações", outras],
   ];
   const visiveis = itens.filter(([, v]) => v);
   if (visiveis.length === 0) return [];
-  return ["Anamnese:", ...visiveis.map(([k, v]) => `- ${k}: ${v}`)];
+  return ["Observação:", ...visiveis.map(([k, v]) => `- ${k}: ${v}`)];
 }
 
 export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
