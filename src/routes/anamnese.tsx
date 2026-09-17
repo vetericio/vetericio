@@ -213,6 +213,17 @@ function AnamneseConteudo() {
         </div>
 
         <label className="block">
+          <span className={rotuloCampo}>Peso (kg)</span>
+          <input
+            value={form.peso ?? ""}
+            onChange={(e) => set("peso", e.target.value.replace(/[^\\d,.]/g, "").replace(".", ","))}
+            inputMode="decimal"
+            placeholder="Ex.: 9,9"
+            className={campo}
+          />
+        </label>
+
+        <label className="block">
           <span className={rotuloCampo}>Queixa principal</span>
           <input
             value={form.queixa}
