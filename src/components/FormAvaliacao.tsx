@@ -248,6 +248,7 @@ export function FormAvaliacao({
                       ...valores,
                       animal: a.animal.trim(),
                       especie: a.especie || valores.especie || "",
+                      peso: a.peso || valores.peso || "",
                       anamneseId: a.id,
                     });
                     setSugerindo(false);
