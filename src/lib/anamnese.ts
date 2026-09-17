@@ -6,6 +6,8 @@ export type Anamnese = {
   id: string;
   animal: string;
   especie: Especie;
+  /** Peso do animal em kg, informado na anamnese. */
+  peso: string;
   queixa: string;
   relato: string;
   exames: string;
@@ -22,6 +24,7 @@ const CHAVE = "veterico-anamneses";
 export const ANAMNESE_VAZIA: Omit<Anamnese, "id" | "atualizadoEm"> = {
   animal: "",
   especie: "",
+  peso: "",
   queixa: "",
   relato: "",
   exames: "",
