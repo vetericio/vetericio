@@ -26,7 +26,7 @@ export type Medicacao = {
 
 
 
-export type Registro = {
+export type ExameLaboratorial = { nome: string; valor: string; referencia?: string };\nexport type ExamesLaboratoriais = { hemograma?: ExameLaboratorial[]; bioquimico?: ExameLaboratorial[]; outros?: ExameLaboratorial[] };\n\nexport type Registro = {
   id: string;
   animal: string;
   especie?: Especie;
@@ -44,7 +44,7 @@ export type Registro = {
   fr: string;
   pas: string;
   glicemia: string;
-  observacoes: string;
+  observacoes: string;\n  /** Exames laboratoriais; itens sem valor não são exibidos na ficha/PDF. */\n  examesLaboratoriais?: ExamesLaboratoriais;
   /** Medicações do animal (manuais ou lidas de uma foto). */
   medicacoes?: Medicacao[];
   /** Anamnese de origem do animal, quando veio da sugestão do Início. */
@@ -83,6 +83,23 @@ export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
   const lista = (r.medicacoes ?? []).filter((m) => linhaMedicacao(m));
   if (lista.length === 0) return [];
   return ["Medicações:", ...lista.map((m) => `- ${linhaMedicacao(m)}`)];
+}
+
+/** Exames laboratoriais preenchidos, agrupados para ficha e PDF. */
+export function blocoExamesLaboratoriais(r: Pick<Registro, "examesLaboratoriais">): string[] {
+  const labs = r.examesLaboratoriais;
+  if (!labs) return [];
+  const secao = (titulo: string, itens = [] as ExameLaboratorial[]) => {
+    const validos = itens.filter((x) => x.nome.trim() && x.valor.trim());
+    if (!validos.length) return [];
+    return [titulo, ...validos.map((x) => `- ${x.nome.trim()}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
+  };
+  const linhas = [
+    ...secao("Hemograma:", labs.hemograma),
+    ...secao("Bioquímico:", labs.bioquimico),
+    ...secao("Outros exames:", labs.outros),
+  ];
+  return linhas.length ? ["Exames laboratoriais:", ...linhas] : [];
 }
 
 /** Bloco de texto da anamnese vinculada, vazio quando não houver. */
@@ -356,7 +373,7 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   return [
     titulo,
     ...linhas,
-    ...blocoMedicacoes(r),
+    ...blocoMedicacoes(r),\n    ...blocoExamesLaboratoriais(r),
     ...blocoAnamnese(r, opcoes?.anamneses),
     ...(curvas ? curvas.split("\n") : []),
     ...(obito ? [obito] : []),
