@@ -516,7 +516,7 @@ export function calcularDosePeloVolume(params: {
     return {
       ok: true,
       dose,
-      doseTexto: arredondar(dose, 3),
+      doseTexto: arredondar(dose, 2),
       doseTotal: volume,
       doseTotalTexto: `${arredondar(volume, 2)} mL`,
     };
@@ -573,7 +573,7 @@ export function calcularEntrada(p: EntradaCalculo) {
   const inverso = p.origem === "quantidade"
     ? calcularDosePeloVolume({ ...p, volume: p.quantidade, unidadeQuantidade })
     : null;
-  const dose = p.origem === "dose" ? p.dose : inverso?.ok ? textoDecimal(inverso.dose) : "";
+  const dose = p.origem === "dose" ? p.dose : inverso?.ok ? arredondar(inverso.dose, 2) : "";
   const resultado = p.origem === "quantidade" && inverso && !inverso.ok
     ? inverso
     : calcularDose({ ...p, dose });
