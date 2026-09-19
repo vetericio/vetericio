@@ -466,7 +466,7 @@ export function FormAvaliacao({
         ] as const).map(([grupo, titulo, nomes]) => {
           const salvos = valores.examesLaboratoriais?.[grupo] ?? [];
           const atuais = nomes.map((nome) => salvos.find((x) => x.nome === nome) ?? { nome, valor: "", referencia: "" })
-            .concat(salvos.filter((x) => !nomes.includes(x.nome as any)));
+            .concat(salvos.filter((x) => !(nomes as readonly string[]).includes(x.nome)));
           return (
             <div key={grupo} className="mt-5">
               <p className="font-semibold text-foreground">{titulo}</p>
