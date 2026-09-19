@@ -100,9 +100,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
       },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", type: "image/png", href: "/vetericio-icon-v4.jpg" },
-      { rel: "apple-touch-icon", href: "/vetericio-icon-v4.jpg" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=5" },
+      { rel: "icon", type: "image/png", href: "/vetericio-logo-v5.svg" },
+      { rel: "apple-touch-icon", href: "/vetericio-logo-v5.svg" },
     ],
   }),
 
