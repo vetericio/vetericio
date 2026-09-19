@@ -63,7 +63,11 @@ function AnamneseConteudo() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
-  const confirmacao = usarConfirmacao();\n  const [referencias, setReferencias] = useState<Record<string, string>>(() => {\n    if (typeof window === "undefined") return {};\n    try { return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}"); } catch { return {}; }\n  });
+  const confirmacao = usarConfirmacao();
+  const [referencias, setReferencias] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}"); } catch { return {}; }
+  });
 
   // As pendências daqui também vivem na aba Pendências (e saem do PDF).
   useEffect(() => {
@@ -128,7 +132,9 @@ function AnamneseConteudo() {
       toast.error("Informe o nome do animal.");
       return;
     }
-    const agora = new Date().toISOString();\n    const comReferencias = (lista?: ExameAnamnese[]) => (lista ?? []).map((x) => ({ ...x, referencia: x.referencia || referencias[x.nome] || "" }));\n    const formSalvar = { ...form, hemograma: comReferencias(form.hemograma), bioquimico: comReferencias(form.bioquimico), outrosExames: comReferencias(form.outrosExames) };
+    const agora = new Date().toISOString();
+    const comReferencias = (lista?: ExameAnamnese[]) => (lista ?? []).map((x) => ({ ...x, referencia: x.referencia || referencias[x.nome] || "" }));
+    const formSalvar = { ...form, hemograma: comReferencias(form.hemograma), bioquimico: comReferencias(form.bioquimico), outrosExames: comReferencias(form.outrosExames) };
     if (editandoId) {
       setAnamneses((lista) =>
         lista.map((a) => (a.id === editandoId ? { ...a, ...formSalvar, atualizadoEm: agora } : a)),
