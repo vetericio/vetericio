@@ -241,7 +241,7 @@ function AnamneseConteudo() {
           <span className={rotuloCampo}>Peso (kg)</span>
           <input
             value={form.peso ?? ""}
-            onChange={(e) => set("peso", e.target.value.replace(/[^\\d,.]/g, "").replace(".", ","))}
+            onChange={(e) => set("peso", e.target.value.replace(/[^\d,.]/g, "").replace(".", ","))}
             inputMode="decimal"
             placeholder="Ex.: 9,9"
             className={campo}
