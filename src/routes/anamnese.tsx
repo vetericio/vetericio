@@ -66,7 +66,11 @@ function AnamneseConteudo() {
   const confirmacao = usarConfirmacao();
   const [referencias, setReferencias] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
-    try { return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}"); } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}");
+    } catch {
+      return {};
+    }
   });
 
   // As pendências daqui também vivem na aba Pendências (e saem do PDF).
