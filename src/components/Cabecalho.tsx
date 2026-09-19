@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import logoVeterico from "@/assets/logo-veterico.png.asset.json";
 
 import { Link } from "@tanstack/react-router";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
@@ -45,7 +44,7 @@ export function Cabecalho() {
       <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <img
-          src={logoVeterico.url}
+          src="/vetericio-icon-v4.jpg"
           alt="Logo Veterício"
           className="mx-auto mb-1.5 h-9 w-auto sm:h-11"
         />

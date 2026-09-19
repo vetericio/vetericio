@@ -141,7 +141,7 @@ export async function exportarPdf(
   const logoLargura = 34;
   const logoAltura = 37;
   try {
-    doc.addImage(LOGO_PDF_DATA_URL, "PNG", margem, y - 12, logoLargura, logoAltura);
+    doc.addImage(LOGO_PDF_DATA_URL, "JPEG", margem, y - 12, logoLargura, logoAltura);
   } catch {
     /* sem logo, segue sem imagem */
   }
