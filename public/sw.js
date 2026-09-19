@@ -1,5 +1,5 @@
-const CACHE_NAME = "vetericio-pwa-v5";
-const APP_SHELL = ["/", "/manifest.webmanifest?v=5", "/vetericio-logo-v5.svg"];
+const CACHE_NAME = "vetericio-pwa-v6";
+const APP_SHELL = ["/", "/manifest.webmanifest?v=6", "/vetericio-logo-home-v6.svg"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => undefined));
   self.skipWaiting();
