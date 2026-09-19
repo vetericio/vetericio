@@ -12,7 +12,7 @@ import {
   ROTULOS_NUMERICOS,
   type ChaveNumerica,
   type Especie,
-  type Registro,
+  type Registro,\n  type ExameLaboratorial,
 } from "@/lib/ficha";
 import {
   AlertDialog,
@@ -117,7 +117,7 @@ export function FormAvaliacao({
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
 
-  const setNumero = (chave: ChaveNumerica, valor: string) => {
+  const setExames = (grupo: "hemograma" | "bioquimico" | "outros", lista: ExameLaboratorial[]) =>\n    onChange({ ...valores, examesLaboratoriais: { ...valores.examesLaboratoriais, [grupo]: lista } });\n\n  const setNumero = (chave: ChaveNumerica, valor: string) => {
     // Valor novo no campo: pode perguntar de novo sobre ele.
     setAlertados((a) => a.filter((k) => !k.startsWith(`${chave}:`)));
     // Em modo edição, as observações só mudam depois da pergunta (substituir/acrescentar).
@@ -127,11 +127,16 @@ export function FormAvaliacao({
     }
     const { fora, termo } = avaliarValor(chave, valor, valores.especie);
     const limpas = removerFraseDoParametro(valores.observacoes, chave);
-    onChange({
-      ...valores,
-      [chave]: valor,
-      observacoes: fora ? comFraseAutomatica(limpas, termo) : limpas,
-    });
+    let observacoes = limpas;
+    if (chave === "glicemia" || chave === "pas") {
+      observacoes = fora ? comFraseAutomatica(limpas, termo) : limpas;
+    } else if (chave === "temperatura") {
+      const n = Number(valor.replace(",", "."));
+      if (Number.isFinite(n) && (n < 37 || n > 40)) {
+        observacoes = comFraseAutomatica(limpas, n < 37 ? "hipotermia" : "hipertermia");
+      }
+    }
+    onChange({ ...valores, [chave]: valor, observacoes });
   };
 
   const aoSairDoCampo = (chave: ChaveNumerica) => {
@@ -446,6 +451,39 @@ export function FormAvaliacao({
           Faixas ({valores.especie}): {faixas}
         </p>
       )}
+
+      <div className="mt-5 rounded-xl border border-border p-3">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Exames laboratoriais</span>
+        {([
+          ["hemograma", "Hemograma", [["VG", "%"], ["Plaquetas", ""], ["Leucócitos", ""]]],
+          ["bioquimico", "Bioquímico", [["Creatinina", ""], ["Uréia", ""], ["TGP", ""]]],
+        ] as const).map(([grupo, titulo, padroes]) => {
+          const atuais = valores.examesLaboratoriais?.[grupo] ?? padroes.map(([nome]) => ({ nome, valor: "", referencia: "" }));
+          return <div key={grupo} className="mt-4">
+            <p className="text-sm font-semibold text-foreground">{titulo}</p>
+            <div className="mt-2 space-y-2">
+              {atuais.map((exame, i) => (
+                <div key={i} className="grid grid-cols-[1fr_0.8fr_1fr] gap-2">
+                  <input value={exame.nome} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,nome:e.target.value}:x))} placeholder="Nome do exame" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+                  <input value={exame.valor} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,valor:e.target.value}:x))} placeholder="Valor" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+                  <input value={exame.referencia ?? ""} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,referencia:e.target.value}:x))} placeholder="Referência" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+                </div>
+              ))}
+              <button type="button" onClick={() => setExames(grupo, [...atuais, { nome: "", valor: "", referencia: "" }])} className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground">+ Adicionar outro</button>
+            </div>
+          </div>;
+        })}
+        <div className="mt-4">
+          <p className="text-sm font-semibold text-foreground">Outros exames</p>
+          {(valores.examesLaboratoriais?.outros ?? [{ nome: "", valor: "", referencia: "" }]).map((exame, i, atuais) => (
+            <div key={i} className="mt-2 grid grid-cols-[1fr_0.8fr_1fr] gap-2">
+              <input value={exame.nome} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,nome:e.target.value}:x))} placeholder="Nome do exame" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+              <input value={exame.valor} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,valor:e.target.value}:x))} placeholder="Valor" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+              <input value={exame.referencia ?? ""} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,referencia:e.target.value}:x))} placeholder="Referência" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+            </div>
+          ))}
+        </div>
+      </div>
 
       <label className="mt-4 block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
