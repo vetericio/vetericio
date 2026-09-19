@@ -456,36 +456,48 @@ export function FormAvaliacao({
         </p>
       )}
 
-      <div className="mt-5 rounded-xl border border-border p-3">
-        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Exames laboratoriais</span>
+      <div className="mt-5 rounded-2xl border border-border bg-secondary/20 p-4">
+        <p className="text-sm font-semibold text-foreground">Exames laboratoriais</p>
+        <p className="mt-1 text-xs text-muted-foreground">Preencha somente o que tiver resultado. Campos sem valor não aparecem na ficha nem no PDF.</p>
+
         {([
-          ["hemograma", "Hemograma", [["VG", "%"], ["Plaquetas", ""], ["Leucócitos", ""]]],
-          ["bioquimico", "Bioquímico", [["Creatinina", ""], ["Uréia", ""], ["TGP", ""]]],
-        ] as const).map(([grupo, titulo, padroes]) => {
-          const atuais = valores.examesLaboratoriais?.[grupo] ?? padroes.map(([nome]) => ({ nome, valor: "", referencia: "" }));
-          return <div key={grupo} className="mt-4">
-            <p className="text-sm font-semibold text-foreground">{titulo}</p>
-            <div className="mt-2 space-y-2">
-              {atuais.map((exame, i) => (
-                <div key={i} className="grid grid-cols-[1fr_0.8fr_1fr] gap-2">
-                  <input value={exame.nome} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,nome:e.target.value}:x))} placeholder="Nome do exame" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
-                  <input value={exame.valor} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,valor:e.target.value}:x))} placeholder="Valor" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
-                  <input value={exame.referencia ?? ""} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,referencia:e.target.value}:x))} placeholder="Referência" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
-                </div>
-              ))}
-              <button type="button" onClick={() => setExames(grupo, [...atuais, { nome: "", valor: "", referencia: "" }])} className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground">+ Adicionar outro</button>
+          ["hemograma", "Hemograma", ["VG", "Plaquetas", "Leucócitos"]],
+          ["bioquimico", "Bioquímico", ["Creatinina", "Uréia", "TGP"]],
+        ] as const).map(([grupo, titulo, nomes]) => {
+          const salvos = valores.examesLaboratoriais?.[grupo] ?? [];
+          const atuais = nomes.map((nome) => salvos.find((x) => x.nome === nome) ?? { nome, valor: "", referencia: "" })
+            .concat(salvos.filter((x) => !nomes.includes(x.nome as any)));
+          return (
+            <div key={grupo} className="mt-5">
+              <p className="font-semibold text-foreground">{titulo}</p>
+              <div className="mt-2 space-y-3">
+                {atuais.map((exame, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-background p-3">
+                    <input value={exame.nome} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,nome:e.target.value}:x))} placeholder="Nome do exame" className="w-full border-0 bg-transparent text-sm font-semibold text-foreground outline-none" />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <input value={exame.valor} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,valor:e.target.value}:x))} placeholder={exame.nome === "VG" ? "Valor (%)" : "Valor"} className="rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+                      <input value={exame.referencia ?? ""} onChange={(e) => setExames(grupo, atuais.map((x,j)=>j===i?{...x,referencia:e.target.value}:x))} placeholder="Valor de referência" className="rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setExames(grupo, [...atuais, { nome: "", valor: "", referencia: "" }])} className="rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground">+ Adicionar outro exame</button>
+              </div>
             </div>
-          </div>;
+          );
         })}
-        <div className="mt-4">
-          <p className="text-sm font-semibold text-foreground">Outros exames</p>
+
+        <div className="mt-5">
+          <p className="font-semibold text-foreground">Outro exame laboratorial</p>
           {(valores.examesLaboratoriais?.outros ?? [{ nome: "", valor: "", referencia: "" }]).map((exame, i, atuais) => (
-            <div key={i} className="mt-2 grid grid-cols-[1fr_0.8fr_1fr] gap-2">
-              <input value={exame.nome} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,nome:e.target.value}:x))} placeholder="Nome do exame" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
-              <input value={exame.valor} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,valor:e.target.value}:x))} placeholder="Valor" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
-              <input value={exame.referencia ?? ""} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,referencia:e.target.value}:x))} placeholder="Referência" className="rounded-lg border border-input bg-background px-2 py-2 text-sm" />
+            <div key={i} className="mt-2 rounded-xl border border-border bg-background p-3">
+              <input value={exame.nome} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,nome:e.target.value}:x))} placeholder="Nome do exame" className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <input value={exame.valor} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,valor:e.target.value}:x))} placeholder="Valor" className="rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+                <input value={exame.referencia ?? ""} onChange={(e) => setExames("outros", atuais.map((x,j)=>j===i?{...x,referencia:e.target.value}:x))} placeholder="Valor de referência" className="rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+              </div>
             </div>
           ))}
+          <button type="button" onClick={() => setExames("outros", [...(valores.examesLaboratoriais?.outros ?? []), { nome: "", valor: "", referencia: "" }])} className="mt-2 rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground">+ Adicionar exame</button>
         </div>
       </div>
 
