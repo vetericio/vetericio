@@ -12,7 +12,8 @@ import {
   ROTULOS_NUMERICOS,
   type ChaveNumerica,
   type Especie,
-  type Registro,\n  type ExameLaboratorial,
+  type Registro,
+  type ExameLaboratorial,
 } from "@/lib/ficha";
 import {
   AlertDialog,
