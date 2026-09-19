@@ -211,7 +211,8 @@ export async function exportarPdf(
       }
 
       // Bloco de medicações: título em negrito e itens recuados.
-      const tituloMedicacao = /^(Medicações|Anamnese|Exames laboratoriais|Hemograma|Bioquímico|Outros exames):$/.test(linha);\n      const itemAnamnese = /^- (Queixa principal|Exames|Conduta):/.test(linha);
+      const tituloMedicacao = /^(Medicações|Anamnese|Exames laboratoriais|Hemograma|Bioquímico|Outros exames):$/.test(linha);
+      const itemAnamnese = /^- (Queixa principal|Exames|Conduta):/.test(linha);
       const itemMedicacao = /^- /.test(linha);
       if (tituloMedicacao) y += 6;
 
