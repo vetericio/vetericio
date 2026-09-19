@@ -63,7 +63,7 @@ function AnamneseConteudo() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
-  const confirmacao = usarConfirmacao();
+  const confirmacao = usarConfirmacao();\n  const [referencias, setReferencias] = useState<Record<string, string>>(() => {\n    if (typeof window === "undefined") return {};\n    try { return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}"); } catch { return {}; }\n  });
 
   // As pendências daqui também vivem na aba Pendências (e saem do PDF).
   useEffect(() => {
@@ -128,15 +128,15 @@ function AnamneseConteudo() {
       toast.error("Informe o nome do animal.");
       return;
     }
-    const agora = new Date().toISOString();
+    const agora = new Date().toISOString();\n    const comReferencias = (lista?: ExameAnamnese[]) => (lista ?? []).map((x) => ({ ...x, referencia: x.referencia || referencias[x.nome] || "" }));\n    const formSalvar = { ...form, hemograma: comReferencias(form.hemograma), bioquimico: comReferencias(form.bioquimico), outrosExames: comReferencias(form.outrosExames) };
     if (editandoId) {
       setAnamneses((lista) =>
-        lista.map((a) => (a.id === editandoId ? { ...a, ...form, atualizadoEm: agora } : a)),
+        lista.map((a) => (a.id === editandoId ? { ...a, ...formSalvar, atualizadoEm: agora } : a)),
       );
       toast.success("Anamnese atualizada.");
     } else {
       setAnamneses((lista) => [
-        { ...form, id: crypto.randomUUID(), atualizadoEm: agora },
+        { ...formSalvar, id: crypto.randomUUID(), atualizadoEm: agora },
         ...lista,
       ]);
       toast.success("Anamnese salva. O animal já aparece na busca do Início.");
@@ -305,7 +305,7 @@ function AnamneseConteudo() {
                         className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring"
                       />
                       <input
-                        value={exame.referencia}
+                        value={exame.referencia || referencias[exame.nome] || ""}
                         onChange={(e) => alterarExame(grupo, i, "referencia", e.target.value)}
                         placeholder="Valor de referência"
                         className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring"
@@ -326,7 +326,7 @@ function AnamneseConteudo() {
                 <input value={exame.nome} onChange={(e) => alterarExame("outrosExames", i, "nome", e.target.value)} placeholder="Nome do exame" className="w-full bg-transparent text-xs font-semibold text-foreground outline-none" />
                 <div className="mt-1 grid grid-cols-1 gap-1">
                   <input value={exame.valor} onChange={(e) => alterarExame("outrosExames", i, "valor", e.target.value)} placeholder="Valor" className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring" />
-                  <input value={exame.referencia} onChange={(e) => alterarExame("outrosExames", i, "referencia", e.target.value)} placeholder="Valor de referência" className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring" />
+                  <input value={exame.referencia || referencias[exame.nome] || ""} onChange={(e) => alterarExame("outrosExames", i, "referencia", e.target.value)} placeholder="Valor de referência" className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring" />
                 </div>
               </div>
             ))}
