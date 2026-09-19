@@ -15,7 +15,8 @@ import {
   emojiEspecie,
   normalizarNome,
   quandoCurto,
-  type Anamnese,\n  type ExameAnamnese,
+  type Anamnese,
+  type ExameAnamnese,
 } from "@/lib/anamnese";
 
 export const Route = createFileRoute("/anamnese")({

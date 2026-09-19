@@ -1,6 +1,7 @@
 import type { Especie } from "./ficha";
 
-export type Pendencia = { id: string; texto: string; feito: boolean };\nexport type ExameAnamnese = { nome: string; valor: string; referencia: string };
+export type Pendencia = { id: string; texto: string; feito: boolean };
+export type ExameAnamnese = { nome: string; valor: string; referencia: string };
 
 export type Anamnese = {
   id: string;
@@ -10,7 +11,11 @@ export type Anamnese = {
   peso: string;
   queixa: string;
   relato: string;
-  exames: string;\n  /** Resultados laboratoriais estruturados. */\n  hemograma?: ExameAnamnese[];\n  bioquimico?: ExameAnamnese[];\n  outrosExames?: ExameAnamnese[];
+  exames: string;
+  /** Resultados laboratoriais estruturados. */
+  hemograma?: ExameAnamnese[];
+  bioquimico?: ExameAnamnese[];
+  outrosExames?: ExameAnamnese[];
   pendencias: Pendencia[];
   /** Conduta / plano terapêutico (opcional, compacto). */
   conduta: string;
@@ -27,7 +32,18 @@ export const ANAMNESE_VAZIA: Omit<Anamnese, "id" | "atualizadoEm"> = {
   peso: "",
   queixa: "",
   relato: "",
-  exames: "",\n  hemograma: [\n    { nome: "VG", valor: "", referencia: "" },\n    { nome: "Plaquetas", valor: "", referencia: "" },\n    { nome: "Leucócitos", valor: "", referencia: "" },\n  ],\n  bioquimico: [\n    { nome: "Creatinina", valor: "", referencia: "" },\n    { nome: "Uréia", valor: "", referencia: "" },\n    { nome: "TGP", valor: "", referencia: "" },\n  ],\n  outrosExames: [],
+  exames: "",
+  hemograma: [
+    { nome: "VG", valor: "", referencia: "" },
+    { nome: "Plaquetas", valor: "", referencia: "" },
+    { nome: "Leucócitos", valor: "", referencia: "" },
+  ],
+  bioquimico: [
+    { nome: "Creatinina", valor: "", referencia: "" },
+    { nome: "Uréia", valor: "", referencia: "" },
+    { nome: "TGP", valor: "", referencia: "" },
+  ],
+  outrosExames: [],
   pendencias: [],
   conduta: "",
   atencao: "",
