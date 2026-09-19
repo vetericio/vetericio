@@ -250,7 +250,13 @@ function Index() {
   };
 
   return (
-    <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">\n      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-10 z-0 flex justify-center overflow-hidden">\n        <div className="flex h-80 w-80 items-center justify-center rounded-full bg-white shadow-sm sm:h-96 sm:w-96">\n          <img src="/vetericio-logo-v5.svg" alt="" className="h-64 w-64 object-contain opacity-20 sm:h-80 sm:w-80" />\n        </div>\n      </div>\n      <div className="relative z-10">
+    <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-10 z-0 flex justify-center overflow-hidden">
+        <div className="flex h-80 w-80 items-center justify-center rounded-full bg-white shadow-sm sm:h-96 sm:w-96">
+          <img src="/vetericio-logo-v5.svg" alt="" className="h-64 w-64 object-contain opacity-20 sm:h-80 sm:w-80" />
+        </div>
+      </div>
+      <div className="relative z-10">
       <GuardaSaida sujo={sujo} />
       <button
         type="button"
@@ -285,7 +291,9 @@ function Index() {
         <InstalarApp />
       </div>
 
-      </div>\n\n      <AlertDialog open={Boolean(duplicado)} onOpenChange={(o) => !o && setDuplicado(null)}>
+      </div>
+
+      <AlertDialog open={Boolean(duplicado)} onOpenChange={(o) => !o && setDuplicado(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>É o mesmo animal?</AlertDialogTitle>
