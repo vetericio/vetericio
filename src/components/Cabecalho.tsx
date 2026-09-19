@@ -44,7 +44,7 @@ export function Cabecalho() {
       <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <img
-          src="/vetericio-icon-v4.jpg"
+          src="/vetericio-logo-v5.svg"
           alt="Logo Veterício"
           className="mx-auto mb-1.5 h-9 w-auto sm:h-11"
         />
