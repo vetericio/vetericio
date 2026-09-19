@@ -118,7 +118,10 @@ export function FormAvaliacao({
   const set = (chave: keyof Omit<Registro, "id">, valor: string) =>
     onChange({ ...valores, [chave]: valor });
 
-  const setExames = (grupo: "hemograma" | "bioquimico" | "outros", lista: ExameLaboratorial[]) =>\n    onChange({ ...valores, examesLaboratoriais: { ...valores.examesLaboratoriais, [grupo]: lista } });\n\n  const setNumero = (chave: ChaveNumerica, valor: string) => {
+  const setExames = (grupo: "hemograma" | "bioquimico" | "outros", lista: ExameLaboratorial[]) =>
+    onChange({ ...valores, examesLaboratoriais: { ...valores.examesLaboratoriais, [grupo]: lista } });
+
+  const setNumero = (chave: ChaveNumerica, valor: string) => {
     // Valor novo no campo: pode perguntar de novo sobre ele.
     setAlertados((a) => a.filter((k) => !k.startsWith(`${chave}:`)));
     // Em modo edição, as observações só mudam depois da pergunta (substituir/acrescentar).
