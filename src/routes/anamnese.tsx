@@ -63,7 +63,11 @@ function AnamneseConteudo() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
-  const confirmacao = usarConfirmacao();\n  const [referencias, setReferencias] = useState<Record<string, string>>(() => {\n    if (typeof window === "undefined") return {};\n    try { return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}"); } catch { return {}; }\n  });
+  const confirmacao = usarConfirmacao();
+  const [referencias, setReferencias] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}"); } catch { return {}; }
+  });
 
   // As pendências daqui também vivem na aba Pendências (e saem do PDF).
   useEffect(() => {
