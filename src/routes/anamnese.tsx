@@ -15,7 +15,7 @@ import {
   emojiEspecie,
   normalizarNome,
   quandoCurto,
-  type Anamnese,
+  type Anamnese,\n  type ExameAnamnese,
 } from "@/lib/anamnese";
 
 export const Route = createFileRoute("/anamnese")({
@@ -84,6 +84,30 @@ function AnamneseConteudo() {
 
   const set = <K extends keyof typeof form>(chave: K, valor: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [chave]: valor }));
+
+  const listaExames = (grupo: "hemograma" | "bioquimico" | "outrosExames"): ExameAnamnese[] => {
+    const atual = form[grupo];
+    if (atual?.length) return atual;
+    if (grupo === "hemograma") return [
+      { nome: "VG", valor: "", referencia: "" },
+      { nome: "Plaquetas", valor: "", referencia: "" },
+      { nome: "Leucócitos", valor: "", referencia: "" },
+    ];
+    if (grupo === "bioquimico") return [
+      { nome: "Creatinina", valor: "", referencia: "" },
+      { nome: "Uréia", valor: "", referencia: "" },
+      { nome: "TGP", valor: "", referencia: "" },
+    ];
+    return [];
+  };
+
+  const alterarExame = (grupo: "hemograma" | "bioquimico" | "outrosExames", indice: number, campoExame: keyof ExameAnamnese, valor: string) => {
+    const lista = listaExames(grupo).map((x, i) => i === indice ? { ...x, [campoExame]: valor } : x);
+    set(grupo, lista);
+  };
+
+  const adicionarExame = (grupo: "hemograma" | "bioquimico" | "outrosExames") =>
+    set(grupo, [...listaExames(grupo), { nome: "", valor: "", referencia: "" }]);
 
   const limpar = () => {
     setForm(ANAMNESE_VAZIA);
@@ -254,6 +278,62 @@ function AnamneseConteudo() {
             className={campo}
           />
         </label>
+
+        <div className="rounded-xl border border-border bg-secondary/20 p-3">
+          <p className={rotuloCampo}>Exames laboratoriais</p>
+          {([
+            ["hemograma", "Hemograma"],
+            ["bioquimico", "Bioquímico"],
+          ] as const).map(([grupo, titulo]) => (
+            <div key={grupo} className="mt-4">
+              <p className="text-sm font-semibold text-foreground">{titulo}</p>
+              <div className="mt-2 space-y-2">
+                {listaExames(grupo).map((exame, i) => (
+                  <div key={i} className="rounded-lg border border-border bg-background p-2">
+                    <input
+                      value={exame.nome}
+                      onChange={(e) => alterarExame(grupo, i, "nome", e.target.value)}
+                      placeholder="Nome do exame"
+                      className="w-full bg-transparent text-sm font-semibold text-foreground outline-none"
+                    />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <input
+                        value={exame.valor}
+                        onChange={(e) => alterarExame(grupo, i, "valor", e.target.value)}
+                        placeholder={exame.nome === "VG" ? "Valor (%)" : "Valor"}
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+                      />
+                      <input
+                        value={exame.referencia}
+                        onChange={(e) => alterarExame(grupo, i, "referencia", e.target.value)}
+                        placeholder="Valor de referência"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => adicionarExame(grupo)} className="mt-2 rounded-lg bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground">
+                + Adicionar outro
+              </button>
+            </div>
+          ))}
+          <div className="mt-4">
+            <p className="text-sm font-semibold text-foreground">Outros exames</p>
+            {listaExames("outrosExames").map((exame, i) => (
+              <div key={i} className="mt-2 rounded-lg border border-border bg-background p-2">
+                <input value={exame.nome} onChange={(e) => alterarExame("outrosExames", i, "nome", e.target.value)} placeholder="Nome do exame" className="w-full bg-transparent text-sm font-semibold text-foreground outline-none" />
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <input value={exame.valor} onChange={(e) => alterarExame("outrosExames", i, "valor", e.target.value)} placeholder="Valor" className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring" />
+                  <input value={exame.referencia} onChange={(e) => alterarExame("outrosExames", i, "referencia", e.target.value)} placeholder="Valor de referência" className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring" />
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={() => adicionarExame("outrosExames")} className="mt-2 rounded-lg bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground">
+              + Adicionar exame
+            </button>
+          </div>
+        </div>
 
         <div>
           <p className={rotuloCampo}>Pendências</p>
