@@ -132,7 +132,9 @@ function AnamneseConteudo() {
       toast.error("Informe o nome do animal.");
       return;
     }
-    const agora = new Date().toISOString();\n    const comReferencias = (lista?: ExameAnamnese[]) => (lista ?? []).map((x) => ({ ...x, referencia: x.referencia || referencias[x.nome] || "" }));\n    const formSalvar = { ...form, hemograma: comReferencias(form.hemograma), bioquimico: comReferencias(form.bioquimico), outrosExames: comReferencias(form.outrosExames) };
+    const agora = new Date().toISOString();
+    const comReferencias = (lista?: ExameAnamnese[]) => (lista ?? []).map((x) => ({ ...x, referencia: x.referencia || referencias[x.nome] || "" }));
+    const formSalvar = { ...form, hemograma: comReferencias(form.hemograma), bioquimico: comReferencias(form.bioquimico), outrosExames: comReferencias(form.outrosExames) };
     if (editandoId) {
       setAnamneses((lista) =>
         lista.map((a) => (a.id === editandoId ? { ...a, ...formSalvar, atualizadoEm: agora } : a)),
