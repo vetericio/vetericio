@@ -32,7 +32,7 @@ function normalizar(texto: string) {
 }
 
 export function AtualizarEmBloco({ aberto, onFechar, registros, onAplicar }: Props) {
-  const [chave, setChave] = useState<ChaveAtualizavel>("temperatura");
+  const [chave, setChave] = useState<ChaveAtualizavel>("pas");
   const [valores, setValores] = useState<Record<string, string>>({});
 
   const ordenados = useMemo(
