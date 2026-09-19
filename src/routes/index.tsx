@@ -251,11 +251,6 @@ function Index() {
 
   return (
     <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-10 z-0 flex justify-center overflow-hidden">
-        <div className="flex h-80 w-80 items-center justify-center rounded-full bg-white shadow-sm sm:h-96 sm:w-96">
-          <img src="/vetericio-logo-v5.svg" alt="" className="h-64 w-64 object-contain opacity-20 sm:h-80 sm:w-80" />
-        </div>
-      </div>
       <div className="relative z-10">
       <GuardaSaida sujo={sujo} />
       <button
