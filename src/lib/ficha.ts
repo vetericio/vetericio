@@ -123,8 +123,18 @@ export function blocoAnamnese(
     ["Conduta", a.conduta.trim()],
   ];
   const visiveis = itens.filter(([, v]) => v);
-  if (visiveis.length === 0) return [];
-  return ["Anamnese:", ...visiveis.map(([k, v]) => `- ${k}: ${v}`)];
+  const labs = (titulo: string, lista = [] as { nome: string; valor: string; referencia: string }[]) => {
+    const preenchidos = lista.filter((x) => x.nome?.trim() && x.valor?.trim());
+    if (!preenchidos.length) return [];
+    return [`- ${titulo}:`, ...preenchidos.map((x) => `  ${x.nome.trim()}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
+  };
+  const laboratoriais = [
+    ...labs("Hemograma", a.hemograma),
+    ...labs("Bioquímico", a.bioquimico),
+    ...labs("Outros exames", a.outrosExames),
+  ];
+  if (visiveis.length === 0 && laboratoriais.length === 0) return [];
+  return ["Anamnese:", ...visiveis.map(([k, v]) => `- ${k}: ${v}`), ...laboratoriais];
 }
 
 export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
