@@ -47,7 +47,7 @@ export function Cabecalho() {
           <img
             src="/vetericio-logo-oficial.jpg"
             alt="Logo Veterício"
-            className="h-auto w-full max-w-[240px] object-contain sm:max-w-[280px]"
+            className="h-auto w-full max-w-[240px] object-contain mix-blend-screen sm:max-w-[280px]"
           />
         </div>
         <h1 className="font-display text-lg font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
