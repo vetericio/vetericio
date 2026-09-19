@@ -1,6 +1,7 @@
 import type { Especie } from "./ficha";
 
-export type Pendencia = { id: string; texto: string; feito: boolean };\nexport type ExameAnamnese = { nome: string; valor: string; referencia: string };
+export type Pendencia = { id: string; texto: string; feito: boolean };
+export type ExameAnamnese = { nome: string; valor: string; referencia: string };
 
 export type Anamnese = {
   id: string;
@@ -10,7 +11,11 @@ export type Anamnese = {
   peso: string;
   queixa: string;
   relato: string;
-  exames: string;\n  /** Resultados laboratoriais estruturados. */\n  hemograma?: ExameAnamnese[];\n  bioquimico?: ExameAnamnese[];\n  outrosExames?: ExameAnamnese[];
+  exames: string;
+  /** Resultados laboratoriais estruturados. */
+  hemograma?: ExameAnamnese[];
+  bioquimico?: ExameAnamnese[];
+  outrosExames?: ExameAnamnese[];
   pendencias: Pendencia[];
   /** Conduta / plano terapêutico (opcional, compacto). */
   conduta: string;
