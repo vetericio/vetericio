@@ -26,7 +26,10 @@ export type Medicacao = {
 
 
 
-export type ExameLaboratorial = { nome: string; valor: string; referencia?: string };\nexport type ExamesLaboratoriais = { hemograma?: ExameLaboratorial[]; bioquimico?: ExameLaboratorial[]; outros?: ExameLaboratorial[] };\n\nexport type Registro = {
+export type ExameLaboratorial = { nome: string; valor: string; referencia?: string };
+export type ExamesLaboratoriais = { hemograma?: ExameLaboratorial[]; bioquimico?: ExameLaboratorial[]; outros?: ExameLaboratorial[] };
+
+export type Registro = {
   id: string;
   animal: string;
   especie?: Especie;
@@ -44,7 +47,9 @@ export type ExameLaboratorial = { nome: string; valor: string; referencia?: stri
   fr: string;
   pas: string;
   glicemia: string;
-  observacoes: string;\n  /** Exames laboratoriais; itens sem valor não são exibidos na ficha/PDF. */\n  examesLaboratoriais?: ExamesLaboratoriais;
+  observacoes: string;
+  /** Exames laboratoriais; itens sem valor não são exibidos na ficha/PDF. */
+  examesLaboratoriais?: ExamesLaboratoriais;
   /** Medicações do animal (manuais ou lidas de uma foto). */
   medicacoes?: Medicacao[];
   /** Anamnese de origem do animal, quando veio da sugestão do Início. */
@@ -373,7 +378,8 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   return [
     titulo,
     ...linhas,
-    ...blocoMedicacoes(r),\n    ...blocoExamesLaboratoriais(r),
+    ...blocoMedicacoes(r),
+    ...blocoExamesLaboratoriais(r),
     ...blocoAnamnese(r, opcoes?.anamneses),
     ...(curvas ? curvas.split("\n") : []),
     ...(obito ? [obito] : []),
