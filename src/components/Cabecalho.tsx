@@ -43,11 +43,11 @@ export function Cabecalho() {
     <header className="relative border-b border-border bg-card/60">
       <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
-        <div className="relative left-1/2 mb-2 w-screen -translate-x-1/2 bg-white py-1">
+        <div className="mb-2 flex justify-center">
           <img
             src="/vetericio-logo-oficial.jpg"
             alt="Logo Veterício"
-            className="mx-auto h-auto w-full max-w-[240px] object-contain sm:max-w-[280px]"
+            className="h-auto w-full max-w-[240px] object-contain sm:max-w-[280px]"
           />
         </div>
         <h1 className="font-display text-lg font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
