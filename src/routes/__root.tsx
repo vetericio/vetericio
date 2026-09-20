@@ -13,9 +13,11 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Cabecalho } from "@/components/Cabecalho";
+import { Splash } from "@/components/Splash";
 
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
+
 
 function NotFoundComponent() {
   return (
@@ -139,7 +141,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Cabecalho />
+      
       <AlarmeAtivo />
+
+      {/* Tela de abertura com a logo oficial. */}
+      <Splash />
+
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Rodape />
       <Toaster position="top-center" />
