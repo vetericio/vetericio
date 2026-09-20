@@ -253,6 +253,15 @@ function Index() {
   return (
     <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
       <div className="relative z-10">
+      <div className="mb-5 flex justify-center">
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <img
+            src={logoOficial.url}
+            alt="Veterício Serviços Veterinários LTDA"
+            className="h-auto w-full max-w-xs object-contain sm:max-w-sm md:max-w-md"
+          />
+        </div>
+      </div>
       <GuardaSaida sujo={sujo} />
       <button
         type="button"
