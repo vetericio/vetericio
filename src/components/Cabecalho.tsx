@@ -9,7 +9,8 @@ import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
-import { carregarLogoCabecalho, EVENTO_LOGO_CABECALHO } from "@/lib/logoCabecalho";
+import { EVENTO_LOGO_CABECALHO } from "@/lib/logoCabecalho";
+import { buscarLogoCabecalhoGlobal } from "@/lib/logoCabecalho.functions";
 
 const base =
   "min-h-11 flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
@@ -40,7 +41,11 @@ export function Cabecalho() {
 
   useEffect(() => {
     setDataHoje(new Date().toLocaleDateString("pt-BR"));
-    const atualizarLogo = () => setLogoCabecalho(carregarLogoCabecalho());
+    const atualizarLogo = () => {
+      void buscarLogoCabecalhoGlobal()
+        .then(({ logo }) => setLogoCabecalho(logo))
+        .catch(() => setLogoCabecalho(""));
+    };
     atualizarLogo();
     window.addEventListener(EVENTO_LOGO_CABECALHO, atualizarLogo);
     window.addEventListener("storage", atualizarLogo);
