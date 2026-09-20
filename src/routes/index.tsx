@@ -7,6 +7,7 @@ import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp as InstalarAppBase } from "@/components/InstalarApp";
 import { GuardaSaida } from "@/components/GuardaSaida";
 import { useConforto } from "@/hooks/useConforto";
+import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
 import { useRegistros } from "@/hooks/useRegistros";
 import { useCurvas } from "@/hooks/useCurvas";
 import { definirAlarmes } from "@/hooks/useAlarmes";
