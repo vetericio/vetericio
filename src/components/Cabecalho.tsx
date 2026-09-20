@@ -8,6 +8,7 @@ import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
+import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
 
 const base =
   "min-h-11 flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
@@ -45,9 +46,9 @@ export function Cabecalho() {
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
           <img
-            src="/vetericio-logo-oficial.jpg"
+            src={logoOficial.url}
             alt="Logo Veterício"
-            className="h-auto w-full max-w-[204px] object-contain mix-blend-screen sm:max-w-[238px]"
+            className="h-auto w-full max-w-[204px] object-contain sm:max-w-[238px]"
           />
         </div>
 
