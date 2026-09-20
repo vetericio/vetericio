@@ -4,7 +4,8 @@ import { toast } from "sonner";
 
 import { useConforto } from "@/hooks/useConforto";
 import { TEMA_CALMO } from "@/lib/conforto";
-import { carregarLogoCabecalho, restaurarLogoCabecalho, salvarLogoCabecalho } from "@/lib/logoCabecalho";
+import { EVENTO_LOGO_CABECALHO } from "@/lib/logoCabecalho";
+import { buscarLogoCabecalhoGlobal, salvarLogoCabecalhoGlobal } from "@/lib/logoCabecalho.functions";
 import {
   CORES_RAPIDAS,
   TEMAS,
@@ -58,7 +59,7 @@ function PaginaTemas() {
     setTema(salvo);
     setCor(corSalva);
     setPersonalizados(carregarTemasPersonalizados());
-    setLogoCabecalho(carregarLogoCabecalho());
+    void buscarLogoCabecalhoGlobal().then(({ logo }) => setLogoCabecalho(logo)).catch(() => undefined);
     aplicarTema(salvo, corSalva);
   }, []);
 
@@ -90,9 +91,13 @@ function PaginaTemas() {
     leitor.onload = () => {
       const logo = String(leitor.result);
       try {
-        salvarLogoCabecalho(logo);
-        setLogoCabecalho(logo);
-        toast.success("Logo do cabeçalho atualizada.");
+        void salvarLogoCabecalhoGlobal({ data: { logo } })
+          .then(() => {
+            setLogoCabecalho(logo);
+            window.dispatchEvent(new Event(EVENTO_LOGO_CABECALHO));
+            toast.success("Logo do cabeçalho atualizada para todos os aparelhos.");
+          })
+          .catch(() => toast.error("Não foi possível salvar a logo na nuvem."));
       } catch {
         toast.error("Não foi possível salvar a imagem. Tente um arquivo menor.");
       }
@@ -101,9 +106,13 @@ function PaginaTemas() {
   };
 
   const voltarLogoPadrao = () => {
-    restaurarLogoCabecalho();
-    setLogoCabecalho("");
-    toast.success("Logo padrão restaurada.");
+    void salvarLogoCabecalhoGlobal({ data: { logo: "" } })
+      .then(() => {
+        setLogoCabecalho("");
+        window.dispatchEvent(new Event(EVENTO_LOGO_CABECALHO));
+        toast.success("Logo padrão restaurada para todos os aparelhos.");
+      })
+      .catch(() => toast.error("Não foi possível restaurar a logo na nuvem."));
   };
 
   const salvarPersonalizado = () => {
