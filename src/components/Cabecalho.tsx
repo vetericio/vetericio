@@ -9,6 +9,7 @@ import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
+import { carregarLogoCabecalho, EVENTO_LOGO_CABECALHO } from "@/lib/logoCabecalho";
 
 const base =
   "min-h-11 flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
@@ -23,6 +24,7 @@ export function Cabecalho() {
   const confirmacao = usarConfirmacao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
+  const [logoCabecalho, setLogoCabecalho] = useState("");
 
   const finalizarPlantao = () => {
     const quantos = registros.length;
@@ -38,6 +40,14 @@ export function Cabecalho() {
 
   useEffect(() => {
     setDataHoje(new Date().toLocaleDateString("pt-BR"));
+    const atualizarLogo = () => setLogoCabecalho(carregarLogoCabecalho());
+    atualizarLogo();
+    window.addEventListener(EVENTO_LOGO_CABECALHO, atualizarLogo);
+    window.addEventListener("storage", atualizarLogo);
+    return () => {
+      window.removeEventListener(EVENTO_LOGO_CABECALHO, atualizarLogo);
+      window.removeEventListener("storage", atualizarLogo);
+    };
   }, []);
 
   return (
@@ -46,7 +56,7 @@ export function Cabecalho() {
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
           <img
-            src={logoOficial.url}
+            src={logoCabecalho || logoOficial.url}
             alt="Logo Veterício"
             className="h-auto w-full max-w-[204px] object-contain sm:max-w-[238px]"
           />
