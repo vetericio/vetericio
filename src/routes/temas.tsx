@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { useConforto } from "@/hooks/useConforto";
 import { TEMA_CALMO } from "@/lib/conforto";
+import { carregarLogoCabecalho, restaurarLogoCabecalho, salvarLogoCabecalho } from "@/lib/logoCabecalho";
 import {
   CORES_RAPIDAS,
   TEMAS,
@@ -48,6 +49,7 @@ function PaginaTemas() {
   const [personalizados, setPersonalizados] = useState<TemaPersonalizado[]>([]);
   const [foto, setFoto] = useState("");
   const [nomePersonalizado, setNomePersonalizado] = useState("");
+  const [logoCabecalho, setLogoCabecalho] = useState("");
   const { conforto, definirModo } = useConforto();
 
   useEffect(() => {
@@ -56,6 +58,7 @@ function PaginaTemas() {
     setTema(salvo);
     setCor(corSalva);
     setPersonalizados(carregarTemasPersonalizados());
+    setLogoCabecalho(carregarLogoCabecalho());
     aplicarTema(salvo, corSalva);
   }, []);
 
@@ -76,6 +79,31 @@ function PaginaTemas() {
     const leitor = new FileReader();
     leitor.onload = () => setFoto(String(leitor.result));
     leitor.readAsDataURL(arquivo);
+  };
+
+  const lerLogoCabecalho = (arquivo: File) => {
+    if (!arquivo.type.startsWith("image/")) {
+      toast.error("Escolha uma imagem PNG ou JPG.");
+      return;
+    }
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const logo = String(leitor.result);
+      try {
+        salvarLogoCabecalho(logo);
+        setLogoCabecalho(logo);
+        toast.success("Logo do cabeçalho atualizada.");
+      } catch {
+        toast.error("Não foi possível salvar a imagem. Tente um arquivo menor.");
+      }
+    };
+    leitor.readAsDataURL(arquivo);
+  };
+
+  const voltarLogoPadrao = () => {
+    restaurarLogoCabecalho();
+    setLogoCabecalho("");
+    toast.success("Logo padrão restaurada.");
   };
 
   const salvarPersonalizado = () => {
@@ -147,6 +175,46 @@ function PaginaTemas() {
       <p className="mb-4 text-center text-[11px] text-muted-foreground">
         Escolha primeiro como o app deve se comportar e depois as cores.
       </p>
+
+      <section className="mb-5 rounded-2xl border border-border bg-card p-3">
+        <h2 className="text-sm font-bold text-foreground">Logo do cabeçalho</h2>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Troque somente a logo exibida no topo do app. Splash, favicon e PDFs não são alterados.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="cursor-pointer rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground">
+            {logoCabecalho ? "Trocar logo" : "Escolher logo"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              onChange={(e) => {
+                const arquivo = e.target.files?.[0];
+                if (arquivo) lerLogoCabecalho(arquivo);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+          {logoCabecalho && (
+            <button
+              type="button"
+              onClick={voltarLogoPadrao}
+              className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold text-foreground"
+            >
+              Restaurar logo padrão
+            </button>
+          )}
+        </div>
+        {logoCabecalho && (
+          <div className="mt-3 flex justify-center rounded-xl border border-border bg-background p-3">
+            <img
+              src={logoCabecalho}
+              alt="Prévia da logo do cabeçalho"
+              className="h-auto w-full max-w-[204px] object-contain sm:max-w-[238px]"
+            />
+          </div>
+        )}
+      </section>
 
       <section className="mb-5 rounded-2xl border border-border bg-card p-3">
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
