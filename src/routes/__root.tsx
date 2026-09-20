@@ -143,6 +143,9 @@ function RootComponent() {
       
       <AlarmeAtivo />
 
+      {/* Tela de abertura com a logo oficial. */}
+      <Splash />
+
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Rodape />
