@@ -230,6 +230,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
   const [editando, setEditando] = useState<number | null>(null);
+  const [edicaoInline, setEdicaoInline] = useState<{ dose: string; quantidade: string; duracao: string } | null>(null);
   const [nome, setNome] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [unidade, setUnidade] = useState<Unidade>("mL");
@@ -459,6 +460,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const editar = (indice: number) => {
     const item = lista[indice];
     if (!item) return;
+    setEdicaoInline({ dose: item.dose ?? "", quantidade: item.quantidade ?? "", duracao: item.duracao ?? "" });
     const doseSalva = item.dose.trim();
     const doseNumerica = doseSalva.match(/[\d,.]+/)?.[0] ?? "";
     const doseEhVolume = /\bml\b/i.test(doseSalva);
@@ -499,7 +501,23 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setAberto(true);
   };
 
-  const cancelarEdicao = () => resetForm();
+  const cancelarEdicao = () => {
+    setEdicaoInline(null);
+    resetForm();
+  };
+
+  const salvarEdicaoInline = (indice: number) => {
+    if (!edicaoInline) return;
+    onChange(lista.map((m, i) => i === indice ? {
+      ...m,
+      dose: edicaoInline.dose.trim(),
+      quantidade: edicaoInline.quantidade.trim(),
+      duracao: edicaoInline.duracao.trim(),
+    } : m));
+    setEdicaoInline(null);
+    resetForm();
+    toast.success("Medicação atualizada.");
+  };
 
   const remover = (indice: number) => {
     onChange(lista.filter((_, i) => i !== indice));
@@ -671,19 +689,56 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                   key={i}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/60 px-2.5 py-1.5"
                 >
-                  <span className="min-w-0 text-sm text-foreground">
+                  <span className="min-w-0 flex-1 text-sm text-foreground">
                     {m.nomeMenor && (
                       <span className="block truncate text-xs text-muted-foreground">
                         {normalizarNomeMedicamento(m.nomeMenor)}
                       </span>
                     )}
-                    <span className="block truncate">
-                      {[normalizarNomeMedicamento(m.nome), m.dose, m.quantidade, m.duracao]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
+                    {editando === i && edicaoInline ? (
+                      <span className="block space-y-1.5">
+                        <span className="block font-semibold">{normalizarNomeMedicamento(m.nome)}</span>
+                        <span className="grid grid-cols-3 gap-1.5">
+                          <input
+                            aria-label="Dose"
+                            value={edicaoInline.dose}
+                            onChange={(e) => setEdicaoInline((v) => v ? { ...v, dose: e.target.value } : v)}
+                            placeholder="Dose"
+                            className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          />
+                          <input
+                            aria-label="Quantidade"
+                            value={edicaoInline.quantidade}
+                            onChange={(e) => setEdicaoInline((v) => v ? { ...v, quantidade: e.target.value } : v)}
+                            placeholder="mL"
+                            className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          />
+                          <input
+                            aria-label="Intervalo"
+                            value={edicaoInline.duracao}
+                            onChange={(e) => setEdicaoInline((v) => v ? { ...v, duracao: e.target.value } : v)}
+                            placeholder="8h"
+                            className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          />
+                        </span>
+                        <span className="flex gap-1.5">
+                          <button type="button" onClick={() => salvarEdicaoInline(i)} className="rounded-lg bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
+                            Salvar
+                          </button>
+                          <button type="button" onClick={cancelarEdicao} className="rounded-lg bg-background px-2 py-1 text-xs font-semibold text-foreground">
+                            Cancelar
+                          </button>
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="block truncate">
+                        {[normalizarNomeMedicamento(m.nome), m.dose, m.quantidade, m.duracao]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    )}
                   </span>
-                  {!somenteLeitura && (
+                  {!somenteLeitura && editando !== i && (
                     <span className="flex shrink-0 gap-1.5">
                       <button
                         type="button"
@@ -706,7 +761,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
             </ul>
           )}
 
-          {!somenteLeitura && (
+          {!somenteLeitura && editando === null && (
           <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
             <button
               type="button"
