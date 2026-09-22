@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useAnamneses } from "@/hooks/useAnamneses";
@@ -8,6 +9,16 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { ExigePlantao } from "@/components/ExigePlantao";
 import { GuardaSaida } from "@/components/GuardaSaida";
 import { BlocoNotas } from "@/components/BlocoNotas";
+import { ExamesLaboratoriais } from "@/components/ExamesLaboratoriais";
+import {
+  carregarReferenciasExames,
+  criarExamesPadrao,
+  normalizarExames,
+  prepararExamesParaSalvar,
+  salvarReferenciasExames,
+  trocarEspecieDosExames,
+  type ReferenciasExames,
+} from "@/lib/exames-laboratoriais";
 
 import { ESPECIES, type Especie } from "@/lib/ficha";
 import {
@@ -16,7 +27,6 @@ import {
   normalizarNome,
   quandoCurto,
   type Anamnese,
-  type ExameAnamnese,
 } from "@/lib/anamnese";
 
 export const Route = createFileRoute("/anamnese")({
@@ -63,15 +73,9 @@ function AnamneseConteudo() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
+  const [referencias, setReferencias] = useState(carregarReferenciasExames);
+  const [erroReferencias, setErroReferencias] = useState(false);
   const confirmacao = usarConfirmacao();
-  const [referencias, setReferencias] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      return JSON.parse(localStorage.getItem("veterico-referencias-exames") || "{}");
-    } catch {
-      return {};
-    }
-  });
 
   // As pendências daqui também vivem na aba Pendências (e saem do PDF).
   useEffect(() => {
@@ -94,32 +98,19 @@ function AnamneseConteudo() {
   const set = <K extends keyof typeof form>(chave: K, valor: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [chave]: valor }));
 
-  const listaExames = (grupo: "hemograma" | "bioquimico" | "outrosExames"): ExameAnamnese[] => {
-    const atual = form[grupo];
-    if (atual?.length) return atual;
-    if (grupo === "hemograma") return [
-      { nome: "VG", valor: "", referencia: "" },
-      { nome: "Plaquetas", valor: "", referencia: "" },
-      { nome: "Leucócitos", valor: "", referencia: "" },
-    ];
-    if (grupo === "bioquimico") return [
-      { nome: "Creatinina", valor: "", referencia: "" },
-      { nome: "Uréia", valor: "", referencia: "" },
-      { nome: "TGP", valor: "", referencia: "" },
-    ];
-    return [];
+  const mudarReferencias = (novas: ReferenciasExames) => {
+    setReferencias(novas);
+    setErroReferencias(!salvarReferenciasExames(novas));
   };
 
-  const alterarExame = (grupo: "hemograma" | "bioquimico" | "outrosExames", indice: number, campoExame: keyof ExameAnamnese, valor: string) => {
-    const lista = listaExames(grupo).map((x, i) => i === indice ? { ...x, [campoExame]: valor } : x);
-    set(grupo, lista);
-  };
-
-  const adicionarExame = (grupo: "hemograma" | "bioquimico" | "outrosExames") =>
-    set(grupo, [...listaExames(grupo), { nome: "", valor: "", referencia: "" }]);
+  const mudarEspecie = (especie: Especie) => setForm((atual) => ({
+    ...atual,
+    especie,
+    ...trocarEspecieDosExames(normalizarExames(atual), especie, referencias),
+  }));
 
   const limpar = () => {
-    setForm(ANAMNESE_VAZIA);
+    setForm({ ...ANAMNESE_VAZIA, ...criarExamesPadrao() });
     setEditandoId(null);
     setNovaPendencia("");
   };
@@ -132,25 +123,40 @@ function AnamneseConteudo() {
   };
 
   const salvar = () => {
+    if (!carregado) return;
     if (!form.animal.trim()) {
       toast.error("Informe o nome do animal.");
       return;
     }
+    const listas = normalizarExames(form);
+    if (Object.values(listas).some((lista) => lista.some((exame) => exame.valor.trim() && !exame.nome.trim()))) {
+      toast.error("Informe o nome dos exames que têm resultado.");
+      return;
+    }
     const agora = new Date().toISOString();
-    const comReferencias = (lista?: ExameAnamnese[]) => (lista ?? []).map((x) => ({ ...x, referencia: x.referencia || referencias[x.nome] || "" }));
-    const formSalvar = { ...form, hemograma: comReferencias(form.hemograma), bioquimico: comReferencias(form.bioquimico), outrosExames: comReferencias(form.outrosExames) };
+    const formSalvar = {
+      ...form,
+      ...prepararExamesParaSalvar(listas, form.especie, referencias),
+      pendencias: novaPendencia.trim()
+        ? [...form.pendencias, { id: crypto.randomUUID(), texto: novaPendencia.trim(), feito: false }]
+        : form.pendencias,
+    };
+    let gravou: boolean;
     if (editandoId) {
-      setAnamneses((lista) =>
+      gravou = setAnamneses((lista) =>
         lista.map((a) => (a.id === editandoId ? { ...a, ...formSalvar, atualizadoEm: agora } : a)),
       );
-      toast.success("Anamnese atualizada.");
     } else {
-      setAnamneses((lista) => [
+      gravou = setAnamneses((lista) => [
         { ...formSalvar, id: crypto.randomUUID(), atualizadoEm: agora },
         ...lista,
       ]);
-      toast.success("Anamnese salva. O animal já aparece na busca do Início.");
     }
+    if (!gravou) {
+      toast.error("Não foi possível salvar neste aparelho. Os dados continuam no formulário.");
+      return;
+    }
+    toast.success(editandoId ? "Anamnese atualizada." : "Anamnese salva. O animal já aparece na busca do Início.");
     limpar();
   };
 
@@ -205,7 +211,7 @@ function AnamneseConteudo() {
     : anamneses;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-6">
+    <main className="mx-auto w-full max-w-3xl px-4 pb-40 pt-6">
       <GuardaSaida sujo={sujo} />
       <h1 className="font-display text-lg font-semibold text-foreground">Anamnese</h1>
       <p className="mt-1 text-sm text-muted-foreground">
@@ -233,7 +239,7 @@ function AnamneseConteudo() {
                 <button
                   key={esp}
                   type="button"
-                  onClick={() => set("especie", (ativo ? "" : esp) as Especie)}
+                  onClick={() => mudarEspecie(ativo ? "" : esp)}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
                     ativo
                       ? "bg-primary text-primary-foreground"
@@ -290,61 +296,21 @@ function AnamneseConteudo() {
           />
         </label>
 
-        <div className="rounded-xl border border-border bg-secondary/20 p-2.5">
-          <p className={rotuloCampo}>Exames laboratoriais</p>
-          {([
-            ["hemograma", "Hemograma"],
-            ["bioquimico", "Bioquímico"],
-          ] as const).map(([grupo, titulo]) => (
-            <div key={grupo} className="mt-3">
-              <p className="text-sm font-semibold text-foreground">{titulo}</p>
-              <div className="mt-1.5 space-y-1.5">
-                {listaExames(grupo).map((exame, i) => (
-                  <div key={i} className="border-b border-border/60 py-1.5 last:border-b-0">
-                    <input
-                      value={exame.nome}
-                      onChange={(e) => alterarExame(grupo, i, "nome", e.target.value)}
-                      placeholder="Nome do exame"
-                      className="w-full bg-transparent text-xs font-semibold text-foreground outline-none"
-                    />
-                    <div className="mt-1 grid grid-cols-1 gap-1">
-                      <input
-                        value={exame.valor}
-                        onChange={(e) => alterarExame(grupo, i, "valor", e.target.value)}
-                        placeholder={exame.nome === "VG" ? "Valor (%)" : "Valor"}
-                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring"
-                      />
-                      <input
-                        value={exame.referencia || referencias[exame.nome] || ""}
-                        onChange={(e) => alterarExame(grupo, i, "referencia", e.target.value)}
-                        placeholder="Valor de referência"
-                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button type="button" onClick={() => adicionarExame(grupo)} className="mt-1.5 rounded-md bg-secondary px-2.5 py-1.5 text-xs font-semibold text-secondary-foreground">
-                + Adicionar outro
-              </button>
-            </div>
-          ))}
-          <div className="mt-3">
-            <p className="text-sm font-semibold text-foreground">Outros exames</p>
-            {listaExames("outrosExames").map((exame, i) => (
-              <div key={i} className="mt-2 rounded-lg border border-border bg-background p-2">
-                <input value={exame.nome} onChange={(e) => alterarExame("outrosExames", i, "nome", e.target.value)} placeholder="Nome do exame" className="w-full bg-transparent text-xs font-semibold text-foreground outline-none" />
-                <div className="mt-1 grid grid-cols-1 gap-1">
-                  <input value={exame.valor} onChange={(e) => alterarExame("outrosExames", i, "valor", e.target.value)} placeholder="Valor" className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring" />
-                  <input value={exame.referencia || referencias[exame.nome] || ""} onChange={(e) => alterarExame("outrosExames", i, "referencia", e.target.value)} placeholder="Valor de referência" className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring" />
-                </div>
-              </div>
-            ))}
-            <button type="button" onClick={() => adicionarExame("outrosExames")} className="mt-1.5 rounded-md bg-secondary px-2.5 py-1.5 text-xs font-semibold text-secondary-foreground">
-              + Adicionar exame
-            </button>
-          </div>
-        </div>
+        <ExamesLaboratoriais
+          especie={form.especie}
+          exames={normalizarExames(form)}
+          referencias={referencias}
+          erroReferencias={erroReferencias}
+          onReferenciasChange={mudarReferencias}
+          onChange={(exames) => setForm((atual) => ({ ...atual, ...exames }))}
+          onLimpar={() => confirmacao.pedir({
+            titulo: "Limpar os exames deste formulário?",
+            descricao: "Remove os resultados digitados e os exames adicionados. As referências cadastradas serão mantidas.",
+            acao: "Limpar exames",
+            destrutivo: true,
+            onConfirmar: () => setForm((atual) => ({ ...atual, ...criarExamesPadrao() })),
+          })}
+        />
 
         <div>
           <p className={rotuloCampo}>Pendências</p>
@@ -432,24 +398,6 @@ function AnamneseConteudo() {
           </label>
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            type="button"
-            onClick={salvar}
-            className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            {editandoId ? "Salvar alterações" : "Salvar anamnese"}
-          </button>
-          {(editandoId || form.animal) && (
-            <button
-              type="button"
-              onClick={limpar}
-              className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
-            >
-              Cancelar
-            </button>
-          )}
-        </div>
       </section>
 
       {carregado && anamneses.length > 0 && (
@@ -542,6 +490,20 @@ function AnamneseConteudo() {
       )}
 
       <BlocoNotas />
+      <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="mx-auto flex w-full max-w-3xl gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
+          {(editandoId || sujo) && <button type="button" onClick={() => confirmacao.pedir({
+            titulo: "Descartar as alterações do formulário?",
+            descricao: "A anamnese já salva e as referências cadastradas não serão apagadas.",
+            acao: "Descartar alterações",
+            destrutivo: true,
+            onConfirmar: limpar,
+          })} className="min-h-12 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70">Cancelar</button>}
+          <button type="button" disabled={!carregado} onClick={salvar} className="flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+            <Check className="h-5 w-5 shrink-0" aria-hidden="true" /> Salvar anamnese
+          </button>
+        </div>
+      </div>
       <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
     </main>
 

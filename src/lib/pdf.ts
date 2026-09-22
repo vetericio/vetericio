@@ -201,7 +201,7 @@ export async function exportarPdf(
     let naCurva = false;
     for (const linha of resto) {
       const tituloCurvaLinha = /^Curva /.test(linha);
-      const fimDaCurva = /^(Observações|Resumo|Óbito|Anamnese):/.test(linha);
+      const fimDaCurva = /^(Observações|Resumo|Óbito|Observação):/.test(linha);
       if (tituloCurvaLinha) {
         naCurva = true;
         y += 10;
@@ -211,8 +211,8 @@ export async function exportarPdf(
       }
 
       // Bloco de medicações: título em negrito e itens recuados.
-      const tituloMedicacao = /^(Medicações|Anamnese|Exames laboratoriais|Hemograma|Bioquímico|Outros exames):$/.test(linha);
-      const itemAnamnese = /^- (Queixa principal|Exames|Conduta):/.test(linha);
+      const tituloMedicacao = /^(Medicações|Observação|Exames laboratoriais|Hemograma|Bioquímico|Outros exames):$/.test(linha);
+      const itemAnamnese = /^- (Relato|Exame|Outras informações):/.test(linha);
       const itemMedicacao = /^- /.test(linha);
       if (tituloMedicacao) y += 6;
 
@@ -226,7 +226,7 @@ export async function exportarPdf(
         doc.setFont("helvetica", negrito ? "bold" : "normal");
         doc.setTextColor(0);
       }
-      const linhaPdf = linha === "Anamnese:" ? "Observações:" : linha.replace(/^- (Queixa principal|Exames|Conduta):\s*/, "$1:\n");
+      const linhaPdf = linha.replace(/^- (Relato|Exame|Outras informações):\s*/, "$1:\n");
       if (itemAnamnese) y += 8;
       const partes = doc.splitTextToSize(linhaPdf, largura - recuo) as string[];
       for (const l of partes) {
