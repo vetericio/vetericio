@@ -41,7 +41,7 @@ export function Cabecalho() {
   useEffect(() => {
     setDataHoje(new Date().toLocaleDateString("pt-BR"));
     const atualizarContraste = () => {
-      const cor = getComputedStyle(document.documentElement).backgroundColor;
+      const cor = getComputedStyle(document.body).backgroundColor;
       const canais = cor.match(/[\d.]+/g)?.map(Number) ?? [];
       const [r = 255, g = 255, b = 255] = canais;
       setTemaEscuro((r * 0.2126 + g * 0.7152 + b * 0.0722) < 145);
