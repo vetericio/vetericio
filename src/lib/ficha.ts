@@ -26,7 +26,7 @@ export type Medicacao = {
 
 
 
-export type ExameLaboratorial = { nome: string; valor: string; referencia?: string };
+export type ExameLaboratorial = { nome: string; unidade?: string; valor: string; referencia?: string };
 export type ExamesLaboratoriais = { hemograma?: ExameLaboratorial[]; bioquimico?: ExameLaboratorial[]; outros?: ExameLaboratorial[] };
 
 export type Registro = {
@@ -97,7 +97,7 @@ export function blocoExamesLaboratoriais(r: Pick<Registro, "examesLaboratoriais"
   const secao = (titulo: string, itens = [] as ExameLaboratorial[]) => {
     const validos = itens.filter((x) => x.nome.trim() && x.valor.trim());
     if (!validos.length) return [];
-    return [titulo, ...validos.map((x) => `- ${x.nome.trim()}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
+    return [titulo, ...validos.map((x) => `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
   };
   const linhas = [
     ...secao("Hemograma:", labs.hemograma),
@@ -117,24 +117,29 @@ export function blocoAnamnese(
   const a = lista.find((x) => x.id === r.anamneseId);
   if (!a) return [];
 
-  const itens: [string, string][] = [
-    ["Queixa principal", a.queixa.trim()],
-    ["Exames", a.exames.trim()],
-    ["Conduta", a.conduta.trim()],
-  ];
-  const visiveis = itens.filter(([, v]) => v);
-  const labs = (titulo: string, lista = [] as { nome: string; valor: string; referencia: string }[]) => {
+  const labs = (titulo: string, lista = [] as { nome: string; unidade?: string; valor: string; referencia: string }[]) => {
     const preenchidos = lista.filter((x) => x.nome?.trim() && x.valor?.trim());
     if (!preenchidos.length) return [];
-    return [`- ${titulo}:`, ...preenchidos.map((x) => `  ${x.nome.trim()}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
+    return [`  ${titulo}:`, ...preenchidos.map((x) => `    ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
   };
   const laboratoriais = [
     ...labs("Hemograma", a.hemograma),
     ...labs("Bioquímico", a.bioquimico),
     ...labs("Outros exames", a.outrosExames),
   ];
-  if (visiveis.length === 0 && laboratoriais.length === 0) return [];
-  return ["Anamnese:", ...visiveis.map(([k, v]) => `- ${k}: ${v}`), ...laboratoriais];
+  const exameLivre = a.exames.trim();
+  const outras = [
+    a.queixa.trim() && `Queixa principal: ${a.queixa.trim()}`,
+    a.conduta.trim() && `Conduta: ${a.conduta.trim()}`,
+    a.atencao.trim() && `Atenção: ${a.atencao.trim()}`,
+  ].filter(Boolean) as string[];
+  if (!a.relato.trim() && !exameLivre && laboratoriais.length === 0 && outras.length === 0) return [];
+  return [
+    "Observação:",
+    ...(a.relato.trim() ? [`- Relato: ${a.relato.trim()}`] : []),
+    ...(exameLivre || laboratoriais.length ? ["- Exame:", ...(exameLivre ? [`  ${exameLivre}`] : []), ...laboratoriais] : []),
+    ...(outras.length ? ["- Outras informações:", ...outras.map((linha) => `  ${linha}`)] : []),
+  ];
 }
 
 export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
