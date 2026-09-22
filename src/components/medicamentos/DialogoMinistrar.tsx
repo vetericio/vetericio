@@ -97,7 +97,7 @@ export function DialogoMinistrar({ medicamento, especie, pesoInicial, onFechar, 
         </div>
         <div className="grid grid-cols-2 gap-2 rounded-xl border border-primary p-3">
           <label className={rotulo}>Dose ({faixa.unidade})
-            <input aria-label={`Dose em ${faixa.unidade}`} value={entrada.dose}
+            <input aria-label={`Dose em ${faixa.unidade}`} value={somenteMl ? "" : entrada.dose}
               onChange={(e) => { setSomenteMl(false); setOrigem("dose"); setDose(e.target.value); }}
               inputMode="decimal" disabled={somenteMl} className={`${campo} disabled:opacity-50`} />
           </label>
