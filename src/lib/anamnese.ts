@@ -1,7 +1,16 @@
 import type { Especie } from "./ficha";
+import { criarExamesPadrao } from "./exames-laboratoriais";
 
 export type Pendencia = { id: string; texto: string; feito: boolean };
-export type ExameAnamnese = { nome: string; valor: string; referencia: string };
+export type ExameAnamnese = {
+  id?: string;
+  nome: string;
+  unidade?: string;
+  valor: string;
+  referencia: string;
+  referenciaEspecie?: Especie;
+  personalizado?: boolean;
+};
 
 export type Anamnese = {
   id: string;
@@ -33,17 +42,7 @@ export const ANAMNESE_VAZIA: Omit<Anamnese, "id" | "atualizadoEm"> = {
   queixa: "",
   relato: "",
   exames: "",
-  hemograma: [
-    { nome: "VG", valor: "", referencia: "" },
-    { nome: "Plaquetas", valor: "", referencia: "" },
-    { nome: "Leucócitos", valor: "", referencia: "" },
-  ],
-  bioquimico: [
-    { nome: "Creatinina", valor: "", referencia: "" },
-    { nome: "Uréia", valor: "", referencia: "" },
-    { nome: "TGP", valor: "", referencia: "" },
-  ],
-  outrosExames: [],
+  ...criarExamesPadrao(),
   pendencias: [],
   conduta: "",
   atencao: "",
@@ -61,12 +60,13 @@ export function carregarAnamneses(): Anamnese[] {
   }
 }
 
-export function salvarAnamneses(lista: Anamnese[]) {
-  if (typeof window === "undefined") return;
+export function salvarAnamneses(lista: Anamnese[]): boolean {
+  if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(CHAVE, JSON.stringify(lista));
+    return true;
   } catch {
-    /* espaço cheio: ignora */
+    return false;
   }
 }
 
