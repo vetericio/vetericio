@@ -452,7 +452,7 @@ export function calcularDose(params: {
 
   // Dose já em volume: nada a converter.
   if (formaDose.grandeza === "volume") {
-    const volumeTexto = textoDecimal(doseTotal);
+    const volumeTexto = formatarVolume(doseTotal);
     return {
       ok: true,
       doseTotal,
@@ -471,7 +471,7 @@ export function calcularDose(params: {
 
   const volume = (doseTotal * formaDose.fator) / forma.porUnidade;
   const unidade = plural(forma.unidade, volume);
-  const volumeTexto = textoDecimal(volume);
+  const volumeTexto = forma.unidade === "mL" ? formatarVolume(volume) : textoDecimal(volume);
   return {
     ok: true,
     doseTotal,
@@ -587,9 +587,18 @@ export function calcularEntrada(p: EntradaCalculo) {
 
 /* ---------- formatação de quantidade ---------- */
 
-/** Líquidos: 2 casas (0,28 mL); abaixo de 0,1 usa 3 casas (0,125 mL). */
+/**
+ * mL: duas casas por padrão. Usa três somente quando as duas primeiras seriam
+ * zero, para não esconder volumes como 0,003 mL. Nunca exibe quatro casas.
+ */
 export function formatarVolume(valor: number): string {
-  return textoDecimal(valor);
+  if (!Number.isFinite(valor)) return "";
+  const casas = Math.abs(valor) < 0.01 ? 3 : 2;
+  return valor.toLocaleString("pt-BR", {
+    useGrouping: false,
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  });
 }
 
 const FRACOES: { valor: number; texto: string }[] = [
