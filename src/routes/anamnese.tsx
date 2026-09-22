@@ -11,6 +11,13 @@ import { GuardaSaida } from "@/components/GuardaSaida";
 import { BlocoNotas } from "@/components/BlocoNotas";
 import { ExamesLaboratoriais } from "@/components/ExamesLaboratoriais";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   carregarReferenciasExames,
   criarExamesPadrao,
   normalizarExames,
@@ -55,6 +62,24 @@ const rotuloCampo =
 const campo =
   "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring";
 
+function textoDaAnamnese(a: Anamnese) {
+  const examesLaboratoriais = Object.values(normalizarExames(a))
+    .flat()
+    .flatMap((exame) => [exame.nome, exame.unidade, exame.valor, exame.referencia]);
+  return [
+    a.animal,
+    a.especie,
+    a.peso,
+    a.queixa,
+    a.relato,
+    a.exames,
+    a.conduta,
+    a.atencao,
+    ...a.pendencias.map((pendencia) => pendencia.texto),
+    ...examesLaboratoriais,
+  ].join(" ");
+}
+
 function AnamnesePagina() {
   const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
   if (!plantaoCarregado) return null;
@@ -71,6 +96,7 @@ function AnamneseConteudo() {
   const { anamneses, setAnamneses, carregado } = useAnamneses();
   const [form, setForm] = useState<Omit<Anamnese, "id" | "atualizadoEm">>(ANAMNESE_VAZIA);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [visualizando, setVisualizando] = useState<Anamnese | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
   const [busca, setBusca] = useState("");
   const [referencias, setReferencias] = useState(carregarReferenciasExames);
@@ -176,6 +202,7 @@ function AnamneseConteudo() {
       onConfirmar: () => {
         setAnamneses((lista) => lista.filter((x) => x.id !== a.id));
         if (editandoId === a.id) limpar();
+        if (visualizando?.id === a.id) setVisualizando(null);
         toast.success("Anamnese excluída.", {
           duration: 6000,
           action: {
@@ -207,7 +234,7 @@ function AnamneseConteudo() {
 
   const termo = normalizarNome(busca);
   const visiveis = termo
-    ? anamneses.filter((a) => normalizarNome(a.animal).includes(termo))
+    ? anamneses.filter((a) => normalizarNome(textoDaAnamnese(a)).includes(termo))
     : anamneses;
 
   return (
@@ -411,7 +438,7 @@ function AnamneseConteudo() {
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Procurar animal"
+            placeholder="Procurar animal ou texto da anamnese"
             className={`${campo} mt-2`}
           />
 
@@ -434,6 +461,13 @@ function AnamneseConteudo() {
                     <div className="flex shrink-0 gap-1.5">
                       <button
                         type="button"
+                        onClick={() => setVisualizando(a)}
+                        className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-secondary"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => editar(a)}
                         className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
                       >
@@ -444,7 +478,7 @@ function AnamneseConteudo() {
                         onClick={() => excluir(a)}
                         className="rounded-lg bg-destructive px-2.5 py-1 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90"
                       >
-                        Excluir
+                        Apagar
                       </button>
                     </div>
                   </div>
@@ -485,11 +519,66 @@ function AnamneseConteudo() {
                 </li>
               );
             })}
+            {visiveis.length === 0 && (
+              <li className="rounded-2xl border border-dashed border-border px-3 py-5 text-center text-sm text-muted-foreground">
+                Nenhuma anamnese encontrada para “{busca.trim()}”.
+              </li>
+            )}
           </ul>
         </section>
       )}
 
       <BlocoNotas />
+      <Dialog open={Boolean(visualizando)} onOpenChange={(aberto) => !aberto && setVisualizando(null)}>
+        {visualizando && <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{emojiEspecie(visualizando.especie)} {visualizando.animal.trim()}</DialogTitle>
+            <DialogDescription>
+              {[visualizando.especie, visualizando.peso.trim() && `${visualizando.peso.trim()} kg`, quandoCurto(visualizando.atualizadoEm)]
+                .filter(Boolean)
+                .join(" · ")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            {[
+              ["Queixa principal", visualizando.queixa],
+              ["Relato", visualizando.relato],
+              ["Exames", visualizando.exames],
+              ["Conduta / plano", visualizando.conduta],
+              ["Atenção no próximo plantão", visualizando.atencao],
+            ].map(([titulo, texto]) => texto.trim() && (
+              <section key={titulo}>
+                <h3 className={rotuloCampo}>{titulo}</h3>
+                <p className="mt-1 whitespace-pre-wrap text-foreground">{texto.trim()}</p>
+              </section>
+            ))}
+            {Object.values(normalizarExames(visualizando)).flat().some((exame) => exame.valor.trim()) && (
+              <section>
+                <h3 className={rotuloCampo}>Exames laboratoriais</h3>
+                <ul className="mt-1 space-y-1.5">
+                  {Object.values(normalizarExames(visualizando)).flat().filter((exame) => exame.valor.trim()).map((exame, indice) => (
+                    <li key={`${exame.id ?? exame.nome}-${indice}`} className="rounded-lg bg-secondary/50 px-3 py-2 text-foreground">
+                      <span className="font-semibold">{exame.nome}</span>: {exame.valor.trim()}{exame.unidade ? ` ${exame.unidade}` : ""}{exame.referencia ? ` · Ref.: ${exame.referencia}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {visualizando.pendencias.length > 0 && (
+              <section>
+                <h3 className={rotuloCampo}>Pendências</h3>
+                <ul className="mt-1 space-y-1.5">
+                  {visualizando.pendencias.map((pendencia) => (
+                    <li key={pendencia.id} className={pendencia.feito ? "text-muted-foreground line-through" : "text-foreground"}>
+                      {pendencia.feito ? "✓" : "•"} {pendencia.texto}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        </DialogContent>}
+      </Dialog>
       <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
         <div className="mx-auto flex w-full max-w-3xl gap-2 rounded-2xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-sm">
           {(editandoId || sujo) && <button type="button" onClick={() => confirmacao.pedir({
