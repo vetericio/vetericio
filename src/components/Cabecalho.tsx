@@ -8,9 +8,8 @@ import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
-import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
-import { EVENTO_LOGO_CABECALHO } from "@/lib/logoCabecalho";
-import { buscarLogoCabecalhoGlobal } from "@/lib/logoCabecalho.functions";
+import logoClara from "@/assets/vetericio-logo-clara.png";
+import logoVerde from "@/assets/vetericio-logo-verde.png";
 
 const base =
   "min-h-11 flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
@@ -25,7 +24,7 @@ export function Cabecalho() {
   const confirmacao = usarConfirmacao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
-  const [logoCabecalho, setLogoCabecalho] = useState("");
+  const [temaEscuro, setTemaEscuro] = useState(false);
 
   const finalizarPlantao = () => {
     const quantos = registros.length;
@@ -41,18 +40,15 @@ export function Cabecalho() {
 
   useEffect(() => {
     setDataHoje(new Date().toLocaleDateString("pt-BR"));
-    const atualizarLogo = () => {
-      void buscarLogoCabecalhoGlobal()
-        .then(({ logo }) => setLogoCabecalho(logo))
-        .catch(() => setLogoCabecalho(""));
+    const atualizarContraste = () => {
+      const cor = getComputedStyle(document.documentElement).backgroundColor;
+      const canais = cor.match(/[\d.]+/g)?.map(Number) ?? [];
+      const [r = 255, g = 255, b = 255] = canais;
+      setTemaEscuro((r * 0.2126 + g * 0.7152 + b * 0.0722) < 145);
     };
-    atualizarLogo();
-    window.addEventListener(EVENTO_LOGO_CABECALHO, atualizarLogo);
-    window.addEventListener("storage", atualizarLogo);
-    return () => {
-      window.removeEventListener(EVENTO_LOGO_CABECALHO, atualizarLogo);
-      window.removeEventListener("storage", atualizarLogo);
-    };
+    atualizarContraste();
+    window.addEventListener("vetericio:tema", atualizarContraste);
+    return () => window.removeEventListener("vetericio:tema", atualizarContraste);
   }, []);
 
   return (
@@ -61,8 +57,8 @@ export function Cabecalho() {
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
           <img
-            src={logoCabecalho || logoOficial.url}
-            alt="Logo Veterício"
+            src={temaEscuro ? logoClara : logoVerde}
+            alt="Veterício Serviços Veterinário LTDA"
             className="h-auto w-full max-w-[204px] object-contain sm:max-w-[238px]"
           />
         </div>
