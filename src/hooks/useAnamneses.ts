@@ -17,9 +17,11 @@ function subscribe(fn: () => void) {
 const getSnapshot = () => estado;
 
 function definir(valor: Anamnese[] | ((atual: Anamnese[]) => Anamnese[])) {
-  estado = typeof valor === "function" ? (valor as (a: Anamnese[]) => Anamnese[])(estado) : valor;
-  salvarAnamneses(estado);
+  const proximo = typeof valor === "function" ? valor(estado) : valor;
+  if (!salvarAnamneses(proximo)) return false;
+  estado = proximo;
   notificar();
+  return true;
 }
 
 export function useAnamneses() {
