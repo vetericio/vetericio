@@ -182,6 +182,7 @@ export function aplicarTemaPersonalizado(tema: TemaPersonalizado) {
   document.body.style.backgroundAttachment = "fixed";
   document.body.style.backgroundPosition = "center";
   try { window.localStorage.setItem(CHAVE, `personalizado:${tema.id}`); } catch { /* ignore */ }
+  window.dispatchEvent(new Event("vetericio:tema"));
 }
 
 export function aplicarTema(id: TemaId, cor = carregarCor()) {
@@ -202,6 +203,7 @@ export function aplicarTema(id: TemaId, cor = carregarCor()) {
   } catch {
     /* armazenamento indisponível */
   }
+  window.dispatchEvent(new Event("vetericio:tema"));
 }
 
 /* ---------- cor personalizada ---------- */
