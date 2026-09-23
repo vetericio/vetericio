@@ -178,7 +178,25 @@ export async function exportarPdf(
     obsPadrao: true,
     curvas: listaCurvas,
   });
-  const blocos = texto.split("\n\n");
+  // Não dividir por linhas em branco: o conteúdo clínico pode conter espaçamentos internos.
+  // Cada bloco é obtido pela ordem dos registros e pelo cabeçalho do próximo animal.
+  const linhasTexto = texto.split("\n");
+  const blocos: string[] = [];
+  let blocoAtual: string[] = [];
+  const cabecalhos = new Set(
+    registros.map((registro) =>
+      formatarTodos([registro], { emoji: false, obsPadrao: true, curvas: [] }).split("\n")[0],
+    ),
+  );
+  for (const linha of linhasTexto) {
+    if (cabecalhos.has(linha) && blocoAtual.length) {
+      blocos.push(blocoAtual.join("\n"));
+      blocoAtual = [linha];
+    } else {
+      blocoAtual.push(linha);
+    }
+  }
+  if (blocoAtual.length) blocos.push(blocoAtual.join("\n"));
 
   doc.setFontSize(11);
   const ALTURA_LINHA = 21;
@@ -231,9 +249,13 @@ export async function exportarPdf(
       const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
       if (tituloSecao) {
-        // Cada subtítulo começa em uma nova página para nunca ficar separado do conteúdo.
-        doc.addPage();
-        y = margem;
+        // Se o subtítulo ficaria no fim da página, leva título + início do conteúdo para a próxima.
+        if (y + ALTURA_LINHA * 3 > alturaPagina - margem) {
+          doc.addPage();
+          y = margem;
+        } else {
+          y += 8;
+        }
       }
 
       const recuo = naCurva || itemMedicacao ? 14 : 0;
