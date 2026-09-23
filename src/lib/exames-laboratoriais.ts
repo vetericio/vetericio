@@ -11,32 +11,38 @@ export const GRUPOS_EXAMES: GrupoExames[] = ["hemograma", "bioquimico", "outrosE
 // As referências continuam editáveis no app. Para Gato, permanecem em branco.
 const PADRAO: ExamesAnamnese = {
   hemograma: [
-    { id: "eritrocitos", nome: "Eritrócitos", unidade: "milhões/µL", valor: "", referencia: "" },
-    { id: "hemoglobina", nome: "Hemoglobina", unidade: "g/dL", valor: "", referencia: "" },
+    // Já existiam no app
     { id: "hematocrito", nome: "VG (Hematócrito)", unidade: "%", valor: "", referencia: "" },
-    { id: "vcm", nome: "VCM (Volume Corpuscular Médio)", unidade: "fL", valor: "", referencia: "" },
-    { id: "hcm", nome: "HCM (Hemoglobina Corpuscular Média)", unidade: "pg", valor: "", referencia: "" },
-    { id: "chcm", nome: "CHCM (Concentração de Hemoglobina Corpuscular Média)", unidade: "g/dL", valor: "", referencia: "" },
-    { id: "rdw-cv", nome: "RDW (Variação do tamanho das hemácias)", unidade: "%", valor: "", referencia: "" },
-    { id: "leucocitos", nome: "Leucócitos totais", unidade: "/µL", valor: "", referencia: "" },
-    { id: "leucocitos-corrigido", nome: "Leucócitos corrigido", unidade: "/µL", valor: "", referencia: "" },
-    { id: "metamielocito", nome: "Metamielócito", unidade: "%", valor: "", referencia: "" },
-    { id: "bastonete", nome: "Bastonete", unidade: "%", valor: "", referencia: "" },
-    { id: "segmentado", nome: "Segmentado", unidade: "%", valor: "", referencia: "" },
-    { id: "eosinofilo", nome: "Eosinófilo", unidade: "%", valor: "", referencia: "" },
-    { id: "linfocito", nome: "Linfócito", unidade: "%", valor: "", referencia: "" },
-    { id: "monocito", nome: "Monócito", unidade: "%", valor: "", referencia: "" },
-    { id: "basofilo", nome: "Basófilo", unidade: "%", valor: "", referencia: "" },
     { id: "plaquetas", nome: "Plaquetas", unidade: "mil/µL", valor: "", referencia: "" },
+    { id: "leucocitos", nome: "Leucócitos totais", unidade: "/µL", valor: "", referencia: "" },
+
+    // Novos — ordem alfabética
+    { id: "basofilo", nome: "Basófilo", unidade: "%", valor: "", referencia: "" },
+    { id: "bastonete", nome: "Bastonete", unidade: "%", valor: "", referencia: "" },
+    { id: "chcm", nome: "CHCM (Concentração de Hemoglobina Corpuscular Média)", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "eosinofilo", nome: "Eosinófilo", unidade: "%", valor: "", referencia: "" },
+    { id: "eritrocitos", nome: "Eritrócitos", unidade: "milhões/µL", valor: "", referencia: "" },
+    { id: "hcm", nome: "HCM (Hemoglobina Corpuscular Média)", unidade: "pg", valor: "", referencia: "" },
+    { id: "hemoglobina", nome: "Hemoglobina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "leucocitos-corrigido", nome: "Leucócitos corrigido", unidade: "/µL", valor: "", referencia: "" },
+    { id: "linfocito", nome: "Linfócito", unidade: "%", valor: "", referencia: "" },
+    { id: "metamielocito", nome: "Metamielócito", unidade: "%", valor: "", referencia: "" },
+    { id: "monocito", nome: "Monócito", unidade: "%", valor: "", referencia: "" },
+    { id: "rdw-cv", nome: "RDW (Variação do tamanho das hemácias)", unidade: "%", valor: "", referencia: "" },
+    { id: "segmentado", nome: "Segmentado", unidade: "%", valor: "", referencia: "" },
+    { id: "vcm", nome: "VCM (Volume Corpuscular Médio)", unidade: "fL", valor: "", referencia: "" },
   ],
   bioquimico: [
-    { id: "ureia", nome: "Uréia", unidade: "mg/dL", valor: "", referencia: "" },
+    // Já existiam no app
     { id: "creatinina", nome: "Creatinina", unidade: "mg/dL", valor: "", referencia: "" },
+    { id: "ureia", nome: "Uréia", unidade: "mg/dL", valor: "", referencia: "" },
     { id: "tgp", nome: "TGP/ALT (Alanina aminotransferase)", unidade: "U/L", valor: "", referencia: "" },
-    { id: "fosforo", nome: "Fósforo", unidade: "mg/dL", valor: "", referencia: "" },
-    { id: "proteina-total", nome: "Proteína total", unidade: "g/dL", valor: "", referencia: "" },
+
+    // Novos — ordem alfabética
     { id: "albumina", nome: "Albumina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "fosforo", nome: "Fósforo", unidade: "mg/dL", valor: "", referencia: "" },
     { id: "globulina", nome: "Globulina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "proteina-total", nome: "Proteína total", unidade: "g/dL", valor: "", referencia: "" },
     { id: "relacao-ag", nome: "Relação A/G (Albumina/Globulina)", unidade: "", valor: "", referencia: "" },
   ],
   outrosExames: [],
