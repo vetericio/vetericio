@@ -73,11 +73,17 @@ const campo =
 
 /** Digitação estilo centavos: guarda só dígitos (3 casas decimais). 3600 → "3600" (3,600 kg). */
 function lerDigitosPeso(texto: string): string {
-  return texto;
+  // Campo de peso funciona como visor: cada novo algarismo entra pela direita.
+  // Limite de 5 dígitos = 00,000 kg.
+  return texto.replace(/\D/g, "").slice(-5);
 }
 
 function formatarPeso(digitos: string): string {
-  return digitos;
+  const limpo = digitos.replace(/\D/g, "").slice(-5);
+  const preenchido = limpo.padStart(4, "0");
+  const inteiros = preenchido.slice(0, -3);
+  const decimais = preenchido.slice(-3);
+  return `${inteiros},${decimais}`;
 }
 
 function PaginaMedicacoes() {
