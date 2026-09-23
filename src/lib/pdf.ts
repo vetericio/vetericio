@@ -138,8 +138,8 @@ export async function exportarPdf(
     }
   };
 
-  const logoLargura = 78;
-  const logoAltura = 78;
+  const logoLargura = 90;
+  const logoAltura = 90;
   const centroX = doc.internal.pageSize.getWidth() / 2;
   try {
     doc.addImage(LOGO_PDF_DATA_URL, "JPEG", centroX - logoLargura / 2, y, logoLargura, logoAltura);
@@ -426,41 +426,7 @@ export async function exportarPdf(
       }
       doc.setFontSize(10);
       const linhaPdf = linha;
-      // Ícone de pote de ração para alimentação; medições permanecem sem desenhos.
-      if (/^- Alimentação:/i.test(linhaPdf)) {
-        const ix = margem + 2;
-        const iy = y - 4;
-        doc.setDrawColor(25);
-        doc.setLineWidth(1);
-        doc.line(ix + 2, iy, ix + 12, iy);
-        doc.line(ix + 3, iy, ix + 5, iy + 5);
-        doc.line(ix + 5, iy + 5, ix + 11, iy + 5);
-        doc.line(ix + 11, iy + 5, ix + 13, iy);
-      }
-      if (/^- FC:/i.test(linhaPdf)) {
-        // pequeno traçado cardíaco
-        const ix = margem + 1;
-        const iy = y - 4;
-        doc.setDrawColor(25);
-        doc.setLineWidth(1);
-        doc.line(ix, iy, ix + 3, iy);
-        doc.line(ix + 3, iy, ix + 5, iy - 4);
-        doc.line(ix + 5, iy - 4, ix + 8, iy + 4);
-        doc.line(ix + 8, iy + 4, ix + 11, iy - 2);
-        doc.line(ix + 11, iy - 2, ix + 14, iy);
-      }
-      if (/^- FR:/i.test(linhaPdf)) {
-        // pulmões estilizados
-        const ix = margem + 2;
-        const iy = y - 5;
-        doc.setDrawColor(25);
-        doc.setLineWidth(1);
-        doc.line(ix + 7, iy - 5, ix + 7, iy + 6);
-        doc.line(ix + 7, iy - 1, ix + 3, iy + 2);
-        doc.line(ix + 7, iy - 1, ix + 11, iy + 2);
-        doc.ellipse(ix + 3, iy + 4, 3, 5, "S");
-        doc.ellipse(ix + 11, iy + 4, 3, 5, "S");
-      }
+      // Desenhos ficam somente nos títulos das seções.
       // Linhas clínicas ganham aparência de tabela leve para leitura horizontal.
       if (/^- /.test(linhaPdf)) {
         const indiceVisual = linhaIndice % 2;
