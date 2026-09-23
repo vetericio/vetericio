@@ -234,7 +234,9 @@ export async function exportarPdf(
       doc.line(x + 7, cy - 9, x + 20, cy - 9);
       doc.line(x + 10, cy - 9, x + 10, cy + 5);
       doc.line(x + 17, cy - 9, x + 17, cy + 5);
-      doc.arc(x + 13.5, cy + 5, 3.5, 0, 180, "S");
+      doc.line(x + 10, cy + 5, x + 12, cy + 8);
+      doc.line(x + 12, cy + 8, x + 15, cy + 8);
+      doc.line(x + 15, cy + 8, x + 17, cy + 5);
       doc.line(x + 11, cy + 2, x + 16, cy + 2);
     } else if (titulo === "Queixa principal") {
       // balão de fala
@@ -540,10 +542,12 @@ export async function exportarPdf(
 
   const atual = carregarPlantaoAtual();
   if (opcoes?.visualizar) {
-    const blob = doc.output("blob");
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    const url = doc.output("bloburl");
+    const aberta = window.open(String(url), "_blank");
+    if (!aberta) {
+      // Fallback para navegadores móveis que bloqueiam a nova aba.
+      window.location.href = String(url);
+    }
     return;
   }
   doc.save(opcoes?.arquivo ?? nomeArquivoPdf(atual?.dia ?? diaDeHoje(), atual?.turno));
