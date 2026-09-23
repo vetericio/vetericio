@@ -413,10 +413,8 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const resumo = resumoRegistro(r);
   const resumoFinal = [resumo, r.observacoes.trim(), obito].filter(Boolean).join(" ");
 
-  const secao = (tituloSecao: string, itens: string[]) => [
-    tituloSecao,
-    ...(itens.length ? itens : ["-"]),
-  ];
+  const secao = (tituloSecao: string, itens: string[]) =>
+    itens.length ? [tituloSecao, ...itens] : [];
 
   return [
     titulo,
