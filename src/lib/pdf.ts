@@ -121,7 +121,7 @@ function desenharGrafico(doc: Doc, c: Curva, x: number, y: number, largura: numb
 
 export async function exportarPdf(
   registros: Registro[],
-  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; assinadoEm?: string },
+  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; assinadoEm?: string; visualizar?: boolean },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -341,5 +341,12 @@ export async function exportarPdf(
   doc.text("Assinatura / carimbo", margem, y);
 
   const atual = carregarPlantaoAtual();
+  if (opcoes?.visualizar) {
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return;
+  }
   doc.save(opcoes?.arquivo ?? nomeArquivoPdf(atual?.dia ?? diaDeHoje(), atual?.turno));
 }
