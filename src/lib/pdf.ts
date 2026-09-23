@@ -222,6 +222,14 @@ export async function exportarPdf(
       doc.line(x + 12, cy + 5, x + 16, cy - 2);
       doc.line(x + 16, cy - 2, x + 20, cy);
       doc.line(x + 20, cy, x + 27, cy);
+    } else if (titulo === "Medicações") {
+      // seringa
+      doc.line(x + 5, cy + 6, x + 20, cy - 7);
+      doc.rect(x + 9, cy - 5, 10, 6, "S");
+      doc.line(x + 18, cy - 7, x + 23, cy - 2);
+      doc.line(x + 20, cy - 9, x + 25, cy - 4);
+      doc.line(x + 5, cy + 3, x + 8, cy + 6);
+      doc.line(x + 3, cy + 8, x + 5, cy + 6);
     } else if (titulo === "Exames laboratoriais") {
       // tubo de coleta
       doc.roundedRect(x + 7, cy - 9, 13, 18, 3, 3, "S");
@@ -393,8 +401,8 @@ export async function exportarPdf(
         // Cabeçalho visual com desenho preto; Medicações permanece sem desenho.
         doc.setFillColor(239, 242, 244);
         doc.roundedRect(margem, y - 15, largura, 28, 6, 6, "F");
-        const temDesenho = linha !== "Medicações";
-        if (temDesenho) desenharIconeSecao(linha, margem + 8, y - 1);
+        const temDesenho = true;
+        desenharIconeSecao(linha, margem + 8, y - 1);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(30);
@@ -429,6 +437,30 @@ export async function exportarPdf(
         doc.line(ix + 3, iy, ix + 5, iy + 5);
         doc.line(ix + 5, iy + 5, ix + 11, iy + 5);
         doc.line(ix + 11, iy + 5, ix + 13, iy);
+      }
+      if (/^- FC:/i.test(linhaPdf)) {
+        // pequeno traçado cardíaco
+        const ix = margem + 1;
+        const iy = y - 4;
+        doc.setDrawColor(25);
+        doc.setLineWidth(1);
+        doc.line(ix, iy, ix + 3, iy);
+        doc.line(ix + 3, iy, ix + 5, iy - 4);
+        doc.line(ix + 5, iy - 4, ix + 8, iy + 4);
+        doc.line(ix + 8, iy + 4, ix + 11, iy - 2);
+        doc.line(ix + 11, iy - 2, ix + 14, iy);
+      }
+      if (/^- FR:/i.test(linhaPdf)) {
+        // pulmões estilizados
+        const ix = margem + 2;
+        const iy = y - 5;
+        doc.setDrawColor(25);
+        doc.setLineWidth(1);
+        doc.line(ix + 7, iy - 5, ix + 7, iy + 6);
+        doc.line(ix + 7, iy - 1, ix + 3, iy + 2);
+        doc.line(ix + 7, iy - 1, ix + 11, iy + 2);
+        doc.ellipse(ix + 3, iy + 4, 3, 5, "S");
+        doc.ellipse(ix + 11, iy + 4, 3, 5, "S");
       }
       // Linhas clínicas ganham aparência de tabela leve para leitura horizontal.
       if (/^- /.test(linhaPdf)) {
