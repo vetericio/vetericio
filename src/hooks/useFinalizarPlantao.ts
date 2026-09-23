@@ -17,7 +17,7 @@ export function useFinalizarPlantao() {
   const { setPlantoes } = usePlantoes();
   const { plantao, limparPlantao } = usePlantaoAtual();
   const { curvas, setCurvas } = useCurvas();
-  const { setAnamneses } = useAnamneses();
+  const { anamneses, setAnamneses } = useAnamneses();
   const navigate = useNavigate();
 
   return () => {
@@ -30,6 +30,17 @@ export function useFinalizarPlantao() {
         // Guarda a foto das curvas destes animais para o PDF deste plantão.
         curvas: curvas.filter((c) =>
           registros.some((r) => chaveDoAnimal(r.animal, r.especie) === c.chave),
+        ),
+        // Guarda também a anamnese usada pelos animais deste plantão.
+        anamneses: anamneses.filter((a) =>
+          registros.some((r) =>
+            r.anamneseId === a.id ||
+            (
+              r.animal.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") ===
+                a.animal.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") &&
+              (!r.especie || !a.especie || r.especie === a.especie)
+            ),
+          ),
         ),
         criadoEm: new Date().toISOString(),
       };
