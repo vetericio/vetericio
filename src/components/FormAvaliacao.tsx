@@ -34,6 +34,12 @@ import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
 import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
 
+function formatarPesoKgDigitado(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").slice(-5);
+  const preenchido = digitos.padStart(4, "0");
+  return `${preenchido.slice(0, -3)},${preenchido.slice(-3)}`;
+}
+
 
 type Props = {
   valores: Omit<Registro, "id">;
@@ -323,9 +329,9 @@ export function FormAvaliacao({
             </span>
             <input
               value={valores.peso ?? ""}
-              onChange={(e) => set("peso", e.target.value.replace(/[^\d,.]/g, "").replace(".", ","))}
+              onChange={(e) => set("peso", formatarPesoKgDigitado(e.target.value))}
               inputMode="decimal"
-              placeholder="Ex.: 9,9"
+              placeholder="0,000"
               className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-semibold tabular-nums text-foreground outline-none focus:border-ring"
             />
           </label>
