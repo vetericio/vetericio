@@ -27,6 +27,12 @@ import {
   type ReferenciasExames,
 } from "@/lib/exames-laboratoriais";
 
+function formatarPesoKgDigitado(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").slice(-5);
+  const preenchido = digitos.padStart(4, "0");
+  return `${preenchido.slice(0, -3)},${preenchido.slice(-3)}`;
+}
+
 import { ESPECIES, type Especie } from "@/lib/ficha";
 import {
   ANAMNESE_VAZIA,
@@ -284,9 +290,9 @@ function AnamneseConteudo() {
           <span className={rotuloCampo}>Peso (kg)</span>
           <input
             value={form.peso ?? ""}
-            onChange={(e) => set("peso", e.target.value.replace(/[^\d,.]/g, "").replace(".", ","))}
+            onChange={(e) => set("peso", formatarPesoKgDigitado(e.target.value))}
             inputMode="decimal"
-            placeholder="Ex.: 9,9"
+            placeholder="0,000"
             className={campo}
           />
         </label>
