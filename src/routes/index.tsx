@@ -279,6 +279,7 @@ function Index() {
           fazerCurva={fazerCurva}
           onFazerCurva={setFazerCurva}
           onCancelar={limpar}
+          anamnesesJaAdicionadas={registros.map((r) => r.anamneseId).filter((id): id is string => Boolean(id))}
         />
       </div>
 
