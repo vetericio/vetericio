@@ -93,12 +93,17 @@ export function ListaRegistros({
               .slice(1)
               .map((linha, i) => {
                 const fora = linhaEstaForaDaFaixa(r, linha);
+                const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo)$/.test(linha);
                 return (
                   <p
                     key={i}
                     className={
-                      "whitespace-pre-wrap font-sans text-sm leading-relaxed " +
-                      (fora ? "font-bold text-[#722F37]" : "text-muted-foreground")
+                      "whitespace-pre-wrap font-sans leading-relaxed " +
+                      (tituloSecao
+                        ? "mt-3 text-sm font-bold text-foreground"
+                        : fora
+                          ? "text-sm font-bold text-[#722F37]"
+                          : "text-sm text-muted-foreground")
                     }
                   >
                     {linha}
