@@ -14,8 +14,7 @@ import {
   rotuloPlantaoPdf,
 } from "./plantao";
 
-const TITULO = "Veterício Serviços Veterinários LTDA";
-const SUBTITULO = "Ficha de Avaliação da Internação";
+const TITULO = "FICHA DE INTERNAÇÃO";
 
 type Doc = import("jspdf").jsPDF;
 
@@ -139,26 +138,21 @@ export async function exportarPdf(
     }
   };
 
-  const logoLargura = 42;
-  const logoAltura = 46;
+  const logoLargura = 78;
+  const logoAltura = 78;
+  const centroX = doc.internal.pageSize.getWidth() / 2;
   try {
-    doc.addImage(LOGO_PDF_DATA_URL, "JPEG", margem, y - 4, logoLargura, logoAltura);
+    doc.addImage(LOGO_PDF_DATA_URL, "JPEG", centroX - logoLargura / 2, y, logoLargura, logoAltura);
   } catch {
     /* sem logo, segue sem imagem */
   }
-  y += logoAltura + 10;
+  y += logoAltura + 18;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(25);
-  doc.text(TITULO, margem, y);
-  y += 20;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(90);
-  doc.text(SUBTITULO, margem, y);
-  y += 16;
+  doc.text(TITULO, centroX, y, { align: "center" });
+  y += 28;
 
 
   const legendaBruta =
@@ -169,12 +163,12 @@ export async function exportarPdf(
   // A seta "→" não existe nas fontes padrão do PDF: usar hífen.
   const legenda = legendaBruta.replace(/\s*→\s*/g, " - ");
 
-  doc.setFillColor(246, 247, 248);
-  doc.roundedRect(margem, y - 12, largura, 25, 5, 5, "F");
+  doc.setFillColor(232, 234, 236);
+  doc.roundedRect(margem, y - 14, largura, 30, 9, 9, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.setTextColor(55);
-  doc.text(legenda, margem + 10, y + 2);
+  doc.setTextColor(45);
+  doc.text(legenda, margem + largura / 2, y + 3, { align: "center" });
   doc.setTextColor(0);
   // Três linhas de respiro antes do primeiro paciente.
   y += 24 + 21 * 3;
@@ -236,9 +230,12 @@ export async function exportarPdf(
       doc.line(x + 6, cy - 9, x + 21, cy - 9);
       doc.line(x + 9, cy + 4, x + 18, cy + 4);
     } else if (titulo === "Exames") {
-      // lupa
-      doc.circle(x + 11, cy - 2, 6, "S");
-      doc.line(x + 15, cy + 3, x + 23, cy + 9);
+      // tubo de ensaio
+      doc.line(x + 7, cy - 9, x + 20, cy - 9);
+      doc.line(x + 10, cy - 9, x + 10, cy + 5);
+      doc.line(x + 17, cy - 9, x + 17, cy + 5);
+      doc.arc(x + 13.5, cy + 5, 3.5, 0, 180, "S");
+      doc.line(x + 11, cy + 2, x + 16, cy + 2);
     } else if (titulo === "Queixa principal") {
       // balão de fala
       doc.roundedRect(x + 3, cy - 8, 21, 13, 3, 3, "S");
