@@ -148,12 +148,14 @@ export async function exportarPdf(
   y += logoAltura + 10;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
+  doc.setFontSize(16);
+  doc.setTextColor(25);
   doc.text(TITULO, margem, y);
   y += 20;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
+  doc.setTextColor(90);
   doc.text(SUBTITULO, margem, y);
   y += 16;
 
@@ -166,9 +168,13 @@ export async function exportarPdf(
   // A seta "→" não existe nas fontes padrão do PDF: usar hífen.
   const legenda = legendaBruta.replace(/\s*→\s*/g, " - ");
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.text(legenda, margem, y);
+  doc.setFillColor(246, 247, 248);
+  doc.roundedRect(margem, y - 12, largura, 25, 5, 5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(55);
+  doc.text(legenda, margem + 10, y + 2);
+  doc.setTextColor(0);
   // Três linhas de respiro antes do primeiro paciente.
   y += 24 + 21 * 3;
 
@@ -217,7 +223,7 @@ export async function exportarPdf(
 
     const alturaFaixa = 34;
     novaPaginaSeNecessario(alturaFaixa + 10);
-    doc.setFillColor(225, 225, 225);
+    doc.setFillColor(224, 229, 233);
     doc.roundedRect(margem, y - 17, largura, alturaFaixa, 7, 7, "F");
 
     doc.setFont("helvetica", "bold");
@@ -266,23 +272,43 @@ export async function exportarPdf(
         }
       }
 
-      const recuo = naCurva || itemMedicacao ? 14 : 0;
+      const recuo = naCurva || itemMedicacao ? 16 : 0;
       const negrito = tituloCurvaLinha || tituloSecao;
       const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
+
+      if (tituloSecao) {
+        // Barra curta e suave: cria uma âncora visual sem encher a página.
+        doc.setFillColor(242, 244, 246);
+        doc.roundedRect(margem, y - 13, largura, 22, 4, 4, "F");
+        doc.setFillColor(105, 115, 125);
+        doc.roundedRect(margem, y - 13, 4, 22, 2, 2, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(35);
+        doc.text(linha, margem + 12, y + 1, { baseline: "alphabetic", maxWidth: largura - 20 });
+        y += 27;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0);
+        continue;
+      }
+
       if (fora) {
+        // Alterações importantes chamam atenção por peso + tom vinho, sem caixas fortes.
         doc.setFont("helvetica", "bold");
         doc.setTextColor(114, 47, 55);
       } else {
         doc.setFont("helvetica", negrito ? "bold" : "normal");
-        doc.setTextColor(0);
+        doc.setTextColor(30);
       }
+      doc.setFontSize(10);
       const linhaPdf = linha;
-      if (itemAnamnese) y += 8;
+      if (itemAnamnese) y += 6;
       const partes = doc.splitTextToSize(linhaPdf, largura - recuo) as string[];
       for (const l of partes) {
-        novaPaginaSeNecessario(ALTURA_LINHA);
+        novaPaginaSeNecessario(18);
         doc.text(l, margem + recuo, y, { baseline: "alphabetic", maxWidth: largura - recuo });
-        y += ALTURA_LINHA;
+        y += 18;
       }
       doc.setTextColor(0);
       doc.setFont("helvetica", "normal");
@@ -304,7 +330,7 @@ export async function exportarPdf(
       }
     }
 
-    y += 18;
+    y += 12;
   });
 
   // Assinatura e carimbo guardados no aparelho, no fim do documento.
