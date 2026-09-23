@@ -298,14 +298,14 @@ export async function exportarPdf(
 
   if (assinatura || carimbo) {
     const alturaSelo = 60;
-    if (assinatura) desenharSelo(assinatura, margem, 170, alturaSelo);
-    if (carimbo) desenharSelo(carimbo, margem + 190, 150, alturaSelo);
+    if (assinatura) desenharSelo(assinatura, margem, 150, alturaSelo);
+    if (carimbo) desenharSelo(carimbo, margem + 145, 150, alturaSelo);
     y += alturaSelo + 6;
   }
 
   doc.setDrawColor(0);
   doc.setLineWidth(0.8);
-  doc.line(margem, y, margem + 240, y);
+  doc.line(margem, y, margem + 165, y);
   y += 14;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
