@@ -138,23 +138,23 @@ export async function exportarPdf(
     }
   };
 
-  const logoLargura = 34;
-  const logoAltura = 37;
+  const logoLargura = 42;
+  const logoAltura = 46;
   try {
-    doc.addImage(LOGO_PDF_DATA_URL, "JPEG", margem, y - 12, logoLargura, logoAltura);
+    doc.addImage(LOGO_PDF_DATA_URL, "JPEG", margem, y - 4, logoLargura, logoAltura);
   } catch {
     /* sem logo, segue sem imagem */
   }
-  const textoX = margem + logoLargura + 10;
+  y += logoAltura + 10;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text(TITULO, textoX, y);
+  doc.text(TITULO, margem, y);
   y += 20;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(SUBTITULO, textoX, y);
+  doc.text(SUBTITULO, margem, y);
   y += 16;
 
 
@@ -169,7 +169,8 @@ export async function exportarPdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(legenda, margem, y);
-  y += 24;
+  // Três linhas de respiro antes do primeiro paciente.
+  y += 24 + 21 * 3;
 
   const listaCurvas = opcoes?.curvas ?? carregarCurvas();
 
@@ -226,14 +227,15 @@ export async function exportarPdf(
       baseline: "middle",
       maxWidth: largura - 24,
     });
-    y += alturaFaixa + 8;
+    y += alturaFaixa / 2 + 12;
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     // Cada informação é um bloco de texto independente, com espaçamento
     // generoso, para que a cópia a partir do PDF preserve as quebras de linha.
     let naCurva = false;
-    for (const linha of resto) {
+    for (let linhaIndice = 0; linhaIndice < resto.length; linhaIndice++) {
+      const linha = resto[linhaIndice]!;
       const tituloCurvaLinha = /^Curva /.test(linha);
       const fimDaCurva = /^(Observações|Resumo|Óbito|Observação):/.test(linha);
       if (tituloCurvaLinha) {
@@ -249,8 +251,14 @@ export async function exportarPdf(
       const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
       if (tituloSecao) {
-        // Se o subtítulo ficaria no fim da página, leva título + início do conteúdo para a próxima.
-        if (y + ALTURA_LINHA * 3 > alturaPagina - margem) {
+        // Nunca deixar título/subtítulo separado da primeira informação.
+        const proximaLinha = resto[linhaIndice + 1] ?? "";
+        const recuoProxima = /^- /.test(proximaLinha) ? 14 : 0;
+        const partesTitulo = doc.splitTextToSize(linha, largura) as string[];
+        const partesProxima = doc.splitTextToSize(proximaLinha, largura - recuoProxima) as string[];
+        const alturaNecessaria =
+          8 + (partesTitulo.length + Math.max(1, partesProxima.length)) * ALTURA_LINHA;
+        if (y + alturaNecessaria > alturaPagina - margem) {
           doc.addPage();
           y = margem;
         } else {
