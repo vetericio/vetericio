@@ -209,16 +209,57 @@ export async function exportarPdf(
 
   doc.setFontSize(11);
   const ALTURA_LINHA = 21;
-  const ICONE_SECAO: Record<string, string> = {
-    "Parâmetros": "P",
-    "Medicações": "Rx",
-    "Exames laboratoriais": "Lab",
-    "Exames": "Ex",
-    "Queixa principal": "!",
-    "Relato": "R",
-    "Conduta": "C",
-    "Atenção para o próximo plantão": "!",
-    "Resumo": "✓",
+  const desenharIconeSecao = (titulo: string, x: number, cy: number) => {
+    doc.setDrawColor(25);
+    doc.setFillColor(25);
+    doc.setLineWidth(1.2);
+    // desenhos monocromáticos simples para manter legibilidade na impressão
+    if (titulo === "Parâmetros") {
+      // coração + traço de ECG
+      doc.line(x, cy, x + 5, cy);
+      doc.line(x + 5, cy, x + 8, cy - 5);
+      doc.line(x + 8, cy - 5, x + 12, cy + 5);
+      doc.line(x + 12, cy + 5, x + 16, cy - 2);
+      doc.line(x + 16, cy - 2, x + 20, cy);
+      doc.line(x + 20, cy, x + 27, cy);
+    } else if (titulo === "Exames laboratoriais") {
+      // tubo de coleta
+      doc.roundedRect(x + 7, cy - 9, 13, 18, 3, 3, "S");
+      doc.line(x + 6, cy - 9, x + 21, cy - 9);
+      doc.line(x + 9, cy + 4, x + 18, cy + 4);
+    } else if (titulo === "Exames") {
+      // lupa
+      doc.circle(x + 11, cy - 2, 6, "S");
+      doc.line(x + 15, cy + 3, x + 23, cy + 9);
+    } else if (titulo === "Queixa principal") {
+      // balão de fala
+      doc.roundedRect(x + 3, cy - 8, 21, 13, 3, 3, "S");
+      doc.line(x + 9, cy + 5, x + 7, cy + 9);
+      doc.line(x + 7, cy + 9, x + 13, cy + 5);
+    } else if (titulo === "Relato") {
+      // folha com linhas
+      doc.rect(x + 5, cy - 9, 17, 18, "S");
+      doc.line(x + 9, cy - 4, x + 18, cy - 4);
+      doc.line(x + 9, cy, x + 18, cy);
+      doc.line(x + 9, cy + 4, x + 16, cy + 4);
+    } else if (titulo === "Conduta") {
+      // checklist
+      doc.rect(x + 4, cy - 8, 4, 4, "S");
+      doc.line(x + 11, cy - 6, x + 23, cy - 6);
+      doc.rect(x + 4, cy, 4, 4, "S");
+      doc.line(x + 11, cy + 2, x + 23, cy + 2);
+    } else if (titulo === "Atenção para o próximo plantão") {
+      // triângulo de atenção
+      doc.triangle(x + 14, cy - 10, x + 3, cy + 9, x + 25, cy + 9, "S");
+      doc.line(x + 14, cy - 4, x + 14, cy + 3);
+      doc.circle(x + 14, cy + 6, 1, "F");
+    } else if (titulo === "Resumo") {
+      // prancheta
+      doc.roundedRect(x + 5, cy - 8, 18, 17, 2, 2, "S");
+      doc.roundedRect(x + 10, cy - 11, 8, 5, 2, 2, "S");
+      doc.line(x + 9, cy - 1, x + 19, cy - 1);
+      doc.line(x + 9, cy + 4, x + 19, cy + 4);
+    }
   };
   blocos.forEach((bloco, indice) => {
     const r = registros[indice];
@@ -349,19 +390,18 @@ export async function exportarPdf(
       const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
 
       if (tituloSecao) {
-        // Cabeçalho visual da seção: bloco amplo + ícone textual simples.
-        const icone = ICONE_SECAO[linha] ?? "•";
+        // Cabeçalho visual com desenho preto; Medicações permanece sem desenho.
         doc.setFillColor(239, 242, 244);
         doc.roundedRect(margem, y - 15, largura, 28, 6, 6, "F");
-        doc.setFillColor(82, 94, 105);
-        doc.roundedRect(margem + 5, y - 11, 30, 20, 5, 5, "F");
+        const temDesenho = linha !== "Medicações";
+        if (temDesenho) desenharIconeSecao(linha, margem + 8, y - 1);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(255);
-        doc.text(icone, margem + 20, y + 1, { align: "center", baseline: "middle" });
         doc.setFontSize(10);
         doc.setTextColor(30);
-        doc.text(linha, margem + 43, y + 2, { baseline: "alphabetic", maxWidth: largura - 52 });
+        doc.text(linha, margem + (temDesenho ? 44 : 12), y + 2, {
+          baseline: "alphabetic",
+          maxWidth: largura - (temDesenho ? 53 : 21),
+        });
         y += 34;
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
@@ -379,6 +419,17 @@ export async function exportarPdf(
       }
       doc.setFontSize(10);
       const linhaPdf = linha;
+      // Ícone de pote de ração para alimentação; medições permanecem sem desenhos.
+      if (/^- Alimentação:/i.test(linhaPdf)) {
+        const ix = margem + 2;
+        const iy = y - 4;
+        doc.setDrawColor(25);
+        doc.setLineWidth(1);
+        doc.line(ix + 2, iy, ix + 12, iy);
+        doc.line(ix + 3, iy, ix + 5, iy + 5);
+        doc.line(ix + 5, iy + 5, ix + 11, iy + 5);
+        doc.line(ix + 11, iy + 5, ix + 13, iy);
+      }
       // Linhas clínicas ganham aparência de tabela leve para leitura horizontal.
       if (/^- /.test(linhaPdf)) {
         const indiceVisual = linhaIndice % 2;
