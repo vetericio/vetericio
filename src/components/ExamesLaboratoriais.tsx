@@ -26,6 +26,38 @@ type Props = {
 const campo = "min-h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2 text-base text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const acao = "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50";
 
+
+const RESUMOS_EXAMES: Record<string, string> = {
+  "Eritrócitos": "Quantidade de glóbulos vermelhos; ajuda a avaliar anemia e hemoconcentração.",
+  "Hemoglobina": "Proteína das hemácias responsável pelo transporte de oxigênio.",
+  "VG (Hematócrito)": "Percentual do sangue ocupado por hemácias; útil na avaliação de anemia e hidratação.",
+  "VCM (Volume Corpuscular Médio)": "Indica o tamanho médio das hemácias.",
+  "HCM (Hemoglobina Corpuscular Média)": "Quantidade média de hemoglobina presente em cada hemácia.",
+  "CHCM (Concentração de Hemoglobina Corpuscular Média)": "Concentração média de hemoglobina dentro das hemácias.",
+  "RDW (Variação do tamanho das hemácias)": "Mostra a variação do tamanho das hemácias.",
+  "Leucócitos totais": "Quantidade total de células de defesa circulantes.",
+  "Leucócitos corrigido": "Contagem de leucócitos após correções necessárias no hemograma.",
+  "Metamielócito": "Neutrófilo muito imaturo; pode aparecer em resposta inflamatória intensa.",
+  "Bastonete": "Neutrófilo jovem; aumento pode indicar resposta inflamatória.",
+  "Segmentado": "Neutrófilo maduro, importante principalmente na defesa contra bactérias.",
+  "Eosinófilo": "Célula relacionada principalmente a parasitas e processos alérgicos.",
+  "Linfócito": "Célula ligada à resposta imune e produção/regulação de anticorpos.",
+  "Monócito": "Célula de defesa envolvida em inflamação e remoção de detritos celulares.",
+  "Basófilo": "Célula de defesa associada a reações inflamatórias e alérgicas.",
+  "Plaquetas": "Participam da coagulação e ajudam a controlar sangramentos.",
+  "Uréia": "Produto eliminado pelos rins; auxilia na avaliação renal e do estado de hidratação.",
+  "Creatinina": "Marcador usado para auxiliar na avaliação da filtração renal.",
+  "TGP/ALT (Alanina aminotransferase)": "Enzima que pode aumentar com lesão de células do fígado.",
+  "Fósforo": "Mineral relacionado aos rins, ossos e metabolismo celular.",
+  "Proteína total": "Soma principalmente de albumina e globulinas no sangue.",
+  "Albumina": "Proteína produzida pelo fígado; ajuda a manter a pressão oncótica e transportar substâncias.",
+  "Globulina": "Grupo de proteínas relacionado principalmente à resposta imunológica.",
+  "Relação A/G (Albumina/Globulina)": "Compara albumina e globulinas e ajuda a interpretar alterações das proteínas.",
+};
+
+function resumoExame(nome: string) {
+  return RESUMOS_EXAMES[nome] ?? "";
+}
 export function ExamesLaboratoriais({ especie, exames, referencias, erroReferencias, onChange, onReferenciasChange, onLimpar }: Props) {
   const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);
   const listas = normalizarExames(exames);
@@ -85,9 +117,16 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
                     {livre ? (
                       <input aria-label={`Nome do exame ${indice + 1} de ${titulo}`} autoFocus={!exame.nome && !!exame.id} value={exame.nome} onChange={(e) => mudar(grupo, indice, "nome", e.target.value)} placeholder="Nome do exame" className={campo} />
                     ) : (
-                      <p className="break-words text-sm font-semibold leading-snug text-foreground sm:text-base">
-                        {exame.nome}<span className="ml-1 font-normal text-muted-foreground">{exame.unidade ? `(${exame.unidade})` : ""}</span>
-                      </p>
+                      <>
+                        <p className="break-words text-sm font-semibold leading-snug text-foreground sm:text-base">
+                          {exame.nome}<span className="ml-1 font-normal text-muted-foreground">{exame.unidade ? `(${exame.unidade})` : ""}</span>
+                        </p>
+                        {resumoExame(exame.nome) && (
+                          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground sm:text-xs">
+                            {resumoExame(exame.nome)}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                   <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="Valor" className={`${campo} px-2 text-center`} />
