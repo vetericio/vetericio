@@ -293,14 +293,26 @@ export async function exportarPdf(
       const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
       if (tituloSecao) {
-        // Nunca deixar título/subtítulo separado da primeira informação.
-        const proximaLinha = resto[linhaIndice + 1] ?? "";
-        const recuoProxima = /^- /.test(proximaLinha) ? 14 : 0;
-        const partesTitulo = doc.splitTextToSize(linha, largura) as string[];
-        const partesProxima = doc.splitTextToSize(proximaLinha, largura - recuoProxima) as string[];
-        const alturaNecessaria =
-          8 + (partesTitulo.length + Math.max(1, partesProxima.length)) * ALTURA_LINHA;
-        if (y + alturaNecessaria > alturaPagina - margem) {
+        // O subtítulo e seu conteúdo formam um bloco visual único.
+        // Se o bloco inteiro couber em uma página, nunca o partir entre páginas.
+        let fimSecao = linhaIndice + 1;
+        while (fimSecao < resto.length && !/^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo)$/.test(resto[fimSecao]!)) {
+          fimSecao++;
+        }
+        const conteudoSecao = resto.slice(linhaIndice + 1, fimSecao).filter((item) => item.trim());
+        const alturaConteudo = conteudoSecao.reduce((total, item) => {
+          const recuoItem = /^- /.test(item) ? 16 : 0;
+          const partesItem = doc.splitTextToSize(item, largura - recuoItem) as string[];
+          return total + Math.max(1, partesItem.length) * 18;
+        }, 0);
+        const alturaBloco = 35 + alturaConteudo;
+        const alturaUtilPagina = alturaPagina - margem * 2;
+
+        if (alturaBloco <= alturaUtilPagina && y + alturaBloco > alturaPagina - margem) {
+          doc.addPage();
+          y = margem;
+        } else if (alturaBloco > alturaUtilPagina && y + 35 + 36 > alturaPagina - margem) {
+          // Se a seção for maior que uma página, ao menos título + primeiras linhas ficam juntos.
           doc.addPage();
           y = margem;
         } else {
