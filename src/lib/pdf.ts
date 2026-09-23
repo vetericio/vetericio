@@ -187,14 +187,42 @@ export async function exportarPdf(
     const [cabecalho = "", ...resto] = bloco.split("\n");
     novaPaginaSeNecessario(ALTURA_LINHA * 2);
 
-    doc.setFont("helvetica", "bold");
-    const linhasCabecalho = doc.splitTextToSize(cabecalho, largura) as string[];
-    for (const l of linhasCabecalho) {
-      novaPaginaSeNecessario(ALTURA_LINHA);
-      doc.text(l, margem, y, { baseline: "alphabetic", maxWidth: largura });
-      y += ALTURA_LINHA;
+    // Cabeçalho do paciente: espécie com símbolo visual + nome em destaque.
+    // As fontes padrão do jsPDF não renderizam emoji Unicode de forma confiável,
+    // então desenhamos um selo simples de cão/gato ao lado do nome.
+    const especie = r?.especie;
+    const simboloEspecie = especie === "Cachorro" ? "CAO" : especie === "Gato" ? "GATO" : "";
+    const nomeCabecalho = cabecalho
+      .replace(/\s*\(Cachorro\)\s*$/, "")
+      .replace(/\s*\(Gato\)\s*$/, "");
+
+    novaPaginaSeNecessario(38);
+    doc.setFillColor(245, 245, 245);
+    doc.roundedRect(margem, y - 17, largura, 31, 7, 7, "F");
+
+    let nomeX = margem + 10;
+    if (simboloEspecie) {
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(190);
+      doc.roundedRect(margem + 8, y - 12, 34, 20, 5, 5, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(80);
+      doc.text(simboloEspecie, margem + 25, y + 1, { align: "center" });
+      nomeX = margem + 50;
     }
 
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(0);
+    const linhasCabecalho = doc.splitTextToSize(nomeCabecalho, largura - (nomeX - margem) - 10) as string[];
+    for (const l of linhasCabecalho) {
+      doc.text(l, nomeX, y, { baseline: "alphabetic", maxWidth: largura - (nomeX - margem) - 10 });
+      y += 18;
+    }
+    y += 10;
+
+    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     // Cada informação é um bloco de texto independente, com espaçamento
     // generoso, para que a cópia a partir do PDF preserve as quebras de linha.
