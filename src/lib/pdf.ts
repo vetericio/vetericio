@@ -211,13 +211,13 @@ export async function exportarPdf(
       }
 
       // Bloco de medicações: título em negrito e itens recuados.
-      const tituloMedicacao = /^(Medicações|Observação|Exames laboratoriais|Hemograma|Bioquímico|Outros exames):$/.test(linha);
-      const itemAnamnese = /^- (Relato|Exame|Outras informações):/.test(linha);
+      const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo|Hemograma:|Bioquímico:|Outros exames:)$/.test(linha);
+      const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
-      if (tituloMedicacao) y += 6;
+      if (tituloSecao) y += 8;
 
       const recuo = naCurva || itemMedicacao ? 14 : 0;
-      const negrito = tituloCurvaLinha || tituloMedicacao;
+      const negrito = tituloCurvaLinha || tituloSecao;
       const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
       if (fora) {
         doc.setFont("helvetica", "bold");
@@ -226,7 +226,7 @@ export async function exportarPdf(
         doc.setFont("helvetica", negrito ? "bold" : "normal");
         doc.setTextColor(0);
       }
-      const linhaPdf = linha.replace(/^- (Relato|Exame|Outras informações):\s*/, "$1:\n");
+      const linhaPdf = linha;
       if (itemAnamnese) y += 8;
       const partes = doc.splitTextToSize(linhaPdf, largura - recuo) as string[];
       for (const l of partes) {
