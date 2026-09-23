@@ -413,7 +413,8 @@ export async function exportarPdf(
         }
       }
 
-      const recuo = naCurva || itemMedicacao ? 16 : 0;
+      const RECUO_CONTEUDO = 28.35; // 1 cm
+      const recuo = RECUO_CONTEUDO + (naCurva || itemMedicacao ? 16 : 0);
       const negrito = tituloCurvaLinha || tituloSecao;
       const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
 
@@ -422,13 +423,13 @@ export async function exportarPdf(
         doc.setFillColor(239, 242, 244);
         doc.roundedRect(margem, y - 15, largura, 28, 6, 6, "F");
         const temDesenho = true;
-        desenharIconeSecao(linha, margem + 8, y - 1);
+        desenharIconeSecao(linha, margem + 8 + RECUO_CONTEUDO, y - 1);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(30);
-        doc.text(linha, margem + (temDesenho ? 44 : 12), y + 2, {
+        doc.text(linha, margem + RECUO_CONTEUDO + (temDesenho ? 44 : 12), y + 2, {
           baseline: "alphabetic",
-          maxWidth: largura - (temDesenho ? 53 : 21),
+          maxWidth: largura - RECUO_CONTEUDO - (temDesenho ? 53 : 21),
         });
         y += 34;
         doc.setFontSize(10);
