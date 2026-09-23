@@ -142,9 +142,10 @@ export async function exportarPdf(
   const logoAltura = 90;
   const centroX = doc.internal.pageSize.getWidth() / 2;
   try {
-    doc.addImage(LOGO_PDF_DATA_URL, "JPEG", centroX - logoLargura / 2, y, logoLargura, logoAltura);
-  } catch {
-    /* sem logo, segue sem imagem */
+    // O data URL já informa o formato; "JPEG" forçado falhava silenciosamente em alguns navegadores.
+    doc.addImage(LOGO_PDF_DATA_URL, undefined, centroX - logoLargura / 2, y, logoLargura, logoAltura);
+  } catch (erro) {
+    console.error("Falha ao inserir logo no PDF", erro);
   }
   y += logoAltura + 18;
 
