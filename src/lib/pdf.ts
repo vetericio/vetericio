@@ -187,40 +187,29 @@ export async function exportarPdf(
     const [cabecalho = "", ...resto] = bloco.split("\n");
     novaPaginaSeNecessario(ALTURA_LINHA * 2);
 
-    // Cabeçalho do paciente: espécie com símbolo visual + nome em destaque.
-    // As fontes padrão do jsPDF não renderizam emoji Unicode de forma confiável,
-    // então desenhamos um selo simples de cão/gato ao lado do nome.
-    const especie = r?.especie;
-    const simboloEspecie = especie === "Cachorro" ? "CAO" : especie === "Gato" ? "GATO" : "";
-    const nomeCabecalho = cabecalho
+    // Cabeçalho do paciente: "Animal - (cão/gato)", centralizado verticalmente na faixa.
+    const especiePdf = r?.especie === "Cachorro" ? "cão" : r?.especie === "Gato" ? "gato" : "";
+    const nomeAnimalPdf = cabecalho
       .replace(/\s*\(Cachorro\)\s*$/, "")
       .replace(/\s*\(Gato\)\s*$/, "");
+    const tituloPaciente = especiePdf
+      ? `${nomeAnimalPdf} - (${especiePdf})`
+      : nomeAnimalPdf;
 
-    novaPaginaSeNecessario(38);
+    const alturaFaixa = 34;
+    novaPaginaSeNecessario(alturaFaixa + 10);
     doc.setFillColor(245, 245, 245);
-    doc.roundedRect(margem, y - 17, largura, 31, 7, 7, "F");
-
-    let nomeX = margem + 10;
-    if (simboloEspecie) {
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(190);
-      doc.roundedRect(margem + 8, y - 12, 34, 20, 5, 5, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(80);
-      doc.text(simboloEspecie, margem + 25, y + 1, { align: "center" });
-      nomeX = margem + 50;
-    }
+    doc.roundedRect(margem, y - 17, largura, alturaFaixa, 7, 7, "F");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.setTextColor(0);
-    const linhasCabecalho = doc.splitTextToSize(nomeCabecalho, largura - (nomeX - margem) - 10) as string[];
-    for (const l of linhasCabecalho) {
-      doc.text(l, nomeX, y, { baseline: "alphabetic", maxWidth: largura - (nomeX - margem) - 10 });
-      y += 18;
-    }
-    y += 10;
+    // y + 5 posiciona a linha aproximadamente no centro vertical da faixa de 34 pt.
+    doc.text(tituloPaciente, margem + 12, y + 5, {
+      baseline: "middle",
+      maxWidth: largura - 24,
+    });
+    y += alturaFaixa + 8;
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
