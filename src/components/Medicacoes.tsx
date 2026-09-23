@@ -508,10 +508,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
   const salvarEdicaoInline = (indice: number) => {
     if (!edicaoInline) return;
+    const doseFinal = refCalculo && doseExibida.trim()
+      ? `${doseExibida.trim()} ${refCalculo.unidadeDose}`
+      : edicaoInline.dose.trim();
+    const quantidadeFinal = refCalculo && volumeCalculado.trim()
+      ? `${volumeCalculado.trim()} ${unidadeCalculada || "mL"}`
+      : edicaoInline.quantidade.trim();
     onChange(lista.map((m, i) => i === indice ? {
       ...m,
-      dose: edicaoInline.dose.trim(),
-      quantidade: edicaoInline.quantidade.trim(),
+      dose: doseFinal,
+      quantidade: quantidadeFinal,
       duracao: edicaoInline.duracao.trim(),
     } : m));
     setEdicaoInline(null);
@@ -699,28 +705,54 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                       <span className="block space-y-1.5">
                         <span className="block font-semibold">{normalizarNomeMedicamento(m.nome)}</span>
                         <span className="grid grid-cols-3 gap-1.5">
-                          <input
-                            aria-label="Dose"
-                            value={edicaoInline.dose}
-                            onChange={(e) => setEdicaoInline((v) => v ? { ...v, dose: e.target.value } : v)}
-                            placeholder="Dose"
-                            className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                          />
-                          <input
-                            aria-label="Quantidade"
-                            value={edicaoInline.quantidade}
-                            onChange={(e) => setEdicaoInline((v) => v ? { ...v, quantidade: e.target.value } : v)}
-                            placeholder="mL"
-                            className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                          />
-                          <input
-                            aria-label="Intervalo"
-                            value={edicaoInline.duracao}
-                            onChange={(e) => setEdicaoInline((v) => v ? { ...v, duracao: e.target.value } : v)}
-                            placeholder="8h"
-                            className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                          />
+                          <label className="min-w-0 text-[10px] text-muted-foreground">
+                            Dose
+                            <input
+                              aria-label="Dose"
+                              value={refCalculo ? doseExibida : edicaoInline.dose}
+                              onChange={(e) => {
+                                const valor = e.target.value;
+                                setEdicaoInline((v) => v ? { ...v, dose: valor } : v);
+                                if (refCalculo) {
+                                  setDoseUsada(valor);
+                                  setModoQuantidade("dose");
+                                }
+                              }}
+                              placeholder="Dose"
+                              className="mt-0.5 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+                            />
+                          </label>
+                          <label className="min-w-0 text-[10px] text-muted-foreground">
+                            mL
+                            <input
+                              aria-label="Quantidade"
+                              value={refCalculo ? volumeCalculado : edicaoInline.quantidade}
+                              onChange={(e) => {
+                                const valor = e.target.value.replace(/\\s*m[lL]?$/i, "");
+                                setEdicaoInline((v) => v ? { ...v, quantidade: valor } : v);
+                                if (refCalculo) {
+                                  setQuantidade(valor);
+                                  setModoQuantidade("ml");
+                                }
+                              }}
+                              placeholder="mL"
+                              className="mt-0.5 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+                            />
+                          </label>
+                          <label className="min-w-0 text-[10px] text-muted-foreground">
+                            Intervalo
+                            <input
+                              aria-label="Intervalo"
+                              value={edicaoInline.duracao}
+                              onChange={(e) => setEdicaoInline((v) => v ? { ...v, duracao: e.target.value } : v)}
+                              placeholder="8h"
+                              className="mt-0.5 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+                            />
+                          </label>
                         </span>
+                        {refCalculo && calculo && !calculo.ok && (
+                          <span className="block text-[10px] text-destructive">{calculo.motivo}</span>
+                        )}
                         <span className="flex gap-1.5">
                           <button type="button" onClick={() => salvarEdicaoInline(i)} className="rounded-lg bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
                             Salvar
@@ -731,10 +763,15 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                         </span>
                       </span>
                     ) : (
-                      <span className="block truncate">
-                        {[normalizarNomeMedicamento(m.nome), m.dose, m.quantidade, m.duracao]
-                          .filter(Boolean)
-                          .join(" · ")}
+                      <span className="block min-w-0">
+                        <span className="block truncate font-semibold">
+                          {normalizarNomeMedicamento(m.nome)}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                          {[m.dose, m.quantidade, m.duracao]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
                       </span>
                     )}
                   </span>
