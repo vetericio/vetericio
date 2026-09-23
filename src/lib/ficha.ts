@@ -368,7 +368,7 @@ export type OpcoesFormato = {
 };
 
 export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
-  const linhas = [
+  const parametros = [
     linha("Alimentação", r.alimentacao),
     linha("Comportamento", r.comportamento),
     linha("Fezes", r.fezes),
@@ -382,24 +382,54 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
     linha("Glicemia", r.glicemia, "mg/dL"),
   ].filter(Boolean) as string[];
 
-  const obs = r.observacoes.trim();
-  const textoObs = obs || (opcoes?.obsPadrao ? "nenhuma observação importante" : "");
-  const resumo = resumoRegistro(r);
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
+  const listaAnamneses = opcoes?.anamneses ?? carregarAnamneses();
+  const anamnese = r.anamneseId ? listaAnamneses.find((a) => a.id === r.anamneseId) : undefined;
+
+  const labsRegistro = blocoExamesLaboratoriais(r);
+  const labsAnamnese = anamnese
+    ? [
+        ...((anamnese.hemograma ?? []).filter((x) => x.nome?.trim() && x.valor?.trim()).map((x) =>
+          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`
+        )),
+        ...((anamnese.bioquimico ?? []).filter((x) => x.nome?.trim() && x.valor?.trim()).map((x) =>
+          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`
+        )),
+        ...((anamnese.outrosExames ?? []).filter((x) => x.nome?.trim() && x.valor?.trim()).map((x) =>
+          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`
+        )),
+      ]
+    : [];
+  const examesLaboratoriais = [
+    ...labsRegistro.filter((x) => x !== "Exames laboratoriais:"),
+    ...labsAnamnese,
+  ];
+
+  const medicacoes = blocoMedicacoes(r).filter((x) => x !== "Medicações:");
   const curvas = blocoCurvasDoRegistro(r, opcoes?.curvas);
   const obito = r.obito
     ? `Óbito: ${r.obito.hora.trim()}${r.obito.motivo.trim() ? ` - ${r.obito.motivo.trim()}` : ""}`
     : "";
+  const resumo = resumoRegistro(r);
+  const resumoFinal = [resumo, r.observacoes.trim(), obito].filter(Boolean).join(" ");
+
+  const secao = (tituloSecao: string, itens: string[]) => [
+    tituloSecao,
+    ...(itens.length ? itens : ["-"]),
+  ];
+
   return [
     titulo,
-    ...linhas,
-    ...blocoMedicacoes(r),
-    ...blocoExamesLaboratoriais(r),
-    ...blocoAnamnese(r, opcoes?.anamneses),
+    ...secao("Parâmetros", parametros.map((x) => `- ${x}`)),
+    ...secao("Medicações", medicacoes),
+    ...secao("Exames laboratoriais", examesLaboratoriais),
+    ...secao("Exames", anamnese?.exames.trim() ? [anamnese.exames.trim()] : []),
+    ...secao("Queixa principal", anamnese?.queixa.trim() ? [anamnese.queixa.trim()] : []),
+    ...secao("Relato", anamnese?.relato.trim() ? [anamnese.relato.trim()] : []),
+    ...secao("Conduta", anamnese?.conduta.trim() ? [anamnese.conduta.trim()] : []),
+    ...secao("Atenção para o próximo plantão", anamnese?.atencao.trim() ? [anamnese.atencao.trim()] : []),
     ...(curvas ? curvas.split("\n") : []),
-    ...(obito ? [obito] : []),
-    `Observações: ${textoObs}`,
-    ...(resumo ? [`Resumo: ${resumo}`] : []),
+    ...secao("Resumo", resumoFinal ? [resumoFinal] : []),
   ].join("\n");
 }
 
