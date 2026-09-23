@@ -1,6 +1,6 @@
 import type { Registro } from "./ficha";
 import type { Anamnese } from "./anamnese";
-import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
+import { LOGO_PDF_DATA_URL } from "./logo";
 import { lerSelo } from "./assinatura";
 
 import type { Curva } from "./curva";
@@ -142,30 +142,10 @@ export async function exportarPdf(
   const logoAltura = 90;
   const centroX = doc.internal.pageSize.getWidth() / 2;
   try {
-    // Usa exatamente a mesma logo oficial exibida na tela inicial do app.
-    const respostaLogo = await fetch(logoOficial.url);
-    if (!respostaLogo.ok) throw new Error(`Falha ao carregar logo: ${respostaLogo.status}`);
-    const blobLogo = await respostaLogo.blob();
-    const logoDataUrl = await new Promise<string>((resolve, reject) => {
-      const leitor = new FileReader();
-      leitor.onload = () => resolve(String(leitor.result));
-      leitor.onerror = () => reject(leitor.error);
-      leitor.readAsDataURL(blobLogo);
-    });
-    const propsLogo = doc.getImageProperties(logoDataUrl);
-    const escalaLogo = Math.min(logoLargura / propsLogo.width, logoAltura / propsLogo.height);
-    const larguraFinalLogo = propsLogo.width * escalaLogo;
-    const alturaFinalLogo = propsLogo.height * escalaLogo;
-    doc.addImage(
-      logoDataUrl,
-      "PNG",
-      centroX - larguraFinalLogo / 2,
-      y + (logoAltura - alturaFinalLogo) / 2,
-      larguraFinalLogo,
-      alturaFinalLogo,
-    );
+    // A logo fica embutida no PDF para funcionar também no modo de visualização móvel.
+    doc.addImage(LOGO_PDF_DATA_URL, undefined, centroX - logoLargura / 2, y, logoLargura, logoAltura);
   } catch (erro) {
-    console.error("Falha ao inserir logo oficial do app no PDF", erro);
+    console.error("Falha ao inserir logo no PDF", erro);
   }
   y += logoAltura + 18;
 
