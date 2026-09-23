@@ -384,7 +384,21 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
 
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
   const listaAnamneses = opcoes?.anamneses ?? carregarAnamneses();
-  const anamnese = r.anamneseId ? listaAnamneses.find((a) => a.id === r.anamneseId) : undefined;
+  // Preferir o vínculo por ID, mas recuperar também por nome + espécie.
+  // Isso mantém Queixa/Relato/Exames/Conduta/Atenção nos plantões antigos,
+  // inclusive quando o anamneseId não foi salvo no registro.
+  const nomeNormalizado = (valor: string) =>
+    valor.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const anamnesePorId = r.anamneseId
+    ? listaAnamneses.find((a) => a.id === r.anamneseId)
+    : undefined;
+  const candidatasPorNome = listaAnamneses
+    .filter((a) =>
+      nomeNormalizado(a.animal) === nomeNormalizado(r.animal) &&
+      (!r.especie || !a.especie || a.especie === r.especie),
+    )
+    .sort((a, b) => (b.atualizadoEm ?? "").localeCompare(a.atualizadoEm ?? ""));
+  const anamnese = anamnesePorId ?? candidatasPorNome[0];
 
   const labsRegistro = blocoExamesLaboratoriais(r);
   const labsAnamnese = anamnese
