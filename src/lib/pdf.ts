@@ -198,14 +198,13 @@ export async function exportarPdf(
 
     const alturaFaixa = 34;
     novaPaginaSeNecessario(alturaFaixa + 10);
-    doc.setFillColor(245, 245, 245);
+    doc.setFillColor(225, 225, 225);
     doc.roundedRect(margem, y - 17, largura, alturaFaixa, 7, 7, "F");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.setTextColor(0);
-    // y + 5 posiciona a linha aproximadamente no centro vertical da faixa de 34 pt.
-    doc.text(tituloPaciente, margem + 12, y + 5, {
+    doc.text(tituloPaciente, margem + 12, y, {
       baseline: "middle",
       maxWidth: largura - 24,
     });
@@ -231,7 +230,11 @@ export async function exportarPdf(
       const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo|Hemograma:|Bioquímico:|Outros exames:)$/.test(linha);
       const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
-      if (tituloSecao) y += 8;
+      if (tituloSecao) {
+        // Cada subtítulo começa em uma nova página para nunca ficar separado do conteúdo.
+        doc.addPage();
+        y = margem;
+      }
 
       const recuo = naCurva || itemMedicacao ? 14 : 0;
       const negrito = tituloCurvaLinha || tituloSecao;
@@ -298,14 +301,16 @@ export async function exportarPdf(
 
   if (assinatura || carimbo) {
     const alturaSelo = 60;
-    if (assinatura) desenharSelo(assinatura, margem, 150, alturaSelo);
-    if (carimbo) desenharSelo(carimbo, margem + 145, 150, alturaSelo);
-    y += alturaSelo + 6;
+    const larguraAssinatura = 105;
+    const larguraCarimbo = 105;
+    if (assinatura) desenharSelo(assinatura, margem, larguraAssinatura, alturaSelo);
+    if (carimbo) desenharSelo(carimbo, margem + larguraAssinatura + 8, larguraCarimbo, alturaSelo);
+    y += alturaSelo + 4;
   }
 
   doc.setDrawColor(0);
   doc.setLineWidth(0.8);
-  doc.line(margem, y, margem + 165, y);
+  doc.line(margem, y, margem + 105, y);
   y += 14;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
