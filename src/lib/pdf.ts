@@ -1,4 +1,5 @@
 import type { Registro } from "./ficha";
+import type { Anamnese } from "./anamnese";
 import { LOGO_PDF_DATA_URL } from "./logo";
 import { lerSelo } from "./assinatura";
 
@@ -121,7 +122,7 @@ function desenharGrafico(doc: Doc, c: Curva, x: number, y: number, largura: numb
 
 export async function exportarPdf(
   registros: Registro[],
-  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; assinadoEm?: string; visualizar?: boolean },
+  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; anamneses?: Anamnese[]; assinadoEm?: string; visualizar?: boolean },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -184,6 +185,7 @@ export async function exportarPdf(
     emoji: false,
     obsPadrao: true,
     curvas: listaCurvas,
+    ...(opcoes?.anamneses ? { anamneses: opcoes.anamneses } : {}),
   });
   // Não dividir por linhas em branco: o conteúdo clínico pode conter espaçamentos internos.
   // Cada bloco é obtido pela ordem dos registros e pelo cabeçalho do próximo animal.
@@ -192,7 +194,7 @@ export async function exportarPdf(
   let blocoAtual: string[] = [];
   const cabecalhos = new Set(
     registros.map((registro) =>
-      formatarTodos([registro], { emoji: false, obsPadrao: true, curvas: [] }).split("\n")[0],
+      formatarTodos([registro], { emoji: false, obsPadrao: true, curvas: [], ...(opcoes?.anamneses ? { anamneses: opcoes.anamneses } : {}) }).split("\n")[0],
     ),
   );
   for (const linha of linhasTexto) {
