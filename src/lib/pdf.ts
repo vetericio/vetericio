@@ -209,7 +209,43 @@ export async function exportarPdf(
   const ALTURA_LINHA = 21;
   blocos.forEach((bloco, indice) => {
     const r = registros[indice];
-    const [cabecalho = "", ...resto] = bloco.split("\n");
+    const [cabecalho = "", ...restoBruto] = bloco.split("\n");
+
+    // Ordem clínica fixa do PDF. Seções vazias continuam omitidas.
+    const ORDEM_SECOES = [
+      "Parâmetros",
+      "Medicações",
+      "Exames laboratoriais",
+      "Exames",
+      "Queixa principal",
+      "Relato",
+      "Conduta",
+      "Atenção para o próximo plantão",
+      "Resumo",
+    ] as const;
+    const ehTituloSecao = (linha: string) =>
+      (ORDEM_SECOES as readonly string[]).includes(linha);
+    const secoes = new Map<string, string[]>();
+    let secaoAtual = "";
+    const extras: string[] = [];
+    for (const linha of restoBruto) {
+      if (ehTituloSecao(linha)) {
+        secaoAtual = linha;
+        if (!secoes.has(linha)) secoes.set(linha, []);
+      } else if (secaoAtual) {
+        secoes.get(secaoAtual)!.push(linha);
+      } else if (linha.trim()) {
+        extras.push(linha);
+      }
+    }
+    const resto = [
+      ...ORDEM_SECOES.flatMap((tituloSecao) => {
+        const conteudo = (secoes.get(tituloSecao) ?? []).filter((linha) => linha.trim());
+        return conteudo.length ? [tituloSecao, ...conteudo] : [];
+      }),
+      ...extras,
+    ];
+
     novaPaginaSeNecessario(ALTURA_LINHA * 2);
 
     // Cabeçalho do paciente: "Animal - (cão/gato)", centralizado verticalmente na faixa.
@@ -253,7 +289,7 @@ export async function exportarPdf(
       }
 
       // Bloco de medicações: título em negrito e itens recuados.
-      const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo|Hemograma:|Bioquímico:|Outros exames:)$/.test(linha);
+      const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo)$/.test(linha);
       const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
       if (tituloSecao) {
