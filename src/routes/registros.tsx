@@ -238,6 +238,14 @@ function Registros() {
     }
   };
 
+  const visualizarPdf = async () => {
+    try {
+      await exportarPdf(registros, { assinadoEm: agoraTexto(), visualizar: true });
+    } catch {
+      toast.error("Não foi possível visualizar o PDF.");
+    }
+  };
+
   const emAtencao = ordenados.filter((r) => alteracoesDoRegistro(r).length > 0);
 
   const onCopiar = (r: Registro) => copiarTexto(formatarRegistro(r));
@@ -288,6 +296,15 @@ function Registros() {
             className="rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
           >
             Exportar PDF
+          </button>
+        )}
+        {registros.length > 0 && (
+          <button
+            type="button"
+            onClick={visualizarPdf}
+            className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+          >
+            Visualizar PDF
           </button>
         )}
         {registros.length > 0 && (
