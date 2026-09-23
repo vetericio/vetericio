@@ -102,6 +102,19 @@ function Plantoes() {
     }
   };
 
+  const visualizarPdf = async (p: Plantao) => {
+    try {
+      await exportarPdf(p.registros, {
+        ...(p.curvas ? { curvas: p.curvas } : {}),
+        legenda: rotuloPlantaoPdfDe(p.data, p.turno),
+        arquivo: nomeArquivoPdf(p.data, p.turno),
+        visualizar: true,
+      });
+    } catch {
+      toast.error("Não foi possível visualizar o PDF.");
+    }
+  };
+
   const baixarTodos = async () => {
     if (plantoes.length === 0) {
       toast.info("Nenhum plantão salvo para baixar.");
@@ -272,10 +285,17 @@ function Plantoes() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => visualizarPdf(p)}
+                    className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
+                  >
+                    Visualizar PDF
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => pdf(p)}
                     className="rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                   >
-                    PDF
+                    Baixar PDF
                   </button>
                   <button
                     type="button"
