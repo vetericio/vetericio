@@ -1,9 +1,8 @@
-const CACHE_NAME = "vetericio-pwa-v8";
+const CACHE_NAME = "vetericio-pwa-v9";
 const APP_SHELL = [
-  "/manifest.webmanifest?v=8",
-  "/favicon.png",
-  "/icon-192.png",
-  "/icon-512.png",
+  "/manifest.webmanifest?v=9",
+  "/icon-192-v3.svg",
+  "/icon-512-v3.svg",
   "/vetericio-logo-oficial.png",
 ];
 self.addEventListener("install", (event) => {
