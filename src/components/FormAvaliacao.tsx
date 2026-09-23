@@ -46,6 +46,8 @@ type Props = {
   /** "Fazer curva?" ao lado da glicemia. */
   fazerCurva?: boolean;
   onFazerCurva?: (valor: boolean) => void;
+  /** IDs das anamneses que já foram adicionadas à internação. */
+  anamnesesJaAdicionadas?: string[];
 };
 
 // A lista de medicações só é redesenhada quando ela mesma (ou espécie/peso) muda.
@@ -88,6 +90,7 @@ export function FormAvaliacao({
   anterior,
   fazerCurva = false,
   onFazerCurva,
+  anamnesesJaAdicionadas = [],
 }: Props) {
   const iniciais = useRef(valores);
   // Callback estável para as medicações: evita redesenhar a lista a cada tecla.
@@ -245,31 +248,42 @@ export function FormAvaliacao({
         />
         {sugestoes.length > 0 && (
           <ul className="mt-1.5 overflow-hidden rounded-lg border border-border bg-card">
-            {sugestoes.map((a) => (
-              <li key={a.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange({
-                      ...valores,
-                      animal: a.animal.trim(),
-                      especie: a.especie || valores.especie || "",
-                      peso: a.peso || valores.peso || "",
-                      anamneseId: a.id,
-                    });
-                    setSugerindo(false);
-                  }}
-                  className="flex w-full items-baseline justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/60"
-                >
-                  <span className="font-semibold text-foreground">
-                    {emojiEspecie(a.especie)} {a.animal.trim()}
-                  </span>
-                  <span className="truncate text-[11px] text-muted-foreground">
-                    {a.queixa.trim() || "anamnese"}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {sugestoes.map((a) => {
+              const jaAdicionado = anamnesesJaAdicionadas.includes(a.id);
+              return (
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    disabled={jaAdicionado}
+                    onClick={() => {
+                      if (jaAdicionado) return;
+                      onChange({
+                        ...valores,
+                        animal: a.animal.trim(),
+                        especie: a.especie || valores.especie || "",
+                        peso: a.peso || valores.peso || "",
+                        anamneseId: a.id,
+                      });
+                      setSugerindo(false);
+                    }}
+                    className={[
+                      "flex w-full items-baseline justify-between gap-2 px-3 py-2 text-left text-sm",
+                      jaAdicionado
+                        ? "cursor-not-allowed bg-muted/60 text-muted-foreground opacity-60"
+                        : "hover:bg-secondary/60",
+                    ].join(" ")}
+                  >
+                    <span className={jaAdicionado ? "font-semibold text-muted-foreground" : "font-semibold text-foreground"}>
+                      {emojiEspecie(a.especie)} {a.animal.trim()}
+                      {jaAdicionado && <span className="ml-1 font-normal">(já adicionado)</span>}
+                    </span>
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {a.queixa.trim() || "anamnese"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
