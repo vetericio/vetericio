@@ -82,7 +82,10 @@ function Plantoes() {
 
   const copiar = async (p: Plantao) => {
     try {
-      await navigator.clipboard.writeText(formatarTodos(p.registros, p.curvas ? { curvas: p.curvas } : undefined));
+      await navigator.clipboard.writeText(formatarTodos(p.registros, {
+        ...(p.curvas ? { curvas: p.curvas } : {}),
+        ...(p.anamneses ? { anamneses: p.anamneses } : {}),
+      }));
       toast.success("Texto copiado.");
     } catch {
       toast.error("Não foi possível copiar.");
@@ -93,6 +96,7 @@ function Plantoes() {
     try {
       await exportarPdf(p.registros, {
         ...(p.curvas ? { curvas: p.curvas } : {}),
+        ...(p.anamneses ? { anamneses: p.anamneses } : {}),
         legenda: rotuloPlantaoPdfDe(p.data, p.turno),
         arquivo: nomeArquivoPdf(p.data, p.turno),
       });
@@ -106,6 +110,7 @@ function Plantoes() {
     try {
       await exportarPdf(p.registros, {
         ...(p.curvas ? { curvas: p.curvas } : {}),
+        ...(p.anamneses ? { anamneses: p.anamneses } : {}),
         legenda: rotuloPlantaoPdfDe(p.data, p.turno),
         arquivo: nomeArquivoPdf(p.data, p.turno),
         visualizar: true,
