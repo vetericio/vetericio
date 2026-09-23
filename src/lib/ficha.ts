@@ -499,6 +499,8 @@ export type Plantao = {
   registros: Registro[];
   /** Foto das curvas do plantão, para o PDF nunca perder as medições. */
   curvas?: Curva[];
+  /** Foto das anamneses do plantão, para histórico/PDF nunca perder dados clínicos. */
+  anamneses?: Anamnese[];
   criadoEm: string;
 };
 
