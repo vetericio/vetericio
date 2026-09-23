@@ -1,6 +1,5 @@
 import type { Registro } from "./ficha";
 import type { Anamnese } from "./anamnese";
-import { LOGO_PDF_DATA_URL } from "./logo";
 import { lerSelo } from "./assinatura";
 
 import type { Curva } from "./curva";
@@ -142,10 +141,25 @@ export async function exportarPdf(
   const logoAltura = 90;
   const centroX = doc.internal.pageSize.getWidth() / 2;
   try {
-    // A logo fica embutida no PDF para funcionar também no modo de visualização móvel.
-    doc.addImage(LOGO_PDF_DATA_URL, undefined, centroX - logoLargura / 2, y, logoLargura, logoAltura);
+    // Usa a mesma logo oficial da abertura. O caminho público local evita CORS no visualizador móvel.
+    const caminhoLogo = "/vetericio-logo-oficial.png";
+    const imagem = new Image();
+    imagem.src = caminhoLogo;
+    await imagem.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = imagem.naturalWidth;
+    canvas.height = imagem.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas indisponível");
+    ctx.drawImage(imagem, 0, 0);
+    const logoDataUrl = canvas.toDataURL("image/png");
+    const propsLogo = doc.getImageProperties(logoDataUrl);
+    const escalaLogo = Math.min(logoLargura / propsLogo.width, logoAltura / propsLogo.height);
+    const larguraFinalLogo = propsLogo.width * escalaLogo;
+    const alturaFinalLogo = propsLogo.height * escalaLogo;
+    doc.addImage(logoDataUrl, "PNG", centroX - larguraFinalLogo / 2, y + (logoAltura - alturaFinalLogo) / 2, larguraFinalLogo, alturaFinalLogo);
   } catch (erro) {
-    console.error("Falha ao inserir logo no PDF", erro);
+    console.error("Falha ao inserir logo oficial no PDF", erro);
   }
   y += logoAltura + 18;
 
