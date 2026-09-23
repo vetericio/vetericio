@@ -7,20 +7,67 @@ export type ReferenciasExames = Record<"Cachorro" | "Gato", Record<string, strin
 export const CHAVE_REFERENCIAS_EXAMES = "veterico-referencias-exames-v2";
 export const GRUPOS_EXAMES: GrupoExames[] = ["hemograma", "bioquimico", "outrosExames"];
 
-// A imagem é uma referência de layout, não uma fonte de intervalos clínicos.
-// Os intervalos são cadastrados pelo profissional, com a unidade do laboratório.
+// Parâmetros do hemograma/bioquímico transcritos do laudo canino enviado em 22/09/2026.
+// As referências continuam editáveis no app. Para Gato, permanecem em branco.
 const PADRAO: ExamesAnamnese = {
   hemograma: [
+    { id: "eritrocitos", nome: "Eritrócitos", unidade: "milhões/µL", valor: "", referencia: "" },
+    { id: "hemoglobina", nome: "Hemoglobina", unidade: "g/dL", valor: "", referencia: "" },
     { id: "hematocrito", nome: "Hematócrito (VG)", unidade: "%", valor: "", referencia: "" },
+    { id: "vcm", nome: "V.C.M.", unidade: "fL", valor: "", referencia: "" },
+    { id: "hcm", nome: "H.C.M.", unidade: "pg", valor: "", referencia: "" },
+    { id: "chcm", nome: "C.H.C.M.", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "rdw-cv", nome: "RDW-CV", unidade: "%", valor: "", referencia: "" },
+    { id: "leucocitos", nome: "Leucócitos totais", unidade: "/µL", valor: "", referencia: "" },
+    { id: "leucocitos-corrigido", nome: "Leucócitos corrigido", unidade: "/µL", valor: "", referencia: "" },
+    { id: "metamielocito", nome: "Metamielócito", unidade: "%", valor: "", referencia: "" },
+    { id: "bastonete", nome: "Bastonete", unidade: "%", valor: "", referencia: "" },
+    { id: "segmentado", nome: "Segmentado", unidade: "%", valor: "", referencia: "" },
+    { id: "eosinofilo", nome: "Eosinófilo", unidade: "%", valor: "", referencia: "" },
+    { id: "linfocito", nome: "Linfócito", unidade: "%", valor: "", referencia: "" },
+    { id: "monocito", nome: "Monócito", unidade: "%", valor: "", referencia: "" },
+    { id: "basofilo", nome: "Basófilo", unidade: "%", valor: "", referencia: "" },
     { id: "plaquetas", nome: "Plaquetas", unidade: "mil/µL", valor: "", referencia: "" },
-    { id: "leucocitos", nome: "Leucócitos", unidade: "mil/µL", valor: "", referencia: "" },
   ],
   bioquimico: [
-    { id: "creatinina", nome: "Creatinina", unidade: "mg/dL", valor: "", referencia: "" },
     { id: "ureia", nome: "Uréia", unidade: "mg/dL", valor: "", referencia: "" },
+    { id: "creatinina", nome: "Creatinina", unidade: "mg/dL", valor: "", referencia: "" },
     { id: "tgp", nome: "TGP", unidade: "U/L", valor: "", referencia: "" },
+    { id: "fosforo", nome: "Fósforo", unidade: "mg/dL", valor: "", referencia: "" },
+    { id: "proteina-total", nome: "Proteína total", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "albumina", nome: "Albumina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "globulina", nome: "Globulina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "relacao-ag", nome: "Relação albumina/globulina", unidade: "", valor: "", referencia: "" },
   ],
   outrosExames: [],
+};
+
+const REFERENCIAS_CACHORRO_PADRAO: Record<string, string> = {
+  "eritrocitos|milhoes/µl": "5,50 – 8,50",
+  "hemoglobina|g/dl": "12,00 – 18,00",
+  "hematocrito|%": "37,00 – 55,00",
+  "v.c.m.|fl": "60,00 – 77,00",
+  "h.c.m.|pg": "19,50 – 24,50",
+  "c.h.c.m.|g/dl": "30,00 – 36,00",
+  "rdw-cv|%": "12,00 – 15,00",
+  "leucocitos totais|/µl": "6000 – 17000",
+  "leucocitos corrigido|/µl": "6000 – 17000",
+  "metamielocito|%": "0 – 1",
+  "bastonete|%": "0 – 2",
+  "segmentado|%": "50 – 68",
+  "eosinofilo|%": "2 – 7",
+  "linfocito|%": "17 – 28",
+  "monocito|%": "3 – 8",
+  "basofilo|%": "0",
+  "plaquetas|mil/µl": "150 – 500",
+  "ureia|mg/dl": "20 – 55",
+  "creatinina|mg/dl": "0,5 – 1,5",
+  "tgp|u/l": "21 – 102",
+  "fosforo|mg/dl": "2,9 – 5,3",
+  "proteina total|g/dl": "5,4 – 7,5",
+  "albumina|g/dl": "2,3 – 3,1",
+  "globulina|g/dl": "2,3 – 5,2",
+  "relacao albumina/globulina|": "0,6 – 1,1",
 };
 
 function normalizar(texto: string) {
@@ -37,7 +84,7 @@ function chaveExame(exame: Pick<ExameAnamnese, "nome" | "unidade">) {
 }
 
 export function referenciasVazias(): ReferenciasExames {
-  return { Cachorro: {}, Gato: {} };
+  return { Cachorro: { ...REFERENCIAS_CACHORRO_PADRAO }, Gato: {} };
 }
 
 export function criarExamesPadrao(): ExamesAnamnese {
@@ -74,7 +121,10 @@ export function carregarReferenciasExames(): ReferenciasExames {
     const bruto: unknown = JSON.parse(window.localStorage.getItem(CHAVE_REFERENCIAS_EXAMES) ?? "{}");
     if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return referenciasVazias();
     const objeto = bruto as Record<string, unknown>;
-    return { Cachorro: mapaValido(objeto["Cachorro"]), Gato: mapaValido(objeto["Gato"]) };
+    return {
+      Cachorro: { ...REFERENCIAS_CACHORRO_PADRAO, ...mapaValido(objeto["Cachorro"]) },
+      Gato: mapaValido(objeto["Gato"]),
+    };
   } catch {
     return referenciasVazias();
   }
