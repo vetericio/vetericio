@@ -126,7 +126,7 @@ export async function exportarPdf(
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-  const margem = 48;
+  const margem = 32;
   const largura = doc.internal.pageSize.getWidth() - margem * 2;
   const alturaPagina = doc.internal.pageSize.getHeight();
   let y = margem;
@@ -207,6 +207,17 @@ export async function exportarPdf(
 
   doc.setFontSize(11);
   const ALTURA_LINHA = 21;
+  const ICONE_SECAO: Record<string, string> = {
+    "Parâmetros": "P",
+    "Medicações": "Rx",
+    "Exames laboratoriais": "Lab",
+    "Exames": "Ex",
+    "Queixa principal": "!",
+    "Relato": "R",
+    "Conduta": "C",
+    "Atenção para o próximo plantão": "!",
+    "Resumo": "✓",
+  };
   blocos.forEach((bloco, indice) => {
     const r = registros[indice];
     const [cabecalho = "", ...restoBruto] = bloco.split("\n");
@@ -265,10 +276,21 @@ export async function exportarPdf(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.setTextColor(0);
-    doc.text(tituloPaciente, margem + 12, y, {
+    // Nome grande + selo de espécie no lado direito.
+    doc.text(nomeAnimalPdf, margem + 12, y, {
       baseline: "middle",
-      maxWidth: largura - 24,
+      maxWidth: largura - 95,
     });
+    if (especiePdf) {
+      const selo = especiePdf.toUpperCase();
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margem + largura - 72, y - 10, 60, 20, 10, 10, "F");
+      doc.setFontSize(8);
+      doc.setTextColor(70);
+      doc.text(selo, margem + largura - 42, y + 1, { align: "center", baseline: "middle" });
+      doc.setFontSize(15);
+      doc.setTextColor(0);
+    }
     y += alturaFaixa / 2 + 12;
 
     doc.setFontSize(11);
@@ -325,16 +347,20 @@ export async function exportarPdf(
       const fora = r ? linhaEstaForaDaFaixa(r, linha) : false;
 
       if (tituloSecao) {
-        // Barra curta e suave: cria uma âncora visual sem encher a página.
-        doc.setFillColor(242, 244, 246);
-        doc.roundedRect(margem, y - 13, largura, 22, 4, 4, "F");
-        doc.setFillColor(105, 115, 125);
-        doc.roundedRect(margem, y - 13, 4, 22, 2, 2, "F");
+        // Cabeçalho visual da seção: bloco amplo + ícone textual simples.
+        const icone = ICONE_SECAO[linha] ?? "•";
+        doc.setFillColor(239, 242, 244);
+        doc.roundedRect(margem, y - 15, largura, 28, 6, 6, "F");
+        doc.setFillColor(82, 94, 105);
+        doc.roundedRect(margem + 5, y - 11, 30, 20, 5, 5, "F");
         doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(255);
+        doc.text(icone, margem + 20, y + 1, { align: "center", baseline: "middle" });
         doc.setFontSize(10);
-        doc.setTextColor(35);
-        doc.text(linha, margem + 12, y + 1, { baseline: "alphabetic", maxWidth: largura - 20 });
-        y += 27;
+        doc.setTextColor(30);
+        doc.text(linha, margem + 43, y + 2, { baseline: "alphabetic", maxWidth: largura - 52 });
+        y += 34;
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(0);
@@ -351,6 +377,14 @@ export async function exportarPdf(
       }
       doc.setFontSize(10);
       const linhaPdf = linha;
+      // Linhas clínicas ganham aparência de tabela leve para leitura horizontal.
+      if (/^- /.test(linhaPdf)) {
+        const indiceVisual = linhaIndice % 2;
+        if (indiceVisual === 0) {
+          doc.setFillColor(249, 250, 251);
+          doc.roundedRect(margem + 8, y - 12, largura - 16, 17, 3, 3, "F");
+        }
+      }
       if (itemAnamnese) y += 6;
       const partes = doc.splitTextToSize(linhaPdf, largura - recuo) as string[];
       for (const l of partes) {
