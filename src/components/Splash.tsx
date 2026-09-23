@@ -26,7 +26,7 @@ export function Splash() {
       <img
         src={logoOficial.url}
         alt="Veterício Serviços Veterinários LTDA"
-        className="h-auto w-full max-w-xs object-contain sm:max-w-sm"
+        className="h-auto w-full max-w-xs rounded-2xl bg-white object-contain p-3 sm:max-w-sm"
       />
     </div>
   );
