@@ -284,10 +284,12 @@ export async function exportarPdf(
     }
   };
   blocos.forEach((bloco, indice) => {
-    // Regra obrigatória: CADA animal começa no topo de uma página própria.
-    // Inclusive o primeiro: a capa/cabeçalho geral nunca divide página com paciente.
-    doc.addPage();
-    y = margem;
+    // O primeiro animal fica na mesma página do cabeçalho geral.
+    // A partir do segundo, cada animal começa obrigatoriamente em uma nova página.
+    if (indice > 0) {
+      doc.addPage();
+      y = margem;
+    }
     const r = registros[indice];
     const [cabecalho = "", ...restoBruto] = bloco.split("\n");
 
