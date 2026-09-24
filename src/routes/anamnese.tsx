@@ -29,8 +29,10 @@ import {
 
 function formatarPesoKgDigitado(valor: string): string {
   const digitos = valor.replace(/\D/g, "").slice(-5);
+  if (!digitos) return "0,000";
   const preenchido = digitos.padStart(4, "0");
-  return `${preenchido.slice(0, -3)},${preenchido.slice(-3)}`;
+  const inteiros = preenchido.slice(0, -3).replace(/^0+(?=\d)/, "") || "0";
+  return `${inteiros},${preenchido.slice(-3)}`;
 }
 
 import { ESPECIES, type Especie } from "@/lib/ficha";
