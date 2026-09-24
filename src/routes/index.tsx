@@ -103,19 +103,21 @@ function Index() {
   const navigate = useNavigate();
 
   // "Tem certeza?" só quando existe conteúdo digitado e ainda não salvo.
-  const baseForm: Omit<Registro, "id"> = editandoId
-    ? (() => {
-        const alvo = registros.find((r) => r.id === editandoId);
-        if (!alvo) return REGISTRO_VAZIO;
-        const { id: _i, ...resto } = alvo;
-        return resto;
-      })()
-    : anterior
-      ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" }
-      : REGISTRO_VAZIO;
-  const sujo = useMemo(
-    () => !salvando && JSON.stringify(form) !== JSON.stringify(baseForm),
-    [salvando, form, baseForm],
+  const baseForm = useMemo<Omit<Registro, "id">>(() => {
+    if (editandoId) {
+      const alvo = registros.find((r) => r.id === editandoId);
+      if (!alvo) return REGISTRO_VAZIO;
+      const { id: _i, ...resto } = alvo;
+      return resto;
+    }
+    if (anterior) return { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" };
+    return REGISTRO_VAZIO;
+  }, [editandoId, anterior, registros]);
+  const baseFormSerializado = useMemo(() => JSON.stringify(baseForm), [baseForm]);
+  const sujo = useMemo(() => !salvando && JSON.stringify(form) !== baseFormSerializado, [salvando, form, baseFormSerializado]);
+  const anamnesesJaAdicionadas = useMemo(
+    () => registros.map((r) => r.anamneseId).filter((id): id is string => Boolean(id)),
+    [registros],
   );
 
   // Abre em modo edição ou atualização quando vem da página de registros.
@@ -280,7 +282,7 @@ function Index() {
           fazerCurva={fazerCurva}
           onFazerCurva={setFazerCurva}
           onCancelar={limpar}
-          anamnesesJaAdicionadas={registros.map((r) => r.anamneseId).filter((id): id is string => Boolean(id))}
+          anamnesesJaAdicionadas={anamnesesJaAdicionadas}
         />
       </div>
 
