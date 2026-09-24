@@ -37,8 +37,14 @@ export function ListaRegistros({
         <article
           key={r.id}
           id={`animal-${r.id}`}
-          className="scroll-mt-28 rounded-2xl border border-border bg-card p-4 shadow-sm"
+          className={`scroll-mt-28 rounded-2xl border bg-card p-4 shadow-sm ${r.anamneseId ? "border-primary/70 ring-1 ring-primary/30" : "border-border"}`}
         >
+          {r.anamneseId && (
+            <div className="mb-3 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs font-bold text-primary">
+              <span aria-hidden="true">✓</span>
+              <span>ANAMNESE VINCULADA · PASSOU PELO INÍCIO</span>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2">
             <button
