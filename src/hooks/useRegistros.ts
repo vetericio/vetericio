@@ -5,6 +5,7 @@ import { carregarRegistros, salvarRegistros, type Registro } from "@/lib/ficha";
 // a mesma lista e re-renderizam juntas.
 let estado: Registro[] = [];
 let iniciado = false;
+let salvarPendente: ReturnType<typeof setTimeout> | null = null;
 const ouvintes = new Set<() => void>();
 
 function notificar() {
@@ -21,8 +22,13 @@ const getServerSnapshot = () => estado;
 
 function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   estado = typeof valor === "function" ? (valor as (a: Registro[]) => Registro[])(estado) : valor;
-  salvarRegistros(estado);
   notificar();
+  // Persistência fora do caminho crítico do clique/digitação.
+  if (salvarPendente) clearTimeout(salvarPendente);
+  salvarPendente = setTimeout(() => {
+    salvarRegistros(estado);
+    salvarPendente = null;
+  }, 0);
 }
 
 export function useRegistros() {
