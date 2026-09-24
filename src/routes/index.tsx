@@ -281,6 +281,13 @@ function Index() {
       >
         {ferramentas ? "Esconder calculadora e ferramentas" : "Mostrar calculadora e ferramentas"}
       </button>
+      <div className="mt-3">
+        <input ref={fotoFichaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const arquivo=e.target.files?.[0]; if(arquivo) void importarFichaFoto(arquivo); }} />
+        <button type="button" disabled={lendoFicha} onClick={() => fotoFichaRef.current?.click()} className="min-h-11 w-full rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary disabled:opacity-60">
+          {lendoFicha ? "Lendo ficha..." : "📷 Ler ficha por foto"}
+        </button>
+      </div>
+
       {ferramentas && (
         <section className="mt-3 grid grid-cols-2 items-stretch gap-2 sm:gap-3">
           <div className="min-w-0">
@@ -289,14 +296,6 @@ function Index() {
           <FerramentasClinicas />
         </section>
       )}
-
-      <div className="mt-3">
-        <input ref={fotoFichaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const arquivo=e.target.files?.[0]; if(arquivo) void importarFichaFoto(arquivo); }} />
-        <button type="button" disabled={lendoFicha} onClick={() => fotoFichaRef.current?.click()} className="min-h-11 w-full rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary disabled:opacity-60">
-          {lendoFicha ? "Lendo ficha..." : "Ler ficha por foto"}
-        </button>
-        <p className="mt-1 text-center text-xs text-muted-foreground">Importa medicações e somente a avaliação mais recente. Confira antes de salvar.</p>
-      </div>
 
       <div className="mt-5">
         <FormAvaliacao
