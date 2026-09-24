@@ -282,7 +282,7 @@ function Index() {
         {ferramentas ? "Esconder calculadora e ferramentas" : "Mostrar calculadora e ferramentas"}
       </button>
       <div className="mt-3">
-        <input ref={fotoFichaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const arquivo=e.target.files?.[0]; if(arquivo) void importarFichaFoto(arquivo); }} />
+        <input ref={fotoFichaRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const arquivo=e.target.files?.[0]; if(arquivo) void importarFichaFoto(arquivo); }} />
         <button type="button" disabled={lendoFicha} onClick={() => fotoFichaRef.current?.click()} className="min-h-11 w-full rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary disabled:opacity-60">
           {lendoFicha ? "Lendo ficha..." : "📷 Ler ficha por foto"}
         </button>
