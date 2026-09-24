@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useAnamneses } from "@/hooks/useAnamneses";
+import { useRegistros } from "@/hooks/useRegistros";
 import { espelharAnamneses } from "@/hooks/usePendencias";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { ExigePlantao } from "@/components/ExigePlantao";
@@ -102,6 +103,7 @@ function AnamnesePagina() {
 
 function AnamneseConteudo() {
   const { anamneses, setAnamneses, carregado } = useAnamneses();
+  const { registros } = useRegistros();
   const [form, setForm] = useState<Omit<Anamnese, "id" | "atualizadoEm">>(ANAMNESE_VAZIA);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [visualizando, setVisualizando] = useState<Anamnese | null>(null);
@@ -453,8 +455,18 @@ function AnamneseConteudo() {
           <ul className="mt-3 space-y-2">
             {visiveis.map((a) => {
               const abertas = a.pendencias.filter((p) => !p.feito).length;
+              const passouPeloInicio = registros.some((r) => r.anamneseId === a.id);
               return (
-                <li key={a.id} className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+                <li
+                  key={a.id}
+                  className={`rounded-2xl border bg-card p-3 shadow-sm ${passouPeloInicio ? "border-primary/70 ring-1 ring-primary/30" : "border-border"}`}
+                >
+                  {passouPeloInicio && (
+                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide text-primary">
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      Já passou pelo Início
+                    </div>
+                  )}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">
