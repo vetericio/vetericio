@@ -425,7 +425,10 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
     ? `Óbito: ${r.obito.hora.trim()}${r.obito.motivo.trim() ? ` - ${r.obito.motivo.trim()}` : ""}`
     : "";
   const resumo = resumoRegistro(r);
-  const resumoFinal = [resumo, r.observacoes.trim(), obito].filter(Boolean).join(" ");
+  // O Resumo deve ser clínico e limpo: não inclui o histórico textual de
+  // atualizações/horários armazenado em observações. Observações continuam
+  // preservadas no registro e nas demais áreas da ficha.
+  const resumoFinal = [resumo, obito].filter(Boolean).join(" ");
 
   const secao = (tituloSecao: string, itens: string[]) =>
     itens.length ? [tituloSecao, ...itens] : [];
