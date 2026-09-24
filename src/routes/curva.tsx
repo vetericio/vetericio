@@ -192,6 +192,26 @@ function CurvaConteudo() {
     });
   };
 
+  const editarHoraMedicao = (c: Curva, idMedicao: string, hora: string) => {
+    if (!/^\d{2}:\d{2}$/.test(hora)) return;
+    setCurvas((lista) =>
+      lista.map((x) => {
+        if (x.id !== c.id) return x;
+        return {
+          ...x,
+          medicoes: x.medicoes.map((m) => {
+            if (m.id !== idMedicao) return m;
+            const d = new Date(m.em);
+            if (Number.isNaN(d.getTime())) return m;
+            const [h, min] = hora.split(":").map(Number);
+            d.setHours(h, min, 0, 0);
+            return { ...m, em: d.toISOString() };
+          }),
+        };
+      }),
+    );
+  };
+
   const excluirMedicao = (c: Curva, idMedicao: string) => {
     setCurvas((lista) =>
       lista.map((x) =>
@@ -388,7 +408,13 @@ function CurvaConteudo() {
                   <ul className="mt-3 divide-y divide-border/70 text-sm">
                     {c.medicoes.map((m) => (
                       <li key={m.id} className="flex items-center justify-between gap-3 py-1.5">
-                        <span className="font-mono text-muted-foreground">{horaDaMedicao(m)}</span>
+                        <input
+                          type="time"
+                          aria-label="Hora da medição"
+                          value={horaDaMedicao(m).replace("h", ":")}
+                          onChange={(e) => editarHoraMedicao(c, m.id, e.target.value)}
+                          className="w-[5.8rem] rounded-md border border-input bg-background px-2 py-1 font-mono text-sm text-muted-foreground outline-none focus:border-ring"
+                        />
                         <span className="flex flex-1 flex-wrap gap-3">
                           {c.parametros.map((p) => {
                             const valor = (p === "glicemia" ? m.glicemia : m.pas).trim();
