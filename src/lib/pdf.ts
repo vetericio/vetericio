@@ -284,9 +284,11 @@ export async function exportarPdf(
     }
   };
   blocos.forEach((bloco, indice) => {
-    // O primeiro animal fica na mesma página do cabeçalho geral.
-    // A partir do segundo, cada animal começa obrigatoriamente em uma nova página.
-    if (indice > 0) {
+    // Paginação por meia folha:
+    // - primeiro animal permanece com o cabeçalho;
+    // - se o animal anterior terminou até a metade da página, o próximo pode usar a mesma página;
+    // - se passou da metade, o próximo começa obrigatoriamente em uma página nova.
+    if (indice > 0 && y > alturaPagina / 2) {
       doc.addPage();
       y = margem;
     }
