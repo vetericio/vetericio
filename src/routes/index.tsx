@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { lerFichaInternacaoComIA } from "@/lib/ficha-foto.functions";
 import { toast } from "sonner";
 import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
 import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
@@ -94,6 +96,9 @@ function Index() {
   const [duplicado, setDuplicado] = useState<Registro | null>(null);
   const [fazerCurva, setFazerCurva] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [lendoFicha, setLendoFicha] = useState(false);
+  const fotoFichaRef = useRef<HTMLInputElement>(null);
+  const lerFichaFoto = useServerFn(lerFichaInternacaoComIA);
   const { conforto, atualizar } = useConforto();
   const ferramentas = conforto.ferramentasAbertas;
   const setFerramentas = (fn: (v: boolean) => boolean) =>
@@ -144,6 +149,22 @@ function Index() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carregado]);
+
+  const importarFichaFoto = async (arquivo: File) => {
+    setLendoFicha(true);
+    try {
+      const imagem = await new Promise<string>((resolve, reject) => {
+        const leitor = new FileReader();
+        leitor.onload = () => resolve(String(leitor.result));
+        leitor.onerror = () => reject(new Error("Falha ao ler imagem"));
+        leitor.readAsDataURL(arquivo);
+      });
+      const resultado = await lerFichaFoto({ data: { imagem } });
+      setForm((atual) => ({ ...atual, ...resultado.avaliacao, medicacoes: resultado.medicacoes.length ? resultado.medicacoes : atual.medicacoes }));
+      toast.success("Ficha lida. Confira os dados antes de salvar.");
+    } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível ler a ficha."); }
+    finally { setLendoFicha(false); if (fotoFichaRef.current) fotoFichaRef.current.value = ""; }
+  };
 
   const limpar = () => {
     setEditandoId(null);
@@ -268,6 +289,14 @@ function Index() {
           <FerramentasClinicas />
         </section>
       )}
+
+      <div className="mt-3">
+        <input ref={fotoFichaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const arquivo=e.target.files?.[0]; if(arquivo) void importarFichaFoto(arquivo); }} />
+        <button type="button" disabled={lendoFicha} onClick={() => fotoFichaRef.current?.click()} className="min-h-11 w-full rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary disabled:opacity-60">
+          {lendoFicha ? "Lendo ficha..." : "Ler ficha por foto"}
+        </button>
+        <p className="mt-1 text-center text-xs text-muted-foreground">Importa medicações e somente a avaliação mais recente. Confira antes de salvar.</p>
+      </div>
 
       <div className="mt-5">
         <FormAvaliacao
