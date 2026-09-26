@@ -97,7 +97,7 @@ export function blocoExamesLaboratoriais(r: Pick<Registro, "examesLaboratoriais"
   const secao = (titulo: string, itens = [] as ExameLaboratorial[]) => {
     const validos = itens.filter((x) => x.nome.trim() && x.valor.trim());
     if (!validos.length) return [];
-    return [titulo, ...validos.map((x) => `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
+    return [titulo, ...validos.map((x) => `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}`)];
   };
   const linhas = [
     ...secao("Hemograma:", labs.hemograma),
@@ -120,7 +120,7 @@ export function blocoAnamnese(
   const labs = (titulo: string, lista = [] as { nome: string; unidade?: string; valor: string; referencia: string }[]) => {
     const preenchidos = lista.filter((x) => x.nome?.trim() && x.valor?.trim());
     if (!preenchidos.length) return [];
-    return [`  ${titulo}:`, ...preenchidos.map((x) => `    ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
+    return [`  ${titulo}:`, ...preenchidos.map((x) => `    ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}`)];
   };
   const laboratoriais = [
     ...labs("Hemograma", a.hemograma),
@@ -404,13 +404,13 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
   const labsAnamnese = anamnese
     ? [
         ...((anamnese.hemograma ?? []).filter((x) => x.nome?.trim() && x.valor?.trim()).map((x) =>
-          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`
+          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}`
         )),
         ...((anamnese.bioquimico ?? []).filter((x) => x.nome?.trim() && x.valor?.trim()).map((x) =>
-          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`
+          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}`
         )),
         ...((anamnese.outrosExames ?? []).filter((x) => x.nome?.trim() && x.valor?.trim()).map((x) =>
-          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`
+          `- ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}`
         )),
       ]
     : [];
