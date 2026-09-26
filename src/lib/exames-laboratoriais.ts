@@ -82,6 +82,33 @@ const REFERENCIAS_CACHORRO_PADRAO: Record<string, string> = {
   "relacao a/g (albumina/globulina)|": "0,6 – 1,1",
 };
 
+const REFERENCIAS_GATO_PADRAO: Record<string, string> = {
+  // Hemograma felino — laudo enviado em 26/09/2026.
+  "eritrocitos|milhoes/µl": "5 – 10",
+  "hemoglobina|g/dl": "8 – 15",
+  "hematocrito|%": "24 – 45",
+  "vcm (volume corpuscular medio)|fl": "39 – 55",
+  "hcm (hemoglobina corpuscular media)|pg": "12,5 – 17,5",
+  "chcm (concentracao de hemoglobina corpuscular media)|g/dl": "30 – 36",
+  "rdw (variacao do tamanho das hemacias)|%": "14 – 19",
+  "leucocitos totais|/µl": "5500 – 19500",
+  "leucocitos corrigido|/µl": "5500 – 19500",
+  "mielocito|/µl": "0",
+  "metamielocito|/µl": "0",
+  "bastonete|/µl": "0 – 300",
+  "segmentado|/µl": "2500 – 12500",
+  "eosinofilo|/µl": "0 – 1500",
+  "linfocito|/µl": "1500 – 7000",
+  "monocito|/µl": "0 – 850",
+  "basofilo|/µl": "0",
+  "plaquetas|/µl": "230000 – 680000",
+
+  // Bioquímico felino — laudo DiagVet enviado em 26/09/2026.
+  "ureia|mg/dl": "40 – 60",
+  "creatinina|mg/dl": "0,8 – 1,8",
+  "tgp/alt (alanina aminotransferase)|u/l": "6 – 83",
+};
+
 function normalizar(texto: string) {
   return texto.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -96,7 +123,7 @@ function chaveExame(exame: Pick<ExameAnamnese, "nome" | "unidade">) {
 }
 
 export function referenciasVazias(): ReferenciasExames {
-  return { Cachorro: { ...REFERENCIAS_CACHORRO_PADRAO }, Gato: {} };
+  return { Cachorro: { ...REFERENCIAS_CACHORRO_PADRAO }, Gato: { ...REFERENCIAS_GATO_PADRAO } };
 }
 
 export function criarExamesPadrao(): ExamesAnamnese {
@@ -135,7 +162,7 @@ export function carregarReferenciasExames(): ReferenciasExames {
     const objeto = bruto as Record<string, unknown>;
     return {
       Cachorro: { ...REFERENCIAS_CACHORRO_PADRAO, ...mapaValido(objeto["Cachorro"]) },
-      Gato: mapaValido(objeto["Gato"]),
+      Gato: { ...REFERENCIAS_GATO_PADRAO, ...mapaValido(objeto["Gato"]) },
     };
   } catch {
     return referenciasVazias();
