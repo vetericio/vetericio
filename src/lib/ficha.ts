@@ -132,7 +132,9 @@ export function blocoAnamnese(
     a.queixa.trim() && `Queixa principal: ${a.queixa.trim()}`,
     a.conduta.trim() && `Conduta: ${a.conduta.trim()}`,
     a.atencao.trim() && `Atenção: ${a.atencao.trim()}`,
-    // Observações digitadas no Início pertencem ao bloco de Parâmetros no PDF/ficha.\n    ...(r.observacoes.trim() ? [`Observações: ${r.observacoes.trim()}`] : []),\n  ].filter(Boolean) as string[];
+    // Observações digitadas no Início pertencem ao bloco de Parâmetros no PDF/ficha.
+    ...(r.observacoes.trim() ? [`Observações: ${r.observacoes.trim()}`] : []),
+  ].filter(Boolean) as string[];
   if (!a.relato.trim() && !exameLivre && laboratoriais.length === 0 && outras.length === 0) return [];
   return [
     "Observação:",
