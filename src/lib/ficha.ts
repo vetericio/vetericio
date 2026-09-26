@@ -109,7 +109,7 @@ export function blocoExamesLaboratoriais(r: Pick<Registro, "examesLaboratoriais"
 
 /** Bloco de texto da anamnese vinculada, vazio quando não houver. */
 export function blocoAnamnese(
-  r: Pick<Registro, "anamneseId">,
+  r: Pick<Registro, "anamneseId" | "observacoes">,
   anamneses?: Anamnese[],
 ): string[] {
   if (!r.anamneseId) return [];
