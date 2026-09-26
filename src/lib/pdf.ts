@@ -254,9 +254,12 @@ export async function exportarPdf(
       doc.saveGraphicsState();
       doc.setLineWidth(1.4);
       doc.line(x + 7, cy - 10, x + 21, cy - 10);
-      doc.line(x + 10, cy - 10, x + 10, cy + 4);
-      doc.line(x + 18, cy - 10, x + 18, cy + 4);
-      doc.curve(x + 10, cy + 4, x + 10, cy + 11, x + 18, cy + 11, x + 18, cy + 4);
+      doc.line(x + 10, cy - 10, x + 10, cy + 5);
+      doc.line(x + 18, cy - 10, x + 18, cy + 5);
+      // fundo do tubo sem usar APIs não suportadas do jsPDF
+      doc.line(x + 10, cy + 5, x + 12, cy + 8);
+      doc.line(x + 12, cy + 8, x + 16, cy + 8);
+      doc.line(x + 16, cy + 8, x + 18, cy + 5);
       doc.line(x + 11, cy + 2, x + 17, cy + 2);
       doc.restoreGraphicsState();
     } else if (titulo === "Queixa principal") {
