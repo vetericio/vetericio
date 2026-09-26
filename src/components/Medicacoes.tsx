@@ -7,6 +7,7 @@ import { normalizarNomeMedicamento } from "@/lib/nomes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import {
   calcularDose,
+  calcularDosePeloVolume,
   calcularEntrada,
   interpretarUnidadeDose,
   numero,
@@ -538,6 +539,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
   const normalizarDuracao = (valor: string): string => {
     const v = valor.trim().toLowerCase();
+    // Frequência pode vir da foto como 8/8h, 12/12h, 24/24h, "a cada 12h" etc.
+    const freq = v.match(/(?:a\\s*cada\\s*)?(8|12|24)\\s*(?:\\/\\s*\\1)?\\s*h(?:oras?)?/i);
+    if (freq?.[1]) return `${freq[1]}h`;
     const mapa: Record<string, string> = {
       "8h": "8h", "8": "8h", "oito horas": "8h", "8 horas": "8h",
       "12h": "12h", "12": "12h", "doze horas": "12h", "12 horas": "12h",
@@ -546,6 +550,52 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       "7d": "7 dias", "7 dias": "7 dias", "7": "7 dias", "sete dias": "7 dias",
     };
     return mapa[v] ?? v;
+  };
+
+  /** Converte a leitura da foto para o modelo real do Veterício.
+   * mL é quantidade administrada, nunca dose mg/kg. Quando há peso + concentração
+   * cadastrada, calcula a dose inversa. Frequência da foto tem prioridade; se não
+   * existir, usa o intervalo já cadastrado para o medicamento.
+   */
+  const enriquecerLeituraFoto = (m: Medicacao): Medicacao => {
+    const nome = normalizarNomeMedicamento(m.nome);
+    const chaveNome = nome.toLocaleLowerCase("pt-BR");
+    const ref = sugestoes.find((s) => s.nome.toLocaleLowerCase("pt-BR") === chaveNome)
+      ?? sugestoes.find((s) => chaveNome.includes(s.nome.toLocaleLowerCase("pt-BR")) || s.nome.toLocaleLowerCase("pt-BR").includes(chaveNome));
+
+    const brutoDose = (m.dose ?? "").trim();
+    const brutoDuracao = (m.duracao ?? "").trim();
+    const freqNoTexto = [brutoDuracao, brutoDose]
+      .map(normalizarDuracao)
+      .find((x) => (DURACOES_PADRAO as readonly string[]).includes(x));
+    const duracaoFinal = freqNoTexto || (ref?.intervalo ? normalizarDuracao(ref.intervalo) : brutoDuracao);
+
+    const volumeMatch = brutoDose.match(/(\\d+(?:[.,]\\d+)?)\\s*m[lL]\\b/i);
+    if (!volumeMatch?.[1]) {
+      return { ...m, nome, duracao: duracaoFinal };
+    }
+
+    const volume = volumeMatch[1];
+    let doseFinal = "";
+    if (ref?.concValor && ref.unidadeDose) {
+      const inverso = calcularDosePeloVolume({
+        peso,
+        volume,
+        concentracaoValor: ref.concValor,
+        concentracaoUnidade: ref.concUnidade,
+        unidadeDose: ref.unidadeDose,
+        unidadeQuantidade: "mL",
+      });
+      if (inverso.ok) doseFinal = `${inverso.doseTexto} ${ref.unidadeDose}`;
+    }
+
+    return {
+      ...m,
+      nome: ref?.nome ?? nome,
+      dose: doseFinal,
+      quantidade: `${volume.replace(".", ",")} mL`,
+      duracao: duracaoFinal,
+    };
   };
 
   const classificarDuracao = (valor: string): { modo: DuracaoPadrao; outros: string } => {
@@ -568,14 +618,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
         try {
           const imagem = await lerComoDataUrl(arquivo);
           const resultado = await lerIA({ data: { imagem } });
-          encontradas = resultado.medicacoes.map((m) => {
-            const { modo, outros } = classificarDuracao(m.duracao);
-            return {
-              ...m,
-              nome: normalizarNomeMedicamento(m.nome),
-              duracao: modo === DURACAO_OUTROS && outros ? outros : modo,
-            };
-          });
+          encontradas = resultado.medicacoes.map(enriquecerLeituraFoto);
           usouIA = true;
         } catch {
           usouIA = false;
@@ -586,14 +629,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
         try {
           const offline = await lerOffline(arquivo);
           if (encontradas.length === 0) {
-            encontradas = offline.encontradas.map((m) => {
-              const { modo, outros } = classificarDuracao(m.duracao);
-              return {
-              ...m,
-              nome: normalizarNomeMedicamento(m.nome),
-              duracao: modo === DURACAO_OUTROS && outros ? outros : modo,
-            };
-            });
+            encontradas = offline.encontradas.map(enriquecerLeituraFoto);
           }
           texto = offline.texto;
           if (!usouIA) toast.info("Sem internet: leitura offline, precisão menor.");
