@@ -359,12 +359,13 @@ export async function exportarPdf(
 
     const alturaFaixa = 34;
     novaPaginaSeNecessario(alturaFaixa + 10);
-    doc.setFillColor(224, 229, 233);
+    // Faixa do paciente no azul institucional do gato do logo Veterício.
+    doc.setFillColor(18, 111, 133);
     doc.roundedRect(margem, y - 17, largura, alturaFaixa, 7, 7, "F");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
-    doc.setTextColor(0);
+    doc.setTextColor(255, 255, 255);
     // Nome grande + selo de espécie no lado direito.
     doc.text(nomeAnimalPdf, margem + 12, y, {
       baseline: "middle",
@@ -378,10 +379,11 @@ export async function exportarPdf(
       doc.setTextColor(70);
       doc.text(selo, margem + largura - 42, y + 1, { align: "center", baseline: "middle" });
       doc.setFontSize(15);
-      doc.setTextColor(0);
+      doc.setTextColor(255, 255, 255);
     }
     y += alturaFaixa / 2 + 12;
 
+    doc.setTextColor(0);
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     // Cada informação é um bloco de texto independente, com espaçamento
