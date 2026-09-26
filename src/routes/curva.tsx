@@ -203,7 +203,7 @@ function CurvaConteudo() {
             if (m.id !== idMedicao) return m;
             const d = new Date(m.em);
             if (Number.isNaN(d.getTime())) return m;
-            const [h, min] = hora.split(":").map(Number);
+            const [h = 0, min = 0] = hora.split(":").map(Number);
             d.setHours(h, min, 0, 0);
             return { ...m, em: d.toISOString() };
           }),

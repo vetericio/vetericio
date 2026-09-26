@@ -220,7 +220,7 @@ export async function exportarPdf(
   const ALTURA_LINHA = 21;
   const desenharIconeSecao = (titulo: string, x: number, cy: number) => {
     doc.setDrawColor(25);
-    doc.setFillColor(25);
+    doc.setFillColor("25");
     doc.setLineWidth(1.2);
     // desenhos monocromáticos simples para manter legibilidade na impressão
     if (titulo === "Parâmetros") {

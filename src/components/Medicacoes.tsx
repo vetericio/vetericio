@@ -540,7 +540,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const normalizarDuracao = (valor: string): string => {
     const v = valor.trim().toLowerCase();
     // Frequência pode vir da foto como 8/8h, 12/12h, 24/24h, "a cada 12h" etc.
-    const freq = v.match(/(?:a\\s*cada\\s*)?(8|12|24)\\s*(?:\\/\\s*\\1)?\\s*h(?:oras?)?/i);
+    const freq = v.match(/(?:a\s*cada\s*)?(8|12|24)\s*(?:\/\s*\1)?\s*h(?:oras?)?/i);
     if (freq?.[1]) return `${freq[1]}h`;
     const mapa: Record<string, string> = {
       "8h": "8h", "8": "8h", "oito horas": "8h", "8 horas": "8h",

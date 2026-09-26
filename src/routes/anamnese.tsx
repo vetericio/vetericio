@@ -566,10 +566,10 @@ function AnamneseConteudo() {
               ["Exames", visualizando.exames],
               ["Conduta / plano", visualizando.conduta],
               ["Atenção no próximo plantão", visualizando.atencao],
-            ].map(([titulo, texto]) => texto.trim() && (
+            ].map(([titulo, texto]) => texto?.trim() && (
               <section key={titulo}>
                 <h3 className={rotuloCampo}>{titulo}</h3>
-                <p className="mt-1 whitespace-pre-wrap text-foreground">{texto.trim()}</p>
+                <p className="mt-1 whitespace-pre-wrap text-foreground">{texto?.trim()}</p>
               </section>
             ))}
             {Object.values(normalizarExames(visualizando)).flat().some((exame) => exame.valor.trim()) && (
