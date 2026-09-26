@@ -443,6 +443,9 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
     ...secao("Relato", anamnese?.relato.trim() ? [anamnese.relato.trim()] : []),
     ...secao("Conduta", anamnese?.conduta.trim() ? [anamnese.conduta.trim()] : []),
     ...secao("Atenção para o próximo plantão", anamnese?.atencao.trim() ? [anamnese.atencao.trim()] : []),
+    // Observação digitada no Início é informação clínica obrigatória no PDF.
+    // Mantém fora do Resumo para não misturar histórico/horários com o resumo automático.
+    ...secao("Observações", r.observacoes.trim() ? [r.observacoes.trim()] : []),
     ...(curvas ? curvas.split("\n") : []),
     ...secao("Resumo", resumoFinal ? [resumoFinal] : []),
   ].join("\n");
