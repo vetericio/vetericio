@@ -232,22 +232,23 @@ export async function exportarPdf(
       doc.line(x + 16, cy - 2, x + 20, cy);
       doc.line(x + 20, cy, x + 27, cy);
     } else if (titulo === "Medicações") {
-      // Seringa vetorial: evita emoji, pois Helvetica/jsPDF não possui glyphs coloridos.
+      // Pictograma de seringa: silhueta inclinada, desenhada nativamente no PDF.
       doc.saveGraphicsState();
-      doc.setLineWidth(1.25);
-      // corpo
-      doc.rect(x + 8, cy - 5, 12, 7, "S");
-      // graduação
-      doc.line(x + 12, cy - 5, x + 12, cy - 2);
-      doc.line(x + 15, cy - 5, x + 15, cy - 2);
-      // êmbolo e apoio
-      doc.line(x + 8, cy - 2, x + 4, cy - 2);
-      doc.line(x + 4, cy - 6, x + 4, cy + 2);
-      doc.line(x + 2, cy - 6, x + 6, cy - 6);
-      doc.line(x + 2, cy + 2, x + 6, cy + 2);
-      // bico + agulha
-      doc.line(x + 20, cy - 2, x + 23, cy - 2);
-      doc.line(x + 23, cy - 2, x + 29, cy - 7);
+      doc.setLineWidth(1.15);
+      // corpo da seringa
+      doc.line(x + 8, cy + 5, x + 19, cy - 6);
+      doc.line(x + 11, cy + 8, x + 22, cy - 3);
+      doc.line(x + 8, cy + 5, x + 11, cy + 8);
+      doc.line(x + 19, cy - 6, x + 22, cy - 3);
+      // graduações
+      doc.line(x + 13, cy + 2, x + 15, cy + 4);
+      doc.line(x + 16, cy - 1, x + 18, cy + 1);
+      // bico e agulha
+      doc.line(x + 21, cy - 5, x + 24, cy - 8);
+      doc.line(x + 24, cy - 8, x + 29, cy - 13);
+      // êmbolo
+      doc.line(x + 7, cy + 6, x + 4, cy + 9);
+      doc.line(x + 3, cy + 6, x + 7, cy + 10);
       doc.restoreGraphicsState();
     } else if (titulo === "Exames laboratoriais") {
       // tubo de coleta
