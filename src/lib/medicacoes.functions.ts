@@ -9,8 +9,9 @@ import type { Medicacao } from "./ficha";
 const INSTRUCAO = `Você lê receitas e prescrições veterinárias em português.
 Extraia TODAS as medicações da imagem. Para cada uma devolva:
 - nome: nome do medicamento com a grafia correta e completa (expanda abreviações, ex.: "dipi" -> "Dipirona")
-- dose: quantidade e via/frequência quando houver (ex.: "0,5 mL 12/12h", "1 cp 8/8h")
-- duracao: por quanto tempo (ex.: "3 dias", "uso contínuo"); vazio se não houver
+- dose: transcreva a quantidade/volume exatamente como aparece (ex.: "0,5 mL", "1 cp"). NÃO transforme mL em mg/kg e NÃO invente dose.
+- duracao: coloque a FREQUÊNCIA quando aparecer (ex.: "8/8h", "12/12h", "24/24h"). Se houver também duração do tratamento, preserve depois da frequência. Vazio se não houver.
+IMPORTANTE: números em mL são volume a ministrar. O aplicativo fará depois o cálculo inverso da dose usando peso e concentração cadastrados.
 Responda APENAS com JSON no formato {"medicacoes":[{"nome":"","dose":"","duracao":""}]}.
 Se não conseguir ler nada, devolva {"medicacoes":[]}.`;
 
