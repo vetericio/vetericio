@@ -13,7 +13,85 @@ const PADRAO: ExamesAnamnese = {
   hemograma: [
     // Já existiam no app
     { id: "hematocrito", nome: "VG (Hematócrito)", unidade: "%", valor: "", referencia: "" },
-    { id: "plaquetas", nome: "Plaquetas", unidade: "mil/µL", valor: "", referencia: "" },
+    { id: "plaquetas", nome: "Plaquetas", unidade: "/µL", valor: "", referencia: "" },
+    { id: "leucocitos", nome: "Leucócitos totais", unidade: "/µL", valor: "", referencia: "" },
+
+    // Novos — ordem alfabética
+    { id: "basofilo", nome: "Basófilo", unidade: "%", valor: "", referencia: "" },
+    { id: "bastonete", nome: "Bastonete", unidade: "%", valor: "", referencia: "" },
+    { id: "chcm", nome: "CHCM (Concentração de Hemoglobina Corpuscular Média)", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "eosinofilo", nome: "Eosinófilo", unidade: "%", valor: "", referencia: "" },
+    { id: "eritrocitos", nome: "Eritrócitos", unidade: "milhões/µL", valor: "", referencia: "" },
+    { id: "hcm", nome: "HCM (Hemoglobina Corpuscular Média)", unidade: "pg", valor: "", referencia: "" },
+    { id: "hemoglobina", nome: "Hemoglobina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "leucocitos-corrigido", nome: "Leucócitos corrigido", unidade: "/µL", valor: "", referencia: "" },
+    { id: "linfocito", nome: "Linfócito", unidade: "%", valor: "", referencia: "" },
+    { id: "metamielocito", nome: "Metamielócito", unidade: "%", valor: "", referencia: "" },
+    { id: "monocito", nome: "Monócito", unidade: "%", valor: "", referencia: "" },
+    { id: "rdw-cv", nome: "RDW (Variação do tamanho das hemácias)", unidade: "%", valor: "", referencia: "" },
+    { id: "segmentado", nome: "Segmentado", unidade: "%", valor: "", referencia: "" },
+    { id: "vcm", nome: "VCM (Volume Corpuscular Médio)", unidade: "fL", valor: "", referencia: "" },
+  ],
+  bioquimico: [
+    // Já existiam no app
+    { id: "creatinina", nome: "Creatinina", unidade: "mg/dL", valor: "", referencia: "" },
+    { id: "ureia", nome: "Uréia", unidade: "mg/dL", valor: "", referencia: "" },
+    { id: "tgp", nome: "TGP/ALT (Alanina aminotransferase)", unidade: "U/L", valor: "", referencia: "" },
+
+    // Novos — ordem alfabética
+    { id: "albumina", nome: "Albumina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "fosforo", nome: "Fósforo", unidade: "mg/dL", valor: "", referencia: "" },
+    { id: "globulina", nome: "Globulina", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "proteina-total", nome: "Proteína total", unidade: "g/dL", valor: "", referencia: "" },
+    { id: "relacao-ag", nome: "Relação A/G (Albumina/Globulina)", unidade: "", valor: "", referencia: "" },
+  ],
+  outrosExames: [],
+};
+
+const REFERENCIAS_CACHORRO_PADRAO: Record<string, string> = {
+  // Faixas caninas do laudo LabNet enviado em 26/09/2026.
+  // Contagens são armazenadas em valores absolutos: ex. 175 mil/µL = 175000/µL.
+  "eritrocitos|milhoes/µl": "5,5 – 8,5",
+  "hemoglobina|g/dl": "12 – 18",
+  "hematocrito|%": "37 – 55",
+  "vcm (volume corpuscular medio)|fl": "60 – 77",
+  "hcm (hemoglobina corpuscular media)|pg": "19,5 – 24,5",
+  "chcm (concentracao de hemoglobina corpuscular media)|g/dl": "32 – 36",
+  "rdw (variacao do tamanho das hemacias)|%": "12 – 16",
+  "leucocitos totais|/µl": "6000 – 17000",
+  "leucocitos corrigido|/µl": "6000 – 17000",
+  "metamielocito|%": "0",
+  "bastonete|%": "0 – 1,8",
+  "segmentado|%": "50 – 80",
+  "eosinofilo|%": "2 – 10",
+  "linfocito|%": "12 – 30",
+  "monocito|%": "3 – 8",
+  "basofilo|%": "0",
+  "plaquetas|/µl": "175000 – 500000",
+  "ureia|mg/dl": "20 – 55",
+  "creatinina|mg/dl": "0,5 – 1,5",
+  "tgp/alt (alanina aminotransferase)|u/l": "21 – 102",
+  "fosforo|mg/dl": "2,9 – 5,3",
+  "proteina total|g/dl": "5,4 – 7,5",
+  "albumina|g/dl": "2,3 – 3,1",
+  "globulina|g/dl": "2,3 – 5,2",
+  "relacao a/g (albumina/globulina)|": "0,6 – 1,1",
+};port type { ExameAnamnese } from "./anamnese";
+import type { Especie } from "./ficha";
+
+export type GrupoExames = "hemograma" | "bioquimico" | "outrosExames";
+export type ExamesAnamnese = Record<GrupoExames, ExameAnamnese[]>;
+export type ReferenciasExames = Record<"Cachorro" | "Gato", Record<string, string>>;
+export const CHAVE_REFERENCIAS_EXAMES = "veterico-referencias-exames-v2";
+export const GRUPOS_EXAMES: GrupoExames[] = ["hemograma", "bioquimico", "outrosExames"];
+
+// Parâmetros do hemograma/bioquímico transcritos do laudo canino enviado em 22/09/2026.
+// As referências continuam editáveis no app. Para Gato, permanecem em branco.
+const PADRAO: ExamesAnamnese = {
+  hemograma: [
+    // Já existiam no app
+    { id: "hematocrito", nome: "VG (Hematócrito)", unidade: "%", valor: "", referencia: "" },
+    { id: "plaquetas", nome: "Plaquetas", unidade: "/µL", valor: "", referencia: "" },
     { id: "leucocitos", nome: "Leucócitos totais", unidade: "/µL", valor: "", referencia: "" },
 
     // Novos — ordem alfabética
