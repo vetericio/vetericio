@@ -275,6 +275,12 @@ export async function exportarPdf(
       doc.triangle(x + 14, cy - 10, x + 3, cy + 9, x + 25, cy + 9, "S");
       doc.line(x + 14, cy - 4, x + 14, cy + 3);
       doc.circle(x + 14, cy + 6, 1, "F");
+    } else if (titulo === "Observações") {
+      // anotação clínica livre
+      doc.roundedRect(x + 5, cy - 8, 18, 16, 2, 2, "S");
+      doc.line(x + 9, cy - 3, x + 19, cy - 3);
+      doc.line(x + 9, cy + 1, x + 19, cy + 1);
+      doc.line(x + 9, cy + 5, x + 16, cy + 5);
     } else if (titulo === "Resumo") {
       // prancheta
       doc.roundedRect(x + 5, cy - 8, 18, 17, 2, 2, "S");
@@ -305,6 +311,7 @@ export async function exportarPdf(
       "Relato",
       "Conduta",
       "Atenção para o próximo plantão",
+      "Observações",
       "Resumo",
     ] as const;
     const ehTituloSecao = (linha: string) =>
@@ -384,14 +391,14 @@ export async function exportarPdf(
       }
 
       // Bloco de medicações: título em negrito e itens recuados.
-      const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo)$/.test(linha);
+      const tituloSecao = /^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Observações|Resumo)$/.test(linha);
       const itemAnamnese = false;
       const itemMedicacao = /^- /.test(linha);
       if (tituloSecao) {
         // O subtítulo e seu conteúdo formam um bloco visual único.
         // Se o bloco inteiro couber em uma página, nunca o partir entre páginas.
         let fimSecao = linhaIndice + 1;
-        while (fimSecao < resto.length && !/^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Resumo)$/.test(resto[fimSecao]!)) {
+        while (fimSecao < resto.length && !/^(Parâmetros|Medicações|Exames laboratoriais|Exames|Queixa principal|Relato|Conduta|Atenção para o próximo plantão|Observações|Resumo)$/.test(resto[fimSecao]!)) {
           fimSecao++;
         }
         const conteudoSecao = resto.slice(linhaIndice + 1, fimSecao).filter((item) => item.trim());
