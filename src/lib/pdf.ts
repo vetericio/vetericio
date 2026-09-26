@@ -232,27 +232,33 @@ export async function exportarPdf(
       doc.line(x + 16, cy - 2, x + 20, cy);
       doc.line(x + 20, cy, x + 27, cy);
     } else if (titulo === "Medicações") {
-      // seringa
-      doc.line(x + 5, cy + 6, x + 20, cy - 7);
-      doc.rect(x + 9, cy - 5, 10, 6, "S");
-      doc.line(x + 18, cy - 7, x + 23, cy - 2);
-      doc.line(x + 20, cy - 9, x + 25, cy - 4);
-      doc.line(x + 5, cy + 3, x + 8, cy + 6);
-      doc.line(x + 3, cy + 8, x + 5, cy + 6);
+      // seringa — corpo largo, êmbolo, flange e agulha claramente separados
+      doc.saveGraphicsState();
+      doc.setLineWidth(1.4);
+      doc.rect(x + 7, cy - 5, 13, 8, "S");
+      doc.line(x + 10, cy - 5, x + 10, cy + 3);
+      doc.line(x + 20, cy - 2, x + 25, cy - 2);
+      doc.line(x + 25, cy - 5, x + 25, cy + 1);
+      doc.line(x + 25, cy - 2, x + 29, cy - 2);
+      doc.line(x + 7, cy - 8, x + 7, cy + 6);
+      doc.line(x + 4, cy - 8, x + 10, cy - 8);
+      doc.line(x + 4, cy + 6, x + 10, cy + 6);
+      doc.restoreGraphicsState();
     } else if (titulo === "Exames laboratoriais") {
       // tubo de coleta
       doc.roundedRect(x + 7, cy - 9, 13, 18, 3, 3, "S");
       doc.line(x + 6, cy - 9, x + 21, cy - 9);
       doc.line(x + 9, cy + 4, x + 18, cy + 4);
     } else if (titulo === "Exames") {
-      // tubo de ensaio
-      doc.line(x + 7, cy - 9, x + 20, cy - 9);
-      doc.line(x + 10, cy - 9, x + 10, cy + 5);
-      doc.line(x + 17, cy - 9, x + 17, cy + 5);
-      doc.line(x + 10, cy + 5, x + 12, cy + 8);
-      doc.line(x + 12, cy + 8, x + 15, cy + 8);
-      doc.line(x + 15, cy + 8, x + 17, cy + 5);
-      doc.line(x + 11, cy + 2, x + 16, cy + 2);
+      // tubo de ensaio vertical e inequívoco
+      doc.saveGraphicsState();
+      doc.setLineWidth(1.4);
+      doc.line(x + 7, cy - 10, x + 21, cy - 10);
+      doc.line(x + 10, cy - 10, x + 10, cy + 4);
+      doc.line(x + 18, cy - 10, x + 18, cy + 4);
+      doc.curve(x + 10, cy + 4, x + 10, cy + 11, x + 18, cy + 11, x + 18, cy + 4);
+      doc.line(x + 11, cy + 2, x + 17, cy + 2);
+      doc.restoreGraphicsState();
     } else if (titulo === "Queixa principal") {
       // balão de fala
       doc.roundedRect(x + 3, cy - 8, 21, 13, 3, 3, "S");
