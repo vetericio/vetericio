@@ -232,20 +232,47 @@ export async function exportarPdf(
       doc.line(x + 16, cy - 2, x + 20, cy);
       doc.line(x + 20, cy, x + 27, cy);
     } else if (titulo === "Medicações") {
-      // Ícone solicitado no PDF: seringa.
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(15);
-      doc.text("💉", x + 2, cy + 5);
+      // Seringa vetorial: evita emoji, pois Helvetica/jsPDF não possui glyphs coloridos.
+      doc.saveGraphicsState();
+      doc.setLineWidth(1.25);
+      // corpo
+      doc.rect(x + 8, cy - 5, 12, 7, "S");
+      // graduação
+      doc.line(x + 12, cy - 5, x + 12, cy - 2);
+      doc.line(x + 15, cy - 5, x + 15, cy - 2);
+      // êmbolo e apoio
+      doc.line(x + 8, cy - 2, x + 4, cy - 2);
+      doc.line(x + 4, cy - 6, x + 4, cy + 2);
+      doc.line(x + 2, cy - 6, x + 6, cy - 6);
+      doc.line(x + 2, cy + 2, x + 6, cy + 2);
+      // bico + agulha
+      doc.line(x + 20, cy - 2, x + 23, cy - 2);
+      doc.line(x + 23, cy - 2, x + 29, cy - 7);
+      doc.restoreGraphicsState();
     } else if (titulo === "Exames laboratoriais") {
       // tubo de coleta
       doc.roundedRect(x + 7, cy - 9, 13, 18, 3, 3, "S");
       doc.line(x + 6, cy - 9, x + 21, cy - 9);
       doc.line(x + 9, cy + 4, x + 18, cy + 4);
     } else if (titulo === "Exames") {
-      // Ícone solicitado no PDF: microscópio.
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(15);
-      doc.text("🔬", x + 2, cy + 5);
+      // Microscópio vetorial: desenho simples e legível em qualquer leitor de PDF.
+      doc.saveGraphicsState();
+      doc.setLineWidth(1.25);
+      // ocular e tubo
+      doc.line(x + 8, cy - 9, x + 15, cy - 9);
+      doc.line(x + 14, cy - 9, x + 18, cy - 4);
+      doc.line(x + 18, cy - 4, x + 15, cy + 1);
+      // braço
+      doc.line(x + 15, cy + 1, x + 18, cy + 6);
+      doc.line(x + 18, cy + 6, x + 23, cy + 6);
+      // platina
+      doc.line(x + 9, cy + 2, x + 20, cy + 2);
+      // base
+      doc.line(x + 6, cy + 9, x + 25, cy + 9);
+      doc.line(x + 9, cy + 9, x + 12, cy + 5);
+      // foco
+      doc.circle(x + 12, cy - 1, 2, "S");
+      doc.restoreGraphicsState();
     } else if (titulo === "Queixa principal") {
       // balão de fala
       doc.roundedRect(x + 3, cy - 8, 21, 13, 3, 3, "S");
