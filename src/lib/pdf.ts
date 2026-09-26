@@ -232,36 +232,20 @@ export async function exportarPdf(
       doc.line(x + 16, cy - 2, x + 20, cy);
       doc.line(x + 20, cy, x + 27, cy);
     } else if (titulo === "Medicações") {
-      // seringa — corpo largo, êmbolo, flange e agulha claramente separados
-      doc.saveGraphicsState();
-      doc.setLineWidth(1.4);
-      doc.rect(x + 7, cy - 5, 13, 8, "S");
-      doc.line(x + 10, cy - 5, x + 10, cy + 3);
-      doc.line(x + 20, cy - 2, x + 25, cy - 2);
-      doc.line(x + 25, cy - 5, x + 25, cy + 1);
-      doc.line(x + 25, cy - 2, x + 29, cy - 2);
-      doc.line(x + 7, cy - 8, x + 7, cy + 6);
-      doc.line(x + 4, cy - 8, x + 10, cy - 8);
-      doc.line(x + 4, cy + 6, x + 10, cy + 6);
-      doc.restoreGraphicsState();
+      // Ícone solicitado no PDF: seringa.
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(15);
+      doc.text("💉", x + 2, cy + 5);
     } else if (titulo === "Exames laboratoriais") {
       // tubo de coleta
       doc.roundedRect(x + 7, cy - 9, 13, 18, 3, 3, "S");
       doc.line(x + 6, cy - 9, x + 21, cy - 9);
       doc.line(x + 9, cy + 4, x + 18, cy + 4);
     } else if (titulo === "Exames") {
-      // tubo de ensaio vertical e inequívoco
-      doc.saveGraphicsState();
-      doc.setLineWidth(1.4);
-      doc.line(x + 7, cy - 10, x + 21, cy - 10);
-      doc.line(x + 10, cy - 10, x + 10, cy + 5);
-      doc.line(x + 18, cy - 10, x + 18, cy + 5);
-      // fundo do tubo sem usar APIs não suportadas do jsPDF
-      doc.line(x + 10, cy + 5, x + 12, cy + 8);
-      doc.line(x + 12, cy + 8, x + 16, cy + 8);
-      doc.line(x + 16, cy + 8, x + 18, cy + 5);
-      doc.line(x + 11, cy + 2, x + 17, cy + 2);
-      doc.restoreGraphicsState();
+      // Ícone solicitado no PDF: microscópio.
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(15);
+      doc.text("🔬", x + 2, cy + 5);
     } else if (titulo === "Queixa principal") {
       // balão de fala
       doc.roundedRect(x + 3, cy - 8, 21, 13, 3, 3, "S");
