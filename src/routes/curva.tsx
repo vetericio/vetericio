@@ -408,25 +408,29 @@ function CurvaConteudo() {
                   <ul className="mt-3 divide-y divide-border/70 text-sm">
                     {c.medicoes.map((m) => (
                       <li key={m.id} className="flex items-center justify-between gap-3 py-1.5">
-                        <button
-                          type="button"
-                          aria-label="Selecionar hora da medição"
-                          onClick={() => {
-                            const atual = horaDaMedicao(m).replace("h", ":");
-                            const entrada = window.prompt("Selecione/digite a hora (HH:MM)", atual);
-                            if (entrada === null) return;
-                            const limpa = entrada.trim().replace("h", ":");
-                            if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(limpa)) {
-                              toast.error("Hora inválida. Use HH:MM, por exemplo 04:30.");
-                              return;
-                            }
-                            editarHoraMedicao(c, m.id, limpa);
-                          }}
-                          className="flex w-[6.5rem] items-center justify-between rounded-md border border-primary bg-background px-2 py-1 font-mono text-sm text-foreground outline-none"
-                        >
-                          <span>{horaDaMedicao(m).replace("h", ":")}</span>
-                          <span aria-hidden="true" className="text-xs">▾</span>
-                        </button>
+                        <span className="relative inline-block w-[6.5rem]">
+                          <input
+                            type="time"
+                            step={60}
+                            aria-label="Selecionar hora da medição"
+                            value={horaDaMedicao(m).replace("h", ":")}
+                            onChange={(e) => {
+                              if (e.target.value) editarHoraMedicao(c, m.id, e.target.value);
+                            }}
+                            onClick={(e) => {
+                              // Android/Chrome/PWA: abre explicitamente o relógio nativo
+                              // no mesmo gesto do usuário. Se showPicker não existir,
+                              // o próprio clique no input continua sendo o fallback.
+                              try {
+                                const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+                                input.showPicker?.();
+                              } catch {
+                                // fallback nativo
+                              }
+                            }}
+                            className="h-9 w-full cursor-pointer rounded-md border border-primary bg-background px-2 py-1 font-mono text-sm text-foreground outline-none focus:border-ring"
+                          />
+                        </span>/button>
                         <span className="flex flex-1 flex-wrap gap-3">
                           {c.parametros.map((p) => {
                             const valor = (p === "glicemia" ? m.glicemia : m.pas).trim();
