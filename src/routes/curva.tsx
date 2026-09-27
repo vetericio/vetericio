@@ -408,28 +408,25 @@ function CurvaConteudo() {
                   <ul className="mt-3 divide-y divide-border/70 text-sm">
                     {c.medicoes.map((m) => (
                       <li key={m.id} className="flex items-center justify-between gap-3 py-1.5">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          enterKeyHint="done"
-                          maxLength={5}
-                          aria-label="Hora da medição"
-                          value={horaDaMedicao(m).replace("h", ":")}
-                          onFocus={(e) => e.currentTarget.select()}
-                          onChange={(e) => {
-                            // Campo de texto numérico força o teclado a abrir no Android/PWA.
-                            const digitos = e.target.value.replace(/\D/g, "").slice(0, 4);
-                            const formatado =
-                              digitos.length > 2
-                                ? `${digitos.slice(0, 2)}:${digitos.slice(2)}`
-                                : digitos;
-                            e.target.value = formatado;
-                            if (/^\d{2}:\d{2}$/.test(formatado)) {
-                              editarHoraMedicao(c, m.id, formatado);
+                        <button
+                          type="button"
+                          aria-label="Selecionar hora da medição"
+                          onClick={() => {
+                            const atual = horaDaMedicao(m).replace("h", ":");
+                            const entrada = window.prompt("Selecione/digite a hora (HH:MM)", atual);
+                            if (entrada === null) return;
+                            const limpa = entrada.trim().replace("h", ":");
+                            if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(limpa)) {
+                              toast.error("Hora inválida. Use HH:MM, por exemplo 04:30.");
+                              return;
                             }
+                            editarHoraMedicao(c, m.id, limpa);
                           }}
-                          className="w-[5.8rem] rounded-md border border-input bg-background px-2 py-1 font-mono text-sm text-muted-foreground outline-none focus:border-ring"
-                        />
+                          className="flex w-[6.5rem] items-center justify-between rounded-md border border-primary bg-background px-2 py-1 font-mono text-sm text-foreground outline-none"
+                        >
+                          <span>{horaDaMedicao(m).replace("h", ":")}</span>
+                          <span aria-hidden="true" className="text-xs">▾</span>
+                        </button>
                         <span className="flex flex-1 flex-wrap gap-3">
                           {c.parametros.map((p) => {
                             const valor = (p === "glicemia" ? m.glicemia : m.pas).trim();
