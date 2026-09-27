@@ -409,10 +409,25 @@ function CurvaConteudo() {
                     {c.medicoes.map((m) => (
                       <li key={m.id} className="flex items-center justify-between gap-3 py-1.5">
                         <input
-                          type="time"
+                          type="text"
+                          inputMode="numeric"
+                          enterKeyHint="done"
+                          maxLength={5}
                           aria-label="Hora da medição"
                           value={horaDaMedicao(m).replace("h", ":")}
-                          onChange={(e) => editarHoraMedicao(c, m.id, e.target.value)}
+                          onFocus={(e) => e.currentTarget.select()}
+                          onChange={(e) => {
+                            // Campo de texto numérico força o teclado a abrir no Android/PWA.
+                            const digitos = e.target.value.replace(/\D/g, "").slice(0, 4);
+                            const formatado =
+                              digitos.length > 2
+                                ? `${digitos.slice(0, 2)}:${digitos.slice(2)}`
+                                : digitos;
+                            e.target.value = formatado;
+                            if (/^\d{2}:\d{2}$/.test(formatado)) {
+                              editarHoraMedicao(c, m.id, formatado);
+                            }
+                          }}
                           className="w-[5.8rem] rounded-md border border-input bg-background px-2 py-1 font-mono text-sm text-muted-foreground outline-none focus:border-ring"
                         />
                         <span className="flex flex-1 flex-wrap gap-3">
