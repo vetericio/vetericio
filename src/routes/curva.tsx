@@ -430,7 +430,7 @@ function CurvaConteudo() {
                             }}
                             className="h-9 w-full cursor-pointer rounded-md border border-primary bg-background px-2 py-1 font-mono text-sm text-foreground outline-none focus:border-ring"
                           />
-                        </span>/button>
+                        </span>
                         <span className="flex flex-1 flex-wrap gap-3">
                           {c.parametros.map((p) => {
                             const valor = (p === "glicemia" ? m.glicemia : m.pas).trim();
