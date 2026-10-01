@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileDown, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, FileDown, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { lerSelo, type TipoSelo } from "@/lib/assinatura";
@@ -48,11 +48,15 @@ function especieDaAnamnese(valor: string): EspecieReceituario {
 export function Receituario() {
   const { anamneses } = useAnamneses();
   const areaSelosRef = useRef<HTMLDivElement>(null);
+  const racaAreaRef = useRef<HTMLDivElement>(null);
   const [paciente, setPaciente] = useState("");
   const [tutor, setTutor] = useState("");
-  const [especie, setEspecie] = useState<EspecieReceituario>("");
+  const [telefoneTutor, setTelefoneTutor] = useState("");
+  const [especie, setEspecie] = useState<EspecieReceituario>("Canina");
   const [outraEspecie, setOutraEspecie] = useState("");
   const [raca, setRaca] = useState("");
+  const [buscaRaca, setBuscaRaca] = useState("");
+  const [racaAberta, setRacaAberta] = useState(false);
   const [sexo, setSexo] = useState("");
   const [peso, setPeso] = useState("");
   const [data, setData] = useState(() => new Date().toLocaleDateString("pt-BR"));
@@ -80,6 +84,15 @@ export function Receituario() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!racaAberta) return;
+    const fecharAoClicarFora = (evento: PointerEvent) => {
+      if (!racaAreaRef.current?.contains(evento.target as Node)) setRacaAberta(false);
+    };
+    document.addEventListener("pointerdown", fecharAoClicarFora);
+    return () => document.removeEventListener("pointerdown", fecharAoClicarFora);
+  }, [racaAberta]);
+
   const escolherPaciente = (id: string) => {
     const anamnese = anamneses.find((item) => item.id === id);
     if (!anamnese) return;
@@ -93,6 +106,8 @@ export function Receituario() {
     setEspecie(nova);
     if (nova !== "Outro") setOutraEspecie("");
     setRaca("");
+    setBuscaRaca("");
+    setRacaAberta(false);
   };
 
   const atualizarItem = (id: string, campoItem: CampoItem, valor: string) =>
@@ -181,6 +196,7 @@ export function Receituario() {
       await baixarReceituario({
         paciente,
         tutor,
+        telefoneTutor,
         especie: especie === "Outro" ? outraEspecie.trim() : especie,
         raca,
         sexo,
@@ -201,6 +217,23 @@ export function Receituario() {
   };
 
   const racas = racasParaEspecie(especie);
+  const termoBuscaRaca = buscaRaca
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR");
+  const racasFiltradas = racas.filter((opcao) =>
+    opcao
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR")
+      .includes(termoBuscaRaca),
+  );
+
+  const escolherRaca = (opcao: string) => {
+    setRaca(opcao);
+    setBuscaRaca("");
+    setRacaAberta(false);
+  };
 
   return (
     <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 pb-28">
@@ -231,7 +264,7 @@ export function Receituario() {
           </label>
         )}
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label>
             <span className={rotulo}>Paciente</span>
             <input
@@ -248,6 +281,17 @@ export function Receituario() {
               onChange={(e) => setTutor(e.target.value)}
               className={campo}
               placeholder="Nome do responsável"
+            />
+          </label>
+          <label>
+            <span className={rotulo}>Telefone do tutor (opcional)</span>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={telefoneTutor}
+              onChange={(e) => setTelefoneTutor(e.target.value)}
+              className={campo}
+              placeholder="(31) 99999-9999"
             />
           </label>
         </div>
@@ -283,21 +327,91 @@ export function Receituario() {
         )}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[1.4fr_0.7fr_0.55fr]">
-          <label>
+          <div>
             <span className={rotulo}>Raça</span>
-            <input
-              value={raca}
-              onChange={(e) => setRaca(e.target.value)}
-              list="racas-receituario"
-              className={campo}
-              placeholder="SRD ou digite para procurar"
-            />
-            <datalist id="racas-receituario">
-              {racas.map((opcao) => (
-                <option key={opcao} value={opcao} />
-              ))}
-            </datalist>
-          </label>
+            <div
+              ref={racaAreaRef}
+              className="relative"
+              onBlur={(evento) => {
+                if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) {
+                  setRacaAberta(false);
+                }
+              }}
+            >
+              <div className="relative">
+                <input
+                  value={racaAberta ? buscaRaca : raca}
+                  onChange={(evento) => {
+                    setBuscaRaca(evento.target.value);
+                    setRaca(evento.target.value);
+                    setRacaAberta(true);
+                  }}
+                  onFocus={() => {
+                    setBuscaRaca("");
+                    setRacaAberta(true);
+                  }}
+                  onKeyDown={(evento) => {
+                    if (evento.key === "Escape") setRacaAberta(false);
+                    if (evento.key === "Enter" && racasFiltradas.length > 0) {
+                      evento.preventDefault();
+                      escolherRaca(racasFiltradas[0]);
+                    }
+                  }}
+                  role="combobox"
+                  aria-label="Raça do animal"
+                  aria-expanded={racaAberta}
+                  aria-controls="lista-racas-receituario"
+                  aria-autocomplete="list"
+                  autoComplete="off"
+                  className={campo + " pr-11"}
+                  placeholder="Toque para ver as raças ou digite para buscar"
+                />
+                <button
+                  type="button"
+                  aria-label={racaAberta ? "Fechar lista de raças" : "Mostrar todas as raças"}
+                  aria-expanded={racaAberta}
+                  onPointerDown={(evento) => evento.preventDefault()}
+                  onClick={() => {
+                    setBuscaRaca("");
+                    setRacaAberta((aberta) => !aberta);
+                  }}
+                  className="absolute inset-y-0 right-1 my-1 flex w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </div>
+              {racaAberta && (
+                <div
+                  id="lista-racas-receituario"
+                  role="listbox"
+                  aria-label="Raças disponíveis"
+                  className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+                >
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    {racasFiltradas.length
+                      ? racasFiltradas.length + " resultados"
+                      : "Nenhuma raça encontrada"}
+                  </p>
+                  {racasFiltradas.map((opcao) => (
+                    <button
+                      key={opcao}
+                      type="button"
+                      role="option"
+                      aria-selected={raca === opcao}
+                      onPointerDown={(evento) => evento.preventDefault()}
+                      onClick={() => escolherRaca(opcao)}
+                      className={
+                        "block min-h-10 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary " +
+                        (raca === opcao ? "bg-primary/10 font-semibold text-primary" : "")
+                      }
+                    >
+                      {opcao}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <fieldset>
             <legend className={rotulo}>Sexo</legend>
             <div className="mt-1 flex gap-2">
@@ -582,3 +696,4 @@ export function Receituario() {
     </main>
   );
 }
+

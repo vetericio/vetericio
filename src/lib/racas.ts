@@ -168,8 +168,19 @@ export const RACAS_FELINAS = [
 
 export type EspecieReceituario = "Canina" | "Felina" | "Outro" | "";
 
-export function racasParaEspecie(especie: EspecieReceituario) {
-  if (especie === "Canina") return RACAS_CANINAS;
-  if (especie === "Felina") return RACAS_FELINAS;
-  return ["SRD", ...RACAS_CANINAS.slice(1), ...RACAS_FELINAS.slice(1)];
+function ordenarComSRD(racas: readonly string[]) {
+  const demaisRacas = [
+    ...new Set(racas.filter((raca) => raca.toLocaleLowerCase("pt-BR") !== "srd")),
+  ].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  return ["SRD", ...demaisRacas];
 }
+
+const RACAS_CANINAS_ORDENADAS = ordenarComSRD(RACAS_CANINAS);
+const RACAS_FELINAS_ORDENADAS = ordenarComSRD(RACAS_FELINAS);
+
+export function racasParaEspecie(especie: EspecieReceituario) {
+  if (especie === "Canina") return RACAS_CANINAS_ORDENADAS;
+  if (especie === "Felina") return RACAS_FELINAS_ORDENADAS;
+  return ordenarComSRD([...RACAS_CANINAS.slice(1), ...RACAS_FELINAS.slice(1)]);
+}
+

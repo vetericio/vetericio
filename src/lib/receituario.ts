@@ -71,6 +71,7 @@ export type DadosReceituario = {
   sexo: string;
   peso: string;
   tutor: string;
+  telefoneTutor: string;
   data: string;
   itens: ItemReceituario[];
   observacoes: string;
@@ -152,7 +153,8 @@ export async function criarReceituario(dados: DadosReceituario) {
   const largura = doc.internal.pageSize.getWidth() - margem * 2;
   const altura = doc.internal.pageSize.getHeight();
   const endereco = doc.splitTextToSize(dados.endereco.trim(), largura) as string[];
-  const rodapeY = altura - margem - Math.max(endereco.length, 1) * 12 - 8;
+  const linhasRodape = Math.max(endereco.length, 1) + 1;
+  const rodapeY = altura - margem - linhasRodape * 12 - 8;
   const areaSelos = { x: margem, y: rodapeY - 96, largura, altura: 62 };
   const limiteConteudo = areaSelos.y - 28;
   let y = margem;
@@ -186,7 +188,12 @@ export async function criarReceituario(dados: DadosReceituario) {
     const linhas = (texto: string, max: number) =>
       doc.splitTextToSize(texto || "-", max) as string[];
     const paciente = linhas(dados.paciente, 250);
-    const tutor = linhas(dados.tutor, 185);
+    const tutor = [
+      ...linhas(dados.tutor, 185),
+      ...(dados.telefoneTutor.trim()
+        ? linhas("Tel.: " + dados.telefoneTutor.trim(), 185)
+        : []),
+    ];
     const especie = linhas(dados.especie, 115);
     const raca = linhas(dados.raca, 145);
     const sexo = linhas(dados.sexo, 75);
@@ -207,7 +214,12 @@ export async function criarReceituario(dados: DadosReceituario) {
       valor.forEach((linha, indice) => doc.text(linha, x, topo + 29 + indice * 14));
     };
     celula("PACIENTE", paciente, margem + 12, y);
-    celula("TUTOR", tutor, margem + 285, y);
+    celula(
+      dados.telefoneTutor.trim() ? "TUTOR · TELEFONE" : "TUTOR",
+      tutor,
+      margem + 285,
+      y,
+    );
     celula("ESPÉCIE", especie, margem + 12, y + primeiraAltura);
     celula("RAÇA", raca, margem + 145, y + primeiraAltura);
     celula("SEXO", sexo, margem + 315, y + primeiraAltura);
@@ -241,17 +253,35 @@ export async function criarReceituario(dados: DadosReceituario) {
     .filter((item) => item.medicamento.trim())
     .forEach((item, indice) => {
       if (y + 52 > limiteConteudo) novaPagina();
-      const nome = `${indice + 1}. ${item.medicamento.trim()}`;
+      const nome = item.medicamento.trim();
+      const rotuloMedicamento = String(indice + 1) + ". " + nome;
       const apresentacao = item.apresentacao.trim();
-      const espacoNome = apresentacao ? largura - 150 : largura;
-      const linhasNome = doc.splitTextToSize(nome, espacoNome) as string[];
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      const larguraApresentacao = apresentacao ? doc.getTextWidth(apresentacao) : 0;
+      const espacoNome = Math.max(
+        100,
+        largura - larguraApresentacao - (apresentacao ? 62 : 50),
+      );
+      const linhasNome = doc.splitTextToSize(rotuloMedicamento, espacoNome) as string[];
       linhasNome.forEach((linha, linhaIndice) => {
         if (y + 16 > limiteConteudo) novaPagina();
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.text(linha, margem, y);
-        if (linhaIndice === 0 && apresentacao) {
-          doc.text(apresentacao, margem + largura, y, { align: "right" });
+        if (linhaIndice === 0) {
+          const inicioTraco = margem + doc.getTextWidth(linha) + 6;
+          const fimTraco = apresentacao
+            ? margem + largura - larguraApresentacao - 8
+            : margem + largura - 4;
+          if (fimTraco - inicioTraco >= 18) {
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            doc.line(inicioTraco, y + 2, fimTraco, y + 2);
+          }
+          if (apresentacao) {
+            doc.text(apresentacao, margem + largura, y, { align: "right" });
+          }
         }
         y += 16;
       });
@@ -309,6 +339,12 @@ export async function criarReceituario(dados: DadosReceituario) {
         align: "center",
       }),
     );
+    doc.text(
+      "Telefone do Médico-Veterinário: (31) 99551.2795",
+      margem + largura / 2,
+      rodapeY + 14 + Math.max(endereco.length, 1) * 12,
+      { align: "center" },
+    );
   }
   return doc;
 }
@@ -318,3 +354,4 @@ export async function baixarReceituario(dados: DadosReceituario) {
   const paciente = dados.paciente.trim().replace(/\s+/g, "-").toLowerCase();
   doc.save(`receituario-${paciente || "vetericio"}.pdf`);
 }
+
