@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AssinarDocumento } from "@/components/AssinarDocumento";
+import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 
 export const Route = createFileRoute("/assinar")({
   head: () => ({
@@ -25,9 +26,11 @@ export const Route = createFileRoute("/assinar")({
 
 function PaginaAssinar() {
   return (
-    <main>
-      <h1 className="sr-only">Assinar um documento</h1>
-      <AssinarDocumento />
-    </main>
+    <ProtegidoPorSenha area="assinar" titulo="Assinatura protegida">
+      <main>
+        <h1 className="sr-only">Assinar um documento</h1>
+        <AssinarDocumento />
+      </main>
+    </ProtegidoPorSenha>
   );
 }
