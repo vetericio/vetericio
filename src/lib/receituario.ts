@@ -1,5 +1,5 @@
 import type { jsPDF as DocumentoPDF } from "jspdf";
-import { lerSelo } from "./assinatura";
+import { lerSelo, type TipoSelo } from "./assinatura";
 
 // A mesma logo oficial do app, incorporada para emitir o PDF também offline.
 const LOGO_PDF_DATA_URL =
@@ -8,21 +8,74 @@ const LOGO_PDF_DATA_URL =
 export const ENDERECO_RECEITUARIO =
   "Rua Tenente Marino Freire, 444 - Paraúna / Belo Horizonte - MG\n31680-120";
 
+export const FORMAS_MEDICAMENTO = [
+  { valor: "comprimido", singular: "comprimido", plural: "comprimidos" },
+  { valor: "cápsula", singular: "cápsula", plural: "cápsulas" },
+  {
+    valor: "comprimido revestido",
+    singular: "comprimido revestido",
+    plural: "comprimidos revestidos",
+  },
+  {
+    valor: "comprimido mastigável",
+    singular: "comprimido mastigável",
+    plural: "comprimidos mastigáveis",
+  },
+  { valor: "gota", singular: "gota", plural: "gotas" },
+  { valor: "mL", singular: "mL", plural: "mL" },
+  { valor: "mg", singular: "mg", plural: "mg" },
+  { valor: "g", singular: "g", plural: "g" },
+  { valor: "micrograma", singular: "micrograma", plural: "microgramas" },
+  { valor: "sachê", singular: "sachê", plural: "sachês" },
+  { valor: "bisnaga", singular: "bisnaga", plural: "bisnagas" },
+  { valor: "pipeta", singular: "pipeta", plural: "pipetas" },
+  { valor: "ampola", singular: "ampola", plural: "ampolas" },
+  { valor: "frasco", singular: "frasco", plural: "frascos" },
+  { valor: "dose", singular: "dose", plural: "doses" },
+  { valor: "aplicação", singular: "aplicação", plural: "aplicações" },
+  { valor: "spray", singular: "spray", plural: "sprays" },
+  { valor: "jato", singular: "jato", plural: "jatos" },
+  { valor: "puff", singular: "puff", plural: "puffs" },
+  { valor: "pomada", singular: "aplicação de pomada", plural: "aplicações de pomada" },
+  { valor: "creme", singular: "aplicação de creme", plural: "aplicações de creme" },
+  { valor: "gel", singular: "aplicação de gel", plural: "aplicações de gel" },
+  { valor: "shampoo", singular: "aplicação de shampoo", plural: "aplicações de shampoo" },
+  { valor: "supositório", singular: "supositório", plural: "supositórios" },
+] as const;
+
+export const INTERVALOS_RECEITUARIO = ["4", "6", "8", "12", "24", "48"] as const;
+
 export type ItemReceituario = {
   id: string;
   medicamento: string;
-  posologia: string;
+  apresentacao: string;
+  quantidade: string;
+  forma: string;
+  intervalo: string;
+  dias: string;
+  observacao: string;
+};
+
+export type PosicaoSeloReceituario = {
+  /** posição no espaço reservado para assinatura e carimbo, entre 0 e 1 */
+  x: number;
+  y: number;
+  /** largura relativa ao espaço reservado, entre 0 e 1 */
+  largura: number;
 };
 
 export type DadosReceituario = {
   paciente: string;
   especie: string;
+  raca: string;
+  sexo: string;
   peso: string;
   tutor: string;
   data: string;
   itens: ItemReceituario[];
   observacoes: string;
   endereco: string;
+  posicoesSelos: Partial<Record<TipoSelo, PosicaoSeloReceituario>>;
 };
 
 const DADOS_PROFISSIONAL = [
@@ -32,24 +85,64 @@ const DADOS_PROFISSIONAL = [
   "Veterício Serviços Veterinários Ltda.",
 ];
 
+function limparPonto(texto: string) {
+  return texto.trim().replace(/[.\s]+$/, "");
+}
+
+function unidadeDia(dias: string) {
+  return /^(1|1[,.]0+)$/.test(dias.trim()) ? "dia" : "dias";
+}
+
+function quantidadeUnica(quantidade: string) {
+  return ["1", "1,0", "1.0", "½", "1/2", "0,5", "0.5", "¼", "1/4", "⅓", "1/3"].includes(
+    quantidade.trim(),
+  );
+}
+
+export function montarPosologia(item: ItemReceituario) {
+  const quantidade = item.quantidade.trim();
+  const forma = FORMAS_MEDICAMENTO.find((opcao) => opcao.valor === item.forma);
+  const formaTexto = forma ? (quantidadeUnica(quantidade) ? forma.singular : forma.plural) : "";
+  const partes: string[] = [];
+
+  if (quantidade) partes.push(`Dar ${quantidade}${formaTexto ? ` ${formaTexto}` : ""}`);
+  if (item.intervalo) {
+    partes.push(partes.length ? `a cada ${item.intervalo}h` : `A cada ${item.intervalo}h`);
+  }
+  if (item.dias.trim()) {
+    partes.push(`por ${item.dias.trim()} ${unidadeDia(item.dias)}`);
+  }
+  if (item.observacao.trim()) partes.push(limparPonto(item.observacao));
+
+  const frase = partes.join(" ").trim();
+  return frase ? `${frase}.` : "";
+}
+
 function desenharSelo(
   doc: DocumentoPDF,
   imagem: string,
-  x: number,
-  y: number,
-  largura: number,
-  altura: number,
+  posicao: PosicaoSeloReceituario,
+  area: { x: number; y: number; largura: number; altura: number },
 ) {
-  const props = doc.getImageProperties(imagem);
-  const escala = Math.min(largura / props.width, altura / props.height);
-  doc.addImage(
-    imagem,
-    props.fileType,
-    x,
-    y + altura - props.height * escala,
-    props.width * escala,
-    props.height * escala,
-  );
+  try {
+    const props = doc.getImageProperties(imagem);
+    const larguraRelativa = Math.min(0.9, Math.max(0.08, posicao.largura));
+    const larguraDesejada = area.largura * larguraRelativa;
+    const xRelativo = Math.min(1 - larguraRelativa, Math.max(0, posicao.x));
+    const yRelativo = Math.min(0.78, Math.max(0, posicao.y));
+    const alturaDisponivel = Math.max(16, area.altura * (1 - yRelativo));
+    const escala = Math.min(larguraDesejada / props.width, alturaDisponivel / props.height);
+    doc.addImage(
+      imagem,
+      props.fileType,
+      area.x + xRelativo * area.largura,
+      area.y + yRelativo * area.altura,
+      props.width * escala,
+      props.height * escala,
+    );
+  } catch {
+    // Uma imagem inválida não impede a geração do receituário.
+  }
 }
 
 export async function criarReceituario(dados: DadosReceituario) {
@@ -58,18 +151,20 @@ export async function criarReceituario(dados: DadosReceituario) {
   const margem = 46;
   const largura = doc.internal.pageSize.getWidth() - margem * 2;
   const altura = doc.internal.pageSize.getHeight();
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
   const endereco = doc.splitTextToSize(dados.endereco.trim(), largura) as string[];
   const rodapeY = altura - margem - Math.max(endereco.length, 1) * 12 - 8;
-  const assinaturaY = rodapeY - 100;
-  const limiteConteudo = assinaturaY - 20;
+  const areaSelos = { x: margem, y: rodapeY - 96, largura, altura: 62 };
+  const limiteConteudo = areaSelos.y - 28;
   let y = margem;
 
   const cabecalho = () => {
     y = margem;
     doc.setTextColor(0);
-    doc.addImage(LOGO_PDF_DATA_URL, "PNG", margem, y - 8, 45, 49);
+    try {
+      doc.addImage(LOGO_PDF_DATA_URL, "PNG", margem, y - 8, 45, 49);
+    } catch {
+      // A identidade textual continua mesmo sem a imagem.
+    }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.text("VETERÍCIO", margem + 56, y + 8);
@@ -88,16 +183,16 @@ export async function criarReceituario(dados: DadosReceituario) {
     doc.text("RECEITUÁRIO VETERINÁRIO", margem, y);
     y += 22;
 
-    doc.setFontSize(11);
     const linhas = (texto: string, max: number) =>
       doc.splitTextToSize(texto || "-", max) as string[];
-    const paciente = linhas(dados.paciente, 245);
+    const paciente = linhas(dados.paciente, 250);
+    const tutor = linhas(dados.tutor, 185);
     const especie = linhas(dados.especie, 115);
-    const peso = linhas(dados.peso ? `${dados.peso} kg` : "", largura - 407);
-    const tutor = linhas(dados.tutor, 365);
-    const data = linhas(dados.data, largura - 407);
-    const primeiraAltura = 25 + Math.max(paciente.length, especie.length, peso.length) * 14;
-    const segundaAltura = 25 + Math.max(tutor.length, data.length) * 14;
+    const raca = linhas(dados.raca, 145);
+    const sexo = linhas(dados.sexo, 75);
+    const peso = linhas(dados.peso ? `${dados.peso} kg` : "", 70);
+    const primeiraAltura = 25 + Math.max(paciente.length, tutor.length) * 14;
+    const segundaAltura = 25 + Math.max(especie.length, raca.length, sexo.length, peso.length) * 14;
 
     doc.setFillColor(242, 245, 244);
     doc.roundedRect(margem, y, largura, primeiraAltura + segundaAltura, 7, 7, "F");
@@ -112,10 +207,11 @@ export async function criarReceituario(dados: DadosReceituario) {
       valor.forEach((linha, indice) => doc.text(linha, x, topo + 29 + indice * 14));
     };
     celula("PACIENTE", paciente, margem + 12, y);
-    celula("ESPÉCIE", especie, margem + 270, y);
-    celula("PESO", peso, margem + 395, y);
-    celula("TUTOR", tutor, margem + 12, y + primeiraAltura);
-    celula("DATA", data, margem + 395, y + primeiraAltura);
+    celula("TUTOR", tutor, margem + 285, y);
+    celula("ESPÉCIE", especie, margem + 12, y + primeiraAltura);
+    celula("RAÇA", raca, margem + 145, y + primeiraAltura);
+    celula("SEXO", sexo, margem + 315, y + primeiraAltura);
+    celula("PESO", peso, margem + 415, y + primeiraAltura);
     y += primeiraAltura + segundaAltura + 27;
   };
 
@@ -123,6 +219,7 @@ export async function criarReceituario(dados: DadosReceituario) {
     doc.addPage();
     cabecalho();
   };
+
   const escrever = (texto: string, recuo = 0, negrito = false) => {
     doc.setFont("helvetica", negrito ? "bold" : "normal");
     doc.setFontSize(11);
@@ -131,6 +228,7 @@ export async function criarReceituario(dados: DadosReceituario) {
       if (y + 16 > limiteConteudo) novaPagina();
       doc.setFont("helvetica", negrito ? "bold" : "normal");
       doc.setFontSize(11);
+      doc.setTextColor(0);
       doc.text(linha, margem + recuo, y);
       y += 16;
     });
@@ -140,30 +238,64 @@ export async function criarReceituario(dados: DadosReceituario) {
   escrever("Prescrição", 0, true);
   y += 7;
   dados.itens
-    .filter((item) => item.medicamento.trim() || item.posologia.trim())
+    .filter((item) => item.medicamento.trim())
     .forEach((item, indice) => {
-      if (y + 48 > limiteConteudo) novaPagina();
-      escrever(`${indice + 1}. ${item.medicamento.trim() || "Orientação"}`, 0, true);
-      if (item.posologia.trim()) escrever(item.posologia.trim(), 18);
+      if (y + 52 > limiteConteudo) novaPagina();
+      const nome = `${indice + 1}. ${item.medicamento.trim()}`;
+      const apresentacao = item.apresentacao.trim();
+      const espacoNome = apresentacao ? largura - 150 : largura;
+      const linhasNome = doc.splitTextToSize(nome, espacoNome) as string[];
+      linhasNome.forEach((linha, linhaIndice) => {
+        if (y + 16 > limiteConteudo) novaPagina();
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text(linha, margem, y);
+        if (linhaIndice === 0 && apresentacao) {
+          doc.text(apresentacao, margem + largura, y, { align: "right" });
+        }
+        y += 16;
+      });
+      const posologia = montarPosologia(item);
+      if (posologia) escrever(posologia, 18);
       y += 12;
     });
+
   if (dados.observacoes.trim()) {
     if (y + 48 > limiteConteudo) novaPagina();
-    escrever("Orientações", 0, true);
+    escrever("Orientações gerais", 0, true);
     y += 5;
     escrever(dados.observacoes.trim());
   }
 
+  const paginaFinal = doc.getNumberOfPages();
+  doc.setPage(paginaFinal);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(
+    `Belo Horizonte, ${dados.data.trim() || new Date().toLocaleDateString("pt-BR")}.`,
+    margem + largura,
+    areaSelos.y - 10,
+    { align: "right" },
+  );
+
   const assinatura = lerSelo("assinatura");
   const carimbo = lerSelo("carimbo");
-  if (assinatura) desenharSelo(doc, assinatura, margem, assinaturaY, 165, 54);
-  if (carimbo) desenharSelo(doc, carimbo, margem + 190, assinaturaY, 170, 54);
-  doc.setDrawColor(80);
-  doc.setLineWidth(0.6);
-  doc.line(margem, assinaturaY + 66, margem + 360, assinaturaY + 66);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("Assinatura e carimbo", margem, assinaturaY + 80);
+  if (assinatura && dados.posicoesSelos.assinatura) {
+    desenharSelo(doc, assinatura, dados.posicoesSelos.assinatura, areaSelos);
+  }
+  if (carimbo && dados.posicoesSelos.carimbo) {
+    desenharSelo(doc, carimbo, dados.posicoesSelos.carimbo, areaSelos);
+  }
+  if (dados.posicoesSelos.assinatura || dados.posicoesSelos.carimbo) {
+    doc.setDrawColor(80);
+    doc.setLineWidth(0.5);
+    doc.line(
+      margem,
+      areaSelos.y + areaSelos.altura + 6,
+      margem + largura,
+      areaSelos.y + areaSelos.altura + 6,
+    );
+  }
 
   for (let pagina = 1; pagina <= doc.getNumberOfPages(); pagina++) {
     doc.setPage(pagina);
@@ -173,7 +305,9 @@ export async function criarReceituario(dados: DadosReceituario) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     endereco.forEach((linha, indice) =>
-      doc.text(linha, margem + largura / 2, rodapeY + 14 + indice * 12, { align: "center" }),
+      doc.text(linha, margem + largura / 2, rodapeY + 14 + indice * 12, {
+        align: "center",
+      }),
     );
   }
   return doc;
