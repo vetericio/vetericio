@@ -1,0 +1,39 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Delete } from "lucide-react";
+import { toast } from "sonner";
+
+type AreaProtegida = "assinar" | "receituario";
+
+const HASH_PIN = "3e2dbcbf35006bbc50d89a28146b286a743fa54624e71bb1293d063ba6360fa6";
+const TEMPO_LIBERADO_MS = 15 * 60 * 1000;
+
+async function hash(texto: string) {
+  const dados = new TextEncoder().encode(`vetericio-protecao:${texto}`);
+  const digest = await crypto.subtle.digest("SHA-256", dados);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function chave(area: AreaProtegida) { return `vetericio-acesso-${area}`; }
+function estaLiberado(area: AreaProtegida) {
+  try { const liberadoAte = Number(window.sessionStorage.getItem(chave(area)) ?? 0); return Number.isFinite(liberadoAte) && liberadoAte > Date.now(); } catch { return false; }
+}
+
+export function ProtegidoPorSenha({ area, titulo, children }: { area: AreaProtegida; titulo: string; children: ReactNode; }) {
+  const [liberado, setLiberado] = useState(false);
+  const [pin, setPin] = useState("");
+  const [verificando, setVerificando] = useState(false);
+  useEffect(() => setLiberado(estaLiberado(area)), [area]);
+  const digitar = (digito: string) => { if (!verificando && pin.length < 4) setPin((atual) => `${atual}${digito}`); };
+  const validar = async () => {
+    if (pin.length !== 4 || verificando) return;
+    setVerificando(true);
+    try {
+      if ((await hash(pin)) !== HASH_PIN) { setPin(""); toast.error("Senha incorreta."); return; }
+      window.sessionStorage.setItem(chave(area), String(Date.now() + TEMPO_LIBERADO_MS));
+      setLiberado(true); toast.success("Acesso liberado neste aparelho por 15 minutos.");
+    } catch { toast.error("Não foi possível validar a senha."); } finally { setVerificando(false); }
+  };
+  useEffect(() => { if (pin.length === 4) void validar(); }, [pin]);
+  if (liberado) return <>{children}</>;
+  return <main className="mx-auto flex min-h-[60vh] w-full max-w-sm items-center px-4 py-8"><section className="w-full rounded-3xl border border-border bg-card p-5 text-center shadow-sm"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Veterício</p><h1 className="mt-2 font-display text-xl font-semibold text-foreground">{titulo}</h1><p className="mt-2 text-sm text-muted-foreground">Digite a senha de quatro números para continuar.</p><div className="mx-auto mt-6 flex w-fit gap-3" aria-label={`${pin.length} de 4 números digitados`}>{Array.from({ length: 4 }, (_, indice) => <span key={indice} className={`h-3 w-3 rounded-full ${indice < pin.length ? "bg-primary" : "bg-secondary"}`} />)}</div><div className="mx-auto mt-7 grid max-w-[17rem] grid-cols-3 gap-2">{["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((tecla) => <button key={tecla} type="button" onClick={() => (tecla === "*" || tecla === "#") ? undefined : digitar(tecla)} disabled={tecla === "*" || tecla === "#" || verificando} className="min-h-14 rounded-2xl bg-secondary text-lg font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70 disabled:cursor-default disabled:opacity-45">{tecla}</button>)}</div><button type="button" onClick={() => setPin((atual) => atual.slice(0, -1))} disabled={!pin || verificando} className="mx-auto mt-3 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-secondary disabled:opacity-40"><Delete className="h-4 w-4" /> Apagar</button></section></main>;
+}
