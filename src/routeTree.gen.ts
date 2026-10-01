@@ -1,6 +1,7 @@
 /* eslint-disable */
 // @ts-nocheck
 // Generated route registry. Updated when routes are added.
+// Deployment synchronization marker.
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,12 +31,7 @@ const RegistrosRoute = makeRoute(RegistrosRouteImport, '/registros')
 const SincronizacaoRoute = makeRoute(SincronizacaoRouteImport, '/sincronizacao')
 const TemasRoute = makeRoute(TemasRouteImport, '/temas')
 
-const rootRouteChildren = {
-  IndexRoute, AlarmesRoute, AnamneseRoute, AssinarRoute, CurvaRoute,
-  MedicacoesRoute, PendenciasRoute, PlantoesRoute, ReceituarioRoute,
-  RegistrosRoute, SincronizacaoRoute, TemasRoute,
-}
-
+const rootRouteChildren = { IndexRoute, AlarmesRoute, AnamneseRoute, AssinarRoute, CurvaRoute, MedicacoesRoute, PendenciasRoute, PlantoesRoute, ReceituarioRoute, RegistrosRoute, SincronizacaoRoute, TemasRoute }
 export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)
 
 import type { getRouter } from './router.tsx'
