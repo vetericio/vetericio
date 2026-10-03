@@ -59,7 +59,10 @@ function resumoExame(nome: string) {
   return RESUMOS_EXAMES[nome] ?? "";
 }
 export function ExamesLaboratoriais({ especie, exames, referencias, erroReferencias, onChange, onReferenciasChange, onLimpar }: Props) {
-  const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);\n  const [favoritos, setFavoritos] = useState<string[]>(() => {\n    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }\n  });\n  const [favoritos, setFavoritos] = useState<string[]>(() => {\n    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }\n  });
+  const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);
+  const [favoritos, setFavoritos] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }
+  });
   const listas = normalizarExames(exames);
 
   const mudar = (grupo: GrupoExames, indice: number, campoExame: "nome" | "unidade" | "valor" | "referencia", valor: string) => {
@@ -78,7 +81,15 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
     onChange({ ...listas, [grupo]: listas[grupo].map((x, i) => i === indice ? alterado : x) });
   };
 
-  const alternarFavorito = (exame: ExameAnamnese) => {\n    const chave = `${exame.nome}::${exame.unidade ?? ""}`;\n    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];\n    setFavoritos(proximos);\n    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));\n  };\n\n  const alternarFavorito = (exame: ExameAnamnese) => {\n    const chave = `${exame.nome}::${exame.unidade ?? ""}`;\n    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];\n    setFavoritos(proximos);\n    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));\n  };\n\n  const adicionar = (grupo: GrupoExames) => onChange({
+  const alternarFavorito = (exame: ExameAnamnese) => {
+    const chave = `${exame.nome}::${exame.unidade ?? ""}`;
+    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];
+    setFavoritos(proximos);
+    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));
+  };
+  };
+
+  const adicionar = (grupo: GrupoExames) => onChange({
     ...listas,
     [grupo]: [...listas[grupo], { id: crypto.randomUUID(), nome: "", unidade: "", valor: "", referencia: "", personalizado: true }],
   });
@@ -104,7 +115,11 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
           </div>
         </div>
         <div className="divide-y divide-border">
-          {listas[grupo].map((exame, indice) => ({ exame, indice })).sort((a, b) => {\n            const ca = `${a.exame.nome}::${a.exame.unidade ?? ""}`;\n            const cb = `${b.exame.nome}::${b.exame.unidade ?? ""}`;\n            return Number(favoritos.includes(cb)) - Number(favoritos.includes(ca));\n          }).map(({ exame, indice }) => {
+          {listas[grupo].map((exame, indice) => ({ exame, indice })).sort((a, b) => {
+            const ca = `${a.exame.nome}::${a.exame.unidade ?? ""}`;
+            const cb = `${b.exame.nome}::${b.exame.unidade ?? ""}`;
+            return Number(favoritos.includes(cb)) - Number(favoritos.includes(ca));
+          }).map(({ exame, indice }) => {
             const ref = referenciaDoExame(exame, especie, referencias);
             const estado = especie ? avaliarExame(exame.valor, ref) : "neutro";
             const descricao = estado === "dentro" ? "Dentro da referência informada" : estado === "abaixo" ? "Abaixo da referência informada" : "Acima da referência informada";
@@ -168,8 +183,10 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
       {!especie && <p className="text-sm text-muted-foreground">Selecione a espécie no início da anamnese para cadastrar ou usar as referências.</p>}
       <p className="text-xs leading-relaxed text-muted-foreground">Use os intervalos e unidades do laudo. Referências separadas por espécie, salvas neste aparelho. Campos vazios não entram na ficha nem no PDF.</p>
       {erroReferencias && <p role="alert" className="text-sm text-destructive">Não foi possível guardar as referências neste aparelho. Mantenha a página aberta para não perder as alterações.</p>}
-      {renderizarGrupo("hemograma", "Hemograma")}
-      {renderizarGrupo("bioquimico", "Bioquímico")}
+      <div className="grid min-w-0 grid-cols-2 items-start gap-2 sm:gap-4">
+        {renderizarGrupo("hemograma", "Hemograma")}
+        {renderizarGrupo("bioquimico", "Bioquímico")}
+      </div>
       {listas.outrosExames.length > 0 && renderizarGrupo("outrosExames", "Outros exames")}
       <button type="button" onClick={() => adicionar("outrosExames")} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-border px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-secondary">
         <Plus className="h-5 w-5 shrink-0" aria-hidden="true" /> <span className="flex-1">Adicionar outro exame</span> <ChevronRight className="h-5 w-5 shrink-0" aria-hidden="true" />
