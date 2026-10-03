@@ -125,31 +125,39 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
             const livre = !!exame.personalizado;
             const nomeAcessivel = exame.nome.trim() || `novo exame ${indice + 1} de ${titulo}`;
             return (
-              <div key={exame.id ?? `${grupo}-${indice}`} className="min-w-0 space-y-2 p-3 sm:p-4">
-                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(4.5rem,6rem)_1.5rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_1.5rem] sm:gap-3">
-                  <div className="min-w-0">
-                    {livre ? (
-                      <input aria-label={`Nome do exame ${indice + 1} de ${titulo}`} autoFocus={!exame.nome && !!exame.id} value={exame.nome} onChange={(e) => mudar(grupo, indice, "nome", e.target.value)} placeholder="Nome do exame" className={campo} />
-                    ) : (
-                      <>
-                        <p className="break-words text-sm font-semibold leading-snug text-foreground sm:text-base">
-                          {exame.nome}<span className="ml-1 font-normal text-muted-foreground">{exame.unidade ? `(${exame.unidade})` : ""}</span>
-                        </p>
-                        {resumoExame(exame.nome) && (
-                          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground sm:text-xs">
-                            {resumoExame(exame.nome)}
-                          </p>
-                        )}
-                      </>
+              <div key={exame.id ?? `${grupo}-${indice}`} className="min-w-0 space-y-2 p-2.5 sm:p-4">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-1">
+                    <div className="min-w-0 flex-1">
+                      {livre ? (
+                        <input aria-label={`Nome do exame ${indice + 1} de ${titulo}`} autoFocus={!exame.nome && !!exame.id} value={exame.nome} onChange={(e) => mudar(grupo, indice, "nome", e.target.value)} placeholder="Nome do exame" className={campo} />
+                      ) : (
+                        <p className="break-words text-sm font-bold leading-snug text-foreground sm:text-base">{exame.nome}</p>
+                      )}
+                    </div>
+                    {!livre && (
+                      <button type="button" onClick={() => alternarFavorito(exame)} aria-label={`${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "Desfavoritar" : "Favoritar"} ${exame.nome}`} className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary">
+                        <Star className={`h-4 w-4 ${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "fill-amber-400 text-amber-500" : ""}`} aria-hidden="true" />
+                      </button>
                     )}
                   </div>
-                  <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="Valor" className={`${campo} px-2 text-center`} />
-                  {estado !== "neutro" ? (
-                    <span role="img" aria-label={descricao} title={descricao}>
-                      {estado === "dentro" ? <CheckCircle2 aria-hidden="true" className="h-6 w-6 text-emerald-600 dark:text-emerald-400" /> : <AlertCircle aria-hidden="true" className="h-6 w-6 text-destructive" />}
-                    </span>
-                  ) : <span aria-hidden="true" className="text-center text-muted-foreground">—</span>}
+
+                  {!livre && resumoExame(exame.nome) && (
+                    <p className="mt-1 break-words text-[10px] leading-snug text-muted-foreground sm:text-xs">{resumoExame(exame.nome)}</p>
+                  )}
+
+                  <div className="mt-2 flex min-w-0 items-center gap-1.5">
+                    <span aria-hidden="true" className="text-muted-foreground">(</span>
+                    <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="Valor" className={`${campo} min-w-0 flex-1 px-2 text-center`} />
+                    <span aria-hidden="true" className="text-muted-foreground">)</span>
+                    {estado !== "neutro" ? (
+                      <span role="img" aria-label={descricao} title={descricao}>
+                        {estado === "dentro" ? <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> : <AlertCircle aria-hidden="true" className="h-5 w-5 text-destructive" />}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
+
                 {(editando || livre) ? (
                   <div className={`grid min-w-0 gap-2 ${livre ? "grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_2.75rem]" : "grid-cols-2"}`}>
                     <label className="min-w-0 text-xs text-muted-foreground">
@@ -162,7 +170,11 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
                     </label>
                     {livre && <button type="button" onClick={() => onChange({ ...listas, [grupo]: listas[grupo].filter((_, i) => i !== indice) })} aria-label={`Remover ${nomeAcessivel}`} className="mt-5 flex min-h-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-destructive"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
                   </div>
-                ) : <p className="break-words text-[11px] leading-snug text-muted-foreground sm:text-sm">{ref ? `Ref.: ${ref}` : "Referência não cadastrada"}</p>}
+                ) : (
+                  <p className="break-words text-[9px] leading-tight text-muted-foreground sm:text-xs">
+                    {ref ? `Referência: ${ref}${exame.unidade ? ` ${exame.unidade}` : ""}` : "Referência não cadastrada"}
+                  </p>
+                )}
               </div>
             );
           })}
