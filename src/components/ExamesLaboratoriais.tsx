@@ -1,4 +1,4 @@
-import { AlertCircle, Check, CheckCircle2, ChevronRight, Droplets, FileCheck2, FlaskConical, Plus, Settings2, Trash2 } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronRight, Droplets, FileCheck2, FlaskConical, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Especie } from "@/lib/ficha";
 import type { ExameAnamnese } from "@/lib/anamnese";
@@ -59,7 +59,7 @@ function resumoExame(nome: string) {
   return RESUMOS_EXAMES[nome] ?? "";
 }
 export function ExamesLaboratoriais({ especie, exames, referencias, erroReferencias, onChange, onReferenciasChange, onLimpar }: Props) {
-  const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);
+  const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);\n  const [favoritos, setFavoritos] = useState<string[]>(() => {\n    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }\n  });
   const listas = normalizarExames(exames);
 
   const mudar = (grupo: GrupoExames, indice: number, campoExame: "nome" | "unidade" | "valor" | "referencia", valor: string) => {
@@ -78,7 +78,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
     onChange({ ...listas, [grupo]: listas[grupo].map((x, i) => i === indice ? alterado : x) });
   };
 
-  const adicionar = (grupo: GrupoExames) => onChange({
+  const alternarFavorito = (exame: ExameAnamnese) => {\n    const chave = `${exame.nome}::${exame.unidade ?? ""}`;\n    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];\n    setFavoritos(proximos);\n    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));\n  };\n\n  const adicionar = (grupo: GrupoExames) => onChange({
     ...listas,
     [grupo]: [...listas[grupo], { id: crypto.randomUUID(), nome: "", unidade: "", valor: "", referencia: "", personalizado: true }],
   });
@@ -104,7 +104,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
           </div>
         </div>
         <div className="divide-y divide-border">
-          {listas[grupo].map((exame, indice) => {
+          {listas[grupo].map((exame, indice) => ({ exame, indice })).sort((a, b) => {\n            const ca = `${a.exame.nome}::${a.exame.unidade ?? ""}`;\n            const cb = `${b.exame.nome}::${b.exame.unidade ?? ""}`;\n            return Number(favoritos.includes(cb)) - Number(favoritos.includes(ca));\n          }).map(({ exame, indice }) => {
             const ref = referenciaDoExame(exame, especie, referencias);
             const estado = especie ? avaliarExame(exame.valor, ref) : "neutro";
             const descricao = estado === "dentro" ? "Dentro da referência informada" : estado === "abaixo" ? "Abaixo da referência informada" : "Acima da referência informada";
