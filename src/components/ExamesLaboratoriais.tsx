@@ -125,30 +125,30 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
             const livre = !!exame.personalizado;
             const nomeAcessivel = exame.nome.trim() || `novo exame ${indice + 1} de ${titulo}`;
             return (
-              <div key={exame.id ?? `${grupo}-${indice}`} className="min-w-0 space-y-2 p-2.5 sm:p-4">
+              <div key={exame.id ?? `${grupo}-${indice}`} className="min-w-0 space-y-2 px-2.5 py-3 sm:p-4">
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-start gap-1">
                     <div className="min-w-0 flex-1">
                       {livre ? (
                         <input aria-label={`Nome do exame ${indice + 1} de ${titulo}`} autoFocus={!exame.nome && !!exame.id} value={exame.nome} onChange={(e) => mudar(grupo, indice, "nome", e.target.value)} placeholder="Nome do exame" className={campo} />
                       ) : (
-                        <p className="break-words text-sm font-bold leading-snug text-foreground sm:text-base">{exame.nome}</p>
+                        <p className="break-words text-[13px] font-bold leading-tight text-foreground sm:text-sm">{exame.nome}</p>
                       )}
                     </div>
                     {!livre && (
-                      <button type="button" onClick={() => alternarFavorito(exame)} aria-label={`${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "Desfavoritar" : "Favoritar"} ${exame.nome}`} className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary">
+                      <button type="button" onClick={() => alternarFavorito(exame)} aria-label={`${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "Desfavoritar" : "Favoritar"} ${exame.nome}`} className="absolute right-0 top-0 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary">
                         <Star className={`h-4 w-4 ${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "fill-amber-400 text-amber-500" : ""}`} aria-hidden="true" />
                       </button>
                     )}
                   </div>
 
                   {!livre && resumoExame(exame.nome) && (
-                    <p className="mt-1 break-words text-[10px] leading-snug text-muted-foreground sm:text-xs">{resumoExame(exame.nome)}</p>
+                    <p className="mx-auto mt-1 max-w-[15rem] break-words text-center text-[9px] leading-snug text-muted-foreground sm:text-[11px]">{resumoExame(exame.nome)}</p>
                   )}
 
-                  <div className="mt-2 flex min-w-0 items-center gap-1.5">
+                  <div className="mx-auto mt-2 flex min-w-0 max-w-[15rem] items-center justify-center gap-1">
                     <span aria-hidden="true" className="text-muted-foreground">(</span>
-                    <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="Valor" className={`${campo} min-w-0 flex-1 px-2 text-center`} />
+                    <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="Valor" className={`${campo} min-w-0 flex-1 rounded-2xl px-2 text-center text-sm`} />
                     <span aria-hidden="true" className="text-muted-foreground">)</span>
                     {estado !== "neutro" ? (
                       <span role="img" aria-label={descricao} title={descricao}>
@@ -171,7 +171,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
                     {livre && <button type="button" onClick={() => onChange({ ...listas, [grupo]: listas[grupo].filter((_, i) => i !== indice) })} aria-label={`Remover ${nomeAcessivel}`} className="mt-5 flex min-h-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-destructive"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
                   </div>
                 ) : (
-                  <p className="break-words text-[9px] leading-tight text-muted-foreground sm:text-xs">
+                  <p className="mt-1 break-words text-center text-[8px] leading-tight text-muted-foreground sm:text-[10px]">
                     {ref ? `Referência: ${ref}${exame.unidade ? ` ${exame.unidade}` : ""}` : "Referência não cadastrada"}
                   </p>
                 )}
@@ -194,7 +194,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
       {!especie && <p className="text-sm text-muted-foreground">Selecione a espécie no início da anamnese para cadastrar ou usar as referências.</p>}
       <p className="text-xs leading-relaxed text-muted-foreground">Use os intervalos e unidades do laudo. Referências separadas por espécie, salvas neste aparelho. Campos vazios não entram na ficha nem no PDF.</p>
       {erroReferencias && <p role="alert" className="text-sm text-destructive">Não foi possível guardar as referências neste aparelho. Mantenha a página aberta para não perder as alterações.</p>}
-      <div className="grid min-w-0 grid-cols-2 items-start gap-2 sm:gap-4">
+      <div className="grid min-w-0 grid-cols-2 items-start gap-2.5 sm:gap-4">
         {renderizarGrupo("hemograma", "Hemograma")}
         {renderizarGrupo("bioquimico", "Bioquímico")}
       </div>
