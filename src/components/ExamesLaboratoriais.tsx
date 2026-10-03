@@ -24,7 +24,7 @@ type Props = {
 };
 
 const campo = "min-h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2 text-base text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const acao = "inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50";
+const acao = "inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl border border-border px-1.5 py-2 text-[11px] font-semibold leading-tight text-foreground transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:min-h-11 sm:px-2.5 sm:text-xs";
 
 
 const RESUMOS_EXAMES: Record<string, string> = {
@@ -99,11 +99,11 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
     const Icone = grupo === "hemograma" ? Droplets : FlaskConical;
     return (
       <div key={grupo} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card/80">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3 sm:p-4">
+        <div className="border-b border-border p-2.5 sm:p-4">
           <h3 className="flex items-center gap-2 text-base font-semibold text-foreground sm:text-lg">
             <Icone className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" /> {titulo}
           </h3>
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto">
+          <div className="mt-2 grid w-full min-w-0 grid-cols-2 gap-1.5">
             <button type="button" disabled={!especie} aria-pressed={editando} aria-label={`${editando ? "Concluir" : "Editar"} referências de ${titulo}`} onClick={() => setGrupoEditando(editando ? null : grupo)} className={acao}>
               {editando ? <Check className="h-4 w-4 shrink-0" aria-hidden="true" /> : <Settings2 className="h-4 w-4 shrink-0" aria-hidden="true" />}
               {editando ? "Concluir referências" : "Editar referências"}
@@ -162,7 +162,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
                     </label>
                     {livre && <button type="button" onClick={() => onChange({ ...listas, [grupo]: listas[grupo].filter((_, i) => i !== indice) })} aria-label={`Remover ${nomeAcessivel}`} className="mt-5 flex min-h-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-destructive"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
                   </div>
-                ) : <p className="text-xs text-muted-foreground sm:text-sm">{ref ? `Ref.: ${ref}` : "Referência não cadastrada"}</p>}
+                ) : <p className="break-words text-[11px] leading-snug text-muted-foreground sm:text-sm">{ref ? `Ref.: ${ref}` : "Referência não cadastrada"}</p>}
               </div>
             );
           })}
