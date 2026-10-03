@@ -59,7 +59,7 @@ function resumoExame(nome: string) {
   return RESUMOS_EXAMES[nome] ?? "";
 }
 export function ExamesLaboratoriais({ especie, exames, referencias, erroReferencias, onChange, onReferenciasChange, onLimpar }: Props) {
-  const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);\n  const [favoritos, setFavoritos] = useState<string[]>(() => {\n    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }\n  });
+  const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);\n  const [favoritos, setFavoritos] = useState<string[]>(() => {\n    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }\n  });\n  const [favoritos, setFavoritos] = useState<string[]>(() => {\n    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }\n  });
   const listas = normalizarExames(exames);
 
   const mudar = (grupo: GrupoExames, indice: number, campoExame: "nome" | "unidade" | "valor" | "referencia", valor: string) => {
@@ -78,7 +78,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
     onChange({ ...listas, [grupo]: listas[grupo].map((x, i) => i === indice ? alterado : x) });
   };
 
-  const alternarFavorito = (exame: ExameAnamnese) => {\n    const chave = `${exame.nome}::${exame.unidade ?? ""}`;\n    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];\n    setFavoritos(proximos);\n    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));\n  };\n\n  const adicionar = (grupo: GrupoExames) => onChange({
+  const alternarFavorito = (exame: ExameAnamnese) => {\n    const chave = `${exame.nome}::${exame.unidade ?? ""}`;\n    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];\n    setFavoritos(proximos);\n    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));\n  };\n\n  const alternarFavorito = (exame: ExameAnamnese) => {\n    const chave = `${exame.nome}::${exame.unidade ?? ""}`;\n    const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];\n    setFavoritos(proximos);\n    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));\n  };\n\n  const adicionar = (grupo: GrupoExames) => onChange({
     ...listas,
     [grupo]: [...listas[grupo], { id: crypto.randomUUID(), nome: "", unidade: "", valor: "", referencia: "", personalizado: true }],
   });
