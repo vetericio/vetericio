@@ -87,7 +87,6 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
     setFavoritos(proximos);
     localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));
   };
-  };
 
   const adicionar = (grupo: GrupoExames) => onChange({
     ...listas,
