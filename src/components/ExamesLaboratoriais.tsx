@@ -132,12 +132,12 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
                       {livre ? (
                         <input aria-label={`Nome do exame ${indice + 1} de ${titulo}`} autoFocus={!exame.nome && !!exame.id} value={exame.nome} onChange={(e) => mudar(grupo, indice, "nome", e.target.value)} placeholder="Nome do exame" className={campo} />
                       ) : (
-                        <p className="break-words text-[13px] font-bold leading-tight text-foreground sm:text-sm">{exame.nome}</p>
+                        <p className="break-words text-center text-[12px] font-bold leading-tight text-foreground sm:text-[13px]">{exame.nome}</p>
                       )}
                     </div>
                     {!livre && (
-                      <button type="button" onClick={() => alternarFavorito(exame)} aria-label={`${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "Desfavoritar" : "Favoritar"} ${exame.nome}`} className="absolute right-0 top-0 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary">
-                        <Star className={`h-4 w-4 ${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "fill-amber-400 text-amber-500" : ""}`} aria-hidden="true" />
+                      <button type="button" onClick={() => alternarFavorito(exame)} aria-label={`${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "Desfavoritar" : "Favoritar"} ${exame.nome}`} className="shrink-0 rounded-md p-0.5 text-muted-foreground hover:bg-secondary">
+                        <Star className={`h-[15px] w-[15px] ${favoritos.includes(`${exame.nome}::${exame.unidade ?? ""}`) ? "fill-amber-400 text-amber-500" : ""}`} aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -146,15 +146,16 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
                     <p className="mx-auto mt-1 max-w-[15rem] break-words text-center text-[9px] leading-snug text-muted-foreground sm:text-[11px]">{resumoExame(exame.nome)}</p>
                   )}
 
-                  <div className="mx-auto mt-2 flex min-w-0 max-w-[15rem] items-center justify-center gap-1">
-                    <span aria-hidden="true" className="text-muted-foreground">(</span>
-                    <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="Valor" className={`${campo} min-w-0 flex-1 rounded-2xl px-2 text-center text-sm`} />
-                    <span aria-hidden="true" className="text-muted-foreground">)</span>
-                    {estado !== "neutro" ? (
-                      <span role="img" aria-label={descricao} title={descricao}>
-                        {estado === "dentro" ? <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> : <AlertCircle aria-hidden="true" className="h-5 w-5 text-destructive" />}
-                      </span>
-                    ) : null}
+                  <div className="mx-auto mt-2 max-w-[11rem]">
+                    <div className="relative">
+                      <input aria-label={`Valor de ${nomeAcessivel}`} value={exame.valor} onChange={(e) => mudar(grupo, indice, "valor", e.target.value)} inputMode="decimal" placeholder="—" className="h-11 w-full min-w-0 rounded-xl border border-input bg-background/70 px-7 pb-1 pt-4 text-center text-base font-semibold text-foreground outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30" />
+                      <span className="pointer-events-none absolute left-0 right-0 top-1 text-center text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Valor</span>
+                      {estado !== "neutro" && (
+                        <span role="img" aria-label={descricao} title={descricao} className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                          {estado === "dentro" ? <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> : <AlertCircle aria-hidden="true" className="h-4 w-4 text-destructive" />}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
