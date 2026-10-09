@@ -119,8 +119,8 @@ export async function proporcao(dataUrl: string): Promise<number> {
   return img.naturalWidth / (img.naturalHeight || 1);
 }
 
-/** "contrato.pdf" -> "contrato (assinado vetericio).pdf" */
+/** "contrato.pdf" -> "contrato (assinado oricse).pdf" */
 export function nomeAssinado(nomeArquivo: string): string {
   const base = nomeArquivo.replace(/\.[^.]+$/, "") || "documento";
-  return `${base} (assinado vetericio).pdf`;
+  return `${base} (assinado oricse).pdf`;
 }
