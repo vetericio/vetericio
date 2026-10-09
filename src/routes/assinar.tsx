@@ -6,13 +6,13 @@ import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 export const Route = createFileRoute("/assinar")({
   head: () => ({
     meta: [
-      { title: "Assinar um documento — Veterício" },
+      { title: "Assinar um documento — Oricse" },
       {
         name: "description",
         content:
           "Assine e carimbe documentos no próprio aparelho: suba um PDF ou foto, posicione a assinatura e salve o PDF assinado.",
       },
-      { property: "og:title", content: "Assinar um documento — Veterício" },
+      { property: "og:title", content: "Assinar um documento — Oricse" },
       {
         property: "og:description",
         content: "Assinatura e carimbo em PDF ou foto, offline, direto no aparelho.",
