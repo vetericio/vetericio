@@ -67,8 +67,7 @@ export function Cabecalho() {
           />
         </div>
 
-        {!plantaoArea && (
-          <div className="mb-2">
+        <div className="mb-2">
             <button type="button" onClick={() => setTrocarArea((aberto) => !aberto)} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold shadow-sm">
               ← Voltar / trocar área
             </button>
@@ -80,8 +79,7 @@ export function Cabecalho() {
                 <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/recepcao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Recepção</button>
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {plantaoArea && <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
           Ficha de Avaliação da Internação
