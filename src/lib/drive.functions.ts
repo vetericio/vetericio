@@ -46,18 +46,57 @@ async function carregarSupabaseAdmin() {
   return supabaseAdmin;
 }
 
-function credenciaisGoogle() {
+function base64Url(input: string | Buffer) {
+  const buffer = typeof input === "string" ? Buffer.from(input, "utf8") : input;
+  return buffer.toString("base64url");
+}
+
+async function accessTokenServiceAccount(): Promise<string | null> {
+  const email = process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL"];
+  const privateKeyRaw = process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY"];
+  if (!email || !privateKeyRaw) return null;
+
+  const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const payload = base64Url(
+    JSON.stringify({
+      iss: email,
+      scope: "https://www.googleapis.com/auth/drive",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: now,
+      exp: now + 3600,
+    }),
+  );
+  const unsigned = `${header}.${payload}`;
+  const { createSign } = await import("node:crypto");
+  const signer = createSign("RSA-SHA256");
+  signer.update(unsigned);
+  signer.end();
+  const signature = base64Url(signer.sign(privateKey));
+  const assertion = `${unsigned}.${signature}`;
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion,
+    }),
+  });
+  const json = (await response.json()) as { access_token?: string; error?: string; error_description?: string };
+  if (!response.ok || !json.access_token) {
+    throw new Error(json.error_description || json.error || "Falha ao autenticar a conta de serviço no Google Drive.");
+  }
+  return json.access_token;
+}
+
+async function accessTokenOAuth(): Promise<string | null> {
   const clientId = process.env["GOOGLE_DRIVE_CLIENT_ID"];
   const clientSecret = process.env["GOOGLE_DRIVE_CLIENT_SECRET"];
   const refreshToken = process.env["GOOGLE_DRIVE_REFRESH_TOKEN"];
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Google Drive ainda não foi conectado ao backend do Veterício.");
-  }
-  return { clientId, clientSecret, refreshToken };
-}
+  if (!clientId || !clientSecret || !refreshToken) return null;
 
-async function accessTokenGoogle(): Promise<string> {
-  const { clientId, clientSecret, refreshToken } = credenciaisGoogle();
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -74,6 +113,16 @@ async function accessTokenGoogle(): Promise<string> {
     throw new Error(json.error_description || json.error || "Falha ao autenticar no Google Drive.");
   }
   return json.access_token;
+}
+
+async function accessTokenGoogle(): Promise<string> {
+  const serviceAccountToken = await accessTokenServiceAccount();
+  if (serviceAccountToken) return serviceAccountToken;
+
+  const oauthToken = await accessTokenOAuth();
+  if (oauthToken) return oauthToken;
+
+  throw new Error("Google Drive ainda não foi conectado ao backend do Veterício.");
 }
 
 async function googleFetch(path: string, init: RequestInit = {}) {
@@ -199,13 +248,25 @@ async function validarPastaGoogle(folderId: string) {
 
 export const statusDrive = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => authSchema.parse(input))
-  .handler(async ({ data }) => {
-    const faltando = [
-      !process.env["GOOGLE_DRIVE_CLIENT_ID"] && "GOOGLE_DRIVE_CLIENT_ID",
-      !process.env["GOOGLE_DRIVE_CLIENT_SECRET"] && "GOOGLE_DRIVE_CLIENT_SECRET",
-      !process.env["GOOGLE_DRIVE_REFRESH_TOKEN"] && "GOOGLE_DRIVE_REFRESH_TOKEN",
-    ].filter(Boolean) as string[];
-    return { configurado: faltando.length === 0, faltando };
+  .handler(async () => {
+    const serviceAccountOk = Boolean(
+      process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL"] &&
+        process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY"],
+    );
+    const oauthOk = Boolean(
+      process.env["GOOGLE_DRIVE_CLIENT_ID"] &&
+        process.env["GOOGLE_DRIVE_CLIENT_SECRET"] &&
+        process.env["GOOGLE_DRIVE_REFRESH_TOKEN"],
+    );
+
+    if (serviceAccountOk) return { configurado: true, modo: "service_account" as const, faltando: [] as string[] };
+    if (oauthOk) return { configurado: true, modo: "oauth" as const, faltando: [] as string[] };
+
+    return {
+      configurado: false,
+      modo: null,
+      faltando: ["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY"],
+    };
   });
 
 export const testarEConectarPastaDrive = createServerFn({ method: "POST" })
