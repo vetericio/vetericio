@@ -4,10 +4,12 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -17,6 +19,7 @@ import { Splash } from "@/components/Splash";
 
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
+import { supabase } from "@/integrations/supabase/client";
 
 
 function NotFoundComponent() {
@@ -41,7 +44,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -101,9 +104,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
       },
-      { rel: "manifest", href: "/manifest.webmanifest?v=9" },
-      { rel: "icon", type: "image/svg+xml", href: "/icon-192-v3.svg" },
-      { rel: "apple-touch-icon", type: "image/svg+xml", href: "/icon-192-v3.svg" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=8" },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", type: "image/png", href: "/icon-192.png" },
     ],
   }),
 
@@ -129,6 +132,18 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [autenticado, setAutenticado] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAutenticado(Boolean(data.session)));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setAutenticado(Boolean(session)));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    if (autenticado === false && location.pathname !== "/login") navigate({ to: "/login" });
+  }, [autenticado, location.pathname, navigate]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -140,7 +155,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Cabecalho />
+      {location.pathname !== "/login" && autenticado && <Cabecalho />}
       
       <AlarmeAtivo />
 
@@ -148,9 +163,9 @@ function RootComponent() {
       <Splash />
 
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Rodape />
-      <Toaster position="top-center" swipeDirections={["left", "right"]} />
+      {autenticado === null && location.pathname !== "/login" ? <div className="min-h-screen" /> : <Outlet />}
+      {location.pathname !== "/login" && autenticado && <Rodape />}
+      <Toaster position="top-center" />
     </QueryClientProvider>
   );
 }
