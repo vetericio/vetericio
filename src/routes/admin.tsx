@@ -37,12 +37,13 @@ type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
+type FiltroClinica = "todas" | "pagas" | "inadimplentes" | "canceladas";
 
 type Clinica = {
   id: string;
   nome: string;
   slug: string | null;
-  status: "ativa" | "bloqueada" | "inativa";
+  status: "ativa" | "bloqueada" | "inativa" | "cancelada";
   plano: string;
   dominio: string | null;
   limite_usuarios: number;
@@ -149,6 +150,7 @@ function Admin() {
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
   const [buscaClinica, setBuscaClinica] = useState("");
+  const [filtroClinica, setFiltroClinica] = useState<FiltroClinica>("todas");
   const [usuarios, setUsuarios] = useState<AppUser[]>([]);
   const [vinculos, setVinculos] = useState<Vinculo[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
@@ -166,9 +168,19 @@ function Admin() {
 
   const clinicasFiltradas = useMemo(() => {
     const q = buscaClinica.trim().toLowerCase();
-    if (!q) return clinicas;
-    return clinicas.filter((c) => [c.nome, c.slug, c.plano, c.status].filter(Boolean).some((x) => String(x).toLowerCase().includes(q)));
-  }, [clinicas, buscaClinica]);
+    let lista = clinicas;
+
+    if (filtroClinica === "pagas") {
+      lista = lista.filter((c) => c.status === "ativa" && c.status_financeiro === "em_dia");
+    } else if (filtroClinica === "inadimplentes") {
+      lista = lista.filter((c) => c.status !== "cancelada" && (c.status_financeiro === "pendente" || c.status_financeiro === "atrasado"));
+    } else if (filtroClinica === "canceladas") {
+      lista = lista.filter((c) => c.status === "cancelada");
+    }
+
+    if (!q) return lista;
+    return lista.filter((c) => [c.nome, c.slug, c.plano, c.status, c.status_financeiro].filter(Boolean).some((x) => String(x).toLowerCase().includes(q)));
+  }, [clinicas, buscaClinica, filtroClinica]);
 
   const usuariosDaClinica = useMemo(() => {
     if (!selecionada) return [];
@@ -464,17 +476,41 @@ function Admin() {
     window.location.assign("/login");
   }
 
+  function abrirFiltro(filtro: FiltroClinica) {
+    setSelecionada(null);
+    setBuscaClinica("");
+    setFiltroClinica(filtro);
+    setAba("clinicas");
+  }
+
   const renderDashboard = () => {
-    const ativas = clinicas.filter((c) => c.status === "ativa").length;
+    const pagas = clinicas.filter((c) => c.status === "ativa" && c.status_financeiro === "em_dia").length;
+    const inadimplentes = clinicas.filter((c) => c.status !== "cancelada" && (c.status_financeiro === "pendente" || c.status_financeiro === "atrasado")).length;
+    const canceladas = clinicas.filter((c) => c.status === "cancelada").length;
     const ativos = vinculos.filter((v) => v.ativo).length;
-    const vencendo = clinicas.filter((c) => c.acesso_ate && new Date(c.acesso_ate).getTime() < Date.now() + 15 * 86400000).length;
+
+    const cards = [
+      { rotulo: "Total de clínicas", valor: clinicas.length, Icone: Building2 },
+      { rotulo: "Ativas e pagas", valor: pagas, Icone: ShieldCheck, filtro: "pagas" as FiltroClinica },
+      { rotulo: "Não pagaram", valor: inadimplentes, Icone: CreditCard, filtro: "inadimplentes" as FiltroClinica },
+      { rotulo: "Canceladas", valor: canceladas, Icone: CalendarDays, filtro: "canceladas" as FiltroClinica },
+      { rotulo: "Usuários vinculados", valor: ativos, Icone: Users },
+      { rotulo: "Arquivos no Drive", valor: arquivosDrive, Icone: HardDrive },
+    ];
+
     return <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Clínicas", clinicas.length, Building2], ["Clínicas ativas", ativas, ShieldCheck], ["Usuários vinculados", ativos, Users], ["Acesso vencendo", vencendo, CalendarDays],
-        ].map(([rotulo, valor, Icone]: any) => <Card key={rotulo}><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div><Icone className="text-primary" size={26}/></div></Card>)}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {cards.map(({ rotulo, valor, Icone, filtro }) => filtro ? (
+          <button key={rotulo} type="button" onClick={() => abrirFiltro(filtro)} className="text-left">
+            <Card className="h-full transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
+              <div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p><p className="mt-2 text-xs font-semibold text-primary">Ver clínicas</p></div><Icone className="text-primary" size={26}/></div>
+            </Card>
+          </button>
+        ) : (
+          <Card key={rotulo}><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div><Icone className="text-primary" size={26}/></div></Card>
+        ))}
       </div>
-      <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Clínicas</h2><p className="text-sm text-muted-foreground">Acesso rápido às contas cadastradas.</p></div><button onClick={() => setAba("clinicas")} className="rounded-xl border px-4 py-2 font-semibold">Ver todas</button></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{clinicas.slice(0, 6).map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); setAba("clinicas"); }} className="rounded-xl border p-4 text-left hover:border-primary"><div className="font-bold">{c.nome}</div><div className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"} · {c.plano}</div></button>)}</div></Card>
+      <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Clínicas</h2><p className="text-sm text-muted-foreground">Acesso rápido às contas cadastradas.</p></div><button onClick={() => { setFiltroClinica("todas"); setAba("clinicas"); }} className="rounded-xl border px-4 py-2 font-semibold">Ver todas</button></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{clinicas.slice(0, 6).map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); setAba("clinicas"); }} className="rounded-xl border p-4 text-left hover:border-primary"><div className="font-bold">{c.nome}</div><div className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"} · {c.plano}</div></button>)}</div></Card>
     </div>;
   };
 
@@ -482,7 +518,7 @@ function Admin() {
     <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span>@</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none"/></div></label>
     <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => x.nome === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo}>{p.nome}</option>)}</select></label>
-    <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option></select></label>
+    <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <label className="text-sm font-semibold">Domínio<input value={selecionada.dominio || ""} onChange={(e) => setSelecionada({ ...selecionada, dominio: e.target.value })} placeholder="www.suaclinica.com.br" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="Logo da clínica" className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 text-xs text-muted-foreground">Sem logo</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={enviandoLogoClinica} onChange={(e) => void enviarLogoDaClinica(e.target.files?.[0])}/></label></div></div>
@@ -510,7 +546,9 @@ function Admin() {
       ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database],
     ].map(([id, nome, Icone]: any) => <button key={id} onClick={() => setAbaClinica(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}</div>;
 
-    return <div className="space-y-5"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${c.status === "ativa" ? "bg-emerald-50 text-emerald-700" : c.status === "bloqueada" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
+    return <div className="space-y-5"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><div className="flex flex-wrap items-center gap-2">{[
+      ["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"],
+    ].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}{filtroClinica !== "todas" && <button onClick={() => setFiltroClinica("todas")} className="rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground underline underline-offset-2">Limpar filtro</button>}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${c.status === "ativa" ? "bg-emerald-50 text-emerald-700" : c.status === "bloqueada" ? "bg-amber-50 text-amber-700" : c.status === "cancelada" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"}`}>{c.status}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${c.status_financeiro === "em_dia" ? "bg-emerald-50 text-emerald-700" : c.status_financeiro === "atrasado" ? "bg-red-50 text-red-700" : c.status_financeiro === "pendente" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{c.status_financeiro.replace("_", " ")}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
   };
 
   const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">O conteúdo salvo aqui aparece na página pública de planos.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={adicionarPlano} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><Plus size={17}/> Adicionar plano</button><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.id || p.codigo}><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label><button type="button" disabled={ocupado} onClick={() => void removerPlano(p, i)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"><Trash2 size={16}/> Remover plano</button></div></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
@@ -519,5 +557,5 @@ function Admin() {
 
   const renderSistema = () => <div className="space-y-5"><Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div><button onClick={() => void carregarTudo()} className="mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><RefreshCcw size={17}/> Atualizar dados</button></Card></div>;
 
-  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div></main>;
+  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div></main>;
 }
