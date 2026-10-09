@@ -9,7 +9,7 @@ import { testarEConectarPastaDrive, voltarAoDrivePadrao } from "@/lib/drive.func
 export const Route = createFileRoute("/admin")({ component: Admin });
 
 type Clinica = { id: string; nome: string; slug: string | null; status: string };
-type DriveConfig = { modo: "vetericio" | "personalizado"; root_folder_id: string | null; root_folder_url: string | null; status: string };
+type DriveConfig = { modo: "oryx" | "personalizado"; root_folder_id: string | null; root_folder_url: string | null; status: string };
 
 function Admin() {
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
@@ -32,7 +32,7 @@ function Admin() {
 
   async function carregarDrive(id: string) {
     const { data } = await (supabase as any).from("clinica_drive_config").select("modo,root_folder_id,root_folder_url,status").eq("clinica_id", id).maybeSingle();
-    setDrive(data || { modo: "vetericio", root_folder_id: null, root_folder_url: null, status: "pendente" });
+    setDrive(data || { modo: "oryx", root_folder_id: null, root_folder_url: null, status: "pendente" });
     setPasta(data?.root_folder_url || data?.root_folder_id || "");
   }
 
@@ -73,7 +73,7 @@ function Admin() {
     try {
       await voltarAoDrivePadrao({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id } });
       await carregarDrive(selecionada.id);
-      toast.success("A clínica voltou ao Drive padrão do Veterício.");
+      toast.success("A clínica voltou ao Drive padrão da Oryx.");
     } catch (e) { toast.error((e as Error).message); }
     finally { setOcupado(false); }
   }
@@ -83,7 +83,7 @@ function Admin() {
   return <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
     <div className="mx-auto max-w-7xl px-5 py-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-        <div><p className="text-sm font-semibold text-primary">Veterício Admin</p><h1 className="text-3xl font-bold">Gestão da plataforma</h1></div>
+        <div><p className="text-sm font-semibold text-primary">Oryx Admin</p><h1 className="text-3xl font-bold">Gestão da plataforma</h1></div>
         <button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button>
       </header>
 
@@ -106,10 +106,10 @@ function Admin() {
 
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2"><Database size={20}/><h3 className="text-xl font-bold">Google Drive</h3></div>
-            <p className="mt-1 text-sm text-muted-foreground">Por padrão, os arquivos ficam no Drive central do Veterício. Se esta clínica tiver um Drive próprio, cole a pasta abaixo e conecte.</p>
-            <div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive do Veterício"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div></div>
+            <p className="mt-1 text-sm text-muted-foreground">Por padrão, os arquivos ficam no Drive central da Oryx. Se esta clínica tiver um Drive próprio, cole a pasta abaixo e conecte.</p>
+            <div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da Oryx"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div></div>
             <label className="mt-4 block text-sm font-semibold">Pasta do Google Drive<input value={pasta} onChange={e=>setPasta(e.target.value)} placeholder="Cole o link da pasta compartilhada" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/></label>
-            <div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><RefreshCcw size={17}/> Voltar ao Drive padrão</button></div>
+            <div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><RefreshCcw size={17}/> Voltar ao Drive da Oryx</button></div>
           </div>
         </div>}</section>
       </div>
