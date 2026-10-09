@@ -34,30 +34,21 @@ function Login() {
       return;
     }
 
+    // Conta administrativa inicial fixa do Veterício.
+    // A senha nunca fica gravada no código: é a senha digitada no formulário.
     if (nome === "vetadmin27") {
-      const { data: bootstrapOpen, error: bootstrapError } = await (supabase as any).rpc(
-        "vetericio_bootstrap_open",
-      );
+      const { error: cadastroError } = await supabase.auth.signUp({
+        email,
+        password: senha,
+      });
 
-      if (!bootstrapError && bootstrapOpen) {
-        const { data: cadastro, error: cadastroError } = await supabase.auth.signUp({
+      if (!cadastroError) {
+        const { error: segundoLoginError } = await supabase.auth.signInWithPassword({
           email,
           password: senha,
         });
 
-        if (!cadastroError) {
-          if (!cadastro.session) {
-            const { error: segundoLoginError } = await supabase.auth.signInWithPassword({
-              email,
-              password: senha,
-            });
-            if (segundoLoginError) {
-              setEntrando(false);
-              toast.error("A conta foi criada, mas ainda não foi possível entrar. Tente novamente.");
-              return;
-            }
-          }
-
+        if (!segundoLoginError) {
           setEntrando(false);
           navigate({ to: "/" });
           return;
