@@ -17,8 +17,6 @@ export const LINKS_MENU = [
   { to: "/plantoes", rotulo: "Plantões" },
   { to: "/receituario", rotulo: "Receituário" },
   { to: "/assinar", rotulo: "Assinar um documento" },
-  { to: "/financeiro", rotulo: "Financeiro" },
-  { to: "/estoque", rotulo: "Estoque" },
   { to: "/temas", rotulo: "Temas" },
   { to: "/sincronizacao", rotulo: "Sincronização" },
 ] as const;
@@ -33,13 +31,6 @@ export const GRUPOS_MENU = [
       { to: "/anamnese", rotulo: "Anamnese" },
       { to: "/curva", rotulo: "Curva" },
       { to: "/alarmes", rotulo: "Alarmes" },
-    ],
-  },
-  {
-    titulo: "Atendimento",
-    itens: [
-      { to: "/financeiro", rotulo: "Financeiro" },
-      { to: "/estoque", rotulo: "Estoque" },
     ],
   },
   {
