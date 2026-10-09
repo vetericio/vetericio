@@ -59,10 +59,7 @@ function RootComponent() {
       const papel = data.role || "usuario";
       setAutenticado(true);
       setRole(papel);
-      if (papel === "admin") {
-        setAcessoTeste(null);
-        return;
-      }
+      if (papel === "admin") { setAcessoTeste(null); return; }
       const { data: acesso } = await (supabase as any).rpc("oricse_meu_acesso");
       if (!ativo) return;
       const item = Array.isArray(acesso) ? acesso[0] : acesso;
@@ -81,20 +78,92 @@ function RootComponent() {
 
   useEffect(() => {
     if (role !== "admin" || location.pathname !== "/admin") return;
-    const interceptarAdmin = (event: MouseEvent) => {
-      const alvo = event.target as HTMLElement | null;
-      const botao = alvo?.closest("button");
-      if (!botao) return;
-      const texto = (botao.textContent || "").trim();
-      if (texto === "Site e marca") {
-        event.preventDefault();
-        event.stopPropagation();
-        navigate({ to: "/admin-conteudo" });
+
+    let observer: MutationObserver | null = null;
+    let inputHandler: ((event: Event) => void) | null = null;
+    let clickHandler: ((event: MouseEvent) => void) | null = null;
+
+    const removerCanvas = () => {
+      const canvas = document.getElementById("oricse-admin-site-canvas");
+      canvas?.remove();
+      const section = document.querySelector("main section") as HTMLElement | null;
+      if (section?.dataset.oricseCanvas === "1") {
+        section.style.display = "";
+        section.style.gridTemplateColumns = "";
+        section.style.gap = "";
+        delete section.dataset.oricseCanvas;
       }
+      if (observer) { observer.disconnect(); observer = null; }
+      if (inputHandler && section) { section.removeEventListener("input", inputHandler, true); inputHandler = null; }
     };
-    document.addEventListener("click", interceptarAdmin, true);
-    return () => document.removeEventListener("click", interceptarAdmin, true);
-  }, [role, location.pathname, navigate]);
+
+    const montarCanvas = () => {
+      removerCanvas();
+      const siteButton = Array.from(document.querySelectorAll("nav button")).find((b) => (b.textContent || "").trim() === "Site e marca") as HTMLButtonElement | undefined;
+      const ativo = Boolean(siteButton?.className.includes("bg-primary"));
+      if (!ativo) return;
+
+      const layout = siteButton?.closest("nav")?.parentElement?.parentElement as HTMLElement | null;
+      const section = layout?.querySelector(":scope > section") as HTMLElement | null;
+      if (!section || document.getElementById("oricse-admin-site-canvas")) return;
+
+      section.dataset.oricseCanvas = "1";
+      section.style.display = "grid";
+      section.style.gridTemplateColumns = window.innerWidth >= 1280 ? "minmax(0, 1fr) minmax(460px, .9fr)" : "1fr";
+      section.style.gap = "20px";
+
+      const canvas = document.createElement("div");
+      canvas.id = "oricse-admin-site-canvas";
+      canvas.style.position = window.innerWidth >= 1280 ? "sticky" : "relative";
+      canvas.style.top = "16px";
+      canvas.style.alignSelf = "start";
+      canvas.style.minWidth = "0";
+      canvas.innerHTML = `<div style="border:1px solid #d8ddd9;border-radius:18px;background:white;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #e6e8e6"><div><strong style="font-size:15px">Canvas · Página de planos</strong><div style="font-size:12px;color:#6b7280;margin-top:2px">Preview ao vivo dentro do Admin</div></div><a href="/planos" target="_blank" style="font-size:12px;font-weight:700;color:#006b5b;text-decoration:none">Abrir página ↗</a></div><div style="height:72vh;min-height:620px;background:#f6f4ef"><iframe id="oricse-planos-preview-frame" src="/planos?admin_preview=1" title="Preview da página de planos" style="width:100%;height:100%;border:0;background:#f6f4ef"></iframe></div></div>`;
+      section.appendChild(canvas);
+
+      const sincronizar = () => {
+        const iframe = document.getElementById("oricse-planos-preview-frame") as HTMLIFrameElement | null;
+        const doc = iframe?.contentDocument;
+        if (!doc) return;
+        const labels = Array.from(section.querySelectorAll("label"));
+        const valor = (inicio: string) => {
+          const label = labels.find((l) => (l.textContent || "").trim().startsWith(inicio));
+          const campo = label?.querySelector("input,textarea") as HTMLInputElement | HTMLTextAreaElement | null;
+          return campo?.value || "";
+        };
+        const h1 = doc.querySelector("main header h1") as HTMLElement | null;
+        const subtitle = doc.querySelector("main header p.mt-3") as HTMLElement | null;
+        const logo = doc.querySelector("main header img") as HTMLImageElement | null;
+        const titulo = valor("Título da página de planos");
+        const subtitulo = valor("Subtítulo");
+        const botao = valor("Texto do botão");
+        if (h1 && titulo) h1.textContent = titulo;
+        if (subtitle && subtitulo) subtitle.textContent = subtitulo;
+        if (botao) doc.querySelectorAll("article button").forEach((b) => { if (!(b.textContent || "").toLowerCase().includes("grátis")) b.textContent = botao; });
+        const adminLogo = Array.from(section.querySelectorAll("img")).find((img) => (img.getAttribute("alt") || "").toLowerCase().includes("oricse")) as HTMLImageElement | undefined;
+        if (logo && adminLogo?.src) logo.src = adminLogo.src;
+      };
+
+      const iframe = canvas.querySelector("iframe") as HTMLIFrameElement;
+      iframe.addEventListener("load", () => setTimeout(sincronizar, 100));
+      inputHandler = () => setTimeout(sincronizar, 0);
+      section.addEventListener("input", inputHandler, true);
+      observer = new MutationObserver(() => setTimeout(sincronizar, 0));
+      observer.observe(section, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
+    };
+
+    clickHandler = () => setTimeout(montarCanvas, 50);
+    document.addEventListener("click", clickHandler, true);
+    setTimeout(montarCanvas, 100);
+
+    const resize = () => setTimeout(montarCanvas, 50);
+    window.addEventListener("resize", resize);
+    return () => {
+      document.removeEventListener("click", clickHandler!, true);
+      window.removeEventListener("resize", resize);
+      removerCanvas();
+    };
+  }, [role, location.pathname]);
 
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
 
