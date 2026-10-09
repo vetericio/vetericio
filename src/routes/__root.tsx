@@ -21,7 +21,6 @@ import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
 import { supabase } from "@/integrations/supabase/client";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -137,10 +136,41 @@ function RootComponent() {
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setAutenticado(Boolean(data.session)));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setAutenticado(Boolean(session)));
-    return () => listener.subscription.unsubscribe();
+    let ativo = true;
+
+    async function validarSessao(session: any) {
+      if (!session?.user?.id) {
+        if (ativo) setAutenticado(false);
+        return;
+      }
+
+      const { data, error } = await (supabase as any)
+        .from("app_users")
+        .select("user_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (!ativo) return;
+      if (error) {
+        console.error("Falha ao validar autorização do usuário:", error);
+        setAutenticado(false);
+        return;
+      }
+
+      setAutenticado(Boolean(data?.user_id));
+    }
+
+    supabase.auth.getSession().then(({ data }) => void validarSessao(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      void validarSessao(session);
+    });
+
+    return () => {
+      ativo = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
+
   useEffect(() => {
     const rotaPublica = location.pathname === "/login" || location.pathname === "/planos";
     if (autenticado === false && !rotaPublica) navigate({ to: "/login" });
@@ -157,13 +187,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {location.pathname !== "/login" && location.pathname !== "/planos" && autenticado && <Cabecalho />}
-      
+
       <AlarmeAtivo />
 
-      {/* Tela de abertura com a logo oficial. */}
       <Splash />
 
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       {autenticado === null && location.pathname !== "/login" && location.pathname !== "/planos" ? <div className="min-h-screen" /> : <Outlet />}
       {location.pathname !== "/login" && location.pathname !== "/planos" && autenticado && <Rodape />}
       <Toaster position="top-center" />
