@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   BadgeDollarSign,
   Building2,
+  CalendarDays,
+  CreditCard,
   Database,
   ExternalLink,
   Gauge,
@@ -10,9 +13,9 @@ import {
   ImageUp,
   LogOut,
   PanelsTopLeft,
-  Plus,
   RefreshCcw,
   Save,
+  Search,
   Settings,
   ShieldCheck,
   UserPlus,
@@ -28,7 +31,11 @@ import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "clinicas" | "usuarios" | "planos" | "site" | "drive" | "sistema";
+type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema";
+type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive";
+type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
+type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
+
 type Clinica = {
   id: string;
   nome: string;
@@ -39,9 +46,15 @@ type Clinica = {
   limite_usuarios: number;
   observacoes: string | null;
   logo_url: string | null;
+  created_at: string;
+  ultimo_pagamento_em: string | null;
+  proximo_pagamento_em: string | null;
+  acesso_ate: string | null;
+  status_financeiro: StatusFinanceiro;
 };
+
 type AppUser = { user_id: string; username: string; role: string; created_at: string };
-type Vinculo = { clinica_id: string; user_id: string; papel: "responsavel" | "admin_clinica" | "usuario"; ativo: boolean };
+type Vinculo = { clinica_id: string; user_id: string; papel: PapelClinica; ativo: boolean };
 type DriveConfig = { modo: "oricse" | "personalizado"; root_folder_id: string | null; root_folder_url: string | null; status: string };
 type Plano = {
   id?: string;
@@ -68,12 +81,37 @@ type SiteConfig = {
 const ABAS: { id: Aba; nome: string; icone: typeof Gauge }[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge },
   { id: "clinicas", nome: "Clínicas", icone: Building2 },
-  { id: "usuarios", nome: "Usuários", icone: Users },
   { id: "planos", nome: "Planos", icone: BadgeDollarSign },
   { id: "site", nome: "Site e marca", icone: PanelsTopLeft },
-  { id: "drive", nome: "Drive", icone: Database },
   { id: "sistema", nome: "Sistema", icone: Settings },
 ];
+
+const PERFIS: Record<PapelClinica, { nome: string; resumo: string; acessos: string[]; bloqueios: string[] }> = {
+  rt: {
+    nome: "RT",
+    resumo: "Responsável Técnico com acesso geral à operação da clínica.",
+    acessos: ["Módulos veterinários", "Recepção e fila", "Internação", "Financeiro e caixa", "Estoque", "Cadastros e configurações operacionais"],
+    bloqueios: [],
+  },
+  veterinario: {
+    nome: "Veterinário",
+    resumo: "Acesso clínico e à recepção necessária para acompanhar o fluxo de pacientes.",
+    acessos: ["Prontuários e atendimentos", "Consultório", "Internação", "Prescrições e exames", "Recepção e fila de espera"],
+    bloqueios: ["Financeiro", "Caixa", "Configurações financeiras"],
+  },
+  auxiliar_estagiario: {
+    nome: "Auxiliar / Estagiário",
+    resumo: "Acesso restrito ao apoio da rotina clínica.",
+    acessos: ["Internação", "Fila de espera"],
+    bloqueios: ["Prontuários completos", "Prescrição", "Financeiro e caixa", "Configurações", "Recepção administrativa"],
+  },
+  recepcao: {
+    nome: "Recepção",
+    resumo: "Acesso à recepção e ao caixa, sem acesso às áreas clínicas do veterinário.",
+    acessos: ["Recepção", "Fila de espera", "Agendamentos", "Cadastro de tutores e animais", "Financeiro e caixa"],
+    bloqueios: ["Prontuários clínicos", "Prescrições", "Exames clínicos", "Internação clínica", "Ferramentas veterinárias"],
+  },
+};
 
 const SITE_PADRAO: SiteConfig = {
   marca: "Oricse",
@@ -85,12 +123,18 @@ const SITE_PADRAO: SiteConfig = {
 };
 
 function limparSlug(valor: string) {
-  return valor
-    .replace(/@/g, "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9._-]/g, "");
+  return valor.replace(/@/g, "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9._-]/g, "");
+}
+
+function dataInput(valor: string | null | undefined) {
+  return valor ? valor.slice(0, 10) : "";
+}
+
+function dataBR(valor: string | null | undefined) {
+  if (!valor) return "Não informado";
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return valor;
+  return d.toLocaleDateString("pt-BR");
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -99,8 +143,10 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function Admin() {
   const [aba, setAba] = useState<Aba>("dashboard");
+  const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
+  const [buscaClinica, setBuscaClinica] = useState("");
   const [usuarios, setUsuarios] = useState<AppUser[]>([]);
   const [vinculos, setVinculos] = useState<Vinculo[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
@@ -108,15 +154,19 @@ function Admin() {
   const [drive, setDrive] = useState<DriveConfig | null>(null);
   const [arquivosDrive, setArquivosDrive] = useState(0);
   const [pasta, setPasta] = useState("");
-  const [novoNome, setNovoNome] = useState("");
-  const [novoSlug, setNovoSlug] = useState("");
   const [usuarioParaVincular, setUsuarioParaVincular] = useState("");
-  const [papelNovo, setPapelNovo] = useState<Vinculo["papel"]>("usuario");
+  const [papelNovo, setPapelNovo] = useState<PapelClinica>("veterinario");
   const [ocupado, setOcupado] = useState(false);
   const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [salvandoLogo, setSalvandoLogo] = useState(false);
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
+
+  const clinicasFiltradas = useMemo(() => {
+    const q = buscaClinica.trim().toLowerCase();
+    if (!q) return clinicas;
+    return clinicas.filter((c) => [c.nome, c.slug, c.plano, c.status].filter(Boolean).some((x) => String(x).toLowerCase().includes(q)));
+  }, [clinicas, buscaClinica]);
 
   const usuariosDaClinica = useMemo(() => {
     if (!selecionada) return [];
@@ -140,7 +190,7 @@ function Admin() {
 
   async function carregarTudo() {
     const [c, u, v, p, cfg, arqs] = await Promise.all([
-      (supabase as any).from("clinicas").select("id,nome,slug,status,plano,dominio,limite_usuarios,observacoes,logo_url").order("nome"),
+      (supabase as any).from("clinicas").select("id,nome,slug,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro").order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
@@ -163,11 +213,7 @@ function Admin() {
 
   async function carregarDrive(id: string) {
     const buscar = async () => {
-      const { data } = await (supabase as any)
-        .from("clinica_drive_config")
-        .select("modo,root_folder_id,root_folder_url,status")
-        .eq("clinica_id", id)
-        .maybeSingle();
+      const { data } = await (supabase as any).from("clinica_drive_config").select("modo,root_folder_id,root_folder_url,status").eq("clinica_id", id).maybeSingle();
       return data as DriveConfig | null;
     };
     let data = await buscar();
@@ -187,29 +233,6 @@ function Admin() {
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
   useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
-  async function criarClinica() {
-    if (!novoNome.trim()) return toast.error("Informe o nome da clínica.");
-    const identificador = limparSlug(novoSlug);
-    if (!identificador) return toast.error("Informe o @ da clínica.");
-    setOcupado(true);
-    try {
-      const plano = planos.find((p) => p.codigo === "essencial") || planos[0];
-      const { data, error } = await (supabase as any)
-        .from("clinicas")
-        .insert({ nome: novoNome.trim(), slug: identificador, plano: plano?.nome || "Essencial", limite_usuarios: plano?.usuarios_inclusos || 1 })
-        .select("id,nome,slug,status,plano,dominio,limite_usuarios,observacoes,logo_url")
-        .single();
-      if (error) throw error;
-      setNovoNome("");
-      setNovoSlug("");
-      setSelecionada(data);
-      await carregarTudo();
-      try { await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: data.id } }); } catch { /* Drive pode ser configurado depois */ }
-      toast.success("Clínica criada.");
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setOcupado(false); }
-  }
-
   async function salvarClinica() {
     if (!selecionada) return;
     setOcupado(true);
@@ -223,6 +246,10 @@ function Admin() {
         limite_usuarios: Math.max(1, Number(selecionada.limite_usuarios) || 1),
         observacoes: selecionada.observacoes?.trim() || null,
         logo_url: selecionada.logo_url?.trim() || null,
+        ultimo_pagamento_em: selecionada.ultimo_pagamento_em || null,
+        proximo_pagamento_em: selecionada.proximo_pagamento_em || null,
+        acesso_ate: selecionada.acesso_ate || null,
+        status_financeiro: selecionada.status_financeiro,
         updated_at: new Date().toISOString(),
       }).eq("id", selecionada.id);
       if (error) throw error;
@@ -249,7 +276,6 @@ function Admin() {
     const permitidos = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
     if (!permitidos.includes(file.type)) return toast.error("Use PNG, JPG, WEBP ou SVG.");
     if (file.size > 5 * 1024 * 1024) return toast.error("A logo deve ter no máximo 5 MB.");
-
     setEnviandoLogoClinica(true);
     try {
       if (!drive?.root_folder_id) {
@@ -258,9 +284,7 @@ function Admin() {
       }
       const resultado = await enviarLogoClinica({
         data: {
-          accessToken: await tokenAtual(),
-          clinicaId: selecionada.id,
-          fileName: file.name,
+          accessToken: await tokenAtual(), clinicaId: selecionada.id, fileName: file.name,
           mimeType: file.type as "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml",
           base64: await arquivoEmBase64(file),
         },
@@ -268,11 +292,8 @@ function Admin() {
       setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
       await carregarTudo();
       toast.success("Logo salva na pasta Logo do Drive da clínica.");
-    } catch (e) {
-      toast.error((e as Error).message || "Não foi possível enviar a logo.");
-    } finally {
-      setEnviandoLogoClinica(false);
-    }
+    } catch (e) { toast.error((e as Error).message || "Não foi possível enviar a logo."); }
+    finally { setEnviandoLogoClinica(false); }
   }
 
   async function vincularUsuario() {
@@ -336,15 +357,10 @@ function Admin() {
     try {
       const extensao = logoArquivo.name.split(".").pop()?.toLowerCase() || (logoArquivo.type === "image/svg+xml" ? "svg" : "png");
       const caminho = `site/logo-publica.${extensao}`;
-      const { error: uploadError } = await supabase.storage.from("oricse-branding").upload(caminho, logoArquivo, {
-        upsert: true,
-        contentType: logoArquivo.type,
-        cacheControl: "3600",
-      });
+      const { error: uploadError } = await supabase.storage.from("oricse-branding").upload(caminho, logoArquivo, { upsert: true, contentType: logoArquivo.type, cacheControl: "3600" });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("oricse-branding").getPublicUrl(caminho);
-      const logoUrl = `${data.publicUrl}?v=${Date.now()}`;
-      const novaConfig = { ...site, logo_url: logoUrl };
+      const novaConfig = { ...site, logo_url: `${data.publicUrl}?v=${Date.now()}` };
       const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor: novaConfig, updated_at: new Date().toISOString() });
       if (error) throw error;
       setSite(novaConfig);
@@ -352,11 +368,8 @@ function Admin() {
       if (logoPreview) URL.revokeObjectURL(logoPreview);
       setLogoPreview(null);
       toast.success("Logo do site atualizada.");
-    } catch (e) {
-      toast.error((e as Error).message || "Não foi possível salvar a logo.");
-    } finally {
-      setSalvandoLogo(false);
-    }
+    } catch (e) { toast.error((e as Error).message || "Não foi possível salvar a logo."); }
+    finally { setSalvandoLogo(false); }
   }
 
   async function restaurarLogoPadrao() {
@@ -370,11 +383,8 @@ function Admin() {
       if (logoPreview) URL.revokeObjectURL(logoPreview);
       setLogoPreview(null);
       toast.success("Logo padrão restaurada.");
-    } catch (e) {
-      toast.error((e as Error).message || "Não foi possível restaurar a logo.");
-    } finally {
-      setSalvandoLogo(false);
-    }
+    } catch (e) { toast.error((e as Error).message || "Não foi possível restaurar a logo."); }
+    finally { setSalvandoLogo(false); }
   }
 
   async function conectarDrive() {
@@ -407,102 +417,60 @@ function Admin() {
     window.location.assign("/login");
   }
 
-  const renderSelecionarClinica = () => (
-    <Card>
-      <h2 className="text-xl font-bold">Selecione uma clínica</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Escolha uma clínica na aba Clínicas para administrar seus usuários, plano e Drive.</p>
-    </Card>
-  );
-
   const renderDashboard = () => {
     const ativas = clinicas.filter((c) => c.status === "ativa").length;
     const ativos = vinculos.filter((v) => v.ativo).length;
+    const vencendo = clinicas.filter((c) => c.acesso_ate && new Date(c.acesso_ate).getTime() < Date.now() + 15 * 86400000).length;
     return <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ["Clínicas", clinicas.length, Building2], ["Clínicas ativas", ativas, ShieldCheck], ["Usuários vinculados", ativos, Users], ["Arquivos no Drive", arquivosDrive, HardDrive],
+          ["Clínicas", clinicas.length, Building2], ["Clínicas ativas", ativas, ShieldCheck], ["Usuários vinculados", ativos, Users], ["Acesso vencendo", vencendo, CalendarDays],
         ].map(([rotulo, valor, Icone]: any) => <Card key={rotulo}><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div><Icone className="text-primary" size={26}/></div></Card>)}
       </div>
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Clínicas recentes</h2><p className="text-sm text-muted-foreground">Acesso rápido à administração de cada operação.</p></div><button onClick={() => setAba("clinicas")} className="rounded-xl border px-4 py-2 font-semibold">Gerenciar clínicas</button></div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">{clinicas.slice(0, 6).map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAba("clinicas"); }} className="rounded-xl border p-4 text-left hover:border-primary"><div className="font-bold">{c.nome}</div><div className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"} · {c.plano} · {c.status}</div></button>)}</div>
-      </Card>
+      <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Clínicas</h2><p className="text-sm text-muted-foreground">Acesso rápido às contas cadastradas.</p></div><button onClick={() => setAba("clinicas")} className="rounded-xl border px-4 py-2 font-semibold">Ver todas</button></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{clinicas.slice(0, 6).map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); setAba("clinicas"); }} className="rounded-xl border p-4 text-left hover:border-primary"><div className="font-bold">{c.nome}</div><div className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"} · {c.plano}</div></button>)}</div></Card>
     </div>;
   };
 
-  const renderClinicas = () => <div className="grid gap-5 xl:grid-cols-[330px_1fr]">
-    <div className="space-y-4">
-      <Card><h2 className="font-bold">Clínicas</h2><div className="mt-3 max-h-[440px] space-y-2 overflow-auto">{clinicas.map((c) => <button key={c.id} onClick={() => setSelecionada(c)} className={`w-full rounded-xl border p-3 text-left ${selecionada?.id === c.id ? "border-primary bg-primary/5" : ""}`}><div className="font-semibold">{c.nome}</div><div className="text-xs text-muted-foreground">@{c.slug || "sem-usuario"} · {c.status}</div></button>)}</div></Card>
-      <Card><h3 className="font-bold">Nova clínica</h3><input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Nome da clínica" className="mt-3 min-h-11 w-full rounded-xl border px-3"/><div className="mt-2 flex min-h-11 items-center rounded-xl border px-3"><span className="font-semibold text-slate-500">@</span><input value={novoSlug} onChange={(e) => setNovoSlug(limparSlug(e.target.value))} placeholder="suaclinica" className="min-w-0 flex-1 bg-transparent outline-none"/></div><button disabled={ocupado} onClick={criarClinica} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"><Plus size={18}/> Criar clínica</button></Card>
-    </div>
-    {!selecionada ? renderSelecionarClinica() : <Card><div className="flex items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">{selecionada.nome}</h2><p className="text-sm text-muted-foreground">Cadastro, plano e situação da clínica.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2">
-      <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-      <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span>@</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none"/></div></label>
-      <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => x.nome === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo}>{p.nome}</option>)}</select></label>
-      <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option></select></label>
-      <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-      <label className="text-sm font-semibold">Domínio<input value={selecionada.dominio || ""} onChange={(e) => setSelecionada({ ...selecionada, dominio: e.target.value })} placeholder="www.suaclinica.com.br" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-      <div className="md:col-span-2">
-        <div className="text-sm font-semibold">Logo da clínica</div>
-        <div className="mt-2 flex flex-col gap-4 rounded-2xl border bg-slate-50 p-4 sm:flex-row sm:items-center">
-          <div className="flex h-28 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-white">
-            {selecionada.logo_url ? <img src={selecionada.logo_url} alt={`Logo de ${selecionada.nome}`} className="max-h-full max-w-full object-contain"/> : <span className="px-3 text-center text-xs text-muted-foreground">Nenhuma logo enviada</span>}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-muted-foreground">A imagem será salva automaticamente em <strong>Logo</strong>, dentro da pasta desta clínica no Google Drive.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground ${enviandoLogoClinica ? "pointer-events-none opacity-60" : ""}`}>
-                <ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : selecionada.logo_url ? "Trocar imagem" : "Enviar imagem"}
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={enviandoLogoClinica} onChange={(e) => { const file = e.target.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(file); }}/>
-              </label>
-              {drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Abrir Drive <ExternalLink size={16}/></a>}
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo 5 MB.</p>
-          </div>
-        </div>
-        <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Editar URL manualmente</summary><input value={selecionada.logo_url || ""} onChange={(e) => setSelecionada({ ...selecionada, logo_url: e.target.value })} placeholder="URL da logo (opcional)" className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></details>
-      </div>
-      <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
-    </div></Card>}
+  const renderCadastroClinica = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Cadastro</h2><p className="text-sm text-muted-foreground">Dados gerais e configuração comercial da clínica.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2">
+    <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+    <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span>@</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none"/></div></label>
+    <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => x.nome === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo}>{p.nome}</option>)}</select></label>
+    <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option></select></label>
+    <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+    <label className="text-sm font-semibold">Domínio<input value={selecionada.dominio || ""} onChange={(e) => setSelecionada({ ...selecionada, dominio: e.target.value })} placeholder="www.suaclinica.com.br" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="Logo da clínica" className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 text-xs text-muted-foreground">Sem logo</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={enviandoLogoClinica} onChange={(e) => void enviarLogoDaClinica(e.target.files?.[0])}/></label></div></div>
+    <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
+  </div></Card>;
+
+  const renderSituacao = () => !selecionada ? null : <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div><p className="mt-1 text-sm text-muted-foreground">Controle administrativo, pagamentos e período de acesso.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conta criada em</p><p className="mt-2 text-lg font-bold">{dataBR(selecionada.created_at)}</p></div>
+    <label className="text-sm font-semibold">Situação financeira<select value={selecionada.status_financeiro} onChange={(e) => setSelecionada({ ...selecionada, status_financeiro: e.target.value as StatusFinanceiro })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="em_dia">Em dia</option><option value="pendente">Pendente</option><option value="atrasado">Atrasado</option><option value="isento">Isento</option><option value="teste">Período de teste</option></select></label>
+    <label className="text-sm font-semibold">Último pagamento<input type="date" value={dataInput(selecionada.ultimo_pagamento_em)} onChange={(e) => setSelecionada({ ...selecionada, ultimo_pagamento_em: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+    <label className="text-sm font-semibold">Próximo pagamento<input type="date" value={dataInput(selecionada.proximo_pagamento_em)} onChange={(e) => setSelecionada({ ...selecionada, proximo_pagamento_em: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+    <label className="text-sm font-semibold md:col-span-2">Acesso liberado até<input type="date" value={dataInput(selecionada.acesso_ate)} onChange={(e) => setSelecionada({ ...selecionada, acesso_ate: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+    <div className="rounded-xl border p-4 md:col-span-2"><p className="text-sm font-semibold">Resumo</p><p className="mt-2 text-sm text-muted-foreground">Plano: <strong className="text-foreground">{selecionada.plano}</strong> · Status da clínica: <strong className="text-foreground">{selecionada.status}</strong> · Acesso até: <strong className="text-foreground">{dataBR(selecionada.acesso_ate)}</strong></p></div>
+  </div></Card></div>;
+
+  const renderUsuariosClinica = () => !selecionada ? null : <div className="space-y-5">
+    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Usuários · {selecionada.nome}</h2><p className="text-sm text-muted-foreground">{usuariosDaClinica.filter((x) => x.vinculo.ativo).length} de {selecionada.limite_usuarios} vagas em uso.</p></div></div><div className="mt-4 grid gap-3">{usuariosDaClinica.length === 0 && <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">Nenhum usuário vinculado a esta clínica.</div>}{usuariosDaClinica.map(({ vinculo, usuario }) => <div key={vinculo.user_id} className="grid gap-3 rounded-xl border p-4 lg:grid-cols-[1fr_220px_120px] lg:items-center"><div><div className="font-semibold">@{usuario!.username}</div><div className="mt-1 text-xs text-muted-foreground">{PERFIS[vinculo.papel]?.resumo}</div></div><select value={vinculo.papel} onChange={(e) => void atualizarVinculo(vinculo, { papel: e.target.value as PapelClinica })} className="min-h-10 rounded-xl border px-3 text-sm">{Object.entries(PERFIS).map(([id, p]) => <option key={id} value={id}>{p.nome}</option>)}</select><button onClick={() => void atualizarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button></div>)}</div></Card>
+    <Card><div className="flex items-center gap-2"><UserPlus size={20}/><h3 className="font-bold">Vincular usuário</h3></div><div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px_auto]"><select value={usuarioParaVincular} onChange={(e) => setUsuarioParaVincular(e.target.value)} className="min-h-11 rounded-xl border px-3"><option value="">Selecione um @usuário</option>{usuariosDisponiveis.map((u) => <option key={u.user_id} value={u.user_id}>@{u.username}</option>)}</select><select value={papelNovo} onChange={(e) => setPapelNovo(e.target.value as PapelClinica)} className="min-h-11 rounded-xl border px-3">{Object.entries(PERFIS).map(([id, p]) => <option key={id} value={id}>{p.nome}</option>)}</select><button onClick={vincularUsuario} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground">Vincular</button></div><div className="mt-5 grid gap-3 md:grid-cols-2">{Object.entries(PERFIS).map(([id, p]) => <div key={id} className={`rounded-xl border p-4 ${papelNovo === id ? "border-primary bg-primary/5" : ""}`}><div className="font-bold">{p.nome}</div><p className="mt-1 text-sm text-muted-foreground">{p.resumo}</p><div className="mt-3 text-xs"><strong>Acesso:</strong> {p.acessos.join(" · ")}</div>{p.bloqueios.length > 0 && <div className="mt-2 text-xs text-muted-foreground"><strong>Sem acesso:</strong> {p.bloqueios.join(" · ")}</div>}</div>)}</div></Card>
   </div>;
 
-  const renderUsuarios = () => !selecionada ? renderSelecionarClinica() : <div className="space-y-5">
-    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Usuários · {selecionada.nome}</h2><p className="text-sm text-muted-foreground">{usuariosDaClinica.filter((x) => x.vinculo.ativo).length} de {selecionada.limite_usuarios} vagas em uso.</p></div><div className="text-sm font-semibold">Plano {selecionada.plano}</div></div>
-      <div className="mt-4 grid gap-2">{usuariosDaClinica.map(({ vinculo, usuario }) => <div key={vinculo.user_id} className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_180px_120px] sm:items-center"><div><div className="font-semibold">@{usuario!.username}</div><div className="text-xs text-muted-foreground">{usuario!.role === "admin" ? "Administrador da plataforma" : "Usuário da Oricse"}</div></div><select value={vinculo.papel} disabled={usuario!.role === "admin"} onChange={(e) => void atualizarVinculo(vinculo, { papel: e.target.value as Vinculo["papel"] })} className="min-h-10 rounded-xl border px-3 text-sm"><option value="responsavel">Responsável</option><option value="admin_clinica">Admin clínica</option><option value="usuario">Usuário</option></select><button disabled={usuario!.role === "admin"} onClick={() => void atualizarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button></div>)}</div>
-    </Card>
-    <Card><div className="flex items-center gap-2"><UserPlus size={20}/><h3 className="font-bold">Vincular usuário existente</h3></div><p className="mt-1 text-sm text-muted-foreground">Contas já cadastradas na Oricse aparecem aqui para serem ligadas à clínica.</p><div className="mt-4 grid gap-3 md:grid-cols-[1fr_190px_auto]"><select value={usuarioParaVincular} onChange={(e) => setUsuarioParaVincular(e.target.value)} className="min-h-11 rounded-xl border px-3"><option value="">Selecione um @usuário</option>{usuariosDisponiveis.map((u) => <option key={u.user_id} value={u.user_id}>@{u.username}</option>)}</select><select value={papelNovo} onChange={(e) => setPapelNovo(e.target.value as Vinculo["papel"])} className="min-h-11 rounded-xl border px-3"><option value="responsavel">Responsável</option><option value="admin_clinica">Admin clínica</option><option value="usuario">Usuário</option></select><button onClick={vincularUsuario} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground">Vincular</button></div></Card>
-  </div>;
+  const renderDriveClinica = () => !selecionada ? null : <Card><div className="flex items-center gap-2"><Database size={20}/><h2 className="text-xl font-bold">Google Drive · {selecionada.nome}</h2></div><p className="mt-1 text-sm text-muted-foreground">A ORICSE cria uma pasta própria para cada clínica. Se necessário, você pode conectar uma pasta personalizada.</p><div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da ORICSE"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div>{drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline">Abrir pasta <ExternalLink size={14}/></a>}</div><label className="mt-4 block text-sm font-semibold">Pasta personalizada<input value={pasta} onChange={(e) => setPasta(e.target.value)} placeholder="Cole o link de uma pasta do Google Drive" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/></label><div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-60">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Usar Drive da ORICSE</button></div></Card>;
 
-  const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">Tudo que você editar aqui aparece na página pública de planos.</p></div><div className="flex gap-2"><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.codigo}><div className="flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
+  const renderClinicas = () => {
+    if (selecionada) return <div className="space-y-5"><button onClick={() => setSelecionada(null)} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ArrowLeft size={17}/> Voltar para clínicas</button><Card><div className="flex flex-wrap items-center gap-4"><div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={30} className="text-muted-foreground"/>}</div><div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-bold">{selecionada.nome}</h2><p className="mt-1 text-sm text-muted-foreground">@{selecionada.slug || "sem-usuario"} · {selecionada.plano} · {selecionada.status}</p></div></div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{[
+      ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database],
+    ].map(([id, nome, Icone]: any) => <button key={id} onClick={() => setAbaClinica(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}</div>;
 
-  const renderSite = () => <div className="space-y-5">
-    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card>
-    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">Logo usada no site</h3><p className="mt-1 text-sm text-muted-foreground">Escolha aqui a identidade que aparecerá nas páginas públicas da Oricse.</p></div>{site.logo_url && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Logo personalizada ativa</span>}</div>
-      <div className="mt-4 grid gap-5 lg:grid-cols-[320px_1fr] lg:items-center">
-        <div className="flex min-h-56 items-center justify-center rounded-2xl border bg-[#f6f4ef] p-5"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Logo pública da Oricse" className="max-h-48 max-w-full object-contain"/></div>
-        <div><div className="font-bold">{logoPreview ? "Prévia da nova logo" : "Identidade atual"}</div><p className="mt-1 text-sm text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo de 5 MB. A imagem será ajustada proporcionalmente, sem cortes.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold hover:bg-slate-50"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label>
-            {logoArquivo && <button disabled={salvandoLogo} onClick={salvarLogoSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-60"><Save size={17}/>{salvandoLogo ? "Salvando..." : "Salvar logo do site"}</button>}
-            {(site.logo_url || logoPreview) && <button disabled={salvandoLogo} onClick={restaurarLogoPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Restaurar logo padrão</button>}
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">Esta logo é global e não altera a logo cadastrada individualmente para cada clínica.</p>
-        </div>
-      </div>
-    </Card>
-  </div>;
+    return <div className="space-y-5"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${c.status === "ativa" ? "bg-emerald-50 text-emerald-700" : c.status === "bloqueada" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
+  };
 
-  const renderDrive = () => !selecionada ? renderSelecionarClinica() : <Card><div className="flex items-center gap-2"><Database size={20}/><h2 className="text-xl font-bold">Google Drive · {selecionada.nome}</h2></div><p className="mt-1 text-sm text-muted-foreground">A ORICSE cria uma pasta própria para cada clínica no Drive central. Se preferir, a clínica pode usar uma pasta personalizada.</p><div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da ORICSE"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div>{drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline">Abrir pasta <ExternalLink size={14}/></a>}</div><label className="mt-4 block text-sm font-semibold">Pasta personalizada<input value={pasta} onChange={(e) => setPasta(e.target.value)} placeholder="Cole o link de uma pasta do Google Drive" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/></label><div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-60">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Usar Drive da ORICSE</button></div></Card>;
+  const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">O conteúdo salvo aqui aparece na página pública de planos.</p></div><div className="flex gap-2"><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.codigo}><div className="flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
 
-  const renderSistema = () => <div className="space-y-5"><Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div><button onClick={() => void carregarTudo()} className="mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><RefreshCcw size={17}/> Atualizar dados</button></Card><Card><h3 className="font-bold">Atalhos</h3><div className="mt-3 flex flex-wrap gap-2"><a href="/" target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold">Abrir sistema <ExternalLink size={16}/></a><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold">Página de planos <ExternalLink size={16}/></a></div></Card></div>;
+  const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><p className="mt-1 text-sm text-muted-foreground">Essa é a identidade global da Oricse nas páginas públicas.</p><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo do site</button><button disabled={salvandoLogo} onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card></div>;
 
-  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
-    <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src="/oricse-logo.png" alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header>
-      <div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]">
-        <aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => setAba(id)} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside>
-        <section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "usuarios" && renderUsuarios()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "drive" && renderDrive()}{aba === "sistema" && renderSistema()}</section>
-      </div>
-    </div>
-  </main>;
+  const renderSistema = () => <div className="space-y-5"><Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div><button onClick={() => void carregarTudo()} className="mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><RefreshCcw size={17}/> Atualizar dados</button></Card></div>;
+
+  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div></main>;
 }
