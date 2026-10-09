@@ -2,11 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
 function Login() {
   const navigate = useNavigate();
+  const { marca, logo_url } = useSiteBranding();
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [entrando, setEntrando] = useState(false);
@@ -20,9 +22,7 @@ function Login() {
     }
 
     setEntrando(true);
-    // Mantido apenas por compatibilidade com contas já existentes no Auth.
     const email = `${nome}@vetericio.local`;
-
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: senha });
 
     if (!loginError) {
@@ -52,14 +52,10 @@ function Login() {
       <form onSubmit={entrar} className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-xl sm:p-7">
         <div className="text-center">
           <div className="mx-auto flex w-full items-center justify-center overflow-visible px-2 pt-2">
-            <img
-              src="/oricse-logo.png"
-              alt="Oricse — sistema veterinário e petshop"
-              className="block h-auto max-h-[220px] w-auto max-w-full object-contain"
-            />
+            <img src={logo_url} alt={`${marca} — sistema veterinário e petshop`} className="block h-auto max-h-[220px] w-auto max-w-full object-contain" />
           </div>
           <h1 className="mt-4 text-3xl font-bold">Entrar</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Acesse a Oricse com seu @usuário.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Acesse a {marca} com seu @usuário.</p>
         </div>
 
         <label className="mt-7 block text-sm font-semibold">
