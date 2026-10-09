@@ -51,9 +51,11 @@ function Login() {
     <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
       <form onSubmit={entrar} className="w-full max-w-md rounded-3xl border bg-card p-7 shadow-xl">
         <div className="text-center">
-          <div className="mx-auto flex min-h-24 items-center justify-center">
-            <span className="text-4xl font-black tracking-[0.18em] text-primary sm:text-5xl">ORICSE</span>
-          </div>
+          <img
+            src="/oricse-logo.png"
+            alt="Oricse — sistema veterinário e petshop"
+            className="mx-auto h-auto w-full max-w-[260px] object-contain"
+          />
           <h1 className="mt-3 text-3xl font-bold">Entrar</h1>
           <p className="mt-2 text-sm text-muted-foreground">Acesse a Oricse com seu @usuário.</p>
         </div>
