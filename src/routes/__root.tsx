@@ -18,7 +18,6 @@ import { Cabecalho } from "@/components/Cabecalho";
 import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
-import { PadronizarMarca } from "@/components/PadronizarMarca";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -33,7 +32,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({ meta: [{ charSet: "utf-8" }, { name: "viewport", content: "width=device-width, initial-scale=1" }, { name: "theme-color", content: "#0f4d47" }, { name: "author", content: "Oricse" }], links: [{ rel: "stylesheet", href: appCss }, { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" }, { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" }, { rel: "manifest", href: "/manifest.webmanifest?v=8" }, { rel: "icon", type: "image/png", href: "/favicon.png" }, { rel: "apple-touch-icon", type: "image/png", href: "/icon-192.png" }] }),
+  head: () => ({ meta: [{ charSet: "utf-8" }, { name: "viewport", content: "width=device-width, initial-scale=1" }, { name: "theme-color", content: "#0f4d47" }, { name: "author", content: "Oricse" }], links: [{ rel: "stylesheet", href: appCss }, { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" }, { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" }, { rel: "manifest", href: "/manifest.webmanifest?v=10" }, { rel: "icon", type: "image/png", href: "/favicon.png" }, { rel: "apple-touch-icon", type: "image/png", href: "/icon-192.png" }] }),
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -76,7 +75,6 @@ function RootComponent() {
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica;
 
   return <QueryClientProvider client={queryClient}>
-    <PadronizarMarca />
     {mostrarClinico && <Cabecalho />}
     {mostrarClinico && <AlarmeAtivo />}
     {!rotaAdmin && <Splash />}
