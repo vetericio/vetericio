@@ -47,15 +47,26 @@ function RootComponent() {
   const navigate = useNavigate();
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [acessoTeste, setAcessoTeste] = useState<any>(null);
 
   useEffect(() => {
     let ativo = true;
     async function validarSessao(session: any) {
-      if (!session?.user?.id) { if (ativo) { setAutenticado(false); setRole(null); } return; }
+      if (!session?.user?.id) { if (ativo) { setAutenticado(false); setRole(null); setAcessoTeste(null); } return; }
       const { data, error } = await (supabase as any).from("app_users").select("user_id, role").eq("user_id", session.user.id).maybeSingle();
       if (!ativo) return;
-      if (error || !data?.user_id) { setAutenticado(false); setRole(null); return; }
-      setAutenticado(true); setRole(data.role || "usuario");
+      if (error || !data?.user_id) { setAutenticado(false); setRole(null); setAcessoTeste(null); return; }
+      const papel = data.role || "usuario";
+      setAutenticado(true);
+      setRole(papel);
+      if (papel === "admin") {
+        setAcessoTeste(null);
+        return;
+      }
+      const { data: acesso } = await (supabase as any).rpc("oricse_meu_acesso");
+      if (!ativo) return;
+      const item = Array.isArray(acesso) ? acesso[0] : acesso;
+      setAcessoTeste(item || null);
     }
     supabase.auth.getSession().then(({ data }) => void validarSessao(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => void validarSessao(session));
@@ -89,13 +100,17 @@ function RootComponent() {
 
   const rotaAdmin = location.pathname.startsWith("/admin");
   const rotaPublica = location.pathname === "/login" || location.pathname === "/planos" || location.pathname === "/contratar";
-  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica;
+  const testeExpirado = Boolean(acessoTeste?.teste_expirado);
+  const testeAtivo = Boolean(acessoTeste?.teste_ativo);
+  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;
+  const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
 
   return <QueryClientProvider client={queryClient}>
     {mostrarClinico && <Cabecalho />}
     {mostrarClinico && <AlarmeAtivo />}
     {!rotaAdmin && <Splash />}
-    {autenticado === null && !rotaPublica ? <div className="min-h-screen" /> : <Outlet />}
+    {testeAtivo && mostrarClinico && <div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s) restante(s).</div>}
+    {autenticado === null && !rotaPublica ? <div className="min-h-screen" /> : mostrarBloqueioTeste ? <main className="flex min-h-[75vh] items-center justify-center bg-background px-4 py-10"><section className="w-full max-w-xl rounded-3xl border bg-card p-7 text-center shadow-lg"><div className="text-4xl">💚</div><h1 className="mt-4 text-3xl font-bold">Seu período de carinho com a Oricse chegou ao fim</h1><p className="mt-3 text-muted-foreground">Seus dados estão guardadinhos aqui, exatamente como você deixou. Para continuar usando a Oricse, escolha um plano e regularize sua conta.</p><div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground"><p>Nada foi apagado.</p><p className="mt-1">Enquanto a conta estiver pausada, edição, exportações, PDFs, downloads e backups ficam indisponíveis.</p></div><Link to="/planos" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">Escolher meu plano</Link></section></main> : <Outlet />}
     {mostrarClinico && <Rodape />}
     <Toaster position="top-center" />
   </QueryClientProvider>;
