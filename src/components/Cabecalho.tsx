@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
@@ -19,6 +19,7 @@ import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 
 export function Cabecalho() {
   const location = useLocation();
+  const navigate = useNavigate();
   const plantaoArea = ["/", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
@@ -27,6 +28,7 @@ export function Cabecalho() {
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
   const [temaEscuro, setTemaEscuro] = useState(false);
+  const [trocarArea, setTrocarArea] = useState(false);
 
   const finalizarPlantao = () => {
     const quantos = registros.length;
@@ -55,7 +57,7 @@ export function Cabecalho() {
 
   return (
     <header className="relative border-b border-border bg-card/60">
-      {plantaoArea && <MenuLateral />}
+      <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
           <img
@@ -64,6 +66,22 @@ export function Cabecalho() {
             className="h-auto w-full max-w-[204px] object-contain sm:max-w-[238px]"
           />
         </div>
+
+        {!plantaoArea && (
+          <div className="mb-2">
+            <button type="button" onClick={() => setTrocarArea((aberto) => !aberto)} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold shadow-sm">
+              ← Voltar / trocar área
+            </button>
+            {trocarArea && (
+              <div className="mx-auto mt-2 grid max-w-md gap-2 rounded-2xl border bg-card p-3 text-left shadow-lg">
+                <p className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Para onde deseja ir?</p>
+                <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Internação</button>
+                <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/consultorio" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Consultório</button>
+                <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/recepcao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Recepção</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {plantaoArea && <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
           Ficha de Avaliação da Internação
