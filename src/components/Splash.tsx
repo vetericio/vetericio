@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import logoOficial from "@/assets/vetericio-logo-oficial.png.asset.json";
 
 export function Splash() {
   const [visivel, setVisivel] = useState(true);
@@ -17,17 +16,11 @@ export function Splash() {
   if (oculto) return null;
 
   return (
-    <div
-      aria-hidden={!visivel}
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-white transition-opacity duration-500 ease-out ${
-        visivel ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
-    >
-      <img
-        src={logoOficial.url}
-        alt="Veterício Serviços Veterinários LTDA"
-        className="h-auto w-full max-w-xs rounded-2xl bg-white object-contain p-3 sm:max-w-sm"
-      />
+    <div aria-hidden={!visivel} className={`fixed inset-0 z-50 flex items-center justify-center bg-white transition-opacity duration-500 ease-out ${visivel ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+      <div className="rounded-3xl bg-white px-8 py-6 text-center">
+        <div className="text-5xl font-black tracking-[0.18em] text-slate-900 sm:text-6xl">ORICSE</div>
+        <div className="mt-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Plataforma veterinária</div>
+      </div>
     </div>
   );
 }
