@@ -70,7 +70,7 @@ function RootComponent() {
 
   useEffect(() => {
     if (role !== "admin" || location.pathname !== "/admin") return;
-    const interceptarPlanos = (event: MouseEvent) => {
+    const interceptarAdmin = (event: MouseEvent) => {
       const alvo = event.target as HTMLElement | null;
       const botao = alvo?.closest("button");
       if (!botao) return;
@@ -80,9 +80,14 @@ function RootComponent() {
         event.stopPropagation();
         navigate({ to: "/admin-planos" });
       }
+      if (texto === "Site e marca") {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate({ to: "/admin-conteudo" });
+      }
     };
-    document.addEventListener("click", interceptarPlanos, true);
-    return () => document.removeEventListener("click", interceptarPlanos, true);
+    document.addEventListener("click", interceptarAdmin, true);
+    return () => document.removeEventListener("click", interceptarAdmin, true);
   }, [role, location.pathname, navigate]);
 
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
