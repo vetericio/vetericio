@@ -17,6 +17,7 @@ import { Route as ConsultorioRouteImport } from './routes/consultorio'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
@@ -64,6 +65,11 @@ const EstoqueRoute = EstoqueRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MedicacoesRoute = MedicacoesRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/curva': typeof CurvaRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/curva': typeof CurvaRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/curva': typeof CurvaRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/curva'
     | '/estoque'
     | '/financeiro'
+    | '/login'
     | '/medicacoes'
     | '/pendencias'
     | '/plantoes'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/curva'
     | '/estoque'
     | '/financeiro'
+    | '/login'
     | '/medicacoes'
     | '/pendencias'
     | '/plantoes'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/curva'
     | '/estoque'
     | '/financeiro'
+    | '/login'
     | '/medicacoes'
     | '/pendencias'
     | '/plantoes'
@@ -228,6 +240,7 @@ export interface RootRouteChildren {
   CurvaRoute: typeof CurvaRoute
   EstoqueRoute: typeof EstoqueRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LoginRoute: typeof LoginRoute
   MedicacoesRoute: typeof MedicacoesRoute
   PendenciasRoute: typeof PendenciasRoute
   PlantoesRoute: typeof PlantoesRoute
@@ -294,6 +307,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/medicacoes': {
@@ -364,6 +384,7 @@ const rootRouteChildren: RootRouteChildren = {
   CurvaRoute: CurvaRoute,
   EstoqueRoute: EstoqueRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
   PendenciasRoute: PendenciasRoute,
   PlantoesRoute: PlantoesRoute,
