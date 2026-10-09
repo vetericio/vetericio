@@ -14,6 +14,8 @@ import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AssinarRouteImport } from './routes/assinar'
 import { Route as CurvaRouteImport } from './routes/curva'
+import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
@@ -45,6 +47,16 @@ const AssinarRoute = AssinarRouteImport.update({
 const CurvaRoute = CurvaRouteImport.update({
   id: '/curva',
   path: '/curva',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MedicacoesRoute = MedicacoesRouteImport.update({
@@ -89,6 +101,8 @@ export interface FileRoutesByFullPath {
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
+  '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
@@ -103,6 +117,8 @@ export interface FileRoutesByTo {
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
+  '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
@@ -118,6 +134,8 @@ export interface FileRoutesById {
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
   '/curva': typeof CurvaRoute
+  '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
@@ -134,6 +152,8 @@ export interface FileRouteTypes {
     | '/anamnese'
     | '/assinar'
     | '/curva'
+    | '/estoque'
+    | '/financeiro'
     | '/medicacoes'
     | '/pendencias'
     | '/plantoes'
@@ -148,6 +168,8 @@ export interface FileRouteTypes {
     | '/anamnese'
     | '/assinar'
     | '/curva'
+    | '/estoque'
+    | '/financeiro'
     | '/medicacoes'
     | '/pendencias'
     | '/plantoes'
@@ -162,6 +184,8 @@ export interface FileRouteTypes {
     | '/anamnese'
     | '/assinar'
     | '/curva'
+    | '/estoque'
+    | '/financeiro'
     | '/medicacoes'
     | '/pendencias'
     | '/plantoes'
@@ -177,6 +201,8 @@ export interface RootRouteChildren {
   AnamneseRoute: typeof AnamneseRoute
   AssinarRoute: typeof AssinarRoute
   CurvaRoute: typeof CurvaRoute
+  EstoqueRoute: typeof EstoqueRoute
+  FinanceiroRoute: typeof FinanceiroRoute
   MedicacoesRoute: typeof MedicacoesRoute
   PendenciasRoute: typeof PendenciasRoute
   PlantoesRoute: typeof PlantoesRoute
@@ -221,6 +247,20 @@ declare module '@tanstack/react-router' {
       path: '/curva'
       fullPath: '/curva'
       preLoaderRoute: typeof CurvaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/medicacoes': {
@@ -281,6 +321,8 @@ const rootRouteChildren: RootRouteChildren = {
   AnamneseRoute: AnamneseRoute,
   AssinarRoute: AssinarRoute,
   CurvaRoute: CurvaRoute,
+  EstoqueRoute: EstoqueRoute,
+  FinanceiroRoute: FinanceiroRoute,
   MedicacoesRoute: MedicacoesRoute,
   PendenciasRoute: PendenciasRoute,
   PlantoesRoute: PlantoesRoute,
