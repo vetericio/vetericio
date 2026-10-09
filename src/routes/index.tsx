@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Building2, ClipboardList, Stethoscope } from "lucide-react";
@@ -273,6 +273,9 @@ function Index() {
                 </button>
               ))}
             </div>
+            <Link to="/planos" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-primary px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10">
+              Conhecer os planos — clique aqui
+            </Link>
           </section>
         </div>
       )}
