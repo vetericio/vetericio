@@ -68,6 +68,23 @@ function RootComponent() {
     if (autenticado && role === "admin" && location.pathname === "/") navigate({ to: "/admin" });
   }, [autenticado, role, location.pathname, navigate]);
 
+  useEffect(() => {
+    if (role !== "admin" || location.pathname !== "/admin") return;
+    const interceptarPlanos = (event: MouseEvent) => {
+      const alvo = event.target as HTMLElement | null;
+      const botao = alvo?.closest("button");
+      if (!botao) return;
+      const texto = (botao.textContent || "").trim();
+      if (texto === "Planos") {
+        event.preventDefault();
+        event.stopPropagation();
+        navigate({ to: "/admin-planos" });
+      }
+    };
+    document.addEventListener("click", interceptarPlanos, true);
+    return () => document.removeEventListener("click", interceptarPlanos, true);
+  }, [role, location.pathname, navigate]);
+
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
 
   const rotaAdmin = location.pathname.startsWith("/admin");
