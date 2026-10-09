@@ -5,16 +5,16 @@ import { Backup } from "@/components/Backup";
 export const Route = createFileRoute("/sincronizacao")({
   head: () => ({
     meta: [
-      { title: "Sincronização e backup — Veterício" },
+      { title: "Sincronização e backup — Oricse" },
       {
         name: "description",
         content:
-          "Faça o backup completo do Veterício e sincronize os dados entre dois aparelhos com código ou QR.",
+          "Faça o backup completo da Oricse e sincronize os dados entre dois aparelhos com código ou QR.",
       },
-      { property: "og:title", content: "Sincronização e backup — Veterício" },
+      { property: "og:title", content: "Sincronização e backup — Oricse" },
       {
         property: "og:description",
-        content: "Backup completo e sincronização entre aparelhos do Veterício.",
+        content: "Backup completo e sincronização entre aparelhos da Oricse.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
