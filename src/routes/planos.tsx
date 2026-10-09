@@ -79,22 +79,15 @@ function Planos() {
             const mensal = plano.cobranca_mensal !== false;
             const anual = Boolean(plano.cobranca_anual);
             const usandoAnual = anual && (!mensal || ciclo === "anual");
+            const cicloEscolhido = usandoAnual ? "anual" : "mensal";
             const precoExibido = usandoAnual ? plano.preco_anual : (plano.preco_mensal || plano.preco);
             const rotuloCobranca = usandoAnual ? "Pagamento anual" : (mensal ? "Pagamento mensal" : "");
             const destacado = plano.maisVendido || plano.recomendado;
 
             return (
               <article key={plano.codigo || plano.nome} className={`relative flex h-full flex-col rounded-3xl border bg-card p-6 shadow-sm ${destacado ? "border-primary shadow-lg ring-2 ring-primary/20" : ""}`}>
-                {plano.maisVendido && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">
-                    Mais vendido
-                  </span>
-                )}
-                {plano.recomendado && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">
-                    Recomendado
-                  </span>
-                )}
+                {plano.maisVendido && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">Mais vendido</span>}
+                {plano.recomendado && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">Recomendado</span>}
 
                 <div className="grid min-h-[148px] content-start grid-rows-[auto_auto_1fr]">
                   <h2 className="text-2xl font-bold">{plano.nome}</h2>
@@ -107,11 +100,9 @@ function Planos() {
                   <p className="mt-1 text-xs font-semibold text-muted-foreground">{rotuloCobranca || "\u00a0"}</p>
                 </div>
 
-                <button type="button" className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary/90">{site.cta_plano}</button>
+                <button type="button" onClick={() => { window.location.href = `/contratar?plano=${encodeURIComponent(plano.codigo || plano.nome)}&ciclo=${cicloEscolhido}`; }} className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary/90">{site.cta_plano}</button>
 
-                <ul className="mt-6 space-y-3">
-                  {plano.itens.map((item: string) => <li key={item} className="text-sm">{item}</li>)}
-                </ul>
+                <ul className="mt-6 space-y-3">{plano.itens.map((item: string) => <li key={item} className="text-sm">{item}</li>)}</ul>
               </article>
             );
           })}
