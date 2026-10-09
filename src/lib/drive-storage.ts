@@ -1,4 +1,4 @@
-export type DriveModo = "oryx" | "personalizado";
+export type DriveModo = "oricse" | "personalizado";
 
 export type DriveCategoria =
   | "identidade"
@@ -55,7 +55,7 @@ export function extrairDriveFolderId(valor: string): string | null {
 
 /**
  * Regra única do sistema:
- * - sem configuração própria: usa o Drive central da Oryx;
+ * - sem configuração própria: usa o Drive central da ORICSE;
  * - com modo personalizado conectado: usa a pasta da clínica.
  */
 export function resolverPastaRaiz(
