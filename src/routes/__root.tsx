@@ -142,7 +142,8 @@ function RootComponent() {
     return () => listener.subscription.unsubscribe();
   }, []);
   useEffect(() => {
-    if (autenticado === false && location.pathname !== "/login") navigate({ to: "/login" });
+    const rotaPublica = location.pathname === "/login" || location.pathname === "/planos";
+    if (autenticado === false && !rotaPublica) navigate({ to: "/login" });
   }, [autenticado, location.pathname, navigate]);
 
   useEffect(() => {
@@ -155,7 +156,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {location.pathname !== "/login" && autenticado && <Cabecalho />}
+      {location.pathname !== "/login" && location.pathname !== "/planos" && autenticado && <Cabecalho />}
       
       <AlarmeAtivo />
 
@@ -163,8 +164,8 @@ function RootComponent() {
       <Splash />
 
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {autenticado === null && location.pathname !== "/login" ? <div className="min-h-screen" /> : <Outlet />}
-      {location.pathname !== "/login" && autenticado && <Rodape />}
+      {autenticado === null && location.pathname !== "/login" && location.pathname !== "/planos" ? <div className="min-h-screen" /> : <Outlet />}
+      {location.pathname !== "/login" && location.pathname !== "/planos" && autenticado && <Rodape />}
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
