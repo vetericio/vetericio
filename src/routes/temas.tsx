@@ -24,16 +24,16 @@ import {
 export const Route = createFileRoute("/temas")({
   head: () => ({
     meta: [
-      { title: "Temas do app — Veterício" },
+      { title: "Temas do app — Oricse" },
       {
         name: "description",
         content:
-          "Veja todos os temas do Veterício lado a lado, com prévia de cores, e escolha o seu ou monte um com a sua cor.",
+          "Veja todos os temas da Oricse lado a lado, com prévia de cores, e escolha o seu ou monte um com a sua cor.",
       },
-      { property: "og:title", content: "Temas do app — Veterício" },
+      { property: "og:title", content: "Temas do app — Oricse" },
       {
         property: "og:description",
-        content: "Todos os temas do Veterício em uma página, com prévia de cores.",
+        content: "Todos os temas da Oricse em uma página, com prévia de cores.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -99,7 +99,7 @@ function PaginaTemas() {
       escolher(TEMA_CALMO as TemaId);
       toast.success("Modo calmo ligado: menos cor, menos movimento, som mais baixo.");
     } else {
-      toast.success("Modo Veterício ligado: o app como sempre foi.");
+      toast.success("Modo Oricse ligado: o app como sempre foi.");
     }
   };
 
@@ -160,7 +160,7 @@ function PaginaTemas() {
               conforto.modo === "veterico" ? "border-foreground bg-secondary/60" : "border-border"
             }`}
           >
-            <p className="text-sm font-bold text-foreground">Veterício</p>
+            <p className="text-sm font-bold text-foreground">Oricse</p>
             <p className="text-[11px] text-muted-foreground">
               Do jeito de sempre: cores livres, som e vibração normais.
             </p>
