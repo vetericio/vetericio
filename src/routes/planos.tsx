@@ -7,8 +7,8 @@ export const Route = createFileRoute("/planos")({ component: Planos });
 
 export const PLANOS_PADRAO = [
   { codigo: "essencial", nome: "Essencial", publico_alvo: "Veterinários que atendem em domicílio", descricao: "Bom para veterinários que atendem em domicílio", preco: "R$ 0,00", preco_mensal: "R$ 0,00", preco_anual: "", cobranca_mensal: true, cobranca_anual: false, itens: ["Cadastro de animais e tutores", "Anamnese e prontuários", "Receituário e PDFs clínicos"] },
-  { codigo: "plus", nome: "Plus (Clínica)", publico_alvo: "Petshops e clínicas", descricao: "Bom para petshops e clínicas", preco: "R$ 0,00", preco_mensal: "R$ 0,00", preco_anual: "", cobranca_mensal: true, cobranca_anual: false, itens: ["Logo da sua clínica", "3 usuários inclusos", "Consultório e recepção", "Financeiro e caixa", "Serviços e estoque"] },
-  { codigo: "master", nome: "Master (Equipe)", publico_alvo: "Equipes e clínicas", descricao: "Para equipes e clínicas que precisam de um sistema sob medida", preco: "R$ 49,90 taxa única", preco_mensal: "R$ 49,90 taxa única", preco_anual: "", cobranca_mensal: true, cobranca_anual: false, destaque: true, itens: ["Tudo que o sistema oferece", "Personalização: ajustamos o sistema à sua necessidade", "www.suaclinica.com.br", "5 usuários inclusos"] },
+  { codigo: "plus", nome: "Plus (Clínica)", publico_alvo: "Petshops e clínicas", descricao: "Bom para petshops e clínicas", preco: "R$ 0,00", preco_mensal: "R$ 0,00", preco_anual: "", cobranca_mensal: true, cobranca_anual: false, maisVendido: true, itens: ["Logo da sua clínica", "3 usuários inclusos", "Consultório e recepção", "Financeiro e caixa", "Serviços e estoque"] },
+  { codigo: "master", nome: "Master (Equipe)", publico_alvo: "Equipes e clínicas", descricao: "Para equipes e clínicas que precisam de um sistema sob medida", preco: "R$ 49,90 taxa única", preco_mensal: "R$ 49,90 taxa única", preco_anual: "", cobranca_mensal: true, cobranca_anual: false, recomendado: true, itens: ["Tudo que o sistema oferece", "Personalização: ajustamos o sistema à sua necessidade", "www.suaclinica.com.br", "5 usuários inclusos"] },
 ];
 
 const SITE_PADRAO = {
@@ -34,7 +34,8 @@ function Planos() {
       if (!p.error && p.data?.length) {
         setPlanos(p.data.map((x: any) => ({
           ...x,
-          destaque: x.codigo === "master",
+          maisVendido: x.codigo === "plus",
+          recomendado: x.codigo === "master",
           itens: Array.isArray(x.itens) ? x.itens : [],
           cobranca_mensal: x.cobranca_mensal !== false,
           cobranca_anual: Boolean(x.cobranca_anual),
@@ -77,24 +78,30 @@ function Planos() {
             const usandoAnual = anual && (!mensal || ciclo === "anual");
             const precoExibido = usandoAnual ? plano.preco_anual : (plano.preco_mensal || plano.preco);
             const rotuloCobranca = usandoAnual ? "Pagamento anual" : (mensal ? "Pagamento mensal" : "");
+            const destacado = plano.maisVendido || plano.recomendado;
 
             return (
-              <article key={plano.codigo || plano.nome} className={`relative flex h-full flex-col rounded-3xl border bg-card p-6 shadow-sm ${plano.destaque ? "border-primary shadow-lg ring-2 ring-primary/20" : ""}`}>
-                {plano.destaque && (
+              <article key={plano.codigo || plano.nome} className={`relative flex h-full flex-col rounded-3xl border bg-card p-6 shadow-sm ${destacado ? "border-primary shadow-lg ring-2 ring-primary/20" : ""}`}>
+                {plano.maisVendido && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">
+                    Mais vendido
+                  </span>
+                )}
+                {plano.recomendado && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">
                     Recomendado
                   </span>
                 )}
 
-                <div className="min-h-[148px]">
+                <div className="grid min-h-[148px] content-start grid-rows-[auto_auto_1fr]">
                   <h2 className="text-2xl font-bold">{plano.nome}</h2>
                   <p className="mt-1 text-sm font-semibold text-primary">{plano.publico_alvo}</p>
                   <p className="mt-2 text-sm text-muted-foreground">{plano.descricao}</p>
                 </div>
 
-                <div className="mt-6 min-h-[74px]">
-                  <p className="text-3xl font-bold leading-tight">{precoExibido}</p>
-                  <p className="mt-1 min-h-4 text-xs font-semibold text-muted-foreground">{rotuloCobranca || "\u00a0"}</p>
+                <div className="mt-6 grid min-h-[74px] content-start grid-rows-[44px_20px]">
+                  <p className="self-start text-3xl font-bold leading-tight">{precoExibido}</p>
+                  <p className="mt-1 text-xs font-semibold text-muted-foreground">{rotuloCobranca || "\u00a0"}</p>
                 </div>
 
                 <button type="button" className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary/90">{site.cta_plano}</button>
