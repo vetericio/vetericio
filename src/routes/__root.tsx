@@ -79,23 +79,6 @@ function RootComponent() {
     if (autenticado && role === "admin" && location.pathname === "/") navigate({ to: "/admin" });
   }, [autenticado, role, location.pathname, navigate]);
 
-  useEffect(() => {
-    if (role !== "admin" || location.pathname !== "/admin") return;
-    const interceptarAdmin = (event: MouseEvent) => {
-      const alvo = event.target as HTMLElement | null;
-      const botao = alvo?.closest("button");
-      if (!botao) return;
-      const texto = (botao.textContent || "").trim();
-      if (texto === "Site e marca") {
-        event.preventDefault();
-        event.stopPropagation();
-        navigate({ to: "/admin-conteudo" });
-      }
-    };
-    document.addEventListener("click", interceptarAdmin, true);
-    return () => document.removeEventListener("click", interceptarAdmin, true);
-  }, [role, location.pathname, navigate]);
-
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
 
   const rotaAdmin = location.pathname.startsWith("/admin");
