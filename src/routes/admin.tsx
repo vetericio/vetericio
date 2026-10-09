@@ -7,6 +7,7 @@ import {
   Gauge,
   Globe2,
   HardDrive,
+  ImageUp,
   LogOut,
   PanelsTopLeft,
   Plus,
@@ -54,7 +55,14 @@ type Plano = {
   ativo: boolean;
   ordem: number;
 };
-type SiteConfig = { marca: string; titulo_planos: string; subtitulo_planos: string; cta_plano: string; contato: string };
+type SiteConfig = {
+  marca: string;
+  titulo_planos: string;
+  subtitulo_planos: string;
+  cta_plano: string;
+  contato: string;
+  logo_url?: string;
+};
 
 const ABAS: { id: Aba; nome: string; icone: typeof Gauge }[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge },
@@ -72,6 +80,7 @@ const SITE_PADRAO: SiteConfig = {
   subtitulo_planos: "Organize atendimento, internação, prontuários, financeiro e estoque em um só sistema.",
   cta_plano: "Escolher plano",
   contato: "",
+  logo_url: "",
 };
 
 function limparSlug(valor: string) {
@@ -103,6 +112,9 @@ function Admin() {
   const [usuarioParaVincular, setUsuarioParaVincular] = useState("");
   const [papelNovo, setPapelNovo] = useState<Vinculo["papel"]>("usuario");
   const [ocupado, setOcupado] = useState(false);
+  const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [salvandoLogo, setSalvandoLogo] = useState(false);
 
   const usuariosDaClinica = useMemo(() => {
     if (!selecionada) return [];
@@ -171,6 +183,7 @@ function Admin() {
 
   useEffect(() => { void carregarTudo(); }, []);
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
+  useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
   async function criarClinica() {
     if (!novoNome.trim()) return toast.error("Informe o nome da clínica.");
@@ -262,6 +275,63 @@ function Admin() {
     toast.success("Textos públicos atualizados.");
   }
 
+  function escolherLogo(file?: File) {
+    if (!file) return;
+    const permitidos = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!permitidos.includes(file.type)) return toast.error("Use PNG, JPG, WEBP ou SVG.");
+    if (file.size > 5 * 1024 * 1024) return toast.error("A logo deve ter no máximo 5 MB.");
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoArquivo(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  async function salvarLogoSite() {
+    if (!logoArquivo) return toast.error("Escolha uma imagem primeiro.");
+    setSalvandoLogo(true);
+    try {
+      const extensao = logoArquivo.name.split(".").pop()?.toLowerCase() || (logoArquivo.type === "image/svg+xml" ? "svg" : "png");
+      const caminho = `site/logo-publica.${extensao}`;
+      const { error: uploadError } = await supabase.storage.from("oricse-branding").upload(caminho, logoArquivo, {
+        upsert: true,
+        contentType: logoArquivo.type,
+        cacheControl: "3600",
+      });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("oricse-branding").getPublicUrl(caminho);
+      const logoUrl = `${data.publicUrl}?v=${Date.now()}`;
+      const novaConfig = { ...site, logo_url: logoUrl };
+      const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor: novaConfig, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setSite(novaConfig);
+      setLogoArquivo(null);
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+      setLogoPreview(null);
+      toast.success("Logo do site atualizada.");
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível salvar a logo.");
+    } finally {
+      setSalvandoLogo(false);
+    }
+  }
+
+  async function restaurarLogoPadrao() {
+    setSalvandoLogo(true);
+    try {
+      const novaConfig = { ...site, logo_url: "" };
+      const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor: novaConfig, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setSite(novaConfig);
+      setLogoArquivo(null);
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+      setLogoPreview(null);
+      toast.success("Logo padrão restaurada.");
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível restaurar a logo.");
+    } finally {
+      setSalvandoLogo(false);
+    }
+  }
+
   async function conectarDrive() {
     if (!selecionada) return;
     if (!pasta.trim()) return usarPadrao();
@@ -341,7 +411,22 @@ function Admin() {
 
   const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">Tudo que você editar aqui aparece na página pública de planos.</p></div><div className="flex gap-2"><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.codigo}><div className="flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
 
-  const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Identidade atual</h3><div className="mt-4 flex items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src="/oricse-logo.png" alt="Oricse" className="h-28 w-28 object-contain"/><div><div className="text-xl font-bold">ORICSE</div><p className="mt-1 text-sm text-muted-foreground">Sistema veterinário e petshop</p><p className="mt-2 text-xs text-muted-foreground">Logo oficial do sistema.</p></div></div></Card></div>;
+  const renderSite = () => <div className="space-y-5">
+    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card>
+    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">Logo usada no site</h3><p className="mt-1 text-sm text-muted-foreground">Escolha aqui a identidade que aparecerá nas páginas públicas da Oricse.</p></div>{site.logo_url && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Logo personalizada ativa</span>}</div>
+      <div className="mt-4 grid gap-5 lg:grid-cols-[320px_1fr] lg:items-center">
+        <div className="flex min-h-56 items-center justify-center rounded-2xl border bg-[#f6f4ef] p-5"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Logo pública da Oricse" className="max-h-48 max-w-full object-contain"/></div>
+        <div><div className="font-bold">{logoPreview ? "Prévia da nova logo" : "Identidade atual"}</div><p className="mt-1 text-sm text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo de 5 MB. A imagem será ajustada proporcionalmente, sem cortes.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold hover:bg-slate-50"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label>
+            {logoArquivo && <button disabled={salvandoLogo} onClick={salvarLogoSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-60"><Save size={17}/>{salvandoLogo ? "Salvando..." : "Salvar logo do site"}</button>}
+            {(site.logo_url || logoPreview) && <button disabled={salvandoLogo} onClick={restaurarLogoPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Restaurar logo padrão</button>}
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">Esta logo é global e não altera a logo cadastrada individualmente para cada clínica.</p>
+        </div>
+      </div>
+    </Card>
+  </div>;
 
   const renderDrive = () => !selecionada ? renderSelecionarClinica() : <Card><div className="flex items-center gap-2"><Database size={20}/><h2 className="text-xl font-bold">Google Drive · {selecionada.nome}</h2></div><p className="mt-1 text-sm text-muted-foreground">A ORICSE cria uma pasta própria para cada clínica no Drive central. Se preferir, a clínica pode usar uma pasta personalizada.</p><div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da ORICSE"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div>{drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline">Abrir pasta <ExternalLink size={14}/></a>}</div><label className="mt-4 block text-sm font-semibold">Pasta personalizada<input value={pasta} onChange={(e) => setPasta(e.target.value)} placeholder="Cole o link de uma pasta do Google Drive" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/></label><div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-60">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Usar Drive da ORICSE</button></div></Card>;
 
