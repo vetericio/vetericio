@@ -53,7 +53,7 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   { id: "rock", nome: "Rock", classe: "tema-rock", descricao: "Preto, prata e vermelho" },
   {
     id: "veterico",
-    nome: "Veterício",
+    nome: "Oricse",
     classe: "tema-veterico",
     descricao: "Cores e padrão da logo",
   },
