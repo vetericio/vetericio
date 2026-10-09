@@ -63,7 +63,7 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
-    const rotaPublica = location.pathname === "/login" || location.pathname === "/planos";
+    const rotaPublica = location.pathname === "/login" || location.pathname === "/planos" || location.pathname === "/contratar";
     if (autenticado === false && !rotaPublica) navigate({ to: "/login" });
     if (autenticado && role === "admin" && location.pathname === "/") navigate({ to: "/admin" });
   }, [autenticado, role, location.pathname, navigate]);
@@ -88,7 +88,7 @@ function RootComponent() {
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
 
   const rotaAdmin = location.pathname.startsWith("/admin");
-  const rotaPublica = location.pathname === "/login" || location.pathname === "/planos";
+  const rotaPublica = location.pathname === "/login" || location.pathname === "/planos" || location.pathname === "/contratar";
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica;
 
   return <QueryClientProvider client={queryClient}>
