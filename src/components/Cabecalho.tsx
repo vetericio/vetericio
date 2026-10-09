@@ -5,6 +5,7 @@ import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
@@ -17,6 +18,7 @@ import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 export function Cabecalho() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { marca, logo_url } = useSiteBranding();
   const plantaoArea = ["/", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
@@ -47,11 +49,7 @@ export function Cabecalho() {
       <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
-          <img
-            src="/oricse-logo.png"
-            alt="Oricse — sistema veterinário e petshop"
-            className="h-auto w-full max-w-[180px] object-contain sm:max-w-[220px]"
-          />
+          <img src={logo_url} alt={`${marca} — sistema veterinário e petshop`} className="h-auto w-full max-w-[180px] object-contain sm:max-w-[220px]" />
         </div>
 
         <div className="mb-2">
