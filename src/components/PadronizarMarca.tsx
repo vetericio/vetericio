@@ -13,7 +13,7 @@ function trocarMarca(texto: string): string {
   return TROCAS.reduce((valor, [busca, troca]) => valor.replace(busca, troca), texto);
 }
 
-function padronizarNo(root: ParentNode) {
+function padronizarNo(root: Document | Element) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const textos: Text[] = [];
   let atual = walker.nextNode();
@@ -35,7 +35,7 @@ function padronizarNo(root: ParentNode) {
     }
   }
 
-  root.querySelectorAll?.("[title], [aria-label], [placeholder], [alt]").forEach((el) => {
+  root.querySelectorAll("[title], [aria-label], [placeholder], [alt]").forEach((el) => {
     for (const atributo of ["title", "aria-label", "placeholder", "alt"]) {
       const valor = el.getAttribute(atributo);
       if (valor) el.setAttribute(atributo, trocarMarca(valor));
