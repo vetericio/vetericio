@@ -48,15 +48,17 @@ function Login() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
-      <form onSubmit={entrar} className="w-full max-w-md rounded-3xl border bg-card p-7 shadow-xl">
+    <main className="flex min-h-[100dvh] items-start justify-center overflow-y-auto bg-background px-5 py-6 sm:items-center sm:py-10">
+      <form onSubmit={entrar} className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-xl sm:p-7">
         <div className="text-center">
-          <img
-            src="/oricse-logo.png"
-            alt="Oricse — sistema veterinário e petshop"
-            className="mx-auto h-auto w-full max-w-[260px] object-contain"
-          />
-          <h1 className="mt-3 text-3xl font-bold">Entrar</h1>
+          <div className="mx-auto flex w-full items-center justify-center overflow-visible px-2 pt-2">
+            <img
+              src="/oricse-logo.png"
+              alt="Oricse — sistema veterinário e petshop"
+              className="block h-auto max-h-[220px] w-auto max-w-full object-contain"
+            />
+          </div>
+          <h1 className="mt-4 text-3xl font-bold">Entrar</h1>
           <p className="mt-2 text-sm text-muted-foreground">Acesse a Oricse com seu @usuário.</p>
         </div>
 
