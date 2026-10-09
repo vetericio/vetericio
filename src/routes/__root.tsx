@@ -18,6 +18,7 @@ import { Cabecalho } from "@/components/Cabecalho";
 import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
+import { PadronizarMarca } from "@/components/PadronizarMarca";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -75,6 +76,7 @@ function RootComponent() {
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica;
 
   return <QueryClientProvider client={queryClient}>
+    <PadronizarMarca />
     {mostrarClinico && <Cabecalho />}
     {mostrarClinico && <AlarmeAtivo />}
     {!rotaAdmin && <Splash />}
