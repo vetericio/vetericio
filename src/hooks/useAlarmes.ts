@@ -36,7 +36,7 @@ export function definirAlarmes(valor: Alarme[] | ((atual: Alarme[]) => Alarme[])
 function avisarSistema(a: Alarme) {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
-    new Notification("Alarme — Veterício", { body: a.rotulo, tag: a.id });
+    new Notification("Alarme — Oricse", { body: a.rotulo, tag: a.id });
   } catch {
     /* notificação indisponível */
   }
