@@ -58,10 +58,13 @@ function Planos() {
           <ArrowLeft size={18}/> Voltar
         </Link>
 
-        <header className="mx-auto mt-8 max-w-2xl text-center">
-          <img src={site.logo_url || "/oricse-logo.png"} alt={site.marca || "Oricse"} className="mx-auto max-h-40 max-w-[320px] object-contain"/>
-          <p className="mt-3 text-sm font-semibold uppercase tracking-[0.2em] text-primary">{site.marca}</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight">{site.titulo_planos}</h1>
+        <header className="mx-auto mt-5 max-w-3xl text-center">
+          <img
+            src={site.logo_url || "/oricse-logo.png"}
+            alt={site.marca || "Oricse"}
+            className="mx-auto h-auto w-full max-w-[430px] object-contain sm:max-w-[500px]"
+          />
+          <h1 className="mt-2 text-4xl font-bold tracking-tight">{site.titulo_planos}</h1>
           <p className="mt-3 text-muted-foreground">{site.subtitulo_planos}</p>
           {mostrarSeletor && (
             <div className="mx-auto mt-6 inline-flex rounded-2xl border bg-card p-1 shadow-sm">
