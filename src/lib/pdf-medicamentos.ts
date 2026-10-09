@@ -9,10 +9,9 @@ import {
 } from "./medicamentos";
 import { dataPorExtenso } from "./plantao";
 
-const TITULO = "Veterício Serviços Veterinários LTDA";
+const TITULO = "Oricse";
 const SUBTITULO = "Medicações cadastradas — doses e concentrações";
 
-/** Linhas de dose de uma espécie, ou vazio quando não há nada cadastrado. */
 function linhasDose(m: Medicamento): string[] {
   const linhas: string[] = [];
   const bloco = (especie: "cao" | "gato") => {
@@ -41,7 +40,6 @@ function linhasDose(m: Medicamento): string[] {
   return linhas;
 }
 
-/** Gera e baixa o PDF com todas as medicações cadastradas. */
 export async function exportarPdfMedicamentos(medicamentos: Medicamento[]) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -62,7 +60,7 @@ export async function exportarPdfMedicamentos(medicamentos: Medicamento[]) {
   try {
     doc.addImage(LOGO_PDF_DATA_URL, "PNG", margem, y - 12, logoLargura, 37);
   } catch {
-    /* sem logo, segue sem imagem */
+    /* segue sem imagem */
   }
   const textoX = margem + logoLargura + 10;
 
@@ -123,5 +121,5 @@ export async function exportarPdfMedicamentos(medicamentos: Medicamento[]) {
     doc.text("Nenhuma medicação cadastrada.", margem, y);
   }
 
-  doc.save("Medicações Veterício.pdf");
+  doc.save("Medicações Oricse.pdf");
 }
