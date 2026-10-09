@@ -54,13 +54,13 @@ function Planos() {
     })();
   }, []);
 
-  const temPlanoMensal = planos.some((plano) => plano.cobranca_mensal !== false);
-  const temPlanoAnual = planos.some((plano) => Boolean(plano.cobranca_anual));
+  const temPlanoMensal = planos.some((plano) => plano.codigo !== "teste-gratis" && plano.cobranca_mensal !== false);
+  const temPlanoAnual = planos.some((plano) => plano.codigo !== "teste-gratis" && Boolean(plano.cobranca_anual));
   const mostrarSeletor = temPlanoMensal && temPlanoAnual;
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-6">
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="mx-auto w-full max-w-7xl">
         <Link to="/" className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={18}/> Voltar</Link>
 
         <header className="mx-auto mt-5 max-w-3xl text-center">
@@ -73,14 +73,15 @@ function Planos() {
           </div>}
         </header>
 
-        <section className="mt-10 grid items-stretch gap-5 lg:grid-cols-3">
+        <section className="mt-10 grid items-stretch gap-5 lg:grid-cols-2 xl:grid-cols-4">
           {planos.map((plano) => {
+            const ehTesteGratis = plano.codigo === "teste-gratis";
             const mensal = plano.cobranca_mensal !== false;
             const anual = Boolean(plano.cobranca_anual);
-            const usandoAnual = anual && (!mensal || ciclo === "anual");
+            const usandoAnual = !ehTesteGratis && anual && (!mensal || ciclo === "anual");
             const cicloEscolhido = usandoAnual ? "anual" : "mensal";
-            const precoExibido = usandoAnual ? plano.preco_anual : (plano.preco_mensal || plano.preco);
-            const rotuloCobranca = usandoAnual ? site.texto_pagamento_anual : (mensal ? site.texto_pagamento_mensal : "");
+            const precoExibido = ehTesteGratis ? "Grátis por 7 dias" : usandoAnual ? plano.preco_anual : (plano.preco_mensal || plano.preco);
+            const rotuloCobranca = ehTesteGratis ? "Teste gratuito · 1 vez por CPF/CNPJ" : usandoAnual ? site.texto_pagamento_anual : (mensal ? site.texto_pagamento_mensal : "");
             const destacado = plano.maisVendido || plano.recomendado;
 
             return <article key={plano.codigo || plano.nome} className={`relative flex h-full flex-col rounded-3xl border bg-card p-6 shadow-sm ${destacado ? "border-primary shadow-lg ring-2 ring-primary/20" : ""}`}>
@@ -88,7 +89,7 @@ function Planos() {
               {plano.recomendado && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold text-primary-foreground shadow-sm">{site.selo_recomendado}</span>}
               <div className="grid min-h-[148px] content-start grid-rows-[auto_auto_1fr]"><h2 className="text-2xl font-bold">{plano.nome}</h2><p className="mt-1 text-sm font-semibold text-primary">{plano.publico_alvo}</p><p className="mt-2 text-sm text-muted-foreground">{plano.descricao}</p></div>
               <div className="mt-6 grid min-h-[74px] content-start grid-rows-[44px_20px]"><p className="self-start text-3xl font-bold leading-tight">{precoExibido}</p><p className="mt-1 text-xs font-semibold text-muted-foreground">{rotuloCobranca || "\u00a0"}</p></div>
-              <button type="button" onClick={() => { window.location.href = `/contratar?plano=${encodeURIComponent(plano.codigo || plano.nome)}&ciclo=${cicloEscolhido}`; }} className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary/90">{site.cta_plano}</button>
+              <button type="button" onClick={() => { window.location.href = `/contratar?plano=${encodeURIComponent(plano.codigo || plano.nome)}&ciclo=${cicloEscolhido}`; }} className="mt-5 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary/90">{ehTesteGratis ? "Começar 7 dias grátis" : site.cta_plano}</button>
               <ul className="mt-6 space-y-3">{plano.itens.map((item: string) => <li key={item} className="text-sm">{item}</li>)}</ul>
             </article>;
           })}
