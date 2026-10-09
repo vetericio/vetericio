@@ -1,9 +1,8 @@
-const CACHE_NAME = "vetericio-pwa-v9";
+const CACHE_NAME = "oricse-pwa-v10";
 const APP_SHELL = [
-  "/manifest.webmanifest?v=9",
+  "/manifest.webmanifest?v=10",
   "/icon-192-v3.svg",
   "/icon-512-v3.svg",
-  "/vetericio-logo-oficial.png",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => undefined));
