@@ -13,11 +13,13 @@ import {
   ImageUp,
   LogOut,
   PanelsTopLeft,
+  Plus,
   RefreshCcw,
   Save,
   Search,
   Settings,
   ShieldCheck,
+  Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -318,6 +320,51 @@ function Admin() {
     setPlanos((lista) => lista.map((p, j) => j === i ? { ...p, ...mudancas } : p));
   }
 
+  function adicionarPlano() {
+    const maiorOrdem = planos.reduce((maior, plano) => Math.max(maior, Number(plano.ordem) || 0), 0);
+    const codigo = `novo-plano-${Date.now().toString(36)}`;
+    setPlanos((lista) => [...lista, {
+      codigo,
+      nome: "Novo plano",
+      publico_alvo: "",
+      preco: "R$ 0,00",
+      descricao: "",
+      itens: [],
+      usuarios_inclusos: 1,
+      dominio_incluso: false,
+      ativo: false,
+      ordem: maiorOrdem + 1,
+    }]);
+  }
+
+  async function removerPlano(plano: Plano, indice: number) {
+    if (!plano.id) {
+      setPlanos((lista) => lista.filter((_, i) => i !== indice));
+      toast.success("Plano novo removido.");
+      return;
+    }
+
+    const clinicasUsando = clinicas.filter((clinica) => clinica.plano === plano.nome);
+    if (clinicasUsando.length > 0) {
+      toast.error(`${clinicasUsando.length} clínica(s) ainda usam o plano “${plano.nome}”. Troque o plano dessas clínicas antes de excluir.`);
+      return;
+    }
+
+    if (!window.confirm(`Excluir permanentemente o plano “${plano.nome}”? Ele também sairá da página pública.`)) return;
+
+    setOcupado(true);
+    try {
+      const { error } = await (supabase as any).from("oricse_planos").delete().eq("id", plano.id);
+      if (error) throw error;
+      await carregarTudo();
+      toast.success("Plano removido.");
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível remover o plano.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   async function salvarPlanos() {
     setOcupado(true);
     try {
@@ -466,7 +513,7 @@ function Admin() {
     return <div className="space-y-5"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${c.status === "ativa" ? "bg-emerald-50 text-emerald-700" : c.status === "bloqueada" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
   };
 
-  const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">O conteúdo salvo aqui aparece na página pública de planos.</p></div><div className="flex gap-2"><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.codigo}><div className="flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
+  const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">O conteúdo salvo aqui aparece na página pública de planos.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={adicionarPlano} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><Plus size={17}/> Adicionar plano</button><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.id || p.codigo}><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label><button type="button" disabled={ocupado} onClick={() => void removerPlano(p, i)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"><Trash2 size={16}/> Remover plano</button></div></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
 
   const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><p className="mt-1 text-sm text-muted-foreground">Essa é a identidade global da Oricse nas páginas públicas.</p><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo do site</button><button disabled={salvandoLogo} onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card></div>;
 
