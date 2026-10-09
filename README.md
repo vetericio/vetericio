@@ -1,6 +1,6 @@
-# Ficha de Avaliação da Internação
+# Oricse
 
-Aplicativo offline da **Veterício Serviços Veterinários LTDA** para registro de avaliações de animais internados.
+Plataforma veterinária **Oricse** para rotina clínica, internação, registros, medicações, documentos e suporte ao plantão.
 
 ## Recursos
 
