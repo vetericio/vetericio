@@ -75,11 +75,6 @@ function RootComponent() {
       const botao = alvo?.closest("button");
       if (!botao) return;
       const texto = (botao.textContent || "").trim();
-      if (texto === "Planos") {
-        event.preventDefault();
-        event.stopPropagation();
-        navigate({ to: "/admin-planos" });
-      }
       if (texto === "Site e marca") {
         event.preventDefault();
         event.stopPropagation();
