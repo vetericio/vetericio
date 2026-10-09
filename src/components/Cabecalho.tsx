@@ -8,14 +8,11 @@ import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
-import logoClara from "@/assets/vetericio-logo-clara.png";
-import logoVerde from "@/assets/vetericio-logo-verde.png";
 
 const base =
   "min-h-11 flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm";
 
 import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
-
 
 export function Cabecalho() {
   const location = useLocation();
@@ -27,7 +24,6 @@ export function Cabecalho() {
   const confirmacao = usarConfirmacao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
-  const [temaEscuro, setTemaEscuro] = useState(false);
   const [trocarArea, setTrocarArea] = useState(false);
 
   const finalizarPlantao = () => {
@@ -44,15 +40,6 @@ export function Cabecalho() {
 
   useEffect(() => {
     setDataHoje(new Date().toLocaleDateString("pt-BR"));
-    const atualizarContraste = () => {
-      const cor = getComputedStyle(document.body).backgroundColor;
-      const canais = cor.match(/[\d.]+/g)?.map(Number) ?? [];
-      const [r = 255, g = 255, b = 255] = canais;
-      setTemaEscuro((r * 0.2126 + g * 0.7152 + b * 0.0722) < 145);
-    };
-    atualizarContraste();
-    window.addEventListener("vetericio:tema", atualizarContraste);
-    return () => window.removeEventListener("vetericio:tema", atualizarContraste);
   }, []);
 
   return (
@@ -60,61 +47,37 @@ export function Cabecalho() {
       <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
-          <img
-            src={temaEscuro ? logoClara : logoVerde}
-            alt="Veterício Serviços Veterinário LTDA"
-            className="h-auto w-full max-w-[204px] object-contain sm:max-w-[238px]"
-          />
+          <div className="text-3xl font-black tracking-[0.18em] text-primary sm:text-4xl">ORICSE</div>
         </div>
 
         <div className="mb-2">
-            <button type="button" onClick={() => setTrocarArea((aberto) => !aberto)} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold shadow-sm">
-              ← Voltar / trocar área
-            </button>
-            {trocarArea && (
-              <div className="mx-auto mt-2 grid max-w-md gap-2 rounded-2xl border bg-card p-3 text-left shadow-lg">
-                <p className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Para onde deseja ir?</p>
-                <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Internação</button>
-                <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/consultorio" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Consultório</button>
-                <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/recepcao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Recepção</button>
-              </div>
-            )}
+          <button type="button" onClick={() => setTrocarArea((aberto) => !aberto)} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold shadow-sm">
+            ← Voltar / trocar área
+          </button>
+          {trocarArea && (
+            <div className="mx-auto mt-2 grid max-w-md gap-2 rounded-2xl border bg-card p-3 text-left shadow-lg">
+              <p className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Para onde deseja ir?</p>
+              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Internação</button>
+              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/consultorio" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Consultório</button>
+              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/recepcao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Recepção</button>
+            </div>
+          )}
         </div>
 
-        {plantaoArea && <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-          Ficha de Avaliação da Internação
-        </p>}
+        {plantaoArea && <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">Ficha de Avaliação da Internação</p>}
         {plantaoArea && <p className="mt-0.5 text-[11px] text-muted-foreground">
           {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
           {plantao && (
-            <button
-              type="button"
-              onClick={() => definirTurno(null)}
-              className="ml-2 underline underline-offset-2 hover:text-foreground"
-            >
-              alterar
-            </button>
+            <button type="button" onClick={() => definirTurno(null)} className="ml-2 underline underline-offset-2 hover:text-foreground">alterar</button>
           )}
         </p>}
 
         {plantaoArea && carregado && (
           <div className="mt-3">
             {plantao ? (
-              <button
-                type="button"
-                onClick={finalizarPlantao}
-                className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
-              >
-                Finalizar plantão
-              </button>
+              <button type="button" onClick={finalizarPlantao} className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90">Finalizar plantão</button>
             ) : (
-              <button
-                type="button"
-                onClick={() => setIniciarAberto(true)}
-                className="w-full max-w-xs rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                Iniciar plantão
-              </button>
+              <button type="button" onClick={() => setIniciarAberto(true)} className="w-full max-w-xs rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Iniciar plantão</button>
             )}
           </div>
         )}
@@ -126,35 +89,19 @@ export function Cabecalho() {
             const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
             if (bloqueado)
               return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={() => setIniciarAberto(true)}
-                  className={`${base} bg-secondary/40 text-muted-foreground`}
-                >
+                <button key={item.to} type="button" onClick={() => setIniciarAberto(true)} className={`${base} bg-secondary/40 text-muted-foreground`}>
                   {item.rotulo} · inicie o plantão
                 </button>
               );
             return (
-              <Link
-                key={item.to}
-                to={item.to}
-                {...(item.exato ? { activeOptions: { exact: true } } : {})}
-                activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-                inactiveProps={{
-                  className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-                }}
-              >
+              <Link key={item.to} to={item.to} {...(item.exato ? { activeOptions: { exact: true } } : {})} activeProps={{ className: `${base} bg-primary text-primary-foreground` }} inactiveProps={{ className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70` }}>
                 {item.rotulo}
               </Link>
             );
           })}
         </nav>}
 
-        {plantaoArea && <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
-          Total de registros do plantão de hoje: {registros.length}
-        </p>}
-
+        {plantaoArea && <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">Total de registros do plantão de hoje: {registros.length}</p>}
         {plantaoArea && <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />}
       </div>
     </header>
