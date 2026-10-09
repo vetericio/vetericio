@@ -1,27 +1,38 @@
 import { useEffect, useState } from "react";
 
+const CHAVE_SPLASH_SESSAO = "oricse-splash-v1";
+
 export function Splash() {
-  const [visivel, setVisivel] = useState(true);
-  const [oculto, setOculto] = useState(false);
+  const [visivel, setVisivel] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage.getItem(CHAVE_SPLASH_SESSAO) !== "1";
+  });
 
   useEffect(() => {
-    const timerEsconder = setTimeout(() => setVisivel(false), 2500);
-    const timerRemover = setTimeout(() => setOculto(true), 3100);
+    if (!visivel) return;
+    window.sessionStorage.setItem(CHAVE_SPLASH_SESSAO, "1");
+    const timer = window.setTimeout(() => setVisivel(false), 900);
+    const seguranca = window.setTimeout(() => setVisivel(false), 1800);
     return () => {
-      clearTimeout(timerEsconder);
-      clearTimeout(timerRemover);
+      window.clearTimeout(timer);
+      window.clearTimeout(seguranca);
     };
-  }, []);
+  }, [visivel]);
 
-  if (oculto) return null;
+  if (!visivel) return null;
 
   return (
-    <div aria-hidden={!visivel} className={`fixed inset-0 z-50 flex items-center justify-center bg-white transition-opacity duration-500 ease-out ${visivel ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+    <button
+      type="button"
+      aria-label="Fechar tela de abertura"
+      onClick={() => setVisivel(false)}
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-white"
+    >
       <img
         src="/oricse-logo.png"
         alt="Oricse — sistema veterinário e petshop"
-        className="h-auto w-full max-w-[320px] object-contain p-4 sm:max-w-[380px]"
+        className="h-auto w-full max-w-[300px] object-contain p-4 sm:max-w-[360px]"
       />
-    </div>
+    </button>
   );
 }
