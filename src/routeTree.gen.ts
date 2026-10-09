@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AssinarRouteImport } from './routes/assinar'
+import { Route as ConsultorioRouteImport } from './routes/consultorio'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
@@ -20,6 +21,7 @@ import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
+import { Route as RecepcaoRouteImport } from './routes/recepcao'
 import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as TemasRouteImport } from './routes/temas'
@@ -42,6 +44,11 @@ const AnamneseRoute = AnamneseRouteImport.update({
 const AssinarRoute = AssinarRouteImport.update({
   id: '/assinar',
   path: '/assinar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultorioRoute = ConsultorioRouteImport.update({
+  id: '/consultorio',
+  path: '/consultorio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CurvaRoute = CurvaRouteImport.update({
@@ -79,6 +86,11 @@ const ReceituarioRoute = ReceituarioRouteImport.update({
   path: '/receituario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecepcaoRoute = RecepcaoRouteImport.update({
+  id: '/recepcao',
+  path: '/recepcao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegistrosRoute = RegistrosRouteImport.update({
   id: '/registros',
   path: '/registros',
@@ -100,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
+  '/consultorio': typeof ConsultorioRoute
   '/curva': typeof CurvaRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
@@ -107,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
+  '/recepcao': typeof RecepcaoRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
@@ -116,6 +130,7 @@ export interface FileRoutesByTo {
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
+  '/consultorio': typeof ConsultorioRoute
   '/curva': typeof CurvaRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
@@ -123,6 +138,7 @@ export interface FileRoutesByTo {
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
+  '/recepcao': typeof RecepcaoRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
@@ -133,6 +149,7 @@ export interface FileRoutesById {
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
+  '/consultorio': typeof ConsultorioRoute
   '/curva': typeof CurvaRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
@@ -140,6 +157,7 @@ export interface FileRoutesById {
   '/pendencias': typeof PendenciasRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
+  '/recepcao': typeof RecepcaoRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
@@ -151,6 +169,7 @@ export interface FileRouteTypes {
     | '/alarmes'
     | '/anamnese'
     | '/assinar'
+    | '/consultorio'
     | '/curva'
     | '/estoque'
     | '/financeiro'
@@ -158,6 +177,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/plantoes'
     | '/receituario'
+    | '/recepcao'
     | '/registros'
     | '/sincronizacao'
     | '/temas'
@@ -167,6 +187,7 @@ export interface FileRouteTypes {
     | '/alarmes'
     | '/anamnese'
     | '/assinar'
+    | '/consultorio'
     | '/curva'
     | '/estoque'
     | '/financeiro'
@@ -174,6 +195,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/plantoes'
     | '/receituario'
+    | '/recepcao'
     | '/registros'
     | '/sincronizacao'
     | '/temas'
@@ -183,6 +205,7 @@ export interface FileRouteTypes {
     | '/alarmes'
     | '/anamnese'
     | '/assinar'
+    | '/consultorio'
     | '/curva'
     | '/estoque'
     | '/financeiro'
@@ -190,6 +213,7 @@ export interface FileRouteTypes {
     | '/pendencias'
     | '/plantoes'
     | '/receituario'
+    | '/recepcao'
     | '/registros'
     | '/sincronizacao'
     | '/temas'
@@ -200,6 +224,7 @@ export interface RootRouteChildren {
   AlarmesRoute: typeof AlarmesRoute
   AnamneseRoute: typeof AnamneseRoute
   AssinarRoute: typeof AssinarRoute
+  ConsultorioRoute: typeof ConsultorioRoute
   CurvaRoute: typeof CurvaRoute
   EstoqueRoute: typeof EstoqueRoute
   FinanceiroRoute: typeof FinanceiroRoute
@@ -207,6 +232,7 @@ export interface RootRouteChildren {
   PendenciasRoute: typeof PendenciasRoute
   PlantoesRoute: typeof PlantoesRoute
   ReceituarioRoute: typeof ReceituarioRoute
+  RecepcaoRoute: typeof RecepcaoRoute
   RegistrosRoute: typeof RegistrosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
   TemasRoute: typeof TemasRoute
@@ -240,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/assinar'
       fullPath: '/assinar'
       preLoaderRoute: typeof AssinarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consultorio': {
+      id: '/consultorio'
+      path: '/consultorio'
+      fullPath: '/consultorio'
+      preLoaderRoute: typeof ConsultorioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/curva': {
@@ -291,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReceituarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recepcao': {
+      id: '/recepcao'
+      path: '/recepcao'
+      fullPath: '/recepcao'
+      preLoaderRoute: typeof RecepcaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/registros': {
       id: '/registros'
       path: '/registros'
@@ -320,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlarmesRoute: AlarmesRoute,
   AnamneseRoute: AnamneseRoute,
   AssinarRoute: AssinarRoute,
+  ConsultorioRoute: ConsultorioRoute,
   CurvaRoute: CurvaRoute,
   EstoqueRoute: EstoqueRoute,
   FinanceiroRoute: FinanceiroRoute,
@@ -327,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   PendenciasRoute: PendenciasRoute,
   PlantoesRoute: PlantoesRoute,
   ReceituarioRoute: ReceituarioRoute,
+  RecepcaoRoute: RecepcaoRoute,
   RegistrosRoute: RegistrosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
   TemasRoute: TemasRoute,
