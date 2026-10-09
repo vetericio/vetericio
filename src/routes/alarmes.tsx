@@ -5,18 +5,17 @@ import { ExigePlantao } from "@/components/ExigePlantao";
 export const Route = createFileRoute("/alarmes")({
   head: () => ({
     meta: [
-      { title: "Alarmes do plantão — Veterício" },
+      { title: "Alarmes do plantão — Oricse" },
       {
         name: "description",
         content:
           "Central de alarmes do plantão: jejum dos animais, alarmes personalizados e 55 músicas geradas no próprio aparelho.",
       },
-      { property: "og:title", content: "Alarmes do plantão — Veterício" },
+      { property: "og:title", content: "Alarmes do plantão — Oricse" },
       {
         property: "og:description",
         content: "Crie alarmes do plantão com 55 músicas e repetição diária ou por intervalo.",
       },
-
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
