@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminPlanosRouteImport } from './routes/admin-planos'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AssinarRouteImport } from './routes/assinar'
@@ -20,6 +21,7 @@ import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
+import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
@@ -30,6 +32,11 @@ import { Route as TemasRouteImport } from './routes/temas'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPlanosRoute = AdminPlanosRouteImport.update({
+  id: '/admin-planos',
+  path: '/admin-planos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlarmesRoute = AlarmesRouteImport.update({
@@ -82,6 +89,11 @@ const PendenciasRoute = PendenciasRouteImport.update({
   path: '/pendencias',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlanosRoute = PlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlantoesRoute = PlantoesRouteImport.update({
   id: '/plantoes',
   path: '/plantoes',
@@ -115,6 +127,7 @@ const TemasRoute = TemasRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin-planos': typeof AdminPlanosRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
@@ -125,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
+  '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
@@ -134,6 +148,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin-planos': typeof AdminPlanosRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
@@ -144,6 +159,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
+  '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
@@ -154,6 +170,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin-planos': typeof AdminPlanosRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/assinar': typeof AssinarRoute
@@ -164,6 +181,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/pendencias': typeof PendenciasRoute
+  '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
@@ -175,6 +193,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin-planos'
     | '/alarmes'
     | '/anamnese'
     | '/assinar'
@@ -185,6 +204,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/pendencias'
+    | '/planos'
     | '/plantoes'
     | '/receituario'
     | '/recepcao'
@@ -194,6 +214,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin-planos'
     | '/alarmes'
     | '/anamnese'
     | '/assinar'
@@ -204,6 +225,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/pendencias'
+    | '/planos'
     | '/plantoes'
     | '/receituario'
     | '/recepcao'
@@ -213,6 +235,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin-planos'
     | '/alarmes'
     | '/anamnese'
     | '/assinar'
@@ -223,6 +246,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/pendencias'
+    | '/planos'
     | '/plantoes'
     | '/receituario'
     | '/recepcao'
@@ -233,6 +257,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminPlanosRoute: typeof AdminPlanosRoute
   AlarmesRoute: typeof AlarmesRoute
   AnamneseRoute: typeof AnamneseRoute
   AssinarRoute: typeof AssinarRoute
@@ -243,6 +268,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MedicacoesRoute: typeof MedicacoesRoute
   PendenciasRoute: typeof PendenciasRoute
+  PlanosRoute: typeof PlanosRoute
   PlantoesRoute: typeof PlantoesRoute
   ReceituarioRoute: typeof ReceituarioRoute
   RecepcaoRoute: typeof RecepcaoRoute
@@ -258,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-planos': {
+      id: '/admin-planos'
+      path: '/admin-planos'
+      fullPath: '/admin-planos'
+      preLoaderRoute: typeof AdminPlanosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alarmes': {
@@ -330,6 +363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PendenciasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planos': {
+      id: '/planos'
+      path: '/planos'
+      fullPath: '/planos'
+      preLoaderRoute: typeof PlanosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plantoes': {
       id: '/plantoes'
       path: '/plantoes'
@@ -377,6 +417,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminPlanosRoute: AdminPlanosRoute,
   AlarmesRoute: AlarmesRoute,
   AnamneseRoute: AnamneseRoute,
   AssinarRoute: AssinarRoute,
@@ -387,6 +428,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
   PendenciasRoute: PendenciasRoute,
+  PlanosRoute: PlanosRoute,
   PlantoesRoute: PlantoesRoute,
   ReceituarioRoute: ReceituarioRoute,
   RecepcaoRoute: RecepcaoRoute,
