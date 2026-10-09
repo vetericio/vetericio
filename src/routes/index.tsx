@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Building2, ClipboardList, Stethoscope } from "lucide-react";
 import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
 import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
@@ -101,23 +102,25 @@ function Index() {
   const { setCurvas } = useCurvas();
 
   const navigate = useNavigate();
+  const [areaInicial, setAreaInicial] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("vetericio-area-inicial");
+  });
 
   // "Tem certeza?" só quando existe conteúdo digitado e ainda não salvo.
-  const baseForm = useMemo<Omit<Registro, "id">>(() => {
-    if (editandoId) {
-      const alvo = registros.find((r) => r.id === editandoId);
-      if (!alvo) return REGISTRO_VAZIO;
-      const { id: _i, ...resto } = alvo;
-      return resto;
-    }
-    if (anterior) return { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" };
-    return REGISTRO_VAZIO;
-  }, [editandoId, anterior, registros]);
-  const baseFormSerializado = useMemo(() => JSON.stringify(baseForm), [baseForm]);
-  const sujo = useMemo(() => !salvando && JSON.stringify(form) !== baseFormSerializado, [salvando, form, baseFormSerializado]);
-  const anamnesesJaAdicionadas = useMemo(
-    () => registros.map((r) => r.anamneseId).filter((id): id is string => Boolean(id)),
-    [registros],
+  const baseForm: Omit<Registro, "id"> = editandoId
+    ? (() => {
+        const alvo = registros.find((r) => r.id === editandoId);
+        if (!alvo) return REGISTRO_VAZIO;
+        const { id: _i, ...resto } = alvo;
+        return resto;
+      })()
+    : anterior
+      ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" }
+      : REGISTRO_VAZIO;
+  const sujo = useMemo(
+    () => !salvando && JSON.stringify(form) !== JSON.stringify(baseForm),
+    [salvando, form, baseForm],
   );
 
   // Abre em modo edição ou atualização quando vem da página de registros.
@@ -253,6 +256,26 @@ function Index() {
 
   return (
     <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
+      {!areaInicial && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 p-5 backdrop-blur-sm">
+          <section className="w-full max-w-xl rounded-3xl border bg-card p-6 text-center shadow-xl sm:p-9">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Veterício</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight">Bem-vindo</h1>
+            <p className="mt-2 text-muted-foreground">Escolha por onde deseja começar.</p>
+            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+              {[
+                { nome: "Internação", texto: "Plantões e pacientes internados", icone: Building2, rota: "/" },
+                { nome: "Consultório", texto: "Consultas e prontuários", icone: Stethoscope, rota: "/consultorio" },
+                { nome: "Recepção", texto: "Tutors, animais e fila", icone: ClipboardList, rota: "/recepcao" },
+              ].map(({ nome, texto, icone: Icone, rota }) => (
+                <button key={nome} type="button" onClick={() => { window.localStorage.setItem("vetericio-area-inicial", nome.toLowerCase()); setAreaInicial(nome.toLowerCase()); if (rota !== "/") navigate({ to: rota as "/" }); }} className="rounded-2xl border bg-background p-4 text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
+                  <Icone className="mb-3 text-primary" size={25} /><span className="block font-semibold">{nome}</span><span className="mt-1 block text-xs text-muted-foreground">{texto}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
       <div className="relative z-10">
       <GuardaSaida sujo={sujo} />
       <button
@@ -262,7 +285,6 @@ function Index() {
       >
         {ferramentas ? "Esconder calculadora e ferramentas" : "Mostrar calculadora e ferramentas"}
       </button>
-
       {ferramentas && (
         <section className="mt-3 grid grid-cols-2 items-stretch gap-2 sm:gap-3">
           <div className="min-w-0">
@@ -282,7 +304,6 @@ function Index() {
           fazerCurva={fazerCurva}
           onFazerCurva={setFazerCurva}
           onCancelar={limpar}
-          anamnesesJaAdicionadas={anamnesesJaAdicionadas}
         />
       </div>
 
