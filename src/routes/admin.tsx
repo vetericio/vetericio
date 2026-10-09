@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
+import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
@@ -115,6 +116,7 @@ function Admin() {
   const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [salvandoLogo, setSalvandoLogo] = useState(false);
+  const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
 
   const usuariosDaClinica = useMemo(() => {
     if (!selecionada) return [];
@@ -228,6 +230,49 @@ function Admin() {
       toast.success("Clínica atualizada.");
     } catch (e) { toast.error((e as Error).message); }
     finally { setOcupado(false); }
+  }
+
+  async function arquivoEmBase64(file: File): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const valor = String(reader.result || "");
+        resolve(valor.includes(",") ? valor.split(",")[1] : valor);
+      };
+      reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function enviarLogoDaClinica(file?: File) {
+    if (!selecionada || !file) return;
+    const permitidos = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!permitidos.includes(file.type)) return toast.error("Use PNG, JPG, WEBP ou SVG.");
+    if (file.size > 5 * 1024 * 1024) return toast.error("A logo deve ter no máximo 5 MB.");
+
+    setEnviandoLogoClinica(true);
+    try {
+      if (!drive?.root_folder_id) {
+        await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id } });
+        await carregarDrive(selecionada.id);
+      }
+      const resultado = await enviarLogoClinica({
+        data: {
+          accessToken: await tokenAtual(),
+          clinicaId: selecionada.id,
+          fileName: file.name,
+          mimeType: file.type as "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml",
+          base64: await arquivoEmBase64(file),
+        },
+      });
+      setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
+      await carregarTudo();
+      toast.success("Logo salva na pasta Logo do Drive da clínica.");
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível enviar a logo.");
+    } finally {
+      setEnviandoLogoClinica(false);
+    }
   }
 
   async function vincularUsuario() {
@@ -397,7 +442,26 @@ function Admin() {
       <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option></select></label>
       <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
       <label className="text-sm font-semibold">Domínio<input value={selecionada.dominio || ""} onChange={(e) => setSelecionada({ ...selecionada, dominio: e.target.value })} placeholder="www.suaclinica.com.br" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-      <label className="text-sm font-semibold md:col-span-2">URL da logo da clínica<input value={selecionada.logo_url || ""} onChange={(e) => setSelecionada({ ...selecionada, logo_url: e.target.value })} placeholder="Opcional" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+      <div className="md:col-span-2">
+        <div className="text-sm font-semibold">Logo da clínica</div>
+        <div className="mt-2 flex flex-col gap-4 rounded-2xl border bg-slate-50 p-4 sm:flex-row sm:items-center">
+          <div className="flex h-28 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-white">
+            {selecionada.logo_url ? <img src={selecionada.logo_url} alt={`Logo de ${selecionada.nome}`} className="max-h-full max-w-full object-contain"/> : <span className="px-3 text-center text-xs text-muted-foreground">Nenhuma logo enviada</span>}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-muted-foreground">A imagem será salva automaticamente em <strong>Logo</strong>, dentro da pasta desta clínica no Google Drive.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground ${enviandoLogoClinica ? "pointer-events-none opacity-60" : ""}`}>
+                <ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : selecionada.logo_url ? "Trocar imagem" : "Enviar imagem"}
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={enviandoLogoClinica} onChange={(e) => { const file = e.target.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(file); }}/>
+              </label>
+              {drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Abrir Drive <ExternalLink size={16}/></a>}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">PNG, JPG, WEBP ou SVG · máximo 5 MB.</p>
+          </div>
+        </div>
+        <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Editar URL manualmente</summary><input value={selecionada.logo_url || ""} onChange={(e) => setSelecionada({ ...selecionada, logo_url: e.target.value })} placeholder="URL da logo (opcional)" className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></details>
+      </div>
       <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
     </div></Card>}
   </div>;
