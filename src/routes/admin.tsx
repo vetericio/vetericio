@@ -1,6 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Building2, Database, ExternalLink, LogOut, Plus, RefreshCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  BadgeDollarSign,
+  Building2,
+  Database,
+  ExternalLink,
+  Gauge,
+  Globe2,
+  HardDrive,
+  LogOut,
+  PanelsTopLeft,
+  Plus,
+  RefreshCcw,
+  Save,
+  Settings,
+  ShieldCheck,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { extrairDriveFolderId } from "@/lib/drive-storage";
@@ -9,8 +26,53 @@ import { garantirPastaOricse } from "@/lib/drive-default.functions";
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Clinica = { id: string; nome: string; slug: string | null; status: string };
+type Aba = "dashboard" | "clinicas" | "usuarios" | "planos" | "site" | "drive" | "sistema";
+type Clinica = {
+  id: string;
+  nome: string;
+  slug: string | null;
+  status: "ativa" | "bloqueada" | "inativa";
+  plano: string;
+  dominio: string | null;
+  limite_usuarios: number;
+  observacoes: string | null;
+  logo_url: string | null;
+};
+type AppUser = { user_id: string; username: string; role: string; created_at: string };
+type Vinculo = { clinica_id: string; user_id: string; papel: "responsavel" | "admin_clinica" | "usuario"; ativo: boolean };
 type DriveConfig = { modo: "oricse" | "personalizado"; root_folder_id: string | null; root_folder_url: string | null; status: string };
+type Plano = {
+  id?: string;
+  codigo: string;
+  nome: string;
+  publico_alvo: string;
+  preco: string;
+  descricao: string;
+  itens: string[];
+  usuarios_inclusos: number;
+  dominio_incluso: boolean;
+  ativo: boolean;
+  ordem: number;
+};
+type SiteConfig = { marca: string; titulo_planos: string; subtitulo_planos: string; cta_plano: string; contato: string };
+
+const ABAS: { id: Aba; nome: string; icone: typeof Gauge }[] = [
+  { id: "dashboard", nome: "Visão geral", icone: Gauge },
+  { id: "clinicas", nome: "Clínicas", icone: Building2 },
+  { id: "usuarios", nome: "Usuários", icone: Users },
+  { id: "planos", nome: "Planos", icone: BadgeDollarSign },
+  { id: "site", nome: "Site e marca", icone: PanelsTopLeft },
+  { id: "drive", nome: "Drive", icone: Database },
+  { id: "sistema", nome: "Sistema", icone: Settings },
+];
+
+const SITE_PADRAO: SiteConfig = {
+  marca: "Oricse",
+  titulo_planos: "Escolha o plano ideal para sua clínica",
+  subtitulo_planos: "Organize atendimento, internação, prontuários, financeiro e estoque em um só sistema.",
+  cta_plano: "Escolher plano",
+  contato: "",
+};
 
 function limparSlug(valor: string) {
   return valor
@@ -21,14 +83,40 @@ function limparSlug(valor: string) {
     .replace(/[^a-z0-9._-]/g, "");
 }
 
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <section className={`rounded-2xl border bg-white p-5 shadow-sm ${className}`}>{children}</section>;
+}
+
 function Admin() {
+  const [aba, setAba] = useState<Aba>("dashboard");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
-  const [nome, setNome] = useState("");
-  const [slug, setSlug] = useState("");
+  const [usuarios, setUsuarios] = useState<AppUser[]>([]);
+  const [vinculos, setVinculos] = useState<Vinculo[]>([]);
+  const [planos, setPlanos] = useState<Plano[]>([]);
+  const [site, setSite] = useState<SiteConfig>(SITE_PADRAO);
   const [drive, setDrive] = useState<DriveConfig | null>(null);
+  const [arquivosDrive, setArquivosDrive] = useState(0);
   const [pasta, setPasta] = useState("");
+  const [novoNome, setNovoNome] = useState("");
+  const [novoSlug, setNovoSlug] = useState("");
+  const [usuarioParaVincular, setUsuarioParaVincular] = useState("");
+  const [papelNovo, setPapelNovo] = useState<Vinculo["papel"]>("usuario");
   const [ocupado, setOcupado] = useState(false);
+
+  const usuariosDaClinica = useMemo(() => {
+    if (!selecionada) return [];
+    return vinculos
+      .filter((v) => v.clinica_id === selecionada.id)
+      .map((v) => ({ vinculo: v, usuario: usuarios.find((u) => u.user_id === v.user_id) }))
+      .filter((x) => x.usuario);
+  }, [vinculos, usuarios, selecionada]);
+
+  const usuariosDisponiveis = useMemo(() => {
+    if (!selecionada) return usuarios;
+    const ids = new Set(vinculos.filter((v) => v.clinica_id === selecionada.id).map((v) => v.user_id));
+    return usuarios.filter((u) => !ids.has(u.user_id) && u.role !== "admin");
+  }, [usuarios, vinculos, selecionada]);
 
   async function tokenAtual() {
     const { data } = await supabase.auth.getSession();
@@ -36,12 +124,25 @@ function Admin() {
     return data.session.access_token;
   }
 
-  async function carregar() {
-    const { data, error } = await (supabase as any).from("clinicas").select("id,nome,slug,status").order("nome");
-    if (error) return toast.error("Não foi possível carregar as clínicas.");
-    setClinicas(data || []);
+  async function carregarTudo() {
+    const [c, u, v, p, cfg, arqs] = await Promise.all([
+      (supabase as any).from("clinicas").select("id,nome,slug,status,plano,dominio,limite_usuarios,observacoes,logo_url").order("nome"),
+      (supabase as any).from("app_users").select("user_id,username,role,created_at").order("username"),
+      (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
+      (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
+      (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
+      (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
+    ]);
+    if (c.error) toast.error("Não foi possível carregar as clínicas.");
+    if (u.error) toast.error("Não foi possível carregar os usuários.");
+    setClinicas(c.data || []);
+    setUsuarios(u.data || []);
+    setVinculos(v.data || []);
+    setPlanos((p.data || []).map((x: any) => ({ ...x, itens: Array.isArray(x.itens) ? x.itens : [] })));
+    setSite({ ...SITE_PADRAO, ...(cfg.data?.valor || {}) });
+    setArquivosDrive(arqs.count || 0);
     if (selecionada) {
-      const atual = (data || []).find((c: Clinica) => c.id === selecionada.id);
+      const atual = (c.data || []).find((x: Clinica) => x.id === selecionada.id);
       if (atual) setSelecionada(atual);
     }
   }
@@ -55,9 +156,8 @@ function Admin() {
         .maybeSingle();
       return data as DriveConfig | null;
     };
-
     let data = await buscar();
-    if ((!data || (data.modo === "oricse" && !data.root_folder_id)) && !ocupado) {
+    if (!data || (data.modo === "oricse" && !data.root_folder_id)) {
       try {
         await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: id } });
         data = await buscar();
@@ -65,46 +165,106 @@ function Admin() {
         console.error("Falha ao preparar pasta padrão da clínica:", e);
       }
     }
-
     setDrive(data || { modo: "oricse", root_folder_id: null, root_folder_url: null, status: "pendente" });
-    setPasta(data?.modo === "personalizado" ? (data.root_folder_url || data.root_folder_id || "") : "");
+    setPasta(data?.modo === "personalizado" ? data.root_folder_url || data.root_folder_id || "" : "");
   }
 
-  useEffect(() => { void carregar(); }, []);
+  useEffect(() => { void carregarTudo(); }, []);
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
 
   async function criarClinica() {
-    if (!nome.trim()) return toast.error("Informe o nome da clínica.");
-    const identificador = limparSlug(slug);
+    if (!novoNome.trim()) return toast.error("Informe o nome da clínica.");
+    const identificador = limparSlug(novoSlug);
     if (!identificador) return toast.error("Informe o @ da clínica.");
-
     setOcupado(true);
     try {
+      const plano = planos.find((p) => p.codigo === "essencial") || planos[0];
       const { data, error } = await (supabase as any)
         .from("clinicas")
-        .insert({ nome: nome.trim(), slug: identificador })
-        .select("id,nome,slug,status")
+        .insert({ nome: novoNome.trim(), slug: identificador, plano: plano?.nome || "Essencial", limite_usuarios: plano?.usuarios_inclusos || 1 })
+        .select("id,nome,slug,status,plano,dominio,limite_usuarios,observacoes,logo_url")
         .single();
       if (error) throw error;
-
-      await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: data.id } });
-      setNome("");
-      setSlug("");
+      setNovoNome("");
+      setNovoSlug("");
       setSelecionada(data);
-      await carregar();
-      await carregarDrive(data.id);
-      toast.success("Clínica criada e pasta preparada no Drive da ORICSE.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setOcupado(false);
+      await carregarTudo();
+      try { await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: data.id } }); } catch { /* Drive pode ser configurado depois */ }
+      toast.success("Clínica criada.");
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setOcupado(false); }
+  }
+
+  async function salvarClinica() {
+    if (!selecionada) return;
+    setOcupado(true);
+    try {
+      const { error } = await (supabase as any).from("clinicas").update({
+        nome: selecionada.nome.trim(),
+        slug: limparSlug(selecionada.slug || ""),
+        status: selecionada.status,
+        plano: selecionada.plano,
+        dominio: selecionada.dominio?.trim() || null,
+        limite_usuarios: Math.max(1, Number(selecionada.limite_usuarios) || 1),
+        observacoes: selecionada.observacoes?.trim() || null,
+        logo_url: selecionada.logo_url?.trim() || null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", selecionada.id);
+      if (error) throw error;
+      await carregarTudo();
+      toast.success("Clínica atualizada.");
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setOcupado(false); }
+  }
+
+  async function vincularUsuario() {
+    if (!selecionada || !usuarioParaVincular) return;
+    if (usuariosDaClinica.filter((x) => x.vinculo.ativo).length >= selecionada.limite_usuarios) {
+      return toast.error(`O limite atual desta clínica é ${selecionada.limite_usuarios} usuário(s).`);
     }
+    const { error } = await (supabase as any).from("clinica_usuarios").upsert({ clinica_id: selecionada.id, user_id: usuarioParaVincular, papel: papelNovo, ativo: true });
+    if (error) return toast.error(error.message);
+    setUsuarioParaVincular("");
+    await carregarTudo();
+    toast.success("Usuário vinculado.");
+  }
+
+  async function atualizarVinculo(v: Vinculo, mudancas: Partial<Vinculo>) {
+    const { error } = await (supabase as any).from("clinica_usuarios").update(mudancas).eq("clinica_id", v.clinica_id).eq("user_id", v.user_id);
+    if (error) return toast.error(error.message);
+    await carregarTudo();
+  }
+
+  function alterarPlano(i: number, mudancas: Partial<Plano>) {
+    setPlanos((lista) => lista.map((p, j) => j === i ? { ...p, ...mudancas } : p));
+  }
+
+  async function salvarPlanos() {
+    setOcupado(true);
+    try {
+      for (const p of planos) {
+        const { error } = await (supabase as any).from("oricse_planos").upsert({
+          ...(p.id ? { id: p.id } : {}), codigo: p.codigo, nome: p.nome, publico_alvo: p.publico_alvo, preco: p.preco,
+          descricao: p.descricao, itens: p.itens, usuarios_inclusos: Number(p.usuarios_inclusos) || 1,
+          dominio_incluso: p.dominio_incluso, ativo: p.ativo, ordem: p.ordem, updated_at: new Date().toISOString(),
+        }, { onConflict: "codigo" });
+        if (error) throw error;
+      }
+      await carregarTudo();
+      toast.success("Planos atualizados na página pública.");
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setOcupado(false); }
+  }
+
+  async function salvarSite() {
+    const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor: site, updated_at: new Date().toISOString() });
+    if (error) return toast.error(error.message);
+    toast.success("Textos públicos atualizados.");
   }
 
   async function conectarDrive() {
     if (!selecionada) return;
     if (!pasta.trim()) return usarPadrao();
-
     const folderId = extrairDriveFolderId(pasta);
     if (!folderId) return toast.error("Informe uma pasta válida do Google Drive.");
     setOcupado(true);
@@ -112,11 +272,8 @@ function Admin() {
       await testarEConectarPastaDrive({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id, folderId, folderUrl: pasta } });
       await carregarDrive(selecionada.id);
       toast.success("Drive personalizado conectado.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setOcupado(false);
-    }
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setOcupado(false); }
   }
 
   async function usarPadrao() {
@@ -126,11 +283,8 @@ function Admin() {
       await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id } });
       await carregarDrive(selecionada.id);
       toast.success("Pasta da clínica pronta no Drive da ORICSE.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setOcupado(false);
-    }
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setOcupado(false); }
   }
 
   async function sair() {
@@ -138,77 +292,67 @@ function Admin() {
     window.location.assign("/login");
   }
 
+  const renderSelecionarClinica = () => (
+    <Card>
+      <h2 className="text-xl font-bold">Selecione uma clínica</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Escolha uma clínica na aba Clínicas para administrar seus usuários, plano e Drive.</p>
+    </Card>
+  );
+
+  const renderDashboard = () => {
+    const ativas = clinicas.filter((c) => c.status === "ativa").length;
+    const ativos = vinculos.filter((v) => v.ativo).length;
+    return <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ["Clínicas", clinicas.length, Building2], ["Clínicas ativas", ativas, ShieldCheck], ["Usuários vinculados", ativos, Users], ["Arquivos no Drive", arquivosDrive, HardDrive],
+        ].map(([rotulo, valor, Icone]: any) => <Card key={rotulo}><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div><Icone className="text-primary" size={26}/></div></Card>)}
+      </div>
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Clínicas recentes</h2><p className="text-sm text-muted-foreground">Acesso rápido à administração de cada operação.</p></div><button onClick={() => setAba("clinicas")} className="rounded-xl border px-4 py-2 font-semibold">Gerenciar clínicas</button></div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">{clinicas.slice(0, 6).map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAba("clinicas"); }} className="rounded-xl border p-4 text-left hover:border-primary"><div className="font-bold">{c.nome}</div><div className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"} · {c.plano} · {c.status}</div></button>)}</div>
+      </Card>
+    </div>;
+  };
+
+  const renderClinicas = () => <div className="grid gap-5 xl:grid-cols-[330px_1fr]">
+    <div className="space-y-4">
+      <Card><h2 className="font-bold">Clínicas</h2><div className="mt-3 max-h-[440px] space-y-2 overflow-auto">{clinicas.map((c) => <button key={c.id} onClick={() => setSelecionada(c)} className={`w-full rounded-xl border p-3 text-left ${selecionada?.id === c.id ? "border-primary bg-primary/5" : ""}`}><div className="font-semibold">{c.nome}</div><div className="text-xs text-muted-foreground">@{c.slug || "sem-usuario"} · {c.status}</div></button>)}</div></Card>
+      <Card><h3 className="font-bold">Nova clínica</h3><input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Nome da clínica" className="mt-3 min-h-11 w-full rounded-xl border px-3"/><div className="mt-2 flex min-h-11 items-center rounded-xl border px-3"><span className="font-semibold text-slate-500">@</span><input value={novoSlug} onChange={(e) => setNovoSlug(limparSlug(e.target.value))} placeholder="suaclinica" className="min-w-0 flex-1 bg-transparent outline-none"/></div><button disabled={ocupado} onClick={criarClinica} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"><Plus size={18}/> Criar clínica</button></Card>
+    </div>
+    {!selecionada ? renderSelecionarClinica() : <Card><div className="flex items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">{selecionada.nome}</h2><p className="text-sm text-muted-foreground">Cadastro, plano e situação da clínica.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2">
+      <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+      <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span>@</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none"/></div></label>
+      <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => x.nome === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo}>{p.nome}</option>)}</select></label>
+      <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option></select></label>
+      <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+      <label className="text-sm font-semibold">Domínio<input value={selecionada.dominio || ""} onChange={(e) => setSelecionada({ ...selecionada, dominio: e.target.value })} placeholder="www.suaclinica.com.br" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+      <label className="text-sm font-semibold md:col-span-2">URL da logo da clínica<input value={selecionada.logo_url || ""} onChange={(e) => setSelecionada({ ...selecionada, logo_url: e.target.value })} placeholder="Opcional" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+      <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
+    </div></Card>}
+  </div>;
+
+  const renderUsuarios = () => !selecionada ? renderSelecionarClinica() : <div className="space-y-5">
+    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Usuários · {selecionada.nome}</h2><p className="text-sm text-muted-foreground">{usuariosDaClinica.filter((x) => x.vinculo.ativo).length} de {selecionada.limite_usuarios} vagas em uso.</p></div><div className="text-sm font-semibold">Plano {selecionada.plano}</div></div>
+      <div className="mt-4 grid gap-2">{usuariosDaClinica.map(({ vinculo, usuario }) => <div key={vinculo.user_id} className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_180px_120px] sm:items-center"><div><div className="font-semibold">@{usuario!.username}</div><div className="text-xs text-muted-foreground">{usuario!.role === "admin" ? "Administrador da plataforma" : "Usuário da Oricse"}</div></div><select value={vinculo.papel} disabled={usuario!.role === "admin"} onChange={(e) => void atualizarVinculo(vinculo, { papel: e.target.value as Vinculo["papel"] })} className="min-h-10 rounded-xl border px-3 text-sm"><option value="responsavel">Responsável</option><option value="admin_clinica">Admin clínica</option><option value="usuario">Usuário</option></select><button disabled={usuario!.role === "admin"} onClick={() => void atualizarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button></div>)}</div>
+    </Card>
+    <Card><div className="flex items-center gap-2"><UserPlus size={20}/><h3 className="font-bold">Vincular usuário existente</h3></div><p className="mt-1 text-sm text-muted-foreground">Contas já cadastradas na Oricse aparecem aqui para serem ligadas à clínica.</p><div className="mt-4 grid gap-3 md:grid-cols-[1fr_190px_auto]"><select value={usuarioParaVincular} onChange={(e) => setUsuarioParaVincular(e.target.value)} className="min-h-11 rounded-xl border px-3"><option value="">Selecione um @usuário</option>{usuariosDisponiveis.map((u) => <option key={u.user_id} value={u.user_id}>@{u.username}</option>)}</select><select value={papelNovo} onChange={(e) => setPapelNovo(e.target.value as Vinculo["papel"])} className="min-h-11 rounded-xl border px-3"><option value="responsavel">Responsável</option><option value="admin_clinica">Admin clínica</option><option value="usuario">Usuário</option></select><button onClick={vincularUsuario} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground">Vincular</button></div></Card>
+  </div>;
+
+  const renderPlanos = () => <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">Tudo que você editar aqui aparece na página pública de planos.</p></div><div className="flex gap-2"><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.codigo}><div className="flex items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Preço / condição<input value={p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
+
+  const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Identidade atual</h3><div className="mt-4 flex items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src="/oricse-logo.png" alt="Oricse" className="h-28 w-28 object-contain"/><div><div className="text-xl font-bold">ORICSE</div><p className="mt-1 text-sm text-muted-foreground">Sistema veterinário e petshop</p><p className="mt-2 text-xs text-muted-foreground">Logo oficial do sistema.</p></div></div></Card></div>;
+
+  const renderDrive = () => !selecionada ? renderSelecionarClinica() : <Card><div className="flex items-center gap-2"><Database size={20}/><h2 className="text-xl font-bold">Google Drive · {selecionada.nome}</h2></div><p className="mt-1 text-sm text-muted-foreground">A ORICSE cria uma pasta própria para cada clínica no Drive central. Se preferir, a clínica pode usar uma pasta personalizada.</p><div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da ORICSE"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div>{drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline">Abrir pasta <ExternalLink size={14}/></a>}</div><label className="mt-4 block text-sm font-semibold">Pasta personalizada<input value={pasta} onChange={(e) => setPasta(e.target.value)} placeholder="Cole o link de uma pasta do Google Drive" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/></label><div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-60">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Usar Drive da ORICSE</button></div></Card>;
+
+  const renderSistema = () => <div className="space-y-5"><Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div><button onClick={() => void carregarTudo()} className="mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><RefreshCcw size={17}/> Atualizar dados</button></Card><Card><h3 className="font-bold">Atalhos</h3><div className="mt-3 flex flex-wrap gap-2"><a href="/" target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold">Abrir sistema <ExternalLink size={16}/></a><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold">Página de planos <ExternalLink size={16}/></a></div></Card></div>;
+
   return <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
-    <div className="mx-auto max-w-7xl px-5 py-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-        <div><p className="text-sm font-semibold text-primary">ORICSE Admin</p><h1 className="text-3xl font-bold">Gestão da plataforma</h1></div>
-        <button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button>
-      </header>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
-        <aside className="space-y-4">
-          <section className="rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center gap-2"><Building2 size={19}/><h2 className="font-bold">Clínicas</h2></div>
-            <div className="space-y-2">
-              {clinicas.map(c => {
-                const identificador = limparSlug(c.slug || "");
-                return <button key={c.id} onClick={()=>setSelecionada(c)} className={`w-full rounded-xl border px-3 py-3 text-left ${selecionada?.id===c.id?"border-primary bg-primary/5":"bg-white"}`}>
-                  <div className="font-semibold">{c.nome}</div>
-                  <div className="text-xs text-muted-foreground">{identificador ? `@${identificador}` : "Sem identificador"} · {c.status}</div>
-                </button>;
-              })}
-            </div>
-          </section>
-
-          <section className="rounded-2xl border bg-white p-4 shadow-sm">
-            <h3 className="font-bold">Nova clínica</h3>
-            <input value={nome} onChange={e=>setNome(e.target.value)} placeholder="Nome da clínica" className="mt-3 min-h-11 w-full rounded-xl border px-3"/>
-            <div className="mt-2 flex min-h-11 w-full items-center rounded-xl border bg-white px-3 focus-within:border-primary">
-              <span className="select-none font-semibold text-slate-500">@</span>
-              <input
-                value={slug}
-                onChange={e=>setSlug(limparSlug(e.target.value))}
-                placeholder="suaclinica"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent pl-0.5 outline-none"
-              />
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">O @ já é fixo. Mesmo que você cole outro @, ele será removido.</p>
-            <button disabled={ocupado} onClick={criarClinica} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"><Plus size={18}/> Criar clínica</button>
-          </section>
-        </aside>
-
-        <section>{!selecionada ? <div className="rounded-2xl border bg-white p-8 text-center text-muted-foreground">Selecione ou crie uma clínica.</div> : <div className="space-y-5">
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-bold">{selecionada.nome}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Usuários, plano, financeiro e configurações desta clínica ficarão juntos aqui.</p>
-          </div>
-
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2"><Database size={20}/><h3 className="text-xl font-bold">Google Drive</h3></div>
-            <p className="mt-1 text-sm text-muted-foreground">Se nenhuma pasta personalizada for informada, a ORICSE cria automaticamente uma pasta para esta clínica dentro do Drive central.</p>
-
-            <div className="mt-4 rounded-xl border bg-slate-50 p-4">
-              <div className="text-sm font-semibold">Destino atual</div>
-              <div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da ORICSE"}</div>
-              <div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div>
-              {drive?.modo === "oricse" && drive.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline underline-offset-2">Abrir pasta da clínica <ExternalLink size={14}/></a>}
-            </div>
-
-            <label className="mt-4 block text-sm font-semibold">
-              Pasta personalizada do Google Drive
-              <input value={pasta} onChange={e=>setPasta(e.target.value)} placeholder="Opcional: cole o link de uma pasta própria da clínica" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/>
-            </label>
-            <p className="mt-1 text-[11px] text-muted-foreground">Deixe em branco para usar a pasta criada automaticamente pela ORICSE.</p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-60">{pasta.trim() ? "Testar e conectar" : "Criar/usar pasta da ORICSE"}</button>
-              <button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-60"><RefreshCcw size={17}/> Usar Drive da ORICSE</button>
-            </div>
-          </div>
-        </div>}</section>
+    <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src="/oricse-logo.png" alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]">
+        <aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => setAba(id)} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside>
+        <section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "usuarios" && renderUsuarios()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "drive" && renderDrive()}{aba === "sistema" && renderSistema()}</section>
       </div>
     </div>
   </main>;
