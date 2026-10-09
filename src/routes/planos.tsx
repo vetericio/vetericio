@@ -62,9 +62,9 @@ function Planos() {
           <img
             src={site.logo_url || "/oricse-logo.png"}
             alt={site.marca || "Oricse"}
-            className="mx-auto h-auto w-full max-w-[430px] object-contain sm:max-w-[500px]"
+            className="mx-auto h-auto w-full max-w-[280px] object-contain sm:max-w-[330px]"
           />
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">{site.titulo_planos}</h1>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight">{site.titulo_planos}</h1>
           <p className="mt-3 text-muted-foreground">{site.subtitulo_planos}</p>
           {mostrarSeletor && (
             <div className="mx-auto mt-6 inline-flex rounded-2xl border bg-card p-1 shadow-sm">
