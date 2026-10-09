@@ -24,13 +24,13 @@ import {
 export const Route = createFileRoute("/plantoes")({
   head: () => ({
     meta: [
-      { title: "Plantões salvos — Veterício" },
+      { title: "Plantões salvos — Oricse" },
       {
         name: "description",
         content:
           "Histórico completo dos plantões da internação, com texto, cópia, exportação em PDF e exclusão.",
       },
-      { property: "og:title", content: "Plantões salvos — Veterício" },
+      { property: "og:title", content: "Plantões salvos — Oricse" },
       {
         property: "og:description",
         content: "Consulte, copie e exporte em PDF os plantões da internação já fechados.",
