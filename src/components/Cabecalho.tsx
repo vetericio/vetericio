@@ -47,7 +47,11 @@ export function Cabecalho() {
       <MenuLateral />
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
-          <div className="text-3xl font-black tracking-[0.18em] text-primary sm:text-4xl">ORICSE</div>
+          <img
+            src="/oricse-logo.png"
+            alt="Oricse — sistema veterinário e petshop"
+            className="h-auto w-full max-w-[180px] object-contain sm:max-w-[220px]"
+          />
         </div>
 
         <div className="mb-2">
