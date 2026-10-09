@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
@@ -18,6 +18,8 @@ import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 
 
 export function Cabecalho() {
+  const location = useLocation();
+  const plantaoArea = ["/", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
   const finalizar = useFinalizarPlantao();
@@ -53,7 +55,7 @@ export function Cabecalho() {
 
   return (
     <header className="relative border-b border-border bg-card/60">
-      <MenuLateral />
+      {plantaoArea && <MenuLateral />}
       <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
         <div className="mb-2 flex justify-center">
           <img
@@ -63,10 +65,10 @@ export function Cabecalho() {
           />
         </div>
 
-        <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+        {plantaoArea && <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
           Ficha de Avaliação da Internação
-        </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        </p>}
+        {plantaoArea && <p className="mt-0.5 text-[11px] text-muted-foreground">
           {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
           {plantao && (
             <button
@@ -77,9 +79,9 @@ export function Cabecalho() {
               alterar
             </button>
           )}
-        </p>
+        </p>}
 
-        {carregado && (
+        {plantaoArea && carregado && (
           <div className="mt-3">
             {plantao ? (
               <button
@@ -103,7 +105,7 @@ export function Cabecalho() {
 
         <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
 
-        <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
+        {plantaoArea && <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
           {LINKS.map((item) => {
             const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
             if (bloqueado)
@@ -131,13 +133,13 @@ export function Cabecalho() {
               </Link>
             );
           })}
-        </nav>
+        </nav>}
 
-        <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
+        {plantaoArea && <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
           Total de registros do plantão de hoje: {registros.length}
-        </p>
+        </p>}
 
-        <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
+        {plantaoArea && <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />}
       </div>
     </header>
   );
