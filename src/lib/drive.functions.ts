@@ -122,7 +122,7 @@ async function accessTokenGoogle(): Promise<string> {
   const oauthToken = await accessTokenOAuth();
   if (oauthToken) return oauthToken;
 
-  throw new Error("Google Drive ainda não foi conectado ao backend da Oryx.");
+  throw new Error("Google Drive ainda não foi conectado ao backend da Oricse.");
 }
 
 async function googleFetch(path: string, init: RequestInit = {}) {
@@ -195,7 +195,7 @@ async function pastaRaizDaClinica(
   supabaseAdmin: SupabaseAdmin,
   clinicaId: string,
   token: string,
-): Promise<{ folderId: string; modo: "oryx" | "personalizado" }> {
+): Promise<{ folderId: string; modo: "oricse" | "personalizado" }> {
   const { data: config } = await supabaseAdmin
     .from("clinica_drive_config")
     .select("modo, root_folder_id, status")
@@ -206,8 +206,8 @@ async function pastaRaizDaClinica(
     return { folderId: config.root_folder_id, modo: "personalizado" };
   }
 
-  if (config?.modo === "oryx" && config.root_folder_id) {
-    return { folderId: config.root_folder_id, modo: "oryx" };
+  if (config?.modo === "oricse" && config.root_folder_id) {
+    return { folderId: config.root_folder_id, modo: "oricse" };
   }
 
   const [{ data: clinica }, { data: plataforma }] = await Promise.all([
@@ -221,7 +221,7 @@ async function pastaRaizDaClinica(
 
   await supabaseAdmin.from("clinica_drive_config").upsert({
     clinica_id: clinicaId,
-    modo: "oryx",
+    modo: "oricse",
     root_folder_id: folderId,
     root_folder_url: `https://drive.google.com/drive/folders/${folderId}`,
     status: "conectado",
@@ -229,7 +229,7 @@ async function pastaRaizDaClinica(
     updated_at: new Date().toISOString(),
   });
 
-  return { folderId, modo: "oryx" };
+  return { folderId, modo: "oricse" };
 }
 
 async function validarPastaGoogle(folderId: string) {
@@ -242,7 +242,7 @@ async function validarPastaGoogle(folderId: string) {
     capabilities?: { canAddChildren?: boolean };
   };
   if (json.mimeType !== "application/vnd.google-apps.folder") throw new Error("O destino informado não é uma pasta do Google Drive.");
-  if (json.capabilities?.canAddChildren === false) throw new Error("A Oryx não tem permissão para enviar arquivos para esta pasta.");
+  if (json.capabilities?.canAddChildren === false) throw new Error("A Oricse não tem permissão para enviar arquivos para esta pasta.");
   return json;
 }
 
@@ -294,7 +294,7 @@ export const voltarAoDrivePadrao = createServerFn({ method: "POST" })
     await usuarioAutorizado(supabaseAdmin, data.accessToken, data.clinicaId);
     await supabaseAdmin.from("clinica_drive_config").upsert({
       clinica_id: data.clinicaId,
-      modo: "oryx",
+      modo: "oricse",
       root_folder_id: null,
       root_folder_url: null,
       status: "pendente",
