@@ -1,7 +1,7 @@
 {
-  "name": "Veterício Serviços Veterinários LTDA",
-  "short_name": "Veterício",
-  "description": "Ficha de Avaliação da Internação — registro offline de animais internados.",
+  "name": "Oricse",
+  "short_name": "Oricse",
+  "description": "Plataforma veterinária Oricse.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
