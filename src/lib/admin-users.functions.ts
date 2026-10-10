@@ -54,7 +54,7 @@ export const criarUsuarioClinica = createServerFn({ method: "POST" })
       const { error: profileError } = await supabaseAdmin.from("app_users").insert({
         user_id: created.user.id,
         username,
-        role: "usuario",
+        role: "user",
         email: data.email.trim().toLowerCase(),
       });
       if (profileError) throw profileError;
