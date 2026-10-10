@@ -9,6 +9,8 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export type AgendaMode = "recepcao" | "veterinario";
 type Tom = "azul" | "verde" | "amarelo" | "rosa" | "roxo";
@@ -118,10 +120,26 @@ function origemCurta(origem: Origem) {
   return origem === "Tutor no app" ? "Tutor APP" : "Recepção";
 }
 
+function horaEmMinutos(hora: string) {
+  const [h = "0", m = "0"] = hora.split(":");
+  return Math.max(0, Math.min(1439, Number(h) * 60 + Number(m)));
+}
+
+function minutosEmHora(total: number) {
+  const seguro = Math.max(0, Math.min(1439, total));
+  const h = Math.floor(seguro / 60);
+  const m = seguro % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function ordenarEventos(eventos: Evento[]) {
+  return [...eventos].sort((a, b) => horaEmMinutos(a.hora) - horaEmMinutos(b.hora));
+}
+
 function normalizarAgendas(agendas: ColunaAgenda[]): ColunaAgenda[] {
   return agendas.map((agenda) => ({
     ...agenda,
-    eventos: agenda.eventos.map((evento) => ({ ...evento, especie: evento.especie || "Outro" })),
+    eventos: ordenarEventos(agenda.eventos.map((evento) => ({ ...evento, especie: evento.especie || "Outro" }))),
   }));
 }
 
@@ -129,9 +147,9 @@ function carregarAgendas() {
   if (typeof window === "undefined") return BASE;
   try {
     const salvo = window.localStorage.getItem("oricse-agendas-v2");
-    return salvo ? normalizarAgendas(JSON.parse(salvo) as ColunaAgenda[]) : BASE;
+    return salvo ? normalizarAgendas(JSON.parse(salvo) as ColunaAgenda[]) : normalizarAgendas(BASE);
   } catch {
-    return BASE;
+    return normalizarAgendas(BASE);
   }
 }
 
@@ -144,10 +162,41 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   const [criandoAgenda, setCriandoAgenda] = useState(false);
   const [confirmacao, setConfirmacao] = useState<{ agendaId: string; evento: Evento } | null>(null);
   const [novaAgenda, setNovaAgenda] = useState({ nome: "Consultas", responsavel: "" });
+  const [duracaoPadrao, setDuracaoPadrao] = useState(30);
 
   useEffect(() => {
-    if (typeof window !== "undefined") window.localStorage.setItem("oricse-agendas-v2", JSON.stringify(agendas));
+    if (typeof window !== "undefined") window.localStorage.setItem("oricse-agendas-v2", JSON.stringify(normalizarAgendas(agendas)));
   }, [agendas]);
+
+  useEffect(() => {
+    let ativo = true;
+    async function carregarDuracaoDaClinica() {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData.user?.id;
+        if (!userId) return;
+        const { data: vinculo } = await (supabase as any)
+          .from("clinica_usuarios")
+          .select("clinica_id")
+          .eq("user_id", userId)
+          .eq("ativo", true)
+          .limit(1)
+          .maybeSingle();
+        if (!vinculo?.clinica_id) return;
+        const { data: clinica } = await (supabase as any)
+          .from("clinicas")
+          .select("duracao_padrao_atendimento_min")
+          .eq("id", vinculo.clinica_id)
+          .maybeSingle();
+        const valor = Number(clinica?.duracao_padrao_atendimento_min);
+        if (ativo && Number.isFinite(valor) && valor >= 5 && valor <= 720) setDuracaoPadrao(valor);
+      } catch (e) {
+        console.error("Não foi possível carregar a duração padrão da clínica:", e);
+      }
+    }
+    void carregarDuracaoDaClinica();
+    return () => { ativo = false; };
+  }, []);
 
   const visiveis = useMemo(() => filtro === "todas" ? agendas : agendas.filter((a) => a.id === filtro), [agendas, filtro]);
   const titulo = mode === "recepcao" ? "Agenda do dia" : "Minha agenda";
@@ -173,10 +222,39 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     setCriandoAgenda(false);
   }
 
+  function horarioConflita(agenda: ColunaAgenda, hora: string, eventoId?: string, status?: StatusEvento) {
+    if (status === "Cancelado") return false;
+    const inicioNovo = horaEmMinutos(hora);
+    const fimNovo = inicioNovo + duracaoPadrao;
+    return agenda.eventos.some((evento) => {
+      if (evento.id === eventoId || evento.status === "Cancelado") return false;
+      const inicioExistente = horaEmMinutos(evento.hora);
+      const fimExistente = inicioExistente + duracaoPadrao;
+      return inicioNovo < fimExistente && fimNovo > inicioExistente;
+    });
+  }
+
+  function proximoHorarioLivre(agenda: ColunaAgenda) {
+    const inicioDia = 8 * 60;
+    const limiteDia = 23 * 60 + 59;
+    for (let minuto = inicioDia; minuto + duracaoPadrao <= limiteDia + 1; minuto += duracaoPadrao) {
+      const hora = minutosEmHora(minuto);
+      if (!horarioConflita(agenda, hora)) return hora;
+    }
+    return null;
+  }
+
   function adicionarHorario(agendaId: string) {
+    const agenda = agendas.find((a) => a.id === agendaId);
+    if (!agenda) return;
+    const horaLivre = proximoHorarioLivre(agenda);
+    if (!horaLivre) {
+      toast.error("Não há horário livre nesta agenda para a duração configurada.");
+      return;
+    }
     const novo: Evento = {
       id: `evento-${Date.now()}`,
-      hora: "08:00",
+      hora: horaLivre,
       tipo: "Consulta",
       paciente: "Novo paciente",
       tutor: "Tutor",
@@ -186,17 +264,29 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
       status: "Agendado",
       tom: "azul",
     };
-    setAgendas((lista) => lista.map((a) => a.id === agendaId ? { ...a, eventos: [...a.eventos, novo] } : a));
     setEventoAberto({ agendaId, evento: novo });
   }
 
   function salvarEvento(agendaId: string, evento: Evento) {
-    setAgendas((lista) => lista.map((a) => a.id === agendaId ? { ...a, eventos: a.eventos.map((e) => e.id === evento.id ? evento : e) } : a));
+    const agenda = agendas.find((a) => a.id === agendaId);
+    if (!agenda) return;
+    if (horarioConflita(agenda, evento.hora, evento.id, evento.status)) {
+      toast.error("Agenda ocupada neste horário. Escolha outro horário disponível.");
+      return;
+    }
+    setAgendas((lista) => lista.map((a) => {
+      if (a.id !== agendaId) return a;
+      const existe = a.eventos.some((e) => e.id === evento.id);
+      const eventos = existe
+        ? a.eventos.map((e) => e.id === evento.id ? evento : e)
+        : [...a.eventos, evento];
+      return { ...a, eventos: ordenarEventos(eventos) };
+    }));
     setEventoAberto(null);
   }
 
   function definirStatus(agendaId: string, eventoId: string, status: StatusEvento) {
-    setAgendas((lista) => lista.map((a) => a.id === agendaId ? { ...a, eventos: a.eventos.map((e) => e.id === eventoId ? { ...e, status } : e) } : a));
+    setAgendas((lista) => lista.map((a) => a.id === agendaId ? { ...a, eventos: ordenarEventos(a.eventos.map((e) => e.id === eventoId ? { ...e, status } : e)) } : a));
   }
 
   function confirmarFinalizacao() {
@@ -215,6 +305,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
             <h2 className="text-2xl font-bold">{titulo}</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{subtitulo}</p>
+          <p className="mt-1 text-xs font-semibold text-primary">Duração padrão definida pela clínica: {duracaoPadrao} min</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="min-h-11 rounded-xl border bg-white px-3 text-sm font-semibold">
@@ -253,7 +344,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
             </header>
 
             <div className="space-y-3 p-3">
-              {agenda.eventos.map((evento) => {
+              {ordenarEventos(agenda.eventos).map((evento) => {
                 const finalizado = evento.status === "Finalizado";
                 return (
                   <div key={evento.id} className={`rounded-xl border p-3.5 ${finalizado ? "border-slate-200 bg-slate-50 text-slate-700" : TOM[evento.tom]}`}>
