@@ -41,7 +41,9 @@ type ColunaAgenda = {
 
 const BASE: ColunaAgenda[] = [
   {
-    id: "agenda-1", nome: "Agenda 1", responsavel: "Dra. Ana Costa",
+    id: "agenda-1",
+    nome: "Agenda 1",
+    responsavel: "Dra. Ana Costa",
     eventos: [
       { id: "e1", hora: "08:00", tipo: "Consulta", paciente: "Max", tutor: "Carlos Souza", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "azul" },
       { id: "e2", hora: "09:30", tipo: "Vacina", paciente: "Luna", tutor: "Renata Lima", especie: "Gato", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "verde" },
@@ -50,7 +52,9 @@ const BASE: ColunaAgenda[] = [
     ],
   },
   {
-    id: "agenda-2", nome: "Agenda 2", responsavel: "Dr. Bruno Almeida",
+    id: "agenda-2",
+    nome: "Agenda 2",
+    responsavel: "Dr. Bruno Almeida",
     eventos: [
       { id: "e5", hora: "08:30", tipo: "Banho", paciente: "Mel", tutor: "Paula Costa", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "roxo" },
       { id: "e6", hora: "10:00", tipo: "Tosa", paciente: "Bob", tutor: "João Freitas", especie: "Cão", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "rosa" },
@@ -58,7 +62,9 @@ const BASE: ColunaAgenda[] = [
     ],
   },
   {
-    id: "agenda-3", nome: "Agenda 3", responsavel: "Dra. Juliana Ribeiro",
+    id: "agenda-3",
+    nome: "Agenda 3",
+    responsavel: "Dra. Juliana Ribeiro",
     eventos: [
       { id: "e8", hora: "08:00", tipo: "Consulta", paciente: "Bidu", tutor: "André Martins", especie: "Ave", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "azul" },
       { id: "e9", hora: "10:30", tipo: "Retorno", paciente: "Maggie", tutor: "Sofia Mendes", especie: "Hamster", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "amarelo" },
@@ -66,7 +72,9 @@ const BASE: ColunaAgenda[] = [
     ],
   },
   {
-    id: "agenda-4", nome: "Agenda 4", responsavel: "Banho e tosa",
+    id: "agenda-4",
+    nome: "Agenda 4",
+    responsavel: "Banho e tosa",
     eventos: [
       { id: "e11", hora: "09:00", tipo: "Banho", paciente: "Simba", tutor: "Marina Prado", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "roxo" },
       { id: "e12", hora: "11:00", tipo: "Tosa", paciente: "Nina", tutor: "Clara Nunes", especie: "Gato", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "rosa" },
@@ -100,7 +108,7 @@ function emojiEspecie(especie?: string) {
   if (["cão", "cao", "canino", "cachorro"].includes(valor)) return "🐶";
   if (["gato", "felino"].includes(valor)) return "🐱";
   if (["ave", "passarinho", "pássaro", "passaro"].includes(valor)) return "🐦";
-  if (["hamster"].includes(valor)) return "🐭";
+  if (valor === "hamster") return "🐭";
   if (["cobra", "serpente"].includes(valor)) return "🐍";
   if (["vaca", "bovino", "bovina"].includes(valor)) return "🐄";
   if (["cavalo", "equino", "equina"].includes(valor)) return "🐴";
@@ -132,6 +140,15 @@ function minutosEmHora(total: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function gerarHorarios(duracao: number) {
+  const intervalo = Math.max(5, Number(duracao) || 30);
+  const horarios: string[] = [];
+  for (let minuto = 8 * 60; minuto < 24 * 60; minuto += intervalo) {
+    horarios.push(minutosEmHora(minuto));
+  }
+  return horarios;
+}
+
 function ordenarEventos(eventos: Evento[]) {
   return [...eventos].sort((a, b) => horaEmMinutos(a.hora) - horaEmMinutos(b.hora));
 }
@@ -144,7 +161,7 @@ function normalizarAgendas(agendas: ColunaAgenda[]): ColunaAgenda[] {
 }
 
 function carregarAgendas() {
-  if (typeof window === "undefined") return BASE;
+  if (typeof window === "undefined") return normalizarAgendas(BASE);
   try {
     const salvo = window.localStorage.getItem("oricse-agendas-v2");
     return salvo ? normalizarAgendas(JSON.parse(salvo) as ColunaAgenda[]) : normalizarAgendas(BASE);
@@ -235,13 +252,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   }
 
   function proximoHorarioLivre(agenda: ColunaAgenda) {
-    const inicioDia = 8 * 60;
-    const limiteDia = 23 * 60 + 59;
-    for (let minuto = inicioDia; minuto + duracaoPadrao <= limiteDia + 1; minuto += duracaoPadrao) {
-      const hora = minutosEmHora(minuto);
-      if (!horarioConflita(agenda, hora)) return hora;
-    }
-    return null;
+    return gerarHorarios(duracaoPadrao).find((hora) => !horarioConflita(agenda, hora)) || null;
   }
 
   function adicionarHorario(agendaId: string) {
@@ -277,9 +288,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     setAgendas((lista) => lista.map((a) => {
       if (a.id !== agendaId) return a;
       const existe = a.eventos.some((e) => e.id === evento.id);
-      const eventos = existe
-        ? a.eventos.map((e) => e.id === evento.id ? evento : e)
-        : [...a.eventos, evento];
+      const eventos = existe ? a.eventos.map((e) => e.id === evento.id ? evento : e) : [...a.eventos, evento];
       return { ...a, eventos: ordenarEventos(eventos) };
     }));
     setEventoAberto(null);
@@ -353,16 +362,13 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
                       <span className="text-sm font-bold">{evento.tipo}</span>
                       {finalizado && <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-slate-500">Finalizado</span>}
                     </button>
-
                     <button type="button" onClick={() => setAnimalAberto(evento)} className="mt-2 block w-full text-left text-sm font-black text-slate-950 underline-offset-2 hover:underline">
                       <span className="mr-1.5" aria-hidden="true">{emojiEspecie(evento.especie)}</span>
                       {evento.paciente.toUpperCase()} <span className="font-medium text-slate-600">({evento.tutor})</span>
                     </button>
-
                     <div className="mt-1.5 text-xs font-semibold text-slate-600">
                       {origemCurta(evento.origem)} <span className="px-1 text-slate-400">·</span> <span className={evento.pagamento === "Pago" ? "text-emerald-700" : evento.pagamento === "Pendente" ? "text-amber-700" : "text-slate-700"}>{evento.pagamento}</span>
                     </div>
-
                     {!finalizado ? (
                       <button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className="mt-3 inline-flex min-h-9 items-center gap-1.5 font-bold text-emerald-700 hover:underline">
                         <CheckCircle2 size={15} /> Finalizar atendimento
@@ -375,7 +381,6 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
                   </div>
                 );
               })}
-
               <button type="button" onClick={() => adicionarHorario(agenda.id)} className="w-full rounded-lg border border-dashed px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary">
                 + Adicionar horário
               </button>
@@ -404,14 +409,21 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
         </div>
       )}
 
-      {eventoAberto && (
-        <EditorEvento
-          value={eventoAberto.evento}
-          onClose={() => setEventoAberto(null)}
-          onSave={(evento) => salvarEvento(eventoAberto.agendaId, evento)}
-          onFinish={() => setConfirmacao({ agendaId: eventoAberto.agendaId, evento: eventoAberto.evento })}
-        />
-      )}
+      {eventoAberto && (() => {
+        const agendaAtual = agendas.find((a) => a.id === eventoAberto.agendaId);
+        if (!agendaAtual) return null;
+        return (
+          <EditorEvento
+            value={eventoAberto.evento}
+            agenda={agendaAtual}
+            duracaoPadrao={duracaoPadrao}
+            onClose={() => setEventoAberto(null)}
+            onSave={(evento) => salvarEvento(eventoAberto.agendaId, evento)}
+            onFinish={() => setConfirmacao({ agendaId: eventoAberto.agendaId, evento: eventoAberto.evento })}
+            conflita={(hora, eventoId, status) => horarioConflita(agendaAtual, hora, eventoId, status)}
+          />
+        );
+      })()}
 
       {confirmacao && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 p-4">
@@ -455,8 +467,30 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   );
 }
 
-function EditorEvento({ value, onClose, onSave, onFinish }: { value: Evento; onClose: () => void; onSave: (evento: Evento) => void; onFinish: () => void }) {
+function EditorEvento({
+  value,
+  agenda,
+  duracaoPadrao,
+  onClose,
+  onSave,
+  onFinish,
+  conflita,
+}: {
+  value: Evento;
+  agenda: ColunaAgenda;
+  duracaoPadrao: number;
+  onClose: () => void;
+  onSave: (evento: Evento) => void;
+  onFinish: () => void;
+  conflita: (hora: string, eventoId?: string, status?: StatusEvento) => boolean;
+}) {
   const [evento, setEvento] = useState<Evento>({ ...value, especie: value.especie || "Outro" });
+  const horarios = useMemo(() => gerarHorarios(duracaoPadrao), [duracaoPadrao]);
+
+  const horariosComAtual = useMemo(() => {
+    if (horarios.includes(evento.hora)) return horarios;
+    return [...horarios, evento.hora].sort((a, b) => horaEmMinutos(a) - horaEmMinutos(b));
+  }, [horarios, evento.hora]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -464,7 +498,13 @@ function EditorEvento({ value, onClose, onSave, onFinish }: { value: Evento; onC
         <div className="flex items-center justify-between"><h3 className="text-xl font-bold">Editar agendamento</h3><button onClick={onClose}><X /></button></div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-sm font-semibold">Horário
-            <input type="time" value={evento.hora} onChange={(e) => setEvento({ ...evento, hora: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+            <select value={evento.hora} onChange={(e) => setEvento({ ...evento, hora: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+              {horariosComAtual.map((hora) => {
+                const ocupado = hora !== value.hora && conflita(hora, evento.id, evento.status);
+                return <option key={hora} value={hora} disabled={ocupado}>{hora}{ocupado ? " — ocupado" : ""}</option>;
+              })}
+            </select>
+            <span className="mt-1 block text-[11px] font-medium text-muted-foreground">Intervalos de {duracaoPadrao} min definidos pela clínica.</span>
           </label>
           <label className="text-sm font-semibold">Tipo
             <select value={evento.tipo} onChange={(e) => setEvento({ ...evento, tipo: e.target.value, tom: TIPOS[e.target.value] || "azul" })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
@@ -502,6 +542,7 @@ function EditorEvento({ value, onClose, onSave, onFinish }: { value: Evento; onC
           <button onClick={onFinish} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold text-emerald-700"><CheckCircle2 size={16} /> Finalizar</button>
           <button onClick={() => onSave(evento)} className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground">Salvar alterações</button>
         </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">Agenda: {agenda.nome} · horários ocupados ficam indisponíveis.</p>
       </div>
     </div>
   );
