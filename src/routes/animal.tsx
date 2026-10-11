@@ -102,6 +102,7 @@ function iconFor(tipo: Aba) {
   if (tipo === "Receitas") return ReceiptText;
   if (tipo === "Exames") return FlaskConical;
   if (tipo === "Agendamentos") return CalendarDays;
+  if (tipo === "Internações") return BedDouble;
   if (tipo === "Documentos" || tipo === "Termos") return FileText;
   if (tipo === "Galeria") return Image;
   return ClipboardList;
@@ -163,82 +164,106 @@ function AnimalFicha() {
   if (!animal) return <main className="mx-auto max-w-5xl px-4 py-8"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">Animal não encontrado.</div></main>;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1550px] px-3 pb-28 pt-4 sm:px-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Animais</Link>
-        <Link to="/novo-animal" search={{ animalId: animal.id } as never} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-4 text-sm font-bold"><Pencil size={16}/> Editar animal</Link>
-      </div>
+    <main className="mx-auto min-h-screen w-full max-w-[1760px] px-3 pb-28 pt-4 sm:px-5">
+      <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <div className="sticky top-4 overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <div className="flex items-center gap-3 border-b px-4 py-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><PawPrint size={21}/></div>
+              <div className="text-lg font-black">Animais</div>
+            </div>
+            <nav className="p-2">
+              {ABAS.map((nome) => {
+                const Icon = iconFor(nome);
+                const ativo = aba === nome;
+                return <button key={nome} type="button" onClick={() => setAba(nome)} className={`relative mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${ativo ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"}`}>
+                  {ativo && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-emerald-700"/>}
+                  <Icon size={18} className={ativo ? "text-emerald-700" : "text-muted-foreground"}/>
+                  <span>{nome}</span>
+                </button>;
+              })}
+            </nav>
+          </div>
+        </aside>
 
-      <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-        <div className="grid gap-5 p-4 lg:grid-cols-[1.5fr_1fr] lg:p-5">
-          <div className="flex items-start gap-4">
-            <FotoAnimalDrive animalId={animal.id} nome={animal.nome} />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2"><h1 className="text-3xl font-black">{animal.nome}</h1>{animal.alerta && <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive">⚠ {animal.alerta}</span>}</div>
-              <div className="mt-2 grid gap-x-5 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-3">
-                <span><strong className="text-foreground">Espécie:</strong> {animal.especie || "—"}</span>
-                <span><strong className="text-foreground">Raça:</strong> {animal.raca || "—"}</span>
-                <span><strong className="text-foreground">Sexo:</strong> {animal.sexo || "—"}</span>
-                <span><strong className="text-foreground">Idade:</strong> {idade(animal.nascimento)}</span>
-                <span><strong className="text-foreground">Peso:</strong> {pesoAtual ? formatarPeso(pesoAtual.peso) : "—"}</span>
-                <span><strong className="text-foreground">Castrado:</strong> {animal.castrado || "—"}</span>
-                <span><strong className="text-foreground">Microchip:</strong> {animal.microchip || "—"}</span>
-                <span><strong className="text-foreground">Cor:</strong> {animal.cor || "—"}</span>
-                <span><strong className="text-foreground">Tipo sanguíneo:</strong> {animal.tipoSanguineo || "—"}</span>
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Animais</Link>
+            <Link to="/novo-animal" search={{ animalId: animal.id } as never} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-4 text-sm font-bold"><Pencil size={16}/> Editar animal</Link>
+          </div>
+
+          <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <div className="grid gap-5 p-4 lg:grid-cols-[1.5fr_1fr] lg:p-5">
+              <div className="flex items-start gap-4">
+                <FotoAnimalDrive animalId={animal.id} nome={animal.nome} />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2"><h1 className="text-3xl font-black">{animal.nome}</h1>{animal.alerta && <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive">⚠ {animal.alerta}</span>}</div>
+                  <div className="mt-2 grid gap-x-5 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-3">
+                    <span><strong className="text-foreground">Espécie:</strong> {animal.especie || "—"}</span>
+                    <span><strong className="text-foreground">Raça:</strong> {animal.raca || "—"}</span>
+                    <span><strong className="text-foreground">Sexo:</strong> {animal.sexo || "—"}</span>
+                    <span><strong className="text-foreground">Idade:</strong> {idade(animal.nascimento)}</span>
+                    <span><strong className="text-foreground">Peso:</strong> {pesoAtual ? formatarPeso(pesoAtual.peso) : "—"}</span>
+                    <span><strong className="text-foreground">Castrado:</strong> {animal.castrado || "—"}</span>
+                    <span><strong className="text-foreground">Microchip:</strong> {animal.microchip || "—"}</span>
+                    <span><strong className="text-foreground">Cor:</strong> {animal.cor || "—"}</span>
+                    <span><strong className="text-foreground">Tipo sanguíneo:</strong> {animal.tipoSanguineo || "—"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-muted/20 p-4">
+                <div className="flex items-center gap-2 text-sm font-black"><UserRound size={17} className="text-primary"/> Tutor</div>
+                <div className="mt-2 text-lg font-black">{tutor?.nome || "Tutor não encontrado"} {codigoTutor && <span className="ml-1 font-mono text-sm text-primary">{codigoTutor}</span>}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{[tutor?.telefone, tutor?.outroTelefone].filter(Boolean).join(" · ") || "Sem telefone"}</div>
+                {tutor?.email && <div className="mt-1 truncate text-sm text-muted-foreground">{tutor.email}</div>}
+                {tutor && <Link to="/tutores" className="mt-3 inline-flex rounded-lg border bg-white px-3 py-2 text-xs font-bold">Ver cadastro do tutor</Link>}
               </div>
             </div>
-          </div>
 
-          <div className="rounded-2xl border bg-muted/20 p-4">
-            <div className="flex items-center gap-2 text-sm font-black"><UserRound size={17} className="text-primary"/> Tutor</div>
-            <div className="mt-2 text-lg font-black">{tutor?.nome || "Tutor não encontrado"} {codigoTutor && <span className="ml-1 font-mono text-sm text-primary">{codigoTutor}</span>}</div>
-            <div className="mt-1 text-sm text-muted-foreground">{[tutor?.telefone, tutor?.outroTelefone].filter(Boolean).join(" · ") || "Sem telefone"}</div>
-            {tutor?.email && <div className="mt-1 truncate text-sm text-muted-foreground">{tutor.email}</div>}
-            {tutor && <Link to="/tutores" className="mt-3 inline-flex rounded-lg border bg-white px-3 py-2 text-xs font-bold">Ver cadastro do tutor</Link>}
-          </div>
-        </div>
-
-        <div className="flex overflow-x-auto border-t bg-muted/10 px-2">
-          {ABAS.map((nome) => <button key={nome} type="button" onClick={() => setAba(nome)} className={`shrink-0 border-b-2 px-4 py-3 text-sm font-bold ${aba === nome ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{nome}</button>)}
-        </div>
-      </section>
-
-      {aba === "Visão geral" ? (
-        <div className="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="space-y-4">
-            <Painel titulo="Resumo clínico">
-              <Info rotulo="Alergias" valor={animal.alergias}/><Info rotulo="Doenças crônicas" valor={animal.doencasCronicas}/><Info rotulo="Medicamentos contínuos" valor={animal.medicamentosContinuos}/><Info rotulo="Dieta" valor={animal.dieta}/><Info rotulo="Restrições" valor={animal.restricoes}/><Info rotulo="Necessidades especiais" valor={animal.necessidadesEspeciais}/>
-            </Painel>
-            <Painel titulo="Histórico de peso" acao={() => setModalPeso(true)}>
-              <div className="py-2 text-center"><Scale className="mx-auto mb-2 text-primary/35"/><div className="text-xs font-black uppercase tracking-wider text-muted-foreground">Peso atual</div><div className="mt-1 text-2xl font-black">{pesoAtual ? formatarPeso(pesoAtual.peso) : "não informado"}</div>{pesoAtual?.data && <div className="mt-1 text-xs text-muted-foreground">{formatarData(pesoAtual.data)}</div>}</div>
-              <div className="mt-4 border-t pt-3"><div className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">Histórico de pesos</div>{historicoPeso.length ? <div className="space-y-1.5">{historicoPeso.map((p) => <div key={p.id} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{formatarData(p.data)}</span><strong>{formatarPeso(p.peso)}</strong></div>)}</div> : <div className="text-sm text-muted-foreground">Nenhum peso anterior registrado.</div>}</div>
-            </Painel>
-            <Painel titulo="Próximos agendamentos" acao={() => abrirNovo("Agendamentos")}><ListaMini registros={registrosAnimal.filter((r) => r.tipo === "Agendamentos").slice(0,3)} vazio="Nenhum agendamento registrado."/></Painel>
-          </aside>
-
-          <section className="space-y-3">
-            {(["Registros clínicos", "Vacinas", "Exames", "Receitas", "Observações", "Documentos", "Galeria"] as RegistroTipo[]).map((tipo) => <ResumoSecao key={tipo} tipo={tipo} registros={registrosAnimal.filter((r) => r.tipo === tipo).slice(0,2)} onAdd={tipo === "Registros clínicos" ? undefined : () => abrirNovo(tipo)} onOpen={() => setAba(tipo as Aba)} animalId={animal.id}/>) }
+            <div className="flex overflow-x-auto border-t bg-muted/10 px-2 lg:hidden">
+              {ABAS.map((nome) => <button key={nome} type="button" onClick={() => setAba(nome)} className={`shrink-0 border-b-2 px-4 py-3 text-sm font-bold ${aba === nome ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>{nome}</button>)}
+            </div>
           </section>
-        </div>
-      ) : aba === "Registros clínicos" ? (
-        <RegistrosClinicos animalId={animal.id} registros={registrosAnimal.filter((r) => r.tipo === "Registros clínicos")}/>
-      ) : (
-        <SecaoCompleta aba={aba} registros={registrosAnimal.filter((r) => r.tipo === aba)} onAdd={() => abrirNovo(aba as RegistroTipo)}/>
-      )}
 
-      {modalTipo && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalTipo(null); }}>
-        <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar em {modalTipo}</h2></div><button type="button" onClick={() => setModalTipo(null)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div>
-          <div className="mt-5 space-y-4">
-            <label className="block text-sm font-bold">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label>
-            <label className="block text-sm font-bold">Título<input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={modalTipo === "Vacinas" ? "Ex.: V10" : modalTipo === "Exames" ? "Ex.: Hemograma" : "Título do registro"} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label>
-            <label className="block text-sm font-bold">Detalhes<textarea value={detalhe} onChange={(e) => setDetalhe(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border p-3"/></label>
-          </div>
-          <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModalTipo(null)} className="rounded-xl border px-4 py-2.5 font-bold">Cancelar</button><button type="button" onClick={salvarRegistro} className="rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground">Salvar</button></div>
-        </div>
-      </div>}
+          {aba === "Visão geral" ? (
+            <div className="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+              <aside className="space-y-4">
+                <Painel titulo="Resumo clínico">
+                  <Info rotulo="Alergias" valor={animal.alergias}/><Info rotulo="Doenças crônicas" valor={animal.doencasCronicas}/><Info rotulo="Medicamentos contínuos" valor={animal.medicamentosContinuos}/><Info rotulo="Dieta" valor={animal.dieta}/><Info rotulo="Restrições" valor={animal.restricoes}/><Info rotulo="Necessidades especiais" valor={animal.necessidadesEspeciais}/>
+                </Painel>
+                <Painel titulo="Histórico de peso" acao={() => setModalPeso(true)}>
+                  <div className="py-2 text-center"><Scale className="mx-auto mb-2 text-primary/35"/><div className="text-xs font-black uppercase tracking-wider text-muted-foreground">Peso atual</div><div className="mt-1 text-2xl font-black">{pesoAtual ? formatarPeso(pesoAtual.peso) : "não informado"}</div>{pesoAtual?.data && <div className="mt-1 text-xs text-muted-foreground">{formatarData(pesoAtual.data)}</div>}</div>
+                  <div className="mt-4 border-t pt-3"><div className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">Histórico de pesos</div>{historicoPeso.length ? <div className="space-y-1.5">{historicoPeso.map((p) => <div key={p.id} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{formatarData(p.data)}</span><strong>{formatarPeso(p.peso)}</strong></div>)}</div> : <div className="text-sm text-muted-foreground">Nenhum peso anterior registrado.</div>}</div>
+                </Painel>
+                <Painel titulo="Próximos agendamentos" acao={() => abrirNovo("Agendamentos")}><ListaMini registros={registrosAnimal.filter((r) => r.tipo === "Agendamentos").slice(0,3)} vazio="Nenhum agendamento registrado."/></Painel>
+              </aside>
 
-      {modalPeso && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalPeso(false); }}><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar peso</h2></div><button type="button" onClick={() => setModalPeso(false)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Peso (kg)<input autoFocus inputMode="decimal" value={pesoNovo} onChange={(e) => setPesoNovo(e.target.value)} placeholder="Ex.: 13,933" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-bold">Data<input type="date" value={dataPeso} onChange={(e) => setDataPeso(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div><p className="mt-3 text-xs text-muted-foreground">O peso será exibido sempre com 3 casas decimais.</p><button type="button" onClick={salvarPeso} className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">Salvar peso</button></div></div>}
+              <section className="space-y-3">
+                {(["Registros clínicos", "Vacinas", "Exames", "Receitas", "Observações", "Documentos", "Galeria"] as RegistroTipo[]).map((tipo) => <ResumoSecao key={tipo} tipo={tipo} registros={registrosAnimal.filter((r) => r.tipo === tipo).slice(0,2)} onAdd={tipo === "Registros clínicos" ? undefined : () => abrirNovo(tipo)} onOpen={() => setAba(tipo as Aba)} animalId={animal.id}/>)}
+              </section>
+            </div>
+          ) : aba === "Registros clínicos" ? (
+            <RegistrosClinicos animalId={animal.id} registros={registrosAnimal.filter((r) => r.tipo === "Registros clínicos")}/>
+          ) : (
+            <SecaoCompleta aba={aba} registros={registrosAnimal.filter((r) => r.tipo === aba)} onAdd={() => abrirNovo(aba as RegistroTipo)}/>
+          )}
+
+          {modalTipo && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalTipo(null); }}>
+            <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar em {modalTipo}</h2></div><button type="button" onClick={() => setModalTipo(null)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div>
+              <div className="mt-5 space-y-4">
+                <label className="block text-sm font-bold">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label>
+                <label className="block text-sm font-bold">Título<input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={modalTipo === "Vacinas" ? "Ex.: V10" : modalTipo === "Exames" ? "Ex.: Hemograma" : "Título do registro"} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label>
+                <label className="block text-sm font-bold">Detalhes<textarea value={detalhe} onChange={(e) => setDetalhe(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border p-3"/></label>
+              </div>
+              <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModalTipo(null)} className="rounded-xl border px-4 py-2.5 font-bold">Cancelar</button><button type="button" onClick={salvarRegistro} className="rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground">Salvar</button></div>
+            </div>
+          </div>}
+
+          {modalPeso && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalPeso(false); }}><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar peso</h2></div><button type="button" onClick={() => setModalPeso(false)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Peso (kg)<input autoFocus inputMode="decimal" value={pesoNovo} onChange={(e) => setPesoNovo(e.target.value)} placeholder="Ex.: 13,933" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-bold">Data<input type="date" value={dataPeso} onChange={(e) => setDataPeso(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div><p className="mt-3 text-xs text-muted-foreground">O peso será exibido sempre com 3 casas decimais.</p><button type="button" onClick={salvarPeso} className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">Salvar peso</button></div></div>}
+        </div>
+      </div>
     </main>
   );
 }
