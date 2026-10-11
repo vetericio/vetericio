@@ -43,8 +43,15 @@ type Tutor = {
   criadoEm: string;
 };
 
+type AnimalResumo = {
+  id: string;
+  tutorId: string;
+  nome: string;
+};
+
 type Modo = "procurar" | "novo";
 const CHAVE = "oricse-tutores-v1";
+const ANIMAIS_CHAVE = "oricse-animais-v1";
 const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 const vazio: Omit<Tutor, "id" | "criadoEm"> = {
@@ -54,6 +61,10 @@ const vazio: Omit<Tutor, "id" | "criadoEm"> = {
 function carregar(): Tutor[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(CHAVE) || "[]"); } catch { return []; }
+}
+function carregarAnimais(): AnimalResumo[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(ANIMAIS_CHAVE) || "[]"); } catch { return []; }
 }
 function salvarLista(lista: Tutor[]) { localStorage.setItem(CHAVE, JSON.stringify(lista)); }
 function soDigitos(v: string) { return v.replace(/\D/g, ""); }
@@ -66,6 +77,7 @@ function Tutores() {
   const [modo,setModo]=useState<Modo>("procurar");
   const [form,setForm]=useState(vazio);
   const [tutores,setTutores]=useState<Tutor[]>(carregar);
+  const [animais]=useState<AnimalResumo[]>(carregarAnimais);
   const [busca,setBusca]=useState("");
   const [letra,setLetra]=useState("TODOS");
   const [buscandoCep,setBuscandoCep]=useState(false);
@@ -90,7 +102,7 @@ function Tutores() {
       <button type="button" onClick={()=>setModo("novo")} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold sm:flex-none ${modo==="novo"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}><UserPlus size={17}/> Novo tutor</button>
     </div>
 
-    {modo==="procurar" ? <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><div className="relative"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, telefone, CPF/CNPJ ou e-mail" className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none focus:border-primary"/></div>{busca.trim()&&<div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{resultados.length?resultados.map(t=><TutorCard key={t.id} tutor={t}/>):<div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground">Nenhum tutor encontrado.</div>}</div>}</section> : <section className="mt-5 overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="space-y-5 p-4 sm:p-5">
+    {modo==="procurar" ? <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><div className="relative"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, telefone, CPF/CNPJ ou e-mail" className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none focus:border-primary"/></div>{busca.trim()&&<div className="mt-4 space-y-2">{resultados.length?resultados.map(t=><TutorCard key={t.id} tutor={t} animais={animais}/>):<div className="rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground">Nenhum tutor encontrado.</div>}</div>}</section> : <section className="mt-5 overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="space-y-5 p-4 sm:p-5">
       <Bloco titulo="Dados principais"><label className="sm:col-span-2 text-sm font-semibold">Nome completo *<input value={form.nome} onChange={e=>set("nome",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Nome social<input value={form.nomeSocial} onChange={e=>set("nomeSocial",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Pronome<select value={form.pronome} onChange={e=>set("pronome",e.target.value)} className={campo}><option value="">Não informado</option><option>Ele/dele</option><option>Ela/dela</option><option>Elu/delu</option><option>Outro</option></select></label><label className="text-sm font-semibold">Telefone / WhatsApp *<input value={form.telefone} onChange={e=>set("telefone",mascaraTelefone(e.target.value))} className={campo}/></label><label className="text-sm font-semibold">Outro telefone<input value={form.outroTelefone} onChange={e=>set("outroTelefone",mascaraTelefone(e.target.value))} className={campo}/></label><label className="sm:col-span-2 text-sm font-semibold">E-mail<input type="email" value={form.email} onChange={e=>set("email",e.target.value)} className={campo}/></label></Bloco>
       <Bloco titulo="Documentos e perfil"><label className="text-sm font-semibold">Tipo de pessoa *<select value={form.tipoPessoa} onChange={e=>set("tipoPessoa",e.target.value as Tutor["tipoPessoa"])} className={campo}><option>Pessoa física</option><option>Pessoa jurídica</option></select></label><label className="text-sm font-semibold">{form.tipoPessoa==="Pessoa jurídica"?"CNPJ":"CPF"}<input value={form.cpfCnpj} onChange={e=>set("cpfCnpj",mascaraDocumento(e.target.value,form.tipoPessoa))} className={campo}/></label><label className="text-sm font-semibold">RG<input value={form.rg} onChange={e=>set("rg",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Nascimento<input type="date" value={form.nascimento} onChange={e=>set("nascimento",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={e=>set("sexo",e.target.value)} className={campo}><option value="">Não informado</option><option>Masculino</option><option>Feminino</option><option>Outro</option></select></label><label className="text-sm font-semibold">Profissão<input value={form.profissao} onChange={e=>set("profissao",e.target.value)} className={campo}/></label></Bloco>
       <Bloco titulo="Contato e preferências"><label className="text-sm font-semibold">Contato preferencial<select value={form.contatoPreferencial} onChange={e=>set("contatoPreferencial",e.target.value)} className={campo}><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></label><label className="text-sm font-semibold">Horário preferencial<input value={form.horarioPreferencial} onChange={e=>set("horarioPreferencial",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Contato de emergência<input value={form.contatoEmergenciaNome} onChange={e=>set("contatoEmergenciaNome",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Telefone de emergência<input value={form.contatoEmergenciaTelefone} onChange={e=>set("contatoEmergenciaTelefone",mascaraTelefone(e.target.value))} className={campo}/></label></Bloco>
@@ -98,9 +110,23 @@ function Tutores() {
       <label className="text-sm font-semibold">Observações<textarea rows={4} value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} className={`${campo} py-3`}/></label><div className="flex justify-end gap-2"><button type="button" onClick={()=>setModo("procurar")} className="rounded-xl border px-4 py-3 font-semibold">Cancelar</button><button type="button" onClick={cadastrar} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground">Salvar tutor</button></div>
     </div></section>}
 
-    <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary"/> Tutores cadastrados <span className="text-sm text-muted-foreground">({tutores.length})</span></h2><div className="mt-4 flex flex-wrap gap-1.5"><button type="button" onClick={()=>setLetra("TODOS")} className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${letra==="TODOS"?"bg-primary text-primary-foreground":"bg-white"}`}>Todos</button>{ALFABETO.map(l=><button key={l} type="button" disabled={!letrasDisponiveis.has(l)} onClick={()=>setLetra(l)} className={`h-8 min-w-8 rounded-lg border text-sm font-bold ${letra===l?"bg-primary text-primary-foreground":"bg-white"} disabled:opacity-25`}>{l}</button>)}</div>{tutores.length===0?<div className="mt-4 rounded-xl border border-dashed bg-slate-50 p-7 text-center"><p className="text-sm text-muted-foreground">Nenhum tutor cadastrado ainda.</p><button type="button" onClick={()=>setModo("novo")} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Cadastrar tutor</button></div>:<div className="mt-5 space-y-5">{gruposAlfabeticos.map(([i,lista])=><div key={i}><div className="mb-2 text-xl font-black text-primary">{i}</div><div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{lista.map(t=><TutorCard key={t.id} tutor={t}/>)}</div></div>)}</div>}</section>
+    <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary"/> Tutores cadastrados <span className="text-sm text-muted-foreground">({tutores.length})</span></h2><div className="mt-4 flex flex-wrap gap-1.5"><button type="button" onClick={()=>setLetra("TODOS")} className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${letra==="TODOS"?"bg-primary text-primary-foreground":"bg-white"}`}>Todos</button>{ALFABETO.map(l=><button key={l} type="button" disabled={!letrasDisponiveis.has(l)} onClick={()=>setLetra(l)} className={`h-8 min-w-8 rounded-lg border text-sm font-bold ${letra===l?"bg-primary text-primary-foreground":"bg-white"} disabled:opacity-25`}>{l}</button>)}</div>{tutores.length===0?<div className="mt-4 rounded-xl border border-dashed bg-slate-50 p-7 text-center"><p className="text-sm text-muted-foreground">Nenhum tutor cadastrado ainda.</p><button type="button" onClick={()=>setModo("novo")} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Cadastrar tutor</button></div>:<div className="mt-5 space-y-5">{gruposAlfabeticos.map(([i,lista])=><div key={i}><div className="mb-2 text-xl font-black text-primary">{i}</div><div className="space-y-2">{lista.map(t=><TutorCard key={t.id} tutor={t} animais={animais}/>)}</div></div>)}</div>}</section>
   </main>;
 }
 
-function TutorCard({tutor}:{tutor:Tutor}){ return <article className="rounded-xl border bg-white p-4"><div className="font-black">{tutor.nome}</div>{tutor.nomeSocial&&<div className="text-xs text-muted-foreground">Nome social: {tutor.nomeSocial}</div>}<div className="mt-2 text-sm font-medium">{tutor.telefone}</div>{tutor.email&&<div className="truncate text-xs text-muted-foreground">{tutor.email}</div>}{tutor.cpfCnpj&&<div className="text-xs text-muted-foreground">{tutor.tipoPessoa==="Pessoa jurídica"?"CNPJ":"CPF"}: {tutor.cpfCnpj}</div>}<div className="mt-3 flex flex-wrap gap-2"><button type="button" className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold">Ver cadastro</button><a href={`/novo-animal?tutorId=${encodeURIComponent(tutor.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"><PawPrint size={13}/> Cadastrar animal</a></div></article>; }
+function TutorCard({tutor,animais}:{tutor:Tutor;animais:AnimalResumo[]}){
+  const pets=animais.filter(a=>a.tutorId===tutor.id).map(a=>a.nome).filter(Boolean);
+  return <article className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-white px-3 py-2 text-sm">
+    <strong className="font-black">{tutor.nome}</strong>
+    <span className="text-muted-foreground">·</span>
+    <span>{tutor.telefone}</span>
+    {tutor.email&&<><span className="text-muted-foreground">·</span><span className="max-w-[240px] truncate text-muted-foreground">{tutor.email}</span></>}
+    <span className="text-muted-foreground">·</span>
+    <span className={pets.length?"font-semibold text-primary":"text-muted-foreground"}>{pets.length?pets.join(" / "):"Sem pet cadastrado"}</span>
+    <div className="ml-auto flex flex-wrap items-center gap-1.5">
+      <button type="button" className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold">Ver cadastro</button>
+      <a href={`/novo-animal?tutorId=${encodeURIComponent(tutor.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"><PawPrint size={13}/> Cadastrar animal</a>
+    </div>
+  </article>;
+}
 function Bloco({titulo,children}:{titulo:string;children:React.ReactNode}){ return <section><h2 className="mb-2 text-sm font-black uppercase tracking-wide text-primary">{titulo}</h2><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>; }
