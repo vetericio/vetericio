@@ -62,6 +62,19 @@ const RACAS: Record<string, string[]> = {
   "Outro": ["SRD"],
 };
 
+const CORES = [
+  "Não informado", "Branco", "Preto", "Cinza", "Azul / cinza-azulado", "Marrom", "Chocolate", "Caramelo", "Bege", "Creme", "Amarelo / dourado", "Ruivo / vermelho", "Canela", "Fulvo", "Preto e branco", "Preto e caramelo", "Preto e marrom", "Branco e marrom", "Branco e caramelo", "Branco e cinza", "Tricolor", "Tigrado", "Rajado / tabby", "Escaminha / tortie", "Calico", "Merle", "Arlequim", "Sable", "Agouti", "Albino", "Outro",
+];
+
+const PELAGENS = [
+  "Não informado", "Curta", "Média", "Longa", "Lisa", "Ondulada", "Encaracolada", "Dura / áspera", "Dupla", "Densa", "Sedosa", "Lanosa", "Sem pelo / hairless", "Penas", "Escamas", "Carapaça", "Outra",
+];
+
+const TIPOS_SANGUINEOS: Record<string, string[]> = {
+  "Cão": ["Não informado", "DEA 1 positivo", "DEA 1 negativo", "DEA 3", "DEA 4", "DEA 5", "DEA 7", "Dal positivo", "Dal negativo", "Kai 1 positivo", "Kai 1 negativo", "Kai 2 positivo", "Kai 2 negativo", "Outro / painel completo"],
+  "Gato": ["Não informado", "Tipo A", "Tipo B", "Tipo AB"],
+};
+
 const TEMPERAMENTOS = ["Dócil", "Medroso", "Ansioso", "Reativo", "Agressivo", "Territorial", "Agitado", "Sociável", "Difícil contenção", "Não informado"];
 
 function lerTutores(): Tutor[] {
@@ -80,10 +93,15 @@ function NovoAnimal() {
   });
 
   const racas = RACAS[form.especie] || ["SRD"];
+  const tiposSanguineos = TIPOS_SANGUINEOS[form.especie] || ["Não se aplica / não informado"];
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function trocarEspecie(especie: string) {
+    setForm((f) => ({ ...f, especie, raca: "SRD", tipoSanguineo: "" }));
   }
 
   function toggleTemperamento(nome: string) {
@@ -116,15 +134,15 @@ function NovoAnimal() {
           <Bloco titulo="Identificação">
             <label className="sm:col-span-2 text-sm font-semibold">Nome do animal *<input autoFocus value={form.nome} onChange={(e)=>set("nome",e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Nascimento<input type="date" value={form.nascimento} onChange={(e)=>set("nascimento",e.target.value)} className={campo}/></label>
-            <label className="text-sm font-semibold">Espécie *<select value={form.especie} onChange={(e)=>{set("especie",e.target.value); set("raca","SRD");}} className={campo}>{ESPECIES.map(([emoji,nome])=><option key={nome} value={nome}>{emoji} {nome}</option>)}</select></label>
+            <label className="text-sm font-semibold">Espécie *<select value={form.especie} onChange={(e)=>trocarEspecie(e.target.value)} className={campo}>{ESPECIES.map(([emoji,nome])=><option key={nome} value={nome}>{emoji} {nome}</option>)}</select></label>
             <label className="text-sm font-semibold">Raça<select value={form.raca} onChange={(e)=>set("raca",e.target.value)} className={campo}>{racas.map((r)=><option key={r}>{r}</option>)}</select><span className="mt-1 block text-[11px] text-muted-foreground">SRD aparece sempre primeiro.</span></label>
             <label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={(e)=>set("sexo",e.target.value)} className={campo}><option value="">Não informado</option><option>Macho</option><option>Fêmea</option><option>Indeterminado</option></select></label>
-            <label className="text-sm font-semibold">Cor<input value={form.cor} onChange={(e)=>set("cor",e.target.value)} className={campo}/></label>
+            <label className="text-sm font-semibold">Cor<select value={form.cor} onChange={(e)=>set("cor",e.target.value)} className={campo}><option value="">Selecione</option>{CORES.map((c)=><option key={c} value={c}>{c}</option>)}</select></label>
             <label className="text-sm font-semibold">Microchip<input value={form.microchip} onChange={(e)=>set("microchip",e.target.value)} className={campo}/></label>
           </Bloco>
 
           <Bloco titulo="Características">
-            <label className="text-sm font-semibold">Pelagem<input value={form.pelagem} onChange={(e)=>set("pelagem",e.target.value)} className={campo}/></label>
+            <label className="text-sm font-semibold">Pelagem<select value={form.pelagem} onChange={(e)=>set("pelagem",e.target.value)} className={campo}><option value="">Selecione</option>{PELAGENS.map((p)=><option key={p} value={p}>{p}</option>)}</select></label>
             <label className="text-sm font-semibold">Porte<select value={form.porte} onChange={(e)=>set("porte",e.target.value)} className={campo}><option value="">Não informado</option><option>Mini</option><option>Pequeno</option><option>Médio</option><option>Grande</option><option>Gigante</option></select></label>
             <label className="text-sm font-semibold">Peso atual (kg)<input inputMode="decimal" value={form.peso} onChange={(e)=>set("peso",e.target.value.replace(",","."))} className={campo}/></label>
             <label className="text-sm font-semibold">Escore corporal<select value={form.escoreCorporal} onChange={(e)=>set("escoreCorporal",e.target.value)} className={campo}><option value="">Não informado</option>{[1,2,3,4,5,6,7,8,9].map(n=><option key={n}>{n}/9</option>)}</select></label>
@@ -136,7 +154,7 @@ function NovoAnimal() {
           <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><h2 className="text-sm font-black uppercase tracking-wide text-primary">Temperamento</h2><div className="mt-3 flex flex-wrap gap-2">{TEMPERAMENTOS.map((t)=><button type="button" key={t} onClick={()=>toggleTemperamento(t)} className={`rounded-full border px-3 py-2 text-sm font-semibold ${form.temperamentos.includes(t)?"border-primary bg-primary text-primary-foreground":"bg-white hover:bg-slate-50"}`}>{t}</button>)}</div><label className="mt-4 block text-sm font-semibold">Observação comportamental<textarea rows={3} value={form.comportamento} onChange={(e)=>set("comportamento",e.target.value)} className={`${campo} py-3`}/></label></section>
 
           <Bloco titulo="Saúde">
-            <label className="text-sm font-semibold">Tipo sanguíneo<input value={form.tipoSanguineo} onChange={(e)=>set("tipoSanguineo",e.target.value)} className={campo}/></label>
+            <label className="text-sm font-semibold">Tipo sanguíneo<select value={form.tipoSanguineo} onChange={(e)=>set("tipoSanguineo",e.target.value)} className={campo}><option value="">Selecione</option>{tiposSanguineos.map((t)=><option key={t} value={t}>{t}</option>)}</select>{(form.especie === "Cão" || form.especie === "Gato") && <span className="mt-1 block text-[11px] text-muted-foreground">Opções ajustadas automaticamente à espécie selecionada.</span>}</label>
             <label className="text-sm font-semibold">Veterinário de referência<input value={form.veterinarioReferencia} onChange={(e)=>set("veterinarioReferencia",e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Alergias<textarea rows={3} value={form.alergias} onChange={(e)=>set("alergias",e.target.value)} className={`${campo} py-3`}/></label>
             <label className="text-sm font-semibold">Doenças crônicas<textarea rows={3} value={form.doencasCronicas} onChange={(e)=>set("doencasCronicas",e.target.value)} className={`${campo} py-3`}/></label>
