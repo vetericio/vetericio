@@ -1,0 +1,37 @@
+/* Tutor cards: compact layout */
+article:has(a[href^="/novo-animal?tutorId="]) {
+  padding: 0.65rem 0.75rem !important;
+  border-radius: 0.75rem !important;
+  line-height: 1.15 !important;
+}
+
+article:has(a[href^="/novo-animal?tutorId="]) > div:first-child {
+  font-size: 0.95rem !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+}
+
+article:has(a[href^="/novo-animal?tutorId="]) > div:not(:first-child) {
+  margin-top: 0.15rem !important;
+  line-height: 1.15 !important;
+}
+
+article:has(a[href^="/novo-animal?tutorId="]) > div:last-child {
+  margin-top: 0.5rem !important;
+  gap: 0.35rem !important;
+}
+
+article:has(a[href^="/novo-animal?tutorId="]) button,
+article:has(a[href^="/novo-animal?tutorId="]) a[href^="/novo-animal?tutorId="] {
+  min-height: 1.8rem !important;
+  padding: 0.28rem 0.55rem !important;
+  border-radius: 0.55rem !important;
+  font-size: 0.72rem !important;
+  line-height: 1 !important;
+}
+
+@media (min-width: 768px) {
+  article:has(a[href^="/novo-animal?tutorId="]) {
+    max-width: 26rem;
+  }
+}
