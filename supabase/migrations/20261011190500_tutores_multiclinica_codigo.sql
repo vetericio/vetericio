@@ -1,5 +1,6 @@
 -- Tutores multiclínica com código público imutável e sequência global.
 -- Formato: #<inicial-da-clínica><6 dígitos>, ex.: #V000001.
+-- Nomes podem se repetir; CPF é obrigatório e único apenas dentro de cada clínica.
 
 create extension if not exists unaccent;
 create sequence if not exists public.tutor_codigo_global_seq start with 1 increment by 1 no cycle;
@@ -11,6 +12,8 @@ create table if not exists public.tutores (
   codigo_publico text not null unique,
   nome text not null,
   nome_chave text not null,
+  cpf text not null,
+  cpf_digitos text not null,
   telefone text,
   outro_telefone text,
   email text,
@@ -20,12 +23,12 @@ create table if not exists public.tutores (
   updated_at timestamptz not null default now()
 );
 
-create unique index if not exists tutores_clinica_nome_unico_idx
-  on public.tutores(clinica_id, nome_chave);
+create unique index if not exists tutores_clinica_cpf_unico_idx
+  on public.tutores(clinica_id, cpf_digitos);
 create index if not exists tutores_clinica_codigo_idx
   on public.tutores(clinica_id, codigo_publico);
 create index if not exists tutores_clinica_nome_idx
-  on public.tutores(clinica_id, nome);
+  on public.tutores(clinica_id, nome_chave);
 
 create or replace function public.oricse_normalizar_nome(valor text)
 returns text
@@ -48,6 +51,14 @@ declare
 begin
   new.nome := regexp_replace(trim(new.nome), '\s+', ' ', 'g');
   new.nome_chave := public.oricse_normalizar_nome(new.nome);
+  new.cpf_digitos := regexp_replace(coalesce(new.cpf, ''), '\D', '', 'g');
+
+  if length(new.cpf_digitos) <> 11 then
+    raise exception 'CPF obrigatório e deve conter 11 dígitos.' using errcode = '23514';
+  end if;
+
+  -- Mantém o CPF armazenado em formato canônico, sem depender da máscara do frontend.
+  new.cpf := new.cpf_digitos;
   new.updated_at := now();
 
   if tg_op = 'INSERT' then
@@ -69,7 +80,7 @@ $$;
 
 drop trigger if exists tutores_preparar_trg on public.tutores;
 create trigger tutores_preparar_trg
-before insert or update of nome, clinica_id on public.tutores
+before insert or update of nome, cpf, clinica_id on public.tutores
 for each row execute function public.oricse_preparar_tutor();
 
 create or replace function public.oricse_usuario_na_clinica(p_clinica_id uuid)
