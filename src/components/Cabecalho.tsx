@@ -47,13 +47,21 @@ export function Cabecalho() {
   return (
     <header className="relative border-b border-border bg-card/60">
       <MenuLateral />
-      <div className="mx-auto w-full max-w-5xl px-4 pb-3 pt-4 text-center">
-        <div className="mb-2 flex justify-center">
-          <img src={logo_url} alt={`${marca} — sistema veterinário e petshop`} className="h-auto w-full max-w-[180px] object-contain sm:max-w-[220px]" />
+      <div className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-4" : "pb-2 pt-2"}`}>
+        <div className={plantaoArea ? "mb-2 flex justify-center" : "mb-1 flex justify-center"}>
+          <img
+            src={logo_url}
+            alt={`${marca} — sistema veterinário e petshop`}
+            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[180px] sm:max-w-[220px]" : "max-w-[90px] sm:max-w-[110px]"}`}
+          />
         </div>
 
-        <div className="mb-2">
-          <button type="button" onClick={() => setTrocarArea((aberto) => !aberto)} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold shadow-sm">
+        <div className={plantaoArea ? "mb-2" : "mb-0"}>
+          <button
+            type="button"
+            onClick={() => setTrocarArea((aberto) => !aberto)}
+            className={`rounded-xl border bg-card font-semibold shadow-sm ${plantaoArea ? "px-4 py-2 text-sm" : "px-3 py-1.5 text-xs sm:text-sm"}`}
+          >
             ← Voltar / trocar área
           </button>
           {trocarArea && (
