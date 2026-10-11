@@ -33,7 +33,7 @@ export const criarSala = createServerFn({ method: "POST" }).handler(async () => 
 
 /** Envia os dados deste aparelho para o vínculo. */
 export const enviarSala = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => envioSchema.parse(input))
+  .validator((input: unknown) => envioSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("sync_salas").upsert(
@@ -50,7 +50,7 @@ export const enviarSala = createServerFn({ method: "POST" })
 
 /** Traz os dados do vínculo. Devolve json nulo quando a sala está vazia. */
 export const puxarSala = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => codigoSchema.parse(input))
+  .validator((input: unknown) => codigoSchema.parse(input))
   .handler(async ({ data }): Promise<{ json: string | null; atualizadoEm: string | null }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: linha } = await supabaseAdmin
@@ -68,7 +68,7 @@ export const puxarSala = createServerFn({ method: "POST" })
 
 /** Desfaz o vínculo, apagando os dados guardados na nuvem. */
 export const apagarSala = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => codigoSchema.parse(input))
+  .validator((input: unknown) => codigoSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("sync_salas").delete().eq("codigo_hash", data.codigo);
