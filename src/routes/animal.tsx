@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, BedDouble, CalendarDays, ClipboardList, FileText, FlaskConical, Image, PawPrint, Pencil, Plus, ReceiptText, Scale, Scissors, Stethoscope, Syringe, UserRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -171,7 +172,7 @@ function AnimalFicha() {
       <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="grid gap-5 p-4 lg:grid-cols-[1.5fr_1fr] lg:p-5">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-3xl">🐾</div>
+            <FotoAnimalDrive animalId={animal.id} nome={animal.nome} />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2"><h1 className="text-3xl font-black">{animal.nome}</h1>{animal.alerta && <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive">⚠ {animal.alerta}</span>}</div>
               <div className="mt-2 grid gap-x-5 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-3">
@@ -216,7 +217,7 @@ function AnimalFicha() {
           </aside>
 
           <section className="space-y-3">
-            {(["Registros clínicos", "Vacinas", "Exames", "Receitas", "Observações", "Documentos", "Galeria"] as RegistroTipo[]).map((tipo) => <ResumoSecao key={tipo} tipo={tipo} registros={registrosAnimal.filter((r) => r.tipo === tipo).slice(0,2)} onAdd={tipo === "Registros clínicos" ? undefined : () => abrirNovo(tipo)} onOpen={() => setAba(tipo as Aba)} animalId={animal.id}/>)}
+            {(["Registros clínicos", "Vacinas", "Exames", "Receitas", "Observações", "Documentos", "Galeria"] as RegistroTipo[]).map((tipo) => <ResumoSecao key={tipo} tipo={tipo} registros={registrosAnimal.filter((r) => r.tipo === tipo).slice(0,2)} onAdd={tipo === "Registros clínicos" ? undefined : () => abrirNovo(tipo)} onOpen={() => setAba(tipo as Aba)} animalId={animal.id}/>) }
           </section>
         </div>
       ) : aba === "Registros clínicos" ? (
