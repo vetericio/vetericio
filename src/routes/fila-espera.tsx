@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Clock3, PawPrint, Play, Plus, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, Clock3, Play, Plus, RotateCcw, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ type ItemFila = {
 const TUTORES_KEY = "oricse-tutores-v1";
 const ANIMAIS_KEY = "oricse-animais-v1";
 const FILA_KEY = "oricse-fila-espera-v1";
+const COLUNAS_FILA = "72px minmax(240px,1.45fr) 140px 120px minmax(180px,1.1fr) 140px 190px";
 
 function lerLocal<T>(chave: string): T[] {
   try {
@@ -86,7 +87,7 @@ function FilaEspera() {
 
   const campo="min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
-  return <main className="mx-auto min-h-screen w-full max-w-[1400px] px-4 pb-28 pt-6 sm:px-6">
+  return <main className="mx-auto min-h-screen w-full max-w-[1500px] px-4 pb-28 pt-6 sm:px-6">
     <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link>
 
     <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
@@ -106,24 +107,41 @@ function FilaEspera() {
     </section>
 
     <section className="mt-5 overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b px-4 py-3 sm:px-5">
+      <div className="flex items-center justify-between border-b px-5 py-3">
         <div className="flex items-center gap-2"><Clock3 size={19} className="text-primary"/><h2 className="font-bold">Fila de espera</h2></div>
         <span className="text-sm text-muted-foreground">Ordem de chegada</span>
       </div>
 
       {aguardando.length===0 ? <div className="px-5 py-10 text-center text-sm text-muted-foreground">Nenhum paciente aguardando no momento.</div> : <>
-        <div className="hidden border-b bg-slate-50/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[58px_minmax(150px,1fr)_minmax(150px,1fr)_minmax(120px,.8fr)_minmax(150px,1.2fr)_130px_auto] sm:gap-2 sm:px-5">
-          <div>Posição</div><div>Paciente / tutor</div><div>Chegada</div><div>Espera</div><div>Motivo</div><div>Status</div><div className="text-right">Ações</div>
+        <div className="hidden border-b bg-slate-50/70 px-5 py-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground lg:grid" style={{gridTemplateColumns:COLUNAS_FILA,columnGap:"16px"}}>
+          <div className="self-center">Posição</div>
+          <div className="self-center">Paciente / tutor</div>
+          <div className="self-center">Chegada</div>
+          <div className="self-center">Espera</div>
+          <div className="self-center">Motivo</div>
+          <div className="self-center">Status</div>
+          <div className="self-center">Ações</div>
         </div>
         <div className="divide-y">
-          {aguardando.map((item,index)=><div key={item.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[58px_minmax(150px,1fr)_minmax(150px,1fr)_minmax(120px,.8fr)_minmax(150px,1.2fr)_130px_auto] sm:items-center sm:px-5">
-            <div><div className="text-[10px] font-bold uppercase text-muted-foreground sm:hidden">Posição</div><div className="text-sm font-black text-primary">#{index+1}</div></div>
-            <div className="min-w-0"><div className="text-[10px] font-bold uppercase text-muted-foreground sm:hidden">Paciente / tutor</div><div className="truncate font-bold">{emojiEspecie(item.especie)} {item.animalNome}</div><div className="truncate text-xs text-muted-foreground">{item.tutorNome}</div></div>
-            <div><div className="text-[10px] font-bold uppercase text-muted-foreground sm:hidden">Chegada</div><div className="text-sm font-semibold">{hora(item.chegadaEm)}</div></div>
-            <div><div className="text-[10px] font-bold uppercase text-muted-foreground sm:hidden">Espera</div><div className="text-sm">{tempoEspera(item.chegadaEm)}</div></div>
-            <div className="min-w-0"><div className="text-[10px] font-bold uppercase text-muted-foreground sm:hidden">Motivo</div><div className="truncate text-sm">{item.motivo || "Sem motivo informado"}</div></div>
-            <div><div className="text-[10px] font-bold uppercase text-muted-foreground sm:hidden">Status</div><span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Aguardando</span></div>
-            <div className="flex flex-wrap gap-2 sm:justify-end"><button type="button" onClick={()=>chamar(item.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"><Play size={14}/> Chamar</button><button type="button" onClick={()=>remover(item.id)} aria-label="Remover da fila" className="inline-flex items-center justify-center rounded-lg border px-2.5 py-2 text-muted-foreground hover:text-destructive"><X size={15}/></button></div>
+          {aguardando.map((item,index)=><div key={item.id} className="grid gap-3 px-4 py-3 lg:items-center lg:px-5" style={{gridTemplateColumns:undefined}}>
+            <div className="lg:hidden"><div className="text-[10px] font-bold uppercase text-muted-foreground">Posição</div><div className="text-sm font-black text-primary">#{index+1}</div></div>
+            <div className="hidden lg:grid lg:col-span-full" style={{gridTemplateColumns:COLUNAS_FILA,columnGap:"16px"}}>
+              <div className="self-center text-sm font-black text-primary">#{index+1}</div>
+              <div className="min-w-0 self-center"><div className="truncate text-base font-bold">{emojiEspecie(item.especie)} {item.animalNome}</div><div className="truncate text-xs text-muted-foreground">{item.tutorNome}</div></div>
+              <div className="self-center text-sm font-semibold tabular-nums">{hora(item.chegadaEm)}</div>
+              <div className="self-center text-sm tabular-nums">{tempoEspera(item.chegadaEm)}</div>
+              <div className="min-w-0 self-center truncate text-sm">{item.motivo || "Sem motivo informado"}</div>
+              <div className="self-center"><span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Aguardando</span></div>
+              <div className="flex items-center gap-2 self-center"><button type="button" onClick={()=>chamar(item.id)} className="inline-flex min-w-[118px] items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"><Play size={14}/> Chamar</button><button type="button" onClick={()=>remover(item.id)} aria-label="Remover da fila" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground hover:text-destructive"><X size={15}/></button></div>
+            </div>
+            <div className="grid gap-3 lg:hidden sm:grid-cols-2">
+              <div><div className="text-[10px] font-bold uppercase text-muted-foreground">Paciente / tutor</div><div className="font-bold">{emojiEspecie(item.especie)} {item.animalNome}</div><div className="text-xs text-muted-foreground">{item.tutorNome}</div></div>
+              <div><div className="text-[10px] font-bold uppercase text-muted-foreground">Chegada</div><div className="text-sm font-semibold">{hora(item.chegadaEm)}</div></div>
+              <div><div className="text-[10px] font-bold uppercase text-muted-foreground">Espera</div><div className="text-sm">{tempoEspera(item.chegadaEm)}</div></div>
+              <div><div className="text-[10px] font-bold uppercase text-muted-foreground">Motivo</div><div className="text-sm">{item.motivo || "Sem motivo informado"}</div></div>
+              <div><div className="text-[10px] font-bold uppercase text-muted-foreground">Status</div><span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Aguardando</span></div>
+              <div className="flex items-end gap-2"><button type="button" onClick={()=>chamar(item.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"><Play size={14}/> Chamar</button><button type="button" onClick={()=>remover(item.id)} aria-label="Remover da fila" className="inline-flex items-center justify-center rounded-lg border px-2.5 py-2 text-muted-foreground hover:text-destructive"><X size={15}/></button></div>
+            </div>
           </div>)}
         </div>
       </>}
