@@ -31,3 +31,31 @@ article.border-slate-500 [class*="border-l-"] * { color: #475569 !important; }
 
 article.border-blue-900 [class*="border-l-"] { border-color: #1e3a8a !important; color: #1e3a8a !important; }
 article.border-blue-900 [class*="border-l-"] * { color: #1e3a8a !important; }
+
+/* Recepção: o cabeçalho de cada agenda acompanha a rolagem vertical,
+   mas fica limitado à própria coluna da agenda. */
+.agenda-recepcao-wrap article > header {
+  position: sticky;
+  top: 8px;
+  z-index: 25;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+/* Mantém a coluna como limite visual do cabeçalho fixo. */
+.agenda-recepcao-wrap article {
+  overflow: visible !important;
+  align-self: flex-start;
+}
+
+/* O conteúdo continua arredondado mesmo com overflow liberado para o sticky. */
+.agenda-recepcao-wrap article > header {
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.agenda-recepcao-wrap article > div:last-of-type {
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+}
