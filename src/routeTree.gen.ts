@@ -28,6 +28,7 @@ import { Route as RecepcaoRouteImport } from './routes/recepcao'
 import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as TemasRouteImport } from './routes/temas'
+import { Route as TermosRouteImport } from './routes/termos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -124,6 +125,11 @@ const TemasRoute = TemasRouteImport.update({
   path: '/temas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
+  '/termos': typeof TermosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
+  '/termos': typeof TermosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
+  '/termos': typeof TermosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/registros'
     | '/sincronizacao'
     | '/temas'
+    | '/termos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/registros'
     | '/sincronizacao'
     | '/temas'
+    | '/termos'
   id:
     | '__root__'
     | '/'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/registros'
     | '/sincronizacao'
     | '/temas'
+    | '/termos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,6 +287,7 @@ export interface RootRouteChildren {
   RegistrosRoute: typeof RegistrosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
   TemasRoute: typeof TemasRoute
+  TermosRoute: typeof TermosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -435,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegistrosRoute: RegistrosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
   TemasRoute: TemasRoute,
+  TermosRoute: TermosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
