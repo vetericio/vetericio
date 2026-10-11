@@ -33,7 +33,7 @@ const DURACOES_PADRAO: Duracoes = {
 };
 
 const CORES: { value: CorAgenda; label: string; preview: string }[] = [
-  { value: "azul", label: "Azul", preview: "#0284c7" },
+  { value: "azul", label: "Azul celeste", preview: "#38bdf8" },
   { value: "verde", label: "Verde", preview: "#059669" },
   { value: "amarelo", label: "Amarelo", preview: "#d97706" },
   { value: "vermelho", label: "Vermelho", preview: "#dc2626" },
@@ -42,7 +42,7 @@ const CORES: { value: CorAgenda; label: string; preview: string }[] = [
   { value: "roxo", label: "Roxo", preview: "#7c3aed" },
   { value: "marrom", label: "Marrom", preview: "#92400e" },
   { value: "cinza", label: "Cinza", preview: "#64748b" },
-  { value: "azul-petroleo", label: "Azul petróleo", preview: "#0f766e" },
+  { value: "azul-petroleo", label: "Azul escuro", preview: "#1e3a8a" },
 ];
 
 const TEMA: Record<CorAgenda, {
@@ -56,7 +56,7 @@ const TEMA: Record<CorAgenda, {
   freeBorder: string;
   freeBg: string;
 }> = {
-  azul: { border: "border-sky-500", borderSoft: "border-sky-200", bg: "bg-sky-50", bgSoft: "bg-sky-50/60", text: "text-sky-800", dot: "bg-sky-600", button: "text-sky-700", freeBorder: "border-sky-300", freeBg: "hover:bg-sky-50" },
+  azul: { border: "border-sky-400", borderSoft: "border-sky-200", bg: "bg-sky-50", bgSoft: "bg-sky-50/60", text: "text-sky-700", dot: "bg-sky-400", button: "text-sky-600", freeBorder: "border-sky-300", freeBg: "hover:bg-sky-50" },
   verde: { border: "border-emerald-500", borderSoft: "border-emerald-200", bg: "bg-emerald-50", bgSoft: "bg-emerald-50/60", text: "text-emerald-800", dot: "bg-emerald-600", button: "text-emerald-700", freeBorder: "border-emerald-300", freeBg: "hover:bg-emerald-50" },
   amarelo: { border: "border-amber-500", borderSoft: "border-amber-200", bg: "bg-amber-50", bgSoft: "bg-amber-50/60", text: "text-amber-800", dot: "bg-amber-500", button: "text-amber-700", freeBorder: "border-amber-300", freeBg: "hover:bg-amber-50" },
   vermelho: { border: "border-red-500", borderSoft: "border-red-200", bg: "bg-red-50", bgSoft: "bg-red-50/60", text: "text-red-800", dot: "bg-red-600", button: "text-red-700", freeBorder: "border-red-300", freeBg: "hover:bg-red-50" },
@@ -65,7 +65,7 @@ const TEMA: Record<CorAgenda, {
   roxo: { border: "border-violet-500", borderSoft: "border-violet-200", bg: "bg-violet-50", bgSoft: "bg-violet-50/60", text: "text-violet-800", dot: "bg-violet-600", button: "text-violet-700", freeBorder: "border-violet-300", freeBg: "hover:bg-violet-50" },
   marrom: { border: "border-amber-800", borderSoft: "border-amber-300", bg: "bg-amber-50", bgSoft: "bg-amber-50/60", text: "text-amber-950", dot: "bg-amber-800", button: "text-amber-900", freeBorder: "border-amber-400", freeBg: "hover:bg-amber-50" },
   cinza: { border: "border-slate-500", borderSoft: "border-slate-200", bg: "bg-slate-100", bgSoft: "bg-slate-50", text: "text-slate-800", dot: "bg-slate-600", button: "text-slate-700", freeBorder: "border-slate-300", freeBg: "hover:bg-slate-50" },
-  "azul-petroleo": { border: "border-teal-700", borderSoft: "border-teal-200", bg: "bg-teal-50", bgSoft: "bg-teal-50/60", text: "text-teal-900", dot: "bg-teal-700", button: "text-teal-800", freeBorder: "border-teal-300", freeBg: "hover:bg-teal-50" },
+  "azul-petroleo": { border: "border-blue-900", borderSoft: "border-blue-200", bg: "bg-blue-50", bgSoft: "bg-blue-50/60", text: "text-blue-950", dot: "bg-blue-900", button: "text-blue-900", freeBorder: "border-blue-300", freeBg: "hover:bg-blue-50" },
 };
 
 type Evento = {
@@ -510,7 +510,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
 }
 
 function AgendaModal({ titulo, value, onChange, onClose, onSave, salvarTexto }: { titulo: string; value: AgendaForm; onChange: (value: AgendaForm) => void; onClose: () => void; onSave: () => void; salvarTexto: string }) {
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h3 className="text-xl font-bold">{titulo}</h3><button onClick={onClose}><X /></button></div><p className="mt-1 text-sm text-muted-foreground">Defina o nome, responsável, período e cor desta agenda.</p><div className="mt-4 space-y-3"><label className="block text-sm font-semibold">Nome da agenda<input value={value.nome} onChange={(e) => onChange({ ...value, nome: e.target.value })} placeholder="Ex.: Consultas ou Dr. Luciano" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><label className="block text-sm font-semibold">Responsável / descrição<input value={value.responsavel} onChange={(e) => onChange({ ...value, responsavel: e.target.value })} placeholder="Ex.: Dr. Luciano Rodrigues" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><div className="grid grid-cols-2 gap-3"><label className="block text-sm font-semibold">Início<input type="time" value={value.inicio} onChange={(e) => onChange({ ...value, inicio: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><label className="block text-sm font-semibold">Fim<input type="time" value={value.fim} onChange={(e) => onChange({ ...value, fim: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label></div><div><div className="text-sm font-semibold">Cor da agenda</div><div className="mt-2 grid grid-cols-2 gap-2">{CORES.map((cor) => <button key={cor.value} type="button" onClick={() => onChange({ ...value, cor: cor.value })} className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm font-semibold transition ${value.cor === cor.value ? "border-slate-900 bg-slate-50" : "border-slate-200 bg-white"}`}><span className="h-4 w-4 rounded-full border border-black/10" style={{ backgroundColor: cor.preview }} /><span>{cor.label}</span>{value.cor === cor.value && <span className="ml-auto text-xs">✓</span>}</button>)}</div></div><button onClick={onSave} className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">{salvarTexto}</button></div></div></div>;
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h3 className="text-xl font-bold">{titulo}</h3><button onClick={onClose}><X /></button></div><p className="mt-1 text-sm text-muted-foreground">Defina o nome, responsável, período e cor desta agenda.</p><div className="mt-4 space-y-3"><label className="block text-sm font-semibold">Nome da agenda<input value={value.nome} onChange={(e) => onChange({ ...value, nome: e.target.value })} placeholder="Ex.: Consultas ou Dr. Luciano" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><label className="block text-sm font-semibold">Responsável / descrição<input value={value.responsavel} onChange={(e) => onChange({ ...value, responsavel: e.target.value })} placeholder="Ex.: Dr. Luciano Rodrigues" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><div className="grid grid-cols-2 gap-3"><label className="block text-sm font-semibold">Início<input type="time" value={value.inicio} onChange={(e) => onChange({ ...value, inicio: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><label className="block text-sm font-semibold">Fim<input type="time" value={value.fim} onChange={(e) => onChange({ ...value, fim: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label></div><div><div className="text-sm font-semibold">Cor da agenda</div><div className="mt-2 grid w-fit grid-cols-2 gap-2">{CORES.map((cor) => <button key={cor.value} type="button" title={cor.label} aria-label={cor.label} onClick={() => onChange({ ...value, cor: cor.value })} className={`flex h-11 w-11 items-center justify-center rounded-xl border-2 transition ${value.cor === cor.value ? "border-slate-900 bg-slate-50 ring-2 ring-slate-300" : "border-slate-200 bg-white hover:border-slate-400"}`}><span className="h-6 w-6 rounded-full border border-black/10" style={{ backgroundColor: cor.preview }} /><span className="sr-only">{cor.label}</span></button>)}</div></div><button onClick={onSave} className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">{salvarTexto}</button></div></div></div>;
 }
 
 function EditorEvento({ value, agenda, intervaloGrade, duracoes, existente, onClose, onSave, onFinish, onRelease, conflita }: { value: Evento; agenda: ColunaAgenda; intervaloGrade: number; duracoes: Duracoes; existente: boolean; onClose: () => void; onSave: (evento: Evento) => void; onFinish: () => void; onRelease: (evento: Evento) => void; conflita: (hora: string, duracao: number, eventoId?: string, status?: StatusEvento) => boolean }) {
