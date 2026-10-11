@@ -9,7 +9,7 @@ function Recepcao() {
   const itens = [
     ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound, "/tutores"],
     ["Adicionar / consultar animal", "Pacientes e responsáveis", PawPrint, null],
-    ["Fila de espera", "Envie a próxima consulta", ClipboardList, null],
+    ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
     ["Novo agendamento", "Organize os horários", CalendarDays, null],
     ["Aniversariantes do dia", "Datas importantes", CalendarDays, null],
     ["Reforços próximos", "Vacinas e vermifugação", Plus, null],
