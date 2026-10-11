@@ -66,9 +66,20 @@ const CORES = [
   "Não informado", "Branco", "Preto", "Cinza", "Azul / cinza-azulado", "Marrom", "Chocolate", "Caramelo", "Bege", "Creme", "Amarelo / dourado", "Ruivo / vermelho", "Canela", "Fulvo", "Preto e branco", "Preto e caramelo", "Preto e marrom", "Branco e marrom", "Branco e caramelo", "Branco e cinza", "Tricolor", "Tigrado", "Rajado / tabby", "Escaminha / tortie", "Calico", "Merle", "Arlequim", "Sable", "Agouti", "Albino", "Outro",
 ];
 
-const PELAGENS = [
-  "Não informado", "Curta", "Média", "Longa", "Lisa", "Ondulada", "Encaracolada", "Dura / áspera", "Dupla", "Densa", "Sedosa", "Lanosa", "Sem pelo / hairless", "Penas", "Escamas", "Carapaça", "Outra",
-];
+const PELAGENS: Record<string, string[]> = {
+  "Cão": ["Não informado", "Curta", "Média", "Longa", "Lisa", "Ondulada", "Encaracolada", "Dura / áspera", "Dupla", "Densa", "Sedosa", "Lanosa", "Sem pelo / hairless", "Outra"],
+  "Gato": ["Não informado", "Curta", "Semilonga", "Longa", "Lisa", "Densa", "Dupla", "Sedosa", "Lanosa", "Encaracolada / Rex", "Sem pelo / hairless", "Outra"],
+  "Coelho": ["Não informado", "Curta", "Média", "Longa", "Lisa", "Rex / aveludada", "Angorá / lanosa", "Densa", "Outra"],
+  "Hamster": ["Não informado", "Curta", "Longa", "Lisa", "Satin", "Rex", "Sem pelo / hairless", "Outra"],
+  "Rato": ["Não informado", "Lisa / padrão", "Rex", "Double Rex", "Satin", "Sem pelo / hairless", "Outra"],
+  "Porquinho-da-índia": ["Não informado", "Curta / lisa", "Rosetas / Abissínio", "Longa", "Peruana", "Sheltie", "Teddy", "Rex", "Skinny / sem pelo", "Outra"],
+  "Ave": ["Não informado", "Plumagem normal", "Plumagem curta", "Plumagem longa", "Plumagem densa", "Plumagem reduzida", "Sem penas / parcialmente sem penas", "Outra"],
+  "Réptil": ["Não informado", "Escamas lisas", "Escamas rugosas", "Escamas granulares", "Escamas espinhosas", "Outra"],
+  "Quelônio": ["Não informado", "Carapaça lisa", "Carapaça rugosa", "Outra"],
+  "Serpente": ["Não informado", "Escamas lisas", "Escamas quilhadas", "Outra"],
+  "Silvestre / exótico": ["Não informado", "Pelos curtos", "Pelos médios", "Pelos longos", "Sem pelo", "Penas", "Escamas", "Carapaça", "Outro"],
+  "Outro": ["Não informado", "Outro"],
+};
 
 const TIPOS_SANGUINEOS: Record<string, string[]> = {
   "Cão": [
@@ -112,6 +123,7 @@ function NovoAnimal() {
   });
 
   const racas = RACAS[form.especie] || ["SRD"];
+  const pelagens = PELAGENS[form.especie] || ["Não informado", "Outro"];
   const tiposSanguineos = TIPOS_SANGUINEOS[form.especie] || ["Não se aplica / não informado"];
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
@@ -120,7 +132,7 @@ function NovoAnimal() {
   }
 
   function trocarEspecie(especie: string) {
-    setForm((f) => ({ ...f, especie, raca: "SRD", tipoSanguineo: "" }));
+    setForm((f) => ({ ...f, especie, raca: "SRD", pelagem: "", tipoSanguineo: "" }));
   }
 
   function toggleTemperamento(nome: string) {
@@ -161,7 +173,7 @@ function NovoAnimal() {
           </Bloco>
 
           <Bloco titulo="Características">
-            <label className="text-sm font-semibold">Pelagem<select value={form.pelagem} onChange={(e)=>set("pelagem",e.target.value)} className={campo}><option value="">Selecione</option>{PELAGENS.map((p)=><option key={p} value={p}>{p}</option>)}</select></label>
+            <label className="text-sm font-semibold">{form.especie === "Ave" ? "Plumagem" : form.especie === "Réptil" || form.especie === "Serpente" ? "Escamas" : form.especie === "Quelônio" ? "Carapaça" : "Pelagem"}<select value={form.pelagem} onChange={(e)=>set("pelagem",e.target.value)} className={campo}><option value="">Selecione</option>{pelagens.map((p)=><option key={p} value={p}>{p}</option>)}</select></label>
             <label className="text-sm font-semibold">Porte<select value={form.porte} onChange={(e)=>set("porte",e.target.value)} className={campo}><option value="">Não informado</option><option>Mini</option><option>Pequeno</option><option>Médio</option><option>Grande</option><option>Gigante</option></select></label>
             <label className="text-sm font-semibold">Peso atual (kg)<input inputMode="decimal" value={form.peso} onChange={(e)=>set("peso",e.target.value.replace(",","."))} className={campo}/></label>
             <label className="text-sm font-semibold">Escore corporal<select value={form.escoreCorporal} onChange={(e)=>set("escoreCorporal",e.target.value)} className={campo}><option value="">Não informado</option>{[1,2,3,4,5,6,7,8,9].map(n=><option key={n}>{n}/9</option>)}</select></label>
