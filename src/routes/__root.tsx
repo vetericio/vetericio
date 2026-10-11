@@ -165,6 +165,98 @@ function RootComponent() {
     };
   }, [role, location.pathname]);
 
+  useEffect(() => {
+    if (location.pathname !== "/consultorio" && location.pathname !== "/recepcao") return;
+
+    const normalizar = (valor?: string | null) => (valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+    const localizarAnimalId = (aside: HTMLElement) => {
+      const titulo = normalizar(aside.querySelector("h3")?.textContent).replace(/^[^a-z0-9]+/i, "").trim();
+      const tutorTexto = Array.from(aside.querySelectorAll("p")).find((p) => (p.textContent || "").trim().startsWith("Tutor:"))?.textContent?.replace(/^Tutor:\s*/i, "") || "";
+      const tutorNormalizado = normalizar(tutorTexto);
+
+      try {
+        const agendas = JSON.parse(localStorage.getItem("oricse-agendas-v2") || "[]") as any[];
+        for (const agenda of agendas) {
+          const evento = (agenda?.eventos || []).find((item: any) => normalizar(item?.paciente) && titulo.includes(normalizar(item.paciente)) && normalizar(item?.tutor) === tutorNormalizado && item?.animalId);
+          if (evento?.animalId) return String(evento.animalId);
+        }
+      } catch { /* fallback abaixo */ }
+
+      try {
+        const tutores = JSON.parse(localStorage.getItem("oricse-tutores-v1") || "[]") as any[];
+        const animais = JSON.parse(localStorage.getItem("oricse-animais-v1") || "[]") as any[];
+        const tutor = tutores.find((item: any) => normalizar(item?.nome) === tutorNormalizado);
+        if (!tutor) return "";
+        const animal = animais.find((item: any) => String(item?.tutorId || item?.tutor_id || "") === String(tutor.id) && titulo.includes(normalizar(item?.nome)));
+        return animal?.id ? String(animal.id) : "";
+      } catch {
+        return "";
+      }
+    };
+
+    const aprimorarPainelAnimal = () => {
+      const botaoOriginal = Array.from(document.querySelectorAll("aside button")).find((botao) => (botao.textContent || "").trim() === "Abrir cadastro e prontuário") as HTMLButtonElement | undefined;
+      const botaoIniciar = botaoOriginal || Array.from(document.querySelectorAll("aside button")).find((botao) => (botao.textContent || "").trim() === "Iniciar atendimento") as HTMLButtonElement | undefined;
+      if (!botaoIniciar) return;
+      const aside = botaoIniciar.closest("aside") as HTMLElement | null;
+      if (!aside) return;
+
+      botaoIniciar.textContent = "Iniciar atendimento";
+      botaoIniciar.className = "flex-1 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground";
+      botaoIniciar.onclick = () => {
+        const animalId = localizarAnimalId(aside);
+        if (!animalId) {
+          window.alert("Este agendamento ainda não está vinculado a um animal cadastrado.");
+          return;
+        }
+        navigate({ to: "/animal", search: { animalId } as never });
+      };
+
+      let acoes = aside.querySelector("[data-oricse-atendimento-acoes='1']") as HTMLDivElement | null;
+      if (!acoes) {
+        acoes = document.createElement("div");
+        acoes.dataset.oricseAtendimentoAcoes = "1";
+        acoes.className = "flex gap-2";
+        botaoIniciar.parentElement?.insertBefore(acoes, botaoIniciar);
+        acoes.appendChild(botaoIniciar);
+      }
+
+      let finalizar = acoes.querySelector("[data-oricse-finalizar='1']") as HTMLButtonElement | null;
+      if (!finalizar) {
+        finalizar = document.createElement("button");
+        finalizar.type = "button";
+        finalizar.dataset.oricseFinalizar = "1";
+        finalizar.textContent = "Finalizar atendimento";
+        finalizar.className = "flex-1 rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700";
+        acoes.appendChild(finalizar);
+      }
+
+      finalizar.onclick = () => {
+        const nomeAnimal = normalizar(aside.querySelector("h3")?.textContent);
+        const tutorTexto = Array.from(aside.querySelectorAll("p")).find((p) => (p.textContent || "").trim().startsWith("Tutor:"))?.textContent?.replace(/^Tutor:\s*/i, "") || "";
+        const tutor = normalizar(tutorTexto);
+        const candidatos = Array.from(document.querySelectorAll("button")).filter((botao) => (botao.textContent || "").trim() === "Finalizar atendimento" && botao !== finalizar) as HTMLButtonElement[];
+        const alvo = candidatos.find((botao) => {
+          const texto = normalizar(botao.parentElement?.textContent);
+          return texto && nomeAnimal.split(" ").some((parte) => parte.length > 2 && texto.includes(parte)) && (!tutor || texto.includes(tutor));
+        }) || candidatos[0];
+        if (!alvo) {
+          window.alert("Não foi possível localizar este atendimento na agenda.");
+          return;
+        }
+        const fechar = aside.querySelector("button:not([data-oricse-finalizar='1'])") as HTMLButtonElement | null;
+        fechar?.click();
+        setTimeout(() => alvo.click(), 0);
+      };
+    };
+
+    const observer = new MutationObserver(() => aprimorarPainelAnimal());
+    observer.observe(document.body, { childList: true, subtree: true });
+    aprimorarPainelAnimal();
+    return () => observer.disconnect();
+  }, [location.pathname, navigate]);
+
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
 
   const rotaAdmin = location.pathname.startsWith("/admin");
