@@ -53,6 +53,14 @@ function Encaminhar() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const tutorId = params.get("tutorId") || "";
   const animalId = params.get("animalId") || "";
+  const retorno = params.get("retorno") || "";
+  const voltarAOrigem = () => {
+    if (retorno === "animal" && animalId) {
+      window.location.href = `/animal?animalId=${encodeURIComponent(animalId)}`;
+      return;
+    }
+    voltarAOrigem();
+  };
 
   const tutores = useMemo(() => ler<Tutor>(TUTORES_KEY), []);
   const animais = useMemo(() => ler<Animal>(ANIMAIS_KEY), []);
@@ -102,7 +110,7 @@ function Encaminhar() {
     const item: FilaItem = { id: crypto.randomUUID(), tutorId: tutor.id, tutor: tutor.nome, animalId: animal.id, animal: animal.nome, especie: animal.especie, entradaEm: new Date().toISOString(), status: "Aguardando" };
     localStorage.setItem(FILA_KEY, JSON.stringify([...atual, item]));
     toast.success(`${animal.nome} enviado para a fila de espera.`);
-    navigate({ to: "/recepcao" });
+    voltarAOrigem();
   }
 
   function enviarAgenda() {
@@ -132,7 +140,7 @@ function Encaminhar() {
     setAgendas(novas);
     localStorage.setItem(AGENDAS_KEY, JSON.stringify(novas));
     toast.success(`${animal.nome} agendado com ${responsavel} em ${data} às ${hora}.`);
-    navigate({ to: "/recepcao" });
+    voltarAOrigem();
   }
 
   if (!tutor || !animal) {
