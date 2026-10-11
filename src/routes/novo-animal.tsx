@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, PawPrint, Save } from "lucide-react";
+import { AlertTriangle, ArrowLeft, PawPrint, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RACAS as RACAS_COMPLETAS } from "@/data/racas";
@@ -98,6 +98,21 @@ function ordenarRacas(racas: string[]) {
   return [...srd, ...meio, ...fim];
 }
 
+function pesoExibicao(valor?: string) {
+  if (!valor) return "";
+  const normalizado = valor.replace(",", ".");
+  const numero = Number(normalizado);
+  if (!Number.isFinite(numero)) return "";
+  return numero.toFixed(3).replace(".", ",");
+}
+
+function pesoPorDigitacao(valorDigitado: string) {
+  const digitos = valorDigitado.replace(/\D/g, "");
+  if (!digitos) return "";
+  const numero = Number(digitos) / 1000;
+  return numero.toFixed(3);
+}
+
 function NovoAnimal() {
   const navigate = useNavigate();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
@@ -114,7 +129,7 @@ function NovoAnimal() {
   const [form, setForm] = useState<AnimalForm>(() => {
     if (!animalExistente) return FORM_VAZIO;
     const { id: _id, tutorId: _tutorId, criadoEm: _criadoEm, ...dados } = animalExistente;
-    return { ...FORM_VAZIO, ...dados, temperamentos: dados.temperamentos || [] };
+    return { ...FORM_VAZIO, ...dados, peso: dados.peso ? Number(String(dados.peso).replace(",", ".")).toFixed(3) : "", temperamentos: dados.temperamentos || [] };
   });
 
   const racasInternacionais = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
@@ -133,6 +148,15 @@ function NovoAnimal() {
 
   function toggleTemperamento(nome: string) {
     setForm((f) => ({ ...f, temperamentos: f.temperamentos.includes(nome) ? f.temperamentos.filter((x) => x !== nome) : [...f.temperamentos, nome] }));
+  }
+
+  function excluirAnimal() {
+    if (!animalExistente) return;
+    if (!window.confirm(`Excluir ${animalExistente.nome}? Esta ação não pode ser desfeita.`)) return;
+    const novaLista = lerAnimais().filter((animal) => animal.id !== animalExistente.id);
+    localStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
+    toast.success(`${animalExistente.nome} excluído.`);
+    navigate({ to: "/tutores" });
   }
 
   function salvar() {
@@ -180,7 +204,7 @@ function NovoAnimal() {
           <Bloco titulo="Características">
             <label className="text-sm font-semibold">{form.especie === "Ave" ? "Plumagem" : form.especie === "Réptil" || form.especie === "Serpente" ? "Escamas" : form.especie === "Quelônio" ? "Carapaça" : "Pelagem"}<select value={form.pelagem} onChange={(e) => set("pelagem", e.target.value)} className={campo}><option value="">Selecione</option>{pelagens.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
             <label className="text-sm font-semibold">Porte<select value={form.porte} onChange={(e) => set("porte", e.target.value)} className={campo}><option value="">Não informado</option><option>Mini</option><option>Pequeno</option><option>Médio</option><option>Grande</option><option>Gigante</option></select></label>
-            <label className="text-sm font-semibold">Peso atual (kg)<input inputMode="decimal" value={form.peso} onChange={(e) => set("peso", e.target.value.replace(",", "."))} className={campo}/></label>
+            <label className="text-sm font-semibold">Peso atual (kg)<input inputMode="numeric" value={pesoExibicao(form.peso)} onChange={(e) => set("peso", pesoPorDigitacao(e.target.value))} placeholder="0,000" className={campo}/><span className="mt-1 block text-[11px] text-muted-foreground">Digite apenas os números. O peso é preenchido da direita para a esquerda e sempre fica com 3 casas decimais. Ex.: 13500 → 13,500 kg.</span></label>
             <label className="text-sm font-semibold">Escore corporal<select value={form.escoreCorporal} onChange={(e) => set("escoreCorporal", e.target.value)} className={campo}><option value="">Não informado</option>{[1,2,3,4,5,6,7,8,9].map((n) => <option key={n}>{n}/9</option>)}</select></label>
             <label className="text-sm font-semibold">Castrado?<select value={form.castrado} onChange={(e) => set("castrado", e.target.value)} className={campo}><option>Não informado</option><option>Sim</option><option>Não</option></select></label>
             <label className="text-sm font-semibold">Origem<select value={form.origem} onChange={(e) => set("origem", e.target.value)} className={campo}><option value="">Não informado</option><option>Adoção</option><option>Criador</option><option>Resgate</option><option>Compra</option><option>Nascido com o tutor</option><option>Outro</option></select></label>
@@ -204,7 +228,7 @@ function NovoAnimal() {
 
           <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><label className="text-sm font-semibold">Observações gerais<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} className={`${campo} py-3`}/></label></section>
 
-          <div className="flex justify-end gap-2"><Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"><Save size={17}/> {editando ? "Salvar alterações" : "Salvar animal"}</button></div>
+          <div className="flex flex-wrap justify-end gap-2">{editando && <button type="button" onClick={excluirAnimal} className="mr-auto inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-semibold text-rose-700 hover:bg-rose-100"><Trash2 size={17}/> Excluir animal</button>}<Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"><Save size={17}/> {editando ? "Salvar alterações" : "Salvar animal"}</button></div>
         </div>
       )}
     </main>
