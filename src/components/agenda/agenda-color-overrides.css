@@ -47,6 +47,19 @@ article.border-blue-900 [class*="border-l-"] * { color: #1e3a8a !important; }
 .agenda-recepcao-wrap article {
   overflow: visible !important;
   align-self: flex-start;
+  width: 270px !important;
+  min-width: 270px !important;
+}
+
+/* Compacta levemente o conteúdo para caber bem na nova largura. */
+.agenda-recepcao-wrap article > header {
+  padding-left: 0.65rem !important;
+  padding-right: 0.65rem !important;
+}
+
+.agenda-recepcao-wrap article > div:last-of-type {
+  padding-left: 0.4rem !important;
+  padding-right: 0.4rem !important;
 }
 
 /* O conteúdo continua arredondado mesmo com overflow liberado para o sticky. */
@@ -58,4 +71,12 @@ article.border-blue-900 [class*="border-l-"] * { color: #1e3a8a !important; }
 .agenda-recepcao-wrap article > div:last-of-type {
   border-bottom-left-radius: 0.75rem;
   border-bottom-right-radius: 0.75rem;
+}
+
+@media (max-width: 639px) {
+  .agenda-recepcao-wrap article {
+    width: 86vw !important;
+    min-width: 86vw !important;
+    max-width: 300px;
+  }
 }
