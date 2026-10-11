@@ -72,6 +72,9 @@ export type DadosReceituario = {
   peso: string;
   tutor: string;
   telefoneTutor: string;
+  cpfTutor?: string;
+  enderecoTutor?: string;
+  idade?: string;
   data: string;
   itens: ItemReceituario[];
   observacoes: string;
@@ -190,16 +193,17 @@ export async function criarReceituario(dados: DadosReceituario) {
     const paciente = linhas(dados.paciente, 250);
     const tutor = [
       ...linhas(dados.tutor, 185),
-      ...(dados.telefoneTutor.trim()
-        ? linhas("Tel.: " + dados.telefoneTutor.trim(), 185)
-        : []),
+      ...(dados.telefoneTutor.trim() ? linhas("Tel.: " + dados.telefoneTutor.trim(), 185) : []),
+      ...(dados.cpfTutor?.trim() ? linhas("CPF/CNPJ: " + dados.cpfTutor.trim(), 185) : []),
+      ...(dados.enderecoTutor?.trim() ? linhas(dados.enderecoTutor.trim(), 185) : []),
     ];
     const especie = linhas(dados.especie, 115);
     const raca = linhas(dados.raca, 145);
     const sexo = linhas(dados.sexo, 75);
     const peso = linhas(dados.peso ? `${dados.peso} kg` : "", 70);
+    const idade = linhas(dados.idade || "", 80);
     const primeiraAltura = 25 + Math.max(paciente.length, tutor.length) * 14;
-    const segundaAltura = 25 + Math.max(especie.length, raca.length, sexo.length, peso.length) * 14;
+    const segundaAltura = 25 + Math.max(especie.length, raca.length, sexo.length, peso.length, idade.length) * 14;
 
     doc.setFillColor(242, 245, 244);
     doc.roundedRect(margem, y, largura, primeiraAltura + segundaAltura, 7, 7, "F");
@@ -224,6 +228,7 @@ export async function criarReceituario(dados: DadosReceituario) {
     celula("RAÇA", raca, margem + 145, y + primeiraAltura);
     celula("SEXO", sexo, margem + 315, y + primeiraAltura);
     celula("PESO", peso, margem + 415, y + primeiraAltura);
+    celula("IDADE", idade, margem + 465, y + primeiraAltura);
     y += primeiraAltura + segundaAltura + 27;
   };
 
