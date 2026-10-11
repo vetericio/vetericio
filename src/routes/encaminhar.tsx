@@ -59,7 +59,7 @@ function Encaminhar() {
       window.location.href = `/animal?animalId=${encodeURIComponent(animalId)}`;
       return;
     }
-    voltarAOrigem();
+    navigate({ to: "/recepcao" });
   };
 
   const tutores = useMemo(() => ler<Tutor>(TUTORES_KEY), []);
