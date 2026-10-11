@@ -20,6 +20,7 @@ type StatusEvento = "Agendado" | "Em atendimento" | "Finalizado" | "Cancelado";
 type Especie = "Cão" | "Gato" | "Ave" | "Hamster" | "Cobra" | "Bovino" | "Equino" | "Outro";
 type Duracoes = Record<string, number>;
 type CorAgenda = "azul" | "verde" | "amarelo" | "vermelho" | "rosa" | "laranja" | "roxo" | "marrom" | "cinza" | "azul-petroleo";
+type TomProcedimento = "azul" | "amarelo" | "vermelho" | "roxo" | "verde" | "laranja" | "cinza";
 
 const TIPO_BLOQUEIO = "Bloqueio de agenda";
 const TIPO_BANHO_TOSA = "Banho e Tosa";
@@ -66,6 +67,24 @@ const TEMA: Record<CorAgenda, {
   marrom: { border: "border-amber-800", borderSoft: "border-amber-300", bg: "bg-amber-50", bgSoft: "bg-amber-50/60", text: "text-amber-950", dot: "bg-amber-800", button: "text-amber-900", freeBorder: "border-amber-400", freeBg: "hover:bg-amber-50" },
   cinza: { border: "border-slate-500", borderSoft: "border-slate-200", bg: "bg-slate-100", bgSoft: "bg-slate-50", text: "text-slate-800", dot: "bg-slate-600", button: "text-slate-700", freeBorder: "border-slate-300", freeBg: "hover:bg-slate-50" },
   "azul-petroleo": { border: "border-blue-900", borderSoft: "border-blue-200", bg: "bg-blue-50", bgSoft: "bg-blue-50/60", text: "text-blue-950", dot: "bg-blue-900", button: "text-blue-900", freeBorder: "border-blue-300", freeBg: "hover:bg-blue-50" },
+};
+
+const TEMA_PROCEDIMENTO: Record<TomProcedimento, {
+  border: string;
+  borderStrong: string;
+  bg: string;
+  bgSoft: string;
+  text: string;
+  accent: string;
+  icon: string;
+}> = {
+  azul: { border: "border-sky-200", borderStrong: "border-l-sky-500", bg: "bg-sky-50", bgSoft: "bg-sky-50/70", text: "text-sky-800", accent: "text-sky-700", icon: "bg-sky-500" },
+  amarelo: { border: "border-amber-200", borderStrong: "border-l-amber-500", bg: "bg-amber-50", bgSoft: "bg-amber-50/70", text: "text-amber-900", accent: "text-amber-800", icon: "bg-amber-500" },
+  vermelho: { border: "border-red-200", borderStrong: "border-l-red-500", bg: "bg-red-50", bgSoft: "bg-red-50/70", text: "text-red-900", accent: "text-red-800", icon: "bg-red-500" },
+  roxo: { border: "border-violet-200", borderStrong: "border-l-violet-500", bg: "bg-violet-50", bgSoft: "bg-violet-50/70", text: "text-violet-900", accent: "text-violet-800", icon: "bg-violet-500" },
+  verde: { border: "border-emerald-200", borderStrong: "border-l-emerald-500", bg: "bg-emerald-50", bgSoft: "bg-emerald-50/70", text: "text-emerald-900", accent: "text-emerald-800", icon: "bg-emerald-500" },
+  laranja: { border: "border-orange-200", borderStrong: "border-l-orange-500", bg: "bg-orange-50", bgSoft: "bg-orange-50/70", text: "text-orange-900", accent: "text-orange-800", icon: "bg-orange-500" },
+  cinza: { border: "border-slate-300", borderStrong: "border-l-slate-500", bg: "bg-slate-100", bgSoft: "bg-slate-50", text: "text-slate-800", accent: "text-slate-700", icon: "bg-slate-500" },
 };
 
 type Evento = {
@@ -120,6 +139,17 @@ const ESPECIES: Especie[] = ["Cão", "Gato", "Ave", "Hamster", "Cobra", "Bovino"
 
 function normalizarTipo(tipo: string) {
   return tipo === "Banho" || tipo === "Tosa" ? TIPO_BANHO_TOSA : tipo;
+}
+
+function tomProcedimento(tipoOriginal: string): TomProcedimento {
+  const tipo = normalizarTipo(tipoOriginal);
+  if (tipo === "Retorno") return "amarelo";
+  if (tipo === "Cirurgia") return "vermelho";
+  if (tipo === TIPO_BANHO_TOSA) return "roxo";
+  if (tipo === "Vacina") return "verde";
+  if (tipo === "Procedimento") return "laranja";
+  if (tipo === TIPO_BLOQUEIO) return "cinza";
+  return "azul";
 }
 
 function pagamentoLabel(pagamento: Pagamento) {
@@ -448,12 +478,14 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
                         </button>
                       );
 
+                      const proc = TEMA_PROCEDIMENTO[tomProcedimento(evento.tipo)];
                       const inicioEvento = evento.hora === hora;
                       if (!inicioEvento) {
                         const fim = minutosEmHora(horaEmMinutos(evento.hora) + duracaoEvento(evento));
                         return (
-                          <div key={hora} className={`flex min-h-8 items-center gap-2 rounded-lg border px-2.5 py-1 text-[10px] ${tema.borderSoft} ${tema.bgSoft} ${tema.text}`}>
+                          <div key={hora} className={`flex min-h-8 items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1 text-[10px] ${proc.border} ${proc.borderStrong} ${proc.bgSoft} ${proc.text}`}>
                             <strong className="w-11 shrink-0">{formatarHora(hora)}</strong>
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
                             <span className="font-semibold">Ocupado · {evento.tipo}</span>
                             <span className="ml-auto">até {formatarHora(fim)}</span>
                           </div>
@@ -461,25 +493,26 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
                       }
 
                       if (ehBloqueio(evento)) return (
-                        <button key={evento.id} type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className={`flex min-h-11 w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left ${tema.borderSoft} ${tema.bg}`}>
-                          <strong className={`w-11 shrink-0 text-[12px] font-black ${tema.text}`}>{formatarHora(evento.hora)}</strong>
-                          <Lock size={13} className={`shrink-0 ${tema.button}`} />
-                          <div className="min-w-0"><div className={`truncate text-[11px] font-bold ${tema.text}`}>Bloqueio de agenda</div><div className="text-[9px] font-semibold text-slate-500">{formatarDuracao(duracaoEvento(evento))} bloqueado</div></div>
+                        <button key={evento.id} type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className={`flex min-h-11 w-full items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1.5 text-left ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
+                          <strong className={`w-11 shrink-0 text-[12px] font-black ${proc.text}`}>{formatarHora(evento.hora)}</strong>
+                          <Lock size={13} className={`shrink-0 ${proc.accent}`} />
+                          <div className="min-w-0"><div className={`truncate text-[11px] font-bold ${proc.text}`}>Bloqueio de agenda</div><div className="text-[9px] font-semibold text-slate-500">{formatarDuracao(duracaoEvento(evento))} bloqueado</div></div>
                         </button>
                       );
 
                       const finalizado = evento.status === "Finalizado";
                       return (
-                        <div key={evento.id} className={`rounded-lg border px-2.5 py-1.5 ${tema.borderSoft} ${finalizado ? "bg-slate-50 text-slate-700" : `${tema.bg} ${tema.text}`}`}>
+                        <div key={evento.id} className={`rounded-lg border border-l-4 px-2.5 py-1.5 ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
                           <button type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className="flex w-full items-center gap-1.5 text-left leading-tight">
                             <strong className="text-[12px] font-black text-slate-900">{formatarHora(evento.hora)}</strong>
-                            <span className={`truncate text-[12px] font-bold ${finalizado ? "text-slate-700" : tema.text}`}>{normalizarTipo(evento.tipo)}</span>
-                            <span className={`text-[9px] font-semibold opacity-70 ${finalizado ? "text-slate-600" : tema.text}`}>· {formatarDuracao(duracaoEvento(evento))}</span>
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
+                            <span className={`truncate text-[12px] font-bold ${proc.text}`}>{normalizarTipo(evento.tipo)}</span>
+                            <span className={`text-[9px] font-semibold opacity-70 ${proc.text}`}>· {formatarDuracao(duracaoEvento(evento))}</span>
                             {finalizado && <span className="ml-auto text-[8px] font-bold uppercase tracking-wide text-slate-500">Finalizado</span>}
                           </button>
                           <button type="button" onClick={() => setAnimalAberto(evento)} className="mt-1 block w-full truncate text-left text-[12px] font-black leading-tight text-slate-950 underline-offset-2 hover:underline"><span className="mr-1" aria-hidden="true">{emojiEspecie(evento.especie)}</span>{evento.paciente.toUpperCase()} <span className="font-medium text-slate-600">({evento.tutor})</span></button>
                           <div className="mt-1 text-[10px] font-semibold leading-tight text-slate-600">{origemCurta(evento.origem)} <span className="px-0.5 text-slate-400">·</span> <span className={evento.pagamento === "Pago" ? "text-emerald-700" : evento.pagamento === "Pendente" ? "text-amber-700" : "text-slate-700"}>{pagamentoLabel(evento.pagamento)}</span></div>
-                          {!finalizado ? <button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight hover:underline ${tema.button}`}><CheckCircle2 size={12} /> Finalizar atendimento</button> : <button type="button" onClick={() => definirStatus(agenda.id, evento.id, "Em atendimento")} className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-slate-700 hover:underline"><RotateCcw size={12} /> Voltar atendimento</button>}
+                          {!finalizado ? <button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight hover:underline ${proc.accent}`}><CheckCircle2 size={12} /> Finalizar atendimento</button> : <button type="button" onClick={() => definirStatus(agenda.id, evento.id, "Em atendimento")} className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-slate-700 hover:underline"><RotateCcw size={12} /> Voltar atendimento</button>}
                         </div>
                       );
                     })}
