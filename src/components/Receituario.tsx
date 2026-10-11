@@ -52,6 +52,9 @@ export function Receituario() {
   const [paciente, setPaciente] = useState("");
   const [tutor, setTutor] = useState("");
   const [telefoneTutor, setTelefoneTutor] = useState("");
+  const [cpfTutor, setCpfTutor] = useState("");
+  const [enderecoTutor, setEnderecoTutor] = useState("");
+  const [idade, setIdade] = useState("");
   const [especie, setEspecie] = useState<EspecieReceituario>("Canina");
   const [outraEspecie, setOutraEspecie] = useState("");
   const [raca, setRaca] = useState("");
@@ -71,6 +74,28 @@ export function Receituario() {
     Partial<Record<TipoSelo, PosicaoSeloReceituario>>
   >({});
   const [gerando, setGerando] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const animalId = params.get("animalId") || "";
+    const tutorId = params.get("tutorId") || "";
+    if (!animalId && !tutorId) return;
+    try {
+      const animais = JSON.parse(localStorage.getItem("oricse-animais-v1") || "[]") as any[];
+      const tutores = JSON.parse(localStorage.getItem("oricse-tutores-v1") || "[]") as any[];
+      const animal = animais.find((item) => String(item.id) === animalId);
+      const tutorEncontrado = tutores.find((item) => String(item.id) === (tutorId || animal?.tutorId));
+      if (animal) {
+        setPaciente(animal.nome || ""); setPeso(animal.peso || ""); setSexo(animal.sexo || ""); setRaca(animal.raca || ""); setIdade(animal.idade || animal.nascimento || "");
+        const esp = String(animal.especie || "").toLowerCase();
+        setEspecie(esp.includes("gato") || esp.includes("fel") ? "Felina" : esp.includes("cão") || esp.includes("cach") || esp.includes("can") ? "Canina" : "Outro");
+      }
+      if (tutorEncontrado) {
+        setTutor(tutorEncontrado.nome || ""); setTelefoneTutor(tutorEncontrado.telefone || tutorEncontrado.celular || ""); setCpfTutor(tutorEncontrado.cpfCnpj || tutorEncontrado.cpf || tutorEncontrado.cnpj || "");
+        setEnderecoTutor([tutorEncontrado.endereco, tutorEncontrado.numero, tutorEncontrado.bairro, tutorEncontrado.cidade, tutorEncontrado.uf].filter(Boolean).join(", "));
+      }
+    } catch { /* mantém preenchimento manual */ }
+  }, []);
 
   useEffect(() => {
     const atualizar = () =>
@@ -197,6 +222,9 @@ export function Receituario() {
         paciente,
         tutor,
         telefoneTutor,
+        cpfTutor,
+        enderecoTutor,
+        idade,
         especie: especie === "Outro" ? outraEspecie.trim() : especie,
         raca,
         sexo,
