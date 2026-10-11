@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, ClipboardList, PawPrint, Plus, UserRound } from "lucide-react";
 import { AgendaDayBoard } from "@/components/agenda/AgendaDayBoard";
+import "@/components/agenda/agenda-color-overrides.css";
 
 export const Route = createFileRoute("/recepcao")({ component: Recepcao });
 
