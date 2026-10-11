@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Save, AlertTriangle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { RACAS as RACAS_COMPLETAS } from "@/data/racas";
 
 export const Route = createFileRoute("/novo-animal")({ component: NovoAnimal });
 
@@ -40,27 +41,13 @@ type Animal = {
 
 const TUTORES_KEY = "oricse-tutores-v1";
 const ANIMAIS_KEY = "oricse-animais-v1";
+const SRD = "SRD (Sem Raça Definida)";
 
 const ESPECIES = [
   ["🐶", "Cão"], ["🐱", "Gato"], ["🐰", "Coelho"], ["🐹", "Hamster"],
   ["🐭", "Rato"], ["🐹", "Porquinho-da-índia"], ["🦜", "Ave"], ["🦎", "Réptil"],
   ["🐢", "Quelônio"], ["🐍", "Serpente"], ["🐾", "Silvestre / exótico"], ["➕", "Outro"],
 ] as const;
-
-const RACAS: Record<string, string[]> = {
-  "Cão": ["SRD", "Akita", "American Bully", "American Staffordshire Terrier", "Basset Hound", "Beagle", "Bernese Mountain Dog", "Border Collie", "Boston Terrier", "Boxer", "Bull Terrier", "Bulldog Francês", "Bulldog Inglês", "Cane Corso", "Chihuahua", "Chow Chow", "Cocker Spaniel", "Dachshund", "Dobermann", "Fila Brasileiro", "Golden Retriever", "Husky Siberiano", "Jack Russell Terrier", "Labrador Retriever", "Lhasa Apso", "Maltês", "Pastor Alemão", "Pastor Australiano", "Pinscher", "Pit Bull", "Poodle", "Pug", "Rottweiler", "Schnauzer", "Shih-tzu", "Spitz Alemão", "Yorkshire Terrier"],
-  "Gato": ["SRD", "Abissínio", "Angorá", "Bengal", "British Shorthair", "Maine Coon", "Persa", "Ragdoll", "Siamês", "Sphynx"],
-  "Coelho": ["SRD", "Angorá", "Fuzzy Lop", "Holland Lop", "Lionhead", "Mini Lop", "Netherland Dwarf", "Rex"],
-  "Hamster": ["SRD", "Anão Russo", "Chinês", "Roborovski", "Sírio"],
-  "Rato": ["SRD", "Dumbo", "Fancy Rat", "Hairless", "Rex"],
-  "Porquinho-da-índia": ["SRD", "Abissínio", "Alpaca", "Americano", "Peruano", "Sheltie", "Skinny", "Teddy"],
-  "Ave": ["SRD", "Agapornis", "Calopsita", "Canário", "Papagaio", "Periquito", "Ring Neck"],
-  "Réptil": ["SRD", "Bearded Dragon", "Gecko-leopardo", "Iguana", "Teiú"],
-  "Quelônio": ["SRD", "Cágado", "Jabuti", "Tartaruga"],
-  "Serpente": ["SRD", "Boa constrictor", "Corn Snake", "Jiboia", "Python regius"],
-  "Silvestre / exótico": ["SRD"],
-  "Outro": ["SRD"],
-};
 
 const CORES = [
   "Não informado", "Branco", "Preto", "Cinza", "Azul / cinza-azulado", "Marrom", "Chocolate", "Caramelo", "Bege", "Creme", "Amarelo / dourado", "Ruivo / vermelho", "Canela", "Fulvo", "Preto e branco", "Preto e caramelo", "Preto e marrom", "Branco e marrom", "Branco e caramelo", "Branco e cinza", "Tricolor", "Tigrado", "Rajado / tabby", "Escaminha / tortie", "Calico", "Merle", "Arlequim", "Sable", "Agouti", "Albino", "Outro",
@@ -119,10 +106,10 @@ function NovoAnimal() {
   const tutor = tutores.find((t) => t.id === tutorId);
 
   const [form, setForm] = useState({
-    nome: "", nascimento: "", especie: "Cão", raca: "SRD", sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [] as string[], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "",
+    nome: "", nascimento: "", especie: "Cão", raca: SRD, sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [] as string[], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "",
   });
 
-  const racas = RACAS[form.especie] || ["SRD"];
+  const racas = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
   const pelagens = PELAGENS[form.especie] || ["Não informado", "Outro"];
   const tiposSanguineos = TIPOS_SANGUINEOS[form.especie] || ["Não se aplica / não informado"];
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
@@ -132,7 +119,7 @@ function NovoAnimal() {
   }
 
   function trocarEspecie(especie: string) {
-    setForm((f) => ({ ...f, especie, raca: "SRD", pelagem: "", tipoSanguineo: "" }));
+    setForm((f) => ({ ...f, especie, raca: SRD, pelagem: "", tipoSanguineo: "" }));
   }
 
   function toggleTemperamento(nome: string) {
@@ -166,7 +153,18 @@ function NovoAnimal() {
             <label className="sm:col-span-2 text-sm font-semibold">Nome do animal *<input autoFocus value={form.nome} onChange={(e)=>set("nome",e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Nascimento<input type="date" value={form.nascimento} onChange={(e)=>set("nascimento",e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Espécie *<select value={form.especie} onChange={(e)=>trocarEspecie(e.target.value)} className={campo}>{ESPECIES.map(([emoji,nome])=><option key={nome} value={nome}>{emoji} {nome}</option>)}</select></label>
-            <label className="text-sm font-semibold">Raça<select value={form.raca} onChange={(e)=>set("raca",e.target.value)} className={campo}>{racas.map((r)=><option key={r}>{r}</option>)}</select><span className="mt-1 block text-[11px] text-muted-foreground">SRD aparece sempre primeiro.</span></label>
+            <label className="text-sm font-semibold">Raça
+              <input
+                list="racas-disponiveis"
+                value={form.raca}
+                onChange={(e)=>set("raca",e.target.value)}
+                placeholder="Digite para procurar a raça"
+                autoComplete="off"
+                className={campo}
+              />
+              <datalist id="racas-disponiveis">{racas.map((r)=><option key={r} value={r}/>)}</datalist>
+              <span className="mt-1 block text-[11px] text-muted-foreground">Digite para procurar. {SRD} aparece sempre primeiro.</span>
+            </label>
             <label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={(e)=>set("sexo",e.target.value)} className={campo}><option value="">Não informado</option><option>Macho</option><option>Fêmea</option><option>Indeterminado</option></select></label>
             <label className="text-sm font-semibold">Cor<select value={form.cor} onChange={(e)=>set("cor",e.target.value)} className={campo}><option value="">Selecione</option>{CORES.map((c)=><option key={c} value={c}>{c}</option>)}</select></label>
             <label className="text-sm font-semibold">Microchip<input value={form.microchip} onChange={(e)=>set("microchip",e.target.value)} className={campo}/></label>
