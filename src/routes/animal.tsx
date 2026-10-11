@@ -3,6 +3,7 @@ import { ArrowLeft, BedDouble, CalendarDays, ClipboardList, FileText, FlaskConic
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
+import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -133,6 +134,10 @@ function AnimalFicha() {
   const historicoPeso = pesosAnimal.length ? pesosAnimal.slice(1) : [];
 
   function abrirNovo(tipo: RegistroTipo) {
+    if (tipo === "Agendamentos" && animal) {
+      window.location.href = `/encaminhar?tutorId=${encodeURIComponent(animal.tutorId)}&animalId=${encodeURIComponent(animal.id)}`;
+      return;
+    }
     setModalTipo(tipo);
     setTitulo(""); setDetalhe(""); setData(new Date().toISOString().slice(0,10));
   }
@@ -236,7 +241,7 @@ function AnimalFicha() {
                   <div className="py-2 text-center"><Scale className="mx-auto mb-2 text-primary/35"/><div className="text-xs font-black uppercase tracking-wider text-muted-foreground">Peso atual</div><div className="mt-1 text-2xl font-black">{pesoAtual ? formatarPeso(pesoAtual.peso) : "não informado"}</div>{pesoAtual?.data && <div className="mt-1 text-xs text-muted-foreground">{formatarData(pesoAtual.data)}</div>}</div>
                   <div className="mt-4 border-t pt-3"><div className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">Histórico de pesos</div>{historicoPeso.length ? <div className="space-y-1.5">{historicoPeso.map((p) => <div key={p.id} className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{formatarData(p.data)}</span><strong>{formatarPeso(p.peso)}</strong></div>)}</div> : <div className="text-sm text-muted-foreground">Nenhum peso anterior registrado.</div>}</div>
                 </Painel>
-                <Painel titulo="Próximos agendamentos" acao={() => abrirNovo("Agendamentos")}><ListaMini registros={registrosAnimal.filter((r) => r.tipo === "Agendamentos").slice(0,3)} vazio="Nenhum agendamento registrado."/></Painel>
+                <Painel titulo="Próximos agendamentos" acao={() => abrirNovo("Agendamentos")}><div className="text-sm text-muted-foreground">Abra a aba Agendamentos para consultar o histórico completo e marcar um novo horário.</div></Painel>
               </aside>
 
               <section className="space-y-3">
@@ -245,6 +250,8 @@ function AnimalFicha() {
             </div>
           ) : aba === "Registros clínicos" ? (
             <RegistrosClinicos animalId={animal.id} registros={registrosAnimal.filter((r) => r.tipo === "Registros clínicos")}/>
+          ) : aba === "Agendamentos" ? (
+            <AgendamentosAnimal animalId={animal.id} tutorId={animal.tutorId}/>
           ) : (
             <SecaoCompleta aba={aba} registros={registrosAnimal.filter((r) => r.tipo === aba)} onAdd={() => abrirNovo(aba as RegistroTipo)}/>
           )}
