@@ -95,7 +95,7 @@ export function AgendamentosAnimal({ animalId, tutorId }: { animalId: string; tu
         </div>
         <Link
           to="/encaminhar"
-          search={{ tutorId, animalId } as never}
+          search={{ tutorId, animalId, retorno: "animal" } as never}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground"
         >
           <Plus size={16} /> Novo agendamento
