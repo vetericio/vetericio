@@ -385,7 +385,9 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     return () => { ativo = false; };
   }, []);
 
-  const visiveis = useMemo(() => filtro === "todas" ? agendas : agendas.filter((agenda) => agenda.id === filtro), [agendas, filtro]);
+  const agendasFiltradas = useMemo(() => filtro === "todas" ? agendas : agendas.filter((agenda) => agenda.id === filtro), [agendas, filtro]);
+  const visiveis = useMemo(() => agendasFiltradas.filter((agenda) => agendaDisponivelNaData(agenda, data)), [agendasFiltradas, data]);
+  const indisponiveis = useMemo(() => agendasFiltradas.filter((agenda) => !agendaDisponivelNaData(agenda, data)), [agendasFiltradas, data]);
   const titulo = mode === "recepcao" ? "Agenda do dia" : "Minha agenda";
   const subtitulo = mode === "recepcao" ? "Visualize os horários da clínica, organize chegadas e acompanhe a fila." : "Acompanhe consultas, retornos e procedimentos previstos para hoje.";
 
@@ -575,9 +577,8 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
         <div ref={trilhoRef} className="flex flex-nowrap gap-3 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:thin]">
           {visiveis.map((agenda) => {
             const tema = TEMA[agenda.cor];
-            const disponivelHoje = agendaDisponivelNaData(agenda, data);
             return (
-              <article key={agenda.id} className={`w-[320px] min-w-[320px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#fcfcfb] sm:w-[340px] sm:min-w-[340px] ${tema.border} ${!disponivelHoje ? "opacity-75" : ""}`}>
+              <article key={agenda.id} className={`w-[320px] min-w-[320px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#fcfcfb] sm:w-[340px] sm:min-w-[340px] ${tema.border}`}>
                 <header className={`border-b-2 bg-white px-3 py-2.5 ${tema.borderSoft}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
@@ -590,71 +591,65 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
                 </header>
 
                 <div className="p-2">
-                  {!disponivelHoje ? (
-                    <div className="rounded-xl border border-dashed bg-slate-50 px-4 py-8 text-center">
-                      <CalendarDays className="mx-auto text-slate-400" size={24} />
-                      <p className="mt-2 text-sm font-bold text-slate-700">Agenda indisponível neste dia</p>
-                      <p className="mt-1 text-[11px] text-slate-500">Disponível: {resumoDias(agenda.diasSemana)}</p>
-                    </div>
-                  ) : <>
-                    <div className="space-y-1.5">
-                      {slotsDaAgenda(agenda).map((hora) => {
-                        const evento = eventoQueOcupa(agenda, hora);
-                        if (!evento) return (
-                          <button key={hora} type="button" onClick={() => abrirNovoHorario(agenda.id, hora)} className={`flex min-h-8 w-full items-center gap-2 rounded-lg border border-dashed bg-white px-2.5 py-1 text-left text-[11px] transition ${tema.freeBorder} ${tema.freeBg}`}>
-                            <strong className="w-11 shrink-0 text-slate-700">{formatarHora(hora)}</strong>
-                            <span className="font-semibold text-muted-foreground">Livre</span>
-                            <span className={`ml-auto text-[10px] font-semibold ${tema.button}`}>+ Agendar</span>
-                          </button>
-                        );
+                  <div className="space-y-1.5">
+                    {slotsDaAgenda(agenda).map((hora) => {
+                      const evento = eventoQueOcupa(agenda, hora);
+                      if (!evento) return (
+                        <button key={hora} type="button" onClick={() => abrirNovoHorario(agenda.id, hora)} className={`flex min-h-8 w-full items-center gap-2 rounded-lg border border-dashed bg-white px-2.5 py-1 text-left text-[11px] transition ${tema.freeBorder} ${tema.freeBg}`}>
+                          <strong className="w-11 shrink-0 text-slate-700">{formatarHora(hora)}</strong>
+                          <span className="font-semibold text-muted-foreground">Livre</span>
+                          <span className={`ml-auto text-[10px] font-semibold ${tema.button}`}>+ Agendar</span>
+                        </button>
+                      );
 
-                        const proc = TEMA_PROCEDIMENTO[tomProcedimento(evento.tipo)];
-                        const inicioEvento = evento.hora === hora;
-                        if (!inicioEvento) {
-                          const fim = minutosEmHora(horaEmMinutos(evento.hora) + duracaoEvento(evento));
-                          return (
-                            <div key={hora} className={`flex min-h-8 items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1 text-[10px] ${proc.border} ${proc.borderStrong} ${proc.bgSoft} ${proc.text}`}>
-                              <strong className="w-11 shrink-0">{formatarHora(hora)}</strong>
-                              <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
-                              <span className="font-semibold">Ocupado · {evento.tipo}</span>
-                              <span className="ml-auto">até {formatarHora(fim)}</span>
-                            </div>
-                          );
-                        }
-
-                        if (ehBloqueio(evento)) return (
-                          <button key={evento.id} type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className={`flex min-h-11 w-full items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1.5 text-left ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
-                            <strong className={`w-11 shrink-0 text-[12px] font-black ${proc.text}`}>{formatarHora(evento.hora)}</strong>
-                            <Lock size={13} className={`shrink-0 ${proc.accent}`} />
-                            <div className="min-w-0"><div className={`truncate text-[11px] font-bold ${proc.text}`}>Bloqueio de agenda</div><div className="text-[9px] font-semibold text-slate-500">{formatarDuracao(duracaoEvento(evento))} bloqueado</div></div>
-                          </button>
-                        );
-
-                        const finalizado = evento.status === "Finalizado";
+                      const proc = TEMA_PROCEDIMENTO[tomProcedimento(evento.tipo)];
+                      const inicioEvento = evento.hora === hora;
+                      if (!inicioEvento) {
+                        const fim = minutosEmHora(horaEmMinutos(evento.hora) + duracaoEvento(evento));
                         return (
-                          <div key={evento.id} className={`rounded-lg border border-l-4 px-2.5 py-1.5 ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
-                            <button type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className="flex w-full items-center gap-1.5 text-left leading-tight">
-                              <strong className="text-[12px] font-black text-slate-900">{formatarHora(evento.hora)}</strong>
-                              <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
-                              <span className={`truncate text-[12px] font-bold ${proc.text}`}>{normalizarTipo(evento.tipo)}</span>
-                              <span className={`text-[9px] font-semibold opacity-70 ${proc.text}`}>· {formatarDuracao(duracaoEvento(evento))}</span>
-                              {finalizado && <span className="ml-auto text-[8px] font-bold uppercase tracking-wide text-slate-500">Finalizado</span>}
-                            </button>
-                            <button type="button" onClick={() => setAnimalAberto(evento)} className="mt-1 block w-full truncate text-left text-[12px] font-black leading-tight text-slate-950 underline-offset-2 hover:underline"><span className="mr-1" aria-hidden="true">{emojiEspecie(evento.especie)}</span>{evento.paciente.toUpperCase()} <span className="font-medium text-slate-600">({evento.tutor})</span></button>
-                            <div className="mt-1 text-[10px] font-semibold leading-tight text-slate-600">{origemCurta(evento.origem)} <span className="px-0.5 text-slate-400">·</span> <span className={evento.pagamento === "Pago" ? "text-emerald-700" : evento.pagamento === "Pendente" ? "text-amber-700" : "text-slate-700"}>{pagamentoLabel(evento.pagamento)}</span></div>
-                            {!finalizado ? <button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight hover:underline ${proc.accent}`}><CheckCircle2 size={12} /> Finalizar atendimento</button> : <button type="button" onClick={() => definirStatus(agenda.id, evento.id, "Em atendimento")} className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-slate-700 hover:underline"><RotateCcw size={12} /> Voltar atendimento</button>}
+                          <div key={hora} className={`flex min-h-8 items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1 text-[10px] ${proc.border} ${proc.borderStrong} ${proc.bgSoft} ${proc.text}`}>
+                            <strong className="w-11 shrink-0">{formatarHora(hora)}</strong>
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
+                            <span className="font-semibold">Ocupado · {evento.tipo}</span>
+                            <span className="ml-auto">até {formatarHora(fim)}</span>
                           </div>
                         );
-                      })}
-                    </div>
-                    <button type="button" onClick={() => abrirNovoHorario(agenda.id)} className={`mt-2 w-full rounded-lg border border-dashed px-2 py-1.5 text-[10px] font-semibold ${tema.freeBorder} ${tema.button} ${tema.freeBg}`}>+ Próximo horário livre</button>
-                  </>}
+                      }
+
+                      if (ehBloqueio(evento)) return (
+                        <button key={evento.id} type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className={`flex min-h-11 w-full items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1.5 text-left ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
+                          <strong className={`w-11 shrink-0 text-[12px] font-black ${proc.text}`}>{formatarHora(evento.hora)}</strong>
+                          <Lock size={13} className={`shrink-0 ${proc.accent}`} />
+                          <div className="min-w-0"><div className={`truncate text-[11px] font-bold ${proc.text}`}>Bloqueio de agenda</div><div className="text-[9px] font-semibold text-slate-500">{formatarDuracao(duracaoEvento(evento))} bloqueado</div></div>
+                        </button>
+                      );
+
+                      const finalizado = evento.status === "Finalizado";
+                      return (
+                        <div key={evento.id} className={`rounded-lg border border-l-4 px-2.5 py-1.5 ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
+                          <button type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className="flex w-full items-center gap-1.5 text-left leading-tight">
+                            <strong className="text-[12px] font-black text-slate-900">{formatarHora(evento.hora)}</strong>
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
+                            <span className={`truncate text-[12px] font-bold ${proc.text}`}>{normalizarTipo(evento.tipo)}</span>
+                            <span className={`text-[9px] font-semibold opacity-70 ${proc.text}`}>· {formatarDuracao(duracaoEvento(evento))}</span>
+                            {finalizado && <span className="ml-auto text-[8px] font-bold uppercase tracking-wide text-slate-500">Finalizado</span>}
+                          </button>
+                          <button type="button" onClick={() => setAnimalAberto(evento)} className="mt-1 block w-full truncate text-left text-[12px] font-black leading-tight text-slate-950 underline-offset-2 hover:underline"><span className="mr-1" aria-hidden="true">{emojiEspecie(evento.especie)}</span>{evento.paciente.toUpperCase()} <span className="font-medium text-slate-600">({evento.tutor})</span></button>
+                          <div className="mt-1 text-[10px] font-semibold leading-tight text-slate-600">{origemCurta(evento.origem)} <span className="px-0.5 text-slate-400">·</span> <span className={evento.pagamento === "Pago" ? "text-emerald-700" : evento.pagamento === "Pendente" ? "text-amber-700" : "text-slate-700"}>{pagamentoLabel(evento.pagamento)}</span></div>
+                          {!finalizado ? <button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight hover:underline ${proc.accent}`}><CheckCircle2 size={12} /> Finalizar atendimento</button> : <button type="button" onClick={() => definirStatus(agenda.id, evento.id, "Em atendimento")} className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-slate-700 hover:underline"><RotateCcw size={12} /> Voltar atendimento</button>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={() => abrirNovoHorario(agenda.id)} className={`mt-2 w-full rounded-lg border border-dashed px-2 py-1.5 text-[10px] font-semibold ${tema.freeBorder} ${tema.button} ${tema.freeBg}`}>+ Próximo horário livre</button>
                 </div>
               </article>
             );
           })}
         </div>
       </div>
+
+      {indisponiveis.length > 0 && <div className="mt-3 border-t pt-3 text-[11px] text-muted-foreground"><span className="font-bold text-slate-600">Agendas indisponíveis nesta data:</span> {indisponiveis.map((agenda, index) => <span key={agenda.id}>{index > 0 ? " · " : ""}<span className="font-semibold">{agenda.nome}</span> ({resumoDias(agenda.diasSemana)})</span>)}</div>}
 
       {criandoAgenda && <AgendaModal titulo="Criar agenda" value={novaAgenda} onChange={setNovaAgenda} onClose={() => setCriandoAgenda(false)} onSave={criarAgenda} salvarTexto="Criar agenda" />}
       {editandoAgenda && <AgendaModal titulo="Editar agenda" value={{ nome: editandoAgenda.nome, responsavel: editandoAgenda.responsavel, inicio: editandoAgenda.inicio, fim: editandoAgenda.fim, cor: editandoAgenda.cor, diasSemana: editandoAgenda.diasSemana }} onChange={(value) => setEditandoAgenda({ ...editandoAgenda, ...value })} onClose={() => setEditandoAgenda(null)} onSave={salvarEdicaoAgenda} onDelete={() => excluirAgenda(editandoAgenda.id)} salvarTexto="Salvar agenda" />}
