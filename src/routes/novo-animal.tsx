@@ -3,6 +3,7 @@ import { ArrowLeft, PawPrint, Save, AlertTriangle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RACAS as RACAS_COMPLETAS } from "@/data/racas";
+import { nomeRacaBrasil } from "@/data/racas-brasil";
 
 export const Route = createFileRoute("/novo-animal")({ component: NovoAnimal });
 
@@ -109,7 +110,11 @@ function NovoAnimal() {
     nome: "", nascimento: "", especie: "Cão", raca: SRD, sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [] as string[], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "",
   });
 
-  const racas = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
+  const racasInternacionais = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
+  const racas = useMemo(
+    () => racasInternacionais.map((r) => nomeRacaBrasil(form.especie, r)),
+    [form.especie, racasInternacionais],
+  );
   const pelagens = PELAGENS[form.especie] || ["Não informado", "Outro"];
   const tiposSanguineos = TIPOS_SANGUINEOS[form.especie] || ["Não se aplica / não informado"];
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
@@ -158,12 +163,12 @@ function NovoAnimal() {
                 list="racas-disponiveis"
                 value={form.raca}
                 onChange={(e)=>set("raca",e.target.value)}
-                placeholder="Digite para procurar a raça"
+                placeholder="Digite o nome brasileiro ou internacional"
                 autoComplete="off"
                 className={campo}
               />
               <datalist id="racas-disponiveis">{racas.map((r)=><option key={r} value={r}/>)}</datalist>
-              <span className="mt-1 block text-[11px] text-muted-foreground">Digite para procurar. {SRD} aparece sempre primeiro.</span>
+              <span className="mt-1 block text-[11px] text-muted-foreground">Busque pelo nome brasileiro ou internacional. {SRD} aparece sempre primeiro.</span>
             </label>
             <label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={(e)=>set("sexo",e.target.value)} className={campo}><option value="">Não informado</option><option>Macho</option><option>Fêmea</option><option>Indeterminado</option></select></label>
             <label className="text-sm font-semibold">Cor<select value={form.cor} onChange={(e)=>set("cor",e.target.value)} className={campo}><option value="">Selecione</option>{CORES.map((c)=><option key={c} value={c}>{c}</option>)}</select></label>
