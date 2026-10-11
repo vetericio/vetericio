@@ -48,6 +48,12 @@ article.border-blue-900 [class*="border-l-"] * { color: #1e3a8a !important; }
   white-space: pre-line;
 }
 
+/* Tutor: não lista automaticamente toda a base só por focar no campo.
+   As sugestões aparecem apenas depois que algo é digitado. */
+div.relative:has(input[placeholder="Busque por ID, nome, CPF ou telefone"]:placeholder-shown) > div.absolute.z-20 {
+  display: none !important;
+}
+
 /* Recepção: o cabeçalho de cada agenda acompanha a rolagem vertical,
    mas fica limitado à própria coluna da agenda. */
 .agenda-recepcao-wrap article > header {
