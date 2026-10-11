@@ -10,7 +10,7 @@ const envioSchema = z.object({
 
 /** Envia o backup para a nuvem e devolve o código curto usado no QR. */
 export const enviarTransferencia = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => envioSchema.parse(input))
+  .validator((input: unknown) => envioSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -30,7 +30,7 @@ export const enviarTransferencia = createServerFn({ method: "POST" })
 
 /** Busca o backup pelo código. Devolve null quando não existe ou expirou. */
 export const buscarTransferencia = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => codigoSchema.parse(input))
+  .validator((input: unknown) => codigoSchema.parse(input))
   .handler(async ({ data }): Promise<{ json: string | null }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: linha } = await supabaseAdmin
@@ -45,7 +45,7 @@ export const buscarTransferencia = createServerFn({ method: "POST" })
 
 /** Apaga o backup enviado. */
 export const apagarTransferencia = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => codigoSchema.parse(input))
+  .validator((input: unknown) => codigoSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("transferencias").delete().eq("codigo", data.codigo);
