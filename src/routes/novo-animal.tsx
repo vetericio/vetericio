@@ -71,8 +71,27 @@ const PELAGENS = [
 ];
 
 const TIPOS_SANGUINEOS: Record<string, string[]> = {
-  "Cão": ["Não informado", "DEA 1 positivo", "DEA 1 negativo", "DEA 3", "DEA 4", "DEA 5", "DEA 7", "Dal positivo", "Dal negativo", "Kai 1 positivo", "Kai 1 negativo", "Kai 2 positivo", "Kai 2 negativo", "Outro / painel completo"],
-  "Gato": ["Não informado", "Tipo A", "Tipo B", "Tipo AB"],
+  "Cão": [
+    "Não informado",
+    "DEA 1 positivo", "DEA 1 negativo",
+    "DEA 3 positivo", "DEA 3 negativo",
+    "DEA 4 positivo", "DEA 4 negativo",
+    "DEA 5 positivo", "DEA 5 negativo",
+    "DEA 7 positivo", "DEA 7 negativo",
+    "Dal positivo", "Dal negativo",
+    "Kai 1 positivo", "Kai 1 negativo",
+    "Kai 2 positivo", "Kai 2 negativo",
+    "Outro / painel completo",
+  ],
+  "Gato": [
+    "Não informado",
+    "Tipo A",
+    "Tipo B",
+    "Tipo AB",
+    "Mik positivo",
+    "Mik negativo",
+    "Outro / painel ampliado",
+  ],
 };
 
 const TEMPERAMENTOS = ["Dócil", "Medroso", "Ansioso", "Reativo", "Agressivo", "Territorial", "Agitado", "Sociável", "Difícil contenção", "Não informado"];
