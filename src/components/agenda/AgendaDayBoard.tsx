@@ -151,38 +151,23 @@ type ColunaAgenda = {
 type AgendaForm = { nome: string; responsavel: string; inicio: string; fim: string; cor: CorAgenda; diasSemana: DiaSemana[] };
 
 const BASE: ColunaAgenda[] = [
-  {
-    id: "agenda-1", nome: "Agenda 1", responsavel: "Dra. Ana Costa", inicio: "08:00", fim: "17:00", cor: "verde", diasSemana: DIAS_TODOS,
-    eventos: [
-      { id: "e1", hora: "08:00", tipo: "Consulta", paciente: "Max", tutor: "Carlos Souza", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado" },
-      { id: "e2", hora: "09:30", tipo: "Vacina", paciente: "Luna", tutor: "Renata Lima", especie: "Gato", origem: "Recepção", pagamento: "Presencial", status: "Agendado" },
-    ],
-  },
-  {
-    id: "agenda-2", nome: "Agenda 2", responsavel: "Dr. Bruno Almeida", inicio: "08:00", fim: "17:00", cor: "azul", diasSemana: DIAS_TODOS,
-    eventos: [
-      { id: "e3", hora: "08:30", tipo: TIPO_BANHO_TOSA, paciente: "Mel", tutor: "Paula Costa", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado" },
-    ],
-  },
-  {
-    id: "agenda-3", nome: "Agenda 3", responsavel: "Dra. Juliana Ribeiro", inicio: "09:00", fim: "15:00", cor: "roxo", diasSemana: DIAS_TODOS,
-    eventos: [
-      { id: "e4", hora: "09:00", tipo: "Retorno", paciente: "Bidu", tutor: "André Martins", especie: "Ave", origem: "Recepção", pagamento: "Pendente", status: "Agendado" },
-    ],
-  },
+  { id: "agenda-1", nome: "Agenda 1", responsavel: "Dra. Ana Costa", inicio: "08:00", fim: "17:00", cor: "verde", diasSemana: DIAS_TODOS, eventos: [
+    { id: "e1", hora: "08:00", tipo: "Consulta", paciente: "Max", tutor: "Carlos Souza", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado" },
+    { id: "e2", hora: "09:30", tipo: "Vacina", paciente: "Luna", tutor: "Renata Lima", especie: "Gato", origem: "Recepção", pagamento: "Presencial", status: "Agendado" },
+  ]},
+  { id: "agenda-2", nome: "Agenda 2", responsavel: "Dr. Bruno Almeida", inicio: "08:00", fim: "17:00", cor: "azul", diasSemana: DIAS_TODOS, eventos: [
+    { id: "e3", hora: "08:30", tipo: TIPO_BANHO_TOSA, paciente: "Mel", tutor: "Paula Costa", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado" },
+  ]},
+  { id: "agenda-3", nome: "Agenda 3", responsavel: "Dra. Juliana Ribeiro", inicio: "09:00", fim: "15:00", cor: "roxo", diasSemana: DIAS_TODOS, eventos: [
+    { id: "e4", hora: "09:00", tipo: "Retorno", paciente: "Bidu", tutor: "André Martins", especie: "Ave", origem: "Recepção", pagamento: "Pendente", status: "Agendado" },
+  ]},
 ];
 
 const TIPOS_SELETOR = ["Consulta", "Retorno", "Cirurgia", TIPO_BANHO_TOSA, "Vacina", "Procedimento", TIPO_BLOQUEIO];
 const FUNCOES_CIRURGIA = ["Auxiliar", "Instrumentador", "Cirurgião auxiliar", "Anestesista auxiliar", "Enfermagem", "Outro"];
 
-function normalizarTipo(tipo: string) {
-  return tipo === "Banho" || tipo === "Tosa" ? TIPO_BANHO_TOSA : tipo;
-}
-
-function normalizarTexto(valor?: string) {
-  return (valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-}
-
+function normalizarTipo(tipo: string) { return tipo === "Banho" || tipo === "Tosa" ? TIPO_BANHO_TOSA : tipo; }
+function normalizarTexto(valor?: string) { return (valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
 function especieAgenda(valor?: string): Especie {
   const especie = normalizarTexto(valor);
   if (["cao", "canino", "cachorro"].includes(especie)) return "Cão";
@@ -194,163 +179,25 @@ function especieAgenda(valor?: string): Especie {
   if (["equino", "equina", "cavalo"].includes(especie)) return "Equino";
   return "Outro";
 }
-
-function carregarTutoresLocais(): TutorAgenda[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const lista = JSON.parse(window.localStorage.getItem("oricse-tutores-v1") || "[]") as any[];
-    return lista.map((tutor) => ({
-      id: String(tutor.id || ""),
-      codigoPublico: tutor.codigoPublico || tutor.codigo_publico || "",
-      nome: String(tutor.nome || ""),
-      telefone: tutor.telefone || "",
-      cpf: tutor.cpfCnpj || tutor.cpf || "",
-    })).filter((tutor) => tutor.id && tutor.nome);
-  } catch {
-    return [];
-  }
-}
-
-function carregarAnimaisLocais(): AnimalAgenda[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const lista = JSON.parse(window.localStorage.getItem("oricse-animais-v1") || "[]") as any[];
-    return lista.map((animal) => ({
-      id: String(animal.id || ""),
-      tutorId: String(animal.tutorId || animal.tutor_id || ""),
-      nome: String(animal.nome || ""),
-      especie: animal.especie || "Outro",
-    })).filter((animal) => animal.id && animal.tutorId && animal.nome);
-  } catch {
-    return [];
-  }
-}
-
-function tomProcedimento(tipoOriginal: string): TomProcedimento {
-  const tipo = normalizarTipo(tipoOriginal);
-  if (tipo === "Retorno") return "amarelo";
-  if (tipo === "Cirurgia") return "vermelho";
-  if (tipo === TIPO_BANHO_TOSA) return "roxo";
-  if (tipo === "Vacina") return "verde";
-  if (tipo === "Procedimento") return "laranja";
-  if (tipo === TIPO_BLOQUEIO) return "cinza";
-  return "azul";
-}
-
-function pagamentoLabel(pagamento: Pagamento) {
-  if (pagamento === "Pendente") return "Pagamento pendente";
-  if (pagamento === "Presencial") return "Pagamento presencial";
-  return pagamento;
-}
-
-function ehBloqueio(evento: Pick<Evento, "tipo">) {
-  return evento.tipo === TIPO_BLOQUEIO;
-}
-
-function emojiEspecie(especie?: string) {
-  const valor = (especie || "Outro").toLowerCase();
-  if (["cão", "cao", "canino", "cachorro"].includes(valor)) return "🐶";
-  if (["gato", "felino"].includes(valor)) return "🐱";
-  if (["ave", "passarinho", "pássaro", "passaro"].includes(valor)) return "🐦";
-  if (valor === "hamster") return "🐭";
-  if (["cobra", "serpente"].includes(valor)) return "🐍";
-  if (["vaca", "bovino", "bovina"].includes(valor)) return "🐄";
-  if (["cavalo", "equino", "equina"].includes(valor)) return "🐴";
-  return "🐾";
-}
-
-function horaEmMinutos(hora: string) {
-  const [h = "0", m = "0"] = hora.split(":");
-  return Math.max(0, Math.min(1439, Number(h) * 60 + Number(m)));
-}
-
-function minutosEmHora(total: number) {
-  const seguro = Math.max(0, Math.min(1439, total));
-  return `${String(Math.floor(seguro / 60)).padStart(2, "0")}:${String(seguro % 60).padStart(2, "0")}`;
-}
-
-function formatarHora(hora: string) {
-  const [h = "0", m = "00"] = hora.split(":");
-  return `${Number(h)}h${m}`;
-}
-
-function formatarData(data: Date) {
-  return data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
-}
-
-function formatarDuracao(minutos: number) {
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  if (h && m) return `${h}h${String(m).padStart(2, "0")}`;
-  if (h) return `${h}h`;
-  return `${m} min`;
-}
-
-function origemCurta(origem: Origem) {
-  return origem === "Tutor no app" ? "Tutor APP" : "Recepção";
-}
-
-function agendaDisponivelNaData(agenda: Pick<ColunaAgenda, "diasSemana">, data: Date) {
-  return (agenda.diasSemana || DIAS_TODOS).includes(data.getDay() as DiaSemana);
-}
-
-function resumoDias(dias: DiaSemana[]) {
-  const ordenados = DIAS_SEMANA.filter((dia) => dias.includes(dia.value));
-  if (dias.length === 7) return "Todos os dias";
-  if (DIAS_UTEIS.every((dia) => dias.includes(dia)) && dias.length === 5) return "Seg a Sex";
-  return ordenados.map((dia) => dia.curto).join(" · ");
-}
-
-function gerarHorariosAgenda(agenda: Pick<ColunaAgenda, "inicio" | "fim">, intervalo: number) {
-  const passo = Math.max(5, Number(intervalo) || 30);
-  const inicio = horaEmMinutos(agenda.inicio || "08:00");
-  const fim = horaEmMinutos(agenda.fim || "17:00");
-  const horarios: string[] = [];
-  for (let minuto = inicio; minuto + passo <= fim; minuto += passo) horarios.push(minutosEmHora(minuto));
-  return horarios;
-}
-
-function ordenarEventos(eventos: Evento[]) {
-  return [...eventos].sort((a, b) => horaEmMinutos(a.hora) - horaEmMinutos(b.hora));
-}
-
-function normalizarAgendas(agendas: ColunaAgenda[]) {
-  return agendas.map((agenda, index) => ({
-    ...agenda,
-    cor: agenda.cor || (["verde", "azul", "roxo", "laranja", "rosa"][index % 5] as CorAgenda),
-    inicio: agenda.inicio || "08:00",
-    fim: agenda.fim || "17:00",
-    diasSemana: Array.isArray(agenda.diasSemana) && agenda.diasSemana.length ? agenda.diasSemana : DIAS_TODOS,
-    eventos: ordenarEventos((agenda.eventos || []).map((evento) => ({ ...evento, tipo: normalizarTipo(evento.tipo), especie: evento.especie || "Outro", equipeCirurgica: Array.isArray(evento.equipeCirurgica) ? evento.equipeCirurgica : [] }))),
-  }));
-}
-
-function carregarAgendas() {
-  if (typeof window === "undefined") return normalizarAgendas(BASE);
-  try {
-    const salvo = window.localStorage.getItem("oricse-agendas-v2");
-    return salvo ? normalizarAgendas(JSON.parse(salvo) as ColunaAgenda[]) : normalizarAgendas(BASE);
-  } catch {
-    return normalizarAgendas(BASE);
-  }
-}
-
-function novoEvento(hora: string): Evento {
-  return {
-    id: `evento-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    hora,
-    tipo: "Consulta",
-    paciente: "",
-    tutor: "",
-    tutorId: undefined,
-    animalId: undefined,
-    especie: "Outro",
-    origem: "Recepção",
-    pagamento: "Pendente",
-    status: "Agendado",
-    equipeCirurgica: [],
-  };
-}
+function carregarTutoresLocais(): TutorAgenda[] { if (typeof window === "undefined") return []; try { const lista = JSON.parse(window.localStorage.getItem("oricse-tutores-v1") || "[]") as any[]; return lista.map((tutor) => ({ id: String(tutor.id || ""), codigoPublico: tutor.codigoPublico || tutor.codigo_publico || "", nome: String(tutor.nome || ""), telefone: tutor.telefone || "", cpf: tutor.cpfCnpj || tutor.cpf || "" })).filter((tutor) => tutor.id && tutor.nome); } catch { return []; } }
+function carregarAnimaisLocais(): AnimalAgenda[] { if (typeof window === "undefined") return []; try { const lista = JSON.parse(window.localStorage.getItem("oricse-animais-v1") || "[]") as any[]; return lista.map((animal) => ({ id: String(animal.id || ""), tutorId: String(animal.tutorId || animal.tutor_id || ""), nome: String(animal.nome || ""), especie: animal.especie || "Outro" })).filter((animal) => animal.id && animal.tutorId && animal.nome); } catch { return []; } }
+function tomProcedimento(tipoOriginal: string): TomProcedimento { const tipo = normalizarTipo(tipoOriginal); if (tipo === "Retorno") return "amarelo"; if (tipo === "Cirurgia") return "vermelho"; if (tipo === TIPO_BANHO_TOSA) return "roxo"; if (tipo === "Vacina") return "verde"; if (tipo === "Procedimento") return "laranja"; if (tipo === TIPO_BLOQUEIO) return "cinza"; return "azul"; }
+function pagamentoLabel(pagamento: Pagamento) { if (pagamento === "Pendente") return "Pagamento pendente"; if (pagamento === "Presencial") return "Pagamento presencial"; return pagamento; }
+function ehBloqueio(evento: Pick<Evento, "tipo">) { return evento.tipo === TIPO_BLOQUEIO; }
+function emojiEspecie(especie?: string) { const valor = (especie || "Outro").toLowerCase(); if (["cão", "cao", "canino", "cachorro"].includes(valor)) return "🐶"; if (["gato", "felino"].includes(valor)) return "🐱"; if (["ave", "passarinho", "pássaro", "passaro"].includes(valor)) return "🐦"; if (valor === "hamster") return "🐭"; if (["cobra", "serpente"].includes(valor)) return "🐍"; if (["vaca", "bovino", "bovina"].includes(valor)) return "🐄"; if (["cavalo", "equino", "equina"].includes(valor)) return "🐴"; return "🐾"; }
+function horaEmMinutos(hora: string) { const [h = "0", m = "0"] = hora.split(":"); return Math.max(0, Math.min(1439, Number(h) * 60 + Number(m))); }
+function minutosEmHora(total: number) { const seguro = Math.max(0, Math.min(1439, total)); return `${String(Math.floor(seguro / 60)).padStart(2, "0")}:${String(seguro % 60).padStart(2, "0")}`; }
+function formatarHora(hora: string) { const [h = "0", m = "00"] = hora.split(":"); return `${Number(h)}h${m}`; }
+function formatarData(data: Date) { return data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).toUpperCase(); }
+function formatarDuracao(minutos: number) { const h = Math.floor(minutos / 60); const m = minutos % 60; if (h && m) return `${h}h${String(m).padStart(2, "0")}`; if (h) return `${h}h`; return `${m} min`; }
+function origemCurta(origem: Origem) { return origem === "Tutor no app" ? "Tutor APP" : "Recepção"; }
+function agendaDisponivelNaData(agenda: Pick<ColunaAgenda, "diasSemana">, data: Date) { return (agenda.diasSemana || DIAS_TODOS).includes(data.getDay() as DiaSemana); }
+function resumoDias(dias: DiaSemana[]) { const ordenados = DIAS_SEMANA.filter((dia) => dias.includes(dia.value)); if (dias.length === 7) return "Todos os dias"; if (DIAS_UTEIS.every((dia) => dias.includes(dia)) && dias.length === 5) return "Seg a Sex"; return ordenados.map((dia) => dia.curto).join(" · "); }
+function gerarHorariosAgenda(agenda: Pick<ColunaAgenda, "inicio" | "fim">, intervalo: number) { const passo = Math.max(5, Number(intervalo) || 30); const inicio = horaEmMinutos(agenda.inicio || "08:00"); const fim = horaEmMinutos(agenda.fim || "17:00"); const horarios: string[] = []; for (let minuto = inicio; minuto + passo <= fim; minuto += passo) horarios.push(minutosEmHora(minuto)); return horarios; }
+function ordenarEventos(eventos: Evento[]) { return [...eventos].sort((a, b) => horaEmMinutos(a.hora) - horaEmMinutos(b.hora)); }
+function normalizarAgendas(agendas: ColunaAgenda[]) { return agendas.map((agenda, index) => ({ ...agenda, cor: agenda.cor || (["verde", "azul", "roxo", "laranja", "rosa"][index % 5] as CorAgenda), inicio: agenda.inicio || "08:00", fim: agenda.fim || "17:00", diasSemana: Array.isArray(agenda.diasSemana) && agenda.diasSemana.length ? agenda.diasSemana : DIAS_TODOS, eventos: ordenarEventos((agenda.eventos || []).map((evento) => ({ ...evento, tipo: normalizarTipo(evento.tipo), especie: evento.especie || "Outro", equipeCirurgica: Array.isArray(evento.equipeCirurgica) ? evento.equipeCirurgica : [] }))), })); }
+function carregarAgendas() { if (typeof window === "undefined") return normalizarAgendas(BASE); try { const salvo = window.localStorage.getItem("oricse-agendas-v2"); return salvo ? normalizarAgendas(JSON.parse(salvo) as ColunaAgenda[]) : normalizarAgendas(BASE); } catch { return normalizarAgendas(BASE); } }
+function novoEvento(hora: string): Evento { return { id: `evento-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, hora, tipo: "Consulta", paciente: "", tutor: "", tutorId: undefined, animalId: undefined, especie: "Outro", origem: "Recepção", pagamento: "Pendente", status: "Agendado", equipeCirurgica: [], }; }
 
 export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   const [agendas, setAgendas] = useState<ColunaAgenda[]>(carregarAgendas);
@@ -366,31 +213,8 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   const [duracoes, setDuracoes] = useState<Duracoes>(DURACOES_PADRAO);
   const trilhoRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") window.localStorage.setItem("oricse-agendas-v2", JSON.stringify(normalizarAgendas(agendas)));
-  }, [agendas]);
-
-  useEffect(() => {
-    let ativo = true;
-    async function carregarConfiguracao() {
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData.user?.id;
-        if (!userId) return;
-        const { data: vinculo } = await (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle();
-        if (!vinculo?.clinica_id) return;
-        const { data: clinica } = await (supabase as any).from("clinicas").select("duracao_padrao_atendimento_min,duracoes_atendimento_min").eq("id", vinculo.clinica_id).maybeSingle();
-        if (!ativo) return;
-        const intervalo = Number(clinica?.duracao_padrao_atendimento_min);
-        if (Number.isFinite(intervalo) && intervalo >= 5) setIntervaloGrade(intervalo);
-        setDuracoes({ ...DURACOES_PADRAO, ...(clinica?.duracoes_atendimento_min || {}) });
-      } catch (error) {
-        console.error("Não foi possível carregar as configurações da agenda:", error);
-      }
-    }
-    void carregarConfiguracao();
-    return () => { ativo = false; };
-  }, []);
+  useEffect(() => { if (typeof window !== "undefined") window.localStorage.setItem("oricse-agendas-v2", JSON.stringify(normalizarAgendas(agendas))); }, [agendas]);
+  useEffect(() => { let ativo = true; async function carregarConfiguracao() { try { const { data: authData } = await supabase.auth.getUser(); const userId = authData.user?.id; if (!userId) return; const { data: vinculo } = await (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle(); if (!vinculo?.clinica_id) return; const { data: clinica } = await (supabase as any).from("clinicas").select("duracao_padrao_atendimento_min,duracoes_atendimento_min").eq("id", vinculo.clinica_id).maybeSingle(); if (!ativo) return; const intervalo = Number(clinica?.duracao_padrao_atendimento_min); if (Number.isFinite(intervalo) && intervalo >= 5) setIntervaloGrade(intervalo); setDuracoes({ ...DURACOES_PADRAO, ...(clinica?.duracoes_atendimento_min || {}) }); } catch (error) { console.error("Não foi possível carregar as configurações da agenda:", error); } } void carregarConfiguracao(); return () => { ativo = false; }; }, []);
 
   const agendasFiltradas = useMemo(() => filtro === "todas" ? agendas : agendas.filter((agenda) => agenda.id === filtro), [agendas, filtro]);
   const visiveis = useMemo(() => agendasFiltradas.filter((agenda) => agendaDisponivelNaData(agenda, data)), [agendasFiltradas, data]);
@@ -398,291 +222,50 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   const titulo = mode === "recepcao" ? "Agenda do dia" : "Minha agenda";
   const subtitulo = mode === "recepcao" ? "Visualize os horários da clínica, organize chegadas e acompanhe a fila." : "Acompanhe consultas, retornos e procedimentos previstos para hoje.";
 
-  function duracaoEvento(evento: Evento) {
-    if (ehBloqueio(evento)) return Math.max(5, Number(evento.duracaoMin) || intervaloGrade);
-    return Math.max(5, Number(duracoes[normalizarTipo(evento.tipo)]) || intervaloGrade);
-  }
-
-  function mudarDia(delta: number) {
-    setData((atual) => { const d = new Date(atual); d.setDate(d.getDate() + delta); return d; });
-  }
-
-  function rolarAgendas(direcao: -1 | 1) {
-    trilhoRef.current?.scrollBy({ left: direcao * 360, behavior: "smooth" });
-  }
-
-  function validarHorarioAgenda(inicio: string, fim: string) {
-    if (horaEmMinutos(inicio) >= horaEmMinutos(fim)) {
-      toast.error("O horário de início da agenda deve ser anterior ao horário de término.");
-      return false;
-    }
-    return true;
-  }
-
-  function validarDiasAgenda(diasSemana: DiaSemana[]) {
-    if (!diasSemana.length) {
-      toast.error("Selecione pelo menos um dia disponível para esta agenda.");
-      return false;
-    }
-    return true;
-  }
-
-  function criarAgenda() {
-    if (agendas.length >= 10) return;
-    if (!validarHorarioAgenda(novaAgenda.inicio, novaAgenda.fim) || !validarDiasAgenda(novaAgenda.diasSemana)) return;
-    const id = `agenda-${Date.now()}`;
-    setAgendas((lista) => [...lista, { id, ...novaAgenda, diasSemana: [...novaAgenda.diasSemana], nome: novaAgenda.nome.trim() || `Agenda ${agendas.length + 1}`, responsavel: novaAgenda.responsavel.trim() || "Sem responsável", eventos: [] }]);
-    setFiltro(id);
-    setNovaAgenda({ nome: "Consultas", responsavel: "", inicio: "08:00", fim: "17:00", cor: "verde", diasSemana: DIAS_UTEIS });
-    setCriandoAgenda(false);
-  }
-
-  function salvarEdicaoAgenda() {
-    if (!editandoAgenda || !validarHorarioAgenda(editandoAgenda.inicio, editandoAgenda.fim) || !validarDiasAgenda(editandoAgenda.diasSemana)) return;
-    setAgendas((lista) => lista.map((agenda) => agenda.id === editandoAgenda.id ? { ...editandoAgenda, diasSemana: [...editandoAgenda.diasSemana], nome: editandoAgenda.nome.trim() || agenda.nome, responsavel: editandoAgenda.responsavel.trim() || "Sem responsável" } : agenda));
-    setEditandoAgenda(null);
-  }
-
-  function excluirAgenda(agendaId: string) {
-    const agenda = agendas.find((item) => item.id === agendaId);
-    if (!agenda) return;
-    const detalhe = agenda.eventos.length ? ` Ela possui ${agenda.eventos.length} agendamento(s)/bloqueio(s), que também serão removidos.` : "";
-    if (!window.confirm(`Excluir a agenda \"${agenda.nome}\"?${detalhe} Esta ação não pode ser desfeita.`)) return;
-    setAgendas((lista) => {
-      const restantes = lista.filter((item) => item.id !== agendaId);
-      if (filtro === agendaId) setFiltro(restantes[0]?.id || "todas");
-      return restantes;
-    });
-    setEditandoAgenda(null);
-    toast.success("Agenda excluída.");
-  }
-
-  function horarioConflita(agenda: ColunaAgenda, hora: string, duracaoNova: number, eventoId?: string, status?: StatusEvento) {
-    if (status === "Cancelado") return false;
-    const inicioNovo = horaEmMinutos(hora);
-    const fimNovo = inicioNovo + duracaoNova;
-    return agenda.eventos.some((evento) => {
-      if (evento.id === eventoId || evento.status === "Cancelado") return false;
-      const inicioExistente = horaEmMinutos(evento.hora);
-      const fimExistente = inicioExistente + duracaoEvento(evento);
-      return inicioNovo < fimExistente && fimNovo > inicioExistente;
-    });
-  }
-
-  function proximoHorarioLivre(agenda: ColunaAgenda, tipo = "Consulta") {
-    if (!agendaDisponivelNaData(agenda, data)) return null;
-    const duracao = Math.max(5, Number(duracoes[tipo]) || intervaloGrade);
-    return gerarHorariosAgenda(agenda, intervaloGrade).find((hora) => !horarioConflita(agenda, hora, duracao)) || null;
-  }
-
-  function abrirNovoHorario(agendaId: string, hora?: string) {
-    const agenda = agendas.find((item) => item.id === agendaId);
-    if (!agenda) return;
-    if (!agendaDisponivelNaData(agenda, data)) return void toast.error("Esta agenda não está disponível neste dia da semana.");
-    const horaLivre = hora || proximoHorarioLivre(agenda);
-    if (!horaLivre) return void toast.error("Não há horário livre nesta agenda.");
-    const evento = novoEvento(horaLivre);
-    if (horarioConflita(agenda, horaLivre, duracaoEvento(evento))) return void toast.error("Agenda ocupada neste horário. Escolha outro horário disponível.");
-    setEventoAberto({ agendaId, evento });
-  }
-
-  function salvarEvento(agendaId: string, eventoOriginal: Evento) {
-    const agenda = agendas.find((item) => item.id === agendaId);
-    if (!agenda) return;
-    if (!agendaDisponivelNaData(agenda, data)) return void toast.error("Esta agenda não está disponível neste dia da semana.");
-    const tipo = normalizarTipo(eventoOriginal.tipo);
-    if (tipo !== TIPO_BLOQUEIO && (!eventoOriginal.tutorId || !eventoOriginal.animalId)) {
-      return void toast.error("Selecione primeiro um tutor cadastrado e depois um animal desse tutor.");
-    }
-    const evento = ehBloqueio({ tipo })
-      ? { ...eventoOriginal, tipo, paciente: "", tutor: "", tutorId: undefined, animalId: undefined, especie: "Outro" as Especie, origem: "Recepção" as Origem, pagamento: "Isento" as Pagamento, status: "Agendado" as StatusEvento, duracaoMin: Math.max(5, Number(eventoOriginal.duracaoMin) || intervaloGrade), cirurgiao: undefined, anestesista: undefined, equipeCirurgica: [] }
-      : { ...eventoOriginal, tipo, duracaoMin: undefined };
-
-    const inicioEvento = horaEmMinutos(evento.hora);
-    const duracao = duracaoEvento(evento);
-    if (inicioEvento < horaEmMinutos(agenda.inicio) || inicioEvento + duracao > horaEmMinutos(agenda.fim)) return void toast.error(`Este atendimento de ${formatarDuracao(duracao)} não cabe no período da agenda (${agenda.inicio} às ${agenda.fim}).`);
-    if (horarioConflita(agenda, evento.hora, duracao, evento.id, evento.status)) return void toast.error("Agenda ocupada neste período. Escolha outro horário disponível.");
-
-    setAgendas((lista) => lista.map((item) => {
-      if (item.id !== agendaId) return item;
-      const existe = item.eventos.some((e) => e.id === evento.id);
-      const eventos = existe ? item.eventos.map((e) => e.id === evento.id ? evento : e) : [...item.eventos, evento];
-      return { ...item, eventos: ordenarEventos(eventos) };
-    }));
-    setEventoAberto(null);
-  }
-
-  function definirStatus(agendaId: string, eventoId: string, status: StatusEvento) {
-    setAgendas((lista) => lista.map((agenda) => agenda.id === agendaId ? { ...agenda, eventos: ordenarEventos(agenda.eventos.map((evento) => evento.id === eventoId ? { ...evento, status } : evento)) } : agenda));
-  }
-
-  function liberarAgenda(agendaId: string, evento: Evento) {
-    setAgendas((lista) => lista.map((agenda) => {
-      if (agenda.id !== agendaId) return agenda;
-      if (ehBloqueio(evento)) return { ...agenda, eventos: agenda.eventos.filter((item) => item.id !== evento.id) };
-      return { ...agenda, eventos: ordenarEventos(agenda.eventos.map((item) => item.id === evento.id ? { ...item, status: "Cancelado" as StatusEvento } : item)) };
-    }));
-    setEventoAberto(null);
-    toast.success(ehBloqueio(evento) ? "Bloqueio removido. Horário liberado." : "Agendamento cancelado. Horário liberado.");
-  }
-
-  function confirmarFinalizacao() {
-    if (!confirmacao) return;
-    definirStatus(confirmacao.agendaId, confirmacao.evento.id, "Finalizado");
-    setConfirmacao(null);
-    setEventoAberto(null);
-  }
-
-  function eventoQueOcupa(agenda: ColunaAgenda, hora: string) {
-    const minuto = horaEmMinutos(hora);
-    return agenda.eventos.find((evento) => {
-      if (evento.status === "Cancelado") return false;
-      const inicio = horaEmMinutos(evento.hora);
-      return minuto >= inicio && minuto < inicio + duracaoEvento(evento);
-    });
-  }
-
-  function slotsDaAgenda(agenda: ColunaAgenda) {
-    if (!agendaDisponivelNaData(agenda, data)) return [];
-    const horarios = gerarHorariosAgenda(agenda, intervaloGrade);
-    const extras = agenda.eventos.filter((evento) => !horarios.includes(evento.hora)).map((evento) => evento.hora);
-    return [...new Set([...horarios, ...extras])].sort((a, b) => horaEmMinutos(a) - horaEmMinutos(b));
-  }
+  function duracaoEvento(evento: Evento) { if (ehBloqueio(evento)) return Math.max(5, Number(evento.duracaoMin) || intervaloGrade); return Math.max(5, Number(duracoes[normalizarTipo(evento.tipo)]) || intervaloGrade); }
+  function mudarDia(delta: number) { setData((atual) => { const d = new Date(atual); d.setDate(d.getDate() + delta); return d; }); }
+  function rolarAgendas(direcao: -1 | 1) { trilhoRef.current?.scrollBy({ left: direcao * 360, behavior: "smooth" }); }
+  function validarHorarioAgenda(inicio: string, fim: string) { if (horaEmMinutos(inicio) >= horaEmMinutos(fim)) { toast.error("O horário de início da agenda deve ser anterior ao horário de término."); return false; } return true; }
+  function validarDiasAgenda(diasSemana: DiaSemana[]) { if (!diasSemana.length) { toast.error("Selecione pelo menos um dia disponível para esta agenda."); return false; } return true; }
+  function criarAgenda() { if (agendas.length >= 10) return; if (!validarHorarioAgenda(novaAgenda.inicio, novaAgenda.fim) || !validarDiasAgenda(novaAgenda.diasSemana)) return; const id = `agenda-${Date.now()}`; setAgendas((lista) => [...lista, { id, ...novaAgenda, diasSemana: [...novaAgenda.diasSemana], nome: novaAgenda.nome.trim() || `Agenda ${agendas.length + 1}`, responsavel: novaAgenda.responsavel.trim() || "Sem responsável", eventos: [] }]); setFiltro(id); setNovaAgenda({ nome: "Consultas", responsavel: "", inicio: "08:00", fim: "17:00", cor: "verde", diasSemana: DIAS_UTEIS }); setCriandoAgenda(false); }
+  function salvarEdicaoAgenda() { if (!editandoAgenda || !validarHorarioAgenda(editandoAgenda.inicio, editandoAgenda.fim) || !validarDiasAgenda(editandoAgenda.diasSemana)) return; setAgendas((lista) => lista.map((agenda) => agenda.id === editandoAgenda.id ? { ...editandoAgenda, diasSemana: [...editandoAgenda.diasSemana], nome: editandoAgenda.nome.trim() || agenda.nome, responsavel: editandoAgenda.responsavel.trim() || "Sem responsável" } : agenda)); setEditandoAgenda(null); }
+  function excluirAgenda(agendaId: string) { const agenda = agendas.find((item) => item.id === agendaId); if (!agenda) return; const detalhe = agenda.eventos.length ? ` Ela possui ${agenda.eventos.length} agendamento(s)/bloqueio(s), que também serão removidos.` : ""; if (!window.confirm(`Excluir a agenda \"${agenda.nome}\"?${detalhe} Esta ação não pode ser desfeita.`)) return; setAgendas((lista) => { const restantes = lista.filter((item) => item.id !== agendaId); if (filtro === agendaId) setFiltro(restantes[0]?.id || "todas"); return restantes; }); setEditandoAgenda(null); toast.success("Agenda excluída."); }
+  function horarioConflita(agenda: ColunaAgenda, hora: string, duracaoNova: number, eventoId?: string, status?: StatusEvento) { if (status === "Cancelado") return false; const inicioNovo = horaEmMinutos(hora); const fimNovo = inicioNovo + duracaoNova; return agenda.eventos.some((evento) => { if (evento.id === eventoId || evento.status === "Cancelado") return false; const inicioExistente = horaEmMinutos(evento.hora); const fimExistente = inicioExistente + duracaoEvento(evento); return inicioNovo < fimExistente && fimNovo > inicioExistente; }); }
+  function proximoHorarioLivre(agenda: ColunaAgenda, tipo = "Consulta") { if (!agendaDisponivelNaData(agenda, data)) return null; const duracao = Math.max(5, Number(duracoes[tipo]) || intervaloGrade); return gerarHorariosAgenda(agenda, intervaloGrade).find((hora) => !horarioConflita(agenda, hora, duracao)) || null; }
+  function abrirNovoHorario(agendaId: string, hora?: string) { const agenda = agendas.find((item) => item.id === agendaId); if (!agenda) return; if (!agendaDisponivelNaData(agenda, data)) return void toast.error("Esta agenda não está disponível neste dia da semana."); const horaLivre = hora || proximoHorarioLivre(agenda); if (!horaLivre) return void toast.error("Não há horário livre nesta agenda."); const evento = novoEvento(horaLivre); if (horarioConflita(agenda, horaLivre, duracaoEvento(evento))) return void toast.error("Agenda ocupada neste horário. Escolha outro horário disponível."); setEventoAberto({ agendaId, evento }); }
+  function salvarEvento(agendaId: string, eventoOriginal: Evento) { const agenda = agendas.find((item) => item.id === agendaId); if (!agenda) return; if (!agendaDisponivelNaData(agenda, data)) return void toast.error("Esta agenda não está disponível neste dia da semana."); const tipo = normalizarTipo(eventoOriginal.tipo); if (tipo !== TIPO_BLOQUEIO && (!eventoOriginal.tutorId || !eventoOriginal.animalId)) return void toast.error("Selecione primeiro um tutor cadastrado e depois um animal desse tutor."); const evento = ehBloqueio({ tipo }) ? { ...eventoOriginal, tipo, paciente: "", tutor: "", tutorId: undefined, animalId: undefined, especie: "Outro" as Especie, origem: "Recepção" as Origem, pagamento: "Isento" as Pagamento, status: "Agendado" as StatusEvento, duracaoMin: Math.max(5, Number(eventoOriginal.duracaoMin) || intervaloGrade), cirurgiao: undefined, anestesista: undefined, equipeCirurgica: [] } : { ...eventoOriginal, tipo, duracaoMin: undefined }; const inicioEvento = horaEmMinutos(evento.hora); const duracao = duracaoEvento(evento); if (inicioEvento < horaEmMinutos(agenda.inicio) || inicioEvento + duracao > horaEmMinutos(agenda.fim)) return void toast.error(`Este atendimento de ${formatarDuracao(duracao)} não cabe no período da agenda (${agenda.inicio} às ${agenda.fim}).`); if (horarioConflita(agenda, evento.hora, duracao, evento.id, evento.status)) return void toast.error("Agenda ocupada neste período. Escolha outro horário disponível."); setAgendas((lista) => lista.map((item) => { if (item.id !== agendaId) return item; const existe = item.eventos.some((e) => e.id === evento.id); const eventos = existe ? item.eventos.map((e) => e.id === evento.id ? evento : e) : [...item.eventos, evento]; return { ...item, eventos: ordenarEventos(eventos) }; })); setEventoAberto(null); }
+  function definirStatus(agendaId: string, eventoId: string, status: StatusEvento) { setAgendas((lista) => lista.map((agenda) => agenda.id === agendaId ? { ...agenda, eventos: ordenarEventos(agenda.eventos.map((evento) => evento.id === eventoId ? { ...evento, status } : evento)) } : agenda)); }
+  function liberarAgenda(agendaId: string, evento: Evento) { setAgendas((lista) => lista.map((agenda) => { if (agenda.id !== agendaId) return agenda; if (ehBloqueio(evento)) return { ...agenda, eventos: agenda.eventos.filter((item) => item.id !== evento.id) }; return { ...agenda, eventos: ordenarEventos(agenda.eventos.map((item) => item.id === evento.id ? { ...item, status: "Cancelado" as StatusEvento } : item)) }; })); setEventoAberto(null); toast.success(ehBloqueio(evento) ? "Bloqueio removido. Horário liberado." : "Agendamento cancelado. Horário liberado."); }
+  function confirmarFinalizacao() { if (!confirmacao) return; definirStatus(confirmacao.agendaId, confirmacao.evento.id, "Finalizado"); setConfirmacao(null); setEventoAberto(null); }
+  function eventoQueOcupa(agenda: ColunaAgenda, hora: string) { const minuto = horaEmMinutos(hora); return agenda.eventos.find((evento) => { if (evento.status === "Cancelado") return false; const inicio = horaEmMinutos(evento.hora); return minuto >= inicio && minuto < inicio + duracaoEvento(evento); }); }
+  function slotsDaAgenda(agenda: ColunaAgenda) { if (!agendaDisponivelNaData(agenda, data)) return []; const horarios = gerarHorariosAgenda(agenda, intervaloGrade); const extras = agenda.eventos.filter((evento) => !horarios.includes(evento.hora)).map((evento) => evento.hora); return [...new Set([...horarios, ...extras])].sort((a, b) => horaEmMinutos(a) - horaEmMinutos(b)); }
 
   return (
     <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2"><CalendarDays size={22} className="text-primary" /><h2 className="text-2xl font-bold">{titulo}</h2></div>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitulo}</p>
-          <p className="mt-1 text-xs font-semibold text-primary">Grade de {intervaloGrade} em {intervaloGrade} min · duração definida por tipo de atendimento</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="min-h-10 rounded-xl border bg-white px-3 text-sm font-semibold">
-            <option value="todas">Todas as agendas</option>
-            {agendas.map((agenda) => <option key={agenda.id} value={agenda.id}>{agenda.nome} · {agenda.responsavel}</option>)}
-          </select>
-          <button type="button" onClick={() => setCriandoAgenda(true)} disabled={agendas.length >= 10} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-40"><Plus size={15} /> Criar agenda</button>
-        </div>
+        <div><div className="flex items-center gap-2"><CalendarDays size={22} className="text-primary" /><h2 className="text-2xl font-bold">{titulo}</h2></div><p className="mt-1 text-sm text-muted-foreground">{subtitulo}</p><p className="mt-1 text-xs font-semibold text-primary">Grade de {intervaloGrade} em {intervaloGrade} min · duração definida por tipo de atendimento</p></div>
+        <div className="flex flex-wrap items-center gap-2"><select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="min-h-10 rounded-xl border bg-white px-3 text-sm font-semibold"><option value="todas">Todas as agendas</option>{agendas.map((agenda) => <option key={agenda.id} value={agenda.id}>{agenda.nome} · {agenda.responsavel}</option>)}</select><button type="button" onClick={() => setCriandoAgenda(true)} disabled={agendas.length >= 10} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-40"><Plus size={15} /> Criar agenda</button></div>
       </div>
-
-      <div className="mt-4 flex items-center gap-3 rounded-2xl border bg-[#f8faf8] p-3">
-        <button type="button" onClick={() => mudarDia(-1)} className="rounded-xl border bg-white p-2.5" aria-label="Dia anterior"><ChevronLeft size={19} /></button>
-        <button type="button" onClick={() => setData(new Date())} className="min-w-0 flex-1 px-3 text-center">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">DATA DA AGENDA</div>
-          <div className="mt-0.5 text-xl font-black tracking-tight sm:text-2xl">{formatarData(data)}</div>
-          <div className="text-[10px] text-muted-foreground">Clique para voltar para hoje</div>
-        </button>
-        <button type="button" onClick={() => mudarDia(1)} className="rounded-xl border bg-white p-2.5" aria-label="Próximo dia"><ChevronRight size={19} /></button>
-      </div>
-
-      <div className="relative mt-4">
-        {visiveis.length > 1 && <>
-          <button type="button" onClick={() => rolarAgendas(-1)} className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white/95 p-2 shadow-md" aria-label="Agendas anteriores"><ChevronLeft size={20} /></button>
-          <button type="button" onClick={() => rolarAgendas(1)} className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white/95 p-2 shadow-md" aria-label="Próximas agendas"><ChevronRight size={20} /></button>
-        </>}
+      <div className="mt-4 flex items-center gap-3 rounded-2xl border bg-[#f8faf8] p-3"><button type="button" onClick={() => mudarDia(-1)} className="rounded-xl border bg-white p-2.5" aria-label="Dia anterior"><ChevronLeft size={19} /></button><button type="button" onClick={() => setData(new Date())} className="min-w-0 flex-1 px-3 text-center"><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">DATA DA AGENDA</div><div className="mt-0.5 text-xl font-black tracking-tight sm:text-2xl">{formatarData(data)}</div><div className="text-[10px] text-muted-foreground">Clique para voltar para hoje</div></button><button type="button" onClick={() => mudarDia(1)} className="rounded-xl border bg-white p-2.5" aria-label="Próximo dia"><ChevronRight size={19} /></button></div>
+      <div className="relative mt-4">{visiveis.length > 1 && <><button type="button" onClick={() => rolarAgendas(-1)} className="absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white/95 p-2 shadow-md" aria-label="Agendas anteriores"><ChevronLeft size={20} /></button><button type="button" onClick={() => rolarAgendas(1)} className="absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white/95 p-2 shadow-md" aria-label="Próximas agendas"><ChevronRight size={20} /></button></>}
         <div ref={trilhoRef} className="flex flex-nowrap gap-3 overflow-x-auto scroll-smooth px-1 pb-2 [scrollbar-width:thin]">
-          {visiveis.map((agenda) => {
-            const tema = TEMA[agenda.cor];
-            return (
-              <article key={agenda.id} className={`w-[320px] min-w-[320px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#fcfcfb] sm:w-[340px] sm:min-w-[340px] ${tema.border}`}>
-                <header className={`border-b-2 bg-white px-3 py-2.5 ${tema.borderSoft}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tema.dot}`} /><h3 className={`truncate text-sm font-bold ${tema.text}`}>{agenda.nome}</h3></div>
-                      <p className="mt-0.5 truncate pl-[18px] text-[11px] text-muted-foreground">{agenda.responsavel}</p>
-                      <p className={`mt-0.5 pl-[18px] text-[10px] font-semibold ${tema.button}`}>{formatarHora(agenda.inicio)}–{formatarHora(agenda.fim)} · {resumoDias(agenda.diasSemana)}</p>
-                    </div>
-                    <button type="button" onClick={() => setEditandoAgenda({ ...agenda, diasSemana: [...agenda.diasSemana] })} className={`rounded-lg p-1.5 ${tema.button} hover:bg-black/5`} aria-label="Editar agenda"><Pencil size={15} /></button>
-                  </div>
-                </header>
-
-                <div className="p-2">
-                  <div className="space-y-1.5">
-                    {slotsDaAgenda(agenda).map((hora) => {
-                      const evento = eventoQueOcupa(agenda, hora);
-                      if (!evento) return (
-                        <button key={hora} type="button" onClick={() => abrirNovoHorario(agenda.id, hora)} className={`flex min-h-8 w-full items-center gap-2 rounded-lg border border-dashed bg-white px-2.5 py-1 text-left text-[11px] transition ${tema.freeBorder} ${tema.freeBg}`}>
-                          <strong className="w-11 shrink-0 text-slate-700">{formatarHora(hora)}</strong>
-                          <span className="font-semibold text-muted-foreground">Livre</span>
-                          <span className={`ml-auto text-[10px] font-semibold ${tema.button}`}>+ Agendar</span>
-                        </button>
-                      );
-
-                      const proc = TEMA_PROCEDIMENTO[tomProcedimento(evento.tipo)];
-                      const inicioEvento = evento.hora === hora;
-                      if (!inicioEvento) {
-                        const fim = minutosEmHora(horaEmMinutos(evento.hora) + duracaoEvento(evento));
-                        return (
-                          <div key={hora} className={`flex min-h-8 items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1 text-[10px] ${proc.border} ${proc.borderStrong} ${proc.bgSoft} ${proc.text}`}>
-                            <strong className="w-11 shrink-0">{formatarHora(hora)}</strong>
-                            <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
-                            <span className="font-semibold">Ocupado · {evento.tipo}</span>
-                            <span className="ml-auto">até {formatarHora(fim)}</span>
-                          </div>
-                        );
-                      }
-
-                      if (ehBloqueio(evento)) return (
-                        <button key={evento.id} type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className={`flex min-h-11 w-full items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1.5 text-left ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
-                          <strong className={`w-11 shrink-0 text-[12px] font-black ${proc.text}`}>{formatarHora(evento.hora)}</strong>
-                          <Lock size={13} className={`shrink-0 ${proc.accent}`} />
-                          <div className="min-w-0"><div className={`truncate text-[11px] font-bold ${proc.text}`}>Bloqueio de agenda</div><div className="text-[9px] font-semibold text-slate-500">{formatarDuracao(duracaoEvento(evento))} bloqueado</div></div>
-                        </button>
-                      );
-
-                      const finalizado = evento.status === "Finalizado";
-                      return (
-                        <div key={evento.id} className={`rounded-lg border border-l-4 px-2.5 py-1.5 ${proc.border} ${proc.borderStrong} ${proc.bg}`}>
-                          <button type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className="flex w-full items-center gap-1.5 text-left leading-tight">
-                            <strong className="text-[12px] font-black text-slate-900">{formatarHora(evento.hora)}</strong>
-                            <span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} />
-                            <span className={`truncate text-[12px] font-bold ${proc.text}`}>{normalizarTipo(evento.tipo)}</span>
-                            <span className={`text-[9px] font-semibold opacity-70 ${proc.text}`}>· {formatarDuracao(duracaoEvento(evento))}</span>
-                            {finalizado && <span className="ml-auto text-[8px] font-bold uppercase tracking-wide text-slate-500">Finalizado</span>}
-                          </button>
-                          <button type="button" onClick={() => setAnimalAberto(evento)} className="mt-1 block w-full truncate text-left text-[12px] font-black leading-tight text-slate-950 underline-offset-2 hover:underline"><span className="mr-1" aria-hidden="true">{emojiEspecie(evento.especie)}</span>{evento.paciente.toUpperCase()} <span className="font-medium text-slate-600">({evento.tutor})</span></button>
-                          {evento.tipo === "Cirurgia" && (evento.cirurgiao || evento.anestesista) && <div className="mt-0.5 truncate text-[9px] font-semibold text-slate-600">{evento.cirurgiao ? `Cirurgião: ${evento.cirurgiao}` : "Cirurgião: —"}<span className="px-1 text-slate-400">·</span>{evento.anestesista ? `Anestesista: ${evento.anestesista}` : "Anestesista: —"}</div>}
-                          <div className="mt-1 text-[10px] font-semibold leading-tight text-slate-600">{origemCurta(evento.origem)} <span className="px-0.5 text-slate-400">·</span> <span className={evento.pagamento === "Pago" ? "text-emerald-700" : evento.pagamento === "Pendente" ? "text-amber-700" : "text-slate-700"}>{pagamentoLabel(evento.pagamento)}</span></div>
-                          {!finalizado ? <button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight hover:underline ${proc.accent}`}><CheckCircle2 size={12} /> Finalizar atendimento</button> : <button type="button" onClick={() => definirStatus(agenda.id, evento.id, "Em atendimento")} className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-slate-700 hover:underline"><RotateCcw size={12} /> Voltar atendimento</button>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button type="button" onClick={() => abrirNovoHorario(agenda.id)} className={`mt-2 w-full rounded-lg border border-dashed px-2 py-1.5 text-[10px] font-semibold ${tema.freeBorder} ${tema.button} ${tema.freeBg}`}>+ Próximo horário livre</button>
-                </div>
-              </article>
-            );
-          })}
+          {visiveis.map((agenda) => { const tema = TEMA[agenda.cor]; return <article key={agenda.id} className={`w-[320px] min-w-[320px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#fcfcfb] sm:w-[340px] sm:min-w-[340px] ${tema.border}`}><header className={`border-b-2 bg-white px-3 py-2.5 ${tema.borderSoft}`}><div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tema.dot}`} /><h3 className={`truncate text-sm font-bold ${tema.text}`}>{agenda.nome}</h3></div><p className="mt-0.5 truncate pl-[18px] text-[11px] text-muted-foreground">{agenda.responsavel}</p><p className={`mt-0.5 pl-[18px] text-[10px] font-semibold ${tema.button}`}>{formatarHora(agenda.inicio)}–{formatarHora(agenda.fim)} · {resumoDias(agenda.diasSemana)}</p></div><button type="button" onClick={() => setEditandoAgenda({ ...agenda, diasSemana: [...agenda.diasSemana] })} className={`rounded-lg p-1.5 ${tema.button} hover:bg-black/5`} aria-label="Editar agenda"><Pencil size={15} /></button></div></header>
+            <div className="p-2"><div className="space-y-1.5">{slotsDaAgenda(agenda).map((hora) => { const evento = eventoQueOcupa(agenda, hora); if (!evento) return <button key={hora} type="button" onClick={() => abrirNovoHorario(agenda.id, hora)} className={`flex min-h-8 w-full items-center gap-2 rounded-lg border border-dashed bg-white px-2.5 py-1 text-left text-[11px] transition ${tema.freeBorder} ${tema.freeBg}`}><strong className="w-11 shrink-0 text-slate-700">{formatarHora(hora)}</strong><span className="font-semibold text-muted-foreground">Livre</span><span className={`ml-auto text-[10px] font-semibold ${tema.button}`}>+ Agendar</span></button>; const proc = TEMA_PROCEDIMENTO[tomProcedimento(evento.tipo)]; const inicioEvento = evento.hora === hora; if (!inicioEvento) { const fim = minutosEmHora(horaEmMinutos(evento.hora) + duracaoEvento(evento)); return <div key={hora} className={`flex min-h-8 items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1 text-[10px] ${proc.border} ${proc.borderStrong} ${proc.bgSoft} ${proc.text}`}><strong className="w-11 shrink-0">{formatarHora(hora)}</strong><span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} /><span className="font-semibold">Ocupado · {evento.tipo}</span><span className="ml-auto">até {formatarHora(fim)}</span></div>; } if (ehBloqueio(evento)) return <button key={evento.id} type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className={`flex min-h-11 w-full items-center gap-2 rounded-lg border border-l-4 px-2.5 py-1.5 text-left ${proc.border} ${proc.borderStrong} ${proc.bg}`}><strong className={`w-11 shrink-0 text-[12px] font-black ${proc.text}`}>{formatarHora(evento.hora)}</strong><Lock size={13} className={`shrink-0 ${proc.accent}`} /><div className="min-w-0"><div className={`truncate text-[11px] font-bold ${proc.text}`}>Bloqueio de agenda</div><div className="text-[9px] font-semibold text-slate-500">{formatarDuracao(duracaoEvento(evento))} bloqueado</div></div></button>; const finalizado = evento.status === "Finalizado"; return <div key={evento.id} className={`rounded-lg border border-l-4 px-2.5 py-1.5 ${proc.border} ${proc.borderStrong} ${proc.bg}`}><button type="button" onClick={() => setEventoAberto({ agendaId: agenda.id, evento })} className="flex w-full items-center gap-1.5 text-left leading-tight"><strong className="text-[12px] font-black text-slate-900">{formatarHora(evento.hora)}</strong><span className={`h-2 w-2 shrink-0 rounded-full ${proc.icon}`} /><span className={`truncate text-[12px] font-bold ${proc.text}`}>{normalizarTipo(evento.tipo)}</span><span className={`text-[9px] font-semibold opacity-70 ${proc.text}`}>· {formatarDuracao(duracaoEvento(evento))}</span>{finalizado && <span className="ml-auto text-[8px] font-bold uppercase tracking-wide text-slate-500">Finalizado</span>}</button><button type="button" onClick={() => setAnimalAberto(evento)} className="mt-1 block w-full truncate text-left text-[12px] font-black leading-tight text-slate-950 underline-offset-2 hover:underline"><span className="mr-1" aria-hidden="true">{emojiEspecie(evento.especie)}</span>{evento.paciente.toUpperCase()} <span className="font-medium text-slate-600">({evento.tutor})</span></button>{evento.tipo === "Cirurgia" && (evento.cirurgiao || evento.anestesista) && <div className="mt-0.5 truncate text-[9px] font-semibold text-slate-600">{evento.cirurgiao ? `Cirurgião: ${evento.cirurgiao}` : "Cirurgião: —"}<span className="px-1 text-slate-400">·</span>{evento.anestesista ? `Anestesista: ${evento.anestesista}` : "Anestesista: —"}</div>}<div className="mt-1 text-[10px] font-semibold leading-tight text-slate-600">{origemCurta(evento.origem)} <span className="px-0.5 text-slate-400">·</span> <span className={evento.pagamento === "Pago" ? "text-emerald-700" : evento.pagamento === "Pendente" ? "text-amber-700" : "text-slate-700"}>{pagamentoLabel(evento.pagamento)}</span></div>{!finalizado ? <div className="mt-1 flex items-center gap-3"><button type="button" onClick={() => { if (!evento.animalId) { toast.error("Este agendamento não está vinculado a um animal cadastrado."); return; } definirStatus(agenda.id, evento.id, "Em atendimento"); window.location.href = `/animal?animalId=${encodeURIComponent(evento.animalId)}`; }} className="inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-emerald-700 hover:underline">Iniciar atendimento</button><button type="button" onClick={() => setConfirmacao({ agendaId: agenda.id, evento })} className="inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-red-600 hover:underline"><CheckCircle2 size={12} /> Finalizar atendimento</button></div> : <button type="button" onClick={() => definirStatus(agenda.id, evento.id, "Em atendimento")} className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold leading-tight text-slate-700 hover:underline"><RotateCcw size={12} /> Voltar atendimento</button>}</div>; })}</div><button type="button" onClick={() => abrirNovoHorario(agenda.id)} className={`mt-2 w-full rounded-lg border border-dashed px-2 py-1.5 text-[10px] font-semibold ${tema.freeBorder} ${tema.button} ${tema.freeBg}`}>+ Próximo horário livre</button></div>
+          </article>; })}
         </div>
       </div>
-
       {indisponiveis.length > 0 && <div className="mt-3 border-t pt-3 text-[11px] text-muted-foreground"><span className="font-bold text-slate-600">Agendas indisponíveis nesta data:</span> {indisponiveis.map((agenda, index) => <span key={agenda.id}>{index > 0 ? " · " : ""}<span className="font-semibold">{agenda.nome}</span> ({resumoDias(agenda.diasSemana)})</span>)}</div>}
-
       {criandoAgenda && <AgendaModal titulo="Criar agenda" value={novaAgenda} onChange={setNovaAgenda} onClose={() => setCriandoAgenda(false)} onSave={criarAgenda} salvarTexto="Criar agenda" />}
       {editandoAgenda && <AgendaModal titulo="Editar agenda" value={{ nome: editandoAgenda.nome, responsavel: editandoAgenda.responsavel, inicio: editandoAgenda.inicio, fim: editandoAgenda.fim, cor: editandoAgenda.cor, diasSemana: editandoAgenda.diasSemana }} onChange={(value) => setEditandoAgenda({ ...editandoAgenda, ...value })} onClose={() => setEditandoAgenda(null)} onSave={salvarEdicaoAgenda} onDelete={() => excluirAgenda(editandoAgenda.id)} salvarTexto="Salvar agenda" />}
-
-      {eventoAberto && (() => {
-        const agendaAtual = agendas.find((agenda) => agenda.id === eventoAberto.agendaId);
-        if (!agendaAtual) return null;
-        const existente = agendaAtual.eventos.some((item) => item.id === eventoAberto.evento.id);
-        return <EditorEvento value={eventoAberto.evento} agenda={agendaAtual} intervaloGrade={intervaloGrade} duracoes={duracoes} existente={existente} onClose={() => setEventoAberto(null)} onSave={(evento) => salvarEvento(eventoAberto.agendaId, evento)} onFinish={() => setConfirmacao({ agendaId: eventoAberto.agendaId, evento: eventoAberto.evento })} onRelease={(evento) => liberarAgenda(eventoAberto.agendaId, evento)} conflita={(hora, duracao, eventoId, status) => horarioConflita(agendaAtual, hora, duracao, eventoId, status)} />;
-      })()}
-
+      {eventoAberto && (() => { const agendaAtual = agendas.find((agenda) => agenda.id === eventoAberto.agendaId); if (!agendaAtual) return null; const existente = agendaAtual.eventos.some((item) => item.id === eventoAberto.evento.id); return <EditorEvento value={eventoAberto.evento} agenda={agendaAtual} intervaloGrade={intervaloGrade} duracoes={duracoes} existente={existente} onClose={() => setEventoAberto(null)} onSave={(evento) => salvarEvento(eventoAberto.agendaId, evento)} onFinish={() => setConfirmacao({ agendaId: eventoAberto.agendaId, evento: eventoAberto.evento })} onRelease={(evento) => liberarAgenda(eventoAberto.agendaId, evento)} conflita={(hora, duracao, eventoId, status) => horarioConflita(agendaAtual, hora, duracao, eventoId, status)} />; })()}
       {confirmacao && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 p-4"><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"><h3 className="text-xl font-bold">Finalizar atendimento</h3><p className="mt-3 text-sm text-slate-700">Tem certeza que deseja finalizar o atendimento de <strong>{confirmacao.evento.paciente.toUpperCase()}</strong>?</p><div className="mt-5 flex justify-end gap-2"><button onClick={() => setConfirmacao(null)} className="rounded-xl border px-4 py-2.5 font-semibold">Cancelar</button><button onClick={confirmarFinalizacao} className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground">Sim, finalizar</button></div></div></div>}
-
       {animalAberto && !ehBloqueio(animalAberto) && <div className="fixed inset-0 z-50 flex justify-end bg-black/25" onClick={() => setAnimalAberto(null)}><aside onClick={(e) => e.stopPropagation()} className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">Ficha do animal</p><h3 className="mt-1 text-3xl font-black">{emojiEspecie(animalAberto.especie)} {animalAberto.paciente.toUpperCase()}</h3><p className="text-muted-foreground">Tutor: {animalAberto.tutor}</p></div><button onClick={() => setAnimalAberto(null)}><X /></button></div><div className="mt-6 grid gap-3"><div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Espécie</p><p className="mt-1 font-bold">{animalAberto.especie || "Outro"}</p></div><div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Atendimento agendado</p><p className="mt-1 font-bold">{animalAberto.tipo} · {animalAberto.hora}</p></div>{animalAberto.tipo === "Cirurgia" && <div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Equipe cirúrgica</p><p className="mt-1 text-sm"><strong>Cirurgião:</strong> {animalAberto.cirurgiao || "Não informado"}</p><p className="mt-1 text-sm"><strong>Anestesista:</strong> {animalAberto.anestesista || "Não informado"}</p>{(animalAberto.equipeCirurgica || []).filter((p) => p.nome).map((p, index) => <p key={`${p.funcao}-${index}`} className="mt-1 text-sm"><strong>{p.funcao}:</strong> {p.nome}</p>)}</div>}<div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Origem</p><p className="mt-1 font-bold">{animalAberto.origem}</p></div><div className="rounded-xl border p-4"><p className="text-xs text-muted-foreground">Pagamento</p><p className="mt-1 font-bold">{pagamentoLabel(animalAberto.pagamento)}</p></div></div><div className="mt-6 grid gap-2"><button className="rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Abrir cadastro e prontuário</button><button className="rounded-xl border px-4 py-3 font-semibold">Histórico de atendimentos</button><button className="rounded-xl border px-4 py-3 font-semibold">Exames e receitas</button></div></aside></div>}
     </section>
   );
 }
 
 function AgendaModal({ titulo, value, onChange, onClose, onSave, onDelete, salvarTexto }: { titulo: string; value: AgendaForm; onChange: (value: AgendaForm) => void; onClose: () => void; onSave: () => void; onDelete?: () => void; salvarTexto: string }) {
-  function alternarDia(dia: DiaSemana) {
-    const selecionado = value.diasSemana.includes(dia);
-    const diasSemana = selecionado ? value.diasSemana.filter((item) => item !== dia) : [...value.diasSemana, dia];
-    onChange({ ...value, diasSemana });
-  }
-
+  function alternarDia(dia: DiaSemana) { const selecionado = value.diasSemana.includes(dia); const diasSemana = selecionado ? value.diasSemana.filter((item) => item !== dia) : [...value.diasSemana, dia]; onChange({ ...value, diasSemana }); }
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h3 className="text-xl font-bold">{titulo}</h3><button onClick={onClose}><X /></button></div><p className="mt-1 text-sm text-muted-foreground">Defina o nome, responsável, período, dias disponíveis e cor desta agenda.</p><div className="mt-4 space-y-3"><label className="block text-sm font-semibold">Nome da agenda<input value={value.nome} onChange={(e) => onChange({ ...value, nome: e.target.value })} placeholder="Ex.: Consultas ou Dr. Luciano" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><label className="block text-sm font-semibold">Responsável / descrição<input value={value.responsavel} onChange={(e) => onChange({ ...value, responsavel: e.target.value })} placeholder="Ex.: Dr. Luciano Rodrigues" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><div className="grid grid-cols-2 gap-3"><label className="block text-sm font-semibold">Início<input type="time" value={value.inicio} onChange={(e) => onChange({ ...value, inicio: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label><label className="block text-sm font-semibold">Fim<input type="time" value={value.fim} onChange={(e) => onChange({ ...value, fim: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label></div><div><div className="text-sm font-semibold">Dias disponíveis</div><p className="mt-0.5 text-xs text-muted-foreground">Selecione exatamente os dias em que esta agenda funciona.</p><div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-7">{DIAS_SEMANA.map((dia) => { const ativo = value.diasSemana.includes(dia.value); return <button key={dia.value} type="button" title={dia.label} onClick={() => alternarDia(dia.value)} className={`min-h-10 rounded-xl border px-2 text-xs font-bold transition ${ativo ? "border-primary bg-primary text-primary-foreground" : "border-slate-200 bg-white text-slate-600 hover:border-primary/50"}`}>{dia.curto}</button>; })}</div><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => onChange({ ...value, diasSemana: DIAS_UTEIS })} className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold">Seg a Sex</button><button type="button" onClick={() => onChange({ ...value, diasSemana: DIAS_TODOS })} className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold">Todos os dias</button></div></div><div><div className="text-sm font-semibold">Cor da agenda</div><div className="mt-2 grid w-full grid-cols-5 gap-2">{CORES.map((cor) => <button key={cor.value} type="button" title={cor.label} aria-label={cor.label} onClick={() => onChange({ ...value, cor: cor.value })} className={`flex h-11 w-full items-center justify-center rounded-xl border-2 transition ${value.cor === cor.value ? "border-slate-900 bg-slate-50 ring-2 ring-slate-300" : "border-slate-200 bg-white hover:border-slate-400"}`}><span className="h-6 w-6 rounded-full border border-black/10" style={{ backgroundColor: cor.preview }} /><span className="sr-only">{cor.label}</span></button>)}</div></div><button onClick={onSave} className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">{salvarTexto}</button>{onDelete && <button type="button" onClick={onDelete} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-bold text-rose-700 hover:bg-rose-100"><Trash2 size={17} /> Excluir agenda</button>}</div></div></div>;
 }
 
@@ -701,155 +284,20 @@ function EditorEvento({ value, agenda, intervaloGrade, duracoes, existente, onCl
   const horariosComAtual = useMemo(() => horarios.includes(evento.hora) ? horarios : [...horarios, evento.hora].sort((a, b) => horaEmMinutos(a) - horaEmMinutos(b)), [horarios, evento.hora]);
   const tutorSelecionado = useMemo(() => tutores.find((tutor) => tutor.id === evento.tutorId), [tutores, evento.tutorId]);
   const animaisDoTutor = useMemo(() => animais.filter((animal) => animal.tutorId === evento.tutorId), [animais, evento.tutorId]);
-  const resultadosTutor = useMemo(() => {
-    const termo = normalizarTexto(buscaTutor);
-    const soDigitos = buscaTutor.replace(/\D/g, "");
-    if (!termo && !soDigitos) return tutores.slice(0, 8);
-    return tutores.filter((tutor) => {
-      const texto = normalizarTexto(`${tutor.codigoPublico || ""} ${tutor.nome} ${tutor.telefone || ""} ${tutor.cpf || ""}`);
-      const numeros = `${tutor.telefone || ""} ${tutor.cpf || ""}`.replace(/\D/g, "");
-      return texto.includes(termo) || Boolean(soDigitos && numeros.includes(soDigitos));
-    }).slice(0, 8);
-  }, [buscaTutor, tutores]);
-
-  useEffect(() => {
-    let ativo = true;
-    async function carregarTutoresDaClinica() {
-      setCarregandoTutores(true);
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData.user?.id;
-        if (!userId) return;
-        const { data: vinculo } = await (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle();
-        if (!vinculo?.clinica_id) return;
-        const { data, error } = await (supabase as any).from("tutores").select("id,codigo_publico,nome,telefone,dados").eq("clinica_id", vinculo.clinica_id).order("nome");
-        if (error) throw error;
-        if (!ativo || !Array.isArray(data)) return;
-        const lista = data.map((tutor: any) => ({
-          id: String(tutor.id),
-          codigoPublico: tutor.codigo_publico || "",
-          nome: tutor.nome || "",
-          telefone: tutor.telefone || "",
-          cpf: tutor.dados?.cpfCnpj || tutor.dados?.cpf || "",
-        })).filter((tutor: TutorAgenda) => tutor.id && tutor.nome);
-        if (lista.length) setTutores(lista);
-      } catch (error) {
-        console.warn("Usando cadastro local de tutores na agenda:", error);
-      } finally {
-        if (ativo) setCarregandoTutores(false);
-      }
-    }
-    void carregarTutoresDaClinica();
-    return () => { ativo = false; };
-  }, []);
-
-  useEffect(() => {
-    let ativo = true;
-    async function carregarProfissionaisDaClinica() {
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData.user?.id;
-        if (!userId) return;
-        const { data: vinculoAtual } = await (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle();
-        if (!vinculoAtual?.clinica_id) return;
-        const { data: vinculos } = await (supabase as any).from("clinica_usuarios").select("user_id,papel").eq("clinica_id", vinculoAtual.clinica_id).eq("ativo", true);
-        if (!Array.isArray(vinculos) || !vinculos.length) return;
-        const ids = vinculos.map((item: any) => item.user_id).filter(Boolean);
-        const { data: perfis } = await (supabase as any).from("app_users").select("user_id,username,email").in("user_id", ids);
-        if (!ativo || !Array.isArray(perfis)) return;
-        const papeis = new Map(vinculos.map((item: any) => [item.user_id, item.papel]));
-        const lista = perfis.map((perfil: any) => ({ userId: perfil.user_id, nome: perfil.username ? `@${perfil.username}` : (perfil.email || "Profissional"), papel: papeis.get(perfil.user_id) as string | undefined })).sort((a: ProfissionalClinica, b: ProfissionalClinica) => a.nome.localeCompare(b.nome, "pt-BR"));
-        setProfissionais(lista);
-      } catch (error) {
-        console.warn("Não foi possível carregar a lista de profissionais; os nomes podem ser digitados manualmente.", error);
-      }
-    }
-    void carregarProfissionaisDaClinica();
-    return () => { ativo = false; };
-  }, []);
-
-  useEffect(() => {
-    if (bloqueio) return;
-    if (!evento.tutorId && value.tutor) {
-      const candidatos = tutores.filter((tutor) => normalizarTexto(tutor.nome) === normalizarTexto(value.tutor));
-      if (candidatos.length === 1) {
-        const tutor = candidatos[0];
-        setEvento((atual) => ({ ...atual, tutorId: tutor.id, tutor: tutor.nome }));
-        setBuscaTutor(`${tutor.codigoPublico ? `${tutor.codigoPublico} · ` : ""}${tutor.nome}`);
-        setMostrarResultados(false);
-      }
-    }
-  }, [bloqueio, evento.tutorId, tutores, value.tutor]);
-
-  useEffect(() => {
-    if (bloqueio || evento.animalId || !evento.tutorId || !value.paciente) return;
-    const candidatos = animais.filter((animal) => animal.tutorId === evento.tutorId && normalizarTexto(animal.nome) === normalizarTexto(value.paciente));
-    if (candidatos.length === 1) {
-      const animal = candidatos[0];
-      setEvento((atual) => ({ ...atual, animalId: animal.id, paciente: animal.nome, especie: especieAgenda(animal.especie) }));
-    }
-  }, [animais, bloqueio, evento.animalId, evento.tutorId, value.paciente]);
-
-  function alterarTipo(tipoOriginal: string) {
-    const tipo = normalizarTipo(tipoOriginal);
-    setEvento((atual) => ({
-      ...atual,
-      tipo,
-      ...(tipo === TIPO_BLOQUEIO
-        ? { paciente: "", tutor: "", tutorId: undefined, animalId: undefined, especie: "Outro" as Especie, origem: "Recepção" as Origem, pagamento: "Isento" as Pagamento, status: "Agendado" as StatusEvento, duracaoMin: intervaloGrade, cirurgiao: undefined, anestesista: undefined, equipeCirurgica: [] }
-        : { duracaoMin: undefined, ...(tipo === "Cirurgia" ? { equipeCirurgica: atual.equipeCirurgica || [] } : { cirurgiao: undefined, anestesista: undefined, equipeCirurgica: [] }) }),
-    }));
-    if (tipo === TIPO_BLOQUEIO) {
-      setBuscaTutor("");
-      setMostrarResultados(false);
-    }
-  }
-
-  function selecionarTutor(tutor: TutorAgenda) {
-    setEvento((atual) => ({ ...atual, tutorId: tutor.id, tutor: tutor.nome, animalId: undefined, paciente: "", especie: "Outro" }));
-    setBuscaTutor(`${tutor.codigoPublico ? `${tutor.codigoPublico} · ` : ""}${tutor.nome}`);
-    setMostrarResultados(false);
-  }
-
-  function limparTutor() {
-    setEvento((atual) => ({ ...atual, tutorId: undefined, tutor: "", animalId: undefined, paciente: "", especie: "Outro" }));
-    setBuscaTutor("");
-    setMostrarResultados(true);
-  }
-
-  function selecionarAnimal(animalId: string) {
-    const animal = animais.find((item) => item.id === animalId && item.tutorId === evento.tutorId);
-    if (!animal) {
-      setEvento((atual) => ({ ...atual, animalId: undefined, paciente: "", especie: "Outro" }));
-      return;
-    }
-    setEvento((atual) => ({ ...atual, animalId: animal.id, paciente: animal.nome, especie: especieAgenda(animal.especie) }));
-  }
-
-  function adicionarProfissional() {
-    setEvento((atual) => ({ ...atual, equipeCirurgica: [...(atual.equipeCirurgica || []), { funcao: "Auxiliar", nome: "" }] }));
-  }
-
-  function alterarProfissional(index: number, mudancas: Partial<ProfissionalCirurgia>) {
-    setEvento((atual) => ({ ...atual, equipeCirurgica: (atual.equipeCirurgica || []).map((item, i) => i === index ? { ...item, ...mudancas } : item) }));
-  }
-
-  function removerProfissional(index: number) {
-    setEvento((atual) => ({ ...atual, equipeCirurgica: (atual.equipeCirurgica || []).filter((_, i) => i !== index) }));
-  }
-
-  function salvar() {
-    if (!bloqueio && (!evento.tutorId || !evento.animalId)) {
-      toast.error(!evento.tutorId ? "Selecione um tutor cadastrado antes de continuar." : "Selecione um animal cadastrado deste tutor.");
-      return;
-    }
-    onSave(evento);
-  }
-
-  function liberar() {
-    const mensagem = bloqueio ? "Tem certeza que deseja remover este bloqueio e liberar o horário?" : "Tem certeza que deseja cancelar este agendamento e liberar o horário?";
-    if (window.confirm(mensagem)) onRelease(evento);
-  }
+  const resultadosTutor = useMemo(() => { const termo = normalizarTexto(buscaTutor); const soDigitos = buscaTutor.replace(/\D/g, ""); if (!termo && !soDigitos) return tutores.slice(0, 8); return tutores.filter((tutor) => { const texto = normalizarTexto(`${tutor.codigoPublico || ""} ${tutor.nome} ${tutor.telefone || ""} ${tutor.cpf || ""}`); const numeros = `${tutor.telefone || ""} ${tutor.cpf || ""}`.replace(/\D/g, ""); return texto.includes(termo) || Boolean(soDigitos && numeros.includes(soDigitos)); }).slice(0, 8); }, [buscaTutor, tutores]);
+  useEffect(() => { let ativo = true; async function carregarTutoresDaClinica() { setCarregandoTutores(true); try { const { data: authData } = await supabase.auth.getUser(); const userId = authData.user?.id; if (!userId) return; const { data: vinculo } = await (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle(); if (!vinculo?.clinica_id) return; const { data, error } = await (supabase as any).from("tutores").select("id,codigo_publico,nome,telefone,dados").eq("clinica_id", vinculo.clinica_id).order("nome"); if (error) throw error; if (!ativo || !Array.isArray(data)) return; const lista = data.map((tutor: any) => ({ id: String(tutor.id), codigoPublico: tutor.codigo_publico || "", nome: tutor.nome || "", telefone: tutor.telefone || "", cpf: tutor.dados?.cpfCnpj || tutor.dados?.cpf || "" })).filter((tutor: TutorAgenda) => tutor.id && tutor.nome); if (lista.length) setTutores(lista); } catch (error) { console.warn("Usando cadastro local de tutores na agenda:", error); } finally { if (ativo) setCarregandoTutores(false); } } void carregarTutoresDaClinica(); return () => { ativo = false; }; }, []);
+  useEffect(() => { let ativo = true; async function carregarProfissionaisDaClinica() { try { const { data: authData } = await supabase.auth.getUser(); const userId = authData.user?.id; if (!userId) return; const { data: vinculoAtual } = await (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle(); if (!vinculoAtual?.clinica_id) return; const { data: vinculos } = await (supabase as any).from("clinica_usuarios").select("user_id,papel").eq("clinica_id", vinculoAtual.clinica_id).eq("ativo", true); if (!Array.isArray(vinculos) || !vinculos.length) return; const ids = vinculos.map((item: any) => item.user_id).filter(Boolean); const { data: perfis } = await (supabase as any).from("app_users").select("user_id,username,email").in("user_id", ids); if (!ativo || !Array.isArray(perfis)) return; const papeis = new Map(vinculos.map((item: any) => [item.user_id, item.papel])); const lista = perfis.map((perfil: any) => ({ userId: perfil.user_id, nome: perfil.username ? `@${perfil.username}` : (perfil.email || "Profissional"), papel: papeis.get(perfil.user_id) as string | undefined })).sort((a: ProfissionalClinica, b: ProfissionalClinica) => a.nome.localeCompare(b.nome, "pt-BR")); setProfissionais(lista); } catch (error) { console.warn("Não foi possível carregar a lista de profissionais; os nomes podem ser digitados manualmente.", error); } } void carregarProfissionaisDaClinica(); return () => { ativo = false; }; }, []);
+  useEffect(() => { if (bloqueio) return; if (!evento.tutorId && value.tutor) { const candidatos = tutores.filter((tutor) => normalizarTexto(tutor.nome) === normalizarTexto(value.tutor)); if (candidatos.length === 1) { const tutor = candidatos[0]; setEvento((atual) => ({ ...atual, tutorId: tutor.id, tutor: tutor.nome })); setBuscaTutor(`${tutor.codigoPublico ? `${tutor.codigoPublico} · ` : ""}${tutor.nome}`); setMostrarResultados(false); } } }, [bloqueio, evento.tutorId, tutores, value.tutor]);
+  useEffect(() => { if (bloqueio || evento.animalId || !evento.tutorId || !value.paciente) return; const candidatos = animais.filter((animal) => animal.tutorId === evento.tutorId && normalizarTexto(animal.nome) === normalizarTexto(value.paciente)); if (candidatos.length === 1) { const animal = candidatos[0]; setEvento((atual) => ({ ...atual, animalId: animal.id, paciente: animal.nome, especie: especieAgenda(animal.especie) })); } }, [animais, bloqueio, evento.animalId, evento.tutorId, value.paciente]);
+  function alterarTipo(tipoOriginal: string) { const tipo = normalizarTipo(tipoOriginal); setEvento((atual) => ({ ...atual, tipo, ...(tipo === TIPO_BLOQUEIO ? { paciente: "", tutor: "", tutorId: undefined, animalId: undefined, especie: "Outro" as Especie, origem: "Recepção" as Origem, pagamento: "Isento" as Pagamento, status: "Agendado" as StatusEvento, duracaoMin: intervaloGrade, cirurgiao: undefined, anestesista: undefined, equipeCirurgica: [] } : { duracaoMin: undefined, ...(tipo === "Cirurgia" ? { equipeCirurgica: atual.equipeCirurgica || [] } : { cirurgiao: undefined, anestesista: undefined, equipeCirurgica: [] }) }), })); if (tipo === TIPO_BLOQUEIO) { setBuscaTutor(""); setMostrarResultados(false); } }
+  function selecionarTutor(tutor: TutorAgenda) { setEvento((atual) => ({ ...atual, tutorId: tutor.id, tutor: tutor.nome, animalId: undefined, paciente: "", especie: "Outro" })); setBuscaTutor(`${tutor.codigoPublico ? `${tutor.codigoPublico} · ` : ""}${tutor.nome}`); setMostrarResultados(false); }
+  function limparTutor() { setEvento((atual) => ({ ...atual, tutorId: undefined, tutor: "", animalId: undefined, paciente: "", especie: "Outro" })); setBuscaTutor(""); setMostrarResultados(true); }
+  function selecionarAnimal(animalId: string) { const animal = animais.find((item) => item.id === animalId && item.tutorId === evento.tutorId); if (!animal) { setEvento((atual) => ({ ...atual, animalId: undefined, paciente: "", especie: "Outro" })); return; } setEvento((atual) => ({ ...atual, animalId: animal.id, paciente: animal.nome, especie: especieAgenda(animal.especie) })); }
+  function adicionarProfissional() { setEvento((atual) => ({ ...atual, equipeCirurgica: [...(atual.equipeCirurgica || []), { funcao: "Auxiliar", nome: "" }] })); }
+  function alterarProfissional(index: number, mudancas: Partial<ProfissionalCirurgia>) { setEvento((atual) => ({ ...atual, equipeCirurgica: (atual.equipeCirurgica || []).map((item, i) => i === index ? { ...item, ...mudancas } : item) })); }
+  function removerProfissional(index: number) { setEvento((atual) => ({ ...atual, equipeCirurgica: (atual.equipeCirurgica || []).filter((_, i) => i !== index) })); }
+  function salvar() { if (!bloqueio && (!evento.tutorId || !evento.animalId)) { toast.error(!evento.tutorId ? "Selecione um tutor cadastrado antes de continuar." : "Selecione um animal cadastrado deste tutor."); return; } onSave(evento); }
+  function liberar() { const mensagem = bloqueio ? "Tem certeza que deseja remover este bloqueio e liberar o horário?" : "Tem certeza que deseja cancelar este agendamento e liberar o horário?"; if (window.confirm(mensagem)) onRelease(evento); }
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h3 className="text-xl font-bold">{bloqueio ? "Editar bloqueio" : "Editar agendamento"}</h3><button onClick={onClose}><X /></button></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Horário<select value={evento.hora} onChange={(e) => setEvento({ ...evento, hora: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{horariosComAtual.map((hora) => { const ocupado = hora !== value.hora && conflita(hora, duracaoAtual, evento.id, evento.status); return <option key={hora} value={hora} disabled={ocupado}>{hora}{ocupado ? " — ocupado" : ""}</option>; })}</select><span className="mt-1 block text-[11px] font-medium text-muted-foreground">{agenda.inicio}–{agenda.fim} · grade de {intervaloGrade} min.</span></label><label className="text-sm font-semibold">Tipo<select value={evento.tipo} onChange={(e) => alterarTipo(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{TIPOS_SELETOR.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}</select><span className="mt-1 block text-[11px] font-semibold text-primary">Duração: {formatarDuracao(duracaoAtual)}</span></label>{bloqueio ? <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700"><div className="flex items-center gap-2 font-bold"><Lock size={16} /> Horário bloqueado</div><p className="mt-1 text-xs text-slate-500">Escolha por quanto tempo este bloqueio ocupa a agenda.</p><label className="mt-3 block text-sm font-semibold">Tempo do bloqueio<input type="number" min={5} max={720} step={5} value={evento.duracaoMin || intervaloGrade} onChange={(e) => setEvento({ ...evento, duracaoMin: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal" /></label></div> : <><div className="relative sm:col-span-2"><label className="text-sm font-semibold">Tutor *<div className="relative mt-1"><Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={buscaTutor} onFocus={() => setMostrarResultados(true)} onChange={(e) => { setBuscaTutor(e.target.value); setMostrarResultados(true); if (evento.tutorId) setEvento((atual) => ({ ...atual, tutorId: undefined, tutor: "", animalId: undefined, paciente: "", especie: "Outro" })); }} placeholder="Busque por ID, nome, CPF ou telefone" className="min-h-11 w-full rounded-xl border pl-10 pr-10 font-normal"/>{evento.tutorId && <button type="button" onClick={limparTutor} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-label="Trocar tutor"><X size={16}/></button>}</div></label>{mostrarResultados && !evento.tutorId && <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border bg-white p-1 shadow-xl">{carregandoTutores && !tutores.length ? <div className="p-3 text-sm text-muted-foreground">Carregando tutores...</div> : resultadosTutor.length ? resultadosTutor.map((tutor) => <button key={tutor.id} type="button" onClick={() => selecionarTutor(tutor)} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50"><div className="flex flex-wrap items-center gap-1.5 text-sm"><strong className="text-primary">{tutor.codigoPublico || "Sem ID"}</strong><span>·</span><strong>{tutor.nome}</strong></div><div className="mt-0.5 text-[11px] text-muted-foreground">{tutor.telefone || "Sem telefone"}{tutor.cpf ? ` · CPF ${tutor.cpf}` : ""}</div></button>) : <div className="p-3 text-sm text-muted-foreground">Nenhum tutor encontrado nesta clínica.</div>}</div>}</div>{tutorSelecionado && <div className="sm:col-span-2 rounded-xl border bg-slate-50 px-3 py-2"><div className="text-[11px] font-semibold text-muted-foreground">Tutor selecionado</div><div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm"><strong className="text-primary">{tutorSelecionado.codigoPublico || "Sem ID"}</strong><span>·</span><strong>{tutorSelecionado.nome}</strong>{tutorSelecionado.telefone && <><span>·</span><span>{tutorSelecionado.telefone}</span></>}</div></div>}<label className="text-sm font-semibold">Animal *<select value={evento.animalId || ""} disabled={!evento.tutorId} onChange={(e) => selecionarAnimal(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal disabled:bg-slate-100 disabled:text-slate-400"><option value="">{evento.tutorId ? (animaisDoTutor.length ? "Selecione o animal" : "Nenhum animal cadastrado") : "Selecione um tutor primeiro"}</option>{animaisDoTutor.map((animal) => <option key={animal.id} value={animal.id}>{emojiEspecie(especieAgenda(animal.especie))} {animal.nome}{animal.especie ? ` · ${animal.especie}` : ""}</option>)}</select>{evento.tutorId && !animaisDoTutor.length && <a href={`/novo-animal?tutorId=${encodeURIComponent(evento.tutorId)}`} className="mt-1 inline-block text-[11px] font-bold text-primary hover:underline">+ Cadastrar animal para este tutor</a>}</label><label className="text-sm font-semibold">Quem marcou<select value={evento.origem} onChange={(e) => setEvento({ ...evento, origem: e.target.value as Origem })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option>Tutor no app</option><option>Recepção</option></select></label>{cirurgia && <div className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50/50 p-3"><div><div className="text-sm font-bold text-rose-900">Equipe cirúrgica</div><p className="mt-0.5 text-[11px] text-rose-700">Selecione um profissional cadastrado ou digite o nome.</p></div><datalist id="profissionais-cirurgia">{profissionais.map((profissional) => <option key={profissional.userId} value={profissional.nome}>{profissional.papel ? profissional.papel.replace(/_/g, " ") : "Profissional"}</option>)}</datalist><div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Cirurgião<input list="profissionais-cirurgia" value={evento.cirurgiao || ""} onChange={(e) => setEvento({ ...evento, cirurgiao: e.target.value })} placeholder="Selecione ou digite" className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal" /></label><label className="text-sm font-semibold">Anestesista<input list="profissionais-cirurgia" value={evento.anestesista || ""} onChange={(e) => setEvento({ ...evento, anestesista: e.target.value })} placeholder="Selecione ou digite" className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal" /></label></div>{(evento.equipeCirurgica || []).map((profissional, index) => <div key={index} className="mt-3 grid gap-2 sm:grid-cols-[0.9fr_1.4fr_auto] sm:items-end"><label className="text-xs font-semibold">Função<select value={profissional.funcao} onChange={(e) => alterarProfissional(index, { funcao: e.target.value })} className="mt-1 min-h-10 w-full rounded-xl border bg-white px-2.5 text-sm font-normal">{FUNCOES_CIRURGIA.map((funcao) => <option key={funcao}>{funcao}</option>)}</select></label><label className="text-xs font-semibold">Profissional<input list="profissionais-cirurgia" value={profissional.nome} onChange={(e) => alterarProfissional(index, { nome: e.target.value })} placeholder="Selecione ou digite" className="mt-1 min-h-10 w-full rounded-xl border bg-white px-2.5 text-sm font-normal" /></label><button type="button" onClick={() => removerProfissional(index)} aria-label="Remover profissional" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-3 text-rose-700 hover:bg-rose-100"><X size={16}/></button></div>)}<button type="button" onClick={adicionarProfissional} className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-800 hover:bg-rose-100"><Plus size={14}/> Adicionar profissional</button></div>}<label className="text-sm font-semibold">Pagamento<select value={evento.pagamento} onChange={(e) => setEvento({ ...evento, pagamento: e.target.value as Pagamento })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option>Pago</option><option value="Pendente">Pagamento pendente</option><option value="Presencial">Pagamento presencial</option><option>Isento</option></select></label><label className="text-sm font-semibold">Status<select value={evento.status} onChange={(e) => setEvento({ ...evento, status: e.target.value as StatusEvento })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option>Agendado</option><option>Em atendimento</option><option>Finalizado</option><option>Cancelado</option></select></label></>}</div><div className="mt-5 flex flex-wrap justify-end gap-2">{!bloqueio && <button onClick={onFinish} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold text-emerald-700"><CheckCircle2 size={16} /> Finalizar</button>}<button onClick={salvar} className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground">{bloqueio ? "Salvar bloqueio" : "Salvar alterações"}</button></div>{existente && <button type="button" onClick={liberar} className="mt-3 w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 font-semibold text-rose-700 hover:bg-rose-100">Liberar agenda</button>}<p className="mt-3 text-[11px] text-muted-foreground">Agenda: {agenda.nome} · para atendimento, selecione primeiro o tutor cadastrado e depois um animal dele.</p></div></div>;
 }
