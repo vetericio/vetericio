@@ -468,6 +468,11 @@ export function Receituario() {
             />
           </label>
         </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label><span className={rotulo}>CPF/CNPJ do tutor</span><input value={cpfTutor} onChange={(e) => setCpfTutor(e.target.value)} className={campo} placeholder="Documento" /></label>
+          <label><span className={rotulo}>Idade do paciente</span><input value={idade} onChange={(e) => setIdade(e.target.value)} className={campo} placeholder="Ex.: 5 anos" /></label>
+          <label><span className={rotulo}>Endereço do tutor</span><input value={enderecoTutor} onChange={(e) => setEnderecoTutor(e.target.value)} className={campo} placeholder="Endereço completo" /></label>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
