@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Lock,
   Pencil,
   Plus,
   RotateCcw,
@@ -13,11 +14,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AgendaMode = "recepcao" | "veterinario";
-type Tom = "azul" | "verde" | "amarelo" | "rosa" | "roxo";
+type Tom = "azul" | "verde" | "amarelo" | "rosa" | "roxo" | "cinza";
 type Origem = "Tutor no app" | "Recepção";
 type Pagamento = "Pago" | "Pendente" | "Presencial" | "Isento";
 type StatusEvento = "Agendado" | "Em atendimento" | "Finalizado" | "Cancelado";
 type Especie = "Cão" | "Gato" | "Ave" | "Hamster" | "Cobra" | "Bovino" | "Equino" | "Outro";
+
+const TIPO_BLOQUEIO = "Bloqueio de agenda";
 
 type Evento = {
   id: string;
@@ -58,8 +61,6 @@ const BASE: ColunaAgenda[] = [
     eventos: [
       { id: "e1", hora: "08:00", tipo: "Consulta", paciente: "Max", tutor: "Carlos Souza", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "azul" },
       { id: "e2", hora: "09:30", tipo: "Vacina", paciente: "Luna", tutor: "Renata Lima", especie: "Gato", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "verde" },
-      { id: "e3", hora: "11:00", tipo: "Retorno", paciente: "Thor", tutor: "Marcos Silva", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Em atendimento", tom: "amarelo" },
-      { id: "e4", hora: "14:00", tipo: "Consulta", paciente: "Maya", tutor: "Fernanda Alves", especie: "Gato", origem: "Recepção", pagamento: "Pendente", status: "Agendado", tom: "azul" },
     ],
   },
   {
@@ -69,9 +70,7 @@ const BASE: ColunaAgenda[] = [
     inicio: "08:00",
     fim: "17:00",
     eventos: [
-      { id: "e5", hora: "08:30", tipo: "Banho", paciente: "Mel", tutor: "Paula Costa", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "roxo" },
-      { id: "e6", hora: "10:00", tipo: "Tosa", paciente: "Bob", tutor: "João Freitas", especie: "Cão", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "rosa" },
-      { id: "e7", hora: "13:00", tipo: "Consulta", paciente: "Nina", tutor: "Lívia Rocha", especie: "Gato", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "azul" },
+      { id: "e3", hora: "08:30", tipo: "Banho", paciente: "Mel", tutor: "Paula Costa", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "roxo" },
     ],
   },
   {
@@ -81,21 +80,7 @@ const BASE: ColunaAgenda[] = [
     inicio: "09:00",
     fim: "15:00",
     eventos: [
-      { id: "e8", hora: "09:00", tipo: "Consulta", paciente: "Bidu", tutor: "André Martins", especie: "Ave", origem: "Recepção", pagamento: "Presencial", status: "Finalizado", tom: "azul" },
-      { id: "e9", hora: "10:30", tipo: "Retorno", paciente: "Maggie", tutor: "Sofia Mendes", especie: "Hamster", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "amarelo" },
-      { id: "e10", hora: "14:00", tipo: "Vacina", paciente: "Zoe", tutor: "Pedro Lima", especie: "Cão", origem: "Recepção", pagamento: "Pendente", status: "Agendado", tom: "verde" },
-    ],
-  },
-  {
-    id: "agenda-4",
-    nome: "Agenda 4",
-    responsavel: "Banho e tosa",
-    inicio: "09:00",
-    fim: "18:00",
-    eventos: [
-      { id: "e11", hora: "09:00", tipo: "Banho", paciente: "Simba", tutor: "Marina Prado", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "roxo" },
-      { id: "e12", hora: "11:00", tipo: "Tosa", paciente: "Nina", tutor: "Clara Nunes", especie: "Gato", origem: "Recepção", pagamento: "Presencial", status: "Agendado", tom: "rosa" },
-      { id: "e13", hora: "15:00", tipo: "Banho", paciente: "Fred", tutor: "Lucas Dias", especie: "Cão", origem: "Tutor no app", pagamento: "Pago", status: "Agendado", tom: "roxo" },
+      { id: "e4", hora: "09:00", tipo: "Consulta", paciente: "Bidu", tutor: "André Martins", especie: "Ave", origem: "Recepção", pagamento: "Presencial", status: "Finalizado", tom: "azul" },
     ],
   },
 ];
@@ -106,6 +91,7 @@ const TOM: Record<Tom, string> = {
   amarelo: "bg-amber-50 text-amber-800 border-amber-100",
   rosa: "bg-rose-50 text-rose-800 border-rose-100",
   roxo: "bg-violet-50 text-violet-800 border-violet-100",
+  cinza: "bg-slate-100 text-slate-800 border-slate-200",
 };
 
 const TIPOS: Record<string, Tom> = {
@@ -116,9 +102,14 @@ const TIPOS: Record<string, Tom> = {
   Banho: "roxo",
   Tosa: "rosa",
   Procedimento: "verde",
+  [TIPO_BLOQUEIO]: "cinza",
 };
 
 const ESPECIES: Especie[] = ["Cão", "Gato", "Ave", "Hamster", "Cobra", "Bovino", "Equino", "Outro"];
+
+function ehBloqueio(evento: Pick<Evento, "tipo">) {
+  return evento.tipo === TIPO_BLOQUEIO;
+}
 
 function emojiEspecie(especie?: string) {
   const valor = (especie || "Outro").toLowerCase();
@@ -133,7 +124,12 @@ function emojiEspecie(especie?: string) {
 }
 
 function formatarData(data: Date) {
-  return data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
+  return data.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).toUpperCase();
 }
 
 function formatarHora(hora: string) {
@@ -177,7 +173,11 @@ function normalizarAgendas(agendas: ColunaAgenda[]) {
     ...agenda,
     inicio: agenda.inicio || "08:00",
     fim: agenda.fim || "17:00",
-    eventos: ordenarEventos((agenda.eventos || []).map((evento) => ({ ...evento, especie: evento.especie || "Outro" }))),
+    eventos: ordenarEventos((agenda.eventos || []).map((evento) => ({
+      ...evento,
+      especie: evento.especie || "Outro",
+      tom: evento.tipo === TIPO_BLOQUEIO ? "cinza" : evento.tom || TIPOS[evento.tipo] || "azul",
+    }))),
   }));
 }
 
@@ -246,8 +246,8 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
           .maybeSingle();
         const valor = Number(clinica?.duracao_padrao_atendimento_min);
         if (ativo && Number.isFinite(valor) && valor >= 5 && valor <= 720) setDuracaoPadrao(valor);
-      } catch (e) {
-        console.error("Não foi possível carregar a duração padrão da clínica:", e);
+      } catch (error) {
+        console.error("Não foi possível carregar a duração padrão da clínica:", error);
       }
     }
     void carregarDuracaoDaClinica();
@@ -284,10 +284,9 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     if (agendas.length >= 10) return;
     if (!validarHorarioAgenda(novaAgenda.inicio, novaAgenda.fim)) return;
     const id = `agenda-${Date.now()}`;
-    const nome = novaAgenda.nome.trim() || `Agenda ${agendas.length + 1}`;
     setAgendas((lista) => [...lista, {
       id,
-      nome,
+      nome: novaAgenda.nome.trim() || `Agenda ${agendas.length + 1}`,
       responsavel: novaAgenda.responsavel.trim() || "Sem responsável",
       inicio: novaAgenda.inicio,
       fim: novaAgenda.fim,
@@ -340,9 +339,23 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     setEventoAberto({ agendaId, evento: novoEvento(horaLivre) });
   }
 
-  function salvarEvento(agendaId: string, evento: Evento) {
+  function salvarEvento(agendaId: string, eventoOriginal: Evento) {
     const agenda = agendas.find((item) => item.id === agendaId);
     if (!agenda) return;
+
+    const evento = ehBloqueio(eventoOriginal)
+      ? {
+          ...eventoOriginal,
+          paciente: "",
+          tutor: "",
+          especie: "Outro" as Especie,
+          origem: "Recepção" as Origem,
+          pagamento: "Isento" as Pagamento,
+          status: "Agendado" as StatusEvento,
+          tom: "cinza" as Tom,
+        }
+      : eventoOriginal;
+
     const inicioEvento = horaEmMinutos(evento.hora);
     const inicioAgenda = horaEmMinutos(agenda.inicio);
     const fimAgenda = horaEmMinutos(agenda.fim);
@@ -354,10 +367,13 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
       toast.error("Agenda ocupada neste horário. Escolha outro horário disponível.");
       return;
     }
+
     setAgendas((lista) => lista.map((item) => {
       if (item.id !== agendaId) return item;
       const existe = item.eventos.some((e) => e.id === evento.id);
-      const eventos = existe ? item.eventos.map((e) => e.id === evento.id ? evento : e) : [...item.eventos, evento];
+      const eventos = existe
+        ? item.eventos.map((e) => e.id === evento.id ? evento : e)
+        : [...item.eventos, evento];
       return { ...item, eventos: ordenarEventos(eventos) };
     }));
     setEventoAberto(null);
@@ -453,6 +469,24 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
                     );
                   }
 
+                  if (ehBloqueio(evento)) {
+                    return (
+                      <button
+                        key={evento.id}
+                        type="button"
+                        onClick={() => setEventoAberto({ agendaId: agenda.id, evento })}
+                        className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-left"
+                      >
+                        <strong className="w-11 shrink-0 text-[12px] font-black text-slate-900">{formatarHora(evento.hora)}</strong>
+                        <Lock size={13} className="shrink-0 text-slate-600" />
+                        <div className="min-w-0">
+                          <div className="truncate text-[11px] font-bold text-slate-800">Bloqueio de agenda</div>
+                          <div className="text-[9px] font-semibold text-slate-500">Horário bloqueado</div>
+                        </div>
+                      </button>
+                    );
+                  }
+
                   const finalizado = evento.status === "Finalizado";
                   return (
                     <div key={evento.id} className={`rounded-lg border px-2.5 py-1.5 ${finalizado ? "border-slate-200 bg-slate-50 text-slate-700" : TOM[evento.tom]}`}>
@@ -541,7 +575,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
         </div>
       )}
 
-      {animalAberto && (
+      {animalAberto && !ehBloqueio(animalAberto) && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/25" onClick={() => setAnimalAberto(null)}>
           <aside onClick={(e) => e.stopPropagation()} className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between">
@@ -630,16 +664,39 @@ function EditorEvento({
   conflita: (hora: string, eventoId?: string, status?: StatusEvento) => boolean;
 }) {
   const [evento, setEvento] = useState<Evento>({ ...value, especie: value.especie || "Outro" });
+  const bloqueio = ehBloqueio(evento);
   const horarios = useMemo(() => gerarHorariosAgenda(agenda, duracaoPadrao), [agenda, duracaoPadrao]);
   const horariosComAtual = useMemo(() => {
     if (horarios.includes(evento.hora)) return horarios;
     return [...horarios, evento.hora].sort((a, b) => horaEmMinutos(a) - horaEmMinutos(b));
   }, [horarios, evento.hora]);
 
+  function alterarTipo(tipo: string) {
+    setEvento((atual) => ({
+      ...atual,
+      tipo,
+      tom: TIPOS[tipo] || "azul",
+      ...(tipo === TIPO_BLOQUEIO
+        ? {
+            paciente: "",
+            tutor: "",
+            especie: "Outro" as Especie,
+            origem: "Recepção" as Origem,
+            pagamento: "Isento" as Pagamento,
+            status: "Agendado" as StatusEvento,
+          }
+        : {}),
+    }));
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-        <div className="flex items-center justify-between"><h3 className="text-xl font-bold">Editar agendamento</h3><button onClick={onClose}><X /></button></div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold">{bloqueio ? "Editar bloqueio" : "Editar agendamento"}</h3>
+          <button onClick={onClose}><X /></button>
+        </div>
+
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-sm font-semibold">Horário
             <select value={evento.hora} onChange={(e) => setEvento({ ...evento, hora: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
@@ -650,43 +707,61 @@ function EditorEvento({
             </select>
             <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{agenda.inicio}–{agenda.fim} · intervalos de {duracaoPadrao} min.</span>
           </label>
+
           <label className="text-sm font-semibold">Tipo
-            <select value={evento.tipo} onChange={(e) => setEvento({ ...evento, tipo: e.target.value, tom: TIPOS[e.target.value] || "azul" })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
-              {Object.keys(TIPOS).map((tipo) => <option key={tipo}>{tipo}</option>)}
+            <select value={evento.tipo} onChange={(e) => alterarTipo(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+              {Object.keys(TIPOS).map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
             </select>
           </label>
-          <label className="text-sm font-semibold">Animal
-            <input value={evento.paciente} onChange={(e) => setEvento({ ...evento, paciente: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
-          </label>
-          <label className="text-sm font-semibold">Tutor
-            <input value={evento.tutor} onChange={(e) => setEvento({ ...evento, tutor: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
-          </label>
-          <label className="text-sm font-semibold">Espécie
-            <select value={evento.especie || "Outro"} onChange={(e) => setEvento({ ...evento, especie: e.target.value as Especie })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
-              {ESPECIES.map((especie) => <option key={especie} value={especie}>{emojiEspecie(especie)} {especie}</option>)}
-            </select>
-          </label>
-          <label className="text-sm font-semibold">Quem marcou
-            <select value={evento.origem} onChange={(e) => setEvento({ ...evento, origem: e.target.value as Origem })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
-              <option>Tutor no app</option><option>Recepção</option>
-            </select>
-          </label>
-          <label className="text-sm font-semibold">Pagamento
-            <select value={evento.pagamento} onChange={(e) => setEvento({ ...evento, pagamento: e.target.value as Pagamento })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
-              <option>Pago</option><option>Pendente</option><option>Presencial</option><option>Isento</option>
-            </select>
-          </label>
-          <label className="text-sm font-semibold">Status
-            <select value={evento.status} onChange={(e) => setEvento({ ...evento, status: e.target.value as StatusEvento })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
-              <option>Agendado</option><option>Em atendimento</option><option>Finalizado</option><option>Cancelado</option>
-            </select>
-          </label>
+
+          {bloqueio ? (
+            <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <div className="flex items-center gap-2 font-bold"><Lock size={16} /> Horário bloqueado</div>
+              <p className="mt-1 text-xs text-slate-500">Este bloqueio ocupa 1 intervalo de {duracaoPadrao} minutos. Nenhum dado de paciente é necessário.</p>
+            </div>
+          ) : (
+            <>
+              <label className="text-sm font-semibold">Animal
+                <input value={evento.paciente} onChange={(e) => setEvento({ ...evento, paciente: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+              </label>
+              <label className="text-sm font-semibold">Tutor
+                <input value={evento.tutor} onChange={(e) => setEvento({ ...evento, tutor: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+              </label>
+              <label className="text-sm font-semibold">Espécie
+                <select value={evento.especie || "Outro"} onChange={(e) => setEvento({ ...evento, especie: e.target.value as Especie })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                  {ESPECIES.map((especie) => <option key={especie} value={especie}>{emojiEspecie(especie)} {especie}</option>)}
+                </select>
+              </label>
+              <label className="text-sm font-semibold">Quem marcou
+                <select value={evento.origem} onChange={(e) => setEvento({ ...evento, origem: e.target.value as Origem })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                  <option>Tutor no app</option><option>Recepção</option>
+                </select>
+              </label>
+              <label className="text-sm font-semibold">Pagamento
+                <select value={evento.pagamento} onChange={(e) => setEvento({ ...evento, pagamento: e.target.value as Pagamento })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                  <option>Pago</option><option>Pendente</option><option>Presencial</option><option>Isento</option>
+                </select>
+              </label>
+              <label className="text-sm font-semibold">Status
+                <select value={evento.status} onChange={(e) => setEvento({ ...evento, status: e.target.value as StatusEvento })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                  <option>Agendado</option><option>Em atendimento</option><option>Finalizado</option><option>Cancelado</option>
+                </select>
+              </label>
+            </>
+          )}
         </div>
+
         <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button onClick={onFinish} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold text-emerald-700"><CheckCircle2 size={16} /> Finalizar</button>
-          <button onClick={() => onSave(evento)} className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground">Salvar alterações</button>
+          {!bloqueio && (
+            <button onClick={onFinish} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold text-emerald-700">
+              <CheckCircle2 size={16} /> Finalizar
+            </button>
+          )}
+          <button onClick={() => onSave(evento)} className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground">
+            {bloqueio ? "Salvar bloqueio" : "Salvar alterações"}
+          </button>
         </div>
-        <p className="mt-3 text-[11px] text-muted-foreground">Agenda: {agenda.nome} · horários ocupados ficam indisponíveis.</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">Agenda: {agenda.nome} · horários ocupados e bloqueados ficam indisponíveis.</p>
       </div>
     </div>
   );
