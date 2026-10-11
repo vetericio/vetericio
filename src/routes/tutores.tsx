@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Search, UserPlus, PawPrint, Users } from "lucide-react";
+import { ArrowLeft, PawPrint, Search, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -190,67 +190,50 @@ function Tutores() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6">
         <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowLeft size={18} /> Voltar para Recepção
         </Link>
-        <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-          <Users size={18} /> Tutores
+        <div className="mt-4 flex items-center gap-2">
+          <Users size={23} className="text-primary" />
+          <h1 className="text-3xl font-black tracking-tight">Tutores</h1>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
         <button
           type="button"
           onClick={() => setModo("procurar")}
-          className={`rounded-2xl border-2 p-5 text-left shadow-sm transition ${modo === "procurar" ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}
+          className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition sm:flex-none ${modo === "procurar" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"}`}
         >
-          <div className="flex items-center gap-3">
-            <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${modo === "procurar" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}`}>
-              <Search size={22} />
-            </span>
-            <div>
-              <h1 className="text-xl font-black">Procurar tutor</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Localize um tutor já cadastrado na clínica.</p>
-            </div>
-          </div>
+          <Search size={17} /> Buscar tutor
         </button>
-
         <button
           type="button"
           onClick={() => setModo("novo")}
-          className={`rounded-2xl border-2 p-5 text-left shadow-sm transition ${modo === "novo" ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}
+          className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition sm:flex-none ${modo === "novo" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"}`}
         >
-          <div className="flex items-center gap-3">
-            <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${modo === "novo" ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}`}>
-              <UserPlus size={22} />
-            </span>
-            <div>
-              <h1 className="text-xl font-black">Inserir novo tutor</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Cadastre um novo responsável na base da clínica.</p>
-            </div>
-          </div>
+          <UserPlus size={17} /> Novo tutor
         </button>
       </div>
 
       {modo === "procurar" ? (
-        <section className="mt-5 rounded-2xl border bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-lg font-black">
-            <Search size={20} className="text-primary" /> Procurar tutor
+        <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+          <div className="relative">
+            <Search size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome, telefone, CPF/CNPJ ou e-mail"
+              className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+              autoFocus
+            />
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Pesquise por nome, telefone, CPF/CNPJ ou e-mail.</p>
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Digite para procurar..."
-            className={`${campo} mt-4`}
-            autoFocus
-          />
 
           {busca.trim() && (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               {resultados.length === 0 ? (
-                <div className="md:col-span-2 rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground">Nenhum tutor encontrado.</div>
+                <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground">Nenhum tutor encontrado.</div>
               ) : (
                 resultados.map((t) => <TutorCard key={t.id} tutor={t} />)
               )}
@@ -259,11 +242,6 @@ function Tutores() {
         </section>
       ) : (
         <section className="mt-5 overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <div className="flex items-center gap-2 border-b bg-primary/10 px-5 py-3 text-primary">
-            <UserPlus size={19} />
-            <h2 className="text-lg font-black">Inserir novo tutor</h2>
-          </div>
-
           <div className="space-y-5 p-4 sm:p-5">
             <Bloco titulo="Dados principais">
               <label className="sm:col-span-2 text-sm font-semibold">Nome completo *<input value={form.nome} onChange={(e) => set("nome", e.target.value)} className={campo} /></label>
@@ -316,24 +294,26 @@ function Tutores() {
 
             <div>
               <label className="text-sm font-semibold">Observações<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} placeholder="Preferências, restrições, informações importantes para atendimento..." className={`${campo} py-3`} /></label>
-              <button type="button" onClick={cadastrar} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Cadastrar tutor</button>
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => setModo("procurar")} className="rounded-xl border px-4 py-3 font-semibold">Cancelar</button>
+                <button type="button" onClick={cadastrar} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground">Salvar tutor</button>
+              </div>
             </div>
           </div>
         </section>
       )}
 
-      <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary" /> Todos os tutores cadastrados</div>
-            <p className="mt-1 text-sm text-muted-foreground">Base de tutores desta clínica · {tutores.length} {tutores.length === 1 ? "cadastro" : "cadastros"}</p>
-          </div>
-          <button type="button" onClick={() => { setModo("novo"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><UserPlus size={16} /> Inserir novo tutor</button>
+      <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary" /> Tutores cadastrados <span className="text-sm font-bold text-muted-foreground">({tutores.length})</span></h2>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {tutores.length === 0 ? (
-            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-6 text-center text-sm text-muted-foreground">Nenhum tutor cadastrado nesta clínica.</div>
+            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-7 text-center">
+              <p className="text-sm font-medium text-muted-foreground">Nenhum tutor cadastrado ainda.</p>
+              <button type="button" onClick={() => setModo("novo")} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><UserPlus size={16} /> Cadastrar tutor</button>
+            </div>
           ) : (
             tutores.map((t) => <TutorCard key={t.id} tutor={t} />)
           )}
