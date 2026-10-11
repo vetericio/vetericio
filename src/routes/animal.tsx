@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, BedDouble, CalendarDays, ClipboardList, FileText, FlaskConical, Image, PawPrint, Pencil, Plus, ReceiptText, Scale, Scissors, Stethoscope, Syringe, UserRound, X } from "lucide-react";
+import { ArrowLeft, BedDouble, CalendarDays, ClipboardList, FileText, FlaskConical, Image, Pencil, Plus, ReceiptText, Scale, Scissors, Stethoscope, Syringe, UserRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
@@ -173,10 +173,6 @@ function AnimalFicha() {
       <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="sticky top-4 overflow-hidden rounded-2xl border bg-white shadow-sm">
-            <div className="flex items-center gap-3 border-b px-4 py-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><PawPrint size={21}/></div>
-              <div className="text-lg font-black">Animais</div>
-            </div>
             <nav className="p-2">
               {ABAS.map((nome) => {
                 const Icon = iconFor(nome);
