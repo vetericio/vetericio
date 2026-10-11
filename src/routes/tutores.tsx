@@ -44,387 +44,63 @@ type Tutor = {
 };
 
 type Modo = "procurar" | "novo";
-
 const CHAVE = "oricse-tutores-v1";
 const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 const vazio: Omit<Tutor, "id" | "criadoEm"> = {
-  nome: "",
-  nomeSocial: "",
-  pronome: "",
-  telefone: "",
-  outroTelefone: "",
-  email: "",
-  tipoPessoa: "Pessoa física",
-  cpfCnpj: "",
-  rg: "",
-  tipoDocumento: "",
-  nascimento: "",
-  sexo: "",
-  profissao: "",
-  origem: "",
-  contatoPreferencial: "WhatsApp",
-  contatoEmergenciaNome: "",
-  contatoEmergenciaTelefone: "",
-  autorizaLembretes: true,
-  autorizaWhatsapp: true,
-  autorizaEmail: false,
-  autorizaMarketing: false,
-  responsavelFinanceiroNome: "",
-  responsavelFinanceiroDocumento: "",
-  veterinarioPreferencial: "",
-  horarioPreferencial: "",
-  cep: "",
-  estado: "",
-  cidade: "",
-  bairro: "",
-  endereco: "",
-  numero: "",
-  complemento: "",
-  observacoes: "",
+  nome: "", nomeSocial: "", pronome: "", telefone: "", outroTelefone: "", email: "", tipoPessoa: "Pessoa física", cpfCnpj: "", rg: "", tipoDocumento: "", nascimento: "", sexo: "", profissao: "", origem: "", contatoPreferencial: "WhatsApp", contatoEmergenciaNome: "", contatoEmergenciaTelefone: "", autorizaLembretes: true, autorizaWhatsapp: true, autorizaEmail: false, autorizaMarketing: false, responsavelFinanceiroNome: "", responsavelFinanceiroDocumento: "", veterinarioPreferencial: "", horarioPreferencial: "", cep: "", estado: "", cidade: "", bairro: "", endereco: "", numero: "", complemento: "", observacoes: "",
 };
 
 function carregar(): Tutor[] {
   if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(CHAVE) || "[]");
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(CHAVE) || "[]"); } catch { return []; }
 }
-
-function salvarLista(lista: Tutor[]) {
-  localStorage.setItem(CHAVE, JSON.stringify(lista));
-}
-
-function soDigitos(v: string) {
-  return v.replace(/\D/g, "");
-}
-
-function inicialNome(nome: string) {
-  return nome
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .charAt(0)
-    .toUpperCase();
-}
-
-function mascaraTelefone(v: string) {
-  const d = soDigitos(v).slice(0, 11);
-  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-}
-
-function mascaraCep(v: string) {
-  return soDigitos(v).slice(0, 8).replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
-}
-
-function mascaraDocumento(v: string, tipoPessoa: Tutor["tipoPessoa"]) {
-  const d = soDigitos(v);
-  if (tipoPessoa === "Pessoa jurídica") {
-    return d.slice(0, 14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/, "$1.$2.$3/$4-$5").replace(/[-\/.]+$/, "");
-  }
-  return d.slice(0, 11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4").replace(/[-\.]+$/, "");
-}
+function salvarLista(lista: Tutor[]) { localStorage.setItem(CHAVE, JSON.stringify(lista)); }
+function soDigitos(v: string) { return v.replace(/\D/g, ""); }
+function inicialNome(nome: string) { return nome.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").charAt(0).toUpperCase(); }
+function mascaraTelefone(v: string) { const d=soDigitos(v).slice(0,11); if(d.length<=10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/,"($1) $2-$3").replace(/-$/,""); return d.replace(/(\d{2})(\d{5})(\d{0,4})/,"($1) $2-$3").replace(/-$/,""); }
+function mascaraCep(v: string) { return soDigitos(v).slice(0,8).replace(/(\d{5})(\d{0,3})/,"$1-$2").replace(/-$/,""); }
+function mascaraDocumento(v:string,tipo:Tutor["tipoPessoa"]) { const d=soDigitos(v); if(tipo==="Pessoa jurídica") return d.slice(0,14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,"$1.$2.$3/$4-$5").replace(/[-\/.]+$/,""); return d.slice(0,11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,"$1.$2.$3-$4").replace(/[-\.]+$/,""); }
 
 function Tutores() {
-  const [modo, setModo] = useState<Modo>("procurar");
-  const [form, setForm] = useState(vazio);
-  const [tutores, setTutores] = useState<Tutor[]>(carregar);
-  const [busca, setBusca] = useState("");
-  const [letra, setLetra] = useState("TODOS");
-  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [modo,setModo]=useState<Modo>("procurar");
+  const [form,setForm]=useState(vazio);
+  const [tutores,setTutores]=useState<Tutor[]>(carregar);
+  const [busca,setBusca]=useState("");
+  const [letra,setLetra]=useState("TODOS");
+  const [buscandoCep,setBuscandoCep]=useState(false);
 
-  const tutoresOrdenados = useMemo(
-    () => [...tutores].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })),
-    [tutores],
-  );
+  const tutoresOrdenados=useMemo(()=>[...tutores].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR",{sensitivity:"base"})),[tutores]);
+  const letrasDisponiveis=useMemo(()=>new Set(tutoresOrdenados.map(t=>inicialNome(t.nome)).filter(Boolean)),[tutoresOrdenados]);
+  const tutoresPorLetra=useMemo(()=>letra==="TODOS"?tutoresOrdenados:tutoresOrdenados.filter(t=>inicialNome(t.nome)===letra),[letra,tutoresOrdenados]);
+  const gruposAlfabeticos=useMemo(()=>{ const m=new Map<string,Tutor[]>(); tutoresPorLetra.forEach(t=>{const i=inicialNome(t.nome)||"#"; m.set(i,[...(m.get(i)||[]),t]);}); return Array.from(m.entries()).sort(([a],[b])=>a.localeCompare(b,"pt-BR")); },[tutoresPorLetra]);
+  const resultados=useMemo(()=>{ const q=busca.trim().toLowerCase(); if(!q) return tutoresOrdenados; return tutoresOrdenados.filter(t=>[t.nome,t.nomeSocial,t.telefone,t.outroTelefone,t.email,t.cpfCnpj].some(v=>(v||"").toLowerCase().includes(q))); },[busca,tutoresOrdenados]);
 
-  const letrasDisponiveis = useMemo(
-    () => new Set(tutoresOrdenados.map((t) => inicialNome(t.nome)).filter(Boolean)),
-    [tutoresOrdenados],
-  );
+  function set<K extends keyof typeof form>(k:K,v:(typeof form)[K]) { setForm(f=>({...f,[k]:v})); }
+  async function buscarCep(){ const cep=soDigitos(form.cep||""); if(cep.length!==8)return; setBuscandoCep(true); try{ const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(d?.erro)return void toast.error("CEP não encontrado."); setForm(f=>({...f,estado:d.uf||f.estado,cidade:d.localidade||f.cidade,bairro:d.bairro||f.bairro,endereco:d.logradouro||f.endereco})); }catch{toast.error("Não foi possível consultar o CEP agora.");}finally{setBuscandoCep(false);} }
+  function cadastrar(){ if(!form.nome.trim()) return void toast.error("Informe o nome do tutor."); if(!soDigitos(form.telefone).length) return void toast.error("Informe o telefone do tutor."); const telefone=soDigitos(form.telefone), documento=soDigitos(form.cpfCnpj||""), email=(form.email||"").trim().toLowerCase(); const duplicado=tutores.find(t=>soDigitos(t.telefone)===telefone||(documento&&soDigitos(t.cpfCnpj||"")===documento)||(email&&(t.email||"").trim().toLowerCase()===email)); if(duplicado)return void toast.error(`Já existe um tutor semelhante: ${duplicado.nome}.`); const novo:Tutor={...form,id:crypto.randomUUID(),criadoEm:new Date().toISOString()}; const lista=[novo,...tutores]; setTutores(lista); salvarLista(lista); setForm(vazio); setModo("procurar"); setBusca(novo.nome); setLetra("TODOS"); toast.success("Tutor cadastrado com sucesso."); }
 
-  const tutoresPorLetra = useMemo(
-    () => letra === "TODOS" ? tutoresOrdenados : tutoresOrdenados.filter((t) => inicialNome(t.nome) === letra),
-    [letra, tutoresOrdenados],
-  );
+  const campo="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
-  const gruposAlfabeticos = useMemo(() => {
-    const grupos = new Map<string, Tutor[]>();
-    tutoresPorLetra.forEach((tutor) => {
-      const inicial = inicialNome(tutor.nome) || "#";
-      const atual = grupos.get(inicial) || [];
-      atual.push(tutor);
-      grupos.set(inicial, atual);
-    });
-    return Array.from(grupos.entries()).sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
-  }, [tutoresPorLetra]);
+  return <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
+    <div className="mb-6"><Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link><div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1></div></div>
 
-  const resultados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    if (!q) return tutoresOrdenados;
-    return tutoresOrdenados.filter((t) =>
-      [t.nome, t.nomeSocial, t.telefone, t.outroTelefone, t.email, t.cpfCnpj].some((v) =>
-        (v || "").toLowerCase().includes(q),
-      ),
-    );
-  }, [busca, tutoresOrdenados]);
+    <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
+      <button type="button" onClick={()=>setModo("procurar")} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold sm:flex-none ${modo==="procurar"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}><Search size={17}/> Buscar tutor</button>
+      <button type="button" onClick={()=>setModo("novo")} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold sm:flex-none ${modo==="novo"?"bg-primary text-primary-foreground":"text-muted-foreground"}`}><UserPlus size={17}/> Novo tutor</button>
+    </div>
 
-  function set<K extends keyof typeof form>(chave: K, valor: (typeof form)[K]) {
-    setForm((atual) => ({ ...atual, [chave]: valor }));
-  }
+    {modo==="procurar" ? <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><div className="relative"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, telefone, CPF/CNPJ ou e-mail" className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none focus:border-primary"/></div>{busca.trim()&&<div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{resultados.length?resultados.map(t=><TutorCard key={t.id} tutor={t}/>):<div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground">Nenhum tutor encontrado.</div>}</div>}</section> : <section className="mt-5 overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="space-y-5 p-4 sm:p-5">
+      <Bloco titulo="Dados principais"><label className="sm:col-span-2 text-sm font-semibold">Nome completo *<input value={form.nome} onChange={e=>set("nome",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Nome social<input value={form.nomeSocial} onChange={e=>set("nomeSocial",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Pronome<select value={form.pronome} onChange={e=>set("pronome",e.target.value)} className={campo}><option value="">Não informado</option><option>Ele/dele</option><option>Ela/dela</option><option>Elu/delu</option><option>Outro</option></select></label><label className="text-sm font-semibold">Telefone / WhatsApp *<input value={form.telefone} onChange={e=>set("telefone",mascaraTelefone(e.target.value))} className={campo}/></label><label className="text-sm font-semibold">Outro telefone<input value={form.outroTelefone} onChange={e=>set("outroTelefone",mascaraTelefone(e.target.value))} className={campo}/></label><label className="sm:col-span-2 text-sm font-semibold">E-mail<input type="email" value={form.email} onChange={e=>set("email",e.target.value)} className={campo}/></label></Bloco>
+      <Bloco titulo="Documentos e perfil"><label className="text-sm font-semibold">Tipo de pessoa *<select value={form.tipoPessoa} onChange={e=>set("tipoPessoa",e.target.value as Tutor["tipoPessoa"])} className={campo}><option>Pessoa física</option><option>Pessoa jurídica</option></select></label><label className="text-sm font-semibold">{form.tipoPessoa==="Pessoa jurídica"?"CNPJ":"CPF"}<input value={form.cpfCnpj} onChange={e=>set("cpfCnpj",mascaraDocumento(e.target.value,form.tipoPessoa))} className={campo}/></label><label className="text-sm font-semibold">RG<input value={form.rg} onChange={e=>set("rg",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Nascimento<input type="date" value={form.nascimento} onChange={e=>set("nascimento",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={e=>set("sexo",e.target.value)} className={campo}><option value="">Não informado</option><option>Masculino</option><option>Feminino</option><option>Outro</option></select></label><label className="text-sm font-semibold">Profissão<input value={form.profissao} onChange={e=>set("profissao",e.target.value)} className={campo}/></label></Bloco>
+      <Bloco titulo="Contato e preferências"><label className="text-sm font-semibold">Contato preferencial<select value={form.contatoPreferencial} onChange={e=>set("contatoPreferencial",e.target.value)} className={campo}><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></label><label className="text-sm font-semibold">Horário preferencial<input value={form.horarioPreferencial} onChange={e=>set("horarioPreferencial",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Contato de emergência<input value={form.contatoEmergenciaNome} onChange={e=>set("contatoEmergenciaNome",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Telefone de emergência<input value={form.contatoEmergenciaTelefone} onChange={e=>set("contatoEmergenciaTelefone",mascaraTelefone(e.target.value))} className={campo}/></label></Bloco>
+      <Bloco titulo="Endereço"><label className="text-sm font-semibold">CEP<input value={form.cep} onChange={e=>set("cep",mascaraCep(e.target.value))} onBlur={buscarCep} className={campo}/><span className="text-[11px] text-muted-foreground">{buscandoCep?"Consultando CEP...":"Preenchimento automático ao sair do campo."}</span></label><label className="text-sm font-semibold">Estado<input value={form.estado} onChange={e=>set("estado",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Cidade<input value={form.cidade} onChange={e=>set("cidade",e.target.value)} className={campo}/></label><label className="text-sm font-semibold">Bairro<input value={form.bairro} onChange={e=>set("bairro",e.target.value)} className={campo}/></label><label className="sm:col-span-2 text-sm font-semibold">Endereço<input value={form.endereco} onChange={e=>set("endereco",e.target.value)} className={campo}/></label></Bloco>
+      <label className="text-sm font-semibold">Observações<textarea rows={4} value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} className={`${campo} py-3`}/></label><div className="flex justify-end gap-2"><button type="button" onClick={()=>setModo("procurar")} className="rounded-xl border px-4 py-3 font-semibold">Cancelar</button><button type="button" onClick={cadastrar} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground">Salvar tutor</button></div>
+    </div></section>}
 
-  async function buscarCep() {
-    const cep = soDigitos(form.cep || "");
-    if (cep.length !== 8) return;
-    setBuscandoCep(true);
-    try {
-      const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const dados = await resposta.json();
-      if (dados?.erro) return void toast.error("CEP não encontrado.");
-      setForm((atual) => ({
-        ...atual,
-        estado: dados.uf || atual.estado,
-        cidade: dados.localidade || atual.cidade,
-        bairro: dados.bairro || atual.bairro,
-        endereco: dados.logradouro || atual.endereco,
-      }));
-    } catch {
-      toast.error("Não foi possível consultar o CEP agora.");
-    } finally {
-      setBuscandoCep(false);
-    }
-  }
-
-  function cadastrar() {
-    if (!form.nome.trim()) return void toast.error("Informe o nome do tutor.");
-    if (!soDigitos(form.telefone).length) return void toast.error("Informe o telefone do tutor.");
-
-    const telefone = soDigitos(form.telefone);
-    const documento = soDigitos(form.cpfCnpj || "");
-    const email = (form.email || "").trim().toLowerCase();
-    const duplicado = tutores.find(
-      (t) =>
-        soDigitos(t.telefone) === telefone ||
-        (documento && soDigitos(t.cpfCnpj || "") === documento) ||
-        (email && (t.email || "").trim().toLowerCase() === email),
-    );
-    if (duplicado) return void toast.error(`Já existe um tutor semelhante: ${duplicado.nome}.`);
-
-    const novo: Tutor = { ...form, id: crypto.randomUUID(), criadoEm: new Date().toISOString() };
-    const lista = [novo, ...tutores];
-    setTutores(lista);
-    salvarLista(lista);
-    setForm(vazio);
-    setModo("procurar");
-    setBusca(novo.nome);
-    setLetra("TODOS");
-    toast.success("Tutor cadastrado com sucesso.");
-  }
-
-  const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
-
-  return (
-    <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
-      <div className="mb-6">
-        <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <ArrowLeft size={18} /> Voltar para Recepção
-        </Link>
-        <div className="mt-4 flex items-center gap-2">
-          <Users size={23} className="text-primary" />
-          <h1 className="text-3xl font-black tracking-tight">Tutores</h1>
-        </div>
-      </div>
-
-      <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
-        <button
-          type="button"
-          onClick={() => setModo("procurar")}
-          className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition sm:flex-none ${modo === "procurar" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"}`}
-        >
-          <Search size={17} /> Buscar tutor
-        </button>
-        <button
-          type="button"
-          onClick={() => setModo("novo")}
-          className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition sm:flex-none ${modo === "novo" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"}`}
-        >
-          <UserPlus size={17} /> Novo tutor
-        </button>
-      </div>
-
-      {modo === "procurar" ? (
-        <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
-          <div className="relative">
-            <Search size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome, telefone, CPF/CNPJ ou e-mail"
-              className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-              autoFocus
-            />
-          </div>
-
-          {busca.trim() && (
-            <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {resultados.length === 0 ? (
-                <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground">Nenhum tutor encontrado.</div>
-              ) : (
-                resultados.map((t) => <TutorCard key={t.id} tutor={t} />)
-              )}
-            </div>
-          )}
-        </section>
-      ) : (
-        <section className="mt-5 overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <div className="space-y-5 p-4 sm:p-5">
-            <Bloco titulo="Dados principais">
-              <label className="sm:col-span-2 text-sm font-semibold">Nome completo *<input value={form.nome} onChange={(e) => set("nome", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Nome social<input value={form.nomeSocial} onChange={(e) => set("nomeSocial", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Pronome<select value={form.pronome} onChange={(e) => set("pronome", e.target.value)} className={campo}><option value="">Não informado</option><option>Ele/dele</option><option>Ela/dela</option><option>Elu/delu</option><option>Outro</option></select></label>
-              <label className="text-sm font-semibold">Telefone / WhatsApp *<input value={form.telefone} onChange={(e) => set("telefone", mascaraTelefone(e.target.value))} className={campo} /></label>
-              <label className="text-sm font-semibold">Outro telefone<input value={form.outroTelefone} onChange={(e) => set("outroTelefone", mascaraTelefone(e.target.value))} className={campo} /></label>
-              <label className="sm:col-span-2 text-sm font-semibold">E-mail<input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className={campo} /></label>
-            </Bloco>
-
-            <Bloco titulo="Documentos e perfil">
-              <label className="text-sm font-semibold">Tipo de pessoa *<select value={form.tipoPessoa} onChange={(e) => set("tipoPessoa", e.target.value as Tutor["tipoPessoa"])} className={campo}><option>Pessoa física</option><option>Pessoa jurídica</option></select></label>
-              <label className="text-sm font-semibold">{form.tipoPessoa === "Pessoa jurídica" ? "CNPJ" : "CPF"}<input value={form.cpfCnpj} onChange={(e) => set("cpfCnpj", mascaraDocumento(e.target.value, form.tipoPessoa))} className={campo} /></label>
-              <label className="text-sm font-semibold">RG<input value={form.rg} onChange={(e) => set("rg", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Tipo de documento<input value={form.tipoDocumento} onChange={(e) => set("tipoDocumento", e.target.value)} placeholder="Ex.: RG, passaporte" className={campo} /></label>
-              <label className="text-sm font-semibold">Nascimento<input type="date" value={form.nascimento} onChange={(e) => set("nascimento", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={(e) => set("sexo", e.target.value)} className={campo}><option value="">Não informado</option><option>Masculino</option><option>Feminino</option><option>Outro</option><option>Prefere não informar</option></select></label>
-              <label className="text-sm font-semibold">Profissão<input value={form.profissao} onChange={(e) => set("profissao", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Origem do cliente<select value={form.origem} onChange={(e) => set("origem", e.target.value)} className={campo}><option value="">Não informado</option><option>Indicação</option><option>Instagram</option><option>Google</option><option>Site</option><option>Passante</option><option>Outro</option></select></label>
-            </Bloco>
-
-            <Bloco titulo="Contato e preferências">
-              <label className="text-sm font-semibold">Contato preferencial<select value={form.contatoPreferencial} onChange={(e) => set("contatoPreferencial", e.target.value)} className={campo}><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></label>
-              <label className="text-sm font-semibold">Horário preferencial<input value={form.horarioPreferencial} onChange={(e) => set("horarioPreferencial", e.target.value)} placeholder="Ex.: após 18h" className={campo} /></label>
-              <label className="text-sm font-semibold">Contato de emergência<input value={form.contatoEmergenciaNome} onChange={(e) => set("contatoEmergenciaNome", e.target.value)} placeholder="Nome" className={campo} /></label>
-              <label className="text-sm font-semibold">Telefone de emergência<input value={form.contatoEmergenciaTelefone} onChange={(e) => set("contatoEmergenciaTelefone", mascaraTelefone(e.target.value))} className={campo} /></label>
-              <label className="sm:col-span-2 text-sm font-semibold">Veterinário preferencial<input value={form.veterinarioPreferencial} onChange={(e) => set("veterinarioPreferencial", e.target.value)} className={campo} /></label>
-              <div className="sm:col-span-2 grid gap-2 sm:grid-cols-2">
-                <Check label="Autoriza lembretes automáticos" checked={!!form.autorizaLembretes} onChange={(v) => set("autorizaLembretes", v)} />
-                <Check label="Autoriza contato por WhatsApp" checked={!!form.autorizaWhatsapp} onChange={(v) => set("autorizaWhatsapp", v)} />
-                <Check label="Autoriza contato por e-mail" checked={!!form.autorizaEmail} onChange={(v) => set("autorizaEmail", v)} />
-                <Check label="Autoriza campanhas/promocionais" checked={!!form.autorizaMarketing} onChange={(v) => set("autorizaMarketing", v)} />
-              </div>
-            </Bloco>
-
-            <Bloco titulo="Responsável financeiro">
-              <label className="text-sm font-semibold">Nome do responsável financeiro<input value={form.responsavelFinanceiroNome} onChange={(e) => set("responsavelFinanceiroNome", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">CPF/CNPJ do responsável<input value={form.responsavelFinanceiroDocumento} onChange={(e) => set("responsavelFinanceiroDocumento", e.target.value)} className={campo} /></label>
-            </Bloco>
-
-            <Bloco titulo="Endereço">
-              <label className="text-sm font-semibold">CEP<input value={form.cep} onChange={(e) => set("cep", mascaraCep(e.target.value))} onBlur={buscarCep} className={campo} /><span className="mt-1 block text-[11px] text-muted-foreground">{buscandoCep ? "Consultando CEP..." : "Preenchimento automático ao sair do campo."}</span></label>
-              <label className="text-sm font-semibold">Estado<input value={form.estado} onChange={(e) => set("estado", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Cidade<input value={form.cidade} onChange={(e) => set("cidade", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Bairro<input value={form.bairro} onChange={(e) => set("bairro", e.target.value)} className={campo} /></label>
-              <label className="sm:col-span-2 text-sm font-semibold">Endereço<input value={form.endereco} onChange={(e) => set("endereco", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Número<input value={form.numero} onChange={(e) => set("numero", e.target.value)} className={campo} /></label>
-              <label className="text-sm font-semibold">Complemento<input value={form.complemento} onChange={(e) => set("complemento", e.target.value)} className={campo} /></label>
-            </Bloco>
-
-            <div>
-              <label className="text-sm font-semibold">Observações<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} placeholder="Preferências, restrições, informações importantes para atendimento..." className={`${campo} py-3`} /></label>
-              <div className="mt-4 flex flex-wrap justify-end gap-2">
-                <button type="button" onClick={() => setModo("procurar")} className="rounded-xl border px-4 py-3 font-semibold">Cancelar</button>
-                <button type="button" onClick={cadastrar} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground">Salvar tutor</button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary" /> Tutores cadastrados <span className="text-sm font-bold text-muted-foreground">({tutores.length})</span></h2>
-        </div>
-
-        {tutores.length > 0 && (
-          <div className="mt-4 overflow-x-auto pb-1">
-            <div className="flex min-w-max items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setLetra("TODOS")}
-                className={`rounded-lg px-3 py-2 text-xs font-bold transition ${letra === "TODOS" ? "bg-primary text-primary-foreground" : "border bg-white hover:border-primary/50"}`}
-              >
-                Todos
-              </button>
-              {ALFABETO.map((item) => {
-                const disponivel = letrasDisponiveis.has(item);
-                const ativo = letra === item;
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    disabled={!disponivel}
-                    onClick={() => setLetra(item)}
-                    className={`h-9 min-w-9 rounded-lg px-2 text-xs font-black transition ${ativo ? "bg-primary text-primary-foreground" : disponivel ? "border bg-white hover:border-primary/50 hover:text-primary" : "border border-transparent text-muted-foreground/35"}`}
-                    aria-label={`Mostrar tutores com a letra ${item}`}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4">
-          {tutores.length === 0 ? (
-            <div className="rounded-xl border border-dashed bg-slate-50 p-7 text-center">
-              <p className="text-sm font-medium text-muted-foreground">Nenhum tutor cadastrado ainda.</p>
-              <button type="button" onClick={() => setModo("novo")} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><UserPlus size={16} /> Cadastrar tutor</button>
-            </div>
-          ) : gruposAlfabeticos.length === 0 ? (
-            <div className="rounded-xl border border-dashed bg-slate-50 p-7 text-center text-sm text-muted-foreground">Nenhum tutor cadastrado com esta letra.</div>
-          ) : (
-            <div className="space-y-6">
-              {gruposAlfabeticos.map(([inicial, grupo]) => (
-                <section key={inicial}>
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">{inicial}</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                    {grupo.map((t) => <TutorCard key={t.id} tutor={t} />)}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-    </main>
-  );
+    <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary"/> Tutores cadastrados <span className="text-sm text-muted-foreground">({tutores.length})</span></h2><div className="mt-4 flex flex-wrap gap-1.5"><button type="button" onClick={()=>setLetra("TODOS")} className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${letra==="TODOS"?"bg-primary text-primary-foreground":"bg-white"}`}>Todos</button>{ALFABETO.map(l=><button key={l} type="button" disabled={!letrasDisponiveis.has(l)} onClick={()=>setLetra(l)} className={`h-8 min-w-8 rounded-lg border text-sm font-bold ${letra===l?"bg-primary text-primary-foreground":"bg-white"} disabled:opacity-25`}>{l}</button>)}</div>{tutores.length===0?<div className="mt-4 rounded-xl border border-dashed bg-slate-50 p-7 text-center"><p className="text-sm text-muted-foreground">Nenhum tutor cadastrado ainda.</p><button type="button" onClick={()=>setModo("novo")} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Cadastrar tutor</button></div>:<div className="mt-5 space-y-5">{gruposAlfabeticos.map(([i,lista])=><div key={i}><div className="mb-2 text-xl font-black text-primary">{i}</div><div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{lista.map(t=><TutorCard key={t.id} tutor={t}/>)}</div></div>)}</div>}</section>
+  </main>;
 }
 
-function TutorCard({ tutor }: { tutor: Tutor }) {
-  return (
-    <article className="rounded-xl border bg-white p-4">
-      <div className="font-black">{tutor.nome}</div>
-      {tutor.nomeSocial && <div className="text-xs text-muted-foreground">Nome social: {tutor.nomeSocial}</div>}
-      <div className="mt-2 text-sm font-medium">{tutor.telefone}</div>
-      {tutor.email && <div className="mt-0.5 truncate text-xs text-muted-foreground">{tutor.email}</div>}
-      {tutor.cpfCnpj && <div className="mt-0.5 text-xs text-muted-foreground">{tutor.tipoPessoa === "Pessoa jurídica" ? "CNPJ" : "CPF"}: {tutor.cpfCnpj}</div>}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold">Ver cadastro</button>
-        <button type="button" className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"><PawPrint size={13} /> Cadastrar animal</button>
-      </div>
-    </article>
-  );
-}
-
-function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return <section><h2 className="mb-2 text-sm font-black uppercase tracking-wide text-primary">{titulo}</h2><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>;
-}
-
-function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return <label className="flex items-center gap-2 rounded-xl border bg-slate-50 px-3 py-2 text-sm font-semibold"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />{label}</label>;
-}
+function TutorCard({tutor}:{tutor:Tutor}){ return <article className="rounded-xl border bg-white p-4"><div className="font-black">{tutor.nome}</div>{tutor.nomeSocial&&<div className="text-xs text-muted-foreground">Nome social: {tutor.nomeSocial}</div>}<div className="mt-2 text-sm font-medium">{tutor.telefone}</div>{tutor.email&&<div className="truncate text-xs text-muted-foreground">{tutor.email}</div>}{tutor.cpfCnpj&&<div className="text-xs text-muted-foreground">{tutor.tipoPessoa==="Pessoa jurídica"?"CNPJ":"CPF"}: {tutor.cpfCnpj}</div>}<div className="mt-3 flex flex-wrap gap-2"><button type="button" className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold">Ver cadastro</button><a href={`/novo-animal?tutorId=${encodeURIComponent(tutor.id)}`} className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"><PawPrint size={13}/> Cadastrar animal</a></div></article>; }
+function Bloco({titulo,children}:{titulo:string;children:React.ReactNode}){ return <section><h2 className="mb-2 text-sm font-black uppercase tracking-wide text-primary">{titulo}</h2><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>; }
