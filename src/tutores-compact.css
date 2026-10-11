@@ -35,3 +35,78 @@ article:has(a[href^="/novo-animal?tutorId="]) a[href^="/novo-animal?tutorId="] {
     max-width: 26rem;
   }
 }
+
+/* Ficha do animal > Registros clínicos: ações pequenas para inserir novo */
+section:has(a[href^="/registro-clinico?animalId="]) > div:last-child > div:first-child {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) > div:last-child > div:first-child::before {
+  content: "Inserir novo";
+  width: 100%;
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) a[href^="/registro-clinico?animalId="] {
+  display: inline-flex !important;
+  min-height: 2.7rem !important;
+  width: auto !important;
+  flex: 0 1 auto !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  border-width: 1px !important;
+  border-radius: 0.75rem !important;
+  padding: 0.45rem 0.7rem !important;
+  box-shadow: none !important;
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) a[href^="/registro-clinico?animalId="] > div:first-child {
+  width: 1.9rem !important;
+  height: 1.9rem !important;
+  flex: 0 0 1.9rem !important;
+  border-radius: 0.55rem !important;
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) a[href^="/registro-clinico?animalId="] > div:first-child svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) a[href^="/registro-clinico?animalId="] > div:nth-child(2) {
+  margin-top: 0 !important;
+  font-size: 0.82rem !important;
+  white-space: nowrap;
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) a[href^="/registro-clinico?animalId="] > p,
+section:has(a[href^="/registro-clinico?animalId="]) a[href^="/registro-clinico?animalId="] > div:last-child {
+  display: none !important;
+}
+
+/* O que já existe fica abaixo como histórico clicável */
+section:has(a[href^="/registro-clinico?animalId="]) > div:last-child > div:nth-child(2) {
+  margin-top: 1rem !important;
+  padding-top: 0.9rem !important;
+  border-top: 1px solid hsl(var(--border));
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) > div:last-child > div:nth-child(2) > div:first-child {
+  font-size: 0 !important;
+}
+
+section:has(a[href^="/registro-clinico?animalId="]) > div:last-child > div:nth-child(2) > div:first-child::after {
+  content: "Fichas / histórico";
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
