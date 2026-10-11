@@ -38,6 +38,24 @@ export const VACINAS_CATALOGO: VacinaCatalogo[] = [
   { nome: "Nobivac Feline 1-HCPCH", especie: ["Gato"], fabricante: "MSD Saúde Animal", grupo: "Quádrupla felina", aliases: ["V4", "Quádrupla felina"] },
   { nome: "Nobivac Feline 1-HCPCH + FeLV", especie: ["Gato"], fabricante: "MSD Saúde Animal", grupo: "Quíntupla felina", aliases: ["V5", "Quíntupla felina", "FeLV"] },
 
+  // Cães — Boehringer Ingelheim
+  { nome: "Recombitek C6/Cv", especie: ["Cão"], fabricante: "Boehringer Ingelheim", grupo: "Polivalente", aliases: ["Cinomose", "Hepatite", "Adenovírus 2", "Parvovirose", "Parainfluenza", "Coronavirose", "Leptospirose"] },
+
+  // Gatos — Boehringer Ingelheim
+  { nome: "Purevax Recombinante FeLV", especie: ["Gato"], fabricante: "Boehringer Ingelheim", grupo: "FeLV", aliases: ["FeLV", "Leucemia felina", "Purevax"] },
+
+  // Cães — Virbac
+  { nome: "Canigen CH(A2)P/L", especie: ["Cão"], fabricante: "Virbac", grupo: "Polivalente", aliases: ["Cinomose", "Hepatite", "Adenovirose", "Parvovirose", "Leptospirose", "Canigen"] },
+  { nome: "Canigen R", especie: ["Cão", "Gato"], fabricante: "Virbac", grupo: "Raiva", aliases: ["Antirrábica", "Raiva", "Canigen"] },
+
+  // Gatos — Virbac
+  { nome: "Feligen CR/P", especie: ["Gato"], fabricante: "Virbac", grupo: "Tríplice felina", aliases: ["V3", "Calicivirose", "Rinotraqueíte", "Panleucopenia", "Feligen"] },
+  { nome: "Feligen CRP/R", especie: ["Gato"], fabricante: "Virbac", grupo: "Quádrupla felina + raiva", aliases: ["V4", "Calicivirose", "Rinotraqueíte", "Panleucopenia", "Raiva", "Feligen"] },
+
+  // Cães e gatos — Ceva
+  { nome: "Hertaliq", especie: ["Cão", "Gato"], fabricante: "Ceva", grupo: "Raiva", aliases: ["Antirrábica", "Raiva"] },
+  { nome: "Rabmune", especie: ["Cão", "Gato"], fabricante: "Ceva", grupo: "Raiva", aliases: ["Antirrábica", "Raiva"] },
+
   // Genéricas / atalhos clínicos
   { nome: "V6", especie: ["Cão"], grupo: "Polivalente", aliases: ["Sêxtupla"] },
   { nome: "V8", especie: ["Cão"], grupo: "Polivalente", aliases: ["Óctupla"] },
