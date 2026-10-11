@@ -136,7 +136,7 @@ function Recepcao() {
 
   const itens = [
     ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound, "/tutores"],
-    ["Adicionar / consultar animal", "Pesquise o tutor e cadastre ou consulte os animais dele", PawPrint, "/tutores"],
+    ["Adicionar / consultar animal", "Pesquise o animal e veja tutor, contatos e ficha completa", PawPrint, "/animais"],
     ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
     ["Novo agendamento", "Organize os horários", CalendarDays, null],
     ["Aniversariantes do dia", "Datas importantes", CalendarDays, null],
