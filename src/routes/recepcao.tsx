@@ -7,12 +7,12 @@ export const Route = createFileRoute("/recepcao")({ component: Recepcao });
 
 function Recepcao() {
   const itens = [
-    ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound],
-    ["Adicionar / consultar animal", "Pacientes e responsáveis", PawPrint],
-    ["Fila de espera", "Envie a próxima consulta", ClipboardList],
-    ["Novo agendamento", "Organize os horários", CalendarDays],
-    ["Aniversariantes do dia", "Datas importantes", CalendarDays],
-    ["Reforços próximos", "Vacinas e vermifugação", Plus],
+    ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound, "/tutores"],
+    ["Adicionar / consultar animal", "Pacientes e responsáveis", PawPrint, null],
+    ["Fila de espera", "Envie a próxima consulta", ClipboardList, null],
+    ["Novo agendamento", "Organize os horários", CalendarDays, null],
+    ["Aniversariantes do dia", "Datas importantes", CalendarDays, null],
+    ["Reforços próximos", "Vacinas e vermifugação", Plus, null],
   ] as const;
 
   return (
@@ -33,17 +33,10 @@ function Recepcao() {
       </div>
 
       <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {itens.map(([titulo, texto, Icone]) => (
-          <button key={titulo} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Icone className="text-primary" size={20}/></div>
-              <div>
-                <h2 className="font-semibold">{titulo}</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{texto}</p>
-              </div>
-            </div>
-          </button>
-        ))}
+        {itens.map(([titulo, texto, Icone, destino]) => {
+          const conteudo = <div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Icone className="text-primary" size={20}/></div><div><h2 className="font-semibold">{titulo}</h2><p className="mt-0.5 text-sm text-muted-foreground">{texto}</p></div></div>;
+          return destino ? <Link key={titulo} to={destino} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</Link> : <button key={titulo} type="button" className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
+        })}
       </section>
     </main>
   );
