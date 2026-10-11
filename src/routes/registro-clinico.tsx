@@ -174,7 +174,6 @@ function RegistroClinico() {
 
   function salvarConsulta() {
     if (!consulta.queixa.trim()) return void toast.error("Informe a queixa principal.");
-    const sistemasPreenchidos = Object.entries(consulta.sistemas).filter(([,v]) => v.sinais.length || v.observacoes.trim());
     const o = consulta.oftalmo;
     const linhaPar = (rotulo: string, p: OlhoValores, unidade = "") => (p.od || p.oe) ? `${rotulo}: ${[p.od && `OD ${p.od}${unidade}`, p.oe && `OE ${p.oe}${unidade}`].filter(Boolean).join(" · ")}` : "";
     const oftalmoPreenchidos = [
@@ -188,7 +187,14 @@ function RegistroClinico() {
       linhaPar("Reflexo pupilar direto", o.reflexoPupilarDireto),
       linhaPar("Reflexo pupilar consensual", o.reflexoPupilarConsensual),
       linhaPar("Deambulação", o.deambulacao),
-    ].filter(Boolean);
+    ].filter(Boolean) as string[];
+    const sistemasPreenchidos = Object.entries(consulta.sistemas)
+      .map(([sistema, v]) => {
+        const partes = [v.sinais.join(", "), v.observacoes].filter(Boolean);
+        if (sistema === "Oftalmológico" && oftalmoPreenchidos.length) partes.push(oftalmoPreenchidos.join(" · "));
+        return [sistema, partes.join(". ")] as const;
+      })
+      .filter(([, texto]) => texto.trim());
     const detalhe = [
       `Queixa principal: ${consulta.queixa.trim()}`,
       `Tutor relata: ${[
@@ -206,8 +212,7 @@ function RegistroClinico() {
         consulta.medicamentosRecentes && `medicamentos: ${consulta.medicamentosRecentes}`,
         consulta.alergias && `alergias: ${consulta.alergias}`,
       ].filter(Boolean).join(" · ") || "sem informações adicionais"}`,
-      ...(sistemasPreenchidos.length ? ["Observações por sistema:", ...sistemasPreenchidos.map(([s,v]) => `- ${s}: ${[v.sinais.join(", "), v.observacoes].filter(Boolean).join(". ")}`)] : []),
-      ...(oftalmoPreenchidos.length ? ["Exames oftalmológicos:", ...oftalmoPreenchidos] : []),
+      ...(sistemasPreenchidos.length ? ["Observações por sistema:", ...sistemasPreenchidos.map(([s,v]) => `- ${s}: ${v}`)] : []),
       `Exame clínico: ${[
         consulta.peso && `peso ${consulta.peso} kg`, consulta.temperatura && `T ${consulta.temperatura} °C`, consulta.fc && `FC ${consulta.fc}`, consulta.fr && `FR ${consulta.fr}`, consulta.pas && `PAS ${consulta.pas}`, consulta.glicemia && `glicemia ${consulta.glicemia}`, consulta.mucosas && `mucosas ${consulta.mucosas}`, consulta.hidratacao && `hidratação ${consulta.hidratacao}`, consulta.ecc && `ECC ${consulta.ecc}`, consulta.dor && `dor ${consulta.dor}`, consulta.exameGeral,
       ].filter(Boolean).join(" · ") || "não informado"}`,
@@ -278,32 +283,25 @@ function RegistroClinico() {
         <BlocoNumero numero="2" titulo="Queixa principal" descricao="Escreva com as palavras importantes do tutor. Não precisa organizar tudo agora."><Textarea grande label="Queixa principal *" value={consulta.queixa} onChange={(v) => setConsulta({...consulta,queixa:v})} placeholder="Ex.: Tutor relata vômitos desde ontem, redução do apetite e apatia..."/></BlocoNumero>
 
         <BlocoNumero numero="3" titulo="Observações por sistema" descricao="Abra apenas os sistemas relevantes. Marque sinais rápidos e acrescente detalhes se precisar.">
-          <div className="space-y-2">{Object.entries(SISTEMAS).map(([sistema,sinais]) => { const item = consulta.sistemas[sistema]; const temAlgo = item.sinais.length || item.observacoes.trim(); const estaAberto = aberto === sistema; return <div key={sistema} className={`overflow-hidden rounded-xl border ${temAlgo ? "border-primary/40 bg-primary/[0.025]" : "bg-white"}`}><button type="button" onClick={() => setAberto(estaAberto ? null : sistema)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"><div><span className="font-black">{sistema}</span>{temAlgo && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">preenchido</span>}</div>{estaAberto ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</button>{estaAberto && <div className="border-t px-4 py-4"><div className="flex flex-wrap gap-2">{sinais.length ? sinais.map((sinal) => <Chip key={sinal} ativo={item.sinais.includes(sinal)} onClick={() => toggleSinal(sistema,sinal)}>{sinal}</Chip>) : <span className="text-xs text-muted-foreground">Use o campo de observações para este sistema.</span>}</div><textarea value={item.observacoes} onChange={(e) => setConsulta((f) => ({...f, sistemas:{...f.sistemas,[sistema]:{...item,observacoes:e.target.value}}}))} rows={3} placeholder="Observações deste sistema..." className="mt-3 w-full rounded-xl border p-3 text-sm outline-none focus:border-primary"/></div>}</div>; })}</div>
+          <div className="space-y-2">{Object.entries(SISTEMAS).map(([sistema,sinais]) => {
+            const item = consulta.sistemas[sistema];
+            const oftalmoTemAlgo = sistema === "Oftalmológico" && Object.entries(consulta.oftalmo).some(([, valor]) => typeof valor === "string" ? valor.trim() : Object.values(valor).some((v) => v.trim()));
+            const temAlgo = item.sinais.length || item.observacoes.trim() || oftalmoTemAlgo;
+            const estaAberto = aberto === sistema;
+            return <div key={sistema} className={`overflow-hidden rounded-xl border ${temAlgo ? "border-primary/40 bg-primary/[0.025]" : "bg-white"}`}>
+              <button type="button" onClick={() => setAberto(estaAberto ? null : sistema)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"><div><span className="font-black">{sistema}</span>{temAlgo && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">preenchido</span>}</div>{estaAberto ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</button>
+              {estaAberto && <div className="border-t px-4 py-4">
+                <div className="flex flex-wrap gap-2">{sinais.length ? sinais.map((sinal) => <Chip key={sinal} ativo={item.sinais.includes(sinal)} onClick={() => toggleSinal(sistema,sinal)}>{sinal}</Chip>) : <span className="text-xs text-muted-foreground">Use o campo de observações para este sistema.</span>}</div>
+                <textarea value={item.observacoes} onChange={(e) => setConsulta((f) => ({...f, sistemas:{...f.sistemas,[sistema]:{...item,observacoes:e.target.value}}}))} rows={3} placeholder="Observações deste sistema..." className="mt-3 w-full rounded-xl border p-3 text-sm outline-none focus:border-primary"/>
+                {sistema === "Oftalmológico" && <OftalmoCampos consulta={consulta} setConsulta={setConsulta} setOftalmoPar={setOftalmoPar}/>} 
+              </div>}
+            </div>;
+          })}</div>
         </BlocoNumero>
 
-        <BlocoNumero numero="4" titulo="Exames oftalmológicos" descricao="Registre OD (olho direito) e OE (olho esquerdo). Preencha apenas os testes realizados.">
-          <div className="overflow-x-auto">
-            <div className="min-w-[680px]">
-              <div className="grid grid-cols-[180px_1fr_1fr] gap-2 border-b pb-2 text-xs font-black uppercase tracking-wide text-muted-foreground"><div>Teste</div><div>OD</div><div>OE</div></div>
-              <OftalmoLinhaEntrada label="Schirmer" od={consulta.oftalmo.schirmer.od} oe={consulta.oftalmo.schirmer.oe} unidade="mm/min" onOd={(v)=>setOftalmoPar("schirmer","od",v)} onOe={(v)=>setOftalmoPar("schirmer","oe",v)}/>
-              <OftalmoLinhaSelect label="Fluoresceína" od={consulta.oftalmo.fluoresceina.od} oe={consulta.oftalmo.fluoresceina.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("fluoresceina","od",v)} onOe={(v)=>setOftalmoPar("fluoresceina","oe",v)}/>
-              <OftalmoLinhaSelect label="Teste de Jones" od={consulta.oftalmo.jones.od} oe={consulta.oftalmo.jones.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("jones","od",v)} onOe={(v)=>setOftalmoPar("jones","oe",v)}/>
-              <OftalmoLinhaSelect label="Rosa Bengala" od={consulta.oftalmo.rosaBengala.od} oe={consulta.oftalmo.rosaBengala.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("rosaBengala","od",v)} onOe={(v)=>setOftalmoPar("rosaBengala","oe",v)}/>
-              <OftalmoLinhaSelect label="Lissamina Verde" od={consulta.oftalmo.lissaminaVerde.od} oe={consulta.oftalmo.lissaminaVerde.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("lissaminaVerde","od",v)} onOe={(v)=>setOftalmoPar("lissaminaVerde","oe",v)}/>
-              <OftalmoLinhaEntrada label="PIO" od={consulta.oftalmo.pio.od} oe={consulta.oftalmo.pio.oe} unidade="mmHg" onOd={(v)=>setOftalmoPar("pio","od",v)} onOe={(v)=>setOftalmoPar("pio","oe",v)}/>
-            </div>
-          </div>
-          <div className="mt-3 max-w-xl"><Input label="Equipamento de tonometria (opcional)" value={consulta.oftalmo.equipamentoTonometria} onChange={(v)=>setConsulta((f)=>({...f,oftalmo:{...f.oftalmo,equipamentoTonometria:v}}))}/></div>
-          <div className="mt-5 border-t pt-4"><h4 className="font-black">Reflexos e respostas</h4><div className="mt-3 overflow-x-auto"><div className="min-w-[680px]"><div className="grid grid-cols-[260px_1fr_1fr] gap-2 border-b pb-2 text-xs font-black uppercase tracking-wide text-muted-foreground"><div>Avaliação</div><div>OD</div><div>OE</div></div>
-            <OftalmoLinhaSelect largo label="Reflexo pupilar direto" od={consulta.oftalmo.reflexoPupilarDireto.od} oe={consulta.oftalmo.reflexoPupilarDireto.oe} opcoes={["Presente","Reduzido","Ausente","Não realizado"]} onOd={(v)=>setOftalmoPar("reflexoPupilarDireto","od",v)} onOe={(v)=>setOftalmoPar("reflexoPupilarDireto","oe",v)}/>
-            <OftalmoLinhaSelect largo label="Reflexo pupilar consensual" od={consulta.oftalmo.reflexoPupilarConsensual.od} oe={consulta.oftalmo.reflexoPupilarConsensual.oe} opcoes={["Presente","Reduzido","Ausente","Não realizado"]} onOd={(v)=>setOftalmoPar("reflexoPupilarConsensual","od",v)} onOe={(v)=>setOftalmoPar("reflexoPupilarConsensual","oe",v)}/>
-            <OftalmoLinhaSelect largo label="Deambulação" od={consulta.oftalmo.deambulacao.od} oe={consulta.oftalmo.deambulacao.oe} opcoes={["Normal","Alterada","Ausente","Não realizado"]} onOd={(v)=>setOftalmoPar("deambulacao","od",v)} onOe={(v)=>setOftalmoPar("deambulacao","oe",v)}/>
-          </div></div></div>
-        </BlocoNumero>
+        <BlocoNumero numero="4" titulo="Exame clínico" descricao="Parâmetros essenciais primeiro; detalhes livres ficam no final."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Input label="Peso (kg)" value={consulta.peso} onChange={(v)=>setConsulta({...consulta,peso:v})}/><Input label="Temperatura (°C)" value={consulta.temperatura} onChange={(v)=>setConsulta({...consulta,temperatura:v})}/><Input label="FC (bpm)" value={consulta.fc} onChange={(v)=>setConsulta({...consulta,fc:v})}/><Input label="FR (mpm)" value={consulta.fr} onChange={(v)=>setConsulta({...consulta,fr:v})}/><Input label="PAS (mmHg)" value={consulta.pas} onChange={(v)=>setConsulta({...consulta,pas:v})}/><Input label="Glicemia (mg/dL)" value={consulta.glicemia} onChange={(v)=>setConsulta({...consulta,glicemia:v})}/><Input label="Mucosas" value={consulta.mucosas} onChange={(v)=>setConsulta({...consulta,mucosas:v})}/><Input label="Hidratação" value={consulta.hidratacao} onChange={(v)=>setConsulta({...consulta,hidratacao:v})}/><Input label="ECC" value={consulta.ecc} onChange={(v)=>setConsulta({...consulta,ecc:v})}/><Input label="Dor" value={consulta.dor} onChange={(v)=>setConsulta({...consulta,dor:v})}/></div><div className="mt-3"><Textarea label="Exame físico / avaliação geral" value={consulta.exameGeral} onChange={(v)=>setConsulta({...consulta,exameGeral:v})}/></div></BlocoNumero>
 
-        <BlocoNumero numero="5" titulo="Exame clínico" descricao="Parâmetros essenciais primeiro; detalhes livres ficam no final."><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Input label="Peso (kg)" value={consulta.peso} onChange={(v)=>setConsulta({...consulta,peso:v})}/><Input label="Temperatura (°C)" value={consulta.temperatura} onChange={(v)=>setConsulta({...consulta,temperatura:v})}/><Input label="FC (bpm)" value={consulta.fc} onChange={(v)=>setConsulta({...consulta,fc:v})}/><Input label="FR (mpm)" value={consulta.fr} onChange={(v)=>setConsulta({...consulta,fr:v})}/><Input label="PAS (mmHg)" value={consulta.pas} onChange={(v)=>setConsulta({...consulta,pas:v})}/><Input label="Glicemia (mg/dL)" value={consulta.glicemia} onChange={(v)=>setConsulta({...consulta,glicemia:v})}/><Input label="Mucosas" value={consulta.mucosas} onChange={(v)=>setConsulta({...consulta,mucosas:v})}/><Input label="Hidratação" value={consulta.hidratacao} onChange={(v)=>setConsulta({...consulta,hidratacao:v})}/><Input label="ECC" value={consulta.ecc} onChange={(v)=>setConsulta({...consulta,ecc:v})}/><Input label="Dor" value={consulta.dor} onChange={(v)=>setConsulta({...consulta,dor:v})}/></div><div className="mt-3"><Textarea label="Exame físico / avaliação geral" value={consulta.exameGeral} onChange={(v)=>setConsulta({...consulta,exameGeral:v})}/></div></BlocoNumero>
-
-        <BlocoNumero numero="6" titulo="Conduta" descricao="Feche a consulta com o que foi pensado, solicitado e orientado."><div className="grid gap-3 md:grid-cols-2"><Textarea label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={(v)=>setConsulta({...consulta,suspeitas:v})}/><Textarea label="Exames solicitados" value={consulta.examesSolicitados} onChange={(v)=>setConsulta({...consulta,examesSolicitados:v})}/><Textarea label="Medicações / tratamento" value={consulta.medicacoes} onChange={(v)=>setConsulta({...consulta,medicacoes:v})}/><Textarea label="Conduta / orientações" value={consulta.conduta} onChange={(v)=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-3 max-w-md"><Input label="Retorno" value={consulta.retorno} onChange={(v)=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: 7 dias ou antes se piorar"/></div></BlocoNumero>
+        <BlocoNumero numero="5" titulo="Conduta" descricao="Feche a consulta com o que foi pensado, solicitado e orientado."><div className="grid gap-3 md:grid-cols-2"><Textarea label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={(v)=>setConsulta({...consulta,suspeitas:v})}/><Textarea label="Exames solicitados" value={consulta.examesSolicitados} onChange={(v)=>setConsulta({...consulta,examesSolicitados:v})}/><Textarea label="Medicações / tratamento" value={consulta.medicacoes} onChange={(v)=>setConsulta({...consulta,medicacoes:v})}/><Textarea label="Conduta / orientações" value={consulta.conduta} onChange={(v)=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-3 max-w-md"><Input label="Retorno" value={consulta.retorno} onChange={(v)=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: 7 dias ou antes se piorar"/></div></BlocoNumero>
 
         <div className="mt-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl border bg-muted/20 p-4"><label className="text-sm font-bold">Data da consulta<input type="date" value={data} onChange={(e)=>setData(e.target.value)} className="mt-1 block min-h-11 rounded-xl border bg-white px-3 font-normal"/></label><button type="button" onClick={salvarConsulta} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-6 font-black text-primary-foreground"><Save size={18}/> Salvar consulta</button></div>
       </div></section>
@@ -311,6 +309,27 @@ function RegistroClinico() {
 
     {modo === "procedimento" && <section className="mt-6 rounded-2xl border bg-white shadow-sm"><Cabecalho titulo="Cirurgia / Procedimentos" subtitulo="Registro objetivo do procedimento e do pós-operatório."/><div className="space-y-4 p-4 sm:p-5"><div className="grid gap-3 md:grid-cols-2"><Input label="Cirurgia / procedimento *" value={procedimento.tipo} onChange={(v)=>setProcedimento({...procedimento,tipo:v})}/><Input label="Equipe" value={procedimento.equipe} onChange={(v)=>setProcedimento({...procedimento,equipe:v})}/><Textarea label="Indicação" value={procedimento.indicacao} onChange={(v)=>setProcedimento({...procedimento,indicacao:v})}/><Textarea label="Anestesia / sedação" value={procedimento.anestesia} onChange={(v)=>setProcedimento({...procedimento,anestesia:v})}/><Textarea label="Achados" value={procedimento.achados} onChange={(v)=>setProcedimento({...procedimento,achados:v})}/><Textarea label="Materiais / técnica" value={procedimento.materiais} onChange={(v)=>setProcedimento({...procedimento,materiais:v})}/><Textarea label="Intercorrências" value={procedimento.intercorrencias} onChange={(v)=>setProcedimento({...procedimento,intercorrencias:v})}/><Textarea label="Pós-operatório" value={procedimento.posOperatorio} onChange={(v)=>setProcedimento({...procedimento,posOperatorio:v})}/></div><Textarea label="Observações" value={procedimento.observacoes} onChange={(v)=>setProcedimento({...procedimento,observacoes:v})}/><div className="flex flex-wrap items-end justify-between gap-3"><label className="text-sm font-bold">Data<input type="date" value={data} onChange={(e)=>setData(e.target.value)} className="mt-1 block min-h-11 rounded-xl border bg-white px-3 font-normal"/></label><button type="button" onClick={salvarProcedimento} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-6 font-black text-primary-foreground"><Save size={18}/> Salvar registro</button></div></div></section>}
   </main>;
+}
+
+function OftalmoCampos({ consulta, setConsulta, setOftalmoPar }: { consulta: ConsultaForm; setConsulta: React.Dispatch<React.SetStateAction<ConsultaForm>>; setOftalmoPar: (chave: keyof Omit<OftalmoForm, "equipamentoTonometria">, olho: keyof OlhoValores, valor: string) => void }) {
+  return <div className="mt-5 rounded-xl border bg-slate-50/50 p-3 sm:p-4">
+    <div className="mb-3"><h4 className="font-black">Exames oftalmológicos</h4><p className="mt-0.5 text-xs text-muted-foreground">OD (olho direito) e OE (olho esquerdo). Preencha apenas os testes realizados.</p></div>
+    <div className="overflow-x-auto"><div className="min-w-[680px]">
+      <div className="grid grid-cols-[180px_1fr_1fr] gap-2 border-b pb-2 text-xs font-black uppercase tracking-wide text-muted-foreground"><div>Teste</div><div>OD</div><div>OE</div></div>
+      <OftalmoLinhaEntrada label="Schirmer" od={consulta.oftalmo.schirmer.od} oe={consulta.oftalmo.schirmer.oe} unidade="mm/min" onOd={(v)=>setOftalmoPar("schirmer","od",v)} onOe={(v)=>setOftalmoPar("schirmer","oe",v)}/>
+      <OftalmoLinhaSelect label="Fluoresceína" od={consulta.oftalmo.fluoresceina.od} oe={consulta.oftalmo.fluoresceina.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("fluoresceina","od",v)} onOe={(v)=>setOftalmoPar("fluoresceina","oe",v)}/>
+      <OftalmoLinhaSelect label="Teste de Jones" od={consulta.oftalmo.jones.od} oe={consulta.oftalmo.jones.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("jones","od",v)} onOe={(v)=>setOftalmoPar("jones","oe",v)}/>
+      <OftalmoLinhaSelect label="Rosa Bengala" od={consulta.oftalmo.rosaBengala.od} oe={consulta.oftalmo.rosaBengala.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("rosaBengala","od",v)} onOe={(v)=>setOftalmoPar("rosaBengala","oe",v)}/>
+      <OftalmoLinhaSelect label="Lissamina Verde" od={consulta.oftalmo.lissaminaVerde.od} oe={consulta.oftalmo.lissaminaVerde.oe} opcoes={["Positivo","Negativo","Não realizado"]} onOd={(v)=>setOftalmoPar("lissaminaVerde","od",v)} onOe={(v)=>setOftalmoPar("lissaminaVerde","oe",v)}/>
+      <OftalmoLinhaEntrada label="PIO" od={consulta.oftalmo.pio.od} oe={consulta.oftalmo.pio.oe} unidade="mmHg" onOd={(v)=>setOftalmoPar("pio","od",v)} onOe={(v)=>setOftalmoPar("pio","oe",v)}/>
+    </div></div>
+    <div className="mt-3 max-w-xl"><Input label="Equipamento de tonometria (opcional)" value={consulta.oftalmo.equipamentoTonometria} onChange={(v)=>setConsulta((f)=>({...f,oftalmo:{...f.oftalmo,equipamentoTonometria:v}}))}/></div>
+    <div className="mt-5 border-t pt-4"><h4 className="font-black">Reflexos e respostas</h4><div className="mt-3 overflow-x-auto"><div className="min-w-[680px]"><div className="grid grid-cols-[260px_1fr_1fr] gap-2 border-b pb-2 text-xs font-black uppercase tracking-wide text-muted-foreground"><div>Avaliação</div><div>OD</div><div>OE</div></div>
+      <OftalmoLinhaSelect largo label="Reflexo pupilar direto" od={consulta.oftalmo.reflexoPupilarDireto.od} oe={consulta.oftalmo.reflexoPupilarDireto.oe} opcoes={["Presente","Reduzido","Ausente","Não realizado"]} onOd={(v)=>setOftalmoPar("reflexoPupilarDireto","od",v)} onOe={(v)=>setOftalmoPar("reflexoPupilarDireto","oe",v)}/>
+      <OftalmoLinhaSelect largo label="Reflexo pupilar consensual" od={consulta.oftalmo.reflexoPupilarConsensual.od} oe={consulta.oftalmo.reflexoPupilarConsensual.oe} opcoes={["Presente","Reduzido","Ausente","Não realizado"]} onOd={(v)=>setOftalmoPar("reflexoPupilarConsensual","od",v)} onOe={(v)=>setOftalmoPar("reflexoPupilarConsensual","oe",v)}/>
+      <OftalmoLinhaSelect largo label="Deambulação" od={consulta.oftalmo.deambulacao.od} oe={consulta.oftalmo.deambulacao.oe} opcoes={["Normal","Alterada","Ausente","Não realizado"]} onOd={(v)=>setOftalmoPar("deambulacao","od",v)} onOe={(v)=>setOftalmoPar("deambulacao","oe",v)}/>
+    </div></div></div>
+  </div>;
 }
 
 function TipoCard({ icon: Icon, titulo, texto, onClick }: { icon: typeof HeartPulse; titulo: string; texto: string; onClick: () => void }) { return <button type="button" onClick={onClick} className="group rounded-2xl border-2 bg-white p-5 text-left shadow-sm transition hover:border-primary hover:shadow-md"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon size={22}/></div><div className="mt-4 text-xl font-black">{titulo}</div><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{texto}</p><div className="mt-4 text-sm font-black text-primary">Abrir →</div></button>; }
