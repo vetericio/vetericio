@@ -99,6 +99,16 @@ function lerTutores(): Tutor[] {
   try { return JSON.parse(localStorage.getItem(TUTORES_KEY) || "[]"); } catch { return []; }
 }
 
+function ordenarRacas(racas: string[]) {
+  const finais = ["Mestiço", "Outra raça", "Outra raça / variedade", "Não informado"];
+  const srd = racas.filter((r) => r === SRD);
+  const meio = racas
+    .filter((r) => r !== SRD && !finais.includes(r))
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  const fim = finais.filter((r) => racas.includes(r));
+  return [...srd, ...meio, ...fim];
+}
+
 function NovoAnimal() {
   const navigate = useNavigate();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
@@ -112,7 +122,7 @@ function NovoAnimal() {
 
   const racasInternacionais = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
   const racas = useMemo(
-    () => racasInternacionais.map((r) => nomeRacaBrasil(form.especie, r)),
+    () => ordenarRacas(racasInternacionais.map((r) => nomeRacaBrasil(form.especie, r))),
     [form.especie, racasInternacionais],
   );
   const pelagens = PELAGENS[form.especie] || ["Não informado", "Outro"];
