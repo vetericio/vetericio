@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, ClipboardList, Eye, EyeOff, PawPrint, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgendaDayBoard } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
@@ -9,6 +9,7 @@ export const Route = createFileRoute("/recepcao")({ component: Recepcao });
 const FILA_KEY = "oricse-fila-espera-v1";
 const FILA_VISIVEL_KEY = "oricse-recepcao-fila-visivel";
 const AGENDA_KEY = "oricse-agendas-v2";
+const TUTORES_KEY = "oricse-tutores-v1";
 const DEMO_EVENT_IDS = new Set(["e1", "e2", "e3", "e4"]);
 
 type FilaResumo = {
@@ -24,10 +25,29 @@ type FilaResumo = {
   entradaEm?: string;
 };
 
+type TutorAniversario = {
+  id: string;
+  nome: string;
+  nascimento?: string;
+  telefone?: string;
+  outroTelefone?: string;
+  email?: string;
+};
+
 function lerFila(): FilaResumo[] {
   if (typeof window === "undefined") return [];
   try {
     const valor = JSON.parse(localStorage.getItem(FILA_KEY) || "[]");
+    return Array.isArray(valor) ? valor : [];
+  } catch {
+    return [];
+  }
+}
+
+function lerTutores(): TutorAniversario[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const valor = JSON.parse(localStorage.getItem(TUTORES_KEY) || "[]");
     return Array.isArray(valor) ? valor : [];
   } catch {
     return [];
@@ -91,6 +111,40 @@ function emojiEspecie(especie?: string) {
   return "🐾";
 }
 
+function partesNascimento(nascimento?: string) {
+  if (!nascimento) return null;
+  const valor = nascimento.slice(0, 10);
+  const partes = valor.includes("-") ? valor.split("-") : valor.split("/").reverse();
+  if (partes.length !== 3) return null;
+  const [ano, mes, dia] = partes.map(Number);
+  if (!ano || !mes || !dia) return null;
+  return { ano, mes, dia };
+}
+
+function dataAniversario(nascimento?: string) {
+  const p = partesNascimento(nascimento);
+  return p ? `${String(p.dia).padStart(2, "0")}/${String(p.mes).padStart(2, "0")}` : "Não informado";
+}
+
+function distanciaAniversario(nascimento?: string) {
+  const p = partesNascimento(nascimento);
+  if (!p) return Number.MAX_SAFE_INTEGER;
+  const hoje = new Date();
+  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  let proximo = new Date(hoje.getFullYear(), p.mes - 1, p.dia);
+  if (proximo < inicioHoje) proximo = new Date(hoje.getFullYear() + 1, p.mes - 1, p.dia);
+  return Math.round((proximo.getTime() - inicioHoje.getTime()) / 86400000);
+}
+
+function mensagemAniversario(nome: string) {
+  const primeiroNome = nome.trim().split(/\s+/)[0] || nome;
+  return `Olá, ${primeiroNome}! 🎉 A equipe da clínica deseja a você um feliz aniversário! Que seu novo ciclo seja cheio de saúde, alegria e muitos momentos especiais. 💚`;
+}
+
+function telefoneWhatsApp(tutor: TutorAniversario) {
+  return String(tutor.telefone || tutor.outroTelefone || "").replace(/\D/g, "");
+}
+
 function Recepcao() {
   useState(() => {
     limparAtendimentosDeExemplo();
@@ -98,6 +152,10 @@ function Recepcao() {
   });
 
   const [fila, setFila] = useState<FilaResumo[]>(lerFila);
+  const [tutores, setTutores] = useState<TutorAniversario[]>(lerTutores);
+  const [aniversariosAbertos, setAniversariosAbertos] = useState(false);
+  const [tutorMensagem, setTutorMensagem] = useState<TutorAniversario | null>(null);
+  const [mensagem, setMensagem] = useState("");
   const [filaVisivel, setFilaVisivel] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(FILA_VISIVEL_KEY) !== "false";
@@ -110,17 +168,29 @@ function Recepcao() {
     .filter((item) => !item.status || item.status === "Aguardando")
     .sort((a, b) => new Date(a.chegadaEm || a.entradaEm || 0).getTime() - new Date(b.chegadaEm || b.entradaEm || 0).getTime()), [fila]);
 
+  const aniversariantes = useMemo(() => [...tutores].sort((a, b) => {
+    const da = distanciaAniversario(a.nascimento);
+    const db = distanciaAniversario(b.nascimento);
+    if (da !== db) return da - db;
+    return a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+  }), [tutores]);
+
+  const aniversariantesHoje = useMemo(() => aniversariantes.filter((t) => distanciaAniversario(t.nascimento) === 0), [aniversariantes]);
+
   useEffect(() => {
     localStorage.setItem(FILA_VISIVEL_KEY, String(filaVisivel));
   }, [filaVisivel]);
 
   useEffect(() => {
-    const atualizarFila = () => setFila(lerFila());
-    window.addEventListener("storage", atualizarFila);
-    window.addEventListener("focus", atualizarFila);
+    const atualizar = () => {
+      setFila(lerFila());
+      setTutores(lerTutores());
+    };
+    window.addEventListener("storage", atualizar);
+    window.addEventListener("focus", atualizar);
     return () => {
-      window.removeEventListener("storage", atualizarFila);
-      window.removeEventListener("focus", atualizarFila);
+      window.removeEventListener("storage", atualizar);
+      window.removeEventListener("focus", atualizar);
     };
   }, []);
 
@@ -169,12 +239,30 @@ function Recepcao() {
     };
   }, []);
 
+  function abrirMensagem(tutor: TutorAniversario) {
+    setTutorMensagem(tutor);
+    setMensagem(mensagemAniversario(tutor.nome));
+  }
+
+  function enviarWhatsApp() {
+    if (!tutorMensagem) return;
+    const telefone = telefoneWhatsApp(tutorMensagem);
+    if (!telefone) return;
+    const numero = telefone.startsWith("55") ? telefone : `55${telefone}`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function enviarEmail() {
+    if (!tutorMensagem?.email) return;
+    window.location.href = `mailto:${encodeURIComponent(tutorMensagem.email)}?subject=${encodeURIComponent("Feliz aniversário! 🎉")}&body=${encodeURIComponent(mensagem)}`;
+  }
+
   const itens = [
     ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound, "/tutores"],
     ["Adicionar / consultar animal", "Pesquise o animal e veja tutor, contatos e ficha completa", PawPrint, "/animais"],
     ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
     ["Novo agendamento", "Organize os horários", CalendarDays, null],
-    ["Aniversariantes do dia", "Datas importantes", CalendarDays, null],
+    ["Aniversariantes do dia", aniversariantesHoje.length ? `${aniversariantesHoje.length} aniversariante${aniversariantesHoje.length > 1 ? "s" : ""} hoje` : "Datas importantes", CalendarDays, "aniversarios"],
     ["Reforços próximos", "Vacinas e vermifugação", Plus, null],
   ] as const;
 
@@ -237,9 +325,41 @@ function Recepcao() {
       <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {itens.map(([titulo, texto, Icone, destino]) => {
           const conteudo = <div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Icone className="text-primary" size={20}/></div><div><h2 className="font-semibold">{titulo}</h2><p className="mt-0.5 text-sm text-muted-foreground">{texto}</p></div></div>;
+          if (destino === "aniversarios") return <button key={titulo} type="button" onClick={() => setAniversariosAbertos(true)} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
           return destino ? <Link key={titulo} to={destino} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</Link> : <button key={titulo} type="button" className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
         })}
       </section>
+
+      {aniversariosAbertos && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-3" onMouseDown={(e) => { if (e.currentTarget === e.target) setAniversariosAbertos(false); }}>
+        <section className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <header className="flex items-start justify-between gap-3 border-b px-5 py-4">
+            <div><div className="flex items-center gap-2"><CalendarDays className="text-primary" size={21}/><h2 className="text-xl font-black">Aniversários dos tutores</h2></div><p className="mt-1 text-sm text-muted-foreground">Próximos aniversários primeiro. Selecione um tutor para enviar os parabéns.</p></div>
+            <button type="button" onClick={() => setAniversariosAbertos(false)} className="rounded-xl p-2 hover:bg-muted" aria-label="Fechar"><X size={20}/></button>
+          </header>
+          <div className="overflow-y-auto p-4">
+            {aniversariantes.length === 0 ? <div className="py-12 text-center text-muted-foreground">Nenhum tutor cadastrado.</div> : <div className="space-y-2">{aniversariantes.map((tutor) => {
+              const faltam = distanciaAniversario(tutor.nascimento);
+              const hoje = faltam === 0;
+              return <button key={tutor.id} type="button" onClick={() => abrirMensagem(tutor)} className={`flex w-full items-center justify-between gap-3 rounded-2xl border p-3 text-left transition hover:border-primary ${hoje ? "border-primary bg-primary/[0.05]" : "bg-white"}`}>
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="truncate">{tutor.nome}</strong>{hoje && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-black uppercase text-primary-foreground">Hoje 🎉</span>}</div><div className="mt-1 text-sm text-muted-foreground">{dataAniversario(tutor.nascimento)}{tutor.telefone ? ` · ${tutor.telefone}` : ""}{tutor.email ? ` · ${tutor.email}` : ""}</div></div>
+                <div className="shrink-0 text-right text-xs font-bold text-primary">{!tutor.nascimento ? "Sem data" : hoje ? "Aniversário hoje" : faltam === 1 ? "Amanhã" : `Em ${faltam} dias`}</div>
+              </button>;
+            })}</div>}
+          </div>
+        </section>
+      </div>}
+
+      {tutorMensagem && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-3" onMouseDown={(e) => { if (e.currentTarget === e.target) setTutorMensagem(null); }}>
+        <section className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-primary">Mensagem de aniversário</p><h2 className="mt-1 text-xl font-black">{tutorMensagem.nome}</h2><p className="mt-1 text-sm text-muted-foreground">{dataAniversario(tutorMensagem.nascimento)}</p></div><button type="button" onClick={() => setTutorMensagem(null)} className="rounded-xl p-2 hover:bg-muted"><X size={20}/></button></div>
+          <label className="mt-4 block text-sm font-bold">Mensagem<textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={6} className="mt-1 w-full rounded-2xl border p-3 font-normal outline-none focus:border-primary"/></label>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button type="button" onClick={enviarWhatsApp} disabled={!telefoneWhatsApp(tutorMensagem)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-35"><MessageCircle size={18}/> Enviar pelo WhatsApp</button>
+            <button type="button" onClick={enviarEmail} disabled={!tutorMensagem.email} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary px-4 font-black text-primary disabled:cursor-not-allowed disabled:opacity-35"><Mail size={18}/> Enviar por e-mail</button>
+          </div>
+          {(!telefoneWhatsApp(tutorMensagem) || !tutorMensagem.email) && <p className="mt-3 text-xs text-muted-foreground">Botões ficam indisponíveis quando o contato correspondente não estiver cadastrado.</p>}
+        </section>
+      </div>}
     </main>
   );
 }
