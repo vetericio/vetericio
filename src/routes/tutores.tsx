@@ -46,6 +46,7 @@ type Tutor = {
 type Modo = "procurar" | "novo";
 
 const CHAVE = "oricse-tutores-v1";
+const ALFABETO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 const vazio: Omit<Tutor, "id" | "criadoEm"> = {
   nome: "",
@@ -100,6 +101,15 @@ function soDigitos(v: string) {
   return v.replace(/\D/g, "");
 }
 
+function inicialNome(nome: string) {
+  return nome
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .charAt(0)
+    .toUpperCase();
+}
+
 function mascaraTelefone(v: string) {
   const d = soDigitos(v).slice(0, 11);
   if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
@@ -123,17 +133,44 @@ function Tutores() {
   const [form, setForm] = useState(vazio);
   const [tutores, setTutores] = useState<Tutor[]>(carregar);
   const [busca, setBusca] = useState("");
+  const [letra, setLetra] = useState("TODOS");
   const [buscandoCep, setBuscandoCep] = useState(false);
+
+  const tutoresOrdenados = useMemo(
+    () => [...tutores].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })),
+    [tutores],
+  );
+
+  const letrasDisponiveis = useMemo(
+    () => new Set(tutoresOrdenados.map((t) => inicialNome(t.nome)).filter(Boolean)),
+    [tutoresOrdenados],
+  );
+
+  const tutoresPorLetra = useMemo(
+    () => letra === "TODOS" ? tutoresOrdenados : tutoresOrdenados.filter((t) => inicialNome(t.nome) === letra),
+    [letra, tutoresOrdenados],
+  );
+
+  const gruposAlfabeticos = useMemo(() => {
+    const grupos = new Map<string, Tutor[]>();
+    tutoresPorLetra.forEach((tutor) => {
+      const inicial = inicialNome(tutor.nome) || "#";
+      const atual = grupos.get(inicial) || [];
+      atual.push(tutor);
+      grupos.set(inicial, atual);
+    });
+    return Array.from(grupos.entries()).sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
+  }, [tutoresPorLetra]);
 
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    if (!q) return tutores;
-    return tutores.filter((t) =>
+    if (!q) return tutoresOrdenados;
+    return tutoresOrdenados.filter((t) =>
       [t.nome, t.nomeSocial, t.telefone, t.outroTelefone, t.email, t.cpfCnpj].some((v) =>
         (v || "").toLowerCase().includes(q),
       ),
     );
-  }, [busca, tutores]);
+  }, [busca, tutoresOrdenados]);
 
   function set<K extends keyof typeof form>(chave: K, valor: (typeof form)[K]) {
     setForm((atual) => ({ ...atual, [chave]: valor }));
@@ -183,6 +220,7 @@ function Tutores() {
     setForm(vazio);
     setModo("procurar");
     setBusca(novo.nome);
+    setLetra("TODOS");
     toast.success("Tutor cadastrado com sucesso.");
   }
 
@@ -308,14 +346,58 @@ function Tutores() {
           <h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary" /> Tutores cadastrados <span className="text-sm font-bold text-muted-foreground">({tutores.length})</span></h2>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {tutores.length > 0 && (
+          <div className="mt-4 overflow-x-auto pb-1">
+            <div className="flex min-w-max items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setLetra("TODOS")}
+                className={`rounded-lg px-3 py-2 text-xs font-bold transition ${letra === "TODOS" ? "bg-primary text-primary-foreground" : "border bg-white hover:border-primary/50"}`}
+              >
+                Todos
+              </button>
+              {ALFABETO.map((item) => {
+                const disponivel = letrasDisponiveis.has(item);
+                const ativo = letra === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    disabled={!disponivel}
+                    onClick={() => setLetra(item)}
+                    className={`h-9 min-w-9 rounded-lg px-2 text-xs font-black transition ${ativo ? "bg-primary text-primary-foreground" : disponivel ? "border bg-white hover:border-primary/50 hover:text-primary" : "border border-transparent text-muted-foreground/35"}`}
+                    aria-label={`Mostrar tutores com a letra ${item}`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4">
           {tutores.length === 0 ? (
-            <div className="md:col-span-2 lg:col-span-3 rounded-xl border border-dashed bg-slate-50 p-7 text-center">
+            <div className="rounded-xl border border-dashed bg-slate-50 p-7 text-center">
               <p className="text-sm font-medium text-muted-foreground">Nenhum tutor cadastrado ainda.</p>
               <button type="button" onClick={() => setModo("novo")} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><UserPlus size={16} /> Cadastrar tutor</button>
             </div>
+          ) : gruposAlfabeticos.length === 0 ? (
+            <div className="rounded-xl border border-dashed bg-slate-50 p-7 text-center text-sm text-muted-foreground">Nenhum tutor cadastrado com esta letra.</div>
           ) : (
-            tutores.map((t) => <TutorCard key={t.id} tutor={t} />)
+            <div className="space-y-6">
+              {gruposAlfabeticos.map(([inicial, grupo]) => (
+                <section key={inicial}>
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">{inicial}</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {grupo.map((t) => <TutorCard key={t.id} tutor={t} />)}
+                  </div>
+                </section>
+              ))}
+            </div>
           )}
         </div>
       </section>
