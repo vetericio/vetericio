@@ -32,6 +32,22 @@ article.border-slate-500 [class*="border-l-"] * { color: #475569 !important; }
 article.border-blue-900 [class*="border-l-"] { border-color: #1e3a8a !important; color: #1e3a8a !important; }
 article.border-blue-900 [class*="border-l-"] * { color: #1e3a8a !important; }
 
+/* Cirurgia: deixa explícita a diferença entre @usuário vinculado e nome livre. */
+.border-rose-200.bg-rose-50\/50.p-3 > div:first-child::after {
+  content: "@usuário = profissional cadastrado: este atendimento também vai para a agenda dele.\A Nome sem @ = registro livre: o profissional fica apenas nesta cirurgia, sem vínculo com agenda.";
+  display: block;
+  margin-top: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(225, 29, 72, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.78);
+  color: #9f1239;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
 /* Recepção: o cabeçalho de cada agenda acompanha a rolagem vertical,
    mas fica limitado à própria coluna da agenda. */
 .agenda-recepcao-wrap article > header {
