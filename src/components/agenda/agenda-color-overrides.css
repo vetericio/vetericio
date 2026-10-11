@@ -1,0 +1,33 @@
+/* Agenda visual rule:
+   - procedure type controls only the soft background and type dot
+   - agenda color controls borders, left accent and all text/actions */
+
+article.border-sky-400 [class*="border-l-"] { border-color: #38bdf8 !important; color: #0284c7 !important; }
+article.border-sky-400 [class*="border-l-"] * { color: #0284c7 !important; }
+
+article.border-emerald-500 [class*="border-l-"] { border-color: #059669 !important; color: #047857 !important; }
+article.border-emerald-500 [class*="border-l-"] * { color: #047857 !important; }
+
+article.border-amber-500 [class*="border-l-"] { border-color: #d97706 !important; color: #b45309 !important; }
+article.border-amber-500 [class*="border-l-"] * { color: #b45309 !important; }
+
+article.border-red-500 [class*="border-l-"] { border-color: #dc2626 !important; color: #b91c1c !important; }
+article.border-red-500 [class*="border-l-"] * { color: #b91c1c !important; }
+
+article.border-pink-500 [class*="border-l-"] { border-color: #db2777 !important; color: #be185d !important; }
+article.border-pink-500 [class*="border-l-"] * { color: #be185d !important; }
+
+article.border-orange-500 [class*="border-l-"] { border-color: #ea580c !important; color: #c2410c !important; }
+article.border-orange-500 [class*="border-l-"] * { color: #c2410c !important; }
+
+article.border-violet-500 [class*="border-l-"] { border-color: #7c3aed !important; color: #6d28d9 !important; }
+article.border-violet-500 [class*="border-l-"] * { color: #6d28d9 !important; }
+
+article.border-amber-800 [class*="border-l-"] { border-color: #92400e !important; color: #78350f !important; }
+article.border-amber-800 [class*="border-l-"] * { color: #78350f !important; }
+
+article.border-slate-500 [class*="border-l-"] { border-color: #64748b !important; color: #475569 !important; }
+article.border-slate-500 [class*="border-l-"] * { color: #475569 !important; }
+
+article.border-blue-900 [class*="border-l-"] { border-color: #1e3a8a !important; color: #1e3a8a !important; }
+article.border-blue-900 [class*="border-l-"] * { color: #1e3a8a !important; }
