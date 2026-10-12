@@ -64,8 +64,33 @@ function prepararSeletor(select: HTMLSelectElement) {
   }, true);
 }
 
+function prepararAtalhoCaixa() {
+  if (window.location.pathname !== "/recepcao") return;
+
+  const titulos = Array.from(document.querySelectorAll<HTMLElement>("h2"));
+  const titulo = titulos.find((elemento) => textoDoElemento(elemento) === "Novo agendamento");
+  if (!titulo) return;
+
+  const card = titulo.closest<HTMLElement>("button, a");
+  if (!card) return;
+
+  titulo.textContent = "Caixa";
+  const subtitulo = titulo.parentElement?.querySelector<HTMLElement>("p");
+  if (subtitulo) subtitulo.textContent = "Movimentações e fechamento";
+
+  if (card.dataset.oricseCaixaConfigurado === "1") return;
+  card.dataset.oricseCaixaConfigurado = "1";
+  card.setAttribute("role", "link");
+  card.setAttribute("aria-label", "Abrir caixa");
+  card.addEventListener("click", (evento) => {
+    evento.preventDefault();
+    window.location.href = "/financeiro";
+  });
+}
+
 function varrer() {
   document.querySelectorAll<HTMLSelectElement>("select").forEach(prepararSeletor);
+  prepararAtalhoCaixa();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
