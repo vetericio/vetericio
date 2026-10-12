@@ -10,6 +10,9 @@ const FILA_KEY = "oricse-fila-espera-v1";
 const FILA_VISIVEL_KEY = "oricse-recepcao-fila-visivel";
 const AGENDA_KEY = "oricse-agendas-v2";
 const TUTORES_KEY = "oricse-tutores-v1";
+const ANIMAIS_KEY = "oricse-animais-v1";
+const PRONTUARIO_KEY = "oricse-prontuario-animal-v1";
+const LEMBRETES_REFORCOS_KEY = "oricse-lembretes-reforcos-v1";
 const DEMO_EVENT_IDS = new Set(["e1", "e2", "e3", "e4"]);
 
 type FilaResumo = {
@@ -34,23 +37,60 @@ type TutorAniversario = {
   email?: string;
 };
 
-function lerFila(): FilaResumo[] {
+type AnimalResumo = {
+  id: string;
+  tutorId: string;
+  nome: string;
+  especie?: string;
+};
+
+type RegistroReforco = {
+  id: string;
+  animalId: string;
+  tipo?: string;
+  titulo?: string;
+  detalhe?: string;
+  subtipo?: string;
+  data?: string;
+  proximaDose?: string;
+  proximoReforco?: string;
+  validadeFim?: string;
+  dados?: Record<string, unknown>;
+};
+
+type ReforcoItem = {
+  id: string;
+  registroId: string;
+  animalId: string;
+  animalNome: string;
+  tutor: TutorAniversario;
+  categoria: "Vacina" | "Vermífugo";
+  nome: string;
+  data: string;
+};
+
+function lerLista<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor = JSON.parse(localStorage.getItem(FILA_KEY) || "[]");
+    const valor = JSON.parse(localStorage.getItem(chave) || "[]");
     return Array.isArray(valor) ? valor : [];
   } catch {
     return [];
   }
 }
 
-function lerTutores(): TutorAniversario[] {
-  if (typeof window === "undefined") return [];
+function lerFila(): FilaResumo[] { return lerLista<FilaResumo>(FILA_KEY); }
+function lerTutores(): TutorAniversario[] { return lerLista<TutorAniversario>(TUTORES_KEY); }
+function lerAnimais(): AnimalResumo[] { return lerLista<AnimalResumo>(ANIMAIS_KEY); }
+function lerRegistros(): RegistroReforco[] { return lerLista<RegistroReforco>(PRONTUARIO_KEY); }
+
+function lerLembretesReforcos(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
   try {
-    const valor = JSON.parse(localStorage.getItem(TUTORES_KEY) || "[]");
-    return Array.isArray(valor) ? valor : [];
+    const valor = JSON.parse(localStorage.getItem(LEMBRETES_REFORCOS_KEY) || "{}");
+    return valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
   } catch {
-    return [];
+    return {};
   }
 }
 
@@ -145,6 +185,66 @@ function telefoneWhatsApp(tutor: TutorAniversario) {
   return String(tutor.telefone || tutor.outroTelefone || "").replace(/\D/g, "");
 }
 
+function normalizarData(valor?: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const texto = valor.trim();
+  let m = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${String(Number(m[2])).padStart(2, "0")}-${String(Number(m[1])).padStart(2, "0")}`;
+  return null;
+}
+
+function extrairDataReforco(registro: RegistroReforco): string | null {
+  const dados = registro.dados || {};
+  const diretos = [
+    registro.proximaDose,
+    registro.proximoReforco,
+    registro.validadeFim,
+    dados.proximaDose,
+    dados.proximoReforco,
+    dados.validadeFim,
+    dados.proxima_dose,
+    dados.proximo_reforco,
+    dados.validade_fim,
+  ];
+  for (const valor of diretos) {
+    const data = normalizarData(valor);
+    if (data) return data;
+  }
+
+  const detalhe = String(registro.detalhe || "");
+  const padrao = /(?:pr[oó]xima\s+dose|pr[oó]ximo\s+refor[cç]o|refor[cç]o|validade\s+at[eé]|repetir\s+em)\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2})/i;
+  const achado = detalhe.match(padrao);
+  return achado ? normalizarData(achado[1]) : null;
+}
+
+function dataBR(data: string) {
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+function diferencaDias(data: string) {
+  const alvo = new Date(`${data}T12:00:00`);
+  const hoje = new Date();
+  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12);
+  return Math.round((alvo.getTime() - inicioHoje.getTime()) / 86400000);
+}
+
+function statusReforco(data: string) {
+  const dias = diferencaDias(data);
+  if (dias < 0) return `Vencido há ${Math.abs(dias)} dia${Math.abs(dias) === 1 ? "" : "s"}`;
+  if (dias === 0) return "É hoje";
+  if (dias === 1) return "Amanhã";
+  return `Em ${dias} dias`;
+}
+
+function mensagemReforco(item: ReforcoItem) {
+  const primeiroNome = item.tutor.nome.trim().split(/\s+/)[0] || item.tutor.nome;
+  const acao = item.categoria === "Vermífugo" ? "repetição" : "reforço";
+  return `Olá, ${primeiroNome}! 💚 Passando para lembrar que a ${acao} de ${item.nome} de ${item.animalNome} está prevista para ${dataBR(item.data)}. Se precisar, podemos ajudar a agendar.`;
+}
+
 function Recepcao() {
   useState(() => {
     limparAtendimentosDeExemplo();
@@ -153,9 +253,15 @@ function Recepcao() {
 
   const [fila, setFila] = useState<FilaResumo[]>(lerFila);
   const [tutores, setTutores] = useState<TutorAniversario[]>(lerTutores);
+  const [animais, setAnimais] = useState<AnimalResumo[]>(lerAnimais);
+  const [registros, setRegistros] = useState<RegistroReforco[]>(lerRegistros);
   const [aniversariosAbertos, setAniversariosAbertos] = useState(false);
   const [tutorMensagem, setTutorMensagem] = useState<TutorAniversario | null>(null);
   const [mensagem, setMensagem] = useState("");
+  const [reforcosAbertos, setReforcosAbertos] = useState(false);
+  const [reforcoMensagem, setReforcoMensagem] = useState<ReforcoItem | null>(null);
+  const [mensagemReforcoEditavel, setMensagemReforcoEditavel] = useState("");
+  const [lembretesReforcos, setLembretesReforcos] = useState<Record<string, boolean>>(lerLembretesReforcos);
   const [filaVisivel, setFilaVisivel] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(FILA_VISIVEL_KEY) !== "false";
@@ -177,6 +283,37 @@ function Recepcao() {
 
   const aniversariantesHoje = useMemo(() => aniversariantes.filter((t) => distanciaAniversario(t.nascimento) === 0), [aniversariantes]);
 
+  const reforcos = useMemo<ReforcoItem[]>(() => {
+    const tutorPorId = new Map(tutores.map((t) => [t.id, t]));
+    const animalPorId = new Map(animais.map((a) => [a.id, a]));
+    const itens: ReforcoItem[] = [];
+
+    registros.forEach((registro) => {
+      const texto = `${registro.tipo || ""} ${registro.subtipo || ""} ${registro.titulo || ""} ${registro.detalhe || ""}`.toLowerCase();
+      const ehVacina = String(registro.tipo || "").toLowerCase() === "vacinas" || /vacina|v10|v8|antirr[aá]b|gi[aá]rd|gripe/.test(texto);
+      const ehVermifugo = /verm[ií]f|vermifuga|vermifugo|vermífugo/.test(texto);
+      if (!ehVacina && !ehVermifugo) return;
+      const data = extrairDataReforco(registro);
+      if (!data) return;
+      const animal = animalPorId.get(registro.animalId);
+      if (!animal) return;
+      const tutor = tutorPorId.get(animal.tutorId);
+      if (!tutor) return;
+      itens.push({
+        id: `${registro.id}-${data}`,
+        registroId: registro.id,
+        animalId: animal.id,
+        animalNome: animal.nome,
+        tutor,
+        categoria: ehVermifugo ? "Vermífugo" : "Vacina",
+        nome: registro.titulo?.trim() || (ehVermifugo ? "Vermífugo" : "Vacina"),
+        data,
+      });
+    });
+
+    return itens.sort((a, b) => a.data.localeCompare(b.data) || a.animalNome.localeCompare(b.animalNome, "pt-BR"));
+  }, [registros, animais, tutores]);
+
   useEffect(() => {
     localStorage.setItem(FILA_VISIVEL_KEY, String(filaVisivel));
   }, [filaVisivel]);
@@ -185,6 +322,9 @@ function Recepcao() {
     const atualizar = () => {
       setFila(lerFila());
       setTutores(lerTutores());
+      setAnimais(lerAnimais());
+      setRegistros(lerRegistros());
+      setLembretesReforcos(lerLembretesReforcos());
     };
     window.addEventListener("storage", atualizar);
     window.addEventListener("focus", atualizar);
@@ -257,13 +397,37 @@ function Recepcao() {
     window.location.href = `mailto:${encodeURIComponent(tutorMensagem.email)}?subject=${encodeURIComponent("Feliz aniversário! 🎉")}&body=${encodeURIComponent(mensagem)}`;
   }
 
+  function alternarLembrete(reforcoId: string) {
+    const proximo = { ...lembretesReforcos, [reforcoId]: !lembretesReforcos[reforcoId] };
+    setLembretesReforcos(proximo);
+    localStorage.setItem(LEMBRETES_REFORCOS_KEY, JSON.stringify(proximo));
+  }
+
+  function abrirMensagemReforco(item: ReforcoItem) {
+    setReforcoMensagem(item);
+    setMensagemReforcoEditavel(mensagemReforco(item));
+  }
+
+  function enviarReforcoWhatsApp() {
+    if (!reforcoMensagem) return;
+    const telefone = telefoneWhatsApp(reforcoMensagem.tutor);
+    if (!telefone) return;
+    const numero = telefone.startsWith("55") ? telefone : `55${telefone}`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagemReforcoEditavel)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function enviarReforcoEmail() {
+    if (!reforcoMensagem?.tutor.email) return;
+    window.location.href = `mailto:${encodeURIComponent(reforcoMensagem.tutor.email)}?subject=${encodeURIComponent(`Lembrete: ${reforcoMensagem.nome}`)}&body=${encodeURIComponent(mensagemReforcoEditavel)}`;
+  }
+
   const itens = [
     ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound, "/tutores"],
     ["Adicionar / consultar animal", "Pesquise o animal e veja tutor, contatos e ficha completa", PawPrint, "/animais"],
     ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
     ["Novo agendamento", "Organize os horários", CalendarDays, null],
     ["Aniversariantes do dia", aniversariantesHoje.length ? `${aniversariantesHoje.length} aniversariante${aniversariantesHoje.length > 1 ? "s" : ""} hoje` : "Datas importantes", CalendarDays, "aniversarios"],
-    ["Reforços próximos", "Vacinas e vermifugação", Plus, null],
+    ["Reforços próximos", reforcos.length ? `${reforcos.length} reforço${reforcos.length > 1 ? "s" : ""} com data registrada` : "Vacinas e vermifugação", Plus, "reforcos"],
   ] as const;
 
   return (
@@ -326,6 +490,7 @@ function Recepcao() {
         {itens.map(([titulo, texto, Icone, destino]) => {
           const conteudo = <div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Icone className="text-primary" size={20}/></div><div><h2 className="font-semibold">{titulo}</h2><p className="mt-0.5 text-sm text-muted-foreground">{texto}</p></div></div>;
           if (destino === "aniversarios") return <button key={titulo} type="button" onClick={() => setAniversariosAbertos(true)} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
+          if (destino === "reforcos") return <button key={titulo} type="button" onClick={() => setReforcosAbertos(true)} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
           return destino ? <Link key={titulo} to={destino} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</Link> : <button key={titulo} type="button" className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
         })}
       </section>
@@ -349,6 +514,35 @@ function Recepcao() {
         </section>
       </div>}
 
+      {reforcosAbertos && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-3" onMouseDown={(e) => { if (e.currentTarget === e.target) setReforcosAbertos(false); }}>
+        <section className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <header className="flex items-start justify-between gap-3 border-b px-5 py-4">
+            <div><div className="flex items-center gap-2"><Plus className="text-primary" size={21}/><h2 className="text-xl font-black">Reforços próximos</h2></div><p className="mt-1 text-sm text-muted-foreground">Vacinas e vermífugos com próxima dose, reforço ou validade registrada. Vencidos aparecem primeiro.</p></div>
+            <button type="button" onClick={() => setReforcosAbertos(false)} className="rounded-xl p-2 hover:bg-muted" aria-label="Fechar"><X size={20}/></button>
+          </header>
+          <div className="overflow-y-auto p-4">
+            {reforcos.length === 0 ? <div className="py-12 text-center"><CalendarDays className="mx-auto mb-2 text-primary/30" size={34}/><strong>Nenhum reforço com data registrada.</strong><p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">O ORICSE não calcula intervalos por conta própria. Registre a próxima dose/reforço ou a validade no prontuário para o lembrete aparecer aqui.</p></div> : <div className="space-y-2">{reforcos.map((item) => {
+              const vencido = diferencaDias(item.data) < 0;
+              const lembrar = Boolean(lembretesReforcos[item.id]);
+              return <article key={item.id} className={`rounded-2xl border p-3 ${vencido ? "border-red-200 bg-red-50/45" : "bg-white"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${vencido ? "bg-red-100 text-red-700" : "bg-primary/10 text-primary"}`}>Dia {dataBR(item.data)}</span><span className={`text-xs font-bold ${vencido ? "text-red-600" : "text-primary"}`}>{statusReforco(item.data)}</span></div>
+                    <div className="mt-2 font-black">{item.animalNome} <span className="font-normal text-muted-foreground">· {item.tutor.nome}</span></div>
+                    <div className="mt-0.5 text-sm"><strong>{item.categoria}</strong> · {item.nome}</div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-xl border px-3 text-xs font-bold"><input type="checkbox" checked={lembrar} onChange={() => alternarLembrete(item.id)} className="accent-primary"/> Lembrar tutor?</label>
+                    <Link to="/animal" search={{ animalId: item.animalId } as never} className="inline-flex min-h-9 items-center rounded-xl border px-3 text-xs font-bold">Abrir ficha</Link>
+                    <button type="button" onClick={() => abrirMensagemReforco(item)} className="inline-flex min-h-9 items-center rounded-xl bg-primary px-3 text-xs font-black text-primary-foreground">Enviar lembrete</button>
+                  </div>
+                </div>
+              </article>;
+            })}</div>}
+          </div>
+        </section>
+      </div>}
+
       {tutorMensagem && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-3" onMouseDown={(e) => { if (e.currentTarget === e.target) setTutorMensagem(null); }}>
         <section className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl">
           <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-primary">Mensagem de aniversário</p><h2 className="mt-1 text-xl font-black">{tutorMensagem.nome}</h2><p className="mt-1 text-sm text-muted-foreground">{dataAniversario(tutorMensagem.nascimento)}</p></div><button type="button" onClick={() => setTutorMensagem(null)} className="rounded-xl p-2 hover:bg-muted"><X size={20}/></button></div>
@@ -358,6 +552,17 @@ function Recepcao() {
             <button type="button" onClick={enviarEmail} disabled={!tutorMensagem.email} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary px-4 font-black text-primary disabled:cursor-not-allowed disabled:opacity-35"><Mail size={18}/> Enviar por e-mail</button>
           </div>
           {(!telefoneWhatsApp(tutorMensagem) || !tutorMensagem.email) && <p className="mt-3 text-xs text-muted-foreground">Botões ficam indisponíveis quando o contato correspondente não estiver cadastrado.</p>}
+        </section>
+      </div>}
+
+      {reforcoMensagem && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-3" onMouseDown={(e) => { if (e.currentTarget === e.target) setReforcoMensagem(null); }}>
+        <section className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-primary">Lembrete de reforço</p><h2 className="mt-1 text-xl font-black">{reforcoMensagem.animalNome} · {reforcoMensagem.nome}</h2><p className="mt-1 text-sm text-muted-foreground">Tutor: {reforcoMensagem.tutor.nome} · {dataBR(reforcoMensagem.data)}</p></div><button type="button" onClick={() => setReforcoMensagem(null)} className="rounded-xl p-2 hover:bg-muted"><X size={20}/></button></div>
+          <label className="mt-4 block text-sm font-bold">Mensagem<textarea value={mensagemReforcoEditavel} onChange={(e) => setMensagemReforcoEditavel(e.target.value)} rows={6} className="mt-1 w-full rounded-2xl border p-3 font-normal outline-none focus:border-primary"/></label>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button type="button" onClick={enviarReforcoWhatsApp} disabled={!telefoneWhatsApp(reforcoMensagem.tutor)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-35"><MessageCircle size={18}/> Enviar pelo WhatsApp</button>
+            <button type="button" onClick={enviarReforcoEmail} disabled={!reforcoMensagem.tutor.email} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary px-4 font-black text-primary disabled:cursor-not-allowed disabled:opacity-35"><Mail size={18}/> Enviar por e-mail</button>
+          </div>
         </section>
       </div>}
     </main>
