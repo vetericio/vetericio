@@ -67,16 +67,29 @@ function prepararSeletor(select: HTMLSelectElement) {
 function prepararAtalhoCaixa() {
   if (window.location.pathname !== "/recepcao") return;
 
-  const titulos = Array.from(document.querySelectorAll<HTMLElement>("h2"));
-  const titulo = titulos.find((elemento) => textoDoElemento(elemento) === "Novo agendamento");
-  if (!titulo) return;
-
-  const card = titulo.closest<HTMLElement>("button, a");
+  const candidatos = Array.from(document.querySelectorAll<HTMLElement>("button, a"));
+  const card = candidatos.find((elemento) => {
+    const texto = textoDoElemento(elemento);
+    return texto.includes("Novo agendamento") && texto.includes("Organize os horários");
+  });
   if (!card) return;
 
-  titulo.textContent = "Caixa";
-  const subtitulo = titulo.parentElement?.querySelector<HTMLElement>("p");
+  const elementosTexto = Array.from(card.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p, span, div"));
+  const titulo = elementosTexto.find((elemento) => textoDoElemento(elemento) === "Novo agendamento");
+  const subtitulo = elementosTexto.find((elemento) => textoDoElemento(elemento) === "Organize os horários");
+
+  if (titulo) titulo.textContent = "Caixa";
   if (subtitulo) subtitulo.textContent = "Movimentações e fechamento";
+
+  if (!titulo) {
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    let node: Node | null = walker.nextNode();
+    while (node) {
+      if ((node.textContent || "").trim() === "Novo agendamento") node.textContent = "Caixa";
+      if ((node.textContent || "").trim() === "Organize os horários") node.textContent = "Movimentações e fechamento";
+      node = walker.nextNode();
+    }
+  }
 
   if (card.dataset.oricseCaixaConfigurado === "1") return;
   card.dataset.oricseCaixaConfigurado = "1";
@@ -84,8 +97,9 @@ function prepararAtalhoCaixa() {
   card.setAttribute("aria-label", "Abrir caixa");
   card.addEventListener("click", (evento) => {
     evento.preventDefault();
+    evento.stopPropagation();
     window.location.href = "/financeiro";
-  });
+  }, true);
 }
 
 function varrer() {
