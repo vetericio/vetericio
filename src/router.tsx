@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import "./tutores-compact.css";
 import "./lib/agenda-livre-option";
+import "./lib/promotional-codes-ui";
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
