@@ -68,7 +68,7 @@ async function tokenGoogle() {
 }
 
 export const carregarFotoAnimalDrive = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }) => {
     const supabaseAdmin = await carregarSupabaseAdmin();
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
