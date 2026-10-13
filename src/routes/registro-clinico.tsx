@@ -113,6 +113,9 @@ function RegistroClinico(){
 
   function salvarConsulta(){
     if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal.");
+    const pesoConsulta = consulta.peso.trim() ? pesoValido(consulta.peso) : "";
+    if (consulta.peso.trim() && !pesoConsulta) return void toast.error("Informe um peso válido em kg.");
+    const consultaSalva = { ...consulta, peso: pesoConsulta || animal.peso || "" };
     const o=consulta.oftalmo;
     const linhaPar=(rotulo:string,p:OlhoValores,unidade="")=>(p.od||p.oe)?`${rotulo}: ${[p.od&&`OD ${p.od}${unidade}`,p.oe&&`OE ${p.oe}${unidade}`].filter(Boolean).join(" · ")}`:"";
     const oft=[linhaPar("Schirmer",o.schirmer," mm/min"),linhaPar("Fluoresceína",o.fluoresceina),linhaPar("Teste de Jones",o.jones),linhaPar("Rosa Bengala",o.rosaBengala),linhaPar("Lissamina Verde",o.lissaminaVerde),linhaPar("PIO",o.pio," mmHg"),o.equipamentoTonometria&&`Equipamento de tonometria: ${o.equipamentoTonometria}`,linhaPar("Reflexo pupilar direto",o.reflexoPupilarDireto),linhaPar("Reflexo pupilar consensual",o.reflexoPupilarConsensual),linhaPar("Deambulação",o.deambulacao)].filter(Boolean) as string[];
@@ -121,16 +124,13 @@ function RegistroClinico(){
       `Queixa principal: ${consulta.queixa.trim()}`,
       `Tutor relata: ${[consulta.acessoRua&&`acesso à rua: ${consulta.acessoRua}`,consulta.contatoAnimais&&`contato com outros animais: ${consulta.contatoAnimais}`,consulta.ambiente&&`ambiente: ${consulta.ambiente}`,consulta.moradia&&`moradia: ${consulta.moradia}`,consulta.ventilacao&&`ventilação: ${consulta.ventilacao}`,consulta.apetite&&`apetite: ${consulta.apetite}`,consulta.exposicoes.length&&`exposição: ${consulta.exposicoes.join(", ")}`,consulta.vacinacao&&`vacinação: ${consulta.vacinacao}`,consulta.vermifugacao&&`vermifugação: ${consulta.vermifugacao}`,consulta.dieta&&`dieta: ${consulta.dieta}`,consulta.doencasPrevias&&`doenças prévias: ${consulta.doencasPrevias}`,consulta.medicamentosRecentes&&`medicamentos: ${consulta.medicamentosRecentes}`,consulta.alergias&&`alergias: ${consulta.alergias}`].filter(Boolean).join(" · ")||"sem informações adicionais"}`,
       ...(sistemas.length?["Observações por sistema:",...sistemas.map(([s,v])=>`- ${s}: ${v}`)]:[]),
-      `Exame clínico: ${[consulta.peso&&`peso ${consulta.peso} kg`,consulta.temperatura&&`T ${consulta.temperatura} °C`,consulta.fc&&`FC ${consulta.fc}`,consulta.fr&&`FR ${consulta.fr}`,consulta.pas&&`PAS ${consulta.pas}`,consulta.glicemia&&`glicemia ${consulta.glicemia}`,consulta.mucosas&&`mucosas ${consulta.mucosas}`,consulta.hidratacao&&`hidratação ${consulta.hidratacao}`,consulta.dor&&`dor ${consulta.dor}`,consulta.exameGeral].filter(Boolean).join(" · ")||"não informado"}`,
+      `Exame clínico: ${[consultaSalva.peso&&`peso ${consultaSalva.peso} kg`,consulta.temperatura&&`T ${consulta.temperatura} °C`,consulta.fc&&`FC ${consulta.fc}`,consulta.fr&&`FR ${consulta.fr}`,consulta.pas&&`PAS ${consulta.pas}`,consulta.glicemia&&`glicemia ${consulta.glicemia}`,consulta.mucosas&&`mucosas ${consulta.mucosas}`,consulta.hidratacao&&`hidratação ${consulta.hidratacao}`,consulta.dor&&`dor ${consulta.dor}`,consulta.exameGeral].filter(Boolean).join(" · ")||"não informado"}`,
       consulta.suspeitas&&`Hipóteses / suspeitas: ${consulta.suspeitas}`,
       consulta.conduta&&`Conduta / orientações: ${consulta.conduta}`,
       consulta.retorno&&`Retorno: ${consulta.retorno}`,
       consulta.medicacoes&&`Medicações / receita: ${consulta.medicacoes}`,
       consulta.examesSolicitados&&`Exames solicitados: ${consulta.examesSolicitados}`,
     ].filter(Boolean).join("\n");
-    const pesoConsulta = consulta.peso.trim() ? pesoValido(consulta.peso) : "";
-    if (consulta.peso.trim() && !pesoConsulta) return void toast.error("Informe um peso válido em kg.");
-    const consultaSalva = { ...consulta, peso: pesoConsulta || animal.peso || "" };
     if (pesoConsulta) {
       const listaAnimais = ler<Animal>(ANIMAIS_KEY);
       const pesoAnterior = pesoValido(animal.peso || "");
