@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseConfigurado, supabaseMensagemConfiguracao } from "@/integrations/supabase/client";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 
 export const Route = createFileRoute("/login")({ component: Login });
@@ -18,6 +18,11 @@ function Login() {
     const nome = usuario.trim().replace(/^@+/, "").toLowerCase();
     if (!nome || !senha) {
       toast.error("Informe o @usuário e a senha.");
+      return;
+    }
+
+    if (!supabaseConfigurado) {
+      toast.error(supabaseMensagemConfiguracao);
       return;
     }
 
