@@ -36,17 +36,31 @@ using (exists (
 drop policy if exists "catalogo gestao da propria clinica" on public.clinica_catalogo_itens;
 create policy "catalogo gestao da propria clinica"
 on public.clinica_catalogo_itens for all to authenticated
-using (exists (
-  select 1 from public.clinica_usuarios cu
-  where cu.clinica_id = clinica_catalogo_itens.clinica_id
-    and cu.user_id = (select auth.uid())
-    and cu.ativo = true
-    and cu.papel in ('rt', 'recepcao')
-))
-with check (exists (
-  select 1 from public.clinica_usuarios cu
-  where cu.clinica_id = clinica_catalogo_itens.clinica_id
-    and cu.user_id = (select auth.uid())
-    and cu.ativo = true
-    and cu.papel in ('rt', 'recepcao')
-));
+using (
+  exists (
+    select 1 from public.clinica_usuarios cu
+    where cu.clinica_id = clinica_catalogo_itens.clinica_id
+      and cu.user_id = (select auth.uid())
+      and cu.ativo = true
+      and cu.papel in ('admin', 'clinica', 'rt')
+  )
+  or exists (
+    select 1 from public.app_users au
+    where au.user_id = (select auth.uid())
+      and au.role = 'admin'
+  )
+)
+with check (
+  exists (
+    select 1 from public.clinica_usuarios cu
+    where cu.clinica_id = clinica_catalogo_itens.clinica_id
+      and cu.user_id = (select auth.uid())
+      and cu.ativo = true
+      and cu.papel in ('admin', 'clinica', 'rt')
+  )
+  or exists (
+    select 1 from public.app_users au
+    where au.user_id = (select auth.uid())
+      and au.role = 'admin'
+  )
+);
