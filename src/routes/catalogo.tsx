@@ -53,6 +53,7 @@ function moeda(valor: number | string | null | undefined) {
 function Catalogo() {
   const [clinicaId, setClinicaId] = useState("");
   const [papel, setPapel] = useState("");
+  const [adminGlobal, setAdminGlobal] = useState(false);
   const [itens, setItens] = useState<ItemCatalogo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [novo, setNovo] = useState(false);
@@ -61,7 +62,7 @@ function Catalogo() {
   const [janelaFiscal, setJanelaFiscal] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  const podeEditar = papel === "rt" || papel === "recepcao";
+  const podeEditar = adminGlobal || ["admin", "clinica", "rt"].includes(papel);
   const titulo = tipo === "servico" ? "Cadastrar serviço" : "Cadastrar produto";
   const descricao = tipo === "servico"
     ? "Serviços não movimentam estoque."
@@ -76,6 +77,13 @@ function Catalogo() {
         const { data: authData } = await supabase.auth.getUser();
         const userId = authData.user?.id;
         if (!userId) throw new Error("Sessão não encontrada.");
+
+        const { data: usuarioSistema, error: erroUsuarioSistema } = await (supabase as any)
+          .from("app_users")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (erroUsuarioSistema) throw erroUsuarioSistema;
 
         const { data: vinculo, error: erroVinculo } = await (supabase as any)
           .from("clinica_usuarios")
@@ -97,6 +105,7 @@ function Catalogo() {
         if (!ativo) return;
         setClinicaId(vinculo.clinica_id);
         setPapel(vinculo.papel || "");
+        setAdminGlobal(usuarioSistema?.role === "admin");
         setItens(data || []);
       } catch (e) {
         if (ativo) toast.error((e as Error).message || "Não foi possível carregar serviços e produtos.");
@@ -109,7 +118,7 @@ function Catalogo() {
   }, []);
 
   function abrirCadastro(novoTipo: TipoItem) {
-    if (!podeEditar) return toast.error("Somente o RT ou a Recepção podem cadastrar.");
+    if (!podeEditar) return toast.error("Somente Admin, Clínica ou RT podem cadastrar.");
     setTipo(novoTipo);
     setForm(vazio);
     setJanelaFiscal(false);
@@ -177,7 +186,7 @@ function Catalogo() {
       <button type="button" disabled={!podeEditar} onClick={() => abrirCadastro("servico")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><PackagePlus size={18} /> Cadastrar serviço / produto</button>
     </header>
 
-    {!podeEditar && <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Seu perfil pode visualizar este catálogo. O cadastro é permitido para RT e Recepção.</p>}
+    {!podeEditar && <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Seu perfil pode visualizar este catálogo. O cadastro é permitido para Admin, Clínica e RT.</p>}
 
     {novo && <section className="mt-6 rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
