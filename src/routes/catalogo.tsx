@@ -62,7 +62,7 @@ function Catalogo() {
   const [janelaFiscal, setJanelaFiscal] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  const podeEditar = adminGlobal || ["admin", "clinica", "rt"].includes(papel);
+  const podeEditar = adminGlobal || ["clinica", "rt"].includes(papel);
   const titulo = tipo === "servico" ? "Cadastrar serviço" : "Cadastrar produto";
   const descricao = tipo === "servico"
     ? "Serviços não movimentam estoque."
