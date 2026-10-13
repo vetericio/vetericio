@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseConfigurado } from "@/integrations/supabase/client";
 
 export type SiteBranding = {
   marca: string;
@@ -15,6 +15,8 @@ export function useSiteBranding() {
   const [branding, setBranding] = useState<SiteBranding>(PADRAO);
 
   useEffect(() => {
+    if (!supabaseConfigurado) return;
+
     let ativo = true;
     void (async () => {
       const { data, error } = await (supabase as any)
