@@ -81,9 +81,14 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
-    const rotaPublica = location.pathname === "/login" || location.pathname === "/planos" || location.pathname === "/contratar";
+    const rotaPublica = ["/", "/login", "/planos", "/contratar"].includes(location.pathname);
     if (autenticado === false && !rotaPublica) navigate({ to: "/login" });
-    if (autenticado && role === "admin" && location.pathname === "/") navigate({ to: "/admin" });
+    if (autenticado && location.pathname === "/login") {
+      navigate({ to: role === "admin" ? "/admin" : "/inicio" });
+    }
+    if (autenticado && role === "admin" && location.pathname === "/inicio") {
+      navigate({ to: "/admin" });
+    }
   }, [autenticado, role, location.pathname, navigate]);
 
   useEffect(() => {
@@ -270,7 +275,7 @@ function RootComponent() {
   useEffect(() => { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined); }, []);
 
   const rotaAdmin = location.pathname.startsWith("/admin");
-  const rotaPublica = location.pathname === "/login" || location.pathname === "/planos" || location.pathname === "/contratar";
+  const rotaPublica = ["/", "/login", "/planos", "/contratar"].includes(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;

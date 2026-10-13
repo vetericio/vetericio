@@ -432,7 +432,7 @@ function Recepcao() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1650px] px-4 pb-28 pt-6 sm:px-6">
-      <Link to="/" className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link>
+      <Link to="/inicio" className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
