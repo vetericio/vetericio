@@ -42,7 +42,7 @@ using (
     where cu.clinica_id = clinica_catalogo_itens.clinica_id
       and cu.user_id = (select auth.uid())
       and cu.ativo = true
-      and cu.papel in ('admin', 'clinica', 'rt')
+      and cu.papel in ('clinica', 'rt')
   )
   or exists (
     select 1 from public.app_users au
