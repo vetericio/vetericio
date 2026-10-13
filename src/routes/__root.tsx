@@ -213,7 +213,7 @@ function RootComponent() {
       if (!aside) return;
 
       botaoIniciar.textContent = "Iniciar atendimento";
-      botaoIniciar.className = "flex-1 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground";
+      botaoIniciar.className = "flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground";
       botaoIniciar.onclick = () => {
         const animalId = localizarAnimalId(aside);
         if (!animalId) {
@@ -238,7 +238,7 @@ function RootComponent() {
         finalizar.type = "button";
         finalizar.dataset["oricseFinalizar"] = "1";
         finalizar.textContent = "Finalizar atendimento";
-        finalizar.className = "flex-1 rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700";
+        finalizar.className = "flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700";
         acoes.appendChild(finalizar);
       }
 
