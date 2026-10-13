@@ -103,7 +103,9 @@ function formatarData(data?: string) {
 
 function numeroPeso(valor?: string) {
   if (!valor) return NaN;
-  return Number(valor.replace(/\./g, "").replace(",", "."));
+  const texto = String(valor).trim();
+  // Com vírgula, os pontos são separadores de milhar. Com ponto sozinho, ele é decimal.
+  return Number(texto.includes(",") ? texto.replace(/\./g, "").replace(",", ".") : texto);
 }
 
 function formatarPeso(valor?: number | string) {
