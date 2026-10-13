@@ -90,7 +90,7 @@ function Inicio() {
           </p>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:mt-8">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:mt-8">
           {areas.map(({ to, numero, titulo, descricao, acao, Icone, iconeClass, detalhe }) => (
             <Link
               key={to}
