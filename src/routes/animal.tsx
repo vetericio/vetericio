@@ -189,6 +189,8 @@ function AnimalFicha() {
     const lista = [novo, ...pesos];
     setPesos(lista);
     localStorage.setItem(PESOS_KEY, JSON.stringify(lista));
+    const animaisAtualizados = ler<Animal>(ANIMAIS_KEY).map((item) => item.id === animal.id ? { ...item, peso: n.toFixed(3) } : item);
+    localStorage.setItem(ANIMAIS_KEY, JSON.stringify(animaisAtualizados));
     setModalPeso(false);
     setPesoNovo("");
     toast.success(`Peso de ${formatarPeso(n)} registrado.`);
