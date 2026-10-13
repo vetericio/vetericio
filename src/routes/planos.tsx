@@ -22,10 +22,6 @@ function Planos() {
   useEffect(() => {
     let ativo = true;
     void (async () => { try { const { data } = await (supabase as any).from("oricse_planos").select("nome,descricao,preco,itens,ativo,ordem").eq("ativo", true).order("ordem"); if (ativo && Array.isArray(data) && data.length) setPlanos(data); } catch { /* fallback local */ } })();
-    try {
-      const salvo = window.localStorage.getItem("vetericio-planos");
-      if (salvo) setPlanos(JSON.parse(salvo));
-    } catch { /* usa os planos padrão */ }
     return () => { ativo = false; };
   }, []);
   function validarCupom(){
