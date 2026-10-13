@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Clock3, Play, Plus, RotateCcw, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fila-espera")({ component: FilaEspera });
@@ -15,7 +15,7 @@ const ANIMAIS_KEY = "oricse-animais-v1";
 const FILA_KEY = "oricse-fila-espera-v1";
 const COLUNAS_FILA = "72px minmax(240px,1.45fr) 140px 120px minmax(180px,1.1fr) 140px 190px";
 
-function lerLocal<T>(chave: string): T[] { try { const valor = JSON.parse(localStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor : []; } catch { return []; } }
+function lerLocal<T>(chave: string): T[] { if (typeof window === "undefined") return []; try { const valor = JSON.parse(window.localStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor : []; } catch { return []; } }
 function normalizar(valor?: string) { return (valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
 function somenteDigitos(valor?: string) { return (valor || "").replace(/\D/g, ""); }
 function codigoTutor(tutor: Tutor) { return tutor.codigoPublico || tutor.codigo_publico || ""; }
@@ -24,14 +24,20 @@ function tempoEspera(dataIso: string, agora = Date.now()) { const minutos=Math.m
 function emojiEspecie(especie?: string) { const mapa: Record<string,string>={"Cão":"🐶","Gato":"🐱","Coelho":"🐰","Hamster":"🐹","Rato":"🐭","Porquinho-da-índia":"🐹","Ave":"🦜","Réptil":"🦎","Quelônio":"🐢","Serpente":"🐍"}; return mapa[especie||""]||"🐾"; }
 
 function FilaEspera() {
-  const [tutores] = useState<Tutor[]>(() => lerLocal<Tutor>(TUTORES_KEY));
-  const [animais] = useState<Animal[]>(() => lerLocal<Animal>(ANIMAIS_KEY));
-  const [fila, setFila] = useState<ItemFila[]>(() => lerLocal<ItemFila>(FILA_KEY));
+  const [tutores, setTutores] = useState<Tutor[]>([]);
+  const [animais, setAnimais] = useState<Animal[]>([]);
+  const [fila, setFila] = useState<ItemFila[]>([]);
   const [tutorId, setTutorId] = useState("");
   const [buscaTutor, setBuscaTutor] = useState("");
   const [buscaTutorAberta, setBuscaTutorAberta] = useState(false);
   const [animalId, setAnimalId] = useState("");
   const [motivo, setMotivo] = useState("");
+
+  useEffect(() => {
+    setTutores(lerLocal<Tutor>(TUTORES_KEY));
+    setAnimais(lerLocal<Animal>(ANIMAIS_KEY));
+    setFila(lerLocal<ItemFila>(FILA_KEY));
+  }, []);
 
   const tutorSelecionado = useMemo(() => tutores.find((t)=>t.id===tutorId), [tutores,tutorId]);
   const tutoresFiltrados = useMemo(() => {
