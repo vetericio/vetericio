@@ -10,34 +10,69 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminCanvasRouteImport } from './routes/admin-canvas'
+import { Route as AdminConteudoRouteImport } from './routes/admin-conteudo'
 import { Route as AdminPlanosRouteImport } from './routes/admin-planos'
+import { Route as AdminSolicitacoesRouteImport } from './routes/admin-solicitacoes'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
+import { Route as AnimaisRouteImport } from './routes/animais'
+import { Route as AnimalRouteImport } from './routes/animal'
 import { Route as AssinarRouteImport } from './routes/assinar'
+import { Route as ConsultaRouteImport } from './routes/consulta'
 import { Route as ConsultorioRouteImport } from './routes/consultorio'
+import { Route as ContratarRouteImport } from './routes/contratar'
 import { Route as CurvaRouteImport } from './routes/curva'
+import { Route as EncaminharRouteImport } from './routes/encaminhar'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
+import { Route as NovoAnimalRouteImport } from './routes/novo-animal'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
+import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
+import { Route as RegistroClinicoRouteImport } from './routes/registro-clinico'
 import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as TutoresRouteImport } from './routes/tutores'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCanvasRoute = AdminCanvasRouteImport.update({
+  id: '/admin-canvas',
+  path: '/admin-canvas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminConteudoRoute = AdminConteudoRouteImport.update({
+  id: '/admin-conteudo',
+  path: '/admin-conteudo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPlanosRoute = AdminPlanosRouteImport.update({
   id: '/admin-planos',
   path: '/admin-planos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSolicitacoesRoute = AdminSolicitacoesRouteImport.update({
+  id: '/admin-solicitacoes',
+  path: '/admin-solicitacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlarmesRoute = AlarmesRouteImport.update({
@@ -50,9 +85,24 @@ const AnamneseRoute = AnamneseRouteImport.update({
   path: '/anamnese',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnimaisRoute = AnimaisRouteImport.update({
+  id: '/animais',
+  path: '/animais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnimalRoute = AnimalRouteImport.update({
+  id: '/animal',
+  path: '/animal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AssinarRoute = AssinarRouteImport.update({
   id: '/assinar',
   path: '/assinar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsultaRoute = ConsultaRouteImport.update({
+  id: '/consulta',
+  path: '/consulta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConsultorioRoute = ConsultorioRouteImport.update({
@@ -60,9 +110,19 @@ const ConsultorioRoute = ConsultorioRouteImport.update({
   path: '/consultorio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContratarRoute = ContratarRouteImport.update({
+  id: '/contratar',
+  path: '/contratar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CurvaRoute = CurvaRouteImport.update({
   id: '/curva',
   path: '/curva',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EncaminharRoute = EncaminharRouteImport.update({
+  id: '/encaminhar',
+  path: '/encaminhar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -70,9 +130,19 @@ const EstoqueRoute = EstoqueRouteImport.update({
   path: '/estoque',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FilaEsperaRoute = FilaEsperaRouteImport.update({
+  id: '/fila-espera',
+  path: '/fila-espera',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternacaoRoute = InternacaoRouteImport.update({
+  id: '/internacao',
+  path: '/internacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -85,9 +155,19 @@ const MedicacoesRoute = MedicacoesRouteImport.update({
   path: '/medicacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NovoAnimalRoute = NovoAnimalRouteImport.update({
+  id: '/novo-animal',
+  path: '/novo-animal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PendenciasRoute = PendenciasRouteImport.update({
   id: '/pendencias',
   path: '/pendencias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerfilClinicaRoute = PerfilClinicaRouteImport.update({
+  id: '/perfil-clinica',
+  path: '/perfil-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanosRoute = PlanosRouteImport.update({
@@ -110,6 +190,11 @@ const RecepcaoRoute = RecepcaoRouteImport.update({
   path: '/recepcao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegistroClinicoRoute = RegistroClinicoRouteImport.update({
+  id: '/registro-clinico',
+  path: '/registro-clinico',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegistrosRoute = RegistrosRouteImport.update({
   id: '/registros',
   path: '/registros',
@@ -130,164 +215,274 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TutoresRoute = TutoresRouteImport.update({
+  id: '/tutores',
+  path: '/tutores',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-canvas': typeof AdminCanvasRoute
+  '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-planos': typeof AdminPlanosRoute
+  '/admin-solicitacoes': typeof AdminSolicitacoesRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
+  '/animais': typeof AnimaisRoute
+  '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
+  '/contratar': typeof ContratarRoute
   '/curva': typeof CurvaRoute
+  '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
+  '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
+  '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
+  '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
+  '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
+  '/tutores': typeof TutoresRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-canvas': typeof AdminCanvasRoute
+  '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-planos': typeof AdminPlanosRoute
+  '/admin-solicitacoes': typeof AdminSolicitacoesRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
+  '/animais': typeof AnimaisRoute
+  '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
+  '/contratar': typeof ContratarRoute
   '/curva': typeof CurvaRoute
+  '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
+  '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
+  '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
+  '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
+  '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
+  '/tutores': typeof TutoresRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/admin-canvas': typeof AdminCanvasRoute
+  '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-planos': typeof AdminPlanosRoute
+  '/admin-solicitacoes': typeof AdminSolicitacoesRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
+  '/animais': typeof AnimaisRoute
+  '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
+  '/contratar': typeof ContratarRoute
   '/curva': typeof CurvaRoute
+  '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
+  '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
+  '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
+  '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
+  '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
+  '/tutores': typeof TutoresRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/admin-canvas'
+    | '/admin-conteudo'
     | '/admin-planos'
+    | '/admin-solicitacoes'
     | '/alarmes'
     | '/anamnese'
+    | '/animais'
+    | '/animal'
     | '/assinar'
+    | '/consulta'
     | '/consultorio'
+    | '/contratar'
     | '/curva'
+    | '/encaminhar'
     | '/estoque'
+    | '/fila-espera'
     | '/financeiro'
+    | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/novo-animal'
     | '/pendencias'
+    | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
     | '/receituario'
     | '/recepcao'
+    | '/registro-clinico'
     | '/registros'
     | '/sincronizacao'
     | '/temas'
     | '/termos'
+    | '/tutores'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/admin-canvas'
+    | '/admin-conteudo'
     | '/admin-planos'
+    | '/admin-solicitacoes'
     | '/alarmes'
     | '/anamnese'
+    | '/animais'
+    | '/animal'
     | '/assinar'
+    | '/consulta'
     | '/consultorio'
+    | '/contratar'
     | '/curva'
+    | '/encaminhar'
     | '/estoque'
+    | '/fila-espera'
     | '/financeiro'
+    | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/novo-animal'
     | '/pendencias'
+    | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
     | '/receituario'
     | '/recepcao'
+    | '/registro-clinico'
     | '/registros'
     | '/sincronizacao'
     | '/temas'
     | '/termos'
+    | '/tutores'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/admin-canvas'
+    | '/admin-conteudo'
     | '/admin-planos'
+    | '/admin-solicitacoes'
     | '/alarmes'
     | '/anamnese'
+    | '/animais'
+    | '/animal'
     | '/assinar'
+    | '/consulta'
     | '/consultorio'
+    | '/contratar'
     | '/curva'
+    | '/encaminhar'
     | '/estoque'
+    | '/fila-espera'
     | '/financeiro'
+    | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/novo-animal'
     | '/pendencias'
+    | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
     | '/receituario'
     | '/recepcao'
+    | '/registro-clinico'
     | '/registros'
     | '/sincronizacao'
     | '/temas'
     | '/termos'
+    | '/tutores'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AdminCanvasRoute: typeof AdminCanvasRoute
+  AdminConteudoRoute: typeof AdminConteudoRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
+  AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
   AlarmesRoute: typeof AlarmesRoute
   AnamneseRoute: typeof AnamneseRoute
+  AnimaisRoute: typeof AnimaisRoute
+  AnimalRoute: typeof AnimalRoute
   AssinarRoute: typeof AssinarRoute
+  ConsultaRoute: typeof ConsultaRoute
   ConsultorioRoute: typeof ConsultorioRoute
+  ContratarRoute: typeof ContratarRoute
   CurvaRoute: typeof CurvaRoute
+  EncaminharRoute: typeof EncaminharRoute
   EstoqueRoute: typeof EstoqueRoute
+  FilaEsperaRoute: typeof FilaEsperaRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  InternacaoRoute: typeof InternacaoRoute
   LoginRoute: typeof LoginRoute
   MedicacoesRoute: typeof MedicacoesRoute
+  NovoAnimalRoute: typeof NovoAnimalRoute
   PendenciasRoute: typeof PendenciasRoute
+  PerfilClinicaRoute: typeof PerfilClinicaRoute
   PlanosRoute: typeof PlanosRoute
   PlantoesRoute: typeof PlantoesRoute
   ReceituarioRoute: typeof ReceituarioRoute
   RecepcaoRoute: typeof RecepcaoRoute
+  RegistroClinicoRoute: typeof RegistroClinicoRoute
   RegistrosRoute: typeof RegistrosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
+  TutoresRoute: typeof TutoresRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -299,11 +494,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-canvas': {
+      id: '/admin-canvas'
+      path: '/admin-canvas'
+      fullPath: '/admin-canvas'
+      preLoaderRoute: typeof AdminCanvasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-conteudo': {
+      id: '/admin-conteudo'
+      path: '/admin-conteudo'
+      fullPath: '/admin-conteudo'
+      preLoaderRoute: typeof AdminConteudoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin-planos': {
       id: '/admin-planos'
       path: '/admin-planos'
       fullPath: '/admin-planos'
       preLoaderRoute: typeof AdminPlanosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-solicitacoes': {
+      id: '/admin-solicitacoes'
+      path: '/admin-solicitacoes'
+      fullPath: '/admin-solicitacoes'
+      preLoaderRoute: typeof AdminSolicitacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alarmes': {
@@ -320,11 +543,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnamneseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/animais': {
+      id: '/animais'
+      path: '/animais'
+      fullPath: '/animais'
+      preLoaderRoute: typeof AnimaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/animal': {
+      id: '/animal'
+      path: '/animal'
+      fullPath: '/animal'
+      preLoaderRoute: typeof AnimalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/assinar': {
       id: '/assinar'
       path: '/assinar'
       fullPath: '/assinar'
       preLoaderRoute: typeof AssinarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consulta': {
+      id: '/consulta'
+      path: '/consulta'
+      fullPath: '/consulta'
+      preLoaderRoute: typeof ConsultaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/consultorio': {
@@ -334,11 +578,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsultorioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contratar': {
+      id: '/contratar'
+      path: '/contratar'
+      fullPath: '/contratar'
+      preLoaderRoute: typeof ContratarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/curva': {
       id: '/curva'
       path: '/curva'
       fullPath: '/curva'
       preLoaderRoute: typeof CurvaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/encaminhar': {
+      id: '/encaminhar'
+      path: '/encaminhar'
+      fullPath: '/encaminhar'
+      preLoaderRoute: typeof EncaminharRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -348,11 +606,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EstoqueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fila-espera': {
+      id: '/fila-espera'
+      path: '/fila-espera'
+      fullPath: '/fila-espera'
+      preLoaderRoute: typeof FilaEsperaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/financeiro': {
       id: '/financeiro'
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/internacao': {
+      id: '/internacao'
+      path: '/internacao'
+      fullPath: '/internacao'
+      preLoaderRoute: typeof InternacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -369,11 +641,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MedicacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/novo-animal': {
+      id: '/novo-animal'
+      path: '/novo-animal'
+      fullPath: '/novo-animal'
+      preLoaderRoute: typeof NovoAnimalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pendencias': {
       id: '/pendencias'
       path: '/pendencias'
       fullPath: '/pendencias'
       preLoaderRoute: typeof PendenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perfil-clinica': {
+      id: '/perfil-clinica'
+      path: '/perfil-clinica'
+      fullPath: '/perfil-clinica'
+      preLoaderRoute: typeof PerfilClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planos': {
@@ -404,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecepcaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/registro-clinico': {
+      id: '/registro-clinico'
+      path: '/registro-clinico'
+      fullPath: '/registro-clinico'
+      preLoaderRoute: typeof RegistroClinicoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/registros': {
       id: '/registros'
       path: '/registros'
@@ -432,30 +725,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tutores': {
+      id: '/tutores'
+      path: '/tutores'
+      fullPath: '/tutores'
+      preLoaderRoute: typeof TutoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AdminCanvasRoute: AdminCanvasRoute,
+  AdminConteudoRoute: AdminConteudoRoute,
   AdminPlanosRoute: AdminPlanosRoute,
+  AdminSolicitacoesRoute: AdminSolicitacoesRoute,
   AlarmesRoute: AlarmesRoute,
   AnamneseRoute: AnamneseRoute,
+  AnimaisRoute: AnimaisRoute,
+  AnimalRoute: AnimalRoute,
   AssinarRoute: AssinarRoute,
+  ConsultaRoute: ConsultaRoute,
   ConsultorioRoute: ConsultorioRoute,
+  ContratarRoute: ContratarRoute,
   CurvaRoute: CurvaRoute,
+  EncaminharRoute: EncaminharRoute,
   EstoqueRoute: EstoqueRoute,
+  FilaEsperaRoute: FilaEsperaRoute,
   FinanceiroRoute: FinanceiroRoute,
+  InternacaoRoute: InternacaoRoute,
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
+  NovoAnimalRoute: NovoAnimalRoute,
   PendenciasRoute: PendenciasRoute,
+  PerfilClinicaRoute: PerfilClinicaRoute,
   PlanosRoute: PlanosRoute,
   PlantoesRoute: PlantoesRoute,
   ReceituarioRoute: ReceituarioRoute,
   RecepcaoRoute: RecepcaoRoute,
+  RegistroClinicoRoute: RegistroClinicoRoute,
   RegistrosRoute: RegistrosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
+  TutoresRoute: TutoresRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -77,7 +77,7 @@ export function MenuLateral() {
                     <Link
                       key={item.to}
                       to={item.to}
-                      {...(item.to === "/" ? { activeOptions: { exact: true } } : {})}
+                      {...(item.to === "/internacao" ? { activeOptions: { exact: true } } : {})}
                       onClick={() => setAberto(false)}
                       activeProps={{
                         className:

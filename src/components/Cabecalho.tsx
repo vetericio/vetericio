@@ -19,7 +19,7 @@ export function Cabecalho() {
   const location = useLocation();
   const navigate = useNavigate();
   const { marca, logo_url } = useSiteBranding();
-  const plantaoArea = ["/", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
+  const plantaoArea = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
   const finalizar = useFinalizarPlantao();
@@ -62,14 +62,15 @@ export function Cabecalho() {
             onClick={() => setTrocarArea((aberto) => !aberto)}
             className={`rounded-xl border bg-card font-semibold shadow-sm ${plantaoArea ? "px-4 py-2 text-sm" : "px-3 py-1.5 text-xs sm:text-sm"}`}
           >
-            ← Voltar / trocar área
+            {location.pathname === "/" ? "Escolher área" : "← Voltar / trocar área"}
           </button>
           {trocarArea && (
             <div className="mx-auto mt-2 grid max-w-md gap-2 rounded-2xl border bg-card p-3 text-left shadow-lg">
               <p className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Para onde deseja ir?</p>
-              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Internação</button>
-              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/consultorio" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Consultório</button>
+              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/internacao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Internação</button>
+              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/consultorio" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Consultas</button>
               <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/recepcao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Recepção</button>
+              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/financeiro" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Caixa</button>
             </div>
           )}
         </div>

@@ -243,11 +243,11 @@ function Registros() {
   const onCopiar = (r: Registro) => copiarTexto(formatarRegistro(r));
   const onEditar = (r: Registro) => {
     window.localStorage.setItem("veterico-editar-id", r.id);
-    navigate({ to: "/" });
+    navigate({ to: "/internacao" });
   };
   const onAtualizar = (r: Registro) => {
     window.localStorage.setItem("veterico-atualizar-id", r.id);
-    navigate({ to: "/" });
+    navigate({ to: "/internacao" });
   };
   const onExcluir = (id: string) => {
     const alvo = registros.find((r) => r.id === id);

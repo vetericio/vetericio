@@ -1,350 +1,136 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { Building2, ClipboardList, Stethoscope } from "lucide-react";
-import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
-import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
-import { FormAvaliacao } from "@/components/FormAvaliacao";
-import { InstalarApp as InstalarAppBase } from "@/components/InstalarApp";
-import { GuardaSaida } from "@/components/GuardaSaida";
-import { useConforto } from "@/hooks/useConforto";
-import { useRegistros } from "@/hooks/useRegistros";
-import { useCurvas } from "@/hooks/useCurvas";
-import { definirAlarmes } from "@/hooks/useAlarmes";
-import { criarAlarme, horaDe, horaDeAgoraMais } from "@/lib/alarmes";
-import { chaveDoAnimal, type Curva } from "@/lib/curva";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  REGISTRO_VAZIO,
-  chaveAnimal,
-  comLinha,
-  fraseAtualizacao,
-  mesclarValores,
-  proximoNomeDuplicado,
-  type ChaveNumerica,
-  type Registro,
-} from "@/lib/ficha";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  ArrowUpRight,
+  BedDouble,
+  ClipboardList,
+  Stethoscope,
+  WalletCards,
+} from "lucide-react";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Veterício — Ficha de Avaliação da Internação" },
+      { title: "Início — Oricse" },
       {
         name: "description",
-        content:
-          "App offline da Veterício para registrar avaliações de internação: alimentação, comportamento, mucosas, sinais vitais, taxa de infusão e exportação em texto.",
+        content: "Acesse rapidamente os espaços da sua clínica veterinária.",
       },
-      { property: "og:title", content: "Veterício — Ficha de Avaliação da Internação" },
-      {
-        property: "og:description",
-        content:
-          "Registre avaliações de animais internados offline e exporte todos os dados em texto.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Index,
+  component: Inicio,
 });
 
-// Ferramentas e calculadora não dependem do formulário: não precisam ser
-// redesenhadas a cada tecla digitada.
-const Calculadora = memo(CalculadoraBase);
-const FerramentasClinicas = memo(FerramentasClinicasBase);
-const InstalarApp = memo(InstalarAppBase);
+const areas = [
+  {
+    to: "/internacao",
+    numero: "01",
+    titulo: "Internação",
+    descricao: "Plantões, pacientes internados e acompanhamento dos cuidados.",
+    acao: "Acessar internação",
+    Icone: BedDouble,
+    iconeClass: "bg-emerald-500/10 text-emerald-700",
+    detalhe: "CUIDADO CONTÍNUO",
+  },
+  {
+    to: "/consultorio",
+    numero: "02",
+    titulo: "Consultas",
+    descricao: "Atendimentos, prontuários e documentos em um só lugar.",
+    acao: "Acessar consultas",
+    Icone: Stethoscope,
+    iconeClass: "bg-sky-500/10 text-sky-700",
+    detalhe: "ATENDIMENTO CLÍNICO",
+  },
+  {
+    to: "/recepcao",
+    numero: "03",
+    titulo: "Recepção",
+    descricao: "Organize a chegada, a fila de espera e os agendamentos.",
+    acao: "Acessar recepção",
+    Icone: ClipboardList,
+    iconeClass: "bg-amber-500/10 text-amber-700",
+    detalhe: "ROTINA ORGANIZADA",
+  },
+  {
+    to: "/financeiro",
+    numero: "04",
+    titulo: "Caixa",
+    descricao: "Acompanhe entradas, despesas e valores a receber.",
+    acao: "Acessar caixa",
+    Icone: WalletCards,
+    iconeClass: "bg-violet-500/10 text-violet-700",
+    detalhe: "GESTÃO FINANCEIRA",
+  },
+] as const;
 
-const NUMS: ChaveNumerica[] = ["temperatura", "fc", "fr", "pas", "glicemia"];
-const CATEGORIAS = ["alimentacao", "comportamento", "fezes", "mucosas", "urina", "vomito"] as const;
-
-/** Acrescenta a nova informação ao registro existente, mantendo os dois valores. */
-function mesclarAvaliacao(base: Registro, novos: Omit<Registro, "id">): Registro {
-  const resultado: Registro = { ...base };
-  let obs = base.observacoes;
-
-  for (const chave of NUMS) {
-    const novo = novos[chave].trim();
-    if (!novo) continue;
-    resultado[chave] = mesclarValores(base[chave], novo);
-    obs = comLinha(obs, fraseAtualizacao(chave, novo));
-  }
-  for (const chave of CATEGORIAS) {
-    const novo = novos[chave].trim();
-    if (novo) resultado[chave] = mesclarValores(base[chave], novo);
-  }
-
-  const extra = novos.observacoes.trim();
-  if (extra) obs = comLinha(obs, extra);
-  resultado.observacoes = obs;
-  return resultado;
-}
-
-function Index() {
-  const { registros, setRegistros, carregado } = useRegistros();
-  const [form, setForm] = useState<Omit<Registro, "id">>(REGISTRO_VAZIO);
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [anterior, setAnterior] = useState<Registro | null>(null);
-  const [duplicado, setDuplicado] = useState<Registro | null>(null);
-  const [fazerCurva, setFazerCurva] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-  const { conforto, atualizar } = useConforto();
-  const ferramentas = conforto.ferramentasAbertas;
-  const setFerramentas = (fn: (v: boolean) => boolean) =>
-    atualizar({ ferramentasAbertas: fn(conforto.ferramentasAbertas) });
-  const { setCurvas } = useCurvas();
-
-  const navigate = useNavigate();
-  const [areaInicial, setAreaInicial] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem("vetericio-area-inicial");
-  });
-
-  // "Tem certeza?" só quando existe conteúdo digitado e ainda não salvo.
-  const baseForm: Omit<Registro, "id"> = editandoId
-    ? (() => {
-        const alvo = registros.find((r) => r.id === editandoId);
-        if (!alvo) return REGISTRO_VAZIO;
-        const { id: _i, ...resto } = alvo;
-        return resto;
-      })()
-    : anterior
-      ? { ...REGISTRO_VAZIO, animal: anterior.animal, especie: anterior.especie ?? "", peso: anterior.peso ?? "" }
-      : REGISTRO_VAZIO;
-  const sujo = useMemo(
-    () => !salvando && JSON.stringify(form) !== JSON.stringify(baseForm),
-    [salvando, form, baseForm],
-  );
-
-  // Abre em modo edição ou atualização quando vem da página de registros.
-  useEffect(() => {
-    if (!carregado) return;
-    const idEditar = window.localStorage.getItem("veterico-editar-id");
-    const idAtualizar = window.localStorage.getItem("veterico-atualizar-id");
-    window.localStorage.removeItem("veterico-editar-id");
-    window.localStorage.removeItem("veterico-atualizar-id");
-
-    if (idEditar) {
-      const alvo = registros.find((r) => r.id === idEditar);
-      if (alvo) {
-        const { id: _ignorado, ...resto } = alvo;
-        setForm(resto);
-        setEditandoId(idEditar);
-      }
-      return;
-    }
-    if (idAtualizar) {
-      const alvo = registros.find((r) => r.id === idAtualizar);
-      if (alvo) {
-        setAnterior(alvo);
-        setForm({ ...REGISTRO_VAZIO, animal: alvo.animal, especie: alvo.especie ?? "", peso: alvo.peso ?? "" });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [carregado]);
-
-  const limpar = () => {
-    setEditandoId(null);
-    setAnterior(null);
-    setForm(REGISTRO_VAZIO);
-    setDuplicado(null);
-  };
-
-  /** Cria a curva glicêmica do animal (a cada 2h) e o alarme correspondente. */
-  const iniciarCurvaGlicemica = (r: Registro) => {
-    const id = crypto.randomUUID();
-    const intervalo = 2;
-    const proximo = horaDeAgoraMais(intervalo);
-    const alarme = criarAlarme({
-      rotulo: `Curva ${r.animal.trim()} — glicemia`,
-      hora: horaDe(proximo),
-      toque: "urgente",
-      intervaloHoras: intervalo,
-      curvaId: id,
-    });
-    alarme.proximo = proximo.toISOString();
-    definirAlarmes((lista) => [...lista, alarme]);
-
-    const curva: Curva = {
-      id,
-      chave: chaveDoAnimal(r.animal, r.especie),
-      animal: r.animal.trim(),
-      especie: (r.especie ?? "") as Curva["especie"],
-      parametros: ["glicemia"],
-      intervaloHoras: intervalo,
-      ativa: true,
-      criadoEm: new Date().toISOString(),
-      alarmeId: alarme.id,
-      medicoes: r.glicemia.trim()
-        ? [
-            {
-              id: crypto.randomUUID(),
-              em: new Date().toISOString(),
-              glicemia: r.glicemia.trim(),
-              pas: "",
-            },
-          ]
-        : [],
-    };
-    setCurvas((lista) => [curva, ...lista]);
-  };
-
-  const salvar = (valores: Omit<Registro, "id">) => {
-    if (anterior) {
-      const atualizado = mesclarAvaliacao(anterior, valores);
-      setRegistros((rs) => rs.map((r) => (r.id === anterior.id ? atualizado : r)));
-      limpar();
-      toast.success("Informações acrescentadas.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      navigate({ to: "/" });
-      return;
-    }
-    if (editandoId) {
-      setRegistros((rs) =>
-        rs.map((r) => (r.id === editandoId ? { ...valores, id: editandoId } : r)),
-      );
-      setEditandoId(null);
-      toast.success("Registro atualizado.");
-    } else {
-      const novo: Registro = {
-        ...valores,
-        criadoEm: new Date().toISOString(),
-        id: crypto.randomUUID(),
-      };
-      setRegistros((rs) => [...rs, novo]);
-      if (fazerCurva) iniciarCurvaGlicemica(novo);
-      setForm(REGISTRO_VAZIO);
-      setFazerCurva(false);
-      setDuplicado(null);
-      // Já salvou: não pode perguntar "tem certeza?" ao recarregar.
-      setSalvando(true);
-      setEditandoId(null);
-      setAnterior(null);
-      toast.success("Registro salvo.");
-      window.scrollTo({ top: 0, behavior: "auto" });
-      setSalvando(false);
-      return;
-    }
-    setForm(REGISTRO_VAZIO);
-    setDuplicado(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    navigate({ to: "/" });
-  };
-
-  const enviar = () => {
-    if (!form.animal.trim()) {
-      toast.error("Informe o nome do animal.");
-      return;
-    }
-    if (!editandoId && !anterior) {
-      const chave = chaveAnimal(form);
-      const existente = registros.find((r) => chaveAnimal(r) === chave);
-      if (existente) {
-        setDuplicado(existente);
-        return;
-      }
-    }
-    salvar(form);
-  };
+function Inicio() {
+  const { marca } = useSiteBranding();
 
   return (
-    <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
-      {!areaInicial && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 p-5 backdrop-blur-sm">
-          <section className="w-full max-w-xl rounded-3xl border bg-card p-6 text-center shadow-xl sm:p-9">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Veterício</p>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight">Bem-vindo</h1>
-            <p className="mt-2 text-muted-foreground">Escolha por onde deseja começar.</p>
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              {[
-                { nome: "Internação", texto: "Plantões e pacientes internados", icone: Building2, rota: "/" },
-                { nome: "Consultório", texto: "Consultas e prontuários", icone: Stethoscope, rota: "/consultorio" },
-                { nome: "Recepção", texto: "Tutors, animais e fila", icone: ClipboardList, rota: "/recepcao" },
-              ].map(({ nome, texto, icone: Icone, rota }) => (
-                <button key={nome} type="button" onClick={() => { window.localStorage.setItem("vetericio-area-inicial", nome.toLowerCase()); setAreaInicial(nome.toLowerCase()); if (rota !== "/") navigate({ to: rota as "/" }); }} className="rounded-2xl border bg-background p-4 text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
-                  <Icone className="mb-3 text-primary" size={25} /><span className="block font-semibold">{nome}</span><span className="mt-1 block text-xs text-muted-foreground">{texto}</span>
-                </button>
-              ))}
-            </div>
-            <a href="/planos" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-primary px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10">
-              Conhecer os planos — clique aqui
-            </a>
-          </section>
+    <main className="relative mx-auto min-h-[65vh] w-full max-w-6xl overflow-hidden px-4 pb-16 pt-8 sm:px-6 sm:pt-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-primary/5 blur-3xl"
+      />
+      <section className="relative">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-card/80 px-3 py-1.5 text-xs font-semibold tracking-wide text-primary shadow-sm">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          {marca}
+          <span className="text-muted-foreground">·</span>
+          Espaço de trabalho
         </div>
-      )}
-      <div className="relative z-10">
-      <GuardaSaida sujo={sujo} />
-      <button
-        type="button"
-        onClick={() => setFerramentas((v) => !v)}
-        className="min-h-11 w-full rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
-      >
-        {ferramentas ? "Esconder calculadora e ferramentas" : "Mostrar calculadora e ferramentas"}
-      </button>
-      {ferramentas && (
-        <section className="mt-3 grid grid-cols-2 items-stretch gap-2 sm:gap-3">
-          <div className="min-w-0">
-            <Calculadora />
-          </div>
-          <FerramentasClinicas />
-        </section>
-      )}
+        <div className="max-w-2xl">
+          <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
+            Cuidar da clínica começa por aqui.
+          </h1>
+          <p className="mt-3 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+            Escolha uma área para continuar. Tudo o que a sua equipe precisa,
+            com mais clareza e leveza no dia a dia.
+          </p>
+        </div>
 
-      <div className="mt-5">
-        <FormAvaliacao
-          valores={form}
-          onChange={setForm}
-          onEnviar={enviar}
-          editando={Boolean(editandoId)}
-          anterior={anterior}
-          fazerCurva={fazerCurva}
-          onFazerCurva={setFazerCurva}
-          onCancelar={limpar}
-        />
-      </div>
-
-      <div className="mt-8">
-        <InstalarApp />
-      </div>
-
-      </div>
-
-      <AlertDialog open={Boolean(duplicado)} onOpenChange={(o) => !o && setDuplicado(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>É o mesmo animal?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Já existe{" "}
-              <strong>
-                {duplicado?.animal.trim()}
-                {duplicado?.especie ? ` (${duplicado.especie})` : ""}
-              </strong>{" "}
-              na lista. Se for o mesmo animal, esta avaliação entra na evolução dele. Se for outro,
-              ele é salvo com um número depois do nome.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() =>
-                salvar({
-                  ...form,
-                  animal: proximoNomeDuplicado(form.animal, registros),
-                })
-              }
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:mt-10">
+          {areas.map(({ to, numero, titulo, descricao, acao, Icone, iconeClass, detalhe }) => (
+            <Link
+              key={to}
+              to={to}
+              className="group relative flex min-h-56 flex-col overflow-hidden rounded-3xl border border-border/80 bg-card/90 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg sm:p-6"
             >
-              Não, é outro animal
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => salvar(form)}>Sim, é o mesmo</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <span
+                aria-hidden="true"
+                className="absolute -right-7 -top-10 font-display text-8xl font-semibold tracking-tighter text-foreground/[0.035] transition group-hover:text-primary/[0.08]"
+              >
+                {numero}
+              </span>
+              <div className="relative flex items-start justify-between gap-4">
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconeClass}`}>
+                  <Icone aria-hidden="true" size={23} strokeWidth={1.8} />
+                </span>
+                <span className="pt-1 text-[10px] font-bold tracking-[0.16em] text-muted-foreground">
+                  {detalhe}
+                </span>
+              </div>
+              <div className="relative mt-5">
+                <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+                  {titulo}
+                </h2>
+                <p className="mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">
+                  {descricao}
+                </p>
+              </div>
+              <span className="relative mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-primary">
+                {acao}
+                <ArrowUpRight
+                  aria-hidden="true"
+                  size={16}
+                  className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
