@@ -28,7 +28,7 @@ async function requirePlatformAdmin(accessToken: string) {
 }
 
 export const criarUsuarioClinica = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createSchema.parse(input))
+  .validator((input: unknown) => createSchema.parse(input))
   .handler(async ({ data }) => {
     const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
     const { data: clinica, error: clinicaError } = await supabaseAdmin.from("clinicas").select("id,nome,limite_usuarios").eq("id", data.clinicaId).single();
@@ -74,7 +74,7 @@ export const criarUsuarioClinica = createServerFn({ method: "POST" })
   });
 
 export const redefinirSenhaUsuario = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => resetSchema.parse(input))
+  .validator((input: unknown) => resetSchema.parse(input))
   .handler(async ({ data }) => {
     const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { password: data.password });
