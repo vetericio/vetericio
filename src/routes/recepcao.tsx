@@ -422,7 +422,7 @@ function Recepcao() {
   }
 
   const itens = [
-    ["Cadastrar tudo", "Cadastre tutores e animais da clínica", UserRound, "/tutores"],
+    ["Cadastrar tutor", "Cadastre tutores e animais da clínica", UserRound, "/tutores"],
     ["Adicionar / consultar animal", "Pesquise o animal e veja tutor, contatos e ficha completa", PawPrint, "/animais"],
     ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
     ["Caixa", "Acesse o caixa e os lançamentos financeiros", CircleDollarSign, "/financeiro"],
