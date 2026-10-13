@@ -273,9 +273,9 @@ function Index() {
                 </button>
               ))}
             </div>
-            <Link to="/planos" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-primary px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10">
+            <a href="/planos" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-primary px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10">
               Conhecer os planos — clique aqui
-            </Link>
+            </a>
           </section>
         </div>
       )}
