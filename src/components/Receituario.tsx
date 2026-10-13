@@ -380,9 +380,10 @@ export function Receituario() {
                   }}
                   onKeyDown={(evento) => {
                     if (evento.key === "Escape") setRacaAberta(false);
-                    if (evento.key === "Enter" && racasFiltradas.length > 0) {
+                    const primeiraRaca = racasFiltradas[0];
+                    if (evento.key === "Enter" && primeiraRaca) {
                       evento.preventDefault();
-                      escolherRaca(racasFiltradas[0]);
+                      escolherRaca(primeiraRaca);
                     }
                   }}
                   role="combobox"
