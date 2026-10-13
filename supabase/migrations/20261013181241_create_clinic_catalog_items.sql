@@ -26,12 +26,19 @@ alter table public.clinica_catalogo_itens enable row level security;
 drop policy if exists "catalogo leitura da propria clinica" on public.clinica_catalogo_itens;
 create policy "catalogo leitura da propria clinica"
 on public.clinica_catalogo_itens for select to authenticated
-using (exists (
-  select 1 from public.clinica_usuarios cu
-  where cu.clinica_id = clinica_catalogo_itens.clinica_id
-    and cu.user_id = (select auth.uid())
-    and cu.ativo = true
-));
+using (
+  exists (
+    select 1 from public.clinica_usuarios cu
+    where cu.clinica_id = clinica_catalogo_itens.clinica_id
+      and cu.user_id = (select auth.uid())
+      and cu.ativo = true
+  )
+  or exists (
+    select 1 from public.app_users au
+    where au.user_id = (select auth.uid())
+      and au.role = 'admin'
+  )
+);
 
 drop policy if exists "catalogo gestao da propria clinica" on public.clinica_catalogo_itens;
 create policy "catalogo gestao da propria clinica"
