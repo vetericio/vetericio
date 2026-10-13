@@ -422,10 +422,10 @@ function Recepcao() {
   }
 
   const itens = [
-    ["Caixa", "Acesse o caixa e os lançamentos financeiros", CircleDollarSign, "/financeiro"],
+    ["Cadastrar tudo", "Cadastre tutores e animais da clínica", UserRound, "/tutores"],
     ["Adicionar / consultar animal", "Pesquise o animal e veja tutor, contatos e ficha completa", PawPrint, "/animais"],
     ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
-    ["Novo agendamento", "Organize os horários", CalendarDays, null],
+    ["Caixa", "Acesse o caixa e os lançamentos financeiros", CircleDollarSign, "/financeiro"],
     ["Aniversariantes do dia", aniversariantesHoje.length ? `${aniversariantesHoje.length} aniversariante${aniversariantesHoje.length > 1 ? "s" : ""} hoje` : "Datas importantes", CalendarDays, "aniversarios"],
     ["Reforços próximos", reforcos.length ? `${reforcos.length} reforço${reforcos.length > 1 ? "s" : ""} com data registrada` : "Vacinas e vermifugação", Plus, "reforcos"],
   ] as const;
