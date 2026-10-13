@@ -24,6 +24,7 @@ type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anest
 const ANIMAIS_KEY = "oricse-animais-v1";
 const TUTORES_KEY = "oricse-tutores-v1";
 const PRONTUARIO_KEY = "oricse-prontuario-animal-v1";
+const PESOS_KEY = "oricse-pesos-animal-v1";
 const PLANTOES_KEY = "veterico-plantoes-v1";
 
 const NORMAIS_ESPECIE = {
@@ -65,6 +66,11 @@ function ler<T>(chave:string):T[]{ if(typeof window==="undefined")return[]; try{
 function normalizar(v?:string){ return (v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
 function hoje(){ return new Date().toISOString().slice(0,10); }
 function dataBR(v?:string){ if(!v)return"—"; const [a,m,d]=v.slice(0,10).split("-"); return a&&m&&d?`${d}/${m}/${a}`:v; }
+function pesoValido(valor: string) {
+  const numero = Number(String(valor).trim().replace(",", "."));
+  return Number.isFinite(numero) && numero > 0 ? numero.toFixed(3) : "";
+}
+
 function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", conduta:"", retorno:"" }; }
 
 function RegistroClinico(){
@@ -122,8 +128,21 @@ function RegistroClinico(){
       consulta.medicacoes&&`Medicações / receita: ${consulta.medicacoes}`,
       consulta.examesSolicitados&&`Exames solicitados: ${consulta.examesSolicitados}`,
     ].filter(Boolean).join("\n");
+    const pesoConsulta = consulta.peso.trim() ? pesoValido(consulta.peso) : "";
+    if (consulta.peso.trim() && !pesoConsulta) return void toast.error("Informe um peso válido em kg.");
+    const consultaSalva = { ...consulta, peso: pesoConsulta || animal.peso || "" };
+    if (pesoConsulta) {
+      const listaAnimais = ler<Animal>(ANIMAIS_KEY);
+      const pesoAnterior = pesoValido(animal.peso || "");
+      localStorage.setItem(ANIMAIS_KEY, JSON.stringify(listaAnimais.map(item => item.id === animal.id ? { ...item, peso: pesoConsulta } : item)));
+      if (pesoAnterior !== pesoConsulta) {
+        const historico = ler<{id:string;animalId:string;peso:number;data:string;criadoEm:string}>(PESOS_KEY);
+        const novoPeso = { id: crypto.randomUUID(), animalId: animal.id, peso: Number(pesoConsulta), data, criadoEm: new Date().toISOString() };
+        localStorage.setItem(PESOS_KEY, JSON.stringify([novoPeso, ...historico]));
+      }
+    }
     const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
-    const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Consulta",dados:consulta};
+    const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Consulta",dados:consultaSalva};
     localStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
     localStorage.removeItem(chaveRascunho);
     toast.success("Consulta salva no prontuário do animal.");
@@ -140,7 +159,7 @@ function RegistroClinico(){
       </div>
       <div className="grid border-t sm:grid-cols-3">
         <ModoButton ativo={modo==="internacao"} icon={BedDouble} titulo="Internação" onClick={()=>setModo("internacao")}/>
-        <ModoButton ativo={modo==="consulta"} icon={Stethoscope} titulo="Consulta" onClick={()=>{setModo("consulta");setEtapa(1)}}/>
+        <ModoButton ativo={modo==="consulta"} icon={Stethoscope} titulo="Consulta" onClick={()=>{setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))}}/>
         <ModoButton ativo={modo==="procedimento"} icon={Scissors} titulo="Cirurgia / Procedimentos" onClick={()=>setModo("procedimento")}/>
       </div>
     </section>
