@@ -102,9 +102,67 @@ function prepararAtalhoCaixa() {
   }, true);
 }
 
+function garantirEstiloAtendimento() {
+  if (document.getElementById("oricse-atendimento-botoes-style")) return;
+  const style = document.createElement("style");
+  style.id = "oricse-atendimento-botoes-style";
+  style.textContent = `
+    button[data-oricse-atendimento-acao="iniciar"] {
+      background: #059669 !important;
+      border-color: #059669 !important;
+      color: #ffffff !important;
+    }
+    button[data-oricse-atendimento-acao="iniciar"]::before {
+      content: "✓";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: .45rem;
+      font-weight: 900;
+    }
+    button[data-oricse-atendimento-acao="iniciar"]:hover {
+      background: #047857 !important;
+      border-color: #047857 !important;
+    }
+    button[data-oricse-atendimento-acao="finalizar"] {
+      background: #dc2626 !important;
+      border-color: #dc2626 !important;
+      color: #ffffff !important;
+    }
+    button[data-oricse-atendimento-acao="finalizar"]::before {
+      content: "✕";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: .45rem;
+      font-weight: 900;
+    }
+    button[data-oricse-atendimento-acao="finalizar"]:hover {
+      background: #b91c1c !important;
+      border-color: #b91c1c !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function prepararBotoesAtendimento() {
+  garantirEstiloAtendimento();
+  document.querySelectorAll<HTMLButtonElement>("button").forEach((botao) => {
+    const texto = textoDoElemento(botao);
+    if (texto === "Iniciar atendimento") {
+      botao.dataset.oricseAtendimentoAcao = "iniciar";
+      botao.setAttribute("aria-label", "Iniciar atendimento");
+    } else if (texto === "Finalizar atendimento") {
+      botao.dataset.oricseAtendimentoAcao = "finalizar";
+      botao.setAttribute("aria-label", "Finalizar atendimento");
+    }
+  });
+}
+
 function varrer() {
   document.querySelectorAll<HTMLSelectElement>("select").forEach(prepararSeletor);
   prepararAtalhoCaixa();
+  prepararBotoesAtendimento();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
