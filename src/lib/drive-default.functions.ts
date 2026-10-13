@@ -67,7 +67,7 @@ async function buscarOuCriarPasta(token: string, parentId: string, nome: string)
 }
 
 export const garantirPastaOricse = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => inputSchema.parse(input))
+  .validator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
