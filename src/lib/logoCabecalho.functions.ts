@@ -22,7 +22,7 @@ export const buscarLogoCabecalhoGlobal = createServerFn({ method: "GET" }).handl
 });
 
 export const salvarLogoCabecalhoGlobal = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => logoSchema.parse(input))
+  .validator((input: unknown) => logoSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (!data.logo) {
