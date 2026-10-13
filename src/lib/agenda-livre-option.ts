@@ -102,30 +102,9 @@ function prepararAtalhoCaixa() {
   }, true);
 }
 
-function prepararBotoesAtendimento() {
-  document.querySelectorAll<HTMLButtonElement>("button").forEach((botao) => {
-    const texto = textoDoElemento(botao).replace(/^[✓✕]\s*/, "").trim();
-
-    if (texto === "Iniciar atendimento") {
-      botao.dataset.oricseAtendimentoAcao = "iniciar";
-      botao.textContent = "✓ Iniciar atendimento";
-      botao.className = "inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-[10px] font-bold leading-tight text-white shadow-sm transition";
-      botao.style.cssText = "background:#059669!important;border:1px solid #059669!important;color:#fff!important;text-decoration:none!important;";
-      botao.setAttribute("aria-label", "Iniciar atendimento");
-    } else if (texto === "Finalizar atendimento") {
-      botao.dataset.oricseAtendimentoAcao = "finalizar";
-      botao.textContent = "✕ Finalizar atendimento";
-      botao.className = "inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-[10px] font-bold leading-tight text-white shadow-sm transition";
-      botao.style.cssText = "background:#dc2626!important;border:1px solid #dc2626!important;color:#fff!important;text-decoration:none!important;";
-      botao.setAttribute("aria-label", "Finalizar atendimento");
-    }
-  });
-}
-
 function varrer() {
   document.querySelectorAll<HTMLSelectElement>("select").forEach(prepararSeletor);
   prepararAtalhoCaixa();
-  prepararBotoesAtendimento();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
