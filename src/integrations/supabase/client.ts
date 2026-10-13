@@ -30,8 +30,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 // Use import.meta.env for client-side (Vite build-time replacement)
 // and process.env only during SSR.
-const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+// These are public client credentials. Environment variables take precedence in
+// development or when the host injects them; the fallback keeps the published
+// app connected when a GitHub-based deploy does not load a .env file.
+const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'] || 'https://iniwzspylxtodjulavck.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'] || 'sb_publishable_0l29Wtd5S3cfBbwvL4-AJg_phuywctO';
 
 export const supabaseConfigurado = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 export const supabaseMensagemConfiguracao = "A conexão segura do sistema ainda não foi configurada. Tente novamente em alguns instantes.";
