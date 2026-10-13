@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, UserRound, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgendaDayBoard } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
@@ -422,7 +422,7 @@ function Recepcao() {
   }
 
   const itens = [
-    ["Adicionar / consultar tutor", "Cadastre e encontre tutores", UserRound, "/tutores"],
+    ["Caixa", "Acesse o caixa e os lançamentos financeiros", CircleDollarSign, "/financeiro"],
     ["Adicionar / consultar animal", "Pesquise o animal e veja tutor, contatos e ficha completa", PawPrint, "/animais"],
     ["Fila de espera", "Pacientes sem horário aguardando atendimento", ClipboardList, "/fila-espera"],
     ["Novo agendamento", "Organize os horários", CalendarDays, null],
