@@ -5,10 +5,17 @@ const CHAVE_SPLASH_SESSAO = "oricse-splash-v1";
 
 export function Splash() {
   const { marca, logo_url } = useSiteBranding();
-  const [visivel, setVisivel] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.sessionStorage.getItem(CHAVE_SPLASH_SESSAO) !== "1";
-  });
+  // O servidor e o primeiro render do navegador precisam coincidir.
+  // A leitura da sessão acontece só após a hidratação, evitando erro React #418.
+  const [visivel, setVisivel] = useState(false);
+
+  useEffect(() => {
+    try {
+      setVisivel(window.sessionStorage.getItem(CHAVE_SPLASH_SESSAO) !== "1");
+    } catch {
+      setVisivel(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!visivel) return;
