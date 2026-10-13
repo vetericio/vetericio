@@ -11,12 +11,13 @@ export const PLANOS_PADRAO = [
   { nome: "Master (Equipe)", descricao: "Para equipes e clínicas que precisam de um sistema sob medida", preco: "R$ 199,90", preco_mensal: "R$ 199,90", preco_anual: "R$ 1.999,00", itens: ["Tudo que o sistema oferece", "Personalização: ajustamos o sistema à sua necessidade", "www.suaclinica.com.br", "5 usuários inclusos"] },
 ] as const;
 
-function numeroPreco(valor:string){ return Number(String(valor || "").replace(/[^0-9,.-]/g,"").replace(".","").replace(",", ".")) || 0; }
-function ehPlanoGratis(plano:any){
-  const nome = String(plano?.nome || "").toLowerCase();
-  const preco = String(plano?.preco || plano?.preco_mensal || "").toLowerCase();
-  return nome.includes("teste grátis") || nome.includes("teste gratis") || nome.includes("grátis") || nome.includes("gratis") || preco.includes("grátis") || preco.includes("gratis") || numeroPreco(preco) === 0;
+function condicaoGratis(valor: string) {
+  if (/gr[áa]tis/i.test(valor)) return true;
+  if (!valor.trim()) return false;
+  const numero = Number(valor.replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(numero) && numero === 0;
 }
+
 function Planos() {
   const [planos, setPlanos] = useState<any[]>([...PLANOS_PADRAO]);
 
@@ -52,12 +53,14 @@ function Planos() {
 
         <section className="mt-10 grid gap-5 lg:grid-cols-4">
           {planos.map((plano) => {
-            const gratis = ehPlanoGratis(plano);
             const mensal = String(plano.preco_mensal || plano.preco || "");
             const anual = String(plano.preco_anual || "");
             const nome = String(plano.nome || "");
             const nomeMin = nome.toLowerCase();
-            const codigo = plano.codigo || (gratis ? "teste-gratis" : nomeMin);
+            const testeGratis = String(plano.codigo || "").toLowerCase() === "teste-gratis"
+              || nomeMin.includes("teste grátis")
+              || nomeMin.includes("teste gratis");
+            const codigo = plano.codigo || (testeGratis ? "teste-gratis" : nomeMin);
             const selo = nomeMin.includes("plus") ? "Mais vendido" : nomeMin.includes("master") ? "Recomendado" : "";
 
             return (
@@ -67,18 +70,30 @@ function Planos() {
                 <p className="mt-2 min-h-[120px] text-sm text-muted-foreground">{plano.descricao}</p>
 
                 <div className="mt-6 min-h-32">
-                  {gratis ? (
+                  {testeGratis ? (
                     <p className="text-3xl font-bold">{plano.preco || mensal || "Grátis por 7 dias"}</p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mensal</span>
-                        <p className="text-3xl font-bold">{mensal}<span className="text-sm font-normal text-muted-foreground"> / mês</span></p>
+                        <p className="mt-1 text-2xl font-bold">
+                          {mensal
+                            ? condicaoGratis(mensal)
+                              ? "Grátis"
+                              : <>{mensal}<span className="text-sm font-normal text-muted-foreground"> / mês</span></>
+                            : "—"}
+                        </p>
                       </div>
-                      {anual && <div>
+                      <div>
                         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Anual</span>
-                        <p className="text-xl font-bold">{anual}<span className="text-sm font-normal text-muted-foreground"> / ano</span></p>
-                      </div>}
+                        <p className="mt-1 text-2xl font-bold">
+                          {anual
+                            ? condicaoGratis(anual)
+                              ? "Grátis"
+                              : <>{anual}<span className="text-sm font-normal text-muted-foreground"> / ano</span></>
+                            : "—"}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
