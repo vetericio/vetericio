@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/catalogo")({ component: Catalogo });
 
 type TipoItem = "servico" | "produto";
+type ClinicaOpcao = { id: string; nome: string };
 type ItemCatalogo = {
   id: string;
   tipo: TipoItem;
@@ -54,6 +55,7 @@ function Catalogo() {
   const [clinicaId, setClinicaId] = useState("");
   const [papel, setPapel] = useState("");
   const [adminGlobal, setAdminGlobal] = useState(false);
+  const [clinicasAdmin, setClinicasAdmin] = useState<ClinicaOpcao[]>([]);
   const [itens, setItens] = useState<ItemCatalogo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [novo, setNovo] = useState(false);
@@ -69,6 +71,18 @@ function Catalogo() {
     : "Produtos podem ter estoque atual e mínimo.";
   const servicos = useMemo(() => itens.filter((item) => item.tipo === "servico"), [itens]);
   const produtos = useMemo(() => itens.filter((item) => item.tipo === "produto"), [itens]);
+
+  async function carregarItensDaClinica(id: string) {
+    const { data, error } = await (supabase as any)
+      .from("clinica_catalogo_itens")
+      .select("*")
+      .eq("clinica_id", id)
+      .eq("ativo", true)
+      .order("nome");
+    if (error) throw error;
+    setClinicaId(id);
+    setItens(data || []);
+  }
 
   useEffect(() => {
     let ativo = true;
@@ -93,20 +107,27 @@ function Catalogo() {
           .limit(1)
           .maybeSingle();
         if (erroVinculo) throw erroVinculo;
-        if (!vinculo?.clinica_id) throw new Error("Usuário não vinculado a uma clínica.");
 
-        const { data, error } = await (supabase as any)
-          .from("clinica_catalogo_itens")
-          .select("*")
-          .eq("clinica_id", vinculo.clinica_id)
-          .eq("ativo", true)
-          .order("nome");
-        if (error) throw error;
+        const ehAdminGlobal = usuarioSistema?.role === "admin";
+        let clinicaAtiva = vinculo?.clinica_id || "";
+
+        if (ehAdminGlobal) {
+          const { data: clinicas, error: erroClinicas } = await (supabase as any)
+            .from("clinicas")
+            .select("id,nome")
+            .order("nome");
+          if (erroClinicas) throw erroClinicas;
+          if (!ativo) return;
+          setClinicasAdmin(clinicas || []);
+          if (!clinicaAtiva) clinicaAtiva = clinicas?.[0]?.id || "";
+        }
+
+        if (!clinicaAtiva) throw new Error("Nenhuma clínica disponível para este catálogo.");
         if (!ativo) return;
-        setClinicaId(vinculo.clinica_id);
-        setPapel(vinculo.papel || "");
-        setAdminGlobal(usuarioSistema?.role === "admin");
-        setItens(data || []);
+
+        setPapel(vinculo?.papel || "");
+        setAdminGlobal(ehAdminGlobal);
+        await carregarItensDaClinica(clinicaAtiva);
       } catch (e) {
         if (ativo) toast.error((e as Error).message || "Não foi possível carregar serviços e produtos.");
       } finally {
@@ -118,7 +139,8 @@ function Catalogo() {
   }, []);
 
   function abrirCadastro(novoTipo: TipoItem) {
-    if (!podeEditar) return toast.error("Somente Admin, Clínica ou RT podem cadastrar.");
+    if (!podeEditar) return toast.error("Somente Admin ORICSE, Clínica ou RT podem cadastrar.");
+    if (!clinicaId) return toast.error("Selecione uma clínica antes de cadastrar.");
     setTipo(novoTipo);
     setForm(vazio);
     setJanelaFiscal(false);
@@ -183,8 +205,10 @@ function Catalogo() {
         <h1 className="mt-1 text-2xl font-black text-foreground">Serviços e produtos</h1>
         <p className="mt-1 text-sm text-muted-foreground">Cadastre o que a clínica oferece e o que controla em estoque.</p>
       </div>
-      <button type="button" disabled={!podeEditar} onClick={() => abrirCadastro("servico")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><PackagePlus size={18} /> Cadastrar serviço / produto</button>
+      <button type="button" disabled={!podeEditar || !clinicaId} onClick={() => abrirCadastro("servico")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><PackagePlus size={18} /> Cadastrar serviço / produto</button>
     </header>
+
+    {adminGlobal && clinicasAdmin.length > 1 && <label className="mt-5 block max-w-md text-sm font-bold text-foreground">Clínica para este catálogo<select value={clinicaId} onChange={(e) => void carregarItensDaClinica(e.target.value).catch((erro) => toast.error(erro.message || "Não foi possível trocar a clínica."))} className="mt-1 min-h-11 w-full rounded-xl border bg-card px-3 font-normal"><option value="">Selecione</option>{clinicasAdmin.map((clinica) => <option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}</select></label>}
 
     {!podeEditar && <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Seu perfil pode visualizar este catálogo. O cadastro é permitido para Admin, Clínica e RT.</p>}
 
