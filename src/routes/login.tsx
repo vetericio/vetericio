@@ -31,18 +31,6 @@ function Login() {
       return;
     }
 
-    if (nome === "vetadmin27") {
-      const { error: cadastroError } = await supabase.auth.signUp({ email, password: senha });
-      if (!cadastroError) {
-        const { error: segundoLoginError } = await supabase.auth.signInWithPassword({ email, password: senha });
-        if (!segundoLoginError) {
-          setEntrando(false);
-          navigate({ to: "/" });
-          return;
-        }
-      }
-    }
-
     setEntrando(false);
     toast.error("@usuário ou senha inválidos.");
   }
