@@ -31,6 +31,19 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
     const erro = error instanceof Error ? error : new Error(String(error));
     reportLovableError(erro, { boundary: "tanstack_root_error_component" });
   }, [error]);
+  useEffect(() => {
+    const mensagem = error instanceof Error ? error.message : String(error);
+    if (!/dynamically imported module|importing a module script failed|error loading dynamically imported module|chunkloaderror/i.test(mensagem)) return;
+    const chave = `oricse-chunk-reload:${window.location.pathname}`;
+    try {
+      const ultimaTentativa = Number(window.sessionStorage.getItem(chave) || 0);
+      if (Date.now() - ultimaTentativa < 30_000) return;
+      window.sessionStorage.setItem(chave, String(Date.now()));
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [error]);
   return <div className="flex min-h-screen items-center justify-center bg-background px-4"><div className="max-w-md text-center"><h1 className="text-xl font-semibold">Esta página não carregou</h1><div className="mt-6"><button onClick={() => { router.invalidate(); reset(); }} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Tentar novamente</button></div></div></div>;
 }
 
