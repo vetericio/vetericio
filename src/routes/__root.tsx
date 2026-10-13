@@ -24,10 +24,13 @@ function NotFoundComponent() {
   return <div className="flex min-h-screen items-center justify-center bg-background px-4"><div className="max-w-md text-center"><h1 className="text-7xl font-bold text-foreground">404</h1><h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2><div className="mt-6"><Link to="/" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Voltar</Link></div></div></div>;
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => { reportLovableError(error, { boundary: "tanstack_root_error_component" }); }, [error]);
+  useEffect(() => {
+    const erro = error instanceof Error ? error : new Error(String(error));
+    reportLovableError(erro, { boundary: "tanstack_root_error_component" });
+  }, [error]);
   return <div className="flex min-h-screen items-center justify-center bg-background px-4"><div className="max-w-md text-center"><h1 className="text-xl font-semibold">Esta página não carregou</h1><div className="mt-6"><button onClick={() => { router.invalidate(); reset(); }} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Tentar novamente</button></div></div></div>;
 }
 
@@ -87,11 +90,11 @@ function RootComponent() {
       const canvas = document.getElementById("oricse-admin-site-canvas");
       canvas?.remove();
       const section = document.querySelector("main section") as HTMLElement | null;
-      if (section?.dataset.oricseCanvas === "1") {
+      if (section?.dataset["oricseCanvas"] === "1") {
         section.style.display = "";
         section.style.gridTemplateColumns = "";
         section.style.gap = "";
-        delete section.dataset.oricseCanvas;
+        delete section.dataset["oricseCanvas"];
       }
       if (observer) { observer.disconnect(); observer = null; }
       if (inputHandler && section) { section.removeEventListener("input", inputHandler, true); inputHandler = null; }
@@ -107,7 +110,7 @@ function RootComponent() {
       const section = layout?.querySelector(":scope > section") as HTMLElement | null;
       if (!section || document.getElementById("oricse-admin-site-canvas")) return;
 
-      section.dataset.oricseCanvas = "1";
+      section.dataset["oricseCanvas"] = "1";
       section.style.display = "grid";
       section.style.gridTemplateColumns = window.innerWidth >= 1280 ? "minmax(0, 1fr) minmax(460px, .9fr)" : "1fr";
       section.style.gap = "20px";
@@ -216,7 +219,7 @@ function RootComponent() {
       let acoes = aside.querySelector("[data-oricse-atendimento-acoes='1']") as HTMLDivElement | null;
       if (!acoes) {
         acoes = document.createElement("div");
-        acoes.dataset.oricseAtendimentoAcoes = "1";
+        acoes.dataset["oricseAtendimentoAcoes"] = "1";
         acoes.className = "flex gap-2";
         botaoIniciar.parentElement?.insertBefore(acoes, botaoIniciar);
         acoes.appendChild(botaoIniciar);
@@ -226,7 +229,7 @@ function RootComponent() {
       if (!finalizar) {
         finalizar = document.createElement("button");
         finalizar.type = "button";
-        finalizar.dataset.oricseFinalizar = "1";
+        finalizar.dataset["oricseFinalizar"] = "1";
         finalizar.textContent = "Finalizar atendimento";
         finalizar.className = "flex-1 rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700";
         acoes.appendChild(finalizar);
