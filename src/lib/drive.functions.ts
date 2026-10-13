@@ -247,7 +247,7 @@ async function validarPastaGoogle(folderId: string) {
 }
 
 export const statusDrive = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => authSchema.parse(input))
+  .validator((input: unknown) => authSchema.parse(input))
   .handler(async () => {
     const serviceAccountOk = Boolean(
       process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL"] &&
@@ -270,7 +270,7 @@ export const statusDrive = createServerFn({ method: "POST" })
   });
 
 export const testarEConectarPastaDrive = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => testarPastaSchema.parse(input))
+  .validator((input: unknown) => testarPastaSchema.parse(input))
   .handler(async ({ data }) => {
     const supabaseAdmin = await carregarSupabaseAdmin();
     await usuarioAutorizado(supabaseAdmin, data.accessToken, data.clinicaId);
@@ -288,7 +288,7 @@ export const testarEConectarPastaDrive = createServerFn({ method: "POST" })
   });
 
 export const voltarAoDrivePadrao = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => clinicaSchema.parse(input))
+  .validator((input: unknown) => clinicaSchema.parse(input))
   .handler(async ({ data }) => {
     const supabaseAdmin = await carregarSupabaseAdmin();
     await usuarioAutorizado(supabaseAdmin, data.accessToken, data.clinicaId);
@@ -305,7 +305,7 @@ export const voltarAoDrivePadrao = createServerFn({ method: "POST" })
   });
 
 export const enviarArquivoDrive = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => uploadSchema.parse(input))
+  .validator((input: unknown) => uploadSchema.parse(input))
   .handler(async ({ data }) => {
     const supabaseAdmin = await carregarSupabaseAdmin();
     const usuario = await usuarioAutorizado(supabaseAdmin, data.accessToken, data.clinicaId);
