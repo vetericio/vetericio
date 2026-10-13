@@ -10,7 +10,7 @@ function Termos() {
   const [modelos, setModelos] = useState<string[]>(PADROES);
   const [selecionado, setSelecionado] = useState("");
   const [texto, setTexto] = useState("");
-  useEffect(() => { try { const salvo = JSON.parse(window.localStorage.getItem(CHAVE) || "[]"); if (Array.isArray(salvo)) setModelos([...PADROES, ...salvo.map((x: { nome?: string }) => x.nome).filter(Boolean)]); } catch { /* padrões permanecem */ } }, []);
+  useEffect(() => { try { const salvo = JSON.parse(window.localStorage.getItem(CHAVE) || "[]"); if (Array.isArray(salvo)) setModelos([...PADROES, ...salvo.map((x: { nome?: string }) => x.nome).filter((nome): nome is string => Boolean(nome))]); } catch { /* padrões permanecem */ } }, []);
   const adicionar = () => { const nome = window.prompt("Nome do termo"); if (!nome?.trim()) return; setModelos((m) => [...m, nome.trim()]); setSelecionado(nome.trim()); setTexto(""); };
   const abrir = (nome: string) => { setSelecionado(nome); setTexto(`TERMO: ${nome.toUpperCase()}\n\nIdentificação do tutor: ______________________________\nIdentificação do animal: _____________________________\n\nDeclaro estar ciente e de acordo com as informações deste termo:\n\n`); };
   const salvarPdf = () => { if (!selecionado || !texto.trim()) return; const janela = window.open("", "_blank"); if (!janela) return; janela.document.write(`<html><head><title>${selecionado}</title><style>body{font-family:Arial;max-width:780px;margin:50px auto;white-space:pre-wrap;line-height:1.6}h1{text-align:center}</style></head><body><h1>${selecionado}</h1>${texto.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</body></html>`); janela.document.close(); janela.print(); };
