@@ -116,7 +116,7 @@ function Financeiro() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6">
       <div className="mb-5 flex items-center justify-between gap-3">
-        {aba === "inicio" ? <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link> : <button onClick={() => setAba("inicio")} className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Financeiro</button>}
+        {aba === "inicio" ? <Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link> : <button onClick={() => setAba("inicio")} className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Financeiro</button>}
         <Link to="/estoque" className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold"><Package size={18}/> Estoque</Link>
       </div>
 

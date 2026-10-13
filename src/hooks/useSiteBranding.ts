@@ -4,11 +4,13 @@ import { supabase, supabaseConfigurado } from "@/integrations/supabase/client";
 export type SiteBranding = {
   marca: string;
   logo_url: string;
+  contato: string;
 };
 
 const PADRAO: SiteBranding = {
   marca: "Oricse",
   logo_url: "/oricse-logo.png",
+  contato: "",
 };
 
 export function useSiteBranding() {
@@ -30,6 +32,7 @@ export function useSiteBranding() {
       setBranding({
         marca: valor.marca?.trim() || PADRAO.marca,
         logo_url: valor.logo_url?.trim() || PADRAO.logo_url,
+        contato: valor.contato?.trim() || PADRAO.contato,
       });
     })();
 
