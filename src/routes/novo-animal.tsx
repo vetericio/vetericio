@@ -44,6 +44,7 @@ type AnimalForm = Omit<Animal, "id" | "tutorId" | "criadoEm">;
 
 const TUTORES_KEY = "oricse-tutores-v1";
 const ANIMAIS_KEY = "oricse-animais-v1";
+const PESOS_KEY = "oricse-pesos-animal-v1";
 const SRD = "SRD (Sem Raça Definida)";
 
 const ESPECIES = [
@@ -165,15 +166,26 @@ function NovoAnimal() {
     if (!form.especie) return toast.error("Selecione a espécie.");
 
     const lista = lerAnimais();
+    const registrarPeso = (animalId: string, peso: string) => {
+      const numero = Number(peso);
+      if (!Number.isFinite(numero) || numero <= 0) return;
+      try {
+        const existentes = JSON.parse(localStorage.getItem(PESOS_KEY) || "[]");
+        const registro = { id: crypto.randomUUID(), animalId, peso: numero, data: new Date().toISOString().slice(0, 10), criadoEm: new Date().toISOString() };
+        localStorage.setItem(PESOS_KEY, JSON.stringify([registro, ...(Array.isArray(existentes) ? existentes : [])]));
+      } catch { /* o peso do cadastro continua salvo no próprio animal */ }
+    };
     if (animalExistente) {
       const atualizado: Animal = { ...animalExistente, ...form, tutorId: tutor.id };
       const novaLista = lista.map((a) => a.id === animalExistente.id ? atualizado : a);
       localStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
-      toast.success(`${atualizado.nome} atualizado com sucesso.`);
+      if (form.peso && form.peso !== animalExistente.peso) registrarPeso(atualizado.id, form.peso);
+      toast.success(atualizado.nome + " atualizado com sucesso.");
     } else {
       const novo: Animal = { ...form, id: crypto.randomUUID(), tutorId: tutor.id, criadoEm: new Date().toISOString() };
       localStorage.setItem(ANIMAIS_KEY, JSON.stringify([novo, ...lista]));
-      toast.success(`${novo.nome} cadastrado com sucesso.`);
+      if (novo.peso) registrarPeso(novo.id, novo.peso);
+      toast.success(novo.nome + " cadastrado com sucesso.");
     }
     navigate({ to: "/tutores" });
   }
