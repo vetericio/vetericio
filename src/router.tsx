@@ -5,6 +5,7 @@ import "./tutores-compact.css";
 import "./agenda-actions.css";
 import "./lib/agenda-livre-option";
 import "./lib/promotional-codes-ui";
+import "./lib/admin-plan-pricing";
 
 export const getRouter = () => {
   const queryClient = new QueryClient();
