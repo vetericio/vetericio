@@ -179,7 +179,7 @@ function NovoAnimal() {
       const atualizado: Animal = { ...animalExistente, ...form, tutorId: tutor.id };
       const novaLista = lista.map((a) => a.id === animalExistente.id ? atualizado : a);
       localStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
-      if (form.peso && form.peso !== animalExistente.peso) registrarPeso(atualizado.id, form.peso);
+      if (form.peso && Number(form.peso) !== Number(String(animalExistente.peso || "").replace(",", "."))) registrarPeso(atualizado.id, form.peso);
       toast.success(atualizado.nome + " atualizado com sucesso.");
     } else {
       const novo: Animal = { ...form, id: crypto.randomUUID(), tutorId: tutor.id, criadoEm: new Date().toISOString() };
