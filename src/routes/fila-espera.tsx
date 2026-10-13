@@ -15,12 +15,15 @@ const ANIMAIS_KEY = "oricse-animais-v1";
 const FILA_KEY = "oricse-fila-espera-v1";
 const COLUNAS_FILA = "72px minmax(240px,1.45fr) 140px 120px minmax(180px,1.1fr) 140px 190px";
 
-function lerLocal<T>(chave: string): T[] { if (typeof window === "undefined") return []; try { const valor = JSON.parse(window.localStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor : []; } catch { return []; } }
-function normalizar(valor?: string) { return (valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
-function somenteDigitos(valor?: string) { return (valor || "").replace(/\D/g, ""); }
-function codigoTutor(tutor: Tutor) { return tutor.codigoPublico || tutor.codigo_publico || ""; }
-function hora(dataIso: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(dataIso)); }
-function tempoEspera(dataIso: string, agora = Date.now()) { const minutos=Math.max(0,Math.floor((agora-new Date(dataIso).getTime())/60000)); if(minutos<60)return `${minutos} min`; const h=Math.floor(minutos/60),m=minutos%60; return m?`${h}h ${m}min`:`${h}h`; }
+function lerLocal<T>(chave: string): T[] { if (typeof window === "undefined") return []; try { const valor = JSON.parse(window.localStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor.filter((item): item is T => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : []; } catch { return []; } }
+function lerTutores() { return lerLocal<Tutor>(TUTORES_KEY).filter((tutor) => typeof tutor.id === "string" && typeof tutor.nome === "string"); }
+function lerAnimais() { return lerLocal<Animal>(ANIMAIS_KEY).filter((animal) => typeof animal.id === "string" && typeof animal.tutorId === "string" && typeof animal.nome === "string"); }
+function lerFila() { return lerLocal<ItemFila>(FILA_KEY).filter((item) => typeof item.id === "string" && typeof item.tutorId === "string" && typeof item.animalId === "string" && typeof item.tutorNome === "string" && typeof item.animalNome === "string" && typeof item.chegadaEm === "string" && (item.status === "Aguardando" || item.status === "Chamado")).map((item) => ({ ...item, motivo: typeof item.motivo === "string" ? item.motivo : undefined, especie: typeof item.especie === "string" ? item.especie : undefined, chamadoEm: typeof item.chamadoEm === "string" ? item.chamadoEm : undefined })); }
+function normalizar(valor?: string) { return (typeof valor === "string" ? valor : "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
+function somenteDigitos(valor?: string) { return (typeof valor === "string" ? valor : "").replace(/\D/g, ""); }
+function codigoTutor(tutor: Tutor) { const codigo = tutor.codigoPublico || tutor.codigo_publico; return typeof codigo === "string" ? codigo : ""; }
+function hora(dataIso: string) { const data = new Date(typeof dataIso === "string" ? dataIso : ""); return Number.isNaN(data.getTime()) ? "—" : new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(data); }
+function tempoEspera(dataIso: string, agora = Date.now()) { const chegada = new Date(dataIso).getTime(); if (!Number.isFinite(chegada)) return "—"; const minutos=Math.max(0,Math.floor((agora-chegada)/60000)); if(minutos<60)return `${minutos} min`; const h=Math.floor(minutos/60),m=minutos%60; return m?`${h}h ${m}min`:`${h}h`; }
 function emojiEspecie(especie?: string) { const mapa: Record<string,string>={"Cão":"🐶","Gato":"🐱","Coelho":"🐰","Hamster":"🐹","Rato":"🐭","Porquinho-da-índia":"🐹","Ave":"🦜","Réptil":"🦎","Quelônio":"🐢","Serpente":"🐍"}; return mapa[especie||""]||"🐾"; }
 
 function FilaEspera() {
@@ -34,19 +37,19 @@ function FilaEspera() {
   const [motivo, setMotivo] = useState("");
 
   useEffect(() => {
-    setTutores(lerLocal<Tutor>(TUTORES_KEY));
-    setAnimais(lerLocal<Animal>(ANIMAIS_KEY));
-    setFila(lerLocal<ItemFila>(FILA_KEY));
+    setTutores(lerTutores());
+    setAnimais(lerAnimais());
+    setFila(lerFila());
   }, []);
 
   const tutorSelecionado = useMemo(() => tutores.find((t)=>t.id===tutorId), [tutores,tutorId]);
   const tutoresFiltrados = useMemo(() => {
     const termo=normalizar(buscaTutor), digitos=somenteDigitos(buscaTutor);
-    const lista=[...tutores].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+    const lista=[...tutores].sort((a,b)=>String(a.nome || "").localeCompare(String(b.nome || ""),"pt-BR"));
     if(!termo) return lista.slice(0,8);
     return lista.filter((t)=>normalizar(t.nome).includes(termo)||normalizar(codigoTutor(t)).includes(termo)||(!!digitos&&somenteDigitos(t.cpf).includes(digitos))).slice(0,12);
   }, [tutores,buscaTutor]);
-  const animaisDoTutor = useMemo(() => animais.filter((a)=>a.tutorId===tutorId).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")), [animais,tutorId]);
+  const animaisDoTutor = useMemo(() => animais.filter((a)=>a.tutorId===tutorId).sort((a,b)=>String(a.nome || "").localeCompare(String(b.nome || ""),"pt-BR")), [animais,tutorId]);
   const aguardando = useMemo(() => fila.filter((i)=>i.status==="Aguardando").sort((a,b)=>new Date(a.chegadaEm).getTime()-new Date(b.chegadaEm).getTime()), [fila]);
   const chamados = useMemo(() => fila.filter((i)=>i.status==="Chamado").sort((a,b)=>new Date(b.chamadoEm||b.chegadaEm).getTime()-new Date(a.chamadoEm||a.chegadaEm).getTime()), [fila]);
 
