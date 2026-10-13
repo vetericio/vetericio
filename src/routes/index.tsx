@@ -90,36 +90,36 @@ function Inicio() {
           </p>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:mt-10">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:mt-8">
           {areas.map(({ to, numero, titulo, descricao, acao, Icone, iconeClass, detalhe }) => (
             <Link
               key={to}
               to={to}
-              className="group relative flex min-h-56 flex-col overflow-hidden rounded-3xl border border-border/80 bg-card/90 p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg sm:p-6"
+              className="group relative flex min-h-44 flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-5"
             >
               <span
                 aria-hidden="true"
-                className="absolute -right-7 -top-10 font-display text-8xl font-semibold tracking-tighter text-foreground/[0.035] transition group-hover:text-primary/[0.08]"
+                className="absolute -right-5 -top-7 font-display text-7xl font-semibold tracking-tighter text-foreground/[0.035] transition group-hover:text-primary/[0.08]"
               >
                 {numero}
               </span>
               <div className="relative flex items-start justify-between gap-4">
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconeClass}`}>
-                  <Icone aria-hidden="true" size={23} strokeWidth={1.8} />
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconeClass}`}>
+                  <Icone aria-hidden="true" size={20} strokeWidth={1.8} />
                 </span>
                 <span className="pt-1 text-[10px] font-bold tracking-[0.16em] text-muted-foreground">
                   {detalhe}
                 </span>
               </div>
-              <div className="relative mt-5">
-                <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+              <div className="relative mt-3">
+                <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
                   {titulo}
                 </h2>
-                <p className="mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">
+                <p className="mt-1 max-w-sm text-sm leading-5 text-muted-foreground">
                   {descricao}
                 </p>
               </div>
-              <span className="relative mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-primary">
+              <span className="relative mt-auto inline-flex items-center gap-1 pt-3 text-sm font-semibold text-primary">
                 {acao}
                 <ArrowUpRight
                   aria-hidden="true"
