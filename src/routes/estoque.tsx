@@ -433,7 +433,7 @@ function Estoque() {
         ).map(([id, nome]) => (
           <button
             key={id}
-            onClick={() => setAba(id)}
+            onClick={() => setAba(id as Aba)}
             className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${aba === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
           >
             {nome}
