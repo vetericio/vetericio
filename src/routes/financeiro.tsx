@@ -68,52 +68,16 @@ type TutorFinanceiro = {
   codigo?: string;
 };
 
-type Aba = "inicio" | "dia" | "mes" | "total" | "tutores" | "receber" | "lancamentos";
+type Aba = "inicio" | "comandasDia" | "comandasAbertas" | "dia" | "mes" | "periodo" | "tutores" | "receber" | "lancamentos";
 
 const TUTORES_KEY = "oricse-tutores-v1";
 const opcoes = [
-  {
-    id: "dia" as Aba,
-    titulo: "Caixa do dia",
-    texto: "Movimentações de hoje e fechamento manual",
-    icone: Wallet,
-    cor: "bg-emerald-500/15 text-emerald-600",
-  },
-  {
-    id: "mes" as Aba,
-    titulo: "Caixa do mês",
-    texto: "Resumo mensal e fechamento automático",
-    icone: CalendarDays,
-    cor: "bg-blue-500/15 text-blue-600",
-  },
-  {
-    id: "total" as Aba,
-    titulo: "Caixa total",
-    texto: "Visão acumulada de toda a clínica",
-    icone: BarChart3,
-    cor: "bg-violet-500/15 text-violet-600",
-  },
-  {
-    id: "tutores" as Aba,
-    titulo: "Financeiro dos tutores",
-    texto: "Pagamentos, pendências e histórico",
-    icone: Users,
-    cor: "bg-orange-500/15 text-orange-600",
-  },
-  {
-    id: "receber" as Aba,
-    titulo: "Contas a receber",
-    texto: "Acompanhe valores pendentes",
-    icone: CreditCard,
-    cor: "bg-rose-500/15 text-rose-600",
-  },
-  {
-    id: "lancamentos" as Aba,
-    titulo: "Lançamentos",
-    texto: "Entradas, saídas e ajustes",
-    icone: ClipboardList,
-    cor: "bg-cyan-500/15 text-cyan-600",
-  },
+  { id: "comandasDia" as Aba, titulo: "Comandas do dia", texto: "Comandas criadas hoje", icone: ClipboardList, cor: "bg-emerald-500/15 text-emerald-600" },
+  { id: "comandasAbertas" as Aba, titulo: "Comandas em aberto", texto: "Comandas pendentes de dias anteriores", icone: CreditCard, cor: "bg-rose-500/15 text-rose-600" },
+  { id: "lancamentos" as Aba, titulo: "Lançamentos", texto: "Entradas, saídas e ajustes", icone: Plus, cor: "bg-cyan-500/15 text-cyan-600" },
+  { id: "dia" as Aba, titulo: "Caixa do dia", texto: "Movimentações de hoje e fechamento manual", icone: Wallet, cor: "bg-emerald-500/15 text-emerald-600" },
+  { id: "mes" as Aba, titulo: "Caixa do mês", texto: "Resumo mensal e fechamento automático", icone: CalendarDays, cor: "bg-blue-500/15 text-blue-600" },
+  { id: "periodo" as Aba, titulo: "Caixa do período", texto: "Selecione as datas para consultar", icone: BarChart3, cor: "bg-violet-500/15 text-violet-600" },
 ];
 
 function hojeISO() {
@@ -203,6 +167,8 @@ function lerTutores(): TutorFinanceiro[] {
 
 function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
+  const [periodoInicio, setPeriodoInicio] = useState(() => `${mesAtualISO()}-01`);
+  const [periodoFim, setPeriodoFim] = useState(hojeISO);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(lerLancamentos);
   const [tutoresCadastrados, setTutoresCadastrados] = useState<TutorFinanceiro[]>([]);
   const [podeAlterarComanda, setPodeAlterarComanda] = useState(false);
@@ -394,6 +360,12 @@ function Financeiro() {
     .reduce((s, l) => s + l.valor, 0);
   const contasReceber = lancamentos.filter((l) => l.tipo === "Entrada" && l.status === "Pendente");
 
+  const comandasDia = useMemo(() => comandas.filter(c => c.abertaEm.slice(0, 10) === hojeISO()), [comandas]);
+  const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && c.abertaEm.slice(0, 10) < hojeISO()), [comandas]);
+  const lancamentosPeriodo = useMemo(() => lancamentos.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentos, periodoInicio, periodoFim]);
+  const recebidoPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Entrada" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
+  const despesasPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Saída" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
+
   const tutoresFinanceiros = useMemo(() => {
     const consulta = normalizar(buscaTutor);
     const consultaDigitos = digitos(buscaTutor);
@@ -560,13 +532,27 @@ function Financeiro() {
           titulo="Resumo do mês atual"
         />
       )}
-      {aba === "total" && (
-        <ModuloResumo
-          lista={lancamentos}
-          recebido={recebidoTotal}
-          despesas={despesasTotal}
-          titulo="Visão acumulada"
-        />
+      {(aba === "comandasDia" || aba === "comandasAbertas") && (
+        <section className="space-y-3">
+          <p className="text-sm text-muted-foreground">{aba === "comandasDia" ? "Comandas abertas hoje, inclusive as finalizadas." : "Comandas de dias anteriores ainda abertas."}</p>
+          {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).map(comanda => (
+            <a key={comanda.id} href={`/comandas?comandaId=${encodeURIComponent(comanda.id)}`} className="block rounded-2xl border bg-card p-4 hover:border-primary">
+              <div className="flex items-center justify-between gap-3"><strong>Comanda #{comanda.numero} · {comanda.tutorNome}</strong><span className="text-sm">{comanda.status}</span></div>
+              <p className="mt-1 text-sm text-muted-foreground">{comanda.animalNome} · {new Date(comanda.abertaEm).toLocaleDateString("pt-BR")} · Saldo: {dinheiro(saldoComanda(comanda))}</p>
+            </a>
+          ))}
+          {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).length === 0 && <p className="rounded-2xl border bg-card p-5 text-muted-foreground">Nenhuma comanda encontrada.</p>}
+          <a href="/comandas" className="inline-flex rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground">Gerenciar comandas</a>
+        </section>
+      )}
+      {aba === "periodo" && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap gap-4 rounded-2xl border bg-card p-4">
+            <label className="text-sm">Data inicial<input aria-label="Data inicial" type="date" value={periodoInicio} max={periodoFim} onChange={e => setPeriodoInicio(e.target.value)} className="mt-1 block rounded-xl border bg-background p-3" /></label>
+            <label className="text-sm">Data final<input aria-label="Data final" type="date" value={periodoFim} min={periodoInicio} onChange={e => setPeriodoFim(e.target.value)} className="mt-1 block rounded-xl border bg-background p-3" /></label>
+          </div>
+          {periodoInicio <= periodoFim ? <ModuloResumo lista={lancamentosPeriodo} recebido={recebidoPeriodo} despesas={despesasPeriodo} titulo="Resumo do período selecionado" /> : <p>Selecione um período válido.</p>}
+        </section>
       )}
 
       {aba === "tutores" && (
