@@ -67,6 +67,17 @@ export function VisualPageEditor() {
 
   useEffect(() => { void (async () => {
     setLoading(true);
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user?.id) {
+      window.location.replace("/login");
+      return;
+    }
+    const { data: access } = await (supabase as any).from("app_users").select("role").eq("user_id", auth.user.id).maybeSingle();
+    if (access?.role !== "admin") {
+      toast.error("O editor visual é exclusivo do administrador da plataforma.");
+      window.location.replace("/inicio");
+      return;
+    }
     const [draft, published, history] = await Promise.all([
       (supabase as any).from("oricse_config").select("valor").eq("chave", VISUAL_DRAFT_KEY).maybeSingle(),
       (supabase as any).from("oricse_config").select("valor").eq("chave", VISUAL_PUBLISHED_KEY).maybeSingle(),
