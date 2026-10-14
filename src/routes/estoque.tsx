@@ -26,6 +26,15 @@ type ItemForm = {
   estoque_minimo: string;
 };
 
+const CATEGORIAS_SERVICOS = ["Consultas", "Vacinação", "Vermifugação", "Exames laboratoriais", "Diagnóstico por imagem", "Cirurgias", "Internação", "Procedimentos", "Odontologia", "Banho e tosa", "Atendimento domiciliar", "Outros"];
+const CATEGORIAS_PRODUTOS = ["Medicamentos", "Vacinas", "Vermífugos", "Antiparasitários", "Rações", "Petiscos", "Higiene e limpeza", "Acessórios", "Brinquedos", "Suplementos", "Materiais hospitalares", "Outros"];
+function formatarCentavos(valor: string) {
+  const digitos = valor.replace(/\D/g, "").slice(0, 12);
+  return (Number(digitos || "0") / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+function formatarValorExistente(valor: number) {
+  return formatarCentavos(String(Math.round(valor * 100)));
+}
 const FORM_VAZIO: ItemForm = {
   tipo: "servico",
   nome: "",
@@ -165,7 +174,7 @@ function Estoque() {
     event.preventDefault();
     if (!modal || !clinicaId) return;
     const nome = modal.nome.trim();
-    const valor = Number(modal.valor.replace(",", "."));
+    const valor = Number(modal.valor.replace(/[^\d,]/g, "").replace(",", "."));
     const estoqueAtual =
       modal.tipo === "produto" && modal.estoque_atual !== ""
         ? Number(modal.estoque_atual.replace(",", "."))
@@ -448,7 +457,7 @@ function Estoque() {
                 tipo: item.tipo,
                 nome: item.nome,
                 categoria: item.categoria,
-                valor: String(item.valor),
+                valor: formatarValorExistente(item.valor),
                 estoque_atual: "",
                 estoque_minimo: "",
               })
@@ -738,24 +747,19 @@ function Estoque() {
               </label>
               <label className="text-xs font-semibold">
                 Categoria
-                <input
-                  value={modal.categoria}
-                  onChange={(event) => setModal({ ...modal, categoria: event.target.value })}
-                  placeholder="Opcional"
-                  className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"
-                />
+                <select value={modal.categoria} onChange={(event) => setModal({ ...modal, categoria: event.target.value })}
+                  className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal">
+                  <option value="">Selecione uma categoria</option>
+                  {[...new Set([...(modal.tipo === "servico" ? CATEGORIAS_SERVICOS : CATEGORIAS_PRODUTOS), ...(modal.categoria ? [modal.categoria] : [])])].map(categoria => <option key={categoria} value={categoria}>{categoria}</option>)}
+                </select>
               </label>
               <label className="text-xs font-semibold">
                 Preço
-                <input
-                  required
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  value={modal.valor}
-                  onChange={(event) => setModal({ ...modal, valor: event.target.value })}
-                  placeholder="0,00"
-                  className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"
+                <input required type="text" inputMode="numeric" value={modal.valor}
+                  onChange={(event) => setModal({ ...modal, valor: formatarCentavos(event.target.value) })}
+                  onFocus={(event) => event.currentTarget.select()}
+                  placeholder="R$ 0,00" aria-label="Preço em reais, digitado em centavos"
+                  className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal tabular-nums"
                 />
               </label>
               {modal.tipo === "produto" && (
