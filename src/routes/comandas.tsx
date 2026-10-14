@@ -120,6 +120,7 @@ function Comandas() {
   const [modalCortesia, setModalCortesia] = useState(false);
   const [justificativaCortesia, setJustificativaCortesia] = useState("");
   const [carregandoResponsavel, setCarregandoResponsavel] = useState(true);
+  const [podeEditarFechada, setPodeEditarFechada] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -137,7 +138,7 @@ function Comandas() {
         let nome = data.user.email || data.user.id;
         const perfilBasico = await supabase
           .from("app_users")
-          .select("username,email")
+          .select("username,email,role")
           .eq("user_id", data.user.id)
           .maybeSingle();
         if (!ativo) return;
@@ -145,14 +146,16 @@ function Comandas() {
           ? `@${perfilBasico.data.username}`
           : perfilBasico.data?.email || nome;
         setResponsavel({ id: data.user.id, nome });
+        if (perfilBasico.data?.role === "admin") setPodeEditarFechada(true);
         const { data: vinculo, error: erroVinculo } = await supabase
           .from("clinica_usuarios")
-          .select("clinica_id")
+          .select("clinica_id,papel")
           .eq("user_id", data.user.id)
           .eq("ativo", true)
           .limit(1)
           .maybeSingle();
         if (erroVinculo) throw erroVinculo;
+        if (vinculo?.papel === "rt") setPodeEditarFechada(true);
         if (!vinculo?.clinica_id) {
           setCatalogo([]);
           setRegrasComissao([]);
@@ -401,6 +404,56 @@ function Comandas() {
     }
     setValorPagamento("");
     toast.success("Pagamento registrado no caixa.");
+  }
+
+  function alterarLancamentosPagamento(
+    pagamentoId: string,
+    alterar: (l: Record<string, unknown>) => Record<string, unknown> | null,
+  ) {
+    const lista = JSON.parse(window.localStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY) || "[]");
+    const nova = (Array.isArray(lista) ? lista : []).flatMap((l: Record<string, unknown>) => {
+      if (l.id !== `comanda-pagamento-${pagamentoId}`) return [l];
+      const r = alterar(l);
+      return r ? [r] : [];
+    });
+    window.localStorage.setItem(LANCAMENTOS_FINANCEIROS_KEY, JSON.stringify(nova));
+  }
+
+  function podeAlterarPagamentos() {
+    return !!comandaSelecionada && (comandaSelecionada.status === "Aberta" || podeEditarFechada);
+  }
+
+  function trocarFormaPagamento(pagamentoId: string, forma: string) {
+    if (!comandaSelecionada || !podeAlterarPagamentos()) return;
+    try {
+      alterarLancamentosPagamento(pagamentoId, (l) => ({ ...l, formaPagamento: forma }));
+    } catch {
+      return void toast.error("Não foi possível atualizar o caixa.");
+    }
+    const atualizada = {
+      ...comandaSelecionada,
+      pagamentos: comandaSelecionada.pagamentos.map((p) =>
+        p.id === pagamentoId ? { ...p, formaPagamento: forma } : p,
+      ),
+    };
+    salvarEstado(comandas.map((c) => (c.id === atualizada.id ? atualizada : c)));
+    toast.success("Forma de pagamento corrigida.");
+  }
+
+  function removerPagamento(pagamentoId: string) {
+    if (!comandaSelecionada || !podeAlterarPagamentos()) return;
+    if (!window.confirm("Remover este pagamento? Ele também sai do caixa.")) return;
+    try {
+      alterarLancamentosPagamento(pagamentoId, () => null);
+    } catch {
+      return void toast.error("Não foi possível atualizar o caixa.");
+    }
+    const atualizada = {
+      ...comandaSelecionada,
+      pagamentos: comandaSelecionada.pagamentos.filter((p) => p.id !== pagamentoId),
+    };
+    salvarEstado(comandas.map((c) => (c.id === atualizada.id ? atualizada : c)));
+    toast.success("Pagamento removido.");
   }
 
   function finalizarComanda() {
@@ -879,7 +932,32 @@ function Comandas() {
                               {dataHora(pagamento.data)} por {pagamento.registradoPor}
                             </p>
                           </div>
-                          <BadgeCheck size={17} className="text-emerald-700" />
+                          <div className="flex items-center gap-2">
+                            {podeAlterarPagamentos() ? (
+                              <>
+                                <select
+                                  value={pagamento.formaPagamento}
+                                  onChange={(e) => trocarFormaPagamento(pagamento.id, e.target.value)}
+                                  aria-label="Corrigir forma de pagamento"
+                                  className="rounded-lg border bg-white px-2 py-1 text-xs"
+                                >
+                                  {FORMAS_PAGAMENTO.map((forma) => (
+                                    <option key={forma}>{forma}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => removerPagamento(pagamento.id)}
+                                  title="Remover pagamento"
+                                  aria-label="Remover pagamento"
+                                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-700"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </>
+                            ) : null}
+                            <BadgeCheck size={17} className="text-emerald-700" />
+                          </div>
                         </div>
                       ))}
                     </div>

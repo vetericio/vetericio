@@ -1153,7 +1153,7 @@ function ModuloCaixa({
                   {l.tipo === "Saída" ? "− " : "+ "}
                   {dinheiro(l.valor)}
                 </strong>
-                {(l.comandaId || l.categoria === "Pagamento de comanda") && !podeAlterarComanda ? (
+                {l.comandaId || l.categoria === "Pagamento de comanda" ? (
                   <a
                     href={l.comandaId ? `/comandas?comandaId=${encodeURIComponent(l.comandaId)}` : "/comandas"}
                     className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
