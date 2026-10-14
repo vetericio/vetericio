@@ -153,7 +153,12 @@ function Comandas() {
           .limit(1)
           .maybeSingle();
         if (erroVinculo) throw erroVinculo;
-        if (!vinculo?.clinica_id) throw new Error("Não há uma clínica ativa vinculada ao usuário.");
+        if (!vinculo?.clinica_id) {
+          setCatalogo([]);
+          setRegrasComissao([]);
+          setErroConfiguracaoComissao(false);
+          return;
+        }
         const [itensResult, regrasResult] = await Promise.all([
           supabase
             .from("oricse_catalogo_itens")
