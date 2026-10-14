@@ -395,7 +395,7 @@ function Estoque() {
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
             Perfil da clínica
           </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">Precificação</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">Serviços, produtos e comissões</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Cadastre preços de produtos e serviços, configure comissões e controle o estoque.
           </p>
@@ -431,22 +431,22 @@ function Estoque() {
             </div>
             <span className="rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{produtos.length} produtos</span>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-3">
             {produtos.map(produto => (
-              <article key={produto.id} className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm">
+              <article key={produto.id} className="grid items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm md:grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(0,2fr)]">
                 <div className="min-w-0">
                   <p className="mb-1 text-xs font-medium text-muted-foreground">{produto.categoria || "Produto"}</p>
                   <h3 className="break-words text-base font-bold">{produto.nome}</h3>
                 </div>
-                <div className="rounded-xl bg-muted/60 p-4">
+                <div className="rounded-xl bg-muted/60 p-3">
                   <p className="text-xs text-muted-foreground">Quantidade em estoque</p>
-                  <p className="mt-1 text-3xl font-bold tabular-nums">{Number(produto.estoque_atual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums">{Number(produto.estoque_atual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</p>
                   {produto.estoque_minimo != null && Number(produto.estoque_atual ?? 0) <= Number(produto.estoque_minimo) && (
                     <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">Estoque baixo · mínimo {produto.estoque_minimo}</p>
                   )}
                 </div>
                 {podeEditar && (
-                  <div className="mt-auto space-y-2">
+                  <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
                     <label className="block text-xs font-semibold">Quantidade a movimentar
                       <input type="text" inputMode="decimal" placeholder="Ex.: 10" value={quantidadesEstoque[produto.id] || ""}
                         onChange={e => setQuantidadesEstoque(prev => ({ ...prev, [produto.id]: e.target.value.replace(/[^0-9,.]/g, "") }))}
