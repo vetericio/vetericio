@@ -135,6 +135,16 @@ function Comandas() {
           throw new Error("Não há um usuário autenticado para registrar as ações da comanda.");
         if (!ativo) return;
         let nome = data.user.email || data.user.id;
+        const perfilBasico = await supabase
+          .from("app_users")
+          .select("username,email")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+        if (!ativo) return;
+        nome = perfilBasico.data?.username
+          ? `@${perfilBasico.data.username}`
+          : perfilBasico.data?.email || nome;
+        setResponsavel({ id: data.user.id, nome });
         const { data: vinculo, error: erroVinculo } = await supabase
           .from("clinica_usuarios")
           .select("clinica_id")
@@ -144,12 +154,7 @@ function Comandas() {
           .maybeSingle();
         if (erroVinculo) throw erroVinculo;
         if (!vinculo?.clinica_id) throw new Error("Não há uma clínica ativa vinculada ao usuário.");
-        const [perfil, itensResult, regrasResult] = await Promise.all([
-          supabase
-            .from("app_users")
-            .select("username,email")
-            .eq("user_id", data.user.id)
-            .maybeSingle(),
+        const [itensResult, regrasResult] = await Promise.all([
           supabase
             .from("oricse_catalogo_itens")
             .select("id,clinica_id,tipo,nome,categoria,valor,estoque_atual,estoque_minimo,ativo")
@@ -158,12 +163,9 @@ function Comandas() {
             .order("nome"),
           supabase.from("oricse_regras_comissao").select("*").eq("clinica_id", vinculo.clinica_id),
         ]);
-        if (perfil.error) throw perfil.error;
         if (itensResult.error) throw itensResult.error;
         if (regrasResult.error) throw regrasResult.error;
         if (!ativo) return;
-        nome = perfil.data?.username ? `@${perfil.data.username}` : perfil.data?.email || nome;
-        setResponsavel({ id: data.user.id, nome });
         setCatalogo((itensResult.data || []) as ItemCatalogo[]);
         setRegrasComissao((regrasResult.data || []) as RegraComissao[]);
         setErroConfiguracaoComissao(false);
