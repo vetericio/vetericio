@@ -40,6 +40,7 @@ import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
 import { Route as RegistroClinicoRouteImport } from './routes/registro-clinico'
@@ -47,6 +48,7 @@ import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as TutoresRouteImport } from './routes/tutores'
 import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
 import { Route as VetSlugRouteImport } from './routes/vet.$slug'
@@ -206,6 +208,11 @@ const PlantoesRoute = PlantoesRouteImport.update({
   path: '/plantoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReceituarioRoute = ReceituarioRouteImport.update({
   id: '/receituario',
   path: '/receituario',
@@ -239,6 +246,11 @@ const TemasRoute = TemasRouteImport.update({
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
+  id: '/termos-de-uso',
+  path: '/termos-de-uso',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TutoresRoute = TutoresRouteImport.update({
@@ -289,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
@@ -296,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
@@ -332,6 +346,7 @@ export interface FileRoutesByTo {
   '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
@@ -339,6 +354,7 @@ export interface FileRoutesByTo {
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
@@ -376,6 +392,7 @@ export interface FileRoutesById {
   '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
@@ -383,6 +400,7 @@ export interface FileRoutesById {
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
@@ -421,6 +439,7 @@ export interface FileRouteTypes {
     | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
+    | '/privacidade'
     | '/receituario'
     | '/recepcao'
     | '/registro-clinico'
@@ -428,6 +447,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/temas'
     | '/termos'
+    | '/termos-de-uso'
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
@@ -464,6 +484,7 @@ export interface FileRouteTypes {
     | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
+    | '/privacidade'
     | '/receituario'
     | '/recepcao'
     | '/registro-clinico'
@@ -471,6 +492,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/temas'
     | '/termos'
+    | '/termos-de-uso'
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
@@ -507,6 +529,7 @@ export interface FileRouteTypes {
     | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
+    | '/privacidade'
     | '/receituario'
     | '/recepcao'
     | '/registro-clinico'
@@ -514,6 +537,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/temas'
     | '/termos'
+    | '/termos-de-uso'
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
@@ -551,6 +575,7 @@ export interface RootRouteChildren {
   PerfilClinicaRoute: typeof PerfilClinicaRoute
   PlanosRoute: typeof PlanosRoute
   PlantoesRoute: typeof PlantoesRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   ReceituarioRoute: typeof ReceituarioRoute
   RecepcaoRoute: typeof RecepcaoRoute
   RegistroClinicoRoute: typeof RegistroClinicoRoute
@@ -558,6 +583,7 @@ export interface RootRouteChildren {
   SincronizacaoRoute: typeof SincronizacaoRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
+  TermosDeUsoRoute: typeof TermosDeUsoRoute
   TutoresRoute: typeof TutoresRoute
   TipoSlugRoute: typeof TipoSlugRoute
   VetSlugRoute: typeof VetSlugRoute
@@ -782,6 +808,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlantoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/receituario': {
       id: '/receituario'
       path: '/receituario'
@@ -829,6 +862,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos-de-uso': {
+      id: '/termos-de-uso'
+      path: '/termos-de-uso'
+      fullPath: '/termos-de-uso'
+      preLoaderRoute: typeof TermosDeUsoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tutores': {
@@ -887,6 +927,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerfilClinicaRoute: PerfilClinicaRoute,
   PlanosRoute: PlanosRoute,
   PlantoesRoute: PlantoesRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   ReceituarioRoute: ReceituarioRoute,
   RecepcaoRoute: RecepcaoRoute,
   RegistroClinicoRoute: RegistroClinicoRoute,
@@ -894,6 +935,7 @@ const rootRouteChildren: RootRouteChildren = {
   SincronizacaoRoute: SincronizacaoRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
+  TermosDeUsoRoute: TermosDeUsoRoute,
   TutoresRoute: TutoresRoute,
   TipoSlugRoute: TipoSlugRoute,
   VetSlugRoute: VetSlugRoute,
