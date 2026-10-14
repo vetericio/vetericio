@@ -63,6 +63,8 @@ function Estoque() {
   const [modal, setModal] = useState<ItemForm | null>(null);
   const [quantidadesEstoque, setQuantidadesEstoque] = useState<Record<string, string>>({});
   const [salvandoEstoque, setSalvandoEstoque] = useState<string | null>(null);
+  const [ordenacaoEstoque, setOrdenacaoEstoque] = useState<"categoria" | "alfabetica" | "maior" | "menor">("categoria");
+  const [categoriaEstoque, setCategoriaEstoque] = useState("todas");
   const [regraItemId, setRegraItemId] = useState("");
   const [regraDia, setRegraDia] = useState("");
   const [regraPercentual, setRegraPercentual] = useState("");
@@ -78,6 +80,18 @@ function Estoque() {
     () => itens.filter((item) => item.tipo === "produto" && item.ativo),
     [itens],
   );
+
+  const categoriasEstoque = useMemo(() => [...new Set(produtos.map(p => p.categoria?.trim() || "Sem categoria"))].sort((a,b) => a.localeCompare(b, "pt-BR")), [produtos]);
+  const produtosEstoque = useMemo(() => {
+    const lista = produtos.filter(p => categoriaEstoque === "todas" || (p.categoria?.trim() || "Sem categoria") === categoriaEstoque);
+    const nome = (a: ItemCatalogo, b: ItemCatalogo) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+    return [...lista].sort((a,b) => {
+      if (ordenacaoEstoque === "categoria") return (a.categoria?.trim() || "Sem categoria").localeCompare(b.categoria?.trim() || "Sem categoria", "pt-BR", { sensitivity: "base" }) || nome(a,b);
+      if (ordenacaoEstoque === "maior") return Number(b.estoque_atual ?? 0) - Number(a.estoque_atual ?? 0) || nome(a,b);
+      if (ordenacaoEstoque === "menor") return Number(a.estoque_atual ?? 0) - Number(b.estoque_atual ?? 0) || nome(a,b);
+      return nome(a,b);
+    });
+  }, [produtos, categoriaEstoque, ordenacaoEstoque]);
 
   async function ajustarEstoque(item: ItemCatalogo, operacao: "entrada" | "saida") {
     if (!podeEditar || !clinicaId || item.tipo !== "produto") return;
@@ -431,9 +445,26 @@ function Estoque() {
             </div>
             <span className="rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{produtos.length} produtos</span>
           </div>
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+            <label className="flex min-w-[190px] flex-1 flex-col gap-1 text-xs font-semibold">Ordenar por
+              <select value={ordenacaoEstoque} onChange={e => setOrdenacaoEstoque(e.target.value as typeof ordenacaoEstoque)} className="h-10 rounded-lg border bg-background px-3 text-sm font-normal">
+                <option value="categoria">Categoria (A–Z)</option>
+                <option value="alfabetica">Ordem alfabética geral (A–Z)</option>
+                <option value="maior">Quantidade: maior para menor</option>
+                <option value="menor">Quantidade: menor para maior</option>
+              </select>
+            </label>
+            <label className="flex min-w-[190px] flex-1 flex-col gap-1 text-xs font-semibold">Filtrar categoria
+              <select value={categoriaEstoque} onChange={e => setCategoriaEstoque(e.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm font-normal">
+                <option value="todas">Todas as categorias</option>
+                {categoriasEstoque.map(categoria => <option key={categoria} value={categoria}>{categoria}</option>)}
+              </select>
+            </label>
+            <span className="pb-2 text-xs text-muted-foreground">{produtosEstoque.length} produtos exibidos</span>
+          </div>
           <div className="overflow-x-auto rounded-xl border bg-card">
             <div className="min-w-[690px] divide-y">
-              {produtos.map(produto => (
+              {produtosEstoque.map(produto => (
                 <div key={produto.id} className="grid grid-cols-[minmax(0,1fr)_80px_90px_90px_90px] items-center gap-2 px-3 py-2 hover:bg-muted/40">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold" title={produto.nome}>{produto.nome}</p>
