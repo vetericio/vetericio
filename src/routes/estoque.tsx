@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
-type Aba = "catalogo" | "cadastro" | "comissoes" | "equipe";
+type Aba = "catalogo" | "cadastro" | "estoque" | "comissoes" | "equipe";
 type ItemForm = {
   id?: string;
   tipo: "servico" | "produto";
@@ -61,6 +61,8 @@ function Estoque() {
   const [remuneracoes, setRemuneracoes] = useState<RemuneracaoFuncionario[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modal, setModal] = useState<ItemForm | null>(null);
+  const [quantidadesEstoque, setQuantidadesEstoque] = useState<Record<string, string>>({});
+  const [salvandoEstoque, setSalvandoEstoque] = useState<string | null>(null);
   const [regraItemId, setRegraItemId] = useState("");
   const [regraDia, setRegraDia] = useState("");
   const [regraPercentual, setRegraPercentual] = useState("");
@@ -76,6 +78,30 @@ function Estoque() {
     () => itens.filter((item) => item.tipo === "produto" && item.ativo),
     [itens],
   );
+
+  async function ajustarEstoque(item: ItemCatalogo, operacao: "entrada" | "saida") {
+    if (!podeEditar || !clinicaId || item.tipo !== "produto") return;
+    const quantidade = Number((quantidadesEstoque[item.id] || "").replace(",", "."));
+    if (!Number.isFinite(quantidade) || quantidade <= 0) return void toast.error("Informe uma quantidade maior que zero.");
+    const atual = Number(item.estoque_atual ?? 0);
+    const novo = operacao === "entrada" ? atual + quantidade : atual - quantidade;
+    if (novo < 0) return void toast.error("Saída maior que o estoque disponível.");
+    setSalvandoEstoque(item.id);
+    try {
+      const { data, error } = await supabase.from("oricse_catalogo_itens")
+        .update({ estoque_atual: Math.round(novo * 1000) / 1000, updated_at: new Date().toISOString() })
+        .eq("id", item.id).eq("clinica_id", clinicaId)
+        .eq("estoque_atual", atual).select("id").maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("O estoque foi alterado por outra operação. Atualize e tente novamente.");
+      setQuantidadesEstoque(prev => ({ ...prev, [item.id]: "" }));
+      await carregarDados(clinicaId);
+      toast.success(operacao === "entrada" ? "Entrada registrada no estoque." : "Saída registrada no estoque.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar estoque.");
+      await carregarDados(clinicaId);
+    } finally { setSalvandoEstoque(null); }
+  }
 
   async function carregarDados(clinica: string) {
     const [itensResult, regrasResult, vinculosResult] = await Promise.all([
@@ -369,9 +395,9 @@ function Estoque() {
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
             Perfil da clínica
           </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">Serviços, produtos e comissões</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">Precificação</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cadastre o catálogo e configure os percentuais da equipe.
+            Cadastre preços de produtos e serviços, configure comissões e controle o estoque.
           </p>
         </div>
       </header>
@@ -381,6 +407,7 @@ function Estoque() {
           [
             ["catalogo", "Serviços e produtos"],
             ["cadastro", "Adicionar valores"],
+            ["estoque", "Estoque"],
             ["comissoes", "Comissões"],
             ["equipe", "Remuneração da equipe"],
           ] as const
@@ -394,6 +421,51 @@ function Estoque() {
           </button>
         ))}
       </nav>
+
+      {aba === "estoque" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Estoque de produtos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Controle entradas e saídas usando o mesmo cadastro da precificação.</p>
+            </div>
+            <span className="rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{produtos.length} produtos</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {produtos.map(produto => (
+              <article key={produto.id} className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm">
+                <div className="min-w-0">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">{produto.categoria || "Produto"}</p>
+                  <h3 className="break-words text-base font-bold">{produto.nome}</h3>
+                </div>
+                <div className="rounded-xl bg-muted/60 p-4">
+                  <p className="text-xs text-muted-foreground">Quantidade em estoque</p>
+                  <p className="mt-1 text-3xl font-bold tabular-nums">{Number(produto.estoque_atual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</p>
+                  {produto.estoque_minimo != null && Number(produto.estoque_atual ?? 0) <= Number(produto.estoque_minimo) && (
+                    <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">Estoque baixo · mínimo {produto.estoque_minimo}</p>
+                  )}
+                </div>
+                {podeEditar && (
+                  <div className="mt-auto space-y-2">
+                    <label className="block text-xs font-semibold">Quantidade a movimentar
+                      <input type="text" inputMode="decimal" placeholder="Ex.: 10" value={quantidadesEstoque[produto.id] || ""}
+                        onChange={e => setQuantidadesEstoque(prev => ({ ...prev, [produto.id]: e.target.value.replace(/[^0-9,.]/g, "") }))}
+                        className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm" />
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" disabled={salvandoEstoque !== null} onClick={() => ajustarEstoque(produto, "entrada")}
+                        className="rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">+ Entrada</button>
+                      <button type="button" disabled={salvandoEstoque !== null} onClick={() => ajustarEstoque(produto, "saida")}
+                        className="rounded-xl border px-3 py-3 text-sm font-semibold disabled:opacity-50">− Saída</button>
+                    </div>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+          {produtos.length === 0 && <p className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">Nenhum produto cadastrado. Adicione produtos em Precificação → Adicionar valores.</p>}
+        </section>
+      )}
 
       {aba === "cadastro" && (
         <section className="space-y-5 rounded-2xl border bg-card p-5 shadow-sm sm:p-7">
