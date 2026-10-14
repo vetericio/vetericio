@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
-type Aba = "catalogo" | "comissoes" | "equipe";
+type Aba = "catalogo" | "cadastro" | "comissoes" | "equipe";
 type ItemForm = {
   id?: string;
   tipo: "servico" | "produto";
@@ -346,6 +346,7 @@ function Estoque() {
         {(
           [
             ["catalogo", "Serviços e produtos"],
+            ["cadastro", "Adicionar valores"],
             ["comissoes", "Comissões"],
             ["equipe", "Remuneração da equipe"],
           ] as const
@@ -359,6 +360,38 @@ function Estoque() {
           </button>
         ))}
       </nav>
+
+      {aba === "cadastro" && (
+        <section className="space-y-5 rounded-2xl border bg-card p-5 shadow-sm sm:p-7">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Catálogo da clínica</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">Adicionar produtos e serviços</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Cadastre os preços cobrados pela clínica. Os itens ficarão disponíveis no catálogo e para utilização nas comandas.</p>
+          </div>
+          {podeEditar ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <button type="button" onClick={() => iniciarCadastro("servico")}
+                className="group flex flex-col items-start gap-3 rounded-2xl border bg-background p-6 text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><Plus size={23} /></span>
+                <span className="text-lg font-bold">Novo serviço</span>
+                <span className="text-sm text-muted-foreground">Consultas, vacinas, procedimentos e outros serviços. Defina nome, categoria e valor.</span>
+                <span className="mt-auto text-sm font-semibold text-primary">Cadastrar serviço →</span>
+              </button>
+              <button type="button" onClick={() => iniciarCadastro("produto")}
+                className="group flex flex-col items-start gap-3 rounded-2xl border bg-background p-6 text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><Plus size={23} /></span>
+                <span className="text-lg font-bold">Novo produto</span>
+                <span className="text-sm text-muted-foreground">Medicamentos, acessórios e produtos. Defina preço, categoria e quantidades de estoque.</span>
+                <span className="mt-auto text-sm font-semibold text-primary">Cadastrar produto →</span>
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              Seu perfil possui acesso de consulta. Solicite a um responsável, RT ou recepção com permissão para cadastrar valores.
+            </div>
+          )}
+        </section>
+      )}
 
       {aba === "catalogo" && (
         <div className="grid gap-4 md:grid-cols-2">
