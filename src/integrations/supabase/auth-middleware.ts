@@ -33,13 +33,14 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     
-    const useOricse = Boolean(process.env['ORICSE_SERVICE_ROLE_KEY']);
-    const SUPABASE_URL = useOricse
-      ? process.env['ORICSE_SUPABASE_URL'] || 'https://mwrmfcyrdxfxssebgknz.supabase.co'
-      : process.env['SUPABASE_URL'];
-    const SUPABASE_PUBLISHABLE_KEY = useOricse
-      ? process.env['ORICSE_PUBLISHABLE_KEY'] || 'sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc'
-      : process.env['SUPABASE_PUBLISHABLE_KEY'];
+    const SUPABASE_URL =
+      process.env['ORICSE_SUPABASE_URL'] ||
+      process.env['SUPABASE_URL'] ||
+      'https://mwrmfcyrdxfxssebgknz.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY =
+      process.env['ORICSE_PUBLISHABLE_KEY'] ||
+      process.env['SUPABASE_PUBLISHABLE_KEY'] ||
+      'sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc';
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [

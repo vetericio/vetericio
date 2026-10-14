@@ -33,8 +33,8 @@ function createSupabaseAdminClient() {
   // ORICSE_* têm precedência: o Lovable reserva o prefixo SUPABASE_ para o backend dele.
   const SUPABASE_URL =
     process.env['ORICSE_SUPABASE_URL'] ||
-    (process.env['ORICSE_SERVICE_ROLE_KEY'] ? 'https://mwrmfcyrdxfxssebgknz.supabase.co' : undefined) ||
-    process.env['SUPABASE_URL'];
+    process.env['SUPABASE_URL'] ||
+    'https://mwrmfcyrdxfxssebgknz.supabase.co';
   const SUPABASE_SERVICE_ROLE_KEY =
     process.env['ORICSE_SERVICE_ROLE_KEY'] || process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
@@ -43,7 +43,7 @@ function createSupabaseAdminClient() {
       ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
       ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    const message = `Variável de ambiente ausente no servidor: ${missing.join(', ')}. Cadastre em Cloudflare > Workers > Settings > Variables and Secrets e faça Deploy.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
