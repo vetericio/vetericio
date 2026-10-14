@@ -55,9 +55,8 @@ function Login() {
             <div aria-hidden="true" className="absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/10" />
             <div aria-hidden="true" className="absolute -right-12 -top-12 h-48 w-48 rounded-full border border-white/10" />
             <div className="relative">
-              <img src={logo_url} alt={`${marca}`} className="max-h-14 max-w-[190px] object-contain object-left brightness-0 invert" />
-              <p className="mt-20 text-xs font-bold uppercase tracking-[0.22em] text-[#C59A5C]">Seu espaço de cuidado</p>
-              <h1 className="mt-4 font-display text-4xl font-semibold leading-tight lg:text-[2.7rem]">
+              <img src={logo_url} alt={`${marca}`} className="max-h-36 max-w-[320px] object-contain object-left brightness-0 invert lg:max-h-40 lg:max-w-[360px]" />
+              <h1 className="mt-14 font-display text-4xl font-semibold leading-tight lg:text-[2.7rem]">
                 A rotina da sua clínica, em boas mãos.
               </h1>
               <p className="mt-4 max-w-sm text-sm leading-6 text-[#FBF7F2]/80">
@@ -69,7 +68,7 @@ function Login() {
 
           <form onSubmit={entrar} className="flex min-h-[540px] flex-col justify-center p-6 sm:p-10 lg:p-14">
             <div className="mb-8 md:hidden">
-              <img src={logo_url} alt={marca} className="mx-auto max-h-16 max-w-[200px] object-contain" />
+              <img src={logo_url} alt={marca} className="mx-auto max-h-24 max-w-[280px] object-contain" />
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Bem-vindo de volta</p>
