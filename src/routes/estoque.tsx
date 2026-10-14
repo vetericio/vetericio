@@ -44,6 +44,8 @@ function Estoque() {
   const [clinicaId, setClinicaId] = useState("");
   const [usuarioId, setUsuarioId] = useState("");
   const [podeEditar, setPodeEditar] = useState(false);
+  const [adminGeral, setAdminGeral] = useState(false);
+  const [clinicasDisponiveis, setClinicasDisponiveis] = useState<{id: string; nome: string}[]>([]);
   const [itens, setItens] = useState<ItemCatalogo[]>([]);
   const [regras, setRegras] = useState<RegraComissao[]>([]);
   const [profissionais, setProfissionais] = useState<ProfissionalClinica[]>([]);
@@ -109,6 +111,10 @@ function Estoque() {
         const { data: auth } = await supabase.auth.getUser();
         const userId = auth.user?.id;
         if (!userId) throw new Error("Entre na sua conta para acessar os serviços e comissões.");
+        const { data: perfil, error: erroPerfil } = await supabase
+          .from("app_users").select("role").eq("user_id", userId).maybeSingle();
+        if (erroPerfil) throw erroPerfil;
+        const eAdminGeral = perfil?.role === "admin";
         const { data: vinculo, error } = await supabase
           .from("clinica_usuarios")
           .select("clinica_id,papel")
@@ -117,13 +123,25 @@ function Estoque() {
           .limit(1)
           .maybeSingle();
         if (error) throw error;
-        if (!vinculo?.clinica_id)
-          throw new Error("Não foi encontrada uma clínica vinculada a esta conta.");
+        let clinicaSelecionada = vinculo?.clinica_id || "";
+        if (eAdminGeral) {
+          const { data: clinicas, error: erroClinicas } = await supabase
+            .from("clinicas").select("id,nome").order("nome");
+          if (erroClinicas) throw erroClinicas;
+          if (!ativo) return;
+          const disponiveis = clinicas || [];
+          setClinicasDisponiveis(disponiveis);
+          const salva = typeof window !== "undefined" ? sessionStorage.getItem("oricse-admin-clinica-estoque") : null;
+          if (salva && disponiveis.some(c => c.id === salva)) clinicaSelecionada = salva;
+          else if (!clinicaSelecionada) clinicaSelecionada = disponiveis[0]?.id || "";
+        }
+        if (!clinicaSelecionada) throw new Error("Nenhuma clínica disponível para este catálogo.");
         if (!ativo) return;
-        setClinicaId(vinculo.clinica_id);
+        setAdminGeral(eAdminGeral);
+        setClinicaId(clinicaSelecionada);
         setUsuarioId(userId);
-        setPodeEditar(["responsavel", "admin_clinica", "rt", "recepcao"].includes(vinculo.papel));
-        await carregarDados(vinculo.clinica_id);
+        setPodeEditar(eAdminGeral || ["responsavel", "admin_clinica", "rt", "recepcao"].includes(vinculo?.papel || ""));
+        await carregarDados(clinicaSelecionada);
       } catch (error) {
         if (ativo)
           toast.error(
@@ -314,6 +332,29 @@ function Estoque() {
       >
         <ArrowLeft size={17} /> Financeiro
       </Link>
+      {adminGeral && (
+        <div className="mb-5 rounded-2xl border bg-card p-4">
+          <label htmlFor="clinica-admin-estoque" className="mb-2 block text-sm font-semibold">Administração geral · Clínica selecionada</label>
+          <select id="clinica-admin-estoque" value={clinicaId}
+            onChange={async event => {
+              const nova = event.target.value;
+              if (!clinicasDisponiveis.some(c => c.id === nova)) return;
+              setModal(null);
+              setCarregando(true);
+              try {
+                await carregarDados(nova);
+                setClinicaId(nova);
+                sessionStorage.setItem("oricse-admin-clinica-estoque", nova);
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Não foi possível trocar a clínica.");
+              } finally { setCarregando(false); }
+            }}
+            className="w-full rounded-xl border bg-background px-3 py-3 sm:max-w-md">
+            {clinicasDisponiveis.map(clinica => <option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}
+          </select>
+          <p className="mt-2 text-xs text-muted-foreground">As alterações serão feitas exclusivamente na clínica selecionada.</p>
+        </div>
+      )}
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
