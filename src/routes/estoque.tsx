@@ -431,39 +431,34 @@ function Estoque() {
             </div>
             <span className="rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{produtos.length} produtos</span>
           </div>
-          <div className="flex flex-col gap-3">
-            {produtos.map(produto => (
-              <article key={produto.id} className="grid items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm md:grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(0,2fr)]">
-                <div className="min-w-0">
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">{produto.categoria || "Produto"}</p>
-                  <h3 className="break-words text-base font-bold">{produto.nome}</h3>
-                </div>
-                <div className="rounded-xl bg-muted/60 p-3">
-                  <p className="text-xs text-muted-foreground">Quantidade em estoque</p>
-                  <p className="mt-1 text-2xl font-bold tabular-nums">{Number(produto.estoque_atual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</p>
-                  {produto.estoque_minimo != null && Number(produto.estoque_atual ?? 0) <= Number(produto.estoque_minimo) && (
-                    <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">Estoque baixo · mínimo {produto.estoque_minimo}</p>
-                  )}
-                </div>
-                {podeEditar && (
-                  <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
-                    <label className="block text-xs font-semibold">Quantidade a movimentar
-                      <input type="text" inputMode="decimal" placeholder="Ex.: 10" value={quantidadesEstoque[produto.id] || ""}
-                        onChange={e => setQuantidadesEstoque(prev => ({ ...prev, [produto.id]: e.target.value.replace(/[^0-9,.]/g, "") }))}
-                        className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm" />
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button type="button" disabled={salvandoEstoque !== null} onClick={() => ajustarEstoque(produto, "entrada")}
-                        className="rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">+ Entrada</button>
-                      <button type="button" disabled={salvandoEstoque !== null} onClick={() => ajustarEstoque(produto, "saida")}
-                        className="rounded-xl border px-3 py-3 text-sm font-semibold disabled:opacity-50">− Saída</button>
-                    </div>
+          <div className="overflow-x-auto rounded-xl border bg-card">
+            <div className="min-w-[700px] divide-y">
+              {produtos.map(produto => (
+                <div key={produto.id} className="grid min-h-14 grid-cols-[minmax(0,1fr)_90px_100px_100px_100px] items-center gap-2 px-3 py-2 hover:bg-muted/40">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold" title={produto.nome}>{produto.nome}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{produto.categoria || "Produto"}</p>
                   </div>
-                )}
-              </article>
-            ))}
+                  <div className="text-center">
+                    <span className="text-base font-bold tabular-nums">{Number(produto.estoque_atual ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</span>
+                    {produto.estoque_minimo != null && Number(produto.estoque_atual ?? 0) <= Number(produto.estoque_minimo) && <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">Estoque baixo</p>}
+                  </div>
+                  {podeEditar ? (
+                    <>
+                      <input aria-label={`Quantidade a movimentar de ${produto.nome}`} type="text" inputMode="decimal" placeholder="Qtd." value={quantidadesEstoque[produto.id] || ""}
+                        onChange={e => setQuantidadesEstoque(prev => ({ ...prev, [produto.id]: e.target.value.replace(/[^0-9,.]/g, "") }))}
+                        className="h-9 w-full rounded-lg border bg-background px-2 text-sm" />
+                      <button type="button" disabled={salvandoEstoque !== null} onClick={() => ajustarEstoque(produto, "entrada")}
+                        className="h-9 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">+ Entrada</button>
+                      <button type="button" disabled={salvandoEstoque !== null} onClick={() => ajustarEstoque(produto, "saida")}
+                        className="h-9 rounded-lg border px-2 text-xs font-semibold disabled:opacity-50">− Saída</button>
+                    </>
+                  ) : <span className="col-span-3 text-right text-xs text-muted-foreground">Somente leitura</span>}
+                </div>
+              ))}
+            </div>
           </div>
-          {produtos.length === 0 && <p className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">Nenhum produto cadastrado. Adicione produtos em Precificação → Adicionar valores.</p>}
+          {produtos.length === 0 && <p className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">Nenhum produto cadastrado. Adicione produtos em Adicionar valores.</p>}
         </section>
       )}
 
