@@ -55,13 +55,22 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
 
   async function criar() {
     const nome = limparUsuario(username);
-    if (nome.length < 3) return toast.error("Informe um @usuário com pelo menos 3 caracteres.");
-    if (password.length < 6) return toast.error("A senha deve ter pelo menos 6 caracteres.");
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return toast.error("Informe um e-mail válido.");
+    if (nome.length < 3) {
+      toast.error("Informe um @usuário com pelo menos 3 caracteres.");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast.error("Informe um e-mail válido.");
+      return;
+    }
 
     setSalvando(true);
     try {
-      await criarUsuarioClinica({
+      const resultado = await criarUsuarioClinica({
         data: {
           accessToken: await tokenAtual(),
           clinicaId: clinica.id,
@@ -76,7 +85,13 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       setEmail("");
       setPapel("veterinario");
       await onRefresh();
-      toast.success("Usuário criado e vinculado à clínica.");
+      toast.success(
+        resultado.contaExistente
+          ? resultado.vinculoExistente
+            ? "Conta existente sincronizada e vínculo confirmado."
+            : "Conta existente vinculada à clínica."
+          : "Usuário criado e vinculado à clínica.",
+      );
     } catch (error) {
       toast.error((error as Error).message || "Não foi possível criar o usuário.");
     } finally {
@@ -85,7 +100,10 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
   }
 
   async function alterarSenha(userId: string) {
-    if (resetPassword.length < 6) return toast.error("A nova senha deve ter pelo menos 6 caracteres.");
+    if (resetPassword.length < 6) {
+      toast.error("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
     setSalvando(true);
     try {
       await redefinirSenhaUsuario({ data: { accessToken: await tokenAtual(), userId, password: resetPassword } });
@@ -114,8 +132,12 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
         {usuariosDaClinica.map(({ vinculo, usuario }) => <div key={vinculo.user_id} className="rounded-xl border p-4">
           <div className="grid gap-3 lg:grid-cols-[1fr_220px_120px] lg:items-center">
             <div>
-              <div className="font-semibold">@{usuario?.username || "usuário"}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{usuario?.email || "E-mail não cadastrado"}</div>
+              <div className="font-semibold">
+                {usuario?.username ? `@${usuario.username}` : "Conta sem perfil sincronizado"}
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {usuario?.email || (usuario ? "E-mail não cadastrado" : `ID da conta: ${vinculo.user_id}`)}
+              </div>
               <div className="mt-1 text-xs text-muted-foreground">{perfis[vinculo.papel]?.resumo}</div>
             </div>
             <select value={vinculo.papel} onChange={(e) => void onAtualizarVinculo(vinculo, { papel: e.target.value as PapelClinica })} className="min-h-10 rounded-xl border px-3 text-sm">
@@ -137,6 +159,9 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2"><UserPlus size={20}/><h3 className="font-bold">Criar e vincular pessoa</h3></div>
       <p className="mt-1 text-sm text-muted-foreground">Crie o acesso e já vincule a pessoa a esta clínica.</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Se o acesso já foi criado, informe o mesmo @usuário para recuperar ou concluir o vínculo sem duplicar a conta. A senha da conta existente não será alterada.
+      </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="text-muted-foreground">@</span><input value={username} onChange={(e) => setUsername(limparUsuario(e.target.value))} placeholder="usuario" className="min-w-0 flex-1 bg-transparent outline-none" autoComplete="off" /></div></label>
         <label className="text-sm font-semibold">Senha<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha inicial" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" autoComplete="new-password" /></label>

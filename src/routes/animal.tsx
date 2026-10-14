@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -153,7 +154,7 @@ function AnimalFicha() {
 
   const registrosAnimal = useMemo(() => registros.filter((r) => r.animalId === animalId).sort((a,b) => `${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)), [registros, animalId]);
   const pesosAnimal = useMemo(() => pesos.filter((p) => p.animalId === animalId).sort((a,b) => `${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)), [pesos, animalId]);
-  const codigoTutor = tutor?.codigoPublico || tutor?.codigo || "";
+  const codigoTutor = tutor && codigoPublicoTutor(tutor);
   const pesoAtual = pesosAnimal[0] || (animal?.peso && Number.isFinite(numeroPeso(animal.peso)) ? { id: "cadastro", animalId, peso: numeroPeso(animal.peso), data: animal.criadoEm?.slice(0,10) || "", criadoEm: animal.criadoEm || "" } : null);
   const historicoPeso = pesosAnimal.length ? pesosAnimal.slice(1) : [];
 

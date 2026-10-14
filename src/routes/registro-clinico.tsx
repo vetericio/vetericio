@@ -2,13 +2,26 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
+import {
+  COMANDAS_KEY,
+  LANCAMENTOS_FINANCEIROS_KEY,
+  type Comanda,
+  type ItemComanda as ItemComandaPersistida,
+  dataLocalISO,
+  lerComandas,
+  parseValorMonetario,
+  proximoNumeroComanda,
+  registrarLancamentoComanda,
+  salvarComandas,
+} from "@/lib/comandas";
 
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
 type Animal = { id: string; tutorId: string; nome: string; especie?: string; raca?: string; sexo?: string; peso?: string };
-type Tutor = { id: string; nome: string; telefone?: string; outroTelefone?: string };
+type Tutor = { id: string; nome: string; telefone?: string; outroTelefone?: string; codigoPublico?: string; codigo_publico?: string; codigo?: string };
 type RegistroProntuario = { id: string; animalId: string; tipo: "Registros clínicos"; titulo: string; detalhe?: string; data: string; criadoEm: string; subtipo?: "Consulta" | "Cirurgia / Procedimentos"; dados?: unknown };
 type SimNao = "" | "Sim" | "Não";
 type OlhoValores = { od: string; oe: string };
@@ -24,13 +37,12 @@ type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; pre
 type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean };
 type StatusPagamento = "Pago" | "Pendente";
 type FormaPagamento = "Pix" | "Dinheiro" | "Cartão de débito" | "Cartão de crédito" | "App" | "Plano de saúde" | "Outros";
-type LancamentoFinanceiro = { id: string; tipo: "Entrada"; descricao: string; categoria: string; valor: number; data: string; formaPagamento: string; tutor?: string; tutorId?: string; animalId?: string; status: StatusPagamento; observacao?: string; criadoEm: string; itens?: ItemComanda[] };
 
 const ANIMAIS_KEY = "oricse-animais-v1";
 const TUTORES_KEY = "oricse-tutores-v1";
 const PRONTUARIO_KEY = "oricse-prontuario-animal-v1";
 const PESOS_KEY = "oricse-pesos-animal-v1";
-const LANCAMENTOS_KEY = "oricse-financeiro-lancamentos-v1";
+const LANCAMENTOS_KEY = LANCAMENTOS_FINANCEIROS_KEY;
 
 const NORMAIS_ESPECIE = {
   cão: { temperatura: "37,5–39,2 °C", fc: "60–160 bpm", fr: "10–30 mpm", pas: "100–160 mmHg", glicemia: "70–120 mg/dL" },
@@ -82,12 +94,12 @@ function sinalPermitidoParaSexo(sinal: string, sexo?: string) {
   if (/femea|femin/.test(sexoNormalizado)) return !SINAIS_MACHO.has(sinal);
   return true;
 }
-function hoje(){ return new Date().toISOString().slice(0,10); }
+function hoje(){ return dataLocalISO(); }
 function pesoValido(valor: string) {
   const numero = Number(String(valor).trim().replace(",", "."));
   return Number.isFinite(numero) && numero > 0 ? numero.toFixed(3) : "";
 }
-function numeroMoeda(valor: string) { const normalizado=valor.trim().replace(/\./g,"").replace(",", "."); const numero=Number(normalizado); return normalizado!==""&&Number.isFinite(numero)&&numero>=0?numero:null; }
+function numeroMoeda(valor: string) { const numero=parseValorMonetario(valor); return valor.trim()!==""&&Number.isFinite(numero)&&numero>=0?numero:null; }
 function moeda(valor: number) { return valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
 function valorCampo(valor: number | string | null | undefined) { const numero=Number(valor); return Number.isFinite(numero)?numero.toFixed(2).replace(".",","):""; }
 
@@ -115,8 +127,10 @@ function RegistroClinico(){
   const [pagamentoAberto,setPagamentoAberto]=useState(false);
   const [formaPagamento,setFormaPagamento]=useState<FormaPagamento|"">("");
   const [outroPagamento,setOutroPagamento]=useState("");
+  const [responsavel,setResponsavel]=useState({id:"",nome:"Equipe clínica"});
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
 
+  useEffect(()=>{let ativo=true; async function carregarResponsavel(){try{const {data,error}=await supabase.auth.getUser();if(error)throw error;if(!data.user)throw new Error("Sessão não encontrada.");const {data:perfil,error:erroPerfil}=await supabase.from("app_users").select("username,email").eq("user_id",data.user.id).maybeSingle();if(erroPerfil)throw erroPerfil;if(ativo)setResponsavel({id:data.user.id,nome:perfil?.username?`@${perfil.username}`:perfil?.email||data.user.email||data.user.id});}catch(error){console.error("Não foi possível identificar o responsável pelo atendimento:",error);}}void carregarResponsavel();return()=>{ativo=false};},[]);
   useEffect(()=>{ if(!animalId)return; try{const salvo=localStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}}catch{} },[animalId]);
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>localStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
   useEffect(()=>{ let ativo=true; async function carregarCatalogo(){ try{ const {data:auth}=await supabase.auth.getUser(); const userId=auth.user?.id; if(!userId)throw new Error("Sessão não encontrada."); const [{data:usuario},{data:vinculo}]=await Promise.all([(supabase as any).from("app_users").select("role").eq("user_id",userId).maybeSingle(),(supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id",userId).eq("ativo",true).limit(1).maybeSingle()]); let clinicaId=vinculo?.clinica_id||""; if(!clinicaId&&usuario?.role==="admin"){ const {data:clinicas,error}=await (supabase as any).from("clinicas").select("id").eq("status","ativa").order("nome").limit(1); if(error)throw error; clinicaId=clinicas?.[0]?.id||""; } if(!clinicaId)throw new Error("Nenhuma clínica vinculada ao atendimento."); const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaId).eq("ativo",true).order("nome"); if(error)throw error; if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");} }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}finally{if(ativo)setCatalogoCarregando(false);} } void carregarCatalogo(); return()=>{ativo=false}; },[]);
@@ -171,6 +185,99 @@ function RegistroClinico(){
       consulta.medicacoes&&`Medicações / receita: ${consulta.medicacoes}`,
       consulta.examesSolicitados&&`Exames solicitados: ${consulta.examesSolicitados}`,
     ].filter(Boolean).join("\n");
+    if (!responsavel.id) {
+      return void toast.error(
+        "Não foi possível identificar o usuário responsável. Atualize a página ou entre novamente.",
+      );
+    }
+    const valorTotalComanda = Math.round((totalComanda + Number.EPSILON) * 100) / 100;
+    const comandasAnteriores = lerComandas();
+    const criadaEm = new Date().toISOString();
+    const itensPersistidos: ItemComandaPersistida[] = itensComanda.map((item) => ({
+      id: item.id,
+      descricao: item.nome,
+      quantidade: item.quantidade,
+      valorUnitario:
+        Math.round(((numeroMoeda(item.valorUnitario) || 0) + Number.EPSILON) * 100) / 100,
+      criadoEm: criadaEm,
+      criadoPor: responsavel.nome,
+      tipo: item.tipo === "exame" ? "avulso" : item.tipo,
+    }));
+    const pagamentoInicial =
+      statusPagamento === "Pago" && valorTotalComanda > 0
+        ? {
+            id: crypto.randomUUID(),
+            valor: valorTotalComanda,
+            formaPagamento: pagamento,
+            data: criadaEm,
+            registradoPor: responsavel.nome,
+          }
+        : null;
+    const novaComanda: Comanda = {
+      id: crypto.randomUUID(),
+      numero: proximoNumeroComanda(comandasAnteriores),
+      status: "Aberta",
+      origem: "Consultório",
+      tutorId: tutor?.id || animal.tutorId,
+      tutorNome: tutor?.nome || "Tutor não informado",
+      animalId: animal.id,
+      animalNome: animal.nome,
+      abertaEm: criadaEm,
+      abertaPor: responsavel.nome,
+      abertaPorId: responsavel.id,
+      itens: itensPersistidos,
+      pagamentos: pagamentoInicial ? [pagamentoInicial] : [],
+    };
+    const comandasArmazenadas = localStorage.getItem(COMANDAS_KEY);
+    const lancamentosArmazenados = localStorage.getItem(LANCAMENTOS_KEY);
+    try {
+      salvarComandas([novaComanda, ...comandasAnteriores]);
+      if (pagamentoInicial) {
+        registrarLancamentoComanda({
+          id: `comanda-pagamento-${pagamentoInicial.id}`,
+          tipo: "Entrada",
+          descricao: `Pagamento da comanda #${String(novaComanda.numero).padStart(5, "0")} · ${animal.nome}`,
+          categoria: "Pagamento de comanda",
+          valor: pagamentoInicial.valor,
+          data: dataLocalISO(new Date(pagamentoInicial.data)),
+          formaPagamento: pagamentoInicial.formaPagamento,
+          tutor: novaComanda.tutorNome,
+          tutorId: novaComanda.tutorId,
+          animalId: animal.id,
+          status: "Pago",
+          comandaId: novaComanda.id,
+          registradoPor: responsavel.nome,
+        });
+      } else if (statusPagamento === "Pendente" && valorTotalComanda > 0) {
+        registrarLancamentoComanda({
+          id: `comanda-pendente-${novaComanda.id}`,
+          tipo: "Entrada",
+          descricao: `Saldo da comanda #${String(novaComanda.numero).padStart(5, "0")} · ${animal.nome}`,
+          categoria: "Pagamento de comanda",
+          valor: valorTotalComanda,
+          data: dataLocalISO(new Date(criadaEm)),
+          formaPagamento: "A definir",
+          tutor: novaComanda.tutorNome,
+          tutorId: novaComanda.tutorId,
+          animalId: animal.id,
+          status: "Pendente",
+          comandaId: novaComanda.id,
+          registradoPor: responsavel.nome,
+        });
+      }
+    } catch (error) {
+      console.error("Não foi possível registrar a comanda da consulta:", error);
+      try {
+        if (comandasArmazenadas === null) localStorage.removeItem(COMANDAS_KEY);
+        else localStorage.setItem(COMANDAS_KEY, comandasArmazenadas);
+        window.dispatchEvent(new Event("oricse-comandas-atualizadas"));
+        if (lancamentosArmazenados === null) localStorage.removeItem(LANCAMENTOS_KEY);
+        else localStorage.setItem(LANCAMENTOS_KEY, lancamentosArmazenados);
+      } catch (erroRestauracao) {
+        console.error("Não foi possível restaurar os dados após falha ao registrar a comanda:", erroRestauracao);
+      }
+      return void toast.error("Não foi possível registrar a comanda. Tente novamente.");
+    }
     if (pesoConsulta) {
       const listaAnimais = ler<Animal>(ANIMAIS_KEY);
       const pesoAnterior = pesoValido(animal.peso || "");
@@ -184,13 +291,13 @@ function RegistroClinico(){
     const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
     const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Consulta",dados:consultaSalva};
     localStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
-    const lancamentos=ler<LancamentoFinanceiro>(LANCAMENTOS_KEY);
-    const itensFinanceiros=itensComanda.map(item=>({...item,valorUnitario:valorCampo(numeroMoeda(item.valorUnitario)||0)}));
-    const lancamento:LancamentoFinanceiro={id:crypto.randomUUID(),tipo:"Entrada",descricao:`Comanda · Consulta — ${animal.nome}`,categoria:"Consulta",valor:Math.round(totalComanda*100)/100,data,formaPagamento:pagamento,tutor:tutor?.nome,tutorId:tutor?.id,animalId:animal.id,status:statusPagamento,observacao:itensFinanceiros.map(item=>`${item.quantidade}x ${item.nome} — ${moeda((numeroMoeda(item.valorUnitario)||0)*item.quantidade)}`).join("\n"),criadoEm:new Date().toISOString(),itens:itensFinanceiros};
-    localStorage.setItem(LANCAMENTOS_KEY,JSON.stringify([lancamento,...lancamentos]));
     localStorage.removeItem(chaveRascunho);
     setPagamentoAberto(false);
-    toast.success(statusPagamento==="Pago"?"Consulta salva e pagamento registrado.":"Consulta salva e comanda deixada pendente.");
+    toast.success(
+      statusPagamento === "Pago"
+        ? `Consulta salva e pagamento registrado na comanda #${String(novaComanda.numero).padStart(5, "0")}.`
+        : `Consulta salva e comanda #${String(novaComanda.numero).padStart(5, "0")} deixada pendente.`,
+    );
     navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
@@ -207,7 +314,7 @@ function RegistroClinico(){
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">Registro clínico</p>
             <h1 className="mt-1 break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{animal.nome}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""}</p>
-            <p className="mt-2 break-words text-sm text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor?.telefone&&<span className="sm:ml-2"> · {tutor.telefone}</span>}</p>
+            <p className="mt-2 break-words text-sm text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="sm:ml-2 font-mono text-primary"> · {codigoPublicoTutor(tutor)}</span>}{tutor?.telefone&&<span className="sm:ml-2"> · {tutor.telefone}</span>}</p>
           </div>
         </div>
         <Link to="/animal" search={{animalId:animal.id} as never} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-white px-4 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5"><ArrowLeft size={17}/> Ficha do animal</Link>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, ClipboardList, Stethoscope } from "lucide-react";
 import { useMemo } from "react";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/consulta")({ component: ConsultaSalva });
 
@@ -80,6 +81,7 @@ function ConsultaSalva() {
               <span className="inline-flex items-center gap-1.5"><CalendarDays size={14}/> {dataBR(registro.data)}</span>
               <span><strong className="text-foreground">Animal:</strong> {animal.nome}</span>
               <span><strong className="text-foreground">Tutor:</strong> {tutor?.nome || "—"}</span>
+              {tutor && codigoPublicoTutor(tutor) && <span><strong className="text-foreground">ID do tutor:</strong> {codigoPublicoTutor(tutor)}</span>}
               {(tutor?.telefone || tutor?.outroTelefone) && <span>{[tutor.telefone, tutor.outroTelefone].filter(Boolean).join(" · ")}</span>}
             </div>
           </div>

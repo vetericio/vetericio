@@ -191,8 +191,7 @@ function Admin() {
     if (!selecionada) return [];
     return vinculos
       .filter((v) => v.clinica_id === selecionada.id)
-      .map((v) => ({ vinculo: v, usuario: usuarios.find((u) => u.user_id === v.user_id) }))
-      .filter((x) => x.usuario);
+      .map((v) => ({ vinculo: v, usuario: usuarios.find((u) => u.user_id === v.user_id) }));
   }, [vinculos, usuarios, selecionada]);
 
   async function tokenAtual() {
@@ -211,7 +210,8 @@ function Admin() {
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
-    if (u.error) toast.error("Não foi possível carregar os usuários.");
+    if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
+    if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     setClinicas(c.data || []);
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
@@ -421,7 +421,10 @@ function Admin() {
 
   async function atualizarVinculo(v: Vinculo, mudancas: Partial<Vinculo>) {
     const { error } = await (supabase as any).from("clinica_usuarios").update(mudancas).eq("clinica_id", v.clinica_id).eq("user_id", v.user_id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     await carregarTudo();
   }
 
@@ -624,4 +627,3 @@ function Admin() {
 
   return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div>{renderNovaClinica()}</main>;
 }
-

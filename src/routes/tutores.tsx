@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, Send, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { codigoPublicoTutor, gerarCodigoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/tutores")({ component: Tutores });
 
@@ -14,6 +15,7 @@ type Tutor = {
   outroTelefone?: string;
   email?: string;
   tipoPessoa: "Pessoa física" | "Pessoa jurídica";
+  codigoPublico?: string;
   cpfCnpj?: string;
   rg?: string;
   tipoDocumento?: string;
@@ -92,7 +94,15 @@ const vazio: Omit<Tutor, "id" | "criadoEm"> = {
 
 function carregar(): Tutor[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(CHAVE) || "[]"); } catch { return []; }
+  try {
+    const valor: unknown = JSON.parse(localStorage.getItem(CHAVE) || "[]");
+    if (!Array.isArray(valor)) return [];
+    const tutores = migrarCodigosPublicosTutores(
+      valor.filter((item): item is Tutor => Boolean(item) && typeof item === "object" && typeof item.id === "string" && typeof item.nome === "string"),
+      lerNomeClinicaLocal(),
+    );
+    return tutores;
+  } catch { return []; }
 }
 
 function carregarAnimais(): AnimalResumo[] {
@@ -101,7 +111,16 @@ function carregarAnimais(): AnimalResumo[] {
 }
 
 function salvarLista(lista: Tutor[]) {
-  localStorage.setItem(CHAVE, JSON.stringify(lista));
+  let registrosInvalidos: unknown[] = [];
+  try {
+    const valor: unknown = JSON.parse(localStorage.getItem(CHAVE) || "[]");
+    if (Array.isArray(valor)) {
+      registrosInvalidos = valor.filter((item) => !item || typeof item !== "object" || !("id" in item) || typeof item.id !== "string" || !("nome" in item) || typeof item.nome !== "string");
+    }
+  } catch (error) {
+    console.error("Não foi possível preservar registros locais inválidos de tutores:", error);
+  }
+  localStorage.setItem(CHAVE, JSON.stringify([...lista, ...registrosInvalidos]));
 }
 
 function soDigitos(v: string) { return v.replace(/\D/g, ""); }
@@ -142,7 +161,7 @@ function Tutores() {
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     if (!q) return tutoresOrdenados;
-    return tutoresOrdenados.filter((t) => [t.nome, t.nomeSocial, t.telefone, t.outroTelefone, t.email, t.cpfCnpj].some((v) => (v || "").toLowerCase().includes(q)));
+    return tutoresOrdenados.filter((t) => [t.nome, t.nomeSocial, t.telefone, t.outroTelefone, t.email, t.cpfCnpj, codigoPublicoTutor(t)].some((v) => (v || "").toLowerCase().includes(q)));
   }, [busca, tutoresOrdenados]);
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
@@ -206,7 +225,14 @@ function Tutores() {
       toast.success("Cadastro do tutor atualizado.");
       setBusca(form.nome);
     } else {
-      const novo: Tutor = { ...form, id: crypto.randomUUID(), criadoEm: new Date().toISOString() };
+      let codigoPublico: string;
+      try {
+        codigoPublico = gerarCodigoTutor(tutores, lerNomeClinicaLocal());
+      } catch (error) {
+        console.error("Não foi possível gerar o ID público do tutor:", error);
+        return void toast.error(error instanceof Error ? error.message : "Não foi possível gerar o ID público do tutor.");
+      }
+      const novo: Tutor = { ...form, id: crypto.randomUUID(), codigoPublico, criadoEm: new Date().toISOString() };
       const lista = [novo, ...tutores];
       setTutores(lista);
       salvarLista(lista);
@@ -235,7 +261,7 @@ function Tutores() {
 
     {modo === "procurar" ? (
       <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
-        <div className="relative"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, telefone, CPF/CNPJ ou e-mail" className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none focus:border-primary"/></div>
+        <div className="relative"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, ID, telefone, CPF/CNPJ ou e-mail" className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none focus:border-primary"/></div>
         {busca.trim() && <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{resultados.length ? resultados.map((t) => <TutorCard key={t.id} tutor={t} animais={animais} onEdit={abrirEdicao}/>) : <div className="rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">Nenhum tutor encontrado.</div>}</div>}
       </section>
     ) : (
@@ -295,6 +321,7 @@ function TutorCard({ tutor, animais, onEdit }: { tutor: Tutor; animais: AnimalRe
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug">
         <strong className="font-black">{tutor.nome}</strong>
+        {codigoPublicoTutor(tutor) && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-primary">{codigoPublicoTutor(tutor)}</span>}
         <span className="text-muted-foreground">·</span>
         <span className="whitespace-nowrap">{tutor.telefone}</span>
         {tutor.outroTelefone && <><span className="text-muted-foreground">·</span><span className="whitespace-nowrap">{tutor.outroTelefone}</span></>}

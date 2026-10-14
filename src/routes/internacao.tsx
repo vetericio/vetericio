@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useState } from "react";
+import { ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
 import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
@@ -250,6 +251,7 @@ function Index() {
 
   return (
     <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
+      <a href="/comandas?origem=Internação" className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/20 bg-white px-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={16}/> Abrir comanda</a>
       <div className="relative z-10">
       <GuardaSaida sujo={sujo} />
       <button
