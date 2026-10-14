@@ -993,6 +993,10 @@ function PagamentoEquipe({ clinicaId, profissionais, itens }: {clinicaId: string
   const [mes, setMes] = useState(mesAtualPagamento);
   const [funcionario, setFuncionario] = useState("");
   const [lancamentos, setLancamentos] = useState<PagamentoLancamento[]>([]);
+  const [jornadas, setJornadas] = useState<any[]>([]);
+  const [configuracoes, setConfiguracoes] = useState<any[]>([]);
+  const [modalidade, setModalidade] = useState<"hora"|"diaria">("hora");
+  const [valorJornada, setValorJornada] = useState("");
   const [tipo, setTipo] = useState<PagamentoLancamento["tipo"]>("plantao");
   const [data, setData] = useState(() => new Date().toLocaleDateString("sv-SE"));
   const [inicio, setInicio] = useState("");
@@ -1020,7 +1024,14 @@ function PagamentoEquipe({ clinicaId, profissionais, itens }: {clinicaId: string
       const { data: registros, error } = await (supabase as any).from("oricse_pagamento_lancamentos")
         .select("*").eq("clinica_id",clinicaId).gte("data",mes+"-01").lt("data",proximo)
         .order("data",{ascending:true}).order("created_at",{ascending:true});
+      const [jornadasResult, configsResult] = await Promise.all([
+        (supabase as any).from("oricse_jornada_registros").select("*").eq("clinica_id",clinicaId).gte("data",mes+"-01").lt("data",proximo).order("data"),
+        (supabase as any).from("oricse_jornada_config").select("*").eq("clinica_id",clinicaId)
+      ]);
       if (ativo) {
+        if (!jornadasResult.error) setJornadas(jornadasResult.data || []);
+        if (!configsResult.error) setConfiguracoes(configsResult.data || []);
+
         if (error) toast.error("Não foi possível carregar pagamentos: "+error.message);
         else setLancamentos((registros || []) as PagamentoLancamento[]);
         setCarregando(false);
@@ -1031,7 +1042,20 @@ function PagamentoEquipe({ clinicaId, profissionais, itens }: {clinicaId: string
   },[clinicaId,mes]);
   const selecionados = lancamentos.filter(l=>l.funcionario_id===funcionario);
   const soma = (t: PagamentoLancamento["tipo"]) => selecionados.filter(l=>l.tipo===t).reduce((a,l)=>a+Number(l.valor),0);
-  const plantao = soma("plantao"), comissao=soma("comissao"), debito=soma("debito");
+  const registrosJornada = jornadas.filter(j=>j.funcionario_id===funcionario);
+  const horasTrabalhadas = registrosJornada.filter(j=>j.modalidade==="hora").reduce((acc,j)=>acc+Number(j.segundos_trabalhados||0)+(j.estado==="ativa"&&j.ultimo_inicio_em?Math.max(0,(Date.now()-new Date(j.ultimo_inicio_em).getTime())/1000):0),0)/3600;
+  const valorAutomatico = registrosJornada.reduce((acc,j)=>acc+(j.modalidade==="diaria" ? Number(j.valor_unitario) : (Number(j.segundos_trabalhados||0)+(j.estado==="ativa"&&j.ultimo_inicio_em?Math.max(0,(Date.now()-new Date(j.ultimo_inicio_em).getTime())/1000):0))/3600*Number(j.valor_unitario)),0);
+  const plantao = soma("plantao")+valorAutomatico, comissao=soma("comissao"), debito=soma("debito");
+  const configuracaoAtual = configuracoes.find(c=>c.funcionario_id===funcionario);
+  useEffect(()=>{if(configuracaoAtual){setModalidade(configuracaoAtual.modalidade);setValorJornada(String(configuracaoAtual.valor_unitario));}else{setModalidade("hora");setValorJornada("");}},[funcionario,configuracoes]);
+  async function salvarConfiguracao() {
+    const valor=Number(valorJornada.replace(",","."));
+    if(!funcionario||!Number.isFinite(valor)||valor<0)return toast.error("Informe um valor válido.");
+    const {data,error}=await (supabase as any).from("oricse_jornada_config").upsert({clinica_id:clinicaId,funcionario_id:funcionario,modalidade,valor_unitario:valor},{onConflict:"clinica_id,funcionario_id"}).select("*").single();
+    if(error)return toast.error(error.message);
+    setConfiguracoes(prev=>[...prev.filter(c=>c.funcionario_id!==funcionario),data]);
+    toast.success("Regra de pagamento salva.");
+  }
   const fechado = mes < mesAtualPagamento();
   async function adicionar(e: FormEvent) {
     e.preventDefault();
@@ -1079,6 +1103,30 @@ function PagamentoEquipe({ clinicaId, profissionais, itens }: {clinicaId: string
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {([["Plantões",plantao],["Comissões",comissao],["Débitos",-debito],["Total a pagar",plantao+comissao-debito]] as const).map(([titulo,v])=>
           <div key={titulo} className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">{titulo}</p><p className="mt-2 text-xl font-bold tabular-nums">{moeda(v)}</p></div>)}
+      </div>
+      <div className="rounded-xl border bg-card p-4 space-y-3">
+        <h3 className="font-bold">Regra de jornada · {funcionarioAtual.nome}</h3>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-xs font-semibold">Forma de pagamento
+            <select value={modalidade} onChange={e=>setModalidade(e.target.value as "hora"|"diaria")} className="mt-1 block h-10 rounded-lg border bg-background px-3 text-sm">
+              <option value="hora">Por hora trabalhada</option><option value="diaria">Por diária (check-in)</option>
+            </select>
+          </label>
+          <label className="text-xs font-semibold">Valor por {modalidade==="hora"?"hora":"diária"} (R$)
+            <input type="number" min="0" step="0.01" value={valorJornada} onChange={e=>setValorJornada(e.target.value)} className="mt-1 block h-10 w-36 rounded-lg border bg-background px-3 text-sm"/>
+          </label>
+          <button type="button" onClick={salvarConfiguracao} className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">Salvar regra</button>
+          <Link to="/minha-atividade" className="rounded-lg border px-4 py-2 text-sm font-semibold">Abrir painel de atividade</Link>
+        </div>
+        <p className="text-xs text-muted-foreground">A nova regra vale para registros futuros. Os registros anteriores preservam o valor vigente no momento do check-in ou início.</p>
+      </div>
+      <div className="rounded-xl border bg-card p-4 space-y-2">
+        <h3 className="font-bold">Jornadas registradas · dia a dia</h3>
+        <p className="text-sm text-muted-foreground">{registrosJornada.filter(j=>j.modalidade==="diaria").length} diárias · {horasTrabalhadas.toFixed(2).replace(".",",")} horas · {moeda(valorAutomatico)} calculados automaticamente</p>
+        <div className="divide-y">{registrosJornada.map(j=><div key={j.id} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
+          <span>{String(j.data).split("-").reverse().join("/")} · {j.modalidade==="diaria"?"Diária":`${(Number(j.segundos_trabalhados||0)/3600).toFixed(2)} h`} · {j.estado}</span>
+          <strong>{moeda(j.modalidade==="diaria"?Number(j.valor_unitario):Number(j.segundos_trabalhados||0)/3600*Number(j.valor_unitario))}</strong>
+        </div>)}</div>
       </div>
       {!fechado && <form onSubmit={adicionar} className="space-y-3 rounded-2xl border bg-card p-4">
         <h3 className="font-bold">Adicionar lançamento</h3>
