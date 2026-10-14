@@ -230,7 +230,7 @@ function RegistroClinico(){
 
     {modo==="consulta"&&<section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="grid lg:grid-cols-[230px_minmax(0,1fr)]">
-        <aside className="border-b bg-emerald-50/35 lg:border-b-0 lg:border-r">
+        <aside className="border-b bg-secondary/35 lg:border-b-0 lg:border-r">
           <div className="flex gap-2 overflow-x-auto p-2 lg:block lg:space-y-1 lg:p-3">{ETAPAS.map(item=><button key={item.n} onClick={()=>setEtapa(item.n)} className={`flex min-w-[150px] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition lg:min-w-0 lg:w-full ${etapa===item.n?"bg-primary text-primary-foreground shadow-sm":"hover:bg-white"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${etapa===item.n?"bg-white/20":"bg-white text-primary"}`}>{etapaPreenchida(item.n)?<Check size={14}/>:item.n}</span><span className="min-w-0"><span className="block text-sm font-black">{item.titulo}</span><span className={`hidden text-[11px] lg:block ${etapa===item.n?"text-white/75":"text-muted-foreground"}`}>{item.subtitulo}</span></span></button>)}</div>
         </aside>
         <div className="min-w-0">
