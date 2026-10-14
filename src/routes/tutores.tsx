@@ -3,6 +3,7 @@ import { ArrowLeft, PawPrint, Search, Send, UserPlus, Users } from "lucide-react
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor, gerarCodigoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
+import { inserirDadosDeTeste } from "@/lib/dados-teste";
 
 export const Route = createFileRoute("/tutores")({ component: Tutores });
 
@@ -168,6 +169,13 @@ function Tutores() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  function gerarTeste() {
+    if (!window.confirm("Adicionar 22 tutores e 50 animais fictícios de teste neste navegador?")) return;
+    const r = inserirDadosDeTeste(lerNomeClinicaLocal().charAt(0).toUpperCase() || "O");
+    toast.success(`${r.tutores} tutores e ${r.animais} animais de teste criados.`);
+    window.setTimeout(() => window.location.reload(), 600);
+  }
+
   function abrirNovo() {
     setEditandoId(null);
     setForm(vazio);
@@ -251,7 +259,7 @@ function Tutores() {
   return <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
     <div className="mb-6">
       <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link>
-      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1></div>
+      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><button type="button" onClick={gerarTeste} className="ml-auto rounded-xl border px-3 py-2 text-xs font-semibold text-muted-foreground">Gerar dados de teste</button></div>
     </div>
 
     <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
