@@ -101,9 +101,6 @@ function RootComponent() {
     if (autenticado && location.pathname === "/login") {
       navigate({ to: role === "admin" ? "/admin" : "/inicio" });
     }
-    if (autenticado && role === "admin" && location.pathname === "/inicio") {
-      navigate({ to: "/admin" });
-    }
   }, [autenticado, role, location.pathname, navigate]);
 
   useEffect(() => {
