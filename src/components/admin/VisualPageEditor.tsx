@@ -50,6 +50,7 @@ export function VisualPageEditor() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [lastPublishedAt, setLastPublishedAt] = useState("");
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -84,6 +85,7 @@ export function VisualPageEditor() {
       (supabase as any).from("oricse_config").select("valor").eq("chave", VISUAL_VERSIONS_KEY).maybeSingle(),
     ]);
     setDocumento(draft.data?.valor || published.data?.valor || EMPTY_DOCUMENT());
+    setLastPublishedAt(published.data?.valor?.updatedAt || "");
     setVersions(Array.isArray(history.data?.valor) ? history.data.valor : []);
     setLoading(false);
   })(); }, []);
@@ -297,15 +299,53 @@ export function VisualPageEditor() {
     setSaving(false);if(error)return toast.error(error.message);setDocumento(payload);toast.success("Rascunho salvo.");
   }
   async function publish() {
-    setSaving(true);const payload={...documento,updatedAt:new Date().toISOString()};
+    setSaving(true);
+    const payload={...documento,updatedAt:new Date().toISOString()};
     const history:Version[]=[{id:uid("version"),publishedAt:payload.updatedAt,pages:cloneVisual(payload.pages)},...versions].slice(0,12);
-    const [published,draft,savedHistory]=await Promise.all([
-      (supabase as any).from("oricse_config").upsert({chave:VISUAL_PUBLISHED_KEY,valor:payload,updated_at:payload.updatedAt}),
-      (supabase as any).from("oricse_config").upsert({chave:VISUAL_DRAFT_KEY,valor:payload,updated_at:payload.updatedAt}),
-      (supabase as any).from("oricse_config").upsert({chave:VISUAL_VERSIONS_KEY,valor:history,updated_at:payload.updatedAt}),
-    ]);
-    setSaving(false);const error=published.error||draft.error||savedHistory.error;if(error)return toast.error(error.message);
-    setDocumento(payload);setVersions(history);window.dispatchEvent(new Event("oricse:visual-published"));toast.success("Alterações publicadas no sistema.");
+    try {
+      const [published,draft,savedHistory]=await Promise.all([
+        (supabase as any).from("oricse_config").upsert(
+          {chave:VISUAL_PUBLISHED_KEY,valor:payload,updated_at:payload.updatedAt},
+          {onConflict:"chave"},
+        ),
+        (supabase as any).from("oricse_config").upsert(
+          {chave:VISUAL_DRAFT_KEY,valor:payload,updated_at:payload.updatedAt},
+          {onConflict:"chave"},
+        ),
+        (supabase as any).from("oricse_config").upsert(
+          {chave:VISUAL_VERSIONS_KEY,valor:history,updated_at:payload.updatedAt},
+          {onConflict:"chave"},
+        ),
+      ]);
+      const writeError=published.error||draft.error||savedHistory.error;
+      if(writeError) throw writeError;
+
+      const verification=await (supabase as any)
+        .from("oricse_config")
+        .select("valor")
+        .eq("chave",VISUAL_PUBLISHED_KEY)
+        .maybeSingle();
+      if(verification.error) throw verification.error;
+      if(verification.data?.valor?.updatedAt!==payload.updatedAt) {
+        throw new Error("A publicação não foi confirmada pelo banco. Tente novamente.");
+      }
+
+      setDocumento(payload);
+      setVersions(history);
+      setLastPublishedAt(payload.updatedAt);
+      localStorage.setItem("oricse:visual-published-at",payload.updatedAt);
+      if(typeof BroadcastChannel!=="undefined"){
+        const channel=new BroadcastChannel("oricse-visual-editor");
+        channel.postMessage({type:"published",updatedAt:payload.updatedAt});
+        channel.close();
+      }
+      window.dispatchEvent(new Event("oricse:visual-published"));
+      toast.success("Publicado e confirmado no site real.");
+    } catch(error) {
+      toast.error(error instanceof Error?error.message:"Não foi possível publicar.");
+    } finally {
+      setSaving(false);
+    }
   }
   function restore(version:Version){checkpoint();setDocumento({version:1,updatedAt:new Date().toISOString(),pages:cloneVisual(version.pages)});setSelected([]);toast.success("Versão carregada como rascunho. Revise e publique.");}
 
@@ -327,7 +367,11 @@ export function VisualPageEditor() {
       <button onClick={()=>{setDevice("mobile");setSelected([])}} className={`rounded-xl p-2 ${device==="mobile"?"bg-primary text-white":"border"}`}><Smartphone size={18}/></button>
       <select value={zoom} onChange={e=>setZoom(Number(e.target.value))} className="rounded-xl border px-2 py-2"><option value={40}>40%</option><option value={55}>55%</option><option value={70}>70%</option><option value={85}>85%</option><option value={100}>100%</option></select>
       <button onClick={()=>setRightOpen(x=>!x)} className="rounded-xl border p-2" title="Propriedades"><Move size={18}/></button>
-      <div className="ml-auto flex gap-2"><button disabled={saving} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold"><Save size={17}/> Salvar rascunho</button><button disabled={saving} onClick={publish} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"><UploadCloud size={17}/> Publicar</button></div>
+      <div className="ml-auto flex items-center gap-2">
+        {lastPublishedAt&&<span className="hidden text-xs font-semibold text-emerald-700 xl:inline">No site: {new Date(lastPublishedAt).toLocaleString("pt-BR")}</span>}
+        <button disabled={saving} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold"><Save size={17}/> Salvar rascunho</button>
+        <button disabled={saving} onClick={publish} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"><UploadCloud size={17}/> {saving?"Publicando…":"Publicar no site"}</button>
+      </div>
     </header>
 
     <div className={`grid min-h-[calc(100vh-64px)] ${leftOpen&&rightOpen?"lg:grid-cols-[260px_minmax(0,1fr)_290px]":leftOpen?"lg:grid-cols-[260px_minmax(0,1fr)]":rightOpen?"lg:grid-cols-[minmax(0,1fr)_290px]":"grid-cols-1"}`}>
