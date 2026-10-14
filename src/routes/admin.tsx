@@ -29,6 +29,7 @@ import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
+import { excluirClinica } from "@/lib/admin-users.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -172,6 +173,8 @@ function Admin() {
   const [arquivosDrive, setArquivosDrive] = useState(0);
   const [pasta, setPasta] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [excluindoClinica, setExcluindoClinica] = useState(false);
+  const [confirmacaoExclusao, setConfirmacaoExclusao] = useState("");
   const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [salvandoLogo, setSalvandoLogo] = useState(false);
@@ -379,6 +382,20 @@ function Admin() {
       await carregarTudo();
       toast.success("Clínica atualizada.");
     } catch (e) { const erro = e as { code?: string; message?: string }; toast.error(erro.code === "23505" ? "Este nome já está em uso por outra clínica ou parceiro." : (erro.message || "Não foi possível salvar a clínica.")); }
+    finally { setOcupado(false); }
+  }
+
+  async function confirmarExclusaoClinica() {
+    if (!selecionada || confirmacaoExclusao !== "APAGAR") return;
+    setOcupado(true);
+    try {
+      const r = await excluirClinica({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id, confirmacao: "APAGAR" } });
+      setExcluindoClinica(false);
+      setConfirmacaoExclusao("");
+      setSelecionada(null);
+      await carregarTudo();
+      toast.success(`Clínica "${r.nome}" excluída.`);
+    } catch (e) { toast.error((e as Error).message || "Não foi possível excluir a clínica."); }
     finally { setOcupado(false); }
   }
 
@@ -596,7 +613,13 @@ function Admin() {
     <label className="text-sm font-semibold">Domínio<input value={selecionada.dominio || ""} onChange={(e) => setSelecionada({ ...selecionada, dominio: e.target.value })} placeholder="www.suaclinica.com.br" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="Logo da clínica" className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 text-xs text-muted-foreground">Sem logo</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={enviandoLogoClinica} onChange={(e) => void enviarLogoDaClinica(e.target.files?.[0])}/></label></div></div>
     <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
-  </div></Card>;
+     </div>
+     <div className="mt-8 rounded-xl border border-red-300 bg-red-50 p-4"><h3 className="font-bold text-red-700">Zona de perigo</h3><p className="mt-1 text-sm text-red-700">Excluir esta clínica remove definitivamente seus dados e acessos.</p><button type="button" disabled={ocupado} onClick={() => { setConfirmacaoExclusao(""); setExcluindoClinica(true); }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white"><Trash2 size={17}/> Excluir clínica</button></div>
+     <Dialog open={excluindoClinica} onOpenChange={(aberto) => { if (!ocupado) { setExcluindoClinica(aberto); if (!aberto) setConfirmacaoExclusao(""); } }}><DialogContent><DialogHeader><DialogTitle className="text-red-700">Excluir "{selecionada.nome}"?</DialogTitle><DialogDescription>Leia os avisos antes de continuar.</DialogDescription></DialogHeader>
+       <ol className="list-decimal space-y-2 pl-5 text-sm"><li><strong>Esta ação é irreversível.</strong> Não existe como desfazer ou recuperar a clínica depois.</li><li><strong>Dados apagados:</strong> usuários, tutores, catálogo, comissões e configurações da clínica serão removidos, e as contas de acesso exclusivas dela serão excluídas.</li><li><strong>Arquivos no Google Drive não são apagados</strong>, mas o vínculo com a pasta será perdido. Remova-os manualmente se necessário.</li></ol>
+       <label className="text-sm font-semibold">Digite <span className="font-mono text-red-700">APAGAR</span> para confirmar<input value={confirmacaoExclusao} onChange={(e) => setConfirmacaoExclusao(e.target.value)} autoComplete="off" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
+       <div className="flex justify-end gap-2"><button type="button" disabled={ocupado} onClick={() => { setExcluindoClinica(false); setConfirmacaoExclusao(""); }} className="rounded-xl border px-4 py-2.5 font-semibold">Cancelar</button><button type="button" disabled={ocupado || confirmacaoExclusao !== "APAGAR"} onClick={() => void confirmarExclusaoClinica()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white disabled:opacity-40"><Trash2 size={17}/> Excluir definitivamente</button></div>
+     </DialogContent></Dialog></Card>;
 
   const renderSituacao = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div><p className="mt-1 text-sm text-muted-foreground">Controle administrativo, pagamentos e período de acesso.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conta criada em</p><p className="mt-2 text-lg font-bold">{dataBR(selecionada.created_at)}</p></div>

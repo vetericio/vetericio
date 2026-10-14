@@ -177,3 +177,51 @@ export const redefinirSenhaUsuario = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message || "Não foi possível alterar a senha.");
     return { ok: true };
   });
+
+const excluirClinicaSchema = z.object({
+  accessToken: z.string().min(20),
+  clinicaId: z.string().uuid(),
+  confirmacao: z.literal("APAGAR"),
+});
+
+export const excluirClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => excluirClinicaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
+    const adminDb = supabaseAdmin as SupabaseClient;
+
+    const { data: clinica, error: clinicaError } = await adminDb
+      .from("clinicas")
+      .select("id,nome")
+      .eq("id", data.clinicaId)
+      .maybeSingle();
+    if (clinicaError) throw new Error(clinicaError.message);
+    if (!clinica) throw new Error("Clínica não encontrada.");
+
+    const { data: vinculos, error: vinculosError } = await adminDb
+      .from("clinica_usuarios")
+      .select("user_id")
+      .eq("clinica_id", data.clinicaId);
+    if (vinculosError) throw new Error(vinculosError.message);
+    const usuarioIds = Array.from(new Set((vinculos || []).map((v: { user_id: string }) => v.user_id)));
+
+    // As tabelas da clínica (usuários, tutores, catálogo, Drive) são apagadas em cascata.
+    const { error: deleteError } = await adminDb.from("clinicas").delete().eq("id", data.clinicaId);
+    if (deleteError) throw new Error(deleteError.message || "Não foi possível excluir a clínica.");
+
+    let contasRemovidas = 0;
+    for (const userId of usuarioIds) {
+      const { data: perfil } = await adminDb.from("app_users").select("role").eq("user_id", userId).maybeSingle();
+      if (perfil?.role === "admin") continue;
+      const { count } = await adminDb
+        .from("clinica_usuarios")
+        .select("user_id", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if ((count || 0) > 0) continue;
+      await adminDb.from("app_users").delete().eq("user_id", userId);
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (!authError) contasRemovidas += 1;
+    }
+
+    return { ok: true, nome: clinica.nome as string, contasRemovidas };
+  });
