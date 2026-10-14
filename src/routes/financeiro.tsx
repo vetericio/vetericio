@@ -191,7 +191,37 @@ function Financeiro() {
       {aba === "total" && <ModuloResumo lista={lancamentos} recebido={recebidoTotal} despesas={despesasTotal} titulo="Visão acumulada"/>}
 
       {aba === "tutores" && <section className="space-y-4">
-        <div className="relative"><Search className="absolute left-3 top-3.5 text-muted-foreground" size={18}/><input value={buscaTutor} onChange={(e) => { setBuscaTutor(e.target.value); setTutorSelecionadoId(null); }} placeholder="Buscar por nome, CPF/CNPJ ou ID do tutor" className="w-full rounded-xl border bg-card py-3 pl-10 pr-4 outline-none focus:border-primary"/></div>
+        <div className="relative z-20">
+          <Search className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground" size={18}/>
+          <input
+            value={buscaTutor}
+            onChange={(e) => { setBuscaTutor(e.target.value); setTutorSelecionadoId(null); }}
+            placeholder="Digite o nome, CPF/CNPJ ou ID do tutor"
+            autoComplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={Boolean(buscaTutor.trim() && tutoresFinanceiros.length)}
+            className="w-full rounded-xl border bg-card py-3 pl-10 pr-4 outline-none focus:border-primary"
+          />
+          {buscaTutor.trim() && !tutorSelecionado && tutoresFinanceiros.length > 0 && (
+            <div role="listbox" className="absolute inset-x-0 top-[calc(100%+6px)] max-h-80 overflow-y-auto rounded-2xl border bg-card p-2 shadow-xl">
+              {tutoresFinanceiros.slice(0, 10).map(({ tutor }) => (
+                <button
+                  type="button"
+                  role="option"
+                  key={tutor.id}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => { setTutorSelecionadoId(tutor.id); setBuscaTutor(tutor.nome); }}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-muted focus:bg-muted focus:outline-none"
+                >
+                  <span className="min-w-0"><strong className="block truncate">{tutor.nome}</strong><span className="block truncate text-xs text-muted-foreground">CPF/CNPJ: {tutor.cpfCnpj || tutor.cpf || "Não informado"}</span></span>
+                  <span className="shrink-0 text-xs font-semibold text-primary">Selecionar</span>
+                </button>
+              ))}
+              {tutoresFinanceiros.length > 10 && <p className="px-3 py-2 text-xs text-muted-foreground">Continue digitando para refinar a busca.</p>}
+            </div>
+          )}
+        </div>
         {tutorSelecionado ? <div className="space-y-4">
           <button type="button" onClick={() => setTutorSelecionadoId(null)} className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft size={16}/> Voltar aos tutores</button>
           <section className="rounded-2xl border bg-card p-5">
