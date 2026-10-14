@@ -237,8 +237,8 @@ function Financeiro() {
           .eq("ativo", true)
           .maybeSingle();
         if (erroVinculo) throw erroVinculo;
-        const { data: perfilSistema } = await (supabase as any).from("app_users").select("role").eq("user_id", userId).maybeSingle();
-        if (ativo) setPodeAlterarComanda(perfilSistema?.role === "admin" || vinculo?.papel === "rt");
+
+        if (ativo) setPodeAlterarComanda(vinculo?.papel === "rt");
         const clinicaId = vinculo?.clinica_id || "";
         if (!clinicaId) {
           if (ativo) setTutoresCadastrados([]);
