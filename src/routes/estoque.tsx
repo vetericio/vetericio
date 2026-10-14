@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
-type Aba = "catalogo" | "cadastro" | "estoque" | "comissoes" | "equipe";
+type Aba = "catalogo" | "cadastro" | "estoque" | "comissoes" | "equipe" | "pagamentos";
 type ItemForm = {
   id?: string;
   tipo: "servico" | "produto";
@@ -71,6 +71,7 @@ function Estoque() {
   const [funcionarioId, setFuncionarioId] = useState("");
   const [servicoId, setServicoId] = useState("");
   const [percentualRemuneracao, setPercentualRemuneracao] = useState("");
+  const [podeGerenciarPagamentos, setPodeGerenciarPagamentos] = useState(false);
 
   const servicos = useMemo(
     () => itens.filter((item) => item.tipo === "servico" && item.ativo),
@@ -186,6 +187,9 @@ function Estoque() {
         }
         if (!clinicaSelecionada) throw new Error("Nenhuma clínica disponível para este catálogo.");
         if (!ativo) return;
+        const { data: acessoPagamentos, error: erroAcesso } = await (supabase as any).rpc("oricse_pode_gerenciar_pagamentos", { p_clinica: clinicaSelecionada });
+        if (erroAcesso) throw erroAcesso;
+        setPodeGerenciarPagamentos(acessoPagamentos === true);
         setAdminGeral(eAdminGeral);
         setClinicaId(clinicaSelecionada);
         setUsuarioId(userId);
@@ -424,6 +428,7 @@ function Estoque() {
             ["estoque", "Estoque"],
             ["comissoes", "Comissões"],
             ["equipe", "Remuneração da equipe"],
+            ...(podeGerenciarPagamentos ? [["pagamentos", "Pagamento da equipe"]] : []),
           ] as const
         ).map(([id, nome]) => (
           <button
@@ -681,6 +686,9 @@ function Estoque() {
         </section>
       )}
 
+      {aba === "pagamentos" && podeGerenciarPagamentos && (
+        <PagamentoEquipe clinicaId={clinicaId} profissionais={profissionais} itens={itens} />
+      )}
       {aba === "equipe" && (
         <section className="space-y-4">
           <div className="rounded-xl border bg-card p-4">
@@ -969,4 +977,143 @@ function CatalogoGrupo({
       </div>
     </section>
   );
+}
+
+type PagamentoLancamento = {
+  id: string; clinica_id: string; funcionario_id: string;
+  tipo: "plantao" | "comissao" | "debito"; data: string;
+  descricao: string; valor: number; quantidade: number;
+  catalogo_item_id: string | null; hora_inicio: string | null; hora_fim: string | null;
+};
+function mesAtualPagamento() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function PagamentoEquipe({ clinicaId, profissionais, itens }: {clinicaId: string; profissionais: ProfissionalClinica[]; itens: ItemCatalogo[]}) {
+  const [mes, setMes] = useState(mesAtualPagamento);
+  const [funcionario, setFuncionario] = useState("");
+  const [lancamentos, setLancamentos] = useState<PagamentoLancamento[]>([]);
+  const [tipo, setTipo] = useState<PagamentoLancamento["tipo"]>("plantao");
+  const [data, setData] = useState(() => new Date().toLocaleDateString("sv-SE"));
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [valor, setValor] = useState("");
+  const [itemId, setItemId] = useState("");
+  const [quantidade, setQuantidade] = useState("1");
+  const [salvando, setSalvando] = useState(false);
+  const [carregando, setCarregando] = useState(false);
+  const veterinarios = profissionais.filter(p => ["rt","veterinario","vet","medico_veterinario","admin_clinica"].includes(p.papel.toLowerCase()));
+  const funcionarioAtual = veterinarios.find(p => p.user_id === funcionario);
+  const item = itens.find(i => i.id === itemId);
+  const moeda = (v: number) => dinheiro(v);
+  useEffect(() => {
+    if (!veterinarios.some(p => p.user_id === funcionario)) setFuncionario(veterinarios[0]?.user_id || "");
+  }, [profissionais, funcionario]);
+  useEffect(() => {
+    let ativo = true;
+    async function carregar() {
+      if (!clinicaId) return;
+      setCarregando(true);
+      const [ano, mesNumero] = mes.split("-").map(Number);
+      const proximo = new Date(Date.UTC(ano,mesNumero,1)).toISOString().slice(0,10);
+      const { data: registros, error } = await (supabase as any).from("oricse_pagamento_lancamentos")
+        .select("*").eq("clinica_id",clinicaId).gte("data",mes+"-01").lt("data",proximo)
+        .order("data",{ascending:true}).order("created_at",{ascending:true});
+      if (ativo) {
+        if (error) toast.error("Não foi possível carregar pagamentos: "+error.message);
+        else setLancamentos((registros || []) as PagamentoLancamento[]);
+        setCarregando(false);
+      }
+    }
+    void carregar();
+    return () => {ativo=false;};
+  },[clinicaId,mes]);
+  const selecionados = lancamentos.filter(l=>l.funcionario_id===funcionario);
+  const soma = (t: PagamentoLancamento["tipo"]) => selecionados.filter(l=>l.tipo===t).reduce((a,l)=>a+Number(l.valor),0);
+  const plantao = soma("plantao"), comissao=soma("comissao"), debito=soma("debito");
+  const fechado = mes < mesAtualPagamento();
+  async function adicionar(e: FormEvent) {
+    e.preventDefault();
+    if (!funcionario || !clinicaId || fechado || !data.startsWith(mes)) return toast.error("Selecione um funcionário e uma data no mês atual.");
+    const qtd = Number(quantidade.replace(",","."));
+    const v = tipo === "debito" ? Number(item?.valor || 0)*qtd : Number(valor.replace(",","."));
+    if (!(v>0) || (tipo==="debito" && (!item || !(qtd>0)))) return toast.error("Informe um valor e quantidade válidos.");
+    setSalvando(true);
+    const payload = {
+      clinica_id:clinicaId, funcionario_id:funcionario, tipo, data,
+      descricao: tipo==="debito" ? item!.nome : descricao.trim() || (tipo==="plantao"?"Plantão":"Comissão"),
+      valor:Math.round(v*100)/100, quantidade:tipo==="debito"?qtd:1,
+      catalogo_item_id:tipo==="debito"?itemId:null,
+      hora_inicio:tipo==="plantao"&&inicio?inicio:null, hora_fim:tipo==="plantao"&&fim?fim:null
+    };
+    const { data: registro,error }=await (supabase as any).from("oricse_pagamento_lancamentos").insert(payload).select("*").single();
+    setSalvando(false);
+    if(error) return toast.error(error.message);
+    setLancamentos(prev=>[...prev,registro as PagamentoLancamento].sort((a,b)=>a.data.localeCompare(b.data)));
+    setDescricao("");setValor("");setItemId("");setQuantidade("1");
+    toast.success("Lançamento registrado.");
+  }
+  async function excluir(id:string) {
+    if(fechado) return;
+    const {error}=await (supabase as any).from("oricse_pagamento_lancamentos").delete().eq("id",id).eq("clinica_id",clinicaId);
+    if(error) return toast.error(error.message);
+    setLancamentos(prev=>prev.filter(l=>l.id!==id));
+    toast.success("Lançamento excluído.");
+  }
+  return <section className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div><h2 className="text-xl font-bold">Pagamento da equipe</h2><p className="text-sm text-muted-foreground">Acesso exclusivo RT · Plantões com valores variáveis, comissões e débitos internos.</p></div>
+      <label className="text-xs font-semibold">Competência<input type="month" value={mes} max={mesAtualPagamento()} onChange={e=>setMes(e.target.value)} className="mt-1 block h-10 rounded-lg border bg-background px-3 text-sm" /></label>
+    </div>
+    <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
+      <label className="min-w-[220px] flex-1 text-xs font-semibold">Veterinário
+        <select value={funcionario} onChange={e=>setFuncionario(e.target.value)} className="mt-1 h-11 w-full rounded-lg border bg-background px-3 text-sm">
+          {veterinarios.map(p=><option key={p.user_id} value={p.user_id}>{p.nome}</option>)}
+        </select>
+      </label>
+      <span className="rounded-full bg-muted px-3 py-2 text-xs font-semibold">{fechado?"Mês encerrado":"Mês em andamento"}</span>
+    </div>
+    {!veterinarios.length && <p className="rounded-xl border p-5 text-sm">Nenhum veterinário cadastrado nesta clínica.</p>}
+    {funcionarioAtual && <>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {([["Plantões",plantao],["Comissões",comissao],["Débitos",-debito],["Total a pagar",plantao+comissao-debito]] as const).map(([titulo,v])=>
+          <div key={titulo} className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">{titulo}</p><p className="mt-2 text-xl font-bold tabular-nums">{moeda(v)}</p></div>)}
+      </div>
+      {!fechado && <form onSubmit={adicionar} className="space-y-3 rounded-2xl border bg-card p-4">
+        <h3 className="font-bold">Adicionar lançamento</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-xs font-semibold">Tipo
+            <select value={tipo} onChange={e=>setTipo(e.target.value as PagamentoLancamento["tipo"])} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm">
+              <option value="plantao">Plantão</option><option value="comissao">Comissão</option><option value="debito">Débito do funcionário</option>
+            </select>
+          </label>
+          <label className="text-xs font-semibold">Data<input required type="date" value={data} min={mes+"-01"} max={new Date(Number(mes.slice(0,4)),Number(mes.slice(5,7)),0).toLocaleDateString("sv-SE")} onChange={e=>setData(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm" /></label>
+          {tipo==="debito" ? <label className="text-xs font-semibold">Produto ou serviço
+            <select required value={itemId} onChange={e=>setItemId(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm">
+              <option value="">Selecione</option>{itens.filter(i=>i.ativo).map(i=><option key={i.id} value={i.id}>{i.nome} · {moeda(Number(i.valor))}</option>)}
+            </select>
+          </label> : <label className="text-xs font-semibold">Descrição<input value={descricao} onChange={e=>setDescricao(e.target.value)} placeholder={tipo==="plantao"?"Plantão noturno":"Comissão por atendimento"} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm" /></label>}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {tipo==="plantao" && <><label className="text-xs font-semibold">Início<input type="time" value={inicio} onChange={e=>setInicio(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm" /></label><label className="text-xs font-semibold">Fim<input type="time" value={fim} onChange={e=>setFim(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm" /></label></>}
+          {tipo==="debito" ? <label className="text-xs font-semibold">Quantidade<input required type="number" min="0.001" step="0.001" value={quantidade} onChange={e=>setQuantidade(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm" /></label> : <label className="text-xs font-semibold">Valor (R$)<input required type="number" min="0.01" step="0.01" value={valor} onChange={e=>setValor(e.target.value)} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm" /></label>}
+          {tipo==="debito" && <div className="self-end rounded-lg bg-muted p-3 text-sm font-bold">Total: {moeda(Number(item?.valor||0)*Number(quantidade||0))}</div>}
+        </div>
+        <button type="submit" disabled={salvando} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{salvando?"Salvando...":"Adicionar lançamento"}</button>
+      </form>}
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <table className="w-full min-w-[650px] text-sm"><thead className="bg-muted/50 text-left text-xs"><tr><th className="p-3">Data</th><th className="p-3">Tipo</th><th className="p-3">Descrição</th><th className="p-3 text-right">Valor</th><th className="p-3"></th></tr></thead>
+        <tbody className="divide-y">{selecionados.map(l=><tr key={l.id}>
+          <td className="p-3">{l.data.split("-").reverse().join("/")}{l.hora_inicio ? ` · ${l.hora_inicio.slice(0,5)}${l.hora_fim?"–"+l.hora_fim.slice(0,5):""}` : ""}</td>
+          <td className="p-3">{l.tipo==="plantao"?"Plantão":l.tipo==="comissao"?"Comissão":"Débito"}</td>
+          <td className="p-3">{l.descricao}{l.tipo==="debito"&&l.quantidade!==1?` × ${l.quantidade}`:""}</td>
+          <td className="p-3 text-right font-semibold">{l.tipo==="debito"?"− ":""}{moeda(Number(l.valor))}</td>
+          <td className="p-3 text-right">{!fechado && <button type="button" onClick={()=>excluir(l.id)} aria-label="Excluir lançamento" className="rounded-lg p-2 hover:bg-muted"><Trash2 size={16}/></button>}</td>
+        </tr>)}</tbody></table>
+        {!selecionados.length && <p className="p-6 text-center text-sm text-muted-foreground">{carregando?"Carregando...":"Nenhum lançamento nesta competência."}</p>}
+      </div>
+      <p className="text-xs text-muted-foreground">Débitos internos não são comandas de tutores. Meses anteriores são exibidos como históricos fechados. Comissões devem ser lançadas conforme os atendimentos confirmados.</p>
+    </>}
+  </section>;
 }
