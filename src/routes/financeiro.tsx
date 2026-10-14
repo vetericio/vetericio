@@ -30,6 +30,7 @@ import {
   totalPagoComanda,
 } from "@/lib/comandas";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
@@ -175,9 +176,9 @@ function lerTutores(): TutorFinanceiro[] {
         (item): item is TutorFinanceiro =>
           Boolean(item) &&
           typeof item === "object" &&
-          typeof item.id === "string" &&
+          (typeof item.id === "string" || typeof (item as { id: unknown }).id === "number") &&
           typeof item.nome === "string",
-      ),
+      ).map((tutor) => ({ ...tutor, id: String(tutor.id) })),
       lerNomeClinicaLocal(),
     );
     return tutores.map((tutor) => {
@@ -203,7 +204,7 @@ function lerTutores(): TutorFinanceiro[] {
 function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(lerLancamentos);
-  const [tutoresCadastrados] = useState<TutorFinanceiro[]>(lerTutores);
+  const [tutoresCadastrados, setTutoresCadastrados] = useState<TutorFinanceiro[]>(lerTutores);
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
   const [buscaTutor, setBuscaTutor] = useState("");
   const [tutorSelecionadoId, setTutorSelecionadoId] = useState<string | null>(null);
@@ -219,6 +220,48 @@ function Financeiro() {
       window.removeEventListener("storage", atualizarComandas);
       window.removeEventListener("oricse-comandas-atualizadas", atualizarComandas);
     };
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+    async function carregarTutoresDaClinica() {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const userId = auth.user?.id;
+        if (!userId) return;
+        const [{ data: usuario }, { data: vinculo }] = await Promise.all([
+          (supabase as any).from("app_users").select("role").eq("user_id", userId).maybeSingle(),
+          (supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true).limit(1).maybeSingle(),
+        ]);
+        let clinicaId = vinculo?.clinica_id || "";
+        if (!clinicaId && usuario?.role === "admin") {
+          const { data: clinicas, error: erroClinicas } = await (supabase as any).from("clinicas").select("id").eq("status", "ativa").order("nome").limit(1);
+          if (erroClinicas) throw erroClinicas;
+          clinicaId = clinicas?.[0]?.id || "";
+        }
+        if (!clinicaId) return;
+        const { data, error } = await (supabase as any).from("tutores").select("id,codigo_publico,nome,dados").eq("clinica_id", clinicaId).order("nome");
+        if (error) throw error;
+        if (!ativo || !Array.isArray(data)) return;
+        const remotos: TutorFinanceiro[] = data.map((tutor: any) => ({
+          id: String(tutor.id),
+          nome: String(tutor.nome || "").trim(),
+          cpfCnpj: tutor.dados?.cpfCnpj || tutor.dados?.cpf || "",
+          cpf: tutor.dados?.cpf || tutor.dados?.cpfCnpj || "",
+          codigoPublico: tutor.codigo_publico || "",
+          codigo_publico: tutor.codigo_publico || "",
+        })).filter((tutor: TutorFinanceiro) => tutor.id && tutor.nome);
+        setTutoresCadastrados((locais) => {
+          const unidos = new Map(locais.map((tutor) => [String(tutor.id), tutor]));
+          remotos.forEach((tutor) => unidos.set(String(tutor.id), { ...unidos.get(String(tutor.id)), ...tutor }));
+          return Array.from(unidos.values());
+        });
+      } catch (error) {
+        console.warn("Não foi possível carregar os tutores da clínica no Financeiro; mantendo os dados locais.", error);
+      }
+    }
+    void carregarTutoresDaClinica();
+    return () => { ativo = false; };
   }, []);
 
   function persistir(lista: Lancamento[]) {
