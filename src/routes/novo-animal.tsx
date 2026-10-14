@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, PawPrint, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { RACAS as RACAS_COMPLETAS } from "@/data/racas";
 import { nomeRacaBrasil } from "@/data/racas-brasil";
 
@@ -197,7 +198,7 @@ function NovoAnimal() {
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2"><PawPrint className="text-primary"/><h1 className="text-3xl font-black">{editando ? "Editar animal" : "Cadastrar animal"}</h1></div>
-          {tutor && <p className="mt-1 text-sm text-muted-foreground">Tutor: <strong className="text-foreground">{tutor.nome}</strong></p>}
+          {tutor && <p className="mt-1 text-sm text-muted-foreground">Tutor: <strong className="text-foreground">{tutor.nome}</strong>{codigoPublicoTutor(tutor) && <span className="ml-2 font-mono font-semibold text-primary">{codigoPublicoTutor(tutor)}</span>}</p>}
         </div>
       </div>
 

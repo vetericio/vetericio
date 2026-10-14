@@ -20,6 +20,8 @@ import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AnimaisRouteImport } from './routes/animais'
 import { Route as AnimalRouteImport } from './routes/animal'
 import { Route as AssinarRouteImport } from './routes/assinar'
+import { Route as ComandasRouteImport } from './routes/comandas'
+import { Route as ConfiguracaoSiteRouteImport } from './routes/configuracao-site'
 import { Route as ConsultaRouteImport } from './routes/consulta'
 import { Route as ConsultorioRouteImport } from './routes/consultorio'
 import { Route as ContratarRouteImport } from './routes/contratar'
@@ -45,6 +47,7 @@ import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TutoresRouteImport } from './routes/tutores'
+import { Route as VetSlugRouteImport } from './routes/vet.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -99,6 +102,16 @@ const AnimalRoute = AnimalRouteImport.update({
 const AssinarRoute = AssinarRouteImport.update({
   id: '/assinar',
   path: '/assinar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComandasRoute = ComandasRouteImport.update({
+  id: '/comandas',
+  path: '/comandas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracaoSiteRoute = ConfiguracaoSiteRouteImport.update({
+  id: '/configuracao-site',
+  path: '/configuracao-site',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConsultaRoute = ConsultaRouteImport.update({
@@ -226,6 +239,11 @@ const TutoresRoute = TutoresRouteImport.update({
   path: '/tutores',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VetSlugRoute = VetSlugRouteImport.update({
+  id: '/vet/$slug',
+  path: '/vet/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -239,6 +257,8 @@ export interface FileRoutesByFullPath {
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/comandas': typeof ComandasRoute
+  '/configuracao-site': typeof ConfiguracaoSiteRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
@@ -264,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/tutores': typeof TutoresRoute
+  '/vet/$slug': typeof VetSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -277,6 +298,8 @@ export interface FileRoutesByTo {
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/comandas': typeof ComandasRoute
+  '/configuracao-site': typeof ConfiguracaoSiteRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
@@ -302,6 +325,7 @@ export interface FileRoutesByTo {
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/tutores': typeof TutoresRoute
+  '/vet/$slug': typeof VetSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -316,6 +340,8 @@ export interface FileRoutesById {
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/comandas': typeof ComandasRoute
+  '/configuracao-site': typeof ConfiguracaoSiteRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
@@ -341,6 +367,7 @@ export interface FileRoutesById {
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/tutores': typeof TutoresRoute
+  '/vet/$slug': typeof VetSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -356,6 +383,8 @@ export interface FileRouteTypes {
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/comandas'
+    | '/configuracao-site'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
@@ -381,6 +410,7 @@ export interface FileRouteTypes {
     | '/temas'
     | '/termos'
     | '/tutores'
+    | '/vet/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -394,6 +424,8 @@ export interface FileRouteTypes {
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/comandas'
+    | '/configuracao-site'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
@@ -419,6 +451,7 @@ export interface FileRouteTypes {
     | '/temas'
     | '/termos'
     | '/tutores'
+    | '/vet/$slug'
   id:
     | '__root__'
     | '/'
@@ -432,6 +465,8 @@ export interface FileRouteTypes {
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/comandas'
+    | '/configuracao-site'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
@@ -457,6 +492,7 @@ export interface FileRouteTypes {
     | '/temas'
     | '/termos'
     | '/tutores'
+    | '/vet/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -471,6 +507,8 @@ export interface RootRouteChildren {
   AnimaisRoute: typeof AnimaisRoute
   AnimalRoute: typeof AnimalRoute
   AssinarRoute: typeof AssinarRoute
+  ComandasRoute: typeof ComandasRoute
+  ConfiguracaoSiteRoute: typeof ConfiguracaoSiteRoute
   ConsultaRoute: typeof ConsultaRoute
   ConsultorioRoute: typeof ConsultorioRoute
   ContratarRoute: typeof ContratarRoute
@@ -496,6 +534,7 @@ export interface RootRouteChildren {
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
   TutoresRoute: typeof TutoresRoute
+  VetSlugRoute: typeof VetSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -575,6 +614,20 @@ declare module '@tanstack/react-router' {
       path: '/assinar'
       fullPath: '/assinar'
       preLoaderRoute: typeof AssinarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/comandas': {
+      id: '/comandas'
+      path: '/comandas'
+      fullPath: '/comandas'
+      preLoaderRoute: typeof ComandasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracao-site': {
+      id: '/configuracao-site'
+      path: '/configuracao-site'
+      fullPath: '/configuracao-site'
+      preLoaderRoute: typeof ConfiguracaoSiteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/consulta': {
@@ -752,6 +805,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TutoresRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vet/$slug': {
+      id: '/vet/$slug'
+      path: '/vet/$slug'
+      fullPath: '/vet/$slug'
+      preLoaderRoute: typeof VetSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -767,6 +827,8 @@ const rootRouteChildren: RootRouteChildren = {
   AnimaisRoute: AnimaisRoute,
   AnimalRoute: AnimalRoute,
   AssinarRoute: AssinarRoute,
+  ComandasRoute: ComandasRoute,
+  ConfiguracaoSiteRoute: ConfiguracaoSiteRoute,
   ConsultaRoute: ConsultaRoute,
   ConsultorioRoute: ConsultorioRoute,
   ContratarRoute: ContratarRoute,
@@ -792,6 +854,7 @@ const rootRouteChildren: RootRouteChildren = {
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
   TutoresRoute: TutoresRoute,
+  VetSlugRoute: VetSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

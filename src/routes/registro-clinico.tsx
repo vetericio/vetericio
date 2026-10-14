@@ -2,11 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, BedDouble, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Save, Scissors, Stethoscope } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
 type Animal = { id: string; tutorId: string; nome: string; especie?: string; raca?: string; peso?: string };
-type Tutor = { id: string; nome: string; telefone?: string; outroTelefone?: string };
+type Tutor = { id: string; nome: string; telefone?: string; outroTelefone?: string; codigoPublico?: string; codigo_publico?: string; codigo?: string };
 type RegistroProntuario = { id: string; animalId: string; tipo: "Registros clínicos"; titulo: string; detalhe?: string; data: string; criadoEm: string; subtipo?: "Consulta" | "Cirurgia / Procedimentos"; dados?: unknown };
 type RegistroPlantao = { animal?: string; especie?: string; peso?: string; criadoEm?: string; alimentacao?: string; comportamento?: string; fezes?: string; mucosas?: string; urina?: string; vomito?: string; temperatura?: string; fc?: string; fr?: string; pas?: string; glicemia?: string; observacoes?: string; medicacoes?: { nome?: string; quantidade?: string; via?: string; duracao?: string }[] };
 type Plantao = { id?: string; data?: string; turno?: string; criadoEm?: string; registros?: RegistroPlantao[] };
@@ -154,7 +155,7 @@ function RegistroClinico(){
   return <main className="mx-auto min-h-screen w-full max-w-[1500px] px-3 pb-28 pt-3 sm:px-5">
     <section className="rounded-2xl border bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4">
-        <div className="flex min-w-0 items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-primary"><PawPrint size={22}/></div><div className="min-w-0"><div className="flex flex-wrap items-baseline gap-x-2"><h1 className="text-2xl font-black leading-none">{animal.nome}</h1><span className="text-xs font-bold uppercase tracking-wide text-primary">Registro clínico</span></div><p className="mt-1 truncate text-sm text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""} · Tutor: <strong className="text-foreground">{tutor?.nome||"—"}</strong>{tutor?.telefone?` · ${tutor.telefone}`:""}</p></div></div>
+        <div className="flex min-w-0 items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-primary"><PawPrint size={22}/></div><div className="min-w-0"><div className="flex flex-wrap items-baseline gap-x-2"><h1 className="text-2xl font-black leading-none">{animal.nome}</h1><span className="text-xs font-bold uppercase tracking-wide text-primary">Registro clínico</span></div><p className="mt-1 truncate text-sm text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""} · Tutor: <strong className="text-foreground">{tutor?.nome||"—"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="ml-1 font-mono text-primary">{codigoPublicoTutor(tutor)}</span>}{tutor?.telefone?` · ${tutor.telefone}`:""}</p></div></div>
         <Link to="/animal" search={{animalId:animal.id} as never} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-bold"><ArrowLeft size={16}/> Ficha do animal</Link>
       </div>
       <div className="grid border-t sm:grid-cols-3">

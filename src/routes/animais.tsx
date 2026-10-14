@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/animais")({ component: Animais });
 
@@ -62,7 +63,7 @@ function Animais() {
     if (!q) return lista;
     return lista.filter((animal) => {
       const tutor = tutorPorId.get(animal.tutorId);
-      return [animal.nome, animal.especie, animal.raca, tutor?.nome, tutor?.telefone, tutor?.outroTelefone, tutor?.cpfCnpj, tutor?.codigoPublico, tutor?.codigo]
+      return [animal.nome, animal.especie, animal.raca, tutor?.nome, tutor?.telefone, tutor?.outroTelefone, tutor?.cpfCnpj, tutor && codigoPublicoTutor(tutor)]
         .some((valor) => (valor || "").toLocaleLowerCase("pt-BR").includes(q));
     });
   }, [animais, busca, tutorPorId]);
@@ -94,7 +95,7 @@ function Animais() {
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {resultados.length ? resultados.map((animal) => {
             const tutor = tutorPorId.get(animal.tutorId);
-            const codigoTutor = tutor?.codigoPublico || tutor?.codigo || "";
+            const codigoTutor = tutor && codigoPublicoTutor(tutor);
             return (
               <Link
                 key={animal.id}

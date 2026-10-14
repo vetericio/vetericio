@@ -2,10 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Clock3, ListPlus, PawPrint, Send, Stethoscope } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/encaminhar")({ component: Encaminhar });
 
-type Tutor = { id: string; nome: string; telefone?: string };
+type Tutor = { id: string; nome: string; telefone?: string; codigoPublico?: string; codigo_publico?: string; codigo?: string };
 type Animal = { id: string; tutorId: string; nome: string; especie?: string };
 type Evento = { id: string; hora: string; data?: string; tipo: string; paciente: string; tutor: string; tutorId?: string; animalId?: string; especie?: string; origem: "Recepção"; pagamento: "Pendente"; status: "Agendado" };
 type Agenda = { id: string; nome: string; responsavel?: string; inicio: string; fim: string; diasSemana?: number[]; eventos: Evento[] };
@@ -153,7 +154,7 @@ function Encaminhar() {
     <div className="mt-4">
       <p className="text-xs font-bold uppercase tracking-wider text-primary">Enviar para…</p>
       <h1 className="mt-1 flex items-center gap-2 text-3xl font-black"><PawPrint className="text-primary"/> {animal.nome}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Tutor: <strong className="text-foreground">{tutor.nome}</strong>{tutor.telefone ? ` · ${tutor.telefone}` : ""}</p>
+      <p className="mt-1 text-sm text-muted-foreground">Tutor: <strong className="text-foreground">{tutor.nome}</strong>{codigoPublicoTutor(tutor) && <span className="ml-2 font-mono font-semibold text-primary">{codigoPublicoTutor(tutor)}</span>}{tutor.telefone ? ` · ${tutor.telefone}` : ""}</p>
     </div>
 
     <div className="mt-6 grid gap-3 sm:grid-cols-2">
