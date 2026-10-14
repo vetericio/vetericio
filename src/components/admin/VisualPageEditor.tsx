@@ -191,14 +191,17 @@ export function VisualPageEditor() {
         const selector = visualSelector(element);
         let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((x) => x.selector === selector);
         if (!patch) {
-          patch = { id:uid("element"), selector, label:visualLabel(element), style:{} };
+          const rect = element.getBoundingClientRect();
+          patch = { id:uid("element"), selector, label:visualLabel(element), style:{baseWidth:Math.max(1,Math.round(rect.width)),baseHeight:Math.max(1,Math.round(rect.height)),width:Math.max(1,Math.round(rect.width)),height:Math.max(1,Math.round(rect.height))} };
           updateLayout((value) => value.patches.push(patch!), true);
         }
         item = { id:patch.id, kind:"patch" };
       }
       const multi = event.shiftKey || event.ctrlKey || event.metaKey;
       const already = selectedRef.current.some((x) => x.id === item.id && x.kind === item.kind);
-      const next = multi ? (already ? selectedRef.current.filter((x) => x.id !== item.id || x.kind !== item.kind) : [...selectedRef.current,item]) : [item];
+      const next = multi
+        ? (already ? selectedRef.current.filter((x) => x.id !== item.id || x.kind !== item.kind) : [...selectedRef.current,item])
+        : (already && selectedRef.current.length > 1 ? selectedRef.current : [item]);
       setSelected(next); selectedRef.current=next;
       checkpoint();
       const page = ensurePage(cloneVisual(documentRef.current), route)[device];
@@ -253,6 +256,17 @@ export function VisualPageEditor() {
   }
   function toggleVisibility(item:SelectedItem) {
     updateLayout((value)=>{const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);if(!target)return;if(item.kind==="patch")(target as VisualPatch).hidden=!(target as VisualPatch).hidden;else target.style.opacity=target.style.opacity===0?1:0;});
+  }
+  function moveLayer(front:boolean) {
+    updateLayout((value)=>{
+      const all=[...value.patches,...value.added];
+      const levels=all.map(item=>item.style.zIndex||0);
+      const targetLevel=front?Math.max(0,...levels)+1:Math.min(0,...levels)-1;
+      selected.forEach((item)=>{
+        const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);
+        if(target)target.style.zIndex=targetLevel;
+      });
+    });
   }
   function resetPage() { if(!confirm("Restaurar esta página neste tamanho?"))return;updateLayout((value)=>{value.patches=[];value.added=[];});setSelected([]); }
 
@@ -323,8 +337,11 @@ export function VisualPageEditor() {
           <div className="grid grid-cols-2 gap-2">{([['x','X'],['y','Y'],['width','Largura'],['height','Altura']] as const).map(([key,label])=><label key={key} className="text-xs font-bold">{label}<input type="number" value={first.style[key]??""} onChange={e=>patchSelected({[key]:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"/></label>)}</div>
           <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Fonte<input type="number" min={6} max={220} value={first.style.fontSize??""} onChange={e=>patchSelected({fontSize:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"/></label><label className="text-xs font-bold">Peso<select value={first.style.fontWeight||400} onChange={e=>patchSelected({fontWeight:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"><option value={400}>Normal</option><option value={500}>Médio</option><option value={600}>Semibold</option><option value={700}>Negrito</option><option value={900}>Black</option></select></label></div>
           <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Texto<input type="color" value={first.style.color||"#4A1826"} onChange={e=>patchSelected({color:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label><label className="text-xs font-bold">Fundo<input type="color" value={first.style.backgroundColor||"#FFFFFF"} onChange={e=>patchSelected({backgroundColor:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label></div>
+          <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Borda<input type="color" value={first.style.borderColor||"#303842"} onChange={e=>patchSelected({borderColor:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label><label className="text-xs font-bold">Espessura<input type="number" min={0} max={30} value={first.style.borderWidth??0} onChange={e=>patchSelected({borderWidth:number(e.target.value)})} className="mt-1 h-10 w-full rounded border px-2 font-normal"/></label></div>
+          <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Preenchimento / ícone<input type="color" value={first.style.fill||first.style.color||"#303842"} onChange={e=>patchSelected({fill:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label><label className="text-xs font-bold">Traço / ícone<input type="color" value={first.style.stroke||first.style.color||"#303842"} onChange={e=>patchSelected({stroke:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label></div>
           <div className="flex gap-2"><button onClick={()=>patchSelected({textAlign:"left"})} className="rounded-lg border p-2"><AlignLeft size={17}/></button><button onClick={()=>patchSelected({textAlign:"center"})} className="rounded-lg border p-2"><AlignCenter size={17}/></button><button onClick={()=>patchSelected({textAlign:"right"})} className="rounded-lg border p-2"><AlignRight size={17}/></button><label className="ml-auto flex items-center gap-2 text-xs font-bold">Opacidade<input type="number" min={0} max={1} step={0.1} value={first.style.opacity??1} onChange={e=>patchSelected({opacity:number(e.target.value,1)})} className="w-16 rounded-lg border p-2"/></label></div>
-          <div className="grid grid-cols-2 gap-2"><button onClick={()=>patchSelected({zIndex:(first.style.zIndex||0)+1})} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><BringToFront size={15}/> Frente</button><button onClick={()=>patchSelected({zIndex:(first.style.zIndex||0)-1})} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><SendToBack size={15}/> Trás</button></div>
+          <label className="block text-xs font-bold">Nível da camada<input type="number" value={first.style.zIndex??0} onChange={e=>patchSelected({zIndex:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"/></label>
+          <div className="grid grid-cols-2 gap-2"><button onClick={()=>moveLayer(true)} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><BringToFront size={15}/> Trazer à frente</button><button onClick={()=>moveLayer(false)} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><SendToBack size={15}/> Enviar para trás</button></div>
           <div className="grid grid-cols-2 gap-2 border-t pt-4"><button onClick={duplicate} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><Copy size={15}/> Duplicar</button><button onClick={hideOrDelete} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 p-2 text-xs font-bold text-red-600"><Trash2 size={15}/> Excluir</button></div>
         </div>}
       </aside>}
