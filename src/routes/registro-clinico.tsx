@@ -48,6 +48,18 @@ const NORMAIS_ESPECIE = {
   cão: { temperatura: "37,5–39,2 °C", fc: "60–160 bpm", fr: "10–30 mpm", pas: "100–160 mmHg", glicemia: "70–120 mg/dL" },
   gato: { temperatura: "38,0–39,2 °C", fc: "140–220 bpm", fr: "20–40 mpm", pas: "100–160 mmHg", glicemia: "70–150 mg/dL" },
 };
+function idadeAnimal(nascimento?: string) {
+  if (!nascimento) return "";
+  const n = new Date(`${nascimento.slice(0,10)}T12:00:00`);
+  if (Number.isNaN(n.getTime())) return "";
+  const h = new Date();
+  let anos = h.getFullYear() - n.getFullYear();
+  let meses = h.getMonth() - n.getMonth();
+  if (h.getDate() < n.getDate()) meses--;
+  if (meses < 0) { anos--; meses += 12; }
+  if (anos <= 0) return `${Math.max(0, meses)} meses`;
+  return meses ? `${anos}a ${meses}m` : `${anos} anos`;
+}
 function normaisPara(especie?: string) { return /gato|fel/i.test(especie || "") ? NORMAIS_ESPECIE.gato : NORMAIS_ESPECIE.cão; }
 
 const COMUM = ["Sem alterações aparentes", "Não avaliado"];
@@ -306,16 +318,19 @@ function RegistroClinico(){
   const abrirConsulta=()=>{setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 
   return <main className="mx-auto min-h-screen w-full max-w-[1500px] px-3 pb-28 pt-3 sm:px-5 sm:pt-4">
-    <section className="rounded-xl border bg-white px-3 py-2 shadow-sm sm:px-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><PawPrint size={18}/></div>
+    <section className="rounded-xl border bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><PawPrint size={24}/></div>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <h1 className="break-words text-lg font-bold leading-tight tracking-tight">{animal.nome}</h1>
-              <span className="text-xs text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""}</span>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">Registro clínico</p>
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <h1 className="break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{animal.nome}</h1>
+              <span className="font-mono text-sm text-primary">#{String((animal as {codigo?:string}).codigo||animal.id).slice(0,8)}</span>
+              <span className="text-sm text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""}</span>
+              <span className="text-sm text-muted-foreground">{[animal.sexo,idadeAnimal((animal as {nascimento?:string}).nascimento)].filter(Boolean).join(" - ")}</span>
             </div>
-            <p className="break-words text-xs text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="font-mono text-primary"> · {codigoPublicoTutor(tutor)}</span>}{tutor?.telefone&&<span> · {tutor.telefone}</span>}</p>
+            <p className="break-words text-sm text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="font-mono text-primary"> · {codigoPublicoTutor(tutor)}</span>}{tutor?.telefone&&<span> · {tutor.telefone}</span>}{(tutor as {email?:string}|undefined)?.email&&<span> / {(tutor as {email?:string}).email}</span>}</p>
           </div>
         </div>
         <Link to="/animal" search={{animalId:animal.id} as never} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5"><ArrowLeft size={15}/> Ficha do animal</Link>
