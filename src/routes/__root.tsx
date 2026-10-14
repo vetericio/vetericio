@@ -17,6 +17,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
+import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { Rodape } from "@/components/Rodape";
 import { supabase, supabaseConfigurado } from "@/integrations/supabase/client";
 
@@ -94,6 +95,7 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("visual_editor")) return;
     const rotaPublica = ["/", "/login", "/planos", "/contratar"].includes(location.pathname);
     if (autenticado === false && !rotaPublica) navigate({ to: "/login" });
     if (autenticado && location.pathname === "/login") {
@@ -146,7 +148,7 @@ function RootComponent() {
       canvas.style.top = "16px";
       canvas.style.alignSelf = "start";
       canvas.style.minWidth = "0";
-      canvas.innerHTML = `<div style="border:1px solid #d8ddd9;border-radius:18px;background:white;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #e6e8e6"><div><strong style="font-size:15px">Canvas · Página de planos</strong><div style="font-size:12px;color:#6b7280;margin-top:2px">Preview ao vivo dentro do Admin</div></div><div style="display:flex;gap:8px;align-items:center"><a href="/admin-canvas" style="display:inline-flex;align-items:center;justify-content:center;padding:9px 13px;border-radius:10px;background:#006b5b;color:white;font-size:12px;font-weight:800;text-decoration:none">Abrir canvas</a><a href="/planos" target="_blank" style="font-size:12px;font-weight:700;color:#006b5b;text-decoration:none">Abrir página ↗</a></div></div><div style="height:72vh;min-height:620px;background:#f6f4ef"><iframe id="oricse-planos-preview-frame" src="/planos?admin_preview=1" title="Preview da página de planos" style="width:100%;height:100%;border:0;background:#f6f4ef"></iframe></div></div>`;
+      canvas.innerHTML = `<div style="border:1px solid #d8ddd9;border-radius:18px;background:white;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #e6e8e6"><div><strong style="font-size:15px">Editor visual · Todas as páginas</strong><div style="font-size:12px;color:#6b7280;margin-top:2px">Edite qualquer página no computador ou celular</div></div><div style="display:flex;gap:8px;align-items:center"><a href="/admin-canvas" style="display:inline-flex;align-items:center;justify-content:center;padding:9px 13px;border-radius:10px;background:#006b5b;color:white;font-size:12px;font-weight:800;text-decoration:none">Abrir editor visual</a><a href="/planos" target="_blank" style="font-size:12px;font-weight:700;color:#006b5b;text-decoration:none">Abrir página ↗</a></div></div><div style="height:72vh;min-height:620px;background:#f6f4ef"><iframe id="oricse-planos-preview-frame" src="/planos?admin_preview=1" title="Preview da página de planos" style="width:100%;height:100%;border:0;background:#f6f4ef"></iframe></div></div>`;
       section.appendChild(canvas);
 
       const sincronizar = () => {
@@ -295,6 +297,7 @@ function RootComponent() {
   const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
 
   return <QueryClientProvider client={queryClient}>
+    <VisualPageRuntime />
     {mostrarClinico && <Cabecalho />}
     {mostrarClinico && <AlarmeAtivo />}
     {!rotaAdmin && <Splash />}
