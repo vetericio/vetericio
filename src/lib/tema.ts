@@ -85,11 +85,11 @@ export function grupoDoTema(id: TemaId): "sobrio" | "divertido" {
   return TEMAS_SOBRIOS.includes(id) ? "sobrio" : "divertido";
 }
 
-export const COR_PADRAO = "#2f7d76";
+export const COR_PADRAO = "#6F293B";
 
 /** Atalhos de cor para quem não quer abrir o seletor. */
 export const CORES_RAPIDAS = [
-  "#2f7d76",
+  "#6F293B",
   "#1d4ed8",
   "#7c3aed",
   "#db2777",

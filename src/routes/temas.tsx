@@ -44,7 +44,7 @@ export const Route = createFileRoute("/temas")({
 
 function PaginaTemas() {
   const [tema, setTema] = useState<TemaId>("original");
-  const [cor, setCor] = useState("#2f7d76");
+  const [cor, setCor] = useState("#6F293B");
   const [personalizados, setPersonalizados] = useState<TemaPersonalizado[]>([]);
   const [foto, setFoto] = useState("");
   const [nomePersonalizado, setNomePersonalizado] = useState("");

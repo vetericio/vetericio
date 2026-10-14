@@ -23,7 +23,7 @@ function Login() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
   if (tenant.loading && typeof window !== "undefined") {
-    return <main className="min-h-screen bg-[#f5f7f4]" />;
+    return <main className="min-h-screen bg-[#FBF7F2]" />;
   }
   if (tenant.portal) return <ClinicLogin clinic={tenant.portal} />;
   if (tenant.error) return <PortalUnavailable message={tenant.error} />;
@@ -59,14 +59,14 @@ function Login() {
   }
 
   return (
-    <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#f5f7f4] px-4 py-8 sm:px-6">
+    <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#FBF7F2] px-4 py-8 sm:px-6">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -left-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-emerald-200/35 blur-3xl"
+        className="pointer-events-none absolute -left-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-[#C59A5C]/20 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-48 -right-32 h-[32rem] w-[32rem] rounded-full bg-teal-100/70 blur-3xl"
+        className="pointer-events-none absolute -bottom-48 -right-32 h-[32rem] w-[32rem] rounded-full bg-[#6F293B]/10 blur-3xl"
       />
       <div className="relative w-full max-w-[1000px]">
         <Link
@@ -75,8 +75,8 @@ function Login() {
         >
           <ArrowLeft size={16} /> Voltar ao site
         </Link>
-        <div className="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_30px_100px_-45px_rgba(16,76,63,0.35)] md:grid-cols-[0.92fr_1.08fr]">
-          <section className="relative hidden flex-col justify-between overflow-hidden bg-[#0d5147] p-9 text-white md:flex lg:p-12">
+        <div className="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_30px_100px_-45px_rgba(111,41,59,0.28)] md:grid-cols-[0.92fr_1.08fr]">
+          <section className="relative hidden flex-col justify-between overflow-hidden bg-[#4A1826] p-9 text-white md:flex lg:p-12">
             <div
               aria-hidden="true"
               className="absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/10"
@@ -89,19 +89,19 @@ function Login() {
               <img
                 src={logo_url}
                 alt={`${marca}`}
-                className="max-h-14 max-w-[190px] object-contain object-left brightness-0 invert"
+                className="h-36 w-auto max-w-[320px] object-contain object-left brightness-0 invert lg:h-40 lg:max-w-[360px]"
               />
-              <p className="mt-20 text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">
+              <p className="mt-20 text-xs font-bold uppercase tracking-[0.22em] text-[#C59A5C]">
                 Seu espaço de cuidado
               </p>
               <h1 className="mt-4 font-display text-4xl font-semibold leading-tight lg:text-[2.7rem]">
                 A rotina da sua clínica, em boas mãos.
               </h1>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-emerald-50/80">
+              <p className="mt-4 max-w-sm text-sm leading-6 text-[#FBF7F2]/80">
                 Acesse seus atendimentos, pacientes e ferramentas clínicas em um só lugar.
               </p>
             </div>
-            <p className="relative text-xs text-emerald-100/70">
+            <p className="relative text-xs text-[#FBF7F2]/70">
               Acesso seguro e exclusivo para sua equipe.
             </p>
           </section>
@@ -114,7 +114,7 @@ function Login() {
               <img
                 src={logo_url}
                 alt={marca}
-                className="mx-auto max-h-16 max-w-[200px] object-contain"
+                className="mx-auto h-24 w-auto max-w-[280px] object-contain"
               />
             </div>
             <div>
@@ -131,7 +131,7 @@ function Login() {
 
             <label className="mt-8 block text-sm font-semibold text-foreground">
               Usuário da clínica
-              <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#fbfcfa] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
+              <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#FBF7F2] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
                 <AtSign aria-hidden="true" size={18} className="shrink-0 text-muted-foreground" />
                 <input
                   value={usuario}
@@ -146,7 +146,7 @@ function Login() {
 
             <label className="mt-5 block text-sm font-semibold text-foreground">
               Senha
-              <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#fbfcfa] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
+              <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#FBF7F2] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
                 <LockKeyhole
                   aria-hidden="true"
                   size={18}

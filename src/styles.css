@@ -66,38 +66,38 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.973 0.008 85);
-  --foreground: oklch(0.24 0.03 175);
-  --card: oklch(0.995 0.004 85);
-  --card-foreground: oklch(0.24 0.03 175);
-  --popover: oklch(0.995 0.004 85);
-  --popover-foreground: oklch(0.24 0.03 175);
-  --primary: oklch(0.42 0.078 178);
-  --primary-foreground: oklch(0.98 0.008 85);
-  --secondary: oklch(0.94 0.014 150);
-  --secondary-foreground: oklch(0.32 0.04 178);
-  --muted: oklch(0.94 0.014 150);
-  --muted-foreground: oklch(0.52 0.028 178);
-  --accent: oklch(0.86 0.06 90);
-  --accent-foreground: oklch(0.28 0.04 178);
+  --background: oklch(0.9778 0.0079 73.74); /* #FBF7F2 · off-white */
+  --foreground: oklch(0.2922 0.0772 5.87); /* #4A1826 · vinho profundo */
+  --card: oklch(1 0 0); /* #FFFFFF */
+  --card-foreground: oklch(0.2922 0.0772 5.87);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2922 0.0772 5.87);
+  --primary: oklch(0.3881 0.1005 7.14); /* #6F293B · vinho Oricse */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9567 0.01 1.99);
+  --secondary-foreground: oklch(0.3881 0.1005 7.14);
+  --muted: oklch(0.9433 0.021 79.09);
+  --muted-foreground: oklch(0.4462 0.0143 313.09); /* #57525A · texto neutro */
+  --accent: oklch(0.713 0.0949 75.37); /* #C59A5C · champagne */
+  --accent-foreground: oklch(0.2922 0.0772 5.87);
   --destructive: oklch(0.53 0.19 24);
-  --destructive-foreground: oklch(0.98 0.008 85);
-  --border: oklch(0.9 0.016 160);
-  --input: oklch(0.88 0.018 160);
-  --ring: oklch(0.42 0.078 178);
-  --chart-1: oklch(0.42 0.078 178);
-  --chart-2: oklch(0.6 0.118 184.704);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.8927 0.0186 43.21);
+  --input: oklch(0.8328 0.0258 39.35);
+  --ring: oklch(0.713 0.0949 75.37);
+  --chart-1: oklch(0.3881 0.1005 7.14);
+  --chart-2: oklch(0.713 0.0949 75.37);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.96 0.01 85);
-  --sidebar-foreground: oklch(0.24 0.03 175);
-  --sidebar-primary: oklch(0.42 0.078 178);
-  --sidebar-primary-foreground: oklch(0.98 0.008 85);
-  --sidebar-accent: oklch(0.94 0.014 150);
-  --sidebar-accent-foreground: oklch(0.32 0.04 178);
-  --sidebar-border: oklch(0.9 0.016 160);
-  --sidebar-ring: oklch(0.42 0.078 178);
+  --sidebar: oklch(0.9778 0.0079 73.74);
+  --sidebar-foreground: oklch(0.2922 0.0772 5.87);
+  --sidebar-primary: oklch(0.3881 0.1005 7.14);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.9567 0.01 1.99);
+  --sidebar-accent-foreground: oklch(0.3881 0.1005 7.14);
+  --sidebar-border: oklch(0.8927 0.0186 43.21);
+  --sidebar-ring: oklch(0.713 0.0949 75.37);
 }
 
 
@@ -628,30 +628,30 @@
 
 /* Tema Veterício: cores e padrão da logo (laranja + azul-petróleo). */
 .tema-veterico {
-  --background: oklch(0.98 0.008 200);
-  --foreground: oklch(0.3 0.05 220);
-  --card: oklch(1 0.004 200);
-  --card-foreground: oklch(0.3 0.05 220);
-  --popover: oklch(1 0.004 200);
-  --popover-foreground: oklch(0.3 0.05 220);
-  --primary: oklch(0.58 0.09 205);
-  --primary-foreground: oklch(0.99 0.01 200);
-  --secondary: oklch(0.94 0.025 200);
-  --secondary-foreground: oklch(0.34 0.05 215);
-  --muted: oklch(0.95 0.015 200);
-  --muted-foreground: oklch(0.53 0.03 215);
-  --accent: oklch(0.7 0.16 45);
-  --accent-foreground: oklch(0.99 0.01 45);
-  --border: oklch(0.9 0.02 205);
-  --input: oklch(0.88 0.025 205);
-  --ring: oklch(0.65 0.17 45);
-  --chart-1: oklch(0.65 0.17 45);
-  --chart-2: oklch(0.58 0.09 205);
+  --background: oklch(0.9778 0.0079 73.74);
+  --foreground: oklch(0.2922 0.0772 5.87);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2922 0.0772 5.87);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2922 0.0772 5.87);
+  --primary: oklch(0.3881 0.1005 7.14);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9567 0.01 1.99);
+  --secondary-foreground: oklch(0.3881 0.1005 7.14);
+  --muted: oklch(0.9433 0.021 79.09);
+  --muted-foreground: oklch(0.4462 0.0143 313.09);
+  --accent: oklch(0.713 0.0949 75.37);
+  --accent-foreground: oklch(0.2922 0.0772 5.87);
+  --border: oklch(0.8927 0.0186 43.21);
+  --input: oklch(0.8328 0.0258 39.35);
+  --ring: oklch(0.713 0.0949 75.37);
+  --chart-1: oklch(0.3881 0.1005 7.14);
+  --chart-2: oklch(0.713 0.0949 75.37);
   --radius: 1rem;
 }
 
 .tema-veterico body {
-  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cg fill='none' stroke='%2372b4b8' stroke-width='2' opacity='0.35'%3E%3Ccircle cx='34' cy='34' r='13'/%3E%3Ccircle cx='108' cy='96' r='16'/%3E%3Cpath d='M18 108h26M28 96v26'/%3E%3C/g%3E%3Cg fill='%23e07a4a' opacity='0.18'%3E%3Ccircle cx='120' cy='30' r='5'/%3E%3Ccircle cx='132' cy='42' r='4'/%3E%3Ccircle cx='108' cy='40' r='4'/%3E%3Cellipse cx='120' cy='54' rx='9' ry='7'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cg fill='none' stroke='%23C59A5C' stroke-width='2' opacity='0.35'%3E%3Ccircle cx='34' cy='34' r='13'/%3E%3Ccircle cx='108' cy='96' r='16'/%3E%3Cpath d='M18 108h26M28 96v26'/%3E%3C/g%3E%3Cg fill='%236F293B' opacity='0.18'%3E%3Ccircle cx='120' cy='30' r='5'/%3E%3Ccircle cx='132' cy='42' r='4'/%3E%3Ccircle cx='108' cy='40' r='4'/%3E%3Cellipse cx='120' cy='54' rx='9' ry='7'/%3E%3C/g%3E%3C/svg%3E");
   background-attachment: fixed;
   background-repeat: repeat;
 }
