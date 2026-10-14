@@ -71,28 +71,22 @@ function Planos() {
 
                 <div className="mt-6 min-h-32">
                   {testeGratis ? (
-                    <p className="text-3xl font-bold">{plano.preco || mensal || "Grátis por 7 dias"}</p>
+                    <p className="text-2xl font-bold sm:text-3xl">{plano.preco || mensal || "Grátis por 7 dias"}</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mensal</span>
-                        <p className="mt-1 text-2xl font-bold">
-                          {mensal
-                            ? condicaoGratis(mensal)
-                              ? "Grátis"
-                              : <>{mensal}<span className="text-sm font-normal text-muted-foreground"> / mês</span></>
-                            : "—"}
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mensal</span>
+                        <p className="mt-1 whitespace-nowrap text-lg font-bold leading-tight sm:text-xl">
+                          {mensal ? (condicaoGratis(mensal) ? "Grátis" : mensal) : "—"}
                         </p>
+                        {mensal && !condicaoGratis(mensal) && <span className="mt-1 block text-xs text-muted-foreground">por mês</span>}
                       </div>
-                      <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Anual</span>
-                        <p className="mt-1 text-2xl font-bold">
-                          {anual
-                            ? condicaoGratis(anual)
-                              ? "Grátis"
-                              : <>{anual}<span className="text-sm font-normal text-muted-foreground"> / ano</span></>
-                            : "—"}
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Anual</span>
+                        <p className="mt-1 whitespace-nowrap text-lg font-bold leading-tight sm:text-xl">
+                          {anual ? (condicaoGratis(anual) ? "Grátis" : anual) : "—"}
                         </p>
+                        {anual && !condicaoGratis(anual) && <span className="mt-1 block text-xs text-muted-foreground">por ano</span>}
                       </div>
                     </div>
                   )}

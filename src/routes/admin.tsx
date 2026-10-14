@@ -30,6 +30,7 @@ import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
@@ -43,6 +44,7 @@ type Clinica = {
   id: string;
   nome: string;
   slug: string | null;
+  tipo_publico: "vet" | "pet";
   status: "ativa" | "bloqueada" | "inativa" | "cancelada";
   plano: string;
   dominio: string | null;
@@ -55,6 +57,10 @@ type Clinica = {
   acesso_ate: string | null;
   status_financeiro: StatusFinanceiro;
 };
+
+type NovaClinica = Pick<Clinica, "nome" | "slug" | "tipo_publico" | "plano" | "limite_usuarios">;
+
+const CAMPOS_CLINICA = "id,nome,slug,tipo_publico,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro";
 
 type AppUser = { user_id: string; username: string; role: string; email?: string | null; created_at: string };
 type Vinculo = { clinica_id: string; user_id: string; papel: PapelClinica; ativo: boolean };
@@ -152,6 +158,9 @@ function Admin() {
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
+  const [novaClinica, setNovaClinica] = useState<NovaClinica | null>(null);
+  const [criandoClinica, setCriandoClinica] = useState(false);
+  const [erroNovaClinica, setErroNovaClinica] = useState("");
   const [buscaClinica, setBuscaClinica] = useState("");
   const [filtroClinica, setFiltroClinica] = useState<FiltroClinica>("todas");
   const [usuarios, setUsuarios] = useState<AppUser[]>([]);
@@ -194,7 +203,7 @@ function Admin() {
 
   async function carregarTudo() {
     const [c, u, v, p, cfg, arqs] = await Promise.all([
-      (supabase as any).from("clinicas").select("id,nome,slug,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro").order("nome"),
+      (supabase as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
@@ -242,6 +251,110 @@ function Admin() {
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
   useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
+  function abrirNovaClinica() {
+    const plano = planos.find((p) => p.ativo);
+    setErroNovaClinica("");
+    setNovaClinica({ nome: "", slug: "", tipo_publico: "vet", plano: plano?.nome || "", limite_usuarios: plano?.usuarios_inclusos || 1 });
+  }
+
+  async function cadastrarClinica(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!novaClinica || criandoClinica) return;
+    setErroNovaClinica("");
+
+    const nome = novaClinica.nome.trim();
+    const slug = limparSlug(novaClinica.slug || "");
+    const limiteUsuarios = Number(novaClinica.limite_usuarios);
+    if (!nome) return setErroNovaClinica("Informe o nome da clínica.");
+    if (!slug || !/[a-z0-9]/.test(slug)) return setErroNovaClinica("Informe um nome válido para o link público.");
+    if (clinicas.some((c) => c.slug?.toLowerCase() === slug)) return setErroNovaClinica("Este nome de link já está em uso. Escolha outro para esta clínica.");
+    if (!planos.some((p) => p.ativo && p.nome === novaClinica.plano)) return setErroNovaClinica("Selecione um plano ativo para a clínica.");
+    if (!Number.isSafeInteger(limiteUsuarios) || limiteUsuarios < 1) return setErroNovaClinica("O limite de usuários deve ser um número inteiro maior que zero.");
+
+    setCriandoClinica(true);
+    try {
+      const { data, error } = await (supabase as any).from("clinicas").insert({
+        nome,
+        slug,
+        tipo_publico: novaClinica.tipo_publico,
+        plano: novaClinica.plano,
+        limite_usuarios: limiteUsuarios,
+        status: "ativa",
+      }).select(CAMPOS_CLINICA).single();
+      if (error) throw error;
+      if (!data?.id) throw new Error("Não foi possível confirmar o cadastro da clínica.");
+
+      const criada = data as Clinica;
+      setClinicas((lista) => [...lista.filter((c) => c.id !== criada.id), criada].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+      setBuscaClinica("");
+      setFiltroClinica("todas");
+      setDrive(null);
+      setPasta("");
+      setSelecionada(criada);
+      setAba("clinicas");
+      setAbaClinica("cadastro");
+      setNovaClinica(null);
+      toast.success("Clínica cadastrada. Você já pode adicionar os usuários.");
+    } catch (e) {
+      const erro = e as { code?: string; message?: string };
+      setErroNovaClinica(erro.code === "23505"
+        ? "Este nome de link já está em uso. Escolha outro para esta clínica."
+        : erro.code === "42501"
+          ? "Sua conta não tem permissão para cadastrar clínicas. Use o administrador da plataforma."
+          : (erro.message || "Não foi possível cadastrar a clínica. Tente novamente."));
+    } finally {
+      setCriandoClinica(false);
+    }
+  }
+
+  const renderNovaClinica = () => (
+    <Dialog open={Boolean(novaClinica)} onOpenChange={(aberto) => { if (!aberto && !criandoClinica) setNovaClinica(null); }}>
+      <DialogContent className="w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl" onEscapeKeyDown={(e) => { if (criandoClinica) e.preventDefault(); }} onPointerDownOutside={(e) => { if (criandoClinica) e.preventDefault(); }}>
+        <DialogHeader>
+          <DialogTitle>Adicionar clínica</DialogTitle>
+          <DialogDescription>Cadastre uma clínica, veterinário ou pet shop com sua própria conta e usuários.</DialogDescription>
+        </DialogHeader>
+        {novaClinica && <form onSubmit={cadastrarClinica} className="mt-2 space-y-5">
+          <fieldset disabled={criandoClinica} className="grid gap-4 disabled:opacity-60">
+            <label className="text-sm font-semibold">Nome da clínica
+              <input autoFocus required maxLength={180} value={novaClinica.nome} onChange={(e) => setNovaClinica({ ...novaClinica, nome: e.target.value })} autoComplete="organization" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/>
+            </label>
+            <label className="text-sm font-semibold">Tipo de parceiro
+              <select value={novaClinica.tipo_publico} onChange={(e) => setNovaClinica({ ...novaClinica, tipo_publico: e.target.value as NovaClinica["tipo_publico"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                <option value="vet">Veterinário / clínica veterinária</option>
+                <option value="pet">Pet shop</option>
+              </select>
+            </label>
+            <label className="text-sm font-semibold">Link público
+              <div className="mt-1 flex min-h-11 flex-wrap items-center gap-x-1 rounded-xl border px-3 font-normal">
+                <span className="text-muted-foreground">oricse.com/{novaClinica.tipo_publico}/</span>
+                <input required maxLength={100} value={novaClinica.slug || ""} onChange={(e) => setNovaClinica({ ...novaClinica, slug: limparSlug(e.target.value) })} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="nomedaclinica" className="min-h-10 min-w-0 flex-1 bg-transparent outline-none"/>
+              </div>
+              <p className="mt-1 text-xs font-normal text-muted-foreground">Escolha um nome único, sem espaços. O link identifica esta clínica.</p>
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-semibold">Plano
+                <select required value={novaClinica.plano} onChange={(e) => { const plano = planos.find((p) => p.nome === e.target.value); setNovaClinica({ ...novaClinica, plano: e.target.value, limite_usuarios: plano?.usuarios_inclusos || 1 }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                  <option value="" disabled>Selecione um plano</option>
+                  {planos.filter((p) => p.ativo).map((p) => <option key={p.codigo} value={p.nome}>{p.nome}</option>)}
+                </select>
+              </label>
+              <label className="text-sm font-semibold">Limite de usuários
+                <input required type="number" min={1} step={1} value={novaClinica.limite_usuarios || ""} onChange={(e) => setNovaClinica({ ...novaClinica, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/>
+              </label>
+            </div>
+          </fieldset>
+          {!planos.some((p) => p.ativo) && <p className="text-sm text-muted-foreground">Ative um plano na aba Planos para cadastrar novas clínicas.</p>}
+          {erroNovaClinica && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{erroNovaClinica}</p>}
+          <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+            <button type="button" disabled={criandoClinica} onClick={() => setNovaClinica(null)} className="min-h-11 rounded-xl border px-4 py-2.5 font-semibold disabled:opacity-60">Cancelar</button>
+            <button type="submit" disabled={criandoClinica || !planos.some((p) => p.ativo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-60"><Plus size={17}/>{criandoClinica ? "Cadastrando..." : "Cadastrar clínica"}</button>
+          </div>
+        </form>}
+      </DialogContent>
+    </Dialog>
+  );
+
   async function salvarClinica() {
     if (!selecionada) return;
     setOcupado(true);
@@ -249,6 +362,7 @@ function Admin() {
       const { error } = await (supabase as any).from("clinicas").update({
         nome: selecionada.nome.trim(),
         slug: limparSlug(selecionada.slug || ""),
+        tipo_publico: selecionada.tipo_publico || "vet",
         status: selecionada.status,
         plano: selecionada.plano,
         dominio: selecionada.dominio?.trim() || null,
@@ -264,7 +378,7 @@ function Admin() {
       if (error) throw error;
       await carregarTudo();
       toast.success("Clínica atualizada.");
-    } catch (e) { toast.error((e as Error).message); }
+    } catch (e) { const erro = e as { code?: string; message?: string }; toast.error(erro.code === "23505" ? "Este nome já está em uso por outra clínica ou parceiro." : (erro.message || "Não foi possível salvar a clínica.")); }
     finally { setOcupado(false); }
   }
 
@@ -471,7 +585,8 @@ function Admin() {
 
   const renderCadastroClinica = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Cadastro</h2><p className="text-sm text-muted-foreground">Dados gerais e configuração comercial da clínica.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2">
     <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span>@</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none"/></div></label>
+    <label className="text-sm font-semibold">Tipo de parceiro<select value={selecionada.tipo_publico || "vet"} onChange={(e) => setSelecionada({ ...selecionada, tipo_publico: e.target.value as Clinica["tipo_publico"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="vet">Veterinário / clínica veterinária</option><option value="pet">Pet shop</option></select></label>
+    <label className="text-sm font-semibold md:col-span-2">Link público<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="whitespace-nowrap text-muted-foreground">oricse.com/{selecionada.tipo_publico || "vet"}/</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none" placeholder="nomedaclinica"/></div><p className="mt-1 text-xs font-normal text-muted-foreground">Nome único, sem espaços. Ex.: /{selecionada.tipo_publico || "vet"}/vetericio</p></label>
     <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => x.nome === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo}>{p.nome}</option>)}</select></label>
     <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
@@ -498,7 +613,7 @@ function Admin() {
       ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database],
     ].map(([id, nome, Icone]: any) => <button key={id} onClick={() => setAbaClinica(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}</div>;
 
-    return <div className="space-y-5"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
+    return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Plus size={18}/> Adicionar clínica</button></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
   };
 
   const renderPlanos = () => <div className="space-y-5"><div className="rounded-2xl border bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Cupons</h2><p className="text-sm text-muted-foreground">Cadastre o nome interno, o código e exatamente quais planos aceitam cada desconto.</p></div><button type="button" onClick={()=>setCupons((x)=>[...x,{nome:"",codigo:"",tipo:"percentual",valor:0,planos:[],inicio:"",validade:"",limitePorCpf:"",recorrencia:"periodo",ativo:true}])} className="rounded-xl border px-3 py-2 font-semibold">+ Novo cupom</button></div><div className="mt-4 space-y-3">{cupons.map((c:any,i:number)=><div key={i} className="rounded-xl border p-4"><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Nome do cupom<input value={c.nome||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,nome:e.target.value}:v))} placeholder="Nome interno para identificar a campanha" className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="text-sm font-semibold">Código do cupom<input value={c.codigo} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,codigo:e.target.value.toUpperCase()}:v))} placeholder="Código que a clínica digita" className="mt-1 w-full rounded-xl border px-3 py-2 uppercase"/></label></div><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Tipo<select value={c.tipo} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,tipo:e.target.value}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="percentual">Percentual (%)</option><option value="fixo">Valor fixo (R$)</option></select></label><label className="text-sm font-semibold">Valor<input type="number" min="0" value={c.valor} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,valor:Number(e.target.value)}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="text-sm font-semibold">Usos por CPF/CNPJ<input type="number" min="1" value={c.limitePorCpf||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,limitePorCpf:e.target.value}:v))} placeholder="Sem limite" className="mt-1 w-full rounded-xl border px-3 py-2"/></label></div><fieldset className="mt-4"><legend className="text-sm font-semibold">Planos que podem usar este cupom</legend><div className="mt-2 flex flex-wrap gap-2">{planos.filter(p=>p.ativo).map(p=><label key={p.codigo} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><input type="checkbox" checked={(c.planos||[]).includes(p.nome)} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,planos:e.target.checked?[...(v.planos||[]),p.nome]:(v.planos||[]).filter((nome:string)=>nome!==p.nome)}:v))}/>{p.nome}</label>)}</div></fieldset><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Início<input type="date" value={c.inicio||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,inicio:e.target.value}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="text-sm font-semibold">Validade<input type="date" value={c.validade||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,validade:e.target.value}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="flex items-end gap-2 text-sm font-semibold"><input type="checkbox" checked={c.ativo} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,ativo:e.target.checked}:v))}/> Ativo</label></div></div>)}</div></div><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">O conteúdo salvo aqui aparece na página pública de planos.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={adicionarPlano} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><Plus size={17}/> Adicionar plano</button><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.id || p.codigo}><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label><button type="button" onClick={() => void removerPlano(p, i)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><Trash2 size={16}/> Remover</button></div></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold md:col-span-2">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Mensal<input value={p.preco_mensal || p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value, preco_mensal: e.target.value })} placeholder="Ex.: R$ 49,90 ou Gr?tis" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Anual<input value={p.preco_anual} onChange={(e) => alterarPlano(i, { preco_anual: e.target.value })} placeholder="Ex.: R$ 499,00 ou Gr?tis" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div></Card>)}</div>;
@@ -507,5 +622,6 @@ function Admin() {
 
   const renderSistema = () => <Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div></Card>;
 
-  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div></main>;
+  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div>{renderNovaClinica()}</main>;
 }
+

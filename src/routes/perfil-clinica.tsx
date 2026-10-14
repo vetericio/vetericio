@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Building2, Clock3, Save, Stethoscope } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Building2, Clock3, PackagePlus, Save, Stethoscope } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -153,6 +153,19 @@ function PerfilClinica() {
           </div>
         </div>
       </header>
+
+      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <PackagePlus className="mt-0.5 text-primary" size={21} />
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Serviços e produtos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Cadastre os serviços da clínica e os produtos que terão controle de estoque.</p>
+            </div>
+          </div>
+          <Link to="/catalogo" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"><PackagePlus size={17} /> Cadastrar serviço / produto</Link>
+        </div>
+      </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex items-start gap-3">

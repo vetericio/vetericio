@@ -11,13 +11,50 @@ const inputSchema = z.object({
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
-async function accessTokenGoogle(): Promise<string> {
+function base64Url(input: string | Buffer) {
+  const buffer = typeof input === "string" ? Buffer.from(input, "utf8") : input;
+  return buffer.toString("base64url");
+}
+
+async function accessTokenServiceAccount(): Promise<string | null> {
+  const email = process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL"];
+  const privateKeyRaw = process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY"];
+  if (!email || !privateKeyRaw) return null;
+
+  const privateKey = privateKeyRaw.replace(/\\n/g, "\n");
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const payload = base64Url(JSON.stringify({
+    iss: email,
+    scope: "https://www.googleapis.com/auth/drive",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  }));
+  const unsigned = `${header}.${payload}`;
+  const { createSign } = await import("node:crypto");
+  const signer = createSign("RSA-SHA256");
+  signer.update(unsigned);
+  signer.end();
+  const assertion = `${unsigned}.${base64Url(signer.sign(privateKey))}`;
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+  });
+  const json = (await response.json()) as { access_token?: string; error?: string; error_description?: string };
+  if (!response.ok || !json.access_token) {
+    throw new Error(json.error_description || json.error || "Falha ao autenticar a conta de serviço do Google Drive.");
+  }
+  return json.access_token;
+}
+
+async function accessTokenOAuth(): Promise<string | null> {
   const clientId = process.env["GOOGLE_DRIVE_CLIENT_ID"];
   const clientSecret = process.env["GOOGLE_DRIVE_CLIENT_SECRET"];
   const refreshToken = process.env["GOOGLE_DRIVE_REFRESH_TOKEN"];
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Google Drive da Oricse ainda não está configurado.");
-  }
+  if (!clientId || !clientSecret || !refreshToken) return null;
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -36,13 +73,29 @@ async function accessTokenGoogle(): Promise<string> {
   return json.access_token;
 }
 
+async function accessTokenGoogle(): Promise<string> {
+  const serviceAccount = await accessTokenServiceAccount();
+  if (serviceAccount) return serviceAccount;
+
+  const oauthToken = await accessTokenOAuth();
+  if (oauthToken) return oauthToken;
+
+  throw new Error("Google Drive da Oricse ainda não está configurado.");
+}
+
 async function buscarOuCriarPasta(token: string, parentId: string, nome: string): Promise<string> {
   const escaped = nome.replace(/'/g, "\\'");
   const q = encodeURIComponent(`'${parentId}' in parents and name='${escaped}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
   const list = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=10`, {
     headers: { authorization: `Bearer ${token}` },
   });
-  if (!list.ok) throw new Error(`Google Drive: ${list.status} ${await list.text()}`);
+  if (!list.ok) {
+    const details = await list.text();
+    if (list.status === 403 && /ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient authentication scopes/i.test(details)) {
+      throw new Error("A conexão central do Google Drive precisa ser autorizada novamente com permissão de arquivos. A imagem não foi enviada.");
+    }
+    throw new Error(`Google Drive: ${list.status} ${details}`);
+  }
   const listJson = (await list.json()) as { files?: Array<{ id: string; name: string }> };
   const existente = listJson.files?.find((arquivo) => arquivo.name === nome);
   if (existente?.id) return existente.id;
