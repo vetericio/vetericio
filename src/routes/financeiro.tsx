@@ -205,6 +205,7 @@ function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(lerLancamentos);
   const [tutoresCadastrados, setTutoresCadastrados] = useState<TutorFinanceiro[]>([]);
+  const [podeAlterarComanda, setPodeAlterarComanda] = useState(false);
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
   const [buscaTutor, setBuscaTutor] = useState("");
   const [tutorSelecionadoId, setTutorSelecionadoId] = useState<string | null>(null);
@@ -231,11 +232,13 @@ function Financeiro() {
         if (!userId) return;
         const { data: vinculo, error: erroVinculo } = await (supabase as any)
           .from("clinica_usuarios")
-          .select("clinica_id")
+          .select("clinica_id,papel")
           .eq("user_id", userId)
           .eq("ativo", true)
           .maybeSingle();
         if (erroVinculo) throw erroVinculo;
+        const { data: perfilSistema } = await (supabase as any).from("app_users").select("role").eq("user_id", userId).maybeSingle();
+        if (ativo) setPodeAlterarComanda(perfilSistema?.role === "admin" || vinculo?.papel === "rt");
         const clinicaId = vinculo?.clinica_id || "";
         if (!clinicaId) {
           if (ativo) setTutoresCadastrados([]);
@@ -546,6 +549,7 @@ function Financeiro() {
           pendente={pendenteDia}
           onRemover={remover}
           onEditar={abrirEdicao}
+          podeAlterarComanda={podeAlterarComanda}
         />
       )}
       {aba === "mes" && (
@@ -1104,6 +1108,7 @@ function ModuloCaixa({
   pendente,
   onRemover,
   onEditar,
+  podeAlterarComanda,
 }: {
   titulo: string;
   lista: Lancamento[];
@@ -1112,6 +1117,7 @@ function ModuloCaixa({
   pendente: number;
   onRemover: (id: string) => void;
   onEditar: (lancamento: Lancamento) => void;
+  podeAlterarComanda: boolean;
 }) {
   return (
     <section>
@@ -1147,6 +1153,15 @@ function ModuloCaixa({
                   {l.tipo === "Saída" ? "− " : "+ "}
                   {dinheiro(l.valor)}
                 </strong>
+                {(l.comandaId || l.categoria === "Pagamento de comanda") && !podeAlterarComanda ? (
+                  <a
+                    href={l.comandaId ? `/comandas?comandaId=${encodeURIComponent(l.comandaId)}` : "/comandas"}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                  >
+                    Abrir comanda
+                  </a>
+                ) : (
+                  <>
                 <button
                   type="button"
                   onClick={() => onEditar(l)}
@@ -1163,6 +1178,8 @@ function ModuloCaixa({
                 >
                   <Trash2 size={16} />
                 </button>
+                  </>
+                )}
               </div>
             </div>
           ))
