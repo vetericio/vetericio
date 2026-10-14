@@ -322,15 +322,30 @@ function RegistroClinico(){
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"><PawPrint size={24}/></div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">Registro clínico</p>
-            <div className="flex flex-wrap items-baseline gap-x-3">
-              <h1 className="break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{animal.nome}</h1>
-              <span className="font-mono text-sm text-primary">#{String((animal as {codigo?:string}).codigo||animal.id).slice(0,8)}</span>
-              <span className="text-sm text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""}</span>
-              <span className="text-sm text-muted-foreground">{[animal.sexo,idadeAnimal((animal as {nascimento?:string}).nascimento)].filter(Boolean).join(" - ")}</span>
+          <div className="flex min-w-0 flex-1 flex-wrap items-stretch gap-y-3">
+            <div className="min-w-0 pr-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Registro clínico</p>
+              <div className="flex items-baseline gap-2">
+                <h1 className="break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{animal.nome}</h1>
+                <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-primary">#{String((animal as {codigo?:string}).codigo||animal.id).slice(0,8)}</span>
+              </div>
             </div>
-            <p className="break-words text-sm text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="font-mono text-primary"> · {codigoPublicoTutor(tutor)}</span>}{tutor?.telefone&&<span> · {tutor.telefone}</span>}{(tutor as {email?:string}|undefined)?.email&&<span> / {(tutor as {email?:string}).email}</span>}</p>
+            <div className="min-w-0 self-center border-l px-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Espécie · Raça</p>
+              <p className="mt-0.5 text-sm font-semibold">{animal.especie||"Não informada"}{animal.raca?` · ${animal.raca}`:""}</p>
+            </div>
+            <div className="min-w-0 self-center border-l px-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Sexo · Idade</p>
+              <p className="mt-0.5 text-sm font-semibold">{[animal.sexo,idadeAnimal((animal as {nascimento?:string}).nascimento)].filter(Boolean).join(" · ")||"—"}</p>
+            </div>
+            <div className="min-w-0 self-center border-l px-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Tutor</p>
+              <p className="mt-0.5 text-sm font-semibold">{tutor?.nome||"Não informado"}{tutor && codigoPublicoTutor(tutor) && <span className="ml-2 font-mono text-[11px] font-semibold text-primary">{codigoPublicoTutor(tutor)}</span>}</p>
+            </div>
+            <div className="min-w-0 self-center border-l px-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Contato</p>
+              <p className="mt-0.5 break-all text-sm font-semibold">{[tutor?.telefone,(tutor as {email?:string}|undefined)?.email].filter(Boolean).join("  ·  ")||"—"}</p>
+            </div>
           </div>
         </div>
         <Link to="/animal" search={{animalId:animal.id} as never} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5"><ArrowLeft size={15}/> Ficha do animal</Link>
