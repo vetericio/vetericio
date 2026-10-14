@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Save, Scissors, Stethoscope } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
@@ -18,11 +20,15 @@ type ConsultaForm = {
   peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; conduta: string; retorno: string;
 };
 type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anestesia: string; achados: string; materiais: string; intercorrencias: string; posOperatorio: string; observacoes: string };
+type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null };
+type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean };
+type LancamentoFinanceiro = { id: string; tipo: "Entrada"; descricao: string; categoria: string; valor: number; data: string; formaPagamento: string; tutor?: string; tutorId?: string; animalId?: string; status: "Pendente"; observacao?: string; criadoEm: string; itens?: ItemComanda[] };
 
 const ANIMAIS_KEY = "oricse-animais-v1";
 const TUTORES_KEY = "oricse-tutores-v1";
 const PRONTUARIO_KEY = "oricse-prontuario-animal-v1";
 const PESOS_KEY = "oricse-pesos-animal-v1";
+const LANCAMENTOS_KEY = "oricse-financeiro-lancamentos-v1";
 
 const NORMAIS_ESPECIE = {
   cão: { temperatura: "37,5–39,2 °C", fc: "60–160 bpm", fr: "10–30 mpm", pas: "100–160 mmHg", glicemia: "70–120 mg/dL" },
@@ -61,6 +67,7 @@ const ETAPAS = [
   { n: 4, titulo: "Exame clínico", subtitulo: "Parâmetros e avaliação" },
   { n: 5, titulo: "Conduta", subtitulo: "Hipóteses e orientações" },
   { n: 6, titulo: "Receita e exames", subtitulo: "Prescrição e solicitações" },
+  { n: 7, titulo: "Lançamento da comanda", subtitulo: "Itens e valores a cobrar" },
 ] as const;
 
 const vazioOlho = (): OlhoValores => ({ od: "", oe: "" });
@@ -78,6 +85,9 @@ function pesoValido(valor: string) {
   const numero = Number(String(valor).trim().replace(",", "."));
   return Number.isFinite(numero) && numero > 0 ? numero.toFixed(3) : "";
 }
+function numeroMoeda(valor: string) { const normalizado=valor.trim().replace(/\./g,"").replace(",", "."); const numero=Number(normalizado); return normalizado!==""&&Number.isFinite(numero)&&numero>=0?numero:null; }
+function moeda(valor: number) { return valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+function valorCampo(valor: number | string | null | undefined) { const numero=Number(valor); return Number.isFinite(numero)?numero.toFixed(2).replace(".",","):""; }
 
 function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", conduta:"", retorno:"" }; }
 
@@ -95,10 +105,17 @@ function RegistroClinico(){
   const [procedimento,setProcedimento]=useState<ProcedimentoForm>({tipo:"",indicacao:"",equipe:"",anestesia:"",achados:"",materiais:"",intercorrencias:"",posOperatorio:"",observacoes:""});
   const [aberto,setAberto]=useState<string|null>(null);
   const [data,setData]=useState(hoje());
+  const [catalogo,setCatalogo]=useState<ItemCatalogo[]>([]);
+  const [catalogoCarregando,setCatalogoCarregando]=useState(true);
+  const [catalogoAviso,setCatalogoAviso]=useState("");
+  const [itemCatalogoId,setItemCatalogoId]=useState("");
+  const [itensComanda,setItensComanda]=useState<ItemComanda[]>([]);
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
 
   useEffect(()=>{ if(!animalId)return; try{const salvo=localStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}}catch{} },[animalId]);
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>localStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
+  useEffect(()=>{ let ativo=true; async function carregarCatalogo(){ try{ const {data:auth}=await supabase.auth.getUser(); const userId=auth.user?.id; if(!userId)throw new Error("Sessão não encontrada."); const [{data:usuario},{data:vinculo}]=await Promise.all([(supabase as any).from("app_users").select("role").eq("user_id",userId).maybeSingle(),(supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id",userId).eq("ativo",true).limit(1).maybeSingle()]); let clinicaId=vinculo?.clinica_id||""; if(!clinicaId&&usuario?.role==="admin"){ const {data:clinicas,error}=await (supabase as any).from("clinicas").select("id").eq("status","ativa").order("nome").limit(1); if(error)throw error; clinicaId=clinicas?.[0]?.id||""; } if(!clinicaId)throw new Error("Nenhuma clínica vinculada ao atendimento."); const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaId).eq("ativo",true).order("nome"); if(error)throw error; if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");} }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}finally{if(ativo)setCatalogoCarregando(false);} } void carregarCatalogo(); return()=>{ativo=false}; },[]);
+  useEffect(()=>{ if(etapa!==7||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:Boolean(itemCatalogo)||Boolean(existente?.precoConfigurado) } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
 
   if(!animal)return <main className="mx-auto max-w-4xl px-4 py-8"><Link to="/animais" className="text-sm text-muted-foreground">← Voltar</Link><div className="mt-5 rounded-2xl border p-6">Animal não encontrado.</div></main>;
@@ -108,6 +125,11 @@ function RegistroClinico(){
   const setOftalmoPar=(chave:keyof Omit<OftalmoForm,"equipamentoTonometria">,olho:keyof OlhoValores,valor:string)=>setConsulta(f=>({...f,oftalmo:{...f.oftalmo,[chave]:{...f.oftalmo[chave],[olho]:valor}}}));
   const examesSelecionados=consulta.examesSolicitados.split(" · ").map(x=>x.trim()).filter(Boolean);
   const toggleExame=(nome:string)=>setConsulta(f=>{const atuais=f.examesSolicitados.split(" · ").map(x=>x.trim()).filter(Boolean); const novos=atuais.includes(nome)?atuais.filter(x=>x!==nome):[...atuais,nome]; return {...f,examesSolicitados:novos.join(" · ")}});
+  const totalComanda=itensComanda.reduce((total,item)=>total+(numeroMoeda(item.valorUnitario)||0)*item.quantidade,0);
+  const itensSemPreco=itensComanda.filter(item=>numeroMoeda(item.valorUnitario)===null);
+  function adicionarItemCatalogo(){ const item=catalogo.find(cadastrado=>cadastrado.id===itemCatalogoId); if(!item)return; setItensComanda(atuais=>{ const existente=atuais.find(linha=>linha.catalogoId===item.id); return existente?atuais.map(linha=>linha.id===existente.id?{...linha,quantidade:linha.quantidade+1}:linha):[...atuais,{id:crypto.randomUUID(),catalogoId:item.id,nome:item.nome,tipo:item.tipo,quantidade:1,valorUnitario:valorCampo(item.preco),precoConfigurado:true}]; }); setItemCatalogoId(""); }
+  function atualizarItemComanda(id:string,campo:"quantidade"|"valorUnitario",valor:string){ setItensComanda(atuais=>atuais.map(item=>item.id===id?{...item,[campo]:campo==="quantidade"?Math.max(1,Math.floor(Number(valor)||1)):valor}:item)); }
+  function removerItemComanda(id:string){ setItensComanda(atuais=>atuais.filter(item=>item.id!==id)); }
 
   function etapaPreenchida(n:number){
     if(n===1)return Boolean(consulta.acessoRua||consulta.contatoAnimais||consulta.ambiente||consulta.moradia||consulta.ventilacao||consulta.apetite||consulta.exposicoes.length||consulta.vacinacao||consulta.vermifugacao||consulta.dieta||consulta.doencasPrevias||consulta.medicamentosRecentes||consulta.alergias);
@@ -115,11 +137,14 @@ function RegistroClinico(){
     if(n===3)return Object.values(consulta.sistemas).some(x=>x.sinais.length||x.observacoes.trim())||Object.values(consulta.oftalmo).some(v=>typeof v==="string"?v.trim():Object.values(v).some(x=>x.trim()));
     if(n===4)return Boolean(consulta.peso||consulta.temperatura||consulta.fc||consulta.fr||consulta.pas||consulta.glicemia||consulta.mucosas||consulta.hidratacao||consulta.dor||consulta.exameGeral);
     if(n===5)return Boolean(consulta.suspeitas||consulta.conduta||consulta.retorno);
-    return Boolean(consulta.examesSolicitados||consulta.medicacoes);
+    if(n===6)return Boolean(consulta.examesSolicitados||consulta.medicacoes);
+    return itensComanda.length>0&&itensSemPreco.length===0;
   }
 
   function salvarConsulta(){
     if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal.");
+    if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda.");
+    if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda.");
     const pesoConsulta = consulta.peso.trim() ? pesoValido(consulta.peso) : "";
     if (consulta.peso.trim() && !pesoConsulta) return void toast.error("Informe um peso válido em kg.");
     const consultaSalva = { ...consulta, peso: pesoConsulta || animal.peso || "" };
@@ -151,8 +176,12 @@ function RegistroClinico(){
     const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
     const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Consulta",dados:consultaSalva};
     localStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
+    const lancamentos=ler<LancamentoFinanceiro>(LANCAMENTOS_KEY);
+    const itensFinanceiros=itensComanda.map(item=>({...item,valorUnitario:valorCampo(numeroMoeda(item.valorUnitario)||0)}));
+    const lancamento:LancamentoFinanceiro={id:crypto.randomUUID(),tipo:"Entrada",descricao:`Comanda · Consulta — ${animal.nome}`,categoria:"Consulta",valor:totalComanda,data,formaPagamento:"A definir",tutor:tutor?.nome,tutorId:tutor?.id,animalId:animal.id,status:"Pendente",observacao:itensFinanceiros.map(item=>`${item.quantidade}x ${item.nome} — ${moeda((numeroMoeda(item.valorUnitario)||0)*item.quantidade)}`).join("\n"),criadoEm:new Date().toISOString(),itens:itensFinanceiros};
+    localStorage.setItem(LANCAMENTOS_KEY,JSON.stringify([lancamento,...lancamentos]));
     localStorage.removeItem(chaveRascunho);
-    toast.success("Consulta salva no prontuário do animal.");
+    toast.success("Consulta salva e comanda lançada no financeiro.");
     navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
@@ -196,7 +225,7 @@ function RegistroClinico(){
           <div className="flex gap-2 overflow-x-auto p-2 lg:block lg:space-y-1 lg:p-3">{ETAPAS.map(item=><button key={item.n} onClick={()=>setEtapa(item.n)} className={`flex min-w-[150px] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition lg:min-w-0 lg:w-full ${etapa===item.n?"bg-primary text-primary-foreground shadow-sm":"hover:bg-white"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${etapa===item.n?"bg-white/20":"bg-white text-primary"}`}>{etapaPreenchida(item.n)?<Check size={14}/>:item.n}</span><span className="min-w-0"><span className="block text-sm font-black">{item.titulo}</span><span className={`hidden text-[11px] lg:block ${etapa===item.n?"text-white/75":"text-muted-foreground"}`}>{item.subtitulo}</span></span></button>)}</div>
         </aside>
         <div className="min-w-0">
-          <div className="border-b px-4 py-3"><p className="text-xs font-black uppercase tracking-wider text-primary">Etapa {etapa} de 6</p><h2 className="mt-0.5 text-xl font-black">{ETAPAS[etapa-1].titulo}</h2><p className="text-sm text-muted-foreground">{ETAPAS[etapa-1].subtitulo}</p></div>
+          <div className="border-b px-4 py-3"><p className="text-xs font-black uppercase tracking-wider text-primary">Etapa {etapa} de 7</p><h2 className="mt-0.5 text-xl font-black">{ETAPAS[etapa-1].titulo}</h2><p className="text-sm text-muted-foreground">{ETAPAS[etapa-1].subtitulo}</p></div>
           <div className="p-4 sm:p-5">
             {etapa===1&&<EtapaTutor consulta={consulta} setConsulta={setConsulta} toggleExposicao={toggleExposicao}/>} 
             {etapa===2&&<Textarea grande label="Queixa principal *" value={consulta.queixa} onChange={v=>setConsulta({...consulta,queixa:v})} placeholder="Ex.: Tutor relata vômitos desde ontem, redução do apetite e apatia..."/>}
@@ -226,8 +255,13 @@ function RegistroClinico(){
               <section className="rounded-2xl border bg-violet-50/35 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><FileText size={22}/></div><div><h3 className="text-lg font-black">Receita</h3><p className="text-sm text-muted-foreground">Registre a prescrição desta consulta ou abra o receituário completo.</p></div></div><div className="mt-4"><Textarea label="Medicações / tratamento" value={consulta.medicacoes} onChange={v=>setConsulta({...consulta,medicacoes:v})} placeholder="Ex.: Dipirona 500 mg — administrar..."/></div><Link to="/receituario" search={{animalId:animal.id,tutorId:tutor?.id||""} as never} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-700 px-4 text-sm font-black text-white">Abrir receituário</Link></section>
               <section className="rounded-2xl border bg-sky-50/40 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><FlaskConical size={22}/></div><div><h3 className="text-lg font-black">Pedido de exame</h3><p className="text-sm text-muted-foreground">Selecione um ou mais exames. Eles ficam vinculados a esta consulta.</p></div></div><div className="mt-4 flex flex-wrap gap-2">{EXAMES_OPCOES.map(nome=><Chip key={nome} ativo={examesSelecionados.includes(nome)} onClick={()=>toggleExame(nome)}>{nome}</Chip>)}</div><div className="mt-4"><Textarea label="Outros exames / observações" value={consulta.examesSolicitados} onChange={v=>setConsulta({...consulta,examesSolicitados:v})} placeholder="Você também pode complementar manualmente o pedido..."/></div></section>
             </div>}
+            {etapa===7&&<div className="space-y-5">
+              <section className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShoppingCart size={22}/></div><div><h3 className="text-lg font-black">Comanda desta consulta</h3><p className="text-sm text-muted-foreground">A consulta e os exames solicitados entram automaticamente. Confira os valores e acrescente o que mais será cobrado.</p></div></div><div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select value={itemCatalogoId} onChange={e=>setItemCatalogoId(e.target.value)} disabled={catalogoCarregando} className="min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-primary"><option value="">{catalogoCarregando?"Carregando serviços e produtos...":"Adicionar serviço ou produto"}</option>{catalogo.map(item=><option key={item.id} value={item.id}>{item.nome} · {moeda(Number(item.preco)||0)}</option>)}</select><button type="button" onClick={adicionarItemCatalogo} disabled={!itemCatalogoId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar</button></div>{catalogoAviso&&<p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{catalogoAviso} Você ainda pode preencher os valores manualmente.</p>}</section>
+              <section className="overflow-hidden rounded-2xl border"><div className="hidden grid-cols-[minmax(0,1fr)_90px_150px_130px_44px] gap-3 border-b bg-muted/40 px-4 py-3 text-xs font-black uppercase tracking-wide text-muted-foreground sm:grid"><span>Item</span><span>Qtd.</span><span>Valor unitário</span><span>Subtotal</span><span/></div>{itensComanda.length?itensComanda.map(item=>{const unitario=numeroMoeda(item.valorUnitario)||0;return <div key={item.id} className="grid gap-3 border-b p-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_90px_150px_130px_44px] sm:items-center"><div className="min-w-0"><div className="font-bold">{item.nome}</div><div className="mt-1 flex flex-wrap gap-1"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{item.tipo}</span>{item.automatico&&<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">automático</span>}{!item.precoConfigurado&&<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">preço não cadastrado</span>}</div></div><label className="text-xs font-bold text-muted-foreground sm:text-transparent">Quantidade<input aria-label={`Quantidade de ${item.nome}`} type="number" min="1" step="1" value={item.quantidade} onChange={e=>atualizarItemComanda(item.id,"quantidade",e.target.value)} className="mt-1 min-h-10 w-full rounded-xl border bg-white px-3 text-sm font-normal text-foreground outline-none focus:border-primary sm:mt-0"/></label><label className="text-xs font-bold text-muted-foreground sm:text-transparent">Valor unitário<input aria-label={`Valor de ${item.nome}`} inputMode="decimal" value={item.valorUnitario} onChange={e=>atualizarItemComanda(item.id,"valorUnitario",e.target.value)} placeholder="0,00" className={`mt-1 min-h-10 w-full rounded-xl border bg-white px-3 text-sm font-normal text-foreground outline-none focus:border-primary sm:mt-0 ${numeroMoeda(item.valorUnitario)===null?"border-amber-400":""}`}/></label><div><span className="text-xs font-bold text-muted-foreground sm:hidden">Subtotal</span><strong className="mt-1 block sm:mt-0">{moeda(unitario*item.quantidade)}</strong></div><button type="button" onClick={()=>removerItemComanda(item.id)} aria-label={`Remover ${item.nome}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-rose-50 hover:text-rose-600"><Trash2 size={17}/></button></div>}):<div className="p-8 text-center text-sm text-muted-foreground">Nenhum item na comanda.</div>}</section>
+              <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950 p-5 text-white"><div><p className="text-xs font-bold uppercase tracking-wide text-white/60">Total da comanda</p><p className="mt-1 text-3xl font-black">{moeda(totalComanda)}</p></div><div className="text-right text-sm text-white/70"><p>{tutor?.nome||"Tutor não informado"}</p><p>{animal.nome}</p></div></section>
+            </div>}
           </div>
-          <div className="sticky bottom-0 flex flex-wrap items-end justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-5"><label className="text-xs font-bold">Data da consulta<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 text-sm font-normal"/></label><div className="ml-auto flex gap-2">{etapa>1&&<button onClick={()=>setEtapa(etapa-1)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Anterior</button>}{etapa<6?<button onClick={()=>setEtapa(etapa+1)} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">Próximo</button>:<button onClick={salvarConsulta} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"><Save size={16}/> Salvar consulta</button>}</div></div>
+          <div className="sticky bottom-0 flex flex-wrap items-end justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-5"><label className="text-xs font-bold">Data da consulta<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 text-sm font-normal"/></label><div className="ml-auto flex gap-2">{etapa>1&&<button onClick={()=>setEtapa(etapa-1)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Anterior</button>}{etapa<7?<button onClick={()=>setEtapa(etapa+1)} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">{etapa===6?"Ir para a comanda":"Próximo"}</button>:<button onClick={salvarConsulta} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"><Save size={16}/> Finalizar consulta e lançar</button>}</div></div>
         </div>
       </div>
     </section>}
