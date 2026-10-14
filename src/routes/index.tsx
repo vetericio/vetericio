@@ -72,7 +72,7 @@ function PaginaInicial() {
     <main className="min-h-screen overflow-hidden bg-[#FBF7F2] text-[#4A1826]">
       <header className="relative z-10 mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
         <a href="#" aria-label={`${marca} — início`} className="flex min-h-11 items-center">
-          <img src={logo_url} alt={marca} className="max-h-28 max-w-[280px] object-contain object-left sm:max-h-32 sm:max-w-[320px]" />
+          <img src={logo_url} alt={marca} className="h-28 w-auto max-w-[280px] object-contain object-left sm:h-32 sm:max-w-[320px]" />
         </a>
         <nav aria-label="Navegação principal" className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           <a href="#recursos" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-[#57525A] transition hover:bg-white hover:text-[#4A1826] sm:inline-flex">
