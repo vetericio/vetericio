@@ -374,25 +374,9 @@ function Estoque() {
             Cadastre o catálogo e configure os percentuais da equipe.
           </p>
         </div>
-        {aba === "catalogo" && podeEditar && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => iniciarCadastro("servico")}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"
-            >
-              <Plus size={16} /> Serviço
-            </button>
-            <button
-              onClick={() => iniciarCadastro("produto")}
-              className="inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-2.5 text-sm font-semibold"
-            >
-              <Plus size={16} /> Produto
-            </button>
-          </div>
-        )}
       </header>
 
-      <nav className="mb-5 flex gap-1 overflow-x-auto rounded-xl border bg-card p-1">
+      <nav className="sticky top-0 z-30 mb-5 flex gap-1 overflow-x-auto rounded-xl border bg-card/95 p-1 shadow-sm backdrop-blur-md">
         {(
           [
             ["catalogo", "Serviços e produtos"],
