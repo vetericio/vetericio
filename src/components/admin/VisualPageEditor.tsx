@@ -134,33 +134,54 @@ export function VisualPageEditor() {
     }
     if (elements.length) {
       const rect = elements[0].getBoundingClientRect();
-      const handle = doc.createElement("button");
-      handle.type = "button";
-      handle.setAttribute("aria-label", "Redimensionar seleção");
-      handle.dataset["oricseEditorOverlay"] = "1";
-      Object.assign(handle.style, { position:"fixed", left:`${rect.right - 8}px`, top:`${rect.bottom - 8}px`, width:"18px", height:"18px", borderRadius:"50%", border:"2px solid white", background:"#6F293B", cursor:"nwse-resize", pointerEvents:"auto", zIndex:"2147483647" });
-      const begin = (event: PointerEvent) => {
+      type ResizeMode = "horizontal" | "vertical" | "proportional";
+      const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
         event.preventDefault(); event.stopPropagation(); checkpoint();
         const sx=event.clientX, sy=event.clientY;
         const starts = selectedRef.current.map((item) => {
           const target = elements[selectedRef.current.indexOf(item)];
           const box = target?.getBoundingClientRect();
-          return { item, width:box?.width || 100, height:box?.height || 40 };
+          const page=ensurePage(cloneVisual(documentRef.current),route)[device];
+          const layer=item.kind==="patch"?page.patches.find(x=>x.id===item.id):page.added.find(x=>x.id===item.id);
+          return { item, width:box?.width || 100, height:box?.height || 40, x:layer?.style.x||0 };
         });
         const move = (ev: PointerEvent) => {
           const dx=(ev.clientX-sx)/Math.max(zoom/100,.1), dy=(ev.clientY-sy)/Math.max(zoom/100,.1);
-          updateLayout((value) => starts.forEach(({item,width,height}) => {
+          updateLayout((value) => starts.forEach(({item,width,height,x}) => {
             const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);
-            if(target){target.style.width=Math.max(10,Math.round(width+dx));target.style.height=Math.max(10,Math.round(height+dy));}
+            if(!target)return;
+            if(mode==="horizontal"){
+              const nextWidth=Math.max(10,Math.round(width-dx));
+              target.style.width=nextWidth;
+              target.style.x=Math.round(x+(width-nextWidth));
+            }else if(mode==="vertical"){
+              target.style.height=Math.max(10,Math.round(height+dy));
+            }else{
+              const relativeX=dx/Math.max(width,1),relativeY=dy/Math.max(height,1);
+              const scale=Math.max(0.05,1+(Math.abs(relativeX)>=Math.abs(relativeY)?relativeX:relativeY));
+              target.style.width=Math.max(10,Math.round(width*scale));
+              target.style.height=Math.max(10,Math.round(height*scale));
+            }
           }), false);
         };
         const stop=()=>{doc.defaultView?.removeEventListener("pointermove",move);doc.defaultView?.removeEventListener("pointerup",stop);};
         doc.defaultView?.addEventListener("pointermove",move); doc.defaultView?.addEventListener("pointerup",stop);
       };
-      handle.addEventListener("pointerdown", begin);
-      doc.body.appendChild(handle);
+      const createHandle=(mode:ResizeMode,label:string,style:Partial<CSSStyleDeclaration>)=>{
+        const handle=doc.createElement("button");
+        handle.type="button";
+        handle.setAttribute("aria-label",label);
+        handle.title=label;
+        handle.dataset["oricseEditorOverlay"]="1";
+        Object.assign(handle.style,{position:"fixed",border:"2px solid white",background:"#6F293B",padding:"0",pointerEvents:"auto",touchAction:"none",zIndex:"2147483647",boxShadow:"0 1px 4px rgba(0,0,0,.28)"},style);
+        handle.addEventListener("pointerdown",beginResize(mode));
+        doc.body.appendChild(handle);
+      };
+      createHandle("horizontal","Alterar somente a largura",{left:`${rect.left-5}px`,top:`${rect.top+rect.height/2-18}px`,width:"10px",height:"36px",borderRadius:"6px",cursor:"ew-resize"});
+      createHandle("vertical","Alterar somente a altura",{left:`${rect.left+rect.width/2-18}px`,top:`${rect.bottom-5}px`,width:"36px",height:"10px",borderRadius:"6px",cursor:"ns-resize"});
+      createHandle("proportional","Redimensionar mantendo a proporção",{left:`${rect.right-9}px`,top:`${rect.bottom-9}px`,width:"20px",height:"20px",borderRadius:"50%",cursor:"nwse-resize"});
     }
-  }, [checkpoint, selectedElements, updateLayout, zoom]);
+  }, [checkpoint, selectedElements, updateLayout, zoom, route, device]);
 
   const applyToFrame = useCallback(() => {
     const doc = iframeRef.current?.contentDocument; if (!doc) return;
@@ -326,7 +347,7 @@ export function VisualPageEditor() {
             <iframe key={`${route}-${device}`} ref={iframeRef} src={`${route}${route.includes("?")?"&":"?"}visual_editor=1`} onLoad={bindFrame} title={`Editor de ${route}`} className="h-full w-full border-0 bg-white" style={{width:frameWidth}}/>
           </div>
         </div>
-        <p className="mt-4 text-center text-xs text-slate-600">Clique para selecionar. Shift + clique seleciona vários. Arraste para mover e use o ponto inferior direito para redimensionar.</p>
+        <p className="mt-4 text-center text-xs text-slate-600">Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção.</p>
       </section>
 
       {rightOpen&&<aside className="border-l bg-white p-4">
