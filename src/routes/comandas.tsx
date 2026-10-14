@@ -6,6 +6,8 @@ import {
   ChevronRight,
   CircleDollarSign,
   PawPrint,
+  Phone,
+  Clock3,
   Plus,
   ReceiptText,
   Search,
@@ -41,6 +43,8 @@ type Tutor = {
   codigoPublico?: string;
   codigo_publico?: string;
   cpfCnpj?: string;
+  telefone?: string;
+  outroTelefone?: string;
 };
 type Animal = { id: string; nome: string; tutorId: string; especie?: string };
 type Responsavel = { id: string; nome: string };
@@ -96,6 +100,10 @@ function origemDaUrl(): OrigemComanda {
 function Comandas() {
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
   const [tutores] = useState<Tutor[]>(() => lerLista<Tutor>(TUTORES_KEY));
+  const telefoneTutor = (id: string): string => {
+    const tutor = tutores.find(t => t.id === id);
+    return tutor?.telefone || tutor?.outroTelefone || "Telefone não informado";
+  };
   const [animais] = useState<Animal[]>(() => lerLista<Animal>(ANIMAIS_KEY));
   const [responsavel, setResponsavel] = useState<Responsavel>({ id: "", nome: "Equipe clínica" });
   const [comandaSelecionadaId, setComandaSelecionadaId] = useState<string | null>(() => {
@@ -994,50 +1002,39 @@ function Comandas() {
               </div>
             </section>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {comandasFiltradas.length ? (
-                comandasFiltradas.map((comanda) => (
-                  <button
-                    key={comanda.id}
-                    type="button"
-                    onClick={() => setComandaSelecionadaId(comanda.id)}
-                    className="flex w-full items-center gap-3 rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
-                  >
-                    <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${comanda.status === "Aberta" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}
-                    >
-                      <ReceiptText size={19} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-x-2">
-                        <strong>
-                          #{numeroFormatado(comanda.numero)} · {comanda.animalNome}
-                        </strong>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${comanda.status === "Aberta" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}
-                        >
-                          {comanda.status}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 block truncate text-sm text-muted-foreground">
-                        {comanda.tutorNome} · {comanda.origem} · {dataHora(comanda.abertaEm)}
-                      </span>
-                    </span>
-                    <span className="hidden shrink-0 text-right sm:block">
-                      <span className="block text-xs text-muted-foreground">
-                        {comanda.status === "Aberta" ? "Saldo em aberto" : "Total"}
-                      </span>
-                      <strong className="text-sm">
-                        {dinheiro(
-                          comanda.status === "Aberta"
-                            ? saldoComanda(comanda)
-                            : totalComanda(comanda),
-                        )}
-                      </strong>
-                    </span>
-                    <ChevronRight size={18} className="shrink-0 text-muted-foreground" />
-                  </button>
-                ))
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {comandasFiltradas.map(comanda => (
+                    <button key={comanda.id} type="button" onClick={() => setComandaSelecionadaId(comanda.id)}
+                      className="group flex min-w-0 flex-col justify-between gap-4 rounded-2xl border bg-card p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold tracking-wide text-muted-foreground">COMANDA #{numeroFormatado(comanda.numero)}</span>
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${comanda.status === "Aberta" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>{comanda.status}</span>
+                        </div>
+                        <div>
+                          <h3 className="flex items-center gap-2 break-words text-lg font-bold tracking-tight"><PawPrint size={19} className="shrink-0 text-primary" />{comanda.animalNome || "Paciente não informado"}</h3>
+                          <p className="mt-2 break-words text-sm font-medium">{comanda.tutorNome || "Tutor não informado"}</p>
+                          <p className="mt-1 break-all text-xs text-muted-foreground">ID: {comanda.tutorId || "Não informado"}</p>
+                        </div>
+                        <div className="space-y-2 border-t pt-3 text-sm text-muted-foreground">
+                          <p className="flex items-center gap-2"><Phone size={15} className="shrink-0" />{telefoneTutor(comanda.tutorId)}</p>
+                          <p className="flex items-center gap-2"><Clock3 size={15} className="shrink-0" />Criada em {dataHora(comanda.abertaEm)}</p>
+                          <p className="text-xs">Origem: {comanda.origem}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-between gap-2 border-t pt-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Valor total</p>
+                          <p className="text-xl font-bold tabular-nums">{dinheiro(totalComanda(comanda))}</p>
+                          <p className="text-xs text-muted-foreground">Em aberto: {dinheiro(saldoComanda(comanda))}</p>
+                        </div>
+                        <span className="text-xs font-semibold text-primary group-hover:underline">Ver comanda →</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <div className="rounded-2xl border border-dashed bg-white px-5 py-12 text-center">
                   <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/5 text-primary">
