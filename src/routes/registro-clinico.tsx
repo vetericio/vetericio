@@ -160,7 +160,7 @@ function RegistroClinico(){
     return itensComanda.length>0&&itensSemPreco.length===0;
   }
 
-  function abrirPagamento(){ if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal."); if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda."); if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda."); setPagamentoAberto(true); }
+  function abrirPagamento(){ if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal."); if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda."); if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda."); salvarConsulta("Pendente","A definir"); }
   function confirmarPagamento(){ if(!formaPagamento)return void toast.error("Selecione como foi pago."); if(formaPagamento==="Outros"&&!outroPagamento.trim())return void toast.error("Especifique a forma de pagamento."); salvarConsulta("Pago",formaPagamento==="Outros"?outroPagamento.trim():formaPagamento); }
 
   function salvarConsulta(statusPagamento:StatusPagamento="Pendente",pagamento="A definir"){
