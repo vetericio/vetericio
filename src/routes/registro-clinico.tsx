@@ -305,19 +305,20 @@ function RegistroClinico(){
 
   const abrirConsulta=()=>{setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 
-  return <main className="mx-auto min-h-screen w-full max-w-[1500px] px-3 pb-28 pt-4 sm:px-5 sm:pt-6">
-    <section className="rounded-2xl border bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4 sm:items-center">
-        <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:h-14 sm:w-14"><PawPrint size={25}/></div>
+  return <main className="mx-auto min-h-screen w-full max-w-[1500px] px-3 pb-28 pt-3 sm:px-5 sm:pt-4">
+    <section className="rounded-xl border bg-white px-3 py-2 shadow-sm sm:px-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><PawPrint size={18}/></div>
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">Registro clínico</p>
-            <h1 className="mt-1 break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{animal.nome}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""}</p>
-            <p className="mt-2 break-words text-sm text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="sm:ml-2 font-mono text-primary"> · {codigoPublicoTutor(tutor)}</span>}{tutor?.telefone&&<span className="sm:ml-2"> · {tutor.telefone}</span>}</p>
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <h1 className="break-words text-lg font-bold leading-tight tracking-tight">{animal.nome}</h1>
+              <span className="text-xs text-muted-foreground">{animal.especie||"Espécie não informada"}{animal.raca?` · ${animal.raca}`:""}</span>
+            </div>
+            <p className="break-words text-xs text-muted-foreground">Tutor: <strong className="font-semibold text-foreground">{tutor?.nome||"Não informado"}</strong>{tutor && codigoPublicoTutor(tutor) && <span className="font-mono text-primary"> · {codigoPublicoTutor(tutor)}</span>}{tutor?.telefone&&<span> · {tutor.telefone}</span>}</p>
           </div>
         </div>
-        <Link to="/animal" search={{animalId:animal.id} as never} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-white px-4 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5"><ArrowLeft size={17}/> Ficha do animal</Link>
+        <Link to="/animal" search={{animalId:animal.id} as never} className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border bg-white px-3 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5"><ArrowLeft size={15}/> Ficha do animal</Link>
       </div>
     </section>
 
