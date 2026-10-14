@@ -166,7 +166,7 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     });
     if (!permissao.ok) throw new Error(`Logo enviada, mas não foi possível liberar sua visualização: ${await permissao.text()}`);
 
-    const logoUrl = `https://drive.google.com/uc?export=view&id=${arquivo.id}`;
+    const logoUrl = `https://lh3.googleusercontent.com/d/${arquivo.id}`;
 
     const { error: clinicaError } = await supabaseAdmin
       .from("clinicas")
