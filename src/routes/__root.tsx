@@ -156,7 +156,8 @@ function RootComponent() {
         host === "www.oricse.com" ||
         host === "localhost" ||
         host === "127.0.0.1" ||
-        host.endsWith(".lovable.app");
+        host.endsWith(".lovable.app") ||
+        host.endsWith(".workers.dev");
       try {
         const { data, error } = await supabase.rpc("oricse_clinica_publica_portal", {
           p_host: host || null,
