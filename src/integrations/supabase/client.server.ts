@@ -30,8 +30,13 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env['SUPABASE_URL'];
-  const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  // ORICSE_* têm precedência: o Lovable reserva o prefixo SUPABASE_ para o backend dele.
+  const SUPABASE_URL =
+    process.env['ORICSE_SUPABASE_URL'] ||
+    (process.env['ORICSE_SERVICE_ROLE_KEY'] ? 'https://mwrmfcyrdxfxssebgknz.supabase.co' : undefined) ||
+    process.env['SUPABASE_URL'];
+  const SUPABASE_SERVICE_ROLE_KEY =
+    process.env['ORICSE_SERVICE_ROLE_KEY'] || process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
