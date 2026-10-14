@@ -22,7 +22,9 @@ import {
 } from "@/lib/codigo-tutor";
 import {
   type Comanda,
+  dataLocalISO,
   lerComandas,
+  parseValorMonetario,
   saldoComanda,
   totalComanda,
   totalPagoComanda,
@@ -114,7 +116,7 @@ const opcoes = [
 ];
 
 function hojeISO() {
-  return new Date().toISOString().slice(0, 10);
+  return dataLocalISO();
 }
 function mesAtualISO() {
   return new Date().toISOString().slice(0, 7);
@@ -226,7 +228,7 @@ function Financeiro() {
 
   function salvarLancamento(evento: FormEvent) {
     evento.preventDefault();
-    const valor = Number(String(form.valor).replace(".", "").replace(",", "."));
+    const valor = parseValorMonetario(form.valor);
     if (!form.descricao.trim()) return void toast.error("Informe a descrição do lançamento.");
     if (!Number.isFinite(valor) || valor <= 0) return void toast.error("Informe um valor válido.");
     if (
@@ -260,6 +262,7 @@ function Financeiro() {
       data: form.data,
       formaPagamento: form.formaPagamento,
       status: form.status,
+      ...(anterior?.status === "Pendente" && form.status === "Pago" ? { data: hojeISO() } : {}),
       ...(tutor ? { tutor } : {}),
       ...(tutorId ? { tutorId } : {}),
       ...(observacao ? { observacao } : {}),
@@ -308,6 +311,10 @@ function Financeiro() {
   function darBaixa(id: string) {
     const lancamento = lancamentos.find((item) => item.id === id);
     if (lancamento) {
+      if (lancamento.comandaId) {
+        window.location.href = `/comandas?comandaId=${encodeURIComponent(lancamento.comandaId)}`;
+        return;
+      }
       abrirEdicao({
         ...lancamento,
         status: "Pago",
@@ -683,21 +690,33 @@ function Financeiro() {
                           {dinheiro(lancamento.valor)}
                         </strong>
                         <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => abrirEdicao(lancamento)}
-                            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold"
-                          >
-                            <Pencil size={15} /> Editar
-                          </button>
-                          {lancamento.tipo === "Entrada" && lancamento.status === "Pendente" && (
-                            <button
-                              type="button"
-                              onClick={() => darBaixa(lancamento.id)}
-                              className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+                          {lancamento.comandaId ? (
+                            <a
+                              href={`/comandas?comandaId=${encodeURIComponent(lancamento.comandaId)}`}
+                              className="rounded-lg border px-3 py-2 text-sm font-semibold"
                             >
-                              Dar baixa
-                            </button>
+                              Abrir comanda
+                            </a>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => abrirEdicao(lancamento)}
+                                className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold"
+                              >
+                                <Pencil size={15} /> Editar
+                              </button>
+                              {lancamento.tipo === "Entrada" &&
+                                lancamento.status === "Pendente" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => darBaixa(lancamento.id)}
+                                    className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+                                  >
+                                    Dar baixa
+                                  </button>
+                                )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -800,7 +819,7 @@ function Financeiro() {
                     onClick={() => darBaixa(l.id)}
                     className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
                   >
-                    Dar baixa
+                    {l.comandaId ? "Abrir comanda" : "Dar baixa"}
                   </button>
                 </div>
               </div>
@@ -839,22 +858,33 @@ function Financeiro() {
                   {dinheiro(l.valor)}
                 </strong>
                 <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => abrirEdicao(l)}
-                    className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                    aria-label="Editar"
-                  >
-                    <Pencil size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remover(l.id)}
-                    className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                    aria-label="Excluir"
-                  >
-                    <Trash2 size={17} />
-                  </button>
+                  {l.comandaId ? (
+                    <a
+                      href={`/comandas?comandaId=${encodeURIComponent(l.comandaId)}`}
+                      className="inline-flex items-center rounded-lg border px-3 text-sm font-semibold"
+                    >
+                      Abrir comanda
+                    </a>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => abrirEdicao(l)}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+                        aria-label="Editar"
+                      >
+                        <Pencil size={17} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remover(l.id)}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+                        aria-label="Excluir"
+                      >
+                        <Trash2 size={17} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))

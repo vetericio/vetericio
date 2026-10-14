@@ -1,6 +1,25 @@
 export const COMANDAS_KEY = "oricse-comandas-v1";
 export const LANCAMENTOS_FINANCEIROS_KEY = "oricse-financeiro-lancamentos-v1";
 
+export function parseValorMonetario(valor: string | number): number {
+  if (typeof valor === "number") return valor;
+  const limpo = valor.trim().replace(/[^\d,.-]/g, "");
+  if (!limpo) return Number.NaN;
+  if (limpo.includes(",")) {
+    if (limpo.indexOf(",") !== limpo.lastIndexOf(",")) return Number.NaN;
+    return Number(limpo.replace(/\./g, "").replace(",", "."));
+  }
+  if (/^-?\d{1,3}(?:\.\d{3})+$/.test(limpo)) return Number(limpo.replace(/\./g, ""));
+  return Number(limpo);
+}
+
+export function dataLocalISO(data = new Date()): string {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
 export type OrigemComanda = "Recepção" | "Consultório" | "Internação";
 export type StatusComanda = "Aberta" | "Finalizada";
 
@@ -64,7 +83,8 @@ type LancamentoFinanceiro = {
   formaPagamento: string;
   tutor?: string;
   tutorId?: string;
-  status: "Pago";
+  animalId?: string;
+  status: "Pago" | "Pendente";
   observacao?: string;
   comandaId?: string;
   registradoPor?: string;
@@ -147,8 +167,16 @@ export function registrarLancamentoComanda(lancamento: LancamentoFinanceiro): vo
   }
 
   if (existentes.some((item) => item.id === lancamento.id)) return;
+  const atualizados =
+    lancamento.status === "Pago" && lancamento.comandaId
+      ? existentes.flatMap((item) => {
+          if (item.comandaId !== lancamento.comandaId || item.status !== "Pendente") return [item];
+          const saldo = Math.round((item.valor - lancamento.valor + Number.EPSILON) * 100) / 100;
+          return saldo > 0.009 ? [{ ...item, valor: saldo }] : [];
+        })
+      : existentes;
   window.localStorage.setItem(
     LANCAMENTOS_FINANCEIROS_KEY,
-    JSON.stringify([lancamento, ...existentes]),
+    JSON.stringify([lancamento, ...atualizados]),
   );
 }

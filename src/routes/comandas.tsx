@@ -21,7 +21,10 @@ import {
   type Comanda,
   type ItemComanda,
   type OrigemComanda,
+  dataLocalISO,
+  LANCAMENTOS_FINANCEIROS_KEY,
   lerComandas,
+  parseValorMonetario,
   proximoNumeroComanda,
   registrarLancamentoComanda,
   saldoComanda,
@@ -67,11 +70,6 @@ function lerLista<T>(chave: string): T[] {
 
 function dinheiro(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function valorNumerico(valor: string): number {
-  const limpo = valor.trim().replace(/[^\d,.-]/g, "");
-  return Number(limpo.includes(",") ? limpo.replace(/\./g, "").replace(",", ".") : limpo);
 }
 
 function dataHora(valor: string): string {
@@ -278,7 +276,7 @@ function Comandas() {
         "Não foi possível carregar as regras de comissão. Atualize a página antes de incluir itens.",
       );
     const quantidade = Number(quantidadeItem);
-    const valorInformado = valorNumerico(valorItem);
+    const valorInformado = parseValorMonetario(valorItem);
     const unitario = Math.round((valorInformado + Number.EPSILON) * 100) / 100;
     if (!descricaoItem.trim()) return void toast.error("Informe o item ou serviço.");
     if (!Number.isFinite(quantidade) || quantidade <= 0)
@@ -339,7 +337,7 @@ function Comandas() {
   function registrarPagamento(evento: FormEvent) {
     evento.preventDefault();
     if (!comandaSelecionada || comandaSelecionada.status !== "Aberta") return;
-    const valorBruto = valorNumerico(valorPagamento);
+    const valorBruto = parseValorMonetario(valorPagamento);
     const valor = Math.round((valorBruto + Number.EPSILON) * 100) / 100;
     if (!Number.isFinite(valor) || valor <= 0)
       return void toast.error("Informe um valor de pagamento válido.");
@@ -354,6 +352,7 @@ function Comandas() {
       data: new Date().toISOString(),
       registradoPor: responsavel.nome,
     };
+    const lancamentosAntes = window.localStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY);
     try {
       registrarLancamentoComanda({
         id: `comanda-pagamento-${pagamento.id}`,
@@ -361,7 +360,7 @@ function Comandas() {
         descricao: `Pagamento da comanda #${numeroFormatado(comandaSelecionada.numero)} · ${comandaSelecionada.animalNome}`,
         categoria: "Pagamento de comanda",
         valor,
-        data: pagamento.data.slice(0, 10),
+        data: dataLocalISO(new Date(pagamento.data)),
         formaPagamento,
         tutor: comandaSelecionada.tutorNome,
         tutorId: comandaSelecionada.tutorId,
@@ -383,8 +382,16 @@ function Comandas() {
       !salvarEstado(
         comandas.map((comanda) => (comanda.id === atualizada.id ? atualizada : comanda)),
       )
-    )
+    ) {
+      try {
+        if (lancamentosAntes === null) window.localStorage.removeItem(LANCAMENTOS_FINANCEIROS_KEY);
+        else window.localStorage.setItem(LANCAMENTOS_FINANCEIROS_KEY, lancamentosAntes);
+      } catch (error) {
+        console.error("Não foi possível restaurar o caixa após falha ao salvar a comanda:", error);
+        toast.error("O pagamento foi lançado no caixa, mas a comanda não foi atualizada.");
+      }
       return;
+    }
     setValorPagamento("");
     toast.success("Pagamento registrado no caixa.");
   }
@@ -439,7 +446,7 @@ function Comandas() {
         descricao: `Cortesia da clínica · comanda #${numeroFormatado(comandaSelecionada.numero)}`,
         categoria: "Cortesia concedida",
         valor: saldo,
-        data: cortesia.registradaEm.slice(0, 10),
+        data: dataLocalISO(new Date(cortesia.registradaEm)),
         formaPagamento: "Cortesia",
         tutor: comandaSelecionada.tutorNome,
         tutorId: comandaSelecionada.tutorId,
@@ -481,7 +488,7 @@ function Comandas() {
   );
   const valorPrevistoComissao =
     (Number(quantidadeItem) *
-      (Number.isFinite(valorNumerico(valorItem)) ? valorNumerico(valorItem) : 0) *
+      (Number.isFinite(parseValorMonetario(valorItem)) ? parseValorMonetario(valorItem) : 0) *
       percentualPrevistoComissao) /
     100;
 
