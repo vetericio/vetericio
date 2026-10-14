@@ -225,3 +225,81 @@ export const excluirClinica = createServerFn({ method: "POST" })
 
     return { ok: true, nome: clinica.nome as string, contasRemovidas };
   });
+
+const atualizarUsuarioSchema = z.object({
+  accessToken: z.string().min(20),
+  userId: z.string().uuid(),
+  username: z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/),
+  email: z.string().email().max(180),
+});
+
+export const atualizarUsuario = createServerFn({ method: "POST" })
+  .validator((input: unknown) => atualizarUsuarioSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
+    const adminDb = supabaseAdmin as SupabaseClient;
+    const username = data.username.trim().replace(/^@+/, "").toLowerCase();
+    const email = data.email.trim().toLowerCase();
+
+    const { data: outro, error: outroError } = await adminDb
+      .from("app_users")
+      .select("user_id")
+      .eq("username", username)
+      .neq("user_id", data.userId)
+      .maybeSingle();
+    if (outroError) throw new Error(outroError.message);
+    if (outro) throw new Error("Este @usuário já está em uso por outra conta.");
+
+    const { data: atual, error: atualError } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    if (atualError || !atual.user) throw new Error("Conta de acesso não encontrada.");
+
+    // O login usa @usuário + domínio técnico, então o e-mail de acesso acompanha o @usuário.
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      email: `${username}@vetericio.local`,
+      email_confirm: true,
+      user_metadata: { ...(atual.user.user_metadata || {}), username, contact_email: email },
+    });
+    if (authError) throw new Error(authError.message || "Não foi possível atualizar a conta de acesso.");
+
+    const { error: perfilError } = await adminDb
+      .from("app_users")
+      .update({ username, email })
+      .eq("user_id", data.userId);
+    if (perfilError) throw new Error(perfilError.message);
+
+    return { ok: true };
+  });
+
+const removerUsuarioSchema = z.object({
+  accessToken: z.string().min(20),
+  clinicaId: z.string().uuid(),
+  userId: z.string().uuid(),
+});
+
+export const removerUsuarioClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => removerUsuarioSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
+    const adminDb = supabaseAdmin as SupabaseClient;
+
+    const { error: vinculoError } = await adminDb
+      .from("clinica_usuarios")
+      .delete()
+      .eq("clinica_id", data.clinicaId)
+      .eq("user_id", data.userId);
+    if (vinculoError) throw new Error(vinculoError.message);
+
+    const { data: perfil } = await adminDb.from("app_users").select("role").eq("user_id", data.userId).maybeSingle();
+    const { count } = await adminDb
+      .from("clinica_usuarios")
+      .select("user_id", { count: "exact", head: true })
+      .eq("user_id", data.userId);
+
+    let contaExcluida = false;
+    if (perfil?.role !== "admin" && (count || 0) === 0) {
+      await adminDb.from("app_users").delete().eq("user_id", data.userId);
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+      contaExcluida = !authError;
+    }
+    return { ok: true, contaExcluida };
+  });

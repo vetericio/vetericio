@@ -1,8 +1,8 @@
-import { KeyRound, UserPlus } from "lucide-react";
+import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { criarUsuarioClinica, redefinirSenhaUsuario } from "@/lib/admin-users.functions";
+import { atualizarUsuario, criarUsuarioClinica, redefinirSenhaUsuario, removerUsuarioClinica } from "@/lib/admin-users.functions";
 
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 
@@ -46,6 +46,40 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
   const [salvando, setSalvando] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
+  async function salvarEdicao(userId: string) {
+    const nome = limparUsuario(editUsername);
+    if (nome.length < 3) { toast.error("Informe um @usuário com pelo menos 3 caracteres."); return; }
+    if (!/^\S+@\S+\.\S+$/.test(editEmail.trim())) { toast.error("Informe um e-mail válido."); return; }
+    setSalvando(true);
+    try {
+      await atualizarUsuario({ data: { accessToken: await tokenAtual(), userId, username: nome, email: editEmail.trim().toLowerCase() } });
+      setEditId(null);
+      await onRefresh();
+      toast.success("Usuário atualizado. O login agora é o novo @usuário.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível atualizar o usuário.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function remover(userId: string, nome: string) {
+    if (!window.confirm(`Remover ${nome} desta clínica? Se não tiver vínculo com outra clínica, a conta de acesso será excluída. Esta ação é irreversível.`)) return;
+    setSalvando(true);
+    try {
+      const r = await removerUsuarioClinica({ data: { accessToken: await tokenAtual(), clinicaId: clinica.id, userId } });
+      await onRefresh();
+      toast.success(r.contaExcluida ? "Usuário removido e conta excluída." : "Usuário removido da clínica.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível remover o usuário.");
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   async function tokenAtual() {
     const { data } = await supabase.auth.getSession();
@@ -146,6 +180,18 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
             <button onClick={() => void onAtualizarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button>
           </div>
           <div className="mt-3 border-t pt-3">
+            {editId === vinculo.user_id && <div className="mb-3 grid gap-2 md:grid-cols-2">
+              <div className="flex min-h-10 items-center rounded-xl border px-3"><span className="text-muted-foreground">@</span><input value={editUsername} onChange={(e) => setEditUsername(limparUsuario(e.target.value))} placeholder="usuario" className="min-w-0 flex-1 bg-transparent outline-none" autoComplete="off" /></div>
+              <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="pessoa@email.com" className="min-h-10 rounded-xl border px-3" />
+              <div className="flex gap-2 md:col-span-2">
+                <button disabled={salvando} onClick={() => void salvarEdicao(vinculo.user_id)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">Salvar dados</button>
+                <button onClick={() => setEditId(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold">Cancelar</button>
+              </div>
+            </div>}
+            <div className="mb-3 flex flex-wrap gap-2">
+              <button onClick={() => { setEditId(vinculo.user_id); setEditUsername(usuario?.username || ""); setEditEmail(usuario?.email || ""); }} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold"><Pencil size={15}/> Editar @usuário e e-mail</button>
+              <button disabled={salvando} onClick={() => void remover(vinculo.user_id, usuario?.username ? `@${usuario.username}` : "este usuário")} className="inline-flex items-center gap-2 rounded-xl border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"><Trash2 size={15}/> Remover</button>
+            </div>
             {resetUserId === vinculo.user_id ? <div className="flex flex-wrap gap-2">
               <input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Nova senha" className="min-h-10 min-w-[220px] flex-1 rounded-xl border px-3" />
               <button disabled={salvando} onClick={() => void alterarSenha(vinculo.user_id)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">Salvar nova senha</button>
