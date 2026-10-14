@@ -11,6 +11,9 @@ import {
   Search,
   Trash2,
   Users,
+  Phone,
+  Clock3,
+  PawPrint,
   Wallet,
   X,
 } from "lucide-react";
@@ -63,6 +66,8 @@ type TutorFinanceiro = {
   nome: string;
   cpfCnpj?: string;
   cpf?: string;
+  telefone?: string;
+  outroTelefone?: string;
   codigoPublico?: string;
   codigo_publico?: string;
   codigo?: string;
@@ -167,6 +172,14 @@ function lerTutores(): TutorFinanceiro[] {
 
 function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
+  const [dataAtual, setDataAtual] = useState(hojeISO);
+  useEffect(() => {
+    const atualizarData = () => setDataAtual(hojeISO());
+    const intervalo = window.setInterval(atualizarData, 15000);
+    window.addEventListener("focus", atualizarData);
+    document.addEventListener("visibilitychange", atualizarData);
+    return () => { window.clearInterval(intervalo); window.removeEventListener("focus", atualizarData); document.removeEventListener("visibilitychange", atualizarData); };
+  }, []);
   const [periodoInicio, setPeriodoInicio] = useState(() => `${mesAtualISO()}-01`);
   const [periodoFim, setPeriodoFim] = useState(hojeISO);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(lerLancamentos);
@@ -218,6 +231,8 @@ function Financeiro() {
           nome: String(tutor.nome || "").trim(),
           cpfCnpj: tutor.dados?.cpfCnpj || tutor.dados?.cpf || "",
           cpf: tutor.dados?.cpf || tutor.dados?.cpfCnpj || "",
+          telefone: tutor.dados?.telefone || tutor.dados?.Telefone || "",
+          outroTelefone: tutor.dados?.outroTelefone || "",
           codigoPublico: tutor.codigo_publico || "",
           codigo_publico: tutor.codigo_publico || "",
         })).filter((tutor: TutorFinanceiro) => tutor.id && tutor.nome);
@@ -360,8 +375,8 @@ function Financeiro() {
     .reduce((s, l) => s + l.valor, 0);
   const contasReceber = lancamentos.filter((l) => l.tipo === "Entrada" && l.status === "Pendente");
 
-  const comandasDia = useMemo(() => comandas.filter(c => c.abertaEm.slice(0, 10) === hojeISO()), [comandas]);
-  const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && c.abertaEm.slice(0, 10) < hojeISO()), [comandas]);
+  const comandasDia = useMemo(() => comandas.filter(c => dataLocalISO(new Date(c.abertaEm)) === dataAtual).sort((a,b) => b.abertaEm.localeCompare(a.abertaEm)), [comandas, dataAtual]);
+  const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && dataLocalISO(new Date(c.abertaEm)) < dataAtual).sort((a,b) => a.abertaEm.localeCompare(b.abertaEm)), [comandas, dataAtual]);
   const lancamentosPeriodo = useMemo(() => lancamentos.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentos, periodoInicio, periodoFim]);
   const recebidoPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Entrada" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
   const despesasPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Saída" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
@@ -533,15 +548,47 @@ function Financeiro() {
         />
       )}
       {(aba === "comandasDia" || aba === "comandasAbertas") && (
-        <section className="space-y-3">
-          <p className="text-sm text-muted-foreground">{aba === "comandasDia" ? "Comandas abertas hoje, inclusive as finalizadas." : "Comandas de dias anteriores ainda abertas."}</p>
-          {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).map(comanda => (
-            <a key={comanda.id} href={`/comandas?comandaId=${encodeURIComponent(comanda.id)}`} className="block rounded-2xl border bg-card p-4 hover:border-primary">
-              <div className="flex items-center justify-between gap-3"><strong>Comanda #{comanda.numero} · {comanda.tutorNome}</strong><span className="text-sm">{comanda.status}</span></div>
-              <p className="mt-1 text-sm text-muted-foreground">{comanda.animalNome} · {new Date(comanda.abertaEm).toLocaleDateString("pt-BR")} · Saldo: {dinheiro(saldoComanda(comanda))}</p>
-            </a>
-          ))}
-          {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).length === 0 && <p className="rounded-2xl border bg-card p-5 text-muted-foreground">Nenhuma comanda encontrada.</p>}
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              {aba === "comandasDia" ? "Comandas criadas hoje, até 23h59, incluindo as finalizadas." : "Comandas anteriores ainda abertas, da mais antiga para a mais recente."}
+            </p>
+            <span className="rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
+              {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).length} comandas
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).map(comanda => {
+              const tutor = tutoresCadastrados.find(t => t.id === comanda.tutorId);
+              const telefone = tutor?.telefone || tutor?.outroTelefone;
+              const identificacao = tutor ? codigoPublicoTutor(tutor) : comanda.tutorId;
+              return (
+                <a key={comanda.id} href={`/comandas?comandaId=${encodeURIComponent(comanda.id)}`}
+                  className="group flex min-w-0 flex-col justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold tracking-wide text-muted-foreground">COMANDA #{String(comanda.numero).padStart(5, "0")}</span>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${comanda.status === "Aberta" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>{comanda.status}</span>
+                    </div>
+                    <div>
+                      <h3 className="flex items-center gap-2 break-words text-lg font-bold tracking-tight"><PawPrint size={19} className="shrink-0 text-primary" />{comanda.animalNome || "Paciente não informado"}</h3>
+                      <p className="mt-2 break-words text-sm font-medium">{comanda.tutorNome || "Tutor não informado"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">ID: {identificacao || "Não informado"}</p>
+                    </div>
+                    <div className="space-y-2 border-t pt-3 text-sm text-muted-foreground">
+                      <p className="flex items-center gap-2"><Phone size={15} className="shrink-0" />{telefone || "Telefone não informado"}</p>
+                      <p className="flex items-center gap-2"><Clock3 size={15} className="shrink-0" />Criada em {new Date(comanda.abertaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-2 border-t pt-4">
+                    <div><p className="text-xs text-muted-foreground">Valor total</p><p className="text-xl font-bold tabular-nums">{dinheiro(totalComanda(comanda))}</p><p className="text-xs text-muted-foreground">Em aberto: {dinheiro(saldoComanda(comanda))}</p></div>
+                    <span className="text-xs font-semibold text-primary group-hover:underline">Ver comanda →</span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+          {(aba === "comandasDia" ? comandasDia : comandasAbertasAnteriores).length === 0 && <p className="rounded-2xl border bg-card p-6 text-center text-muted-foreground">Nenhuma comanda encontrada.</p>}
           <a href="/comandas" className="inline-flex rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground">Gerenciar comandas</a>
         </section>
       )}
