@@ -1,50 +1,12 @@
--- Impede que a política administrativa de escrita seja avaliada durante
--- leituras públicas do editor visual.
-drop policy if exists admin_write_oricse_config on public.oricse_config;
+-- Permite que o site público carregue apenas a configuração publicada.
+-- Rascunhos e histórico continuam visíveis somente ao administrador.
+drop policy if exists oricse_config_public_site_read on public.oricse_config;
 
-create policy admin_insert_oricse_config
+create policy oricse_config_public_site_read
 on public.oricse_config
-for insert
-to authenticated
-with check (
-  exists (
-    select 1
-    from public.app_users au
-    where au.user_id = auth.uid()
-      and au.role = 'admin'
-  )
-);
-
-create policy admin_update_oricse_config
-on public.oricse_config
-for update
-to authenticated
+for select
+to anon, authenticated
 using (
-  exists (
-    select 1
-    from public.app_users au
-    where au.user_id = auth.uid()
-      and au.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.app_users au
-    where au.user_id = auth.uid()
-      and au.role = 'admin'
-  )
-);
-
-create policy admin_delete_oricse_config
-on public.oricse_config
-for delete
-to authenticated
-using (
-  exists (
-    select 1
-    from public.app_users au
-    where au.user_id = auth.uid()
-      and au.role = 'admin'
-  )
+  chave in ('site_publico', 'visual_editor_published')
+  or (auth.uid() is not null and public.oricse_is_platform_admin())
 );
