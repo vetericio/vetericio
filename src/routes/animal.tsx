@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BedDouble, CalendarDays, ClipboardList, FileText, FlaskConical, Image, Pencil, Plus, ReceiptText, Scale, Scissors, Stethoscope, Syringe, UserRound, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -53,6 +54,7 @@ type Animal = {
 };
 
 type RegistroTipo = "Registros clínicos" | "Vacinas" | "Receitas" | "Exames" | "Agendamentos" | "Internações" | "Termos" | "Observações" | "Documentos" | "Galeria";
+type FontePortal = "vacina" | "exame" | "documento";
 type Registro = {
   id: string;
   animalId: string;
@@ -66,8 +68,14 @@ type Registro = {
   autorNome?: string;
   autorCrmv?: string;
   atualizadoEm?: string;
+  visivelTutor?: boolean;
+  fontePortal?: FontePortal;
 };
 type PesoRegistro = { id: string; animalId: string; peso: number; data: string; criadoEm: string };
+
+type VacinaPortal = { id:string; animal_id:string; nome:string; aplicada_em:string|null; reforco_em:string|null; lote:string|null; observacoes:string|null; visivel_tutor:boolean; created_at:string };
+type ExamePortal = { id:string; animal_id:string; titulo:string; tipo:string; realizado_em:string|null; resultado_resumo:string|null; visivel_tutor:boolean; created_at:string };
+type DocumentoPortal = { id:string; animal_id:string; titulo:string; tipo:string; data_documento:string|null; observacoes:string|null; visivel_tutor:boolean; created_at:string };
 
 const TUTORES_KEY = "oricse-tutores-v1";
 const ANIMAIS_KEY = "oricse-animais-v1";
@@ -105,7 +113,6 @@ function formatarData(data?: string) {
 function numeroPeso(valor?: string) {
   if (!valor) return NaN;
   const texto = String(valor).trim();
-  // Com vírgula, os pontos são separadores de milhar. Com ponto sozinho, ele é decimal.
   return Number(texto.includes(",") ? texto.replace(/\./g, "").replace(",", ".") : texto);
 }
 
@@ -143,6 +150,8 @@ function AnimalFicha() {
   const tutor = tutores.find((t) => t.id === animal?.tutorId);
   const [aba, setAba] = useState<Aba>("Visão geral");
   const [registros, setRegistros] = useState<Registro[]>(() => ler<Registro>(PRONTUARIO_KEY));
+  const [registrosPortal, setRegistrosPortal] = useState<Registro[]>([]);
+  const [clinicaId, setClinicaId] = useState("");
   const [pesos, setPesos] = useState<PesoRegistro[]>(() => ler<PesoRegistro>(PESOS_KEY));
   const [modalTipo, setModalTipo] = useState<RegistroTipo | null>(null);
   const [modalPeso, setModalPeso] = useState(false);
@@ -151,8 +160,46 @@ function AnimalFicha() {
   const [titulo, setTitulo] = useState("");
   const [detalhe, setDetalhe] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [visivelTutor, setVisivelTutor] = useState(false);
+  const [reforcoEm, setReforcoEm] = useState("");
+  const [lote, setLote] = useState("");
+  const [tipoDetalhe, setTipoDetalhe] = useState("");
+  const [salvandoPortal, setSalvandoPortal] = useState(false);
 
-  const registrosAnimal = useMemo(() => registros.filter((r) => r.animalId === animalId).sort((a,b) => `${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)), [registros, animalId]);
+  async function carregarConteudosPortal() {
+    if (!animalId) return;
+    try {
+      const { data: contexto, error: erroContexto } = await (supabase as any).rpc("oricse_contexto_clinica_atual");
+      if (erroContexto) throw erroContexto;
+      const ctx = Array.isArray(contexto) ? contexto[0] : contexto;
+      const cid = String(ctx?.clinica_id || "");
+      if (!cid) return;
+      setClinicaId(cid);
+      const [vacinasResult, examesResult, docsResult] = await Promise.all([
+        (supabase as any).from("oricse_portal_vacinas").select("id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at").eq("clinica_id", cid).eq("animal_id", animalId).order("aplicada_em", { ascending:false, nullsFirst:false }),
+        (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,visivel_tutor,created_at").eq("clinica_id", cid).eq("animal_id", animalId).order("realizado_em", { ascending:false, nullsFirst:false }),
+        (supabase as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,visivel_tutor,created_at").eq("clinica_id", cid).eq("animal_id", animalId).order("data_documento", { ascending:false, nullsFirst:false }),
+      ]);
+      for (const r of [vacinasResult, examesResult, docsResult]) if (r.error) throw r.error;
+      const vacinas = (vacinasResult.data || []) as VacinaPortal[];
+      const exames = (examesResult.data || []) as ExamePortal[];
+      const docs = (docsResult.data || []) as DocumentoPortal[];
+      const convertidos: Registro[] = [
+        ...vacinas.map((v) => ({ id:v.id, animalId:v.animal_id, tipo:"Vacinas" as const, titulo:v.nome, detalhe:[v.observacoes, v.reforco_em ? `Reforço: ${formatarData(v.reforco_em)}` : "", v.lote ? `Lote: ${v.lote}` : ""].filter(Boolean).join("\n"), data:v.aplicada_em || v.created_at.slice(0,10), criadoEm:v.created_at, visivelTutor:v.visivel_tutor, fontePortal:"vacina" as const })),
+        ...exames.map((e) => ({ id:e.id, animalId:e.animal_id, tipo:"Exames" as const, titulo:e.titulo, detalhe:[e.tipo && e.tipo !== "Exame" ? `Tipo: ${e.tipo}` : "", e.resultado_resumo || ""].filter(Boolean).join("\n"), data:e.realizado_em || e.created_at.slice(0,10), criadoEm:e.created_at, visivelTutor:e.visivel_tutor, fontePortal:"exame" as const })),
+        ...docs.map((d) => ({ id:d.id, animalId:d.animal_id, tipo:"Documentos" as const, titulo:d.titulo, detalhe:[d.tipo && d.tipo !== "Documento" ? `Tipo: ${d.tipo}` : "", d.observacoes || ""].filter(Boolean).join("\n"), data:d.data_documento || d.created_at.slice(0,10), criadoEm:d.created_at, visivelTutor:d.visivel_tutor, fontePortal:"documento" as const })),
+      ];
+      setRegistrosPortal(convertidos);
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível carregar vacinas, exames e documentos do banco.");
+    }
+  }
+
+  useEffect(() => { void carregarConteudosPortal(); }, [animalId]);
+
+  const registrosLocaisSemPortal = useMemo(() => registros.filter((r) => !["Vacinas","Exames","Documentos"].includes(r.tipo)), [registros]);
+  const registrosAnimal = useMemo(() => [...registrosLocaisSemPortal, ...registrosPortal].filter((r) => r.animalId === animalId).sort((a,b) => `${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)), [registrosLocaisSemPortal, registrosPortal, animalId]);
   const pesosAnimal = useMemo(() => pesos.filter((p) => p.animalId === animalId).sort((a,b) => `${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)), [pesos, animalId]);
   const codigoTutor = tutor && codigoPublicoTutor(tutor);
   const pesoAtual = pesosAnimal[0] || (animal?.peso && Number.isFinite(numeroPeso(animal.peso)) ? { id: "cadastro", animalId, peso: numeroPeso(animal.peso), data: animal.criadoEm?.slice(0,10) || "", criadoEm: animal.criadoEm || "" } : null);
@@ -168,18 +215,61 @@ function AnimalFicha() {
       return;
     }
     setModalTipo(tipo);
-    setTitulo(""); setDetalhe(""); setData(new Date().toISOString().slice(0,10));
+    setTitulo("");
+    setDetalhe("");
+    setData(new Date().toISOString().slice(0,10));
+    setVisivelTutor(false);
+    setReforcoEm("");
+    setLote("");
+    setTipoDetalhe(tipo === "Exames" ? "Exame" : tipo === "Documentos" ? "Documento" : "");
   }
 
-  function salvarRegistro() {
+  async function salvarRegistro() {
     if (!animal || !modalTipo) return;
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
+    if (["Vacinas","Exames","Documentos"].includes(modalTipo)) {
+      if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
+      setSalvandoPortal(true);
+      try {
+        if (modalTipo === "Vacinas") {
+          const { error } = await (supabase as any).from("oricse_portal_vacinas").insert({ clinica_id:clinicaId, animal_id:animal.id, nome:titulo.trim(), aplicada_em:data || null, reforco_em:reforcoEm || null, lote:lote.trim() || null, observacoes:detalhe.trim() || null, visivel_tutor:visivelTutor });
+          if (error) throw error;
+        } else if (modalTipo === "Exames") {
+          const { error } = await (supabase as any).from("oricse_portal_exames").insert({ clinica_id:clinicaId, animal_id:animal.id, titulo:titulo.trim(), tipo:tipoDetalhe.trim() || "Exame", realizado_em:data || null, resultado_resumo:detalhe.trim() || null, visivel_tutor:visivelTutor });
+          if (error) throw error;
+        } else {
+          const { error } = await (supabase as any).from("oricse_portal_documentos").insert({ clinica_id:clinicaId, animal_id:animal.id, titulo:titulo.trim(), tipo:tipoDetalhe.trim() || "Documento", data_documento:data || null, observacoes:detalhe.trim() || null, visivel_tutor:visivelTutor });
+          if (error) throw error;
+        }
+        await carregarConteudosPortal();
+        setModalTipo(null);
+        toast.success(`${modalTipo} adicionado no banco.`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : `Não foi possível salvar ${modalTipo.toLowerCase()}.`);
+      } finally {
+        setSalvandoPortal(false);
+      }
+      return;
+    }
     const novo: Registro = { id: crypto.randomUUID(), animalId: animal.id, tipo: modalTipo, titulo: titulo.trim(), detalhe: detalhe.trim(), data, criadoEm: new Date().toISOString() };
     const lista = [novo, ...registros];
     setRegistros(lista);
     localStorage.setItem(PRONTUARIO_KEY, JSON.stringify(lista));
     setModalTipo(null);
     toast.success(`${modalTipo} adicionado.`);
+  }
+
+  async function alternarVisibilidade(registro: Registro, valor: boolean) {
+    if (!registro.fontePortal || !clinicaId) return;
+    const tabela = registro.fontePortal === "vacina" ? "oricse_portal_vacinas" : registro.fontePortal === "exame" ? "oricse_portal_exames" : "oricse_portal_documentos";
+    setRegistrosPortal((lista) => lista.map((item) => item.id === registro.id ? { ...item, visivelTutor:valor } : item));
+    const { error } = await (supabase as any).from(tabela).update({ visivel_tutor:valor, updated_at:new Date().toISOString() }).eq("id", registro.id).eq("clinica_id", clinicaId);
+    if (error) {
+      setRegistrosPortal((lista) => lista.map((item) => item.id === registro.id ? { ...item, visivelTutor:!valor } : item));
+      toast.error("Não foi possível alterar a visibilidade no portal.");
+      return;
+    }
+    toast.success(valor ? "Registro liberado no Portal do Tutor." : "Registro ocultado do Portal do Tutor.");
   }
 
   function salvarPeso() {
@@ -222,9 +312,9 @@ function AnimalFicha() {
               <Painel titulo="Próximos agendamentos" acao={() => abrirNovo("Agendamentos")}><div className="text-sm text-muted-foreground">Abra a aba Agendamentos para consultar o histórico completo e marcar um novo horário.</div></Painel>
             </aside>
             <section className="space-y-3">{(["Registros clínicos", "Vacinas", "Exames", "Receitas", "Observações", "Documentos", "Galeria"] as RegistroTipo[]).map((tipo) => <ResumoSecao key={tipo} tipo={tipo} registros={registrosAnimal.filter((r) => r.tipo === tipo).slice(0,2)} onAdd={tipo === "Registros clínicos" ? undefined : tipo === "Observações" ? () => setAba("Observações") : () => abrirNovo(tipo)} onOpen={() => setAba(tipo as Aba)} animalId={animal.id}/>)}</section>
-          </div> : aba === "Registros clínicos" ? <RegistrosClinicos animalId={animal.id} registros={registrosAnimal.filter((r) => r.tipo === "Registros clínicos")}/> : aba === "Agendamentos" ? <AgendamentosAnimal animalId={animal.id} tutorId={animal.tutorId}/> : aba === "Observações" ? <ObservacoesAnimal animalId={animal.id} registros={registros} onChange={setRegistros}/> : <SecaoCompleta aba={aba} registros={registrosAnimal.filter((r) => r.tipo === aba)} onAdd={() => abrirNovo(aba as RegistroTipo)}/>} 
+          </div> : aba === "Registros clínicos" ? <RegistrosClinicos animalId={animal.id} registros={registrosAnimal.filter((r) => r.tipo === "Registros clínicos")}/> : aba === "Agendamentos" ? <AgendamentosAnimal animalId={animal.id} tutorId={animal.tutorId}/> : aba === "Observações" ? <ObservacoesAnimal animalId={animal.id} registros={registros} onChange={setRegistros}/> : <SecaoCompleta aba={aba} registros={registrosAnimal.filter((r) => r.tipo === aba)} onAdd={() => abrirNovo(aba as RegistroTipo)} onTogglePortal={alternarVisibilidade}/>} 
 
-          {modalTipo && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalTipo(null); }}><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar em {modalTipo}</h2></div><button type="button" onClick={() => setModalTipo(null)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div><div className="mt-5 space-y-4"><label className="block text-sm font-bold">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label><label className="block text-sm font-bold">Título<input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={modalTipo === "Vacinas" ? "Ex.: V10" : modalTipo === "Exames" ? "Ex.: Hemograma" : "Título do registro"} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label><label className="block text-sm font-bold">Detalhes<textarea value={detalhe} onChange={(e) => setDetalhe(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border p-3"/></label></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModalTipo(null)} className="rounded-xl border px-4 py-2.5 font-bold">Cancelar</button><button type="button" onClick={salvarRegistro} className="rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground">Salvar</button></div></div></div>}
+          {modalTipo && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalTipo(null); }}><div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar em {modalTipo}</h2></div><button type="button" onClick={() => setModalTipo(null)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div><div className="mt-5 space-y-4"><label className="block text-sm font-bold">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label><label className="block text-sm font-bold">Título<input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={modalTipo === "Vacinas" ? "Ex.: V10" : modalTipo === "Exames" ? "Ex.: Hemograma" : "Título do registro"} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label>{modalTipo === "Vacinas" && <div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm font-bold">Próximo reforço<input type="date" value={reforcoEm} onChange={(e) => setReforcoEm(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="block text-sm font-bold">Lote<input value={lote} onChange={(e) => setLote(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div>}{(modalTipo === "Exames" || modalTipo === "Documentos") && <label className="block text-sm font-bold">Tipo<input value={tipoDetalhe} onChange={(e) => setTipoDetalhe(e.target.value)} placeholder={modalTipo === "Exames" ? "Ex.: Hemograma" : "Ex.: Laudo, Receita, Termo"} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>}<label className="block text-sm font-bold">{modalTipo === "Exames" ? "Resumo / resultado" : "Detalhes"}<textarea value={detalhe} onChange={(e) => setDetalhe(e.target.value)} rows={5} className="mt-1 w-full rounded-xl border p-3"/></label>{["Vacinas","Exames","Documentos"].includes(modalTipo) && <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3"><div><div className="text-sm font-black">Visível no Portal do Tutor</div><div className="text-xs text-muted-foreground">O tutor só verá este registro se esta opção estiver ativada.</div></div><input type="checkbox" checked={visivelTutor} onChange={(e) => setVisivelTutor(e.target.checked)} className="h-5 w-5 accent-primary"/></label>}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setModalTipo(null)} className="rounded-xl border px-4 py-2.5 font-bold">Cancelar</button><button type="button" disabled={salvandoPortal} onClick={() => void salvarRegistro()} className="rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground disabled:opacity-50">{salvandoPortal ? "Salvando..." : "Salvar"}</button></div></div></div>}
 
           {modalPeso && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onMouseDown={(e) => { if (e.currentTarget === e.target) setModalPeso(false); }}><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-primary">{animal.nome}</p><h2 className="text-2xl font-black">Adicionar peso</h2></div><button type="button" onClick={() => setModalPeso(false)} className="rounded-lg p-2 hover:bg-muted"><X/></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Peso (kg)<input autoFocus inputMode="numeric" value={pesoParaCampo(pesoNovo)} onChange={(e) => setPesoNovo(pesoPorDigitacao(e.target.value))} placeholder="0,000" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-bold">Data<input type="date" value={dataPeso} onChange={(e) => setDataPeso(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div><p className="mt-3 text-xs text-muted-foreground">Digite somente números: 1290 vira 1,290 kg; 12 vira 0,012 kg.</p><button type="button" onClick={salvarPeso} className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">Salvar peso</button></div></div>}
         </div>
@@ -235,9 +325,9 @@ function AnimalFicha() {
 
 function Painel({ titulo, acao, children }: { titulo: string; acao?: () => void; children: React.ReactNode }) { return <section className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex items-center justify-between border-b bg-muted/20 px-4 py-3"><h3 className="font-black">{titulo}</h3>{acao && <button type="button" onClick={acao} className="inline-flex items-center gap-1 text-xs font-bold text-primary"><Plus size={14}/> Adicionar</button>}</div><div className="p-4">{children}</div></section>; }
 function Info({ rotulo, valor }: { rotulo: string; valor?: string }) { return <div className="mb-3 last:mb-0"><div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{rotulo}</div><div className="mt-0.5 text-sm">{valor || "Não informado"}</div></div>; }
-function ListaMini({ registros, vazio }: { registros: Registro[]; vazio: string }) { return registros.length ? <div className="space-y-2">{registros.map((r) => r.tipo === "Registros clínicos" ? <Link key={r.id} to="/consulta" search={{ animalId: r.animalId, registroId: r.id } as never} className="block rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025]"><div className="text-xs text-muted-foreground">{formatarData(r.data)}</div><div className="font-bold">{r.titulo}</div><div className="mt-1 text-[11px] font-bold text-primary">Abrir consulta →</div></Link> : <div key={r.id} className="rounded-xl border p-3"><div className="text-xs text-muted-foreground">{formatarData(r.data)}</div><div className="font-bold">{r.titulo}</div></div>)}</div> : <div className="py-5 text-center text-sm text-muted-foreground">{vazio}</div>; }
+function ListaMini({ registros, vazio }: { registros: Registro[]; vazio: string }) { return registros.length ? <div className="space-y-2">{registros.map((r) => r.tipo === "Registros clínicos" ? <Link key={r.id} to="/consulta" search={{ animalId: r.animalId, registroId: r.id } as never} className="block rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025]"><div className="text-xs text-muted-foreground">{formatarData(r.data)}</div><div className="font-bold">{r.titulo}</div><div className="mt-1 text-[11px] font-bold text-primary">Abrir consulta →</div></Link> : <div key={r.id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-2"><div><div className="text-xs text-muted-foreground">{formatarData(r.data)}</div><div className="font-bold">{r.titulo}</div></div>{r.fontePortal && <span className={`rounded-full px-2 py-1 text-[10px] font-black ${r.visivelTutor ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>{r.visivelTutor ? "Portal" : "Oculto"}</span>}</div></div>)}</div> : <div className="py-5 text-center text-sm text-muted-foreground">{vazio}</div>; }
 function ResumoSecao({ tipo, registros, onAdd, onOpen, animalId }: { tipo: RegistroTipo; registros: Registro[]; onAdd?: () => void; onOpen: () => void; animalId: string }) { const Icon = iconFor(tipo as Aba); return <section className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex items-center justify-between border-b bg-muted/20 px-4 py-2.5"><button type="button" onClick={onOpen} className="flex items-center gap-2 font-black"><Icon size={16} className="text-primary"/>{tipo}</button>{tipo === "Registros clínicos" ? <Link to="/registro-clinico" search={{ animalId } as never} className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground"><Plus size={13}/> Adicionar</Link> : onAdd && <button type="button" onClick={onAdd} className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground"><Plus size={13}/> Adicionar</button>}</div><div className="p-3"><ListaMini registros={registros} vazio={`Nenhum registro em ${tipo.toLowerCase()}.`}/></div></section>; }
-function SecaoCompleta({ aba, registros, onAdd }: { aba: Aba; registros: Registro[]; onAdd: () => void }) { const Icon = iconFor(aba); return <section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3"><div className="flex items-center gap-2"><Icon size={19} className="text-primary"/><h2 className="text-xl font-black">{aba}</h2></div><button type="button" onClick={onAdd} className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"><Plus size={15}/> Adicionar</button></div><div className="p-4">{registros.length ? <div className="space-y-3">{registros.map((r) => <article key={r.id} className="rounded-xl border p-4"><div className="font-black">{r.titulo}</div><div className="mt-0.5 text-xs text-muted-foreground">{formatarData(r.data)}</div>{r.detalhe && <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{r.detalhe}</p>}</article>)}</div> : <div className="py-14 text-center text-muted-foreground"><Icon className="mx-auto mb-3 opacity-30" size={34}/><p>Nenhum registro em {aba.toLowerCase()}.</p></div>}</div></section>; }
+function SecaoCompleta({ aba, registros, onAdd, onTogglePortal }: { aba: Aba; registros: Registro[]; onAdd: () => void; onTogglePortal: (registro:Registro, valor:boolean) => void }) { const Icon = iconFor(aba); return <section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-4 py-3"><div className="flex items-center gap-2"><Icon size={19} className="text-primary"/><h2 className="text-xl font-black">{aba}</h2></div><button type="button" onClick={onAdd} className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"><Plus size={15}/> Adicionar</button></div><div className="p-4">{registros.length ? <div className="space-y-3">{registros.map((r) => <article key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="font-black">{r.titulo}</div><div className="mt-0.5 text-xs text-muted-foreground">{formatarData(r.data)}</div></div>{r.fontePortal && <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold"><input type="checkbox" checked={Boolean(r.visivelTutor)} onChange={(e) => void onTogglePortal(r,e.target.checked)} className="accent-primary"/> Visível no Portal do Tutor</label>}</div>{r.detalhe && <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{r.detalhe}</p>}</article>)}</div> : <div className="py-14 text-center text-muted-foreground"><Icon className="mx-auto mb-3 opacity-30" size={34}/><p>Nenhum registro em {aba.toLowerCase()}.</p></div>}</div></section>; }
 function RegistrosClinicos({ animalId, registros }: { animalId: string; registros: Registro[] }) {
   return <section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm">
     <div className="border-b bg-muted/20 px-4 py-4">
@@ -261,4 +351,3 @@ function RegistroCard({ icon: Icon, titulo, texto, animalId, tipo }: { icon: typ
     <div className="mt-5 flex items-center justify-between border-t pt-3 text-sm font-semibold text-primary"><span>{tipo === "consulta" ? "Iniciar consulta" : "Registrar procedimento"}</span><ArrowRight size={18}/></div>
   </Link>;
 }
-
