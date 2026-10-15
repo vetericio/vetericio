@@ -97,7 +97,7 @@ function origemDaUrl(): OrigemComanda {
   );
 }
 
-function Comandas() {
+export function Comandas() {
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
   const [tutores] = useState<Tutor[]>(() => lerLista<Tutor>(TUTORES_KEY));
   const telefoneTutor = (id: string): string => {
