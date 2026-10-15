@@ -19,6 +19,7 @@ const areas = [
     { to: "/recepcao", rotulo: "Agenda e fila de espera", permissao: "recepcao.agenda" },
     { to: "/configurar-agenda-online", rotulo: "Configurar agenda online", permissao: "recepcao.agenda" },
     { to: "/tutores", rotulo: "Tutores", permissao: "recepcao.cadastros.visualizar" },
+    { to: "/portal-tutores", rotulo: "Portal do tutor", permissao: "portal_tutor.gerenciar" },
     { to: "/animais", rotulo: "Animais", permissao: "recepcao.cadastros.visualizar" },
     { to: "/crm", rotulo: "CRM e lembretes", permissao: "crm.visualizar" },
   ] },
