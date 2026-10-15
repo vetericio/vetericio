@@ -3,12 +3,16 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(13);
 
+-- A suíte cria três usuários simultâneos; amplia o limite apenas dentro da transação.
+update public.clinicas
+set plano='Master (Equipe)', limite_usuarios=5
+where slug='oricse-clinica-testes-isolamento';
+
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) values
 ('6f4a64b8-0df8-4b66-aad4-68e8fd7a2101','00000000-0000-0000-0000-000000000000','authenticated','authenticated','m2-rec@test.invalid','!disabled!',now(),now()),
 ('6f4a64b8-0df8-4b66-aad4-68e8fd7a2102','00000000-0000-0000-0000-000000000000','authenticated','authenticated','m2-vet@test.invalid','!disabled!',now(),now()),
 ('6f4a64b8-0df8-4b66-aad4-68e8fd7a2103','00000000-0000-0000-0000-000000000000','authenticated','authenticated','m2-rt@test.invalid','!disabled!',now(),now());
 
--- Usa a clínica de teste criada para a suíte multi-tenant.
 insert into public.clinica_usuarios(clinica_id,user_id,papel,ativo)
 select id,'6f4a64b8-0df8-4b66-aad4-68e8fd7a2101','recepcao',true from public.clinicas where slug='oricse-clinica-testes-isolamento';
 insert into public.clinica_usuarios(clinica_id,user_id,papel,ativo)
