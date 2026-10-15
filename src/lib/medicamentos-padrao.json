@@ -1,0 +1,1895 @@
+[
+ {
+  "id": "a1b70b9b-6816-4f6e-acc8-6709df04a330",
+  "cao": {
+   "doseMax": "150",
+   "doseMin": "150",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "150",
+   "doseMin": "150",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Acetilcisteína",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Pode dar náusea, ADM junto com antiemético. Não ADM junto com ampicilina. ",
+  "especial": true,
+  "favorito": false,
+  "nomeMenor": "",
+  "classificacao": "Mucolitico ",
+  "doseUnificada": true,
+  "concentracaoValor": "100",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "afd0b949-2588-4a76-8bea-72743ecb1bb4",
+  "cao": {
+   "doseMax": "0.2",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "0.2",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "nome": "Acepram",
+  "vias": [
+   "IV",
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Não usar com ondasetrona, diazepan. \nDose máxima de 3mg para cão e 1mg para gatos. ",
+  "classificacao": "Sedativo / Tranquilizante / Antiemético ",
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "48aff36f-15c3-4b28-ae85-cff0b0a4aec2",
+  "cao": {
+   "doseMax": "25",
+   "doseMin": "25",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "gato": {
+   "doseMax": "25",
+   "doseMin": "25",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "nome": "Ácido Tranexâmico (iv)",
+  "vias": [
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Controlar sangramentos. Não usar com antiácidos. \nFazer IV se precisar até vomita\nMédia - 25mg/kg (tid ou bid)\nEmergência - 50mg/kg",
+  "nomeMenor": "Transamin",
+  "classificacao": "Antifibruinolitico ",
+  "doseUnificada": true,
+  "concentracaoValor": "50",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "b0335d3a-3cbc-4cc8-b52d-f94a52148db8",
+  "cao": {
+   "doseMax": "0.1",
+   "doseMin": "0.025",
+   "proibido": false,
+   "intervalo": "6-12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "0.1",
+   "doseMin": "0.125",
+   "proibido": false,
+   "intervalo": "8-24",
+   "porAnimal": false
+  },
+  "nome": "Alprazolam",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Não usar com itraconazol, anestésicos ",
+  "classificacao": "Tranquilizante ",
+  "doseUnificada": false,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "c1f1f67d-4719-4224-aea0-eb81d8abfc40",
+  "cao": {
+   "doseMax": "20",
+   "doseMin": "10",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "20",
+   "doseMin": "10",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "nome": "Amoxilina",
+  "vias": [
+   "IM",
+   "SC",
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "Antibiótico ",
+  "doseUnificada": true,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "fda832f2-5b53-4c87-95b4-73a617a8d40a",
+  "cao": {
+   "doseMax": "25",
+   "doseMin": "12.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "gato": {
+   "doseMax": "25",
+   "doseMin": "12.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "nome": "Agemoxi (amoxilina+clavulanato)",
+  "vias": [
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Pode aumentar enzimas hepáticas. \n12,5 a 25mg/kg \n",
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Antibiótico ",
+  "doseUnificada": true,
+  "concentracaoValor": "150",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "52289859-3df3-4cd1-8687-909f483a6368",
+  "cao": {
+   "doseMax": "30",
+   "doseMin": "20",
+   "proibido": false,
+   "intervalo": "8-12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "30",
+   "doseMin": "20",
+   "proibido": false,
+   "intervalo": "8-12",
+   "porAnimal": false
+  },
+  "nome": "Ampicilina Sódica",
+  "vias": [
+   "IV",
+   "IM",
+   "SC",
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Interferência em glicose urinária. ",
+  "classificacao": "Antibiótico beta-lactamico",
+  "doseUnificada": true,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "fb3fc870-7c5d-4cc4-9ca7-d4dcc55dfa5e",
+  "cao": {
+   "doseMax": "20",
+   "doseMin": "20",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "20"
+  },
+  "gato": {
+   "doseMax": "20",
+   "doseMin": "20",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "20"
+  },
+  "nome": "Ampicilina Sódica + Sulbactam Sódico",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "Precisa ficar refrigerado. \nReconstituido - 250mg/ml\nCão e gato - 20mg/kg tid",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Antibiótico beta-lactamico ",
+  "doseUnificada": true,
+  "concentracaoValor": "250",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "0e075958-6f9c-4fc6-bf5f-985bd71caa13",
+  "cao": {
+   "doseMax": "0.25",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "1.25",
+   "doseMin": "0.62",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false
+  },
+  "nome": "Anlodipino",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Cão: pode ser usado até 0.4mg/kg em emergência.\nGato: animais mais de 4kg ou hipertensão grave pode usar até 1.25mg/kg. ",
+  "nomeMenor": "Besilato de",
+  "classificacao": "Anti-hipertensivo ",
+  "doseUnificada": false,
+  "concentracaoValor": "5",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "1cab00fa-5099-4361-8606-5f95a260f6f5",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "0.02",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "0.02",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Atropina",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "Não usar em doenças intestinais como colite. Não usar em taquicardia. ",
+  "classificacao": "Pré - anestesico / antiarrítmico ",
+  "doseUnificada": true,
+  "concentracaoValor": "0.25",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "d3d9b3b1-11d6-4920-8e9e-3891e5860ddc",
+  "cao": {
+   "doseMax": "2",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "1.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "nome": "Bupivacaína",
+  "vias": [
+   "TOP"
+  ],
+  "teste": false,
+  "resumo": "Anestésico local. Pode causar hipotensão, náusea, arritmias. ",
+  "classificacao": "Anestésico local",
+  "doseUnificada": false,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "080486a9-2430-43ae-bd98-f11b57200b10",
+  "cao": {
+   "doseMax": "30",
+   "doseMin": "20",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "30",
+   "doseMin": "20",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "nome": "Cefalexina",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "Anticolinergico / pré-anestesico / antiarrítmico",
+  "doseUnificada": true,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "fc8c4f16-5a09-48fe-a82e-a0a534d88063",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "15",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "nome": "Ácido Tranexâmico (vo)",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Controlar sangramentos. Não usar em pacientes coagulação intravascular. ",
+  "nomeMenor": "",
+  "classificacao": "Antifibruinolitico",
+  "doseUnificada": false,
+  "concentracaoValor": "250",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "ca2d27fe-702b-42f9-bbce-5e8ab7eebf5f",
+  "cao": {
+   "doseMax": "0.2",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "6-12",
+   "porAnimal": false,
+   "dosePadrao": "0.2"
+  },
+  "gato": {
+   "doseMax": "0.2",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "6-12",
+   "porAnimal": false,
+   "dosePadrao": "0.2"
+  },
+  "nome": "Buprenorfina",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Analgésico opióide. ",
+  "nomeMenor": "(beniv)",
+  "classificacao": "Controle de dor / Sedação ",
+  "doseUnificada": true,
+  "concentracaoValor": "0.4",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "ff6510e4-6d47-4194-a4ac-97b4a6a785ea",
+  "cao": {
+   "doseMax": "25",
+   "doseMin": "25",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "unidade": "mg/kg",
+   "proibido": true,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "nome": "Buscofin (buscopan)",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "So cão 25mg/kg - tid",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Analgésico e antitérmico ",
+  "doseUnificada": false,
+  "concentracaoValor": "500",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "0228f8f8-d17f-4785-8f1c-92f76b6940b2",
+  "cao": {
+   "doseMax": "30",
+   "doseMin": "30",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "30"
+  },
+  "gato": {
+   "doseMax": "30",
+   "doseMin": "30",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "30"
+  },
+  "nome": "Ceftriaxona",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Pode causar anorexia. \n30mg/kg tid\nCão e gato\n5ml de recon",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Antibiótico beta-lactamico ",
+  "doseUnificada": true,
+  "concentracaoValor": "200",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "e8857566-e39b-49ff-a324-3fad678317ff",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "2.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12-24",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Ceftioifur (CEF 50)",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Aumenta corpos cetônicos. ",
+  "classificacao": "Antibiótico beta-lactamico ",
+  "doseUnificada": true,
+  "concentracaoValor": "50",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "0e24f06c-cf5a-4758-80d4-1f25fdb14e93",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "33",
+   "doseMin": "22",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Cetamina",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "Associar com diazepan, midazolam, ou xilazina. Em gatos, usar:\nContenção: 11mg/kg\nAnalgésia: 0.1 a 1mg/kg",
+  "especial": true,
+  "favorito": false,
+  "nomeMenor": "",
+  "classificacao": "Anestesico geral ",
+  "doseUnificada": false,
+  "concentracaoValor": "100",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "9fc87ee3-7405-430b-9b05-262a255e22fe",
+  "cao": {
+   "doseMax": "1",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "1",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Ciprofloxacino (colírio)",
+  "vias": [
+   "OF"
+  ],
+  "teste": false,
+  "resumo": "",
+  "nomeMenor": "",
+  "classificacao": "Antibiótico ",
+  "doseUnificada": true,
+  "concentracaoValor": "3",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "54115efd-2914-452b-bd27-1985d439630f",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Clopidogel",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "75",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "8cbab54a-ea5e-4d29-bb61-6373d114a7ab",
+  "cao": {
+   "doseMax": "25",
+   "doseMin": "25",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "gato": {
+   "doseMax": "25",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "25"
+  },
+  "nome": "Dipirona",
+  "vias": [
+   "IV",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Cão - 25mg/kg - tid\nGato - 25mg/kg _ Sid (12,5mg bid)",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Analgésico e antitérmico ",
+  "doseUnificada": false,
+  "concentracaoValor": "500",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "687d6e8a-10f5-4099-a5ff-8ebd13ab726f",
+  "cao": {
+   "doseMax": "0.15",
+   "doseMin": "0,15",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "0.15"
+  },
+  "gato": {
+   "doseMax": "0.15",
+   "doseMin": "0,15",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "0.15"
+  },
+  "nome": "Dexametasona",
+  "vias": [
+   "IV",
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Pode ser usado como imunossupressor. \n0,15mg/kg Sid \nCão e gato",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Anti-inflamatório ",
+  "doseUnificada": true,
+  "concentracaoValor": "4",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "9c31850f-4725-48f5-bda0-2ca22c91361e",
+  "cao": {
+   "doseMax": "10",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false,
+   "dosePadrao": "0.3"
+  },
+  "gato": {
+   "doseMax": "2",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Diazepam",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Cão\n* obstrução - 2 a 10mg/kg\n* sedação - 0,1 a 0,3mg/kg\n\nGato\n* Obstrução - 0,5\n",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": false,
+  "concentracaoValor": "5",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "6d0ec813-c7cd-4f2e-865f-823e2203529d",
+  "cao": {
+   "doseMax": "10",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12-24",
+   "porAnimal": false,
+   "dosePadrao": "10"
+  },
+  "gato": {
+   "doseMax": "25",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": true,
+   "intervalo": "12-24",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Doxiciclina",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Só cão - 0,25ml por kilos\n10mg/kg\nGato só oral",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Antibiótico ",
+  "doseUnificada": false,
+  "concentracaoValor": "40",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "9dbc2df4-6bc0-4b31-bb7a-f34cc1bda635",
+  "cao": {
+   "doseMax": "1",
+   "doseMin": "0.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "1"
+  },
+  "gato": {
+   "doseMax": "1",
+   "doseMin": "0.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "1"
+  },
+  "nome": "Ondasetrona",
+  "vias": [
+   "IV",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Cão e gato - 0,5 até 1mg/kg / tid\n",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "Emedron",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "1",
+  "concentracaoUnidade": "%"
+ },
+ {
+  "id": "775ce344-4e4a-44b4-81cb-9b75de9089b0",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Epinefrina (Adrenalina)",
+  "vias": [
+   "IV",
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "1",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "f1ede942-f23b-460c-ac7e-dca80797a5b8",
+  "cao": {
+   "doseMax": "2",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12-24",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "2",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12-24",
+   "porAnimal": false
+  },
+  "nome": "Espironolactona",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Insuficiência cardíaca / cardiopatia / hipertensão ",
+  "nomeMenor": "",
+  "classificacao": "Diurético poupador de potássio ",
+  "doseUnificada": true,
+  "concentracaoValor": "25",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "3c691be4-3629-4d15-a6a6-e8e9364d8c80",
+  "cao": {
+   "doseMax": "20",
+   "doseMin": "5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false
+  },
+  "nome": "Enrofloxacina (zelotril)",
+  "vias": [],
+  "teste": false,
+  "resumo": "Bacteriano ",
+  "nomeMenor": "",
+  "classificacao": "Antibiótico ",
+  "doseUnificada": false,
+  "concentracaoValor": "10",
+  "concentracaoUnidade": "%"
+ },
+ {
+  "id": "f4f4d54b-7fdf-4366-9b08-7a989c0a7724",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Eskavit (fitomenadicona /vita K1)",
+  "vias": [
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "0.5 a 1 mg/kg - sid\nCão e gato",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "10",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "46c81043-efa1-40d3-bc1d-d85c87eb4dc4",
+  "cao": {
+   "doseMax": "5",
+   "doseMin": "2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "3",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "nome": "Fenobarbital",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "Epilepsia ",
+  "nomeMenor": "",
+  "classificacao": "Anti epilepsia ",
+  "doseUnificada": false,
+  "concentracaoValor": "200",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "6e262a65-d3a4-44e8-98a4-845e27406d49",
+  "cao": {
+   "doseMax": "10",
+   "doseMin": "2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "10",
+   "doseMin": "2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Fentanil",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": ".",
+  "nomeMenor": "",
+  "classificacao": "Analgésico / Pré-anestesico ",
+  "doseUnificada": true,
+  "concentracaoValor": "0.05",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "ebc28baf-a16b-4d52-b773-f4259971eead",
+  "cao": {
+   "doseMax": "5.5",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12-24",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "5.5",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12-24",
+   "porAnimal": false
+  },
+  "nome": "Furosemida",
+  "vias": [
+   "IV",
+   "IM",
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Pode ser usado diurese, endema e insuficiência cardíaca congestiva . ",
+  "nomeMenor": "",
+  "classificacao": "Diurético ",
+  "doseUnificada": true,
+  "concentracaoValor": "10",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "723ee970-eed2-483b-9414-6dbb31ba2576",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Kollangel",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "60",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "d4c7bb4f-499e-43be-b9dc-4631c038cd8f",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Lacribell",
+  "vias": [
+   "OF"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "3",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "66c24d32-a33f-433f-b92e-76a16931cb6a",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Lacri",
+  "vias": [
+   "OF"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "5",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "a44e106a-4cc5-4f8f-9958-ee6cd7d60bca",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Lidocaína",
+  "vias": [],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "20",
+  "concentracaoUnidade": "mg/g"
+ },
+ {
+  "id": "729f99d1-58b1-4911-bfb9-3d484cdabedd",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Lactugold",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "667",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "2df56aa6-aeb3-4b93-962f-b69376cc3696",
+  "cao": {
+   "doseMax": "50",
+   "doseMin": "20",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "50",
+   "doseMin": "20",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Silimarina",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Para icterícia ",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "Legalon",
+  "classificacao": "Hepatoprotetor",
+  "doseUnificada": true,
+  "concentracaoValor": "90",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "62345617-c766-4b98-a3e8-17034e365bda",
+  "cao": {
+   "doseMax": "0.1",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "0.1"
+  },
+  "gato": {
+   "doseMax": "0.1",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "0.1"
+  },
+  "nome": "Meloxican",
+  "vias": [
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Não-esteirodal",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Anti-inflamatório ",
+  "doseUnificada": true,
+  "concentracaoValor": "0.2",
+  "concentracaoUnidade": "%"
+ },
+ {
+  "id": "b816deaa-aaf8-4933-839f-515c5fd054ab",
+  "cao": {
+   "doseMax": "0.3",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "0.3"
+  },
+  "gato": {
+   "doseMax": "0.3",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "0.3"
+  },
+  "nome": "Metadona",
+  "vias": [
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "Agonista Opióide MU\nNão fazer com tramadol \n\n0,2mg/kg bid ou tid",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Analgésico ",
+  "doseUnificada": true,
+  "concentracaoValor": "10",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "c6716881-755b-4ed0-a171-91df9142ccc4",
+  "cao": {
+   "doseMax": "15",
+   "doseMin": "7.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "15"
+  },
+  "gato": {
+   "doseMax": "15",
+   "doseMin": "7.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "15"
+  },
+  "nome": "Metronidazol",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Para giardíase usar 25mg/kg oral\n\n15mg/kg - 3ml por kg cão e gato",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Antibiótico / Antiprotozoários ",
+  "doseUnificada": true,
+  "concentracaoValor": "5",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "7d9b0b77-5f89-49ec-837a-2821b06b0faf",
+  "cao": {
+   "doseMax": "0.3",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "0.3",
+   "doseMin": "0.1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "-",
+   "porAnimal": false
+  },
+  "nome": "Midazolam",
+  "vias": [
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": ".",
+  "nomeMenor": "",
+  "classificacao": "Sedativo / Tranquilizante ",
+  "doseUnificada": true,
+  "concentracaoValor": "10",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "69330b1a-0be3-47fb-992e-8633fb9694fd",
+  "cao": {
+   "doseMax": "1",
+   "doseMin": "0.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "6-24",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "0.24",
+   "doseMin": "0.05",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "6-8",
+   "porAnimal": false
+  },
+  "nome": "Morfina",
+  "vias": [
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": false,
+  "concentracaoValor": "10",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "ae65117f-40ab-4819-9399-c355982b2bc3",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Mylantra plus",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "80",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "91488823-4449-4431-a923-bbc25a802789",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Norepinefrina",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "2",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "339a33a6-fe78-43cc-b76a-9b2c9251cd9f",
+  "cao": {
+   "doseMax": "1",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "1"
+  },
+  "gato": {
+   "doseMax": "1",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": "1"
+  },
+  "nome": "Omeprazol",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "Aumenta o pH do estômago. Pode alterar absorção. \n1mg/kg - sid",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "Protetor gástrico ",
+  "doseUnificada": true,
+  "concentracaoValor": "4",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "9bb7f7d4-8fa9-48de-b5a5-4fe90f638069",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Pentabiotico",
+  "vias": [],
+  "teste": false,
+  "resumo": "",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "6000000",
+  "concentracaoUnidade": "UI/mL"
+ },
+ {
+  "id": "e9923030-aa05-4bc1-bea4-438455acb749",
+  "cao": {
+   "doseMax": "4",
+   "doseMin": "2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "2",
+   "doseMin": "1",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "nome": "Preganalina",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": false,
+  "concentracaoValor": "25",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "f3deeb9a-c789-4758-a247-f6c91ae9b6a2",
+  "cao": {
+   "doseMax": "0.4",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "0.4",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false
+  },
+  "nome": "Prometazina (prometazol)",
+  "vias": [
+   "IM"
+  ],
+  "teste": false,
+  "resumo": ".",
+  "nomeMenor": "",
+  "classificacao": "Antiemético / Antialérgico ",
+  "doseUnificada": true,
+  "concentracaoValor": "25",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "5191818c-9e73-4e92-a50f-385f1fd57769",
+  "cao": {
+   "doseMax": "75",
+   "doseMin": "75",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "75"
+  },
+  "gato": {
+   "doseMax": "75",
+   "doseMin": "75",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "75"
+  },
+  "nome": "Simeticona",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Uma gota é 2.5mg",
+  "nomeMenor": "",
+  "classificacao": "Flatulências / Desconforto abdominal ",
+  "doseUnificada": true,
+  "concentracaoValor": "75",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "2b5fb255-60ef-4a99-b58d-45d61f5d1d3b",
+  "cao": {
+   "doseMax": "500",
+   "doseMin": "250",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "500",
+   "doseMin": "250",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Sucralfato",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Cão grande - dobrar a dose \nProtege: úlceras, gastrite, esofagite. ",
+  "nomeMenor": "",
+  "classificacao": "Protetor de mucosa gastrointestinal ",
+  "doseUnificada": true,
+  "concentracaoValor": "200",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "0d61ef64-1c87-4650-bb89-caec2dee4a58",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "25",
+   "doseMin": "15",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false
+  },
+  "nome": "Teofilina",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Falta de ar. ",
+  "nomeMenor": "",
+  "classificacao": "Broncodilatador ",
+  "doseUnificada": false,
+  "concentracaoValor": "100",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "7ff65c21-7202-47df-b91a-d349c1e197bd",
+  "cao": {
+   "doseMax": "4",
+   "doseMin": "3",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": "3"
+  },
+  "gato": {
+   "doseMax": "2",
+   "doseMin": "2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "2"
+  },
+  "nome": "Tramadol",
+  "vias": [
+   "IV",
+   "IM",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "Cão: 4mg/kg tid\nGato: 2mg/kg bid",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": false,
+  "concentracaoValor": "50",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "4f1a13f0-a0ea-4fdd-9130-b85ed6a542ff",
+  "cao": {
+   "doseMax": "7.5",
+   "doseMin": "2.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "7.5",
+   "doseMin": "2.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Trazodona",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": false,
+  "concentracaoValor": "100",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "c2655ee1-3104-4841-8f89-4f6f7688c56f",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "50",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "15",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "24",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Ácido Ursodesoxicólico",
+  "vias": [
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "Pode causar diarréia. ",
+  "especial": true,
+  "favorito": false,
+  "nomeMenor": "",
+  "classificacao": "Protetor hepático ",
+  "doseUnificada": false,
+  "concentracaoValor": "150",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "decc31e5-4531-40e5-bc4e-1222b0e5543d",
+  "cao": {
+   "doseMax": "1",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "1",
+   "doseMin": "0.2",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Xilazin",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": false,
+  "concentracaoValor": "20",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "e0f8aa2c-c465-4895-98a0-aad4517bc6b2",
+  "cao": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "gato": {
+   "doseMax": "",
+   "doseMin": "",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": false
+  },
+  "nome": "Izoot B12",
+  "vias": [
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "120",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "66ed746d-0966-4530-86d1-fe257123638a",
+  "cao": {
+   "doseMax": "300",
+   "doseMin": "150",
+   "unidade": "Ui/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "gato": {
+   "doseMax": "300",
+   "doseMin": "150",
+   "unidade": "Ui/kg",
+   "proibido": false,
+   "intervalo": "8",
+   "porAnimal": false,
+   "dosePadrao": ""
+  },
+  "nome": "Heparina Sódica",
+  "vias": [
+   "IV",
+   "IM"
+  ],
+  "teste": false,
+  "resumo": "Não usar em pacientes com trombopenia. ",
+  "nomeMenor": "(hepamax S)",
+  "classificacao": "Anticoagulante ",
+  "doseUnificada": true,
+  "concentracaoValor": "5000",
+  "concentracaoUnidade": "UI/mL"
+ },
+ {
+  "id": "d3499508-c38a-41ae-9fb9-43c2bb1d60a8",
+  "cao": {
+   "doseMax": "11",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "10"
+  },
+  "gato": {
+   "doseMax": "11",
+   "doseMin": "10",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "12",
+   "porAnimal": false,
+   "dosePadrao": "10"
+  },
+  "nome": "Clindamicina",
+  "vias": [
+   "IV"
+  ],
+  "teste": false,
+  "resumo": "10mg/kg bid",
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "c6fd12ae-fcb1-4a76-8738-8ce901c8a86a",
+  "cao": {
+   "doseMax": "0.5",
+   "doseMin": "0.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8-12",
+   "porAnimal": false,
+   "dosePadrao": "0.5"
+  },
+  "gato": {
+   "doseMax": "0.5",
+   "doseMin": "0.5",
+   "unidade": "mg/kg",
+   "proibido": false,
+   "intervalo": "8-12",
+   "porAnimal": false,
+   "dosePadrao": "0.5"
+  },
+  "nome": "Metoclopramida",
+  "vias": [
+   "IV",
+   "SC"
+  ],
+  "teste": false,
+  "resumo": "0,5 mg/kg - bid ou tid",
+  "especial": true,
+  "favorito": true,
+  "nomeMenor": "Plasil",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "5",
+  "concentracaoUnidade": "mg/mL"
+ },
+ {
+  "id": "72f76a91-9793-4832-bafc-eb0fae2feb38",
+  "cao": {
+   "doseMax": "2",
+   "doseMin": "2",
+   "unidade": "mL/animal",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": true,
+   "dosePadrao": "2"
+  },
+  "gato": {
+   "doseMax": "2",
+   "doseMin": "2",
+   "unidade": "mL/animal",
+   "proibido": false,
+   "intervalo": "",
+   "porAnimal": true,
+   "dosePadrao": "2"
+  },
+  "nome": "Complexo B",
+  "vias": [
+   "IV",
+   "VO"
+  ],
+  "teste": false,
+  "resumo": "",
+  "favorito": true,
+  "nomeMenor": "",
+  "classificacao": "",
+  "doseUnificada": true,
+  "concentracaoValor": "",
+  "concentracaoUnidade": "mg/mL"
+ }
+]

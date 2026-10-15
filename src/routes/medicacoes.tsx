@@ -12,6 +12,7 @@ import { DialogoMinistrar } from "@/components/medicamentos/DialogoMinistrar";
 import { DialogoEscolherMedicamento } from "@/components/medicamentos/DialogoEscolherMedicamento";
 import { CompletarInsercao } from "@/components/medicamentos/CompletarInsercao";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { medicamentosPadrao } from "@/lib/medicamentos";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 import {
   DropdownMenu,
@@ -87,7 +88,7 @@ function formatarPeso(digitos: string): string {
 }
 
 function PaginaMedicacoes() {
-  const { medicamentos, salvar, remover, carregado } = useMedicamentos();
+  const { medicamentos, setMedicamentos, salvar, remover, carregado } = useMedicamentos();
   const [busca, setBusca] = useState("");
   const [peso, setPeso] = useState("");
   const [especie, setEspecie] = useState<Especie>("cao");
@@ -176,6 +177,24 @@ function PaginaMedicacoes() {
           />
         ))}
       </ul>
+
+      <div className="mt-4 flex justify-center">
+        <button
+          type="button"
+          onClick={() => {
+            const nomes = new Set(medicamentos.map((m) => normalizarNomeMedicamento(m.nome)));
+            const novos = medicamentosPadrao().filter(
+              (m) => !nomes.has(normalizarNomeMedicamento(m.nome)),
+            );
+            if (!novos.length) return void window.alert("Todos os medicamentos padrão já estão na lista.");
+            if (!window.confirm(`Adicionar ${novos.length} medicamentos padrão da plataforma? Os seus não serão alterados.`)) return;
+            setMedicamentos((atual) => [...atual, ...novos]);
+          }}
+          className="rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary"
+        >
+          ➕ Adicionar medicamentos padrão da plataforma
+        </button>
+      </div>
 
       {medicamentos.length > 0 && (
         <div className="mt-4 flex flex-wrap justify-center gap-2">

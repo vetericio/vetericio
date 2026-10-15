@@ -794,6 +794,12 @@ const TESTE: Medicamento[] = [
   },
 ];
 
+import padraoJson from "./medicamentos-padrao.json";
+
+export function medicamentosPadrao(): Medicamento[] {
+  return JSON.parse(JSON.stringify(padraoJson)) as Medicamento[];
+}
+
 export function medicamentosDeTeste(): Medicamento[] {
   return TESTE.map((m) => ({ ...m, vias: [...m.vias], cao: { ...m.cao }, gato: { ...m.gato } }));
 }
@@ -802,7 +808,7 @@ export function carregarMedicamentos(): Medicamento[] {
   if (typeof window === "undefined") return [];
   try {
     const bruto = window.localStorage.getItem(CHAVE_MEDICAMENTOS);
-    if (!bruto) return medicamentosDeTeste();
+    if (!bruto) return medicamentosPadrao();
     const lido = JSON.parse(bruto);
     if (!Array.isArray(lido)) return [];
     // Quem já usava a estrela (antes ligada a "especial") continua com a favorita marcada.

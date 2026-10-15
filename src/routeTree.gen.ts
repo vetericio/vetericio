@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AliasRouteImport } from './routes/$alias'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminCanvasRouteImport } from './routes/admin-canvas'
 import { Route as AdminConteudoRouteImport } from './routes/admin-conteudo'
@@ -35,6 +36,7 @@ import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
+import { Route as MinhaAtividadeRouteImport } from './routes/minha-atividade'
 import { Route as NovoAnimalRouteImport } from './routes/novo-animal'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
@@ -56,6 +58,11 @@ import { Route as VetSlugRouteImport } from './routes/vet.$slug'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AliasRoute = AliasRouteImport.update({
+  id: '/$alias',
+  path: '/$alias',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -183,6 +190,11 @@ const MedicacoesRoute = MedicacoesRouteImport.update({
   path: '/medicacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MinhaAtividadeRoute = MinhaAtividadeRouteImport.update({
+  id: '/minha-atividade',
+  path: '/minha-atividade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NovoAnimalRoute = NovoAnimalRouteImport.update({
   id: '/novo-animal',
   path: '/novo-animal',
@@ -271,6 +283,7 @@ const VetSlugRoute = VetSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$alias': typeof AliasRoute
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
@@ -296,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
@@ -316,6 +330,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$alias': typeof AliasRoute
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
@@ -341,6 +356,7 @@ export interface FileRoutesByTo {
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
@@ -362,6 +378,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$alias': typeof AliasRoute
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
@@ -387,6 +404,7 @@ export interface FileRoutesById {
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
@@ -409,6 +427,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$alias'
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
@@ -434,6 +453,7 @@ export interface FileRouteTypes {
     | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
     | '/perfil-clinica'
@@ -454,6 +474,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$alias'
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
@@ -479,6 +500,7 @@ export interface FileRouteTypes {
     | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
     | '/perfil-clinica'
@@ -499,6 +521,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$alias'
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
@@ -524,6 +547,7 @@ export interface FileRouteTypes {
     | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
     | '/perfil-clinica'
@@ -545,6 +569,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AliasRoute: typeof AliasRoute
   AdminRoute: typeof AdminRoute
   AdminCanvasRoute: typeof AdminCanvasRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
@@ -570,6 +595,7 @@ export interface RootRouteChildren {
   InternacaoRoute: typeof InternacaoRoute
   LoginRoute: typeof LoginRoute
   MedicacoesRoute: typeof MedicacoesRoute
+  MinhaAtividadeRoute: typeof MinhaAtividadeRoute
   NovoAnimalRoute: typeof NovoAnimalRoute
   PendenciasRoute: typeof PendenciasRoute
   PerfilClinicaRoute: typeof PerfilClinicaRoute
@@ -596,6 +622,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$alias': {
+      id: '/$alias'
+      path: '/$alias'
+      fullPath: '/$alias'
+      preLoaderRoute: typeof AliasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -773,6 +806,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MedicacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/minha-atividade': {
+      id: '/minha-atividade'
+      path: '/minha-atividade'
+      fullPath: '/minha-atividade'
+      preLoaderRoute: typeof MinhaAtividadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/novo-animal': {
       id: '/novo-animal'
       path: '/novo-animal'
@@ -897,6 +937,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AliasRoute: AliasRoute,
   AdminRoute: AdminRoute,
   AdminCanvasRoute: AdminCanvasRoute,
   AdminConteudoRoute: AdminConteudoRoute,
@@ -922,6 +963,7 @@ const rootRouteChildren: RootRouteChildren = {
   InternacaoRoute: InternacaoRoute,
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
+  MinhaAtividadeRoute: MinhaAtividadeRoute,
   NovoAnimalRoute: NovoAnimalRoute,
   PendenciasRoute: PendenciasRoute,
   PerfilClinicaRoute: PerfilClinicaRoute,
