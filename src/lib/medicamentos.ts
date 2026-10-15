@@ -554,7 +554,11 @@ export function doseDaEspecie(m: Medicamento, especie: Especie): DoseEspecie {
 export function textoDecimal(valor: number): string {
   if (!Number.isFinite(valor)) return "";
   const casas = Math.abs(valor) < 0.01 ? 3 : 2;
-  return valor.toLocaleString("pt-BR", { useGrouping: false, maximumFractionDigits: casas });
+  return valor.toLocaleString("pt-BR", {
+    useGrouping: false,
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  });
 }
 
 export type EntradaCalculo = {
