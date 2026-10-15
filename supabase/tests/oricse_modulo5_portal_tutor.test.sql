@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(15);
 
 update public.clinicas set plano='Master (Equipe)',limite_usuarios=5 where slug='oricse-clinica-testes-isolamento';
 
@@ -24,6 +24,11 @@ select '8f4a64b8-0df8-4b66-aad4-68e8fd7a2501',id,'7f4a64b8-0df8-4b66-aad4-68e8fd
 insert into public.oricse_animais(id,clinica_id,tutor_id,nome,especie,raca,sexo)
 select '8f4a64b8-0df8-4b66-aad4-68e8fd7a2502',id,'7f4a64b8-0df8-4b66-aad4-68e8fd7a2502','Max M5','Gato','SRD','Macho' from public.clinicas where slug='oricse-clinica-testes-isolamento';
 
+insert into public.oricse_portal_comandas(id,clinica_id,tutor_id,animal_id,numero,status,origem,aberta_em,itens,pagamentos,total,total_pago,saldo)
+select 'af4a64b8-0df8-4b66-aad4-68e8fd7a2501',id,'7f4a64b8-0df8-4b66-aad4-68e8fd7a2501','8f4a64b8-0df8-4b66-aad4-68e8fd7a2501',501,'Aberta','Recepção',now(),'[{"id":"1","descricao":"Consulta","quantidade":1,"valorUnitario":100}]'::jsonb,'[]'::jsonb,100,0,100 from public.clinicas where slug='oricse-clinica-testes-isolamento';
+insert into public.oricse_portal_comandas(id,clinica_id,tutor_id,animal_id,numero,status,origem,aberta_em,itens,pagamentos,total,total_pago,saldo)
+select 'af4a64b8-0df8-4b66-aad4-68e8fd7a2502',id,'7f4a64b8-0df8-4b66-aad4-68e8fd7a2502','8f4a64b8-0df8-4b66-aad4-68e8fd7a2502',502,'Aberta','Recepção',now(),'[]'::jsonb,'[]'::jsonb,50,0,50 from public.clinicas where slug='oricse-clinica-testes-isolamento';
+
 insert into public.oricse_agendas_online(id,clinica_id,nome,responsavel,inicio,fim,dias_semana,intervalo_min,portal_ativo,modalidade,antecedencia_horas,timezone,tipo)
 select '9f4a64b8-0df8-4b66-aad4-68e8fd7a2501',id,'Agenda M5','Dra. Teste','08:00','12:00',array[0,1,2,3,4,5,6],30,true,'livre',0,'America/Sao_Paulo','Consulta' from public.clinicas where slug='oricse-clinica-testes-isolamento';
 insert into public.oricse_agendas_online(id,clinica_id,nome,responsavel,inicio,fim,dias_semana,intervalo_min,portal_ativo,modalidade,antecedencia_horas,timezone,tipo)
@@ -36,6 +41,9 @@ select is((select count(*)::bigint from public.oricse_animais where nome like '%
 select ok(exists(select 1 from public.oricse_animais where id='8f4a64b8-0df8-4b66-aad4-68e8fd7a2501'),'Tutor vê o próprio animal');
 select ok(not exists(select 1 from public.oricse_animais where id='8f4a64b8-0df8-4b66-aad4-68e8fd7a2502'),'Tutor não vê animal de outro tutor');
 select is((select tutor_nome from public.oricse_portal_meu_contexto()),'Tutor M5 A','Contexto identifica o tutor correto');
+select is((select count(*)::bigint from public.oricse_portal_comandas where numero in (501,502)),1::bigint,'Tutor enxerga somente uma comanda própria');
+select ok(exists(select 1 from public.oricse_portal_comandas where numero=501),'Tutor vê a própria comanda');
+select ok(not exists(select 1 from public.oricse_portal_comandas where numero=502),'Tutor não vê comanda de outro tutor');
 select ok(exists(select 1 from public.oricse_portal_horarios_disponiveis('9f4a64b8-0df8-4b66-aad4-68e8fd7a2501',current_date+10)),'Portal gera horários reais disponíveis');
 
 select lives_ok(
