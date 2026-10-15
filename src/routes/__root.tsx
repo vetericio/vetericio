@@ -302,7 +302,8 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor")) return;
     const rotaPublica =
       ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
-      location.pathname.startsWith("/vet/");
+      location.pathname.startsWith("/vet/") ||
+      /^\/pet\/[^/]+\/portal\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin");
     if (autenticado === false && !rotaPublica && !rotaAdmin) navigate({ to: "/login" });
     if (autenticado && acessoPortalNegado) return;
@@ -588,7 +589,8 @@ function RootComponent() {
   const rotaAdmin = location.pathname.startsWith("/admin");
   const rotaPublica =
     ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
-    location.pathname.startsWith("/vet/");
+    location.pathname.startsWith("/vet/") ||
+      /^\/pet\/[^/]+\/portal\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;
