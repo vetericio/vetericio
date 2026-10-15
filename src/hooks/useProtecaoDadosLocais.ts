@@ -3,11 +3,12 @@ import { toast } from "sonner";
 
 const TUTORES = "oricse-tutores-v1";
 const ANIMAIS = "oricse-animais-v1";
+const CHAVES_DESATIVADAS = new Set(["oricse-agendas-v2"]);
 
 const REGRAS_CHAVE: Array<{ teste: (chave: string) => boolean; qualquer: string[] }> = [
   { teste: (k) => k === "oricse-financeiro-lancamentos-v1", qualquer: ["caixa.financeiro.gerenciar", "caixa.comandas"] },
   { teste: (k) => k === "oricse-comandas-v1", qualquer: ["caixa.comandas"] },
-  { teste: (k) => k === "oricse-agendas-v2" || k === "oricse-fila-espera-v1", qualquer: ["recepcao.agenda"] },
+  { teste: (k) => k === "oricse-fila-espera-v1", qualquer: ["recepcao.agenda"] },
   { teste: (k) => k === "oricse-pesos-animal-v1", qualquer: ["recepcao.cadastros.editar", "consultorio.atendimentos"] },
   { teste: (k) => k.startsWith("oricse-rascunho-consulta-"), qualquer: ["consultorio.atendimentos"] },
   { teste: (k) => k === "veterico-registros-v1" || k === "veterico-anamneses" || k === "veterico-curvas-v1" || k === "veterico-alarmes-v1" || k === "veterico-pendencias-v1" || k === "veterico-alertas-v1" || k === "veterico-regras-alerta-v1", qualquer: ["internacao.registrar"] },
@@ -18,7 +19,6 @@ const REGRAS_CHAVE: Array<{ teste: (chave: string) => boolean; qualquer: string[
 ];
 
 type ItemComId = { id?: unknown; [key: string]: unknown };
-
 type OpCadastro = "criar" | "editar" | "excluir";
 
 function operacoesCadastro(antes: string | null, depois: string): Set<OpCadastro> {
@@ -58,12 +58,25 @@ export function useProtecaoDadosLocais({
   adminGlobal: boolean;
 }) {
   useEffect(() => {
-    if (carregando || typeof window === "undefined" || adminGlobal) return;
+    if (carregando || typeof window === "undefined") return;
 
     const originalSetItem = Storage.prototype.setItem;
     const originalRemoveItem = Storage.prototype.removeItem;
-    let ultimoAviso = 0;
 
+    // A agenda tem fonte canônica exclusiva no Supabase. Elimina qualquer cópia antiga
+    // e impede que código legado volte a persistir oricse-agendas-v2 no navegador.
+    for (const chave of CHAVES_DESATIVADAS) originalRemoveItem.call(window.localStorage, chave);
+
+    if (adminGlobal) {
+      const bloquearAgendaAdmin = function (this: Storage, chave: string, valor: string) {
+        if (this === window.localStorage && CHAVES_DESATIVADAS.has(chave)) return;
+        return originalSetItem.call(this, chave, valor);
+      };
+      Storage.prototype.setItem = bloquearAgendaAdmin;
+      return () => { Storage.prototype.setItem = originalSetItem; };
+    }
+
+    let ultimoAviso = 0;
     const avisar = () => {
       const agora = Date.now();
       if (agora - ultimoAviso > 900) {
@@ -81,6 +94,7 @@ export function useProtecaoDadosLocais({
 
     Storage.prototype.setItem = function (chave: string, valor: string) {
       if (this !== window.localStorage) return originalSetItem.call(this, chave, valor);
+      if (CHAVES_DESATIVADAS.has(chave)) return;
 
       if (chave === TUTORES || chave === ANIMAIS) {
         const operacoes = operacoesCadastro(window.localStorage.getItem(chave), valor);
@@ -95,6 +109,7 @@ export function useProtecaoDadosLocais({
 
     Storage.prototype.removeItem = function (chave: string) {
       if (this !== window.localStorage) return originalRemoveItem.call(this, chave);
+      if (CHAVES_DESATIVADAS.has(chave)) return originalRemoveItem.call(this, chave);
       if ((chave === TUTORES || chave === ANIMAIS) && !permitidas.has("recepcao.cadastros.excluir")) negar();
       const regra = REGRAS_CHAVE.find((item) => item.teste(chave));
       if (regra && !temAlguma(regra.qualquer)) negar();
