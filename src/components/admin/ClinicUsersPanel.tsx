@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { atualizarUsuario, criarUsuarioClinica, redefinirSenhaUsuario, removerUsuarioClinica } from "@/lib/admin-users.functions";
+import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 
@@ -190,6 +191,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
             </div>}
             <div className="mb-3 flex flex-wrap gap-2">
               <button onClick={() => { setEditId(vinculo.user_id); setEditUsername(usuario?.username || ""); setEditEmail(usuario?.email || ""); }} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold"><Pencil size={15}/> Editar @usuário e e-mail</button>
+              {vinculo.ativo && <UserPermissionsPanel clinicaId={clinica.id} userId={vinculo.user_id} nomeUsuario={usuario?.username ? `@${usuario.username}` : "Usuário"} />}
               <button disabled={salvando} onClick={() => void remover(vinculo.user_id, usuario?.username ? `@${usuario.username}` : "este usuário")} className="inline-flex items-center gap-2 rounded-xl border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"><Trash2 size={15}/> Remover</button>
             </div>
             {resetUserId === vinculo.user_id ? <div className="flex flex-wrap gap-2">
