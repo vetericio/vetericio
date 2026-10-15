@@ -10,6 +10,8 @@ import {
   FORMAS_MEDICAMENTO,
   INTERVALOS_RECEITUARIO,
   montarPosologia,
+  proximoNumeroReceitaEspecial,
+  type TipoReceita,
   type ItemReceituario,
   type PosicaoSeloReceituario,
 } from "@/lib/receituario";
@@ -74,6 +76,7 @@ export function Receituario() {
     Partial<Record<TipoSelo, PosicaoSeloReceituario>>
   >({});
   const [gerando, setGerando] = useState(false);
+  const [tipoReceita, setTipoReceita] = useState<TipoReceita>("normal");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -216,9 +219,17 @@ export function Receituario() {
       toast.error("Informe a outra espécie.");
       return;
     }
+    if (tipoReceita === "especial" && (!tutor.trim() || !enderecoTutor.trim() || !cpfTutor.trim())) {
+      toast.error("Receita de controle especial exige tutor, CPF/CNPJ e endereço do tutor.");
+      return;
+    }
     setGerando(true);
     try {
+      const especial = tipoReceita === "especial";
+      const numero = especial ? proximoNumeroReceitaEspecial(true) : undefined;
       await baixarReceituario({
+        tipo: tipoReceita,
+        numero,
         paciente,
         tutor,
         telefoneTutor,
@@ -270,6 +281,34 @@ export function Receituario() {
         <p className="mt-1 text-sm text-muted-foreground">
           Preencha somente o necessário e a receita sai completa.
         </p>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <h2 className="font-display font-semibold text-foreground">Tipo de receita</h2>
+        <div className="mt-3 flex gap-2">
+          {(
+            [
+              ["normal", "Normal"],
+              ["especial", "Controle especial"],
+            ] as const
+          ).map(([valor, nome]) => (
+            <label key={valor} className={escolha}>
+              <input
+                type="radio"
+                name="tipo-receita"
+                className="sr-only"
+                checked={tipoReceita === valor}
+                onChange={() => setTipoReceita(valor)}
+              />
+              {nome}
+            </label>
+          ))}
+        </div>
+        {tipoReceita === "especial" && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Sai com número sequencial (ano) e exige tutor, CPF/CNPJ e endereço do tutor.
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">

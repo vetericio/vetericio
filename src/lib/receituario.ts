@@ -64,7 +64,34 @@ export type PosicaoSeloReceituario = {
   largura: number;
 };
 
+export type TipoReceita = "normal" | "especial";
+
+const CHAVE_NUMERACAO_RECEITA = "veterico-receita-especial-numero-v1";
+
+/** Próximo número da receita de controle especial, sequencial por ano (ex.: 0007/2026). */
+export function proximoNumeroReceitaEspecial(consumir: boolean): string {
+  const ano = new Date().getFullYear();
+  let ultimo = 0;
+  try {
+    const salvo = JSON.parse(window.localStorage.getItem(CHAVE_NUMERACAO_RECEITA) || "{}");
+    if (salvo.ano === ano) ultimo = Number(salvo.ultimo) || 0;
+  } catch {
+    ultimo = 0;
+  }
+  const numero = ultimo + 1;
+  if (consumir) {
+    try {
+      window.localStorage.setItem(CHAVE_NUMERACAO_RECEITA, JSON.stringify({ ano, ultimo: numero }));
+    } catch {
+      /* armazenamento indisponível */
+    }
+  }
+  return `${String(numero).padStart(4, "0")}/${ano}`;
+}
+
 export type DadosReceituario = {
+  tipo?: TipoReceita;
+  numero?: string | undefined;
   paciente: string;
   especie: string;
   raca: string;
@@ -185,7 +212,11 @@ export async function criarReceituario(dados: DadosReceituario) {
     y += 28;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text("RECEITUÁRIO VETERINÁRIO", margem, y);
+    doc.text(dados.tipo === "especial" ? "RECEITA DE CONTROLE ESPECIAL" : "RECEITUÁRIO VETERINÁRIO", margem, y);
+    if (dados.tipo === "especial" && dados.numero) {
+      doc.setFontSize(10);
+      doc.text(`Nº ${dados.numero}`, margem + largura, y, { align: "right" });
+    }
     y += 22;
 
     const linhas = (texto: string, max: number) =>
@@ -357,6 +388,6 @@ export async function criarReceituario(dados: DadosReceituario) {
 export async function baixarReceituario(dados: DadosReceituario) {
   const doc = await criarReceituario(dados);
   const paciente = dados.paciente.trim().replace(/\s+/g, "-").toLowerCase();
-  doc.save(`receituario-${paciente || "vetericio"}.pdf`);
+  doc.save(`${dados.tipo === "especial" ? "receita-controle-especial" : "receituario"}-${paciente || "vetericio"}.pdf`);
 }
 
