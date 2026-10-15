@@ -17,6 +17,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/fila-espera": ["recepcao.agenda"],
   "/configurar-agenda-online": ["recepcao.agenda", "administracao.configuracoes"],
   "/tutores": ["recepcao.cadastros.visualizar"],
+  "/portal-tutores": ["portal_tutor.gerenciar"],
   "/animais": ["recepcao.cadastros.visualizar", "consultorio.atendimentos"],
   "/novo-animal": ["recepcao.cadastros.criar"],
   "/animal": ["recepcao.cadastros.visualizar", "consultorio.atendimentos", "internacao.painel"],
