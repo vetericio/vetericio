@@ -20,6 +20,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/animais": ["recepcao.cadastros.visualizar", "consultorio.atendimentos"],
   "/novo-animal": ["recepcao.cadastros.criar"],
   "/animal": ["recepcao.cadastros.visualizar", "consultorio.atendimentos", "internacao.painel"],
+  "/crm": ["crm.visualizar", "crm.enviar", "crm.gerenciar"],
   "/consultorio": ["consultorio.atendimentos"],
   "/consulta": ["consultorio.atendimentos"],
   "/registro-clinico": ["consultorio.atendimentos"],
