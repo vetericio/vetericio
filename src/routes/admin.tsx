@@ -668,16 +668,57 @@ function Admin() {
     if(error)return toast.error("Erro ao salvar permissões: "+error.message);
     toast.success("Permissões do plano salvas.");
   }
-  const renderMatrizPlano=(p:Plano)=> <div className="mt-5 rounded-xl border bg-slate-50 p-4">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h4 className="font-bold">Permissões reais do plano</h4><p className="text-xs text-muted-foreground">Defina quais funções estão incluídas. Recursos não marcados não serão autorizados na verificação de permissões.</p></div>
-      <button type="button" disabled={!p.id||salvandoPermissoes===p.id} onClick={()=>void salvarPermissoesPlano(p)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Salvar permissões</button>
-    </div>
-    <div className="mt-3 grid gap-2 sm:grid-cols-2">{funcionalidades.map(f=><label key={f.codigo} className="flex items-start gap-2 rounded-lg border bg-white p-3 text-sm">
-      <input type="checkbox" className="mt-1" disabled={!p.id} checked={!!(p.id&&permissoesPlanos[p.id]?.[f.codigo])} onChange={e=>{if(!p.id)return;setPermissoesPlanos(old=>({...old,[p.id!]:{...old[p.id!],[f.codigo]:e.target.checked}}));}}/>
-      <span><span className="font-semibold">{f.nome}</span><span className="block text-xs text-muted-foreground">{f.grupo} · {f.codigo}</span></span>
-    </label>)}</div>
-  </div>;
+  const renderMatrizPlano=(p:Plano)=> {
+    const grupos = new Map<string, typeof funcionalidades>();
+    for (const funcionalidade of funcionalidades) {
+      const grupo = funcionalidade.grupo?.trim() || "Outros recursos";
+      const chave = grupo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const nome = chave.includes("atividade") ? "Atividade" : chave.includes("recepc") ? "Recepção" : chave.includes("consult") ? "Consultório" : chave.includes("intern") ? "Internação" : chave.includes("caixa") || chave.includes("financ") ? "Caixa e financeiro" : chave.includes("estoque") ? "Estoque" : chave.includes("equipe") ? "Equipe" : chave.includes("crm") || chave.includes("relacion") ? "CRM e relacionamento" : chave.includes("admin") ? "Administração" : chave.includes("site") || chave.includes("portal") ? "Site e portal" : grupo;
+      grupos.set(nome, [...(grupos.get(nome) || []), funcionalidade]);
+    }
+    const selecionadas = permissoesPlanos[p.id || ""] || {};
+    const atualizarGrupo = (itens: typeof funcionalidades, permitido: boolean) => {
+      if (!p.id) return;
+      setPermissoesPlanos(old => ({
+        ...old,
+        [p.id!]: {
+          ...old[p.id!],
+          ...Object.fromEntries(itens.map(f => [f.codigo, permitido])),
+        },
+      }));
+    };
+    return <div className="mt-5 rounded-xl border bg-slate-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><h4 className="font-bold">Permissões reais do plano</h4><p className="text-xs text-muted-foreground">Recursos agrupados por módulo. Selecione um módulo inteiro ou escolha funções individuais. Somente recursos cadastrados e ativos aparecem aqui.</p></div>
+        <button type="button" disabled={!p.id||salvandoPermissoes===p.id} onClick={()=>void salvarPermissoesPlano(p)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Salvar permissões</button>
+      </div>
+      <div className="mt-4 space-y-3">
+        {Array.from(grupos.entries()).map(([grupo,itens]) => {
+          const habilitadas = itens.filter(f => !!selecionadas[f.codigo]).length;
+          const todas = habilitadas === itens.length;
+          return <details key={grupo} className="group overflow-hidden rounded-xl border bg-white">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
+              <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-90">▸</span><span className="font-semibold">Módulo {grupo}</span></span>
+              <span className="flex shrink-0 items-center gap-3">
+                <span className="text-xs text-muted-foreground">{habilitadas} de {itens.length}</span>
+                <label className="flex items-center gap-2 text-xs font-medium" onClick={e=>e.stopPropagation()}>
+                  <input type="checkbox" disabled={!p.id} checked={todas} ref={element=>{if(element)element.indeterminate=habilitadas>0&&!todas;}} onChange={e=>atualizarGrupo(itens,e.target.checked)} aria-label={`Selecionar todas as funções de ${grupo}`}/>
+                  Todas
+                </label>
+              </span>
+            </summary>
+            <div className="grid gap-2 border-t p-3 sm:grid-cols-2">
+              {itens.map(f=><label key={f.codigo} className="flex items-start gap-2 rounded-lg border bg-slate-50 p-3 text-sm">
+                <input type="checkbox" className="mt-1" disabled={!p.id} checked={!!(p.id&&selecionadas[f.codigo])} onChange={e=>{if(!p.id)return;setPermissoesPlanos(old=>({...old,[p.id!]:{...old[p.id!],[f.codigo]:e.target.checked}}));}}/>
+                <span><span className="font-semibold">{f.nome}</span><span className="block text-xs text-muted-foreground">{f.codigo}</span></span>
+              </label>)}
+            </div>
+          </details>;
+        })}
+        {grupos.size === 0 && <p className="rounded-lg border bg-white p-4 text-sm text-muted-foreground">Nenhuma funcionalidade ativa cadastrada. Verifique o catálogo de funcionalidades no banco de dados.</p>}
+      </div>
+    </div>;
+  };
 
   const renderPlanos = () => <div className="space-y-5"><div className="rounded-2xl border bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Cupons</h2><p className="text-sm text-muted-foreground">Cadastre o nome interno, o código e exatamente quais planos aceitam cada desconto.</p></div><button type="button" onClick={()=>setCupons((x)=>[...x,{nome:"",codigo:"",tipo:"percentual",valor:0,planos:[],inicio:"",validade:"",limitePorCpf:"",recorrencia:"periodo",ativo:true}])} className="rounded-xl border px-3 py-2 font-semibold">+ Novo cupom</button></div><div className="mt-4 space-y-3">{cupons.map((c:any,i:number)=><div key={i} className="rounded-xl border p-4"><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Nome do cupom<input value={c.nome||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,nome:e.target.value}:v))} placeholder="Nome interno para identificar a campanha" className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="text-sm font-semibold">Código do cupom<input value={c.codigo} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,codigo:e.target.value.toUpperCase()}:v))} placeholder="Código que a clínica digita" className="mt-1 w-full rounded-xl border px-3 py-2 uppercase"/></label></div><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Tipo<select value={c.tipo} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,tipo:e.target.value}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"><option value="percentual">Percentual (%)</option><option value="fixo">Valor fixo (R$)</option></select></label><label className="text-sm font-semibold">Valor<input type="number" min="0" value={c.valor} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,valor:Number(e.target.value)}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="text-sm font-semibold">Usos por CPF/CNPJ<input type="number" min="1" value={c.limitePorCpf||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,limitePorCpf:e.target.value}:v))} placeholder="Sem limite" className="mt-1 w-full rounded-xl border px-3 py-2"/></label></div><fieldset className="mt-4"><legend className="text-sm font-semibold">Planos que podem usar este cupom</legend><div className="mt-2 flex flex-wrap gap-2">{planos.filter(p=>p.ativo).map(p=><label key={p.codigo} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"><input type="checkbox" checked={(c.planos||[]).includes(p.nome)} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,planos:e.target.checked?[...(v.planos||[]),p.nome]:(v.planos||[]).filter((nome:string)=>nome!==p.nome)}:v))}/>{p.nome}</label>)}</div></fieldset><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="text-sm font-semibold">Início<input type="date" value={c.inicio||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,inicio:e.target.value}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="text-sm font-semibold">Validade<input type="date" value={c.validade||""} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,validade:e.target.value}:v))} className="mt-1 w-full rounded-xl border px-3 py-2"/></label><label className="flex items-end gap-2 text-sm font-semibold"><input type="checkbox" checked={c.ativo} onChange={e=>setCupons(x=>x.map((v,j)=>j===i?{...v,ativo:e.target.checked}:v))}/> Ativo</label></div></div>)}</div></div><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Planos da Oricse</h2><p className="text-sm text-muted-foreground">O conteúdo salvo aqui aparece na página pública de planos.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={adicionarPlano} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><Plus size={17}/> Adicionar plano</button><a href="/planos" target="_blank" className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold">Ver página <ExternalLink size={16}/></a><button disabled={ocupado} onClick={salvarPlanos} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div></div>{planos.map((p, i) => <Card key={p.id || p.codigo}><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">{p.nome}</h3><p className="text-xs uppercase tracking-wide text-muted-foreground">{p.codigo}</p></div><div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={p.ativo} onChange={(e) => alterarPlano(i, { ativo: e.target.checked })}/> Publicado</label><button type="button" onClick={() => void removerPlano(p, i)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"><Trash2 size={16}/> Remover</button></div></div><div className="mt-4 grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold md:col-span-2">Nome<input value={p.nome} onChange={(e) => alterarPlano(i, { nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Mensal<input value={p.preco_mensal || p.preco} onChange={(e) => alterarPlano(i, { preco: e.target.value, preco_mensal: e.target.value })} placeholder="Ex.: R$ 49,90 ou Gr?tis" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Anual<input value={p.preco_anual} onChange={(e) => alterarPlano(i, { preco_anual: e.target.value })} placeholder="Ex.: R$ 499,00 ou Gr?tis" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Bom para<input value={p.publico_alvo} onChange={(e) => alterarPlano(i, { publico_alvo: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold md:col-span-2">Descrição<textarea value={p.descricao} onChange={(e) => alterarPlano(i, { descricao: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Usuários inclusos<input type="number" min={1} value={p.usuarios_inclusos} onChange={(e) => alterarPlano(i, { usuarios_inclusos: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="flex items-end gap-2 pb-3 text-sm font-semibold"><input type="checkbox" checked={p.dominio_incluso} onChange={(e) => alterarPlano(i, { dominio_incluso: e.target.checked })}/> Domínio próprio incluído</label><label className="text-sm font-semibold md:col-span-2">Recursos · um por linha<textarea value={p.itens.join("\n")} onChange={(e) => alterarPlano(i, { itens: e.target.value.split("\n").filter(Boolean) })} rows={6} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label></div>{renderMatrizPlano(p)}</Card>)}</div>;
 
