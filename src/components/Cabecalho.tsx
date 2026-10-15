@@ -7,6 +7,7 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
@@ -33,7 +34,8 @@ export function Cabecalho() {
   const location = useLocation();
   const navigate = useNavigate();
   const { marca, logo_url } = useSiteBranding();
-  const { carregando: carregandoPermissoes, pode } = usePermissoes();
+  const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
+  useProtecaoDadosLocais({ permitidas, carregando: carregandoPermissoes, adminGlobal });
   const plantaoArea = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
