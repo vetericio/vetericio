@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { Activity, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble } from "lucide-react";
+import { Activity, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DialogoTurno } from "@/components/DialogoTurno";
@@ -57,7 +57,7 @@ export function MenuLateral() {
   const [turnoAberto, setTurnoAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const { plantao } = usePlantaoAtual();
-  const { carregando: carregandoPermissoes, pode, podeAlguma } = usePermissoes();
+  const { carregando: carregandoPermissoes, pode, podeAlguma, bloqueadaPeloPlano } = usePermissoes();
   const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,9 +66,10 @@ export function MenuLateral() {
     if (carregandoPermissoes) return;
     const exigidas = permissoesDaRota(location.pathname);
     if (!exigidas || podeAlguma(exigidas)) return;
-    toast.error("Seu usuário não tem permissão para acessar esta área.");
+    const plano = exigidas.some((codigo) => bloqueadaPeloPlano(codigo));
+    toast.error(plano ? "Este recurso não está incluído no plano atual da clínica." : "Seu usuário não tem permissão para acessar esta área.");
     void navigate({ to: "/inicio", replace: true });
-  }, [carregandoPermissoes, location.pathname, navigate, podeAlguma]);
+  }, [bloqueadaPeloPlano, carregandoPermissoes, location.pathname, navigate, podeAlguma]);
 
   async function sair() {
     if (saindo) return;
@@ -91,10 +92,12 @@ export function MenuLateral() {
         <SheetHeader><SheetTitle>Menu</SheetTitle></SheetHeader>
         <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
           {areas.map(area => {
-            const itensVisiveis = carregandoPermissoes ? area.itens : area.itens.filter((item) => pode(item.permissao));
+            const itensVisiveis = carregandoPermissoes
+              ? area.itens
+              : area.itens.filter((item) => pode(item.permissao) || bloqueadaPeloPlano(item.permissao));
             if (itensVisiveis.length === 0) return null;
             const Icone = area.icone;
-            const ativo = itensVisiveis.some(item => item.to === location.pathname);
+            const ativo = itensVisiveis.some(item => item.to === location.pathname && pode(item.permissao));
             const abertoGrupo = expandido === area.titulo;
             return <div key={area.titulo} className="overflow-hidden rounded-xl border border-border/70">
               <button type="button" aria-expanded={abertoGrupo} onClick={() => setExpandido(abertoGrupo ? null : area.titulo)}
@@ -105,8 +108,15 @@ export function MenuLateral() {
               </button>
               {abertoGrupo && <div className="space-y-1 bg-background p-2">
                 {itensVisiveis.map((item,i) => {
-                  const bloqueado = !plantao && (SO_COM_PLANTAO.includes(item.to) && !(area.titulo === "Consultório" && item.to === "/medicacoes"));
-                  if (bloqueado) return <button key={item.to+i} type="button" disabled={!podeGerenciarPlantao} onClick={() => { if (!podeGerenciarPlantao) return; setAberto(false); setTurnoAberto(true); }}
+                  const bloqueioPlano = !carregandoPermissoes && bloqueadaPeloPlano(item.permissao);
+                  if (bloqueioPlano) return <button key={item.to+i} type="button" aria-disabled="true" onClick={() => toast.info("Recurso disponível somente em um plano que inclua esta funcionalidade.")}
+                    className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground opacity-55">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1">{item.rotulo}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wide">Plano</span>
+                  </button>;
+                  const bloqueadoPlantao = !plantao && (SO_COM_PLANTAO.includes(item.to) && !(area.titulo === "Consultório" && item.to === "/medicacoes"));
+                  if (bloqueadoPlantao) return <button key={item.to+i} type="button" disabled={!podeGerenciarPlantao} onClick={() => { if (!podeGerenciarPlantao) return; setAberto(false); setTurnoAberto(true); }}
                     className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60">
                     {item.rotulo}<span className="block text-[11px]">{podeGerenciarPlantao ? "Abrir plantão clínico primeiro" : "Aguarde um responsável iniciar o plantão"}</span>
                   </button>;
