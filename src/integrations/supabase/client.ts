@@ -17,7 +17,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    // New Supabase API keys are opaque strings, not bearer JWTs.
     if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
       headers.delete('Authorization');
     }
@@ -27,18 +26,13 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-// Use import.meta.env for client-side (Vite build-time replacement)
-// and process.env only during SSR.
-// These are public client credentials. Environment variables take precedence in
-// development or when the host injects them; the fallback keeps the published
-// app connected when a GitHub-based deploy does not load a .env file.
 const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'] || 'https://mwrmfcyrdxfxssebgknz.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'] || 'sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc';
 
 export const supabaseConfigurado = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 export const supabaseMensagemConfiguracao = "A conexão segura do sistema ainda não foi configurada. Tente novamente em alguns instantes.";
 
-function createSupabaseClient(storageKey = 'oricse-app-auth') {
+function createSupabaseClient(storageKey?: string) {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error(supabaseMensagemConfiguracao);
   }
@@ -49,7 +43,7 @@ function createSupabaseClient(storageKey = 'oricse-app-auth') {
     },
     auth: {
       storage: brokeredPreviewStorage(),
-      storageKey,
+      ...(storageKey ? { storageKey } : {}),
       persistSession: true,
       autoRefreshToken: true,
     }
@@ -59,20 +53,34 @@ function createSupabaseClient(storageKey = 'oricse-app-auth') {
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 let _supabasePortal: ReturnType<typeof createSupabaseClient> | undefined;
 
-// Sessão principal da plataforma (admin/equipe da clínica).
+function rotaDoPortalTutor() {
+  if (typeof window === 'undefined') return false;
+  return /^\/pet\/[^/]+\/portal\/?$/.test(window.location.pathname);
+}
+
+function clientePrincipal() {
+  if (!_supabase) _supabase = createSupabaseClient();
+  return _supabase;
+}
+
+function clientePortal() {
+  if (!_supabasePortal) _supabasePortal = createSupabaseClient('oricse-portal-auth');
+  return _supabasePortal;
+}
+
+// O mesmo import `supabase` continua funcionando em todo o app.
+// Na rota pública do Portal do Tutor ele troca automaticamente para uma sessão
+// isolada, evitando reutilizar a sessão de admin/equipe aberta no navegador.
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
-    if (!_supabase) _supabase = createSupabaseClient('oricse-app-auth');
-    return Reflect.get(_supabase, prop, receiver);
+    const client = rotaDoPortalTutor() ? clientePortal() : clientePrincipal();
+    return Reflect.get(client, prop, receiver);
   },
 });
 
-// Sessão exclusiva do Portal do Tutor.
-// É intencionalmente separada para que abrir o portal a partir de uma sessão
-// administrativa não reutilize o login do admin nem redirecione o tutor para /admin.
+// Export explícito para código que queira forçar o contexto do tutor.
 export const supabasePortal = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
-    if (!_supabasePortal) _supabasePortal = createSupabaseClient('oricse-portal-auth');
-    return Reflect.get(_supabasePortal, prop, receiver);
+    return Reflect.get(clientePortal(), prop, receiver);
   },
 });
