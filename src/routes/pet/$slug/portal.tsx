@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorClinica });
 type ClinicaPublica={nome:string;slug:string;logo_url:string|null};
-function PortalTutorClinica(){
- const {slug}=Route.useParams();
+export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string} = {}){
+ const params=Route.useParams({strict:false});
+ const slug=slugDaClinica ?? (params as {slug?:string}).slug ?? "";
  const [clinica,setClinica]=useState<ClinicaPublica|null>(null);
  const [carregando,setCarregando]=useState(true);
  const [usuario,setUsuario]=useState("");
