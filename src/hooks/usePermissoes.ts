@@ -14,29 +14,36 @@ export type PermissaoEfetiva = {
 export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/minha-atividade": ["atividade.ponto"],
   "/recepcao": ["recepcao.agenda"],
-  "/configurar-agenda-online": ["recepcao.agenda"],
+  "/fila-espera": ["recepcao.agenda"],
+  "/configurar-agenda-online": ["recepcao.agenda", "administracao.configuracoes"],
   "/tutores": ["recepcao.cadastros.visualizar"],
   "/animais": ["recepcao.cadastros.visualizar", "consultorio.atendimentos"],
+  "/novo-animal": ["recepcao.cadastros.criar"],
   "/animal": ["recepcao.cadastros.visualizar", "consultorio.atendimentos", "internacao.painel"],
   "/consultorio": ["consultorio.atendimentos"],
+  "/consulta": ["consultorio.atendimentos"],
   "/registro-clinico": ["consultorio.atendimentos"],
+  "/encaminhar": ["consultorio.atendimentos", "recepcao.agenda"],
   "/assinar": ["consultorio.receituario"],
   "/receituario": ["consultorio.receituario"],
+  "/termos": ["consultorio.receituario", "consultorio.atendimentos"],
   "/medicacoes": ["consultorio.medicacoes", "internacao.medicacoes"],
   "/internacao": ["internacao.painel"],
   "/registros": ["internacao.painel"],
-  "/anamnese": ["internacao.painel"],
-  "/curva": ["internacao.painel"],
-  "/alarmes": ["internacao.painel"],
-  "/pendencias": ["internacao.painel"],
+  "/anamnese": ["internacao.registrar"],
+  "/curva": ["internacao.registrar"],
+  "/alarmes": ["internacao.registrar"],
+  "/pendencias": ["internacao.registrar"],
   "/plantoes": ["internacao.plantoes"],
   "/financeiro": ["caixa.financeiro.visualizar"],
   "/comandas": ["caixa.comandas"],
-  "/estoque": ["estoque.catalogo.visualizar"],
+  "/estoque": ["estoque.catalogo.visualizar", "estoque.movimentar", "equipe.pagamentos.visualizar"],
   "/catalogo": ["estoque.catalogo.visualizar"],
   "/perfil-clinica": ["administracao.configuracoes"],
   "/configuracao-site": ["administracao.site"],
   "/temas": ["administracao.temas"],
+  "/sincronizacao": ["administracao.configuracoes"],
+  "/admin-planos": ["administracao.configuracoes"],
 };
 
 export function permissoesDaRota(pathname: string) {
@@ -47,6 +54,7 @@ export function usePermissoes() {
   const [permissoes, setPermissoes] = useState<PermissaoEfetiva[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [clinicaId, setClinicaId] = useState("");
+  const [adminGlobal, setAdminGlobal] = useState(false);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -55,6 +63,7 @@ export function usePermissoes() {
       if (!sessao.session?.user?.id) {
         setPermissoes([]);
         setClinicaId("");
+        setAdminGlobal(false);
         return;
       }
 
@@ -66,8 +75,10 @@ export function usePermissoes() {
       if (plataforma?.role === "admin") {
         setPermissoes([]);
         setClinicaId("");
+        setAdminGlobal(true);
         return;
       }
+      setAdminGlobal(false);
 
       const { data: contexto, error: contextoError } = await (supabase as any).rpc("oricse_contexto_clinica_atual");
       if (contextoError) throw contextoError;
@@ -88,6 +99,7 @@ export function usePermissoes() {
     } catch (error) {
       console.error("Não foi possível carregar as permissões do usuário:", error);
       setPermissoes([]);
+      setAdminGlobal(false);
     } finally {
       setCarregando(false);
     }
@@ -104,8 +116,8 @@ export function usePermissoes() {
     [permissoes],
   );
 
-  const pode = useCallback((codigo: string) => permitidas.has(codigo), [permitidas]);
-  const podeAlguma = useCallback((codigos: string[]) => codigos.some((codigo) => permitidas.has(codigo)), [permitidas]);
+  const pode = useCallback((codigo: string) => adminGlobal || permitidas.has(codigo), [adminGlobal, permitidas]);
+  const podeAlguma = useCallback((codigos: string[]) => adminGlobal || codigos.some((codigo) => permitidas.has(codigo)), [adminGlobal, permitidas]);
 
-  return { permissoes, permitidas, carregando, clinicaId, pode, podeAlguma, recarregar: carregar };
+  return { permissoes, permitidas, carregando, clinicaId, adminGlobal, pode, podeAlguma, recarregar: carregar };
 }
