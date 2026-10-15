@@ -35,7 +35,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema";
+type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema" | "paginas";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
@@ -97,6 +97,7 @@ const ABAS: { id: Aba; nome: string; icone: typeof Gauge }[] = [
   { id: "planos", nome: "Planos", icone: BadgeDollarSign },
   { id: "site", nome: "Site e marca", icone: PanelsTopLeft },
   { id: "sistema", nome: "Sistema", icone: Settings },
+  { id: "paginas", nome: "Páginas e URLs", icone: Globe2 },
 ];
 
 const PERFIS: Record<PapelClinica, { nome: string; resumo: string; acessos: string[]; bloqueios: string[] }> = {
@@ -169,6 +170,8 @@ function Admin() {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [cupons, setCupons] = useState<any[]>(() => { try { return JSON.parse(window.localStorage.getItem("vetericio-cupons") || "[]"); } catch { return []; } });
   const [site, setSite] = useState<SiteConfig>(SITE_PADRAO);
+  const [rotasEditadas, setRotasEditadas] = useState<Record<string,string>>({});
+  const [salvandoRotas, setSalvandoRotas] = useState(false);
   const [drive, setDrive] = useState<DriveConfig | null>(null);
   const [arquivosDrive, setArquivosDrive] = useState(0);
   const [pasta, setPasta] = useState("");
@@ -646,7 +649,42 @@ function Admin() {
 
   const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card></div>;
 
+  const ROTAS_EDITAVEIS = [
+    {original:"/recepcao",nome:"Recepção"},
+    {original:"/estoque",nome:"Serviços, produtos e estoque"},
+    {original:"/financeiro",nome:"Financeiro"},
+    {original:"/comandas",nome:"Comandas"},
+    {original:"/minha-atividade",nome:"Minha atividade"}
+  ];
+  async function carregarRotas() {
+    const {data,error}=await (supabase as any).from("oricse_rotas_personalizadas").select("rota_original,rota_publica");
+    if(error)return toast.error(error.message);
+    setRotasEditadas(Object.fromEntries(ROTAS_EDITAVEIS.map(r=>[r.original,data?.find((d:any)=>d.rota_original===r.original)?.rota_publica||r.original])));
+  }
+  async function salvarRota(original:string) {
+    const nova=(rotasEditadas[original]||original).trim().toLowerCase();
+    if(!/^\/[a-z0-9-]+$/.test(nova))return toast.error("Use / seguido de letras minúsculas, números ou hífens.");
+    const reservadas=["/admin","/login","/","/cadastro","/configuracoes"];
+    if((reservadas.includes(nova)&&nova!==original)||ROTAS_EDITAVEIS.some(r=>r.original===nova&&r.original!==original))return toast.error("Este endereço já está reservado.");
+    if(ROTAS_EDITAVEIS.some(r=>r.original!==original&&rotasEditadas[r.original]===nova))return toast.error("Endereço repetido em outra página.");
+    setSalvandoRotas(true);
+    const {data:user}=await supabase.auth.getUser();
+    const {error}=await (supabase as any).from("oricse_rotas_personalizadas").upsert({rota_original:original,rota_publica:nova,atualizado_por:user.user?.id},{onConflict:"rota_original"});
+    setSalvandoRotas(false);
+    if(error)return toast.error(error.message);
+    toast.success("Endereço salvo para toda a plataforma.");
+  }
+  const renderPaginas = () => <Card>
+    <div className="flex items-center gap-2"><Globe2 size={20}/><h2 className="text-xl font-bold">Páginas e URLs</h2></div>
+    <p className="mt-2 text-sm text-muted-foreground">Configure um endereço público para cada página. Os endereços originais permanecem funcionando. O novo endereço encaminha para a página correspondente.</p>
+    <div className="mt-5 space-y-3">{ROTAS_EDITAVEIS.map(r=><div key={r.original} className="grid gap-2 rounded-xl border p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+      <div><p className="font-semibold">{r.nome}</p><p className="text-xs text-muted-foreground">Original: {r.original}</p></div>
+      <label className="text-xs font-semibold">Endereço personalizado<input value={rotasEditadas[r.original]??r.original} onChange={e=>setRotasEditadas(prev=>({...prev,[r.original]:e.target.value}))} className="mt-1 h-10 w-full rounded-lg border px-3 text-sm"/></label>
+      <button disabled={salvandoRotas} onClick={()=>salvarRota(r.original)} className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">Salvar</button>
+    </div>)}</div>
+  </Card>;
+
   const renderSistema = () => <Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div></Card>;
 
-  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}</section></div></div>{renderNovaClinica()}</main>;
+  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if(id==="paginas") void carregarRotas(); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}{aba === "paginas" && renderPaginas()}</section></div></div>{renderNovaClinica()}</main>;
 }
