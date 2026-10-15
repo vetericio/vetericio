@@ -1,5 +1,6 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Building2 } from "lucide-react";
+import { PortalTutorClinica } from "./pet/$slug/portal";
 
 export const Route = createFileRoute("/$tipo/$slug")({ component: PortalParceiro });
 
@@ -9,7 +10,7 @@ function PortalParceiro() {
   const titulo = "Portal veterinário";
 
   if (!segmentoValido) {
-    if (tipo === "pet") return <Navigate to={"/pet/$slug/portal"} params={{ slug }} replace />;
+    if (tipo === "pet") return <PortalTutorClinica slugDaClinica={slug} />;
 
   return <main className="grid min-h-screen place-items-center bg-muted/30 px-4"><section className="max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm"><h1 className="text-2xl font-black">Página não encontrada</h1><Link to="/" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Ir para Oricse</Link></section></main>;
   }
