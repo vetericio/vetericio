@@ -1,1 +1,7 @@
 project_id = "mwrmfcyrdxfxssebgknz"
+
+[functions.oricse-portal-activate]
+verify_jwt = false
+
+[functions.oricse-portal-login]
+verify_jwt = false
