@@ -552,13 +552,7 @@ export function doseDaEspecie(m: Medicamento, especie: Especie): DoseEspecie {
 
 /** Sem agrupamento de milhares e sem arredondar o valor usado na conta. */
 export function textoDecimal(valor: number): string {
-  if (!Number.isFinite(valor)) return "";
-  const casas = Math.abs(valor) < 0.01 ? 3 : 2;
-  return valor.toLocaleString("pt-BR", {
-    useGrouping: false,
-    minimumFractionDigits: casas,
-    maximumFractionDigits: casas,
-  });
+  return formatarVolume(valor);
 }
 
 export type EntradaCalculo = {
@@ -599,11 +593,16 @@ export function calcularEntrada(p: EntradaCalculo) {
  */
 export function formatarVolume(valor: number): string {
   if (!Number.isFinite(valor)) return "";
-  const casas = Math.abs(valor) < 0.01 ? 3 : 2;
+  const tres = valor.toLocaleString("pt-BR", {
+    useGrouping: false,
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+  if (Math.abs(valor) < 0.01 && tres !== "0,010" && tres !== "-0,010") return tres;
   return valor.toLocaleString("pt-BR", {
     useGrouping: false,
-    minimumFractionDigits: casas,
-    maximumFractionDigits: casas,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
