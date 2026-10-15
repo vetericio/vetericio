@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 select ok(exists(select 1 from public.oricse_funcionalidades where codigo='crm.inteligente'),'Funcionalidade CRM existe');
 select is((select count(*)::bigint from public.oricse_permissoes where codigo like 'crm.%'),3::bigint,'CRM possui três permissões granulares');
