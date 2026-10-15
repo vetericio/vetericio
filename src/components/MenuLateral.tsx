@@ -24,6 +24,7 @@ const areas = [
     { to: "/animais", rotulo: "Pesquisar animais" },
     { to: "/assinar", rotulo: "Assinar documento" },
     { to: "/receituario", rotulo: "Receituário" },
+    { to: "/medicacoes", rotulo: "Medicações" },
   ] },
   { titulo: "Internação", icone: BedDouble, itens: [
     { to: "/internacao", rotulo: "Painel de internação" },
@@ -44,7 +45,6 @@ const areas = [
     { to: "/perfil-clinica", rotulo: "Perfil da clínica" },
     { to: "/configuracao-site", rotulo: "Site da clínica" },
     { to: "/temas", rotulo: "Temas" },
-    { to: "/sincronizacao", rotulo: "Sincronização" },
   ] },
 ] as const;
 
