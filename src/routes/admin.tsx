@@ -171,6 +171,8 @@ function Admin() {
   const [funcionalidades, setFuncionalidades] = useState<{codigo:string;nome:string;grupo:string;ordem:number}[]>([]);
   const [permissoesPlanos, setPermissoesPlanos] = useState<Record<string,Record<string,boolean>>>({});
   const [salvandoPermissoes, setSalvandoPermissoes] = useState<string | null>(null);
+  const [excecoesClinica, setExcecoesClinica] = useState<Record<string,string>>({});
+  const [salvandoExcecao, setSalvandoExcecao] = useState<string | null>(null);
   const [cupons, setCupons] = useState<any[]>(() => { try { return JSON.parse(window.localStorage.getItem("vetericio-cupons") || "[]"); } catch { return []; } });
   const [site, setSite] = useState<SiteConfig>(SITE_PADRAO);
   const [rotasEditadas, setRotasEditadas] = useState<Record<string,string>>({});
@@ -642,12 +644,36 @@ function Admin() {
 
   const renderClinicas = () => {
     if (selecionada) return <div className="space-y-5"><button onClick={() => setSelecionada(null)} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ArrowLeft size={17}/> Voltar para clínicas</button><Card><div className="flex flex-wrap items-center gap-4"><div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={30} className="text-muted-foreground"/>}</div><div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-bold">{selecionada.nome}</h2><p className="mt-1 text-sm text-muted-foreground">@{selecionada.slug || "sem-usuario"} · {selecionada.plano} · {selecionada.status}</p></div></div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{[
-      ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database],
-    ].map(([id, nome, Icone]: any) => <button key={id} onClick={() => setAbaClinica(id)} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}</div>;
+      ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database], ["autorizacoes", "Autorizações", Settings],
+    ].map(([id, nome, Icone]: any) => <button key={id} onClick={() => { setAbaClinica(id); if(id==="autorizacoes" && selecionada) void carregarExcecoesClinica(selecionada.id); }} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}{abaClinica === "autorizacoes" && renderAutorizacoesClinica()}</div>;
 
     return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Plus size={18}/> Adicionar clínica</button></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
   };
 
+  async function carregarExcecoesClinica(clinicaId:string) {
+    const [recursos, excecoes] = await Promise.all([
+      (supabase as any).from("oricse_funcionalidades").select("codigo,nome,grupo,ordem").eq("ativo",true).order("ordem"),
+      (supabase as any).from("oricse_clinica_autorizacoes").select("funcionalidade_codigo,decisao").eq("clinica_id",clinicaId)
+    ]);
+    if(recursos.error||excecoes.error) return toast.error("Não foi possível carregar autorizações especiais.");
+    setFuncionalidades(recursos.data||[]);
+    setExcecoesClinica(Object.fromEntries((excecoes.data||[]).map((x:any)=>[x.funcionalidade_codigo,x.decisao])));
+  }
+  async function alterarExcecaoClinica(codigo:string,decisao:string) {
+    if(!selecionada)return;
+    setSalvandoExcecao(codigo);
+    const query=(supabase as any).from("oricse_clinica_autorizacoes");
+    const {error}=decisao==="plano"
+      ?await query.delete().eq("clinica_id",selecionada.id).eq("funcionalidade_codigo",codigo)
+      :await query.upsert({clinica_id:selecionada.id,funcionalidade_codigo:codigo,decisao},{onConflict:"clinica_id,funcionalidade_codigo"});
+    setSalvandoExcecao(null);
+    if(error)return toast.error("Não foi possível salvar autorização: "+error.message);
+    setExcecoesClinica(prev=>({...prev,[codigo]:decisao==="plano"?"":decisao}));
+    toast.success("Autorização da clínica atualizada.");
+  }
+  const renderAutorizacoesClinica=()=> <Card><div><h3 className="text-xl font-bold">Autorizações especiais</h3><p className="mt-1 text-sm text-muted-foreground">Seguir plano utiliza os benefícios contratados. Permitir ou Bloquear cria uma exceção exclusiva para esta clínica.</p></div>
+    <div className="mt-4 space-y-2">{funcionalidades.map(f=><div key={f.codigo} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div><p className="text-sm font-semibold">{f.nome}</p><p className="text-xs text-muted-foreground">{f.grupo} · {f.codigo}</p></div><select aria-label={"Autorização: "+f.nome} disabled={salvandoExcecao===f.codigo} value={excecoesClinica[f.codigo]||"plano"} onChange={e=>void alterarExcecaoClinica(f.codigo,e.target.value)} className="rounded-lg border bg-white px-3 py-2 text-sm"><option value="plano">Seguir plano</option><option value="permitir">Permitir</option><option value="bloquear">Bloquear</option></select></div>)}</div>
+  </Card>;
   async function carregarFuncionalidades() {
     const [recursos,permissoes]=await Promise.all([
       (supabase as any).from("oricse_funcionalidades").select("codigo,nome,grupo,ordem").eq("ativo",true).order("ordem"),
