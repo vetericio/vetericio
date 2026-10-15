@@ -303,7 +303,7 @@ function RootComponent() {
     const rotaPublica =
       ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
-      /^\/pet\/[^/]+\/portal\/?$/.test(location.pathname);
+      /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin");
     if (autenticado === false && !rotaPublica && !rotaAdmin) navigate({ to: "/login" });
     if (autenticado && acessoPortalNegado) return;
@@ -590,7 +590,7 @@ function RootComponent() {
   const rotaPublica =
     ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
-      /^\/pet\/[^/]+\/portal\/?$/.test(location.pathname);
+      /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;
