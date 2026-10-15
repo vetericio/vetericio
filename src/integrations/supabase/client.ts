@@ -27,7 +27,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-
 // Use import.meta.env for client-side (Vite build-time replacement)
 // and process.env only during SSR.
 // These are public client credentials. Environment variables take precedence in
@@ -39,7 +38,7 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'
 export const supabaseConfigurado = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 export const supabaseMensagemConfiguracao = "A conexão segura do sistema ainda não foi configurada. Tente novamente em alguns instantes.";
 
-function createSupabaseClient() {
+function createSupabaseClient(storageKey = 'oricse-app-auth') {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error(supabaseMensagemConfiguracao);
   }
@@ -50,6 +49,7 @@ function createSupabaseClient() {
     },
     auth: {
       storage: brokeredPreviewStorage(),
+      storageKey,
       persistSession: true,
       autoRefreshToken: true,
     }
@@ -57,12 +57,22 @@ function createSupabaseClient() {
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
+let _supabasePortal: ReturnType<typeof createSupabaseClient> | undefined;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// Sessão principal da plataforma (admin/equipe da clínica).
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
-    if (!_supabase) _supabase = createSupabaseClient();
+    if (!_supabase) _supabase = createSupabaseClient('oricse-app-auth');
     return Reflect.get(_supabase, prop, receiver);
+  },
+});
+
+// Sessão exclusiva do Portal do Tutor.
+// É intencionalmente separada para que abrir o portal a partir de uma sessão
+// administrativa não reutilize o login do admin nem redirecione o tutor para /admin.
+export const supabasePortal = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
+  get(_, prop, receiver) {
+    if (!_supabasePortal) _supabasePortal = createSupabaseClient('oricse-portal-auth');
+    return Reflect.get(_supabasePortal, prop, receiver);
   },
 });
