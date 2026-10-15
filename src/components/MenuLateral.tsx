@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { Activity, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
-import { usePermissoes } from "@/hooks/usePermissoes";
+import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -56,9 +56,17 @@ export function MenuLateral() {
   const [turnoAberto, setTurnoAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const { plantao } = usePlantaoAtual();
-  const { carregando: carregandoPermissoes, pode } = usePermissoes();
+  const { carregando: carregandoPermissoes, pode, podeAlguma } = usePermissoes();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (carregandoPermissoes) return;
+    const exigidas = permissoesDaRota(location.pathname);
+    if (!exigidas || podeAlguma(exigidas)) return;
+    toast.error("Seu usuário não tem permissão para acessar esta área.");
+    void navigate({ to: "/inicio", replace: true });
+  }, [carregandoPermissoes, location.pathname, navigate, podeAlguma]);
 
   async function sair() {
     if (saindo) return;
