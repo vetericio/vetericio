@@ -8,12 +8,10 @@ export const Route = createFileRoute("/recepcao")({ component: Recepcao });
 
 const FILA_KEY = "oricse-fila-espera-v1";
 const FILA_VISIVEL_KEY = "oricse-recepcao-fila-visivel";
-const AGENDA_KEY = "oricse-agendas-v2";
 const TUTORES_KEY = "oricse-tutores-v1";
 const ANIMAIS_KEY = "oricse-animais-v1";
 const PRONTUARIO_KEY = "oricse-prontuario-animal-v1";
 const LEMBRETES_REFORCOS_KEY = "oricse-lembretes-reforcos-v1";
-const DEMO_EVENT_IDS = new Set(["e1", "e2", "e3", "e4"]);
 
 type FilaResumo = {
   id: string;
@@ -91,34 +89,6 @@ function lerLembretesReforcos(): Record<string, boolean> {
     return valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
   } catch {
     return {};
-  }
-}
-
-function limparAtendimentosDeExemplo() {
-  if (typeof window === "undefined") return;
-  try {
-    const salvo = localStorage.getItem(AGENDA_KEY);
-    if (!salvo) {
-      localStorage.setItem(AGENDA_KEY, JSON.stringify([
-        { id: "agenda-1", nome: "Agenda 1", responsavel: "Dra. Ana Costa", inicio: "08:00", fim: "17:00", cor: "verde", diasSemana: [0, 1, 2, 3, 4, 5, 6], eventos: [] },
-        { id: "agenda-2", nome: "Agenda 2", responsavel: "Dr. Bruno Almeida", inicio: "08:00", fim: "17:00", cor: "azul", diasSemana: [0, 1, 2, 3, 4, 5, 6], eventos: [] },
-        { id: "agenda-3", nome: "Agenda 3", responsavel: "Dra. Juliana Ribeiro", inicio: "09:00", fim: "15:00", cor: "roxo", diasSemana: [0, 1, 2, 3, 4, 5, 6], eventos: [] },
-      ]));
-      return;
-    }
-
-    const agendas = JSON.parse(salvo);
-    if (!Array.isArray(agendas)) return;
-    let alterou = false;
-    const limpas = agendas.map((agenda: any) => {
-      if (!Array.isArray(agenda?.eventos)) return agenda;
-      const eventos = agenda.eventos.filter((evento: any) => !DEMO_EVENT_IDS.has(String(evento?.id || "")));
-      if (eventos.length !== agenda.eventos.length) alterou = true;
-      return { ...agenda, eventos };
-    });
-    if (alterou) localStorage.setItem(AGENDA_KEY, JSON.stringify(limpas));
-  } catch {
-    // Se houver dado antigo inválido, a própria agenda trata o fallback.
   }
 }
 
@@ -246,11 +216,6 @@ function mensagemReforco(item: ReforcoItem) {
 }
 
 export function Recepcao() {
-  useState(() => {
-    limparAtendimentosDeExemplo();
-    return true;
-  });
-
   const [fila, setFila] = useState<FilaResumo[]>(lerFila);
   const [tutores, setTutores] = useState<TutorAniversario[]>(lerTutores);
   const [animais, setAnimais] = useState<AnimalResumo[]>(lerAnimais);
