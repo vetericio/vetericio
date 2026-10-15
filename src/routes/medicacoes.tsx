@@ -178,7 +178,38 @@ function PaginaMedicacoes() {
       </ul>
 
       {medicamentos.length > 0 && (
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              let conteudo = "";
+              try {
+                conteudo = window.localStorage.getItem("veterico-medicamentos-v1") || "";
+              } catch {
+                conteudo = "";
+              }
+              if (!conteudo) conteudo = JSON.stringify(medicamentos);
+              let formatado = conteudo;
+              try {
+                formatado = JSON.stringify(JSON.parse(conteudo), null, 2);
+              } catch {
+                formatado = conteudo;
+              }
+              const url = URL.createObjectURL(
+                new Blob([formatado], { type: "application/json;charset=utf-8" }),
+              );
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "medicamentos-completo.json";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary"
+          >
+            💾 Baixar dados completos (JSON)
+          </button>
           <button
             type="button"
             onClick={async () => {
