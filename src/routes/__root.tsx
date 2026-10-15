@@ -300,6 +300,8 @@ function RootComponent() {
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("visual_editor")) return;
+    // O portal do tutor não participa dos redirecionamentos da equipe/admin.
+    if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
       ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
@@ -598,7 +600,7 @@ function RootComponent() {
     autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
   const telaPortalRestrita = Boolean(
-    autenticado && role !== "admin" && (acessoPortalNegado || (!portal && Boolean(portalError))),
+    !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) && autenticado && role !== "admin" && (acessoPortalNegado || (!portal && Boolean(portalError))),
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
 
