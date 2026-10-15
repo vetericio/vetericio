@@ -90,7 +90,7 @@ export function MenuLateral() {
               </button>
               {abertoGrupo && <div className="space-y-1 bg-background p-2">
                 {area.itens.map((item,i) => {
-                  const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
+                  const bloqueado = !plantao && (SO_COM_PLANTAO.includes(item.to) && !(area.titulo === "Consultório" && item.to === "/medicacoes"));
                   if (bloqueado) return <button key={item.to+i} type="button" onClick={() => { setAberto(false); setTurnoAberto(true); }}
                     className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary">
                     {item.rotulo}<span className="block text-[11px]">Abrir plantão clínico primeiro</span>
