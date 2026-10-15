@@ -44,7 +44,6 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/configuracao-site": ["administracao.site"],
   "/temas": ["administracao.temas"],
   "/sincronizacao": ["administracao.configuracoes"],
-  "/admin-planos": ["administracao.configuracoes"],
 };
 
 export function permissoesDaRota(pathname: string) {
@@ -117,8 +116,32 @@ export function usePermissoes() {
     [permissoes],
   );
 
+  const bloqueadasPeloPlano = useMemo(
+    () => new Set(permissoes.filter((p) => !p.permitido && p.origem === "plano").map((p) => p.codigo)),
+    [permissoes],
+  );
+
+  const mapaPermissoes = useMemo(
+    () => new Map(permissoes.map((p) => [p.codigo, p])),
+    [permissoes],
+  );
+
   const pode = useCallback((codigo: string) => adminGlobal || permitidas.has(codigo), [adminGlobal, permitidas]);
   const podeAlguma = useCallback((codigos: string[]) => adminGlobal || codigos.some((codigo) => permitidas.has(codigo)), [adminGlobal, permitidas]);
+  const bloqueadaPeloPlano = useCallback((codigo: string) => !adminGlobal && bloqueadasPeloPlano.has(codigo), [adminGlobal, bloqueadasPeloPlano]);
+  const origemDaPermissao = useCallback((codigo: string) => adminGlobal ? "admin" : mapaPermissoes.get(codigo)?.origem || "indisponivel", [adminGlobal, mapaPermissoes]);
 
-  return { permissoes, permitidas, carregando, clinicaId, adminGlobal, pode, podeAlguma, recarregar: carregar };
+  return {
+    permissoes,
+    permitidas,
+    bloqueadasPeloPlano,
+    carregando,
+    clinicaId,
+    adminGlobal,
+    pode,
+    podeAlguma,
+    bloqueadaPeloPlano,
+    origemDaPermissao,
+    recarregar: carregar,
+  };
 }
