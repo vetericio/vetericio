@@ -20,6 +20,7 @@ const areas = [
     { to: "/configurar-agenda-online", rotulo: "Configurar agenda online", permissao: "recepcao.agenda" },
     { to: "/tutores", rotulo: "Tutores", permissao: "recepcao.cadastros.visualizar" },
     { to: "/animais", rotulo: "Animais", permissao: "recepcao.cadastros.visualizar" },
+    { to: "/crm", rotulo: "CRM e lembretes", permissao: "crm.visualizar" },
   ] },
   { titulo: "Consultório", icone: Stethoscope, itens: [
     { to: "/consultorio", rotulo: "Consultas e prontuários", permissao: "consultorio.atendimentos" },
