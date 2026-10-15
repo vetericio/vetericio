@@ -34,7 +34,7 @@ const areas = [
     { to: "/anamnese", rotulo: "Anamnese", permissao: "internacao.registrar" },
     { to: "/curva", rotulo: "Curvas e parâmetros", permissao: "internacao.registrar" },
     { to: "/medicacoes", rotulo: "Medicações", permissao: "internacao.medicacoes" },
-    { to: "/alarmes", rotulo: "Alarmes", permissao: "internacao.painel" },
+    { to: "/alarmes", rotulo: "Alarmes", permissao: "internacao.registrar" },
     { to: "/pendencias", rotulo: "Pendências", permissao: "internacao.registrar" },
     { to: "/plantoes", rotulo: "Histórico de plantões", permissao: "internacao.plantoes" },
   ] },
@@ -57,6 +57,7 @@ export function MenuLateral() {
   const [saindo, setSaindo] = useState(false);
   const { plantao } = usePlantaoAtual();
   const { carregando: carregandoPermissoes, pode, podeAlguma } = usePermissoes();
+  const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -104,9 +105,9 @@ export function MenuLateral() {
               {abertoGrupo && <div className="space-y-1 bg-background p-2">
                 {itensVisiveis.map((item,i) => {
                   const bloqueado = !plantao && (SO_COM_PLANTAO.includes(item.to) && !(area.titulo === "Consultório" && item.to === "/medicacoes"));
-                  if (bloqueado) return <button key={item.to+i} type="button" onClick={() => { setAberto(false); setTurnoAberto(true); }}
-                    className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary">
-                    {item.rotulo}<span className="block text-[11px]">Abrir plantão clínico primeiro</span>
+                  if (bloqueado) return <button key={item.to+i} type="button" disabled={!podeGerenciarPlantao} onClick={() => { if (!podeGerenciarPlantao) return; setAberto(false); setTurnoAberto(true); }}
+                    className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60">
+                    {item.rotulo}<span className="block text-[11px]">{podeGerenciarPlantao ? "Abrir plantão clínico primeiro" : "Aguarde um responsável iniciar o plantão"}</span>
                   </button>;
                   return <Link key={item.to+i} to={item.to} onClick={() => setAberto(false)}
                     className={`block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname===item.to ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>
