@@ -10,6 +10,7 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
+import { CrmBackgroundSync } from "@/components/CrmBackgroundSync";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
 
 const base =
@@ -65,6 +66,7 @@ export function Cabecalho() {
 
   return (
     <header className="relative border-b border-border bg-card/60">
+      <CrmBackgroundSync />
       <MenuLateral />
       <div className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-4" : "pb-2 pt-2"}`}>
         <div className={plantaoArea ? "mb-2 flex justify-center" : "mb-1 flex justify-center"}>
