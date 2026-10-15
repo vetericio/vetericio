@@ -6,7 +6,7 @@ export const Route = createFileRoute("/$tipo/$slug")({ component: PortalParceiro
 function PortalParceiro() {
   const { tipo, slug } = Route.useParams();
   const segmentoValido = tipo === "vet" || tipo === "pet";
-  const titulo = tipo === "pet" ? "Portal do pet shop" : "Portal veterinário";
+  const titulo = tipo === "pet" ? "Portal da clínica" : "Portal veterinário";
 
   if (!segmentoValido) {
     return <main className="grid min-h-screen place-items-center bg-muted/30 px-4"><section className="max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm"><h1 className="text-2xl font-black">Página não encontrada</h1><Link to="/" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Ir para Oricse</Link></section></main>;
@@ -18,8 +18,9 @@ function PortalParceiro() {
       <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-primary">Oricse</p>
       <h1 className="mt-2 text-3xl font-black text-foreground">{titulo}</h1>
       <p className="mt-3 text-sm text-muted-foreground">Endereço da unidade: <strong className="text-foreground">/{tipo}/{slug}</strong></p>
-      <p className="mt-6 text-sm leading-6 text-muted-foreground">Entre para acessar o sistema da clínica, agenda, atendimentos e informações autorizadas.</p>
-      <Link to="/login" className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-5 font-black text-primary-foreground">Acessar sistema <ArrowRight size={18} /></Link>
+      <p className="mt-6 text-sm leading-6 text-muted-foreground">Escolha como deseja acessar esta unidade.</p>
+      {tipo === "pet" && <Link to={`/pet/${slug}/portal` as never} className="mt-7 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-black text-primary-foreground">Sou tutor · Meus animais <ArrowRight size={18} /></Link>}
+      <Link to="/login" className={`${tipo === "pet" ? "mt-3 border bg-background text-foreground" : "mt-7 bg-primary text-primary-foreground"} inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 font-black`}>Sou da equipe · Acessar sistema <ArrowRight size={18} /></Link>
     </section>
   </main>;
 }
