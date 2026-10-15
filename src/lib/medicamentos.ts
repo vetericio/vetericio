@@ -796,6 +796,8 @@ const TESTE: Medicamento[] = [
 
 import padraoJson from "./medicamentos-padrao.json";
 
+const CHAVE_PADRAO_APLICADO = "veterico-medicamentos-padrao-v1";
+
 export function medicamentosPadrao(): Medicamento[] {
   return JSON.parse(JSON.stringify(padraoJson)) as Medicamento[];
 }
@@ -812,9 +814,20 @@ export function carregarMedicamentos(): Medicamento[] {
     const lido = JSON.parse(bruto);
     if (!Array.isArray(lido)) return [];
     // Quem já usava a estrela (antes ligada a "especial") continua com a favorita marcada.
-    return (lido as Medicamento[]).map((m) =>
+    let lista = (lido as Medicamento[]).map((m) =>
       m.favorito === undefined && m.especial ? { ...m, favorito: true } : m,
     );
+    // Uma única vez por navegador, acrescenta os padrões que faltam (sem alterar os existentes).
+    if (!window.localStorage.getItem(CHAVE_PADRAO_APLICADO)) {
+      const nomes = new Set(lista.map((m) => m.nome.trim().toLowerCase()));
+      lista = [
+        ...lista,
+        ...medicamentosPadrao().filter((m) => !nomes.has(m.nome.trim().toLowerCase())),
+      ];
+      window.localStorage.setItem(CHAVE_PADRAO_APLICADO, "1");
+      window.localStorage.setItem(CHAVE_MEDICAMENTOS, JSON.stringify(lista));
+    }
+    return lista;
   } catch {
     return [];
   }
