@@ -16,6 +16,7 @@ const areas = [
   { titulo: "Recepção", icone: CalendarCheck, itens: [
     { to: "/recepcao", rotulo: "Painel da recepção" },
     { to: "/recepcao", rotulo: "Agenda e fila de espera" },
+    { to: "/configurar-agenda-online", rotulo: "Configurar agenda online" },
     { to: "/tutores", rotulo: "Tutores" },
     { to: "/animais", rotulo: "Animais" },
   ] },
