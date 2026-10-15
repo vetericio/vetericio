@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileDown, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { lerSelo, type TipoSelo } from "@/lib/assinatura";
 import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
@@ -10,7 +11,6 @@ import {
   FORMAS_MEDICAMENTO,
   INTERVALOS_RECEITUARIO,
   montarPosologia,
-  proximoNumeroReceitaEspecial,
   type TipoReceita,
   type ItemReceituario,
   type PosicaoSeloReceituario,
@@ -45,6 +45,12 @@ function especieDaAnamnese(valor: string): EspecieReceituario {
   if (valor === "Cachorro") return "Canina";
   if (valor === "Gato") return "Felina";
   return "Outro";
+}
+
+async function emitirReceitaControladaNoBanco(dados: Record<string, unknown>): Promise<string> {
+  const { data, error } = await (supabase as any).rpc("oricse_emitir_receita_controlada", { p_dados: dados });
+  if (error || typeof data !== "string") throw new Error(error?.message || "Não foi possível registrar a receita no banco.");
+  return data;
 }
 
 export function Receituario() {
@@ -226,7 +232,7 @@ export function Receituario() {
     setGerando(true);
     try {
       const especial = tipoReceita === "especial";
-      const numero = especial ? proximoNumeroReceitaEspecial(true) : undefined;
+      const numero = especial ? await emitirReceitaControladaNoBanco({ paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco }) : undefined;
       await baixarReceituario({
         tipo: tipoReceita,
         numero,
