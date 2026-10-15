@@ -6,6 +6,7 @@ import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
+import { usePermissoes } from "@/hooks/usePermissoes";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
 import { rotuloPlantaoAtual } from "@/lib/plantao";
@@ -15,10 +16,24 @@ const base =
 
 import { LINKS_TOPO as LINKS, SO_COM_PLANTAO } from "@/lib/navegacao";
 
+const PERMISSAO_LINK: Record<string, string> = {
+  "/internacao": "internacao.painel",
+  "/registros": "internacao.painel",
+  "/anamnese": "internacao.registrar",
+};
+
+const AREAS_TROCA = [
+  { to: "/internacao", rotulo: "Internação", permissao: "internacao.painel" },
+  { to: "/consultorio", rotulo: "Consultas", permissao: "consultorio.atendimentos" },
+  { to: "/recepcao", rotulo: "Recepção", permissao: "recepcao.agenda" },
+  { to: "/financeiro", rotulo: "Caixa", permissao: "caixa.financeiro.visualizar" },
+] as const;
+
 export function Cabecalho() {
   const location = useLocation();
   const navigate = useNavigate();
   const { marca, logo_url } = useSiteBranding();
+  const { carregando: carregandoPermissoes, pode } = usePermissoes();
   const plantaoArea = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();
@@ -27,8 +42,10 @@ export function Cabecalho() {
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
   const [trocarArea, setTrocarArea] = useState(false);
+  const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
 
   const finalizarPlantao = () => {
+    if (!podeGerenciarPlantao) return;
     const quantos = registros.length;
     confirmacao.pedir({
       titulo: "Finalizar o plantão agora?",
@@ -67,10 +84,16 @@ export function Cabecalho() {
           {trocarArea && (
             <div className="mx-auto mt-2 grid max-w-md gap-2 rounded-2xl border bg-card p-3 text-left shadow-lg">
               <p className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Para onde deseja ir?</p>
-              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/internacao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Internação</button>
-              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/consultorio" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Consultas</button>
-              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/recepcao" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Recepção</button>
-              <button type="button" onClick={() => { setTrocarArea(false); navigate({ to: "/financeiro" }); }} className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70">Caixa</button>
+              {AREAS_TROCA.filter((area) => carregandoPermissoes || pode(area.permissao)).map((area) => (
+                <button
+                  key={area.to}
+                  type="button"
+                  onClick={() => { setTrocarArea(false); navigate({ to: area.to }); }}
+                  className="rounded-xl bg-secondary px-3 py-3 text-left font-semibold hover:bg-secondary/70"
+                >
+                  {area.rotulo}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -78,12 +101,12 @@ export function Cabecalho() {
         {plantaoArea && <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">Ficha de Avaliação da Internação</p>}
         {plantaoArea && <p className="mt-0.5 text-[11px] text-muted-foreground">
           {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
-          {plantao && (
+          {plantao && podeGerenciarPlantao && (
             <button type="button" onClick={() => definirTurno(null)} className="ml-2 underline underline-offset-2 hover:text-foreground">alterar</button>
           )}
         </p>}
 
-        {plantaoArea && carregado && (
+        {plantaoArea && carregado && podeGerenciarPlantao && (
           <div className="mt-3">
             {plantao ? (
               <button type="button" onClick={finalizarPlantao} className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90">Finalizar plantão</button>
@@ -97,11 +120,13 @@ export function Cabecalho() {
 
         {plantaoArea && <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
           {LINKS.map((item) => {
+            const permissao = PERMISSAO_LINK[item.to];
+            if (permissao && !carregandoPermissoes && !pode(permissao)) return null;
             const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
             if (bloqueado)
               return (
-                <button key={item.to} type="button" onClick={() => setIniciarAberto(true)} className={`${base} bg-secondary/40 text-muted-foreground`}>
-                  {item.rotulo} · inicie o plantão
+                <button key={item.to} type="button" disabled={!podeGerenciarPlantao} onClick={() => podeGerenciarPlantao && setIniciarAberto(true)} className={`${base} bg-secondary/40 text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60`}>
+                  {item.rotulo}{podeGerenciarPlantao ? " · inicie o plantão" : ""}
                 </button>
               );
             return (
