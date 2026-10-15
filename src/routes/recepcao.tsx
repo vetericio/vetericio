@@ -245,7 +245,7 @@ function mensagemReforco(item: ReforcoItem) {
   return `Olá, ${primeiroNome}! 💚 Passando para lembrar que a ${acao} de ${item.nome} de ${item.animalNome} está prevista para ${dataBR(item.data)}. Se precisar, podemos ajudar a agendar.`;
 }
 
-function Recepcao() {
+export function Recepcao() {
   useState(() => {
     limparAtendimentosDeExemplo();
     return true;

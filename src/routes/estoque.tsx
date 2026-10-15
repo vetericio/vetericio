@@ -48,7 +48,7 @@ function dinheiro(valor: number) {
   return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function Estoque() {
+export function Estoque() {
   const [aba, setAba] = useState<Aba>("catalogo");
   const [clinicaId, setClinicaId] = useState("");
   const [usuarioId, setUsuarioId] = useState("");

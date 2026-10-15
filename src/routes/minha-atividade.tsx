@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/minha-atividade")({ component: MinhaAtividade });
 
 type Registro = {id:string;modalidade:"hora"|"diaria";data:string;estado:string;segundos_trabalhados:number;ultimo_inicio_em:string|null;valor_unitario:number};
-function MinhaAtividade() {
+export function MinhaAtividade() {
   const [clinica,setClinica]=useState("");
   const [config,setConfig]=useState<{modalidade:"hora"|"diaria";valor_unitario:number}|null>(null);
   const [registros,setRegistros]=useState<Registro[]>([]);

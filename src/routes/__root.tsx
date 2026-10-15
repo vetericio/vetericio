@@ -145,6 +145,20 @@ function RootComponent() {
   const [portalError, setPortalError] = useState<string | null>(null);
   const [acessoPortalNegado, setAcessoPortalNegado] = useState(false);
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
+  // Mantém o endereço configurado pelo Admin também ao navegar por links internos.
+  useEffect(() => {
+    const rotasEditaveis = ["/recepcao", "/estoque", "/financeiro", "/comandas", "/minha-atividade"];
+    if (!rotasEditaveis.includes(location.pathname)) return;
+    let ativo = true;
+    (async () => {
+      const { data, error } = await (supabase as any).from("oricse_rotas_personalizadas")
+        .select("rota_publica").eq("rota_original", location.pathname).maybeSingle();
+      if (!ativo || error || !data?.rota_publica || data.rota_publica === location.pathname) return;
+      void navigate({ to: data.rota_publica as any, search: location.search as any, hash: location.hash, replace: true });
+    })();
+    return () => { ativo = false; };
+  }, [location.pathname, location.search, location.hash, navigate]);
+
 
   useEffect(() => {
     let ativo = true;

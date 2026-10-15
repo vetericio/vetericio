@@ -170,7 +170,7 @@ function lerTutores(): TutorFinanceiro[] {
   }
 }
 
-function Financeiro() {
+export function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
   const [dataAtual, setDataAtual] = useState(hojeISO);
   useEffect(() => {
