@@ -145,7 +145,7 @@ function RootComponent() {
   const [portalError, setPortalError] = useState<string | null>(null);
   const [acessoPortalNegado, setAcessoPortalNegado] = useState(false);
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
-  // Mantém o endereço configurado pelo Admin também ao navegar por links internos.
+
   useEffect(() => {
     const rotasEditaveis = ["/recepcao", "/estoque", "/financeiro", "/comandas", "/minha-atividade"];
     if (!rotasEditaveis.includes(location.pathname)) return;
@@ -158,7 +158,6 @@ function RootComponent() {
     })();
     return () => { ativo = false; };
   }, [location.pathname, location.search, location.hash, navigate]);
-
 
   useEffect(() => {
     let ativo = true;
@@ -300,7 +299,6 @@ function RootComponent() {
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("visual_editor")) return;
-    // O portal do tutor não participa dos redirecionamentos da equipe/admin.
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
       ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
@@ -325,15 +323,7 @@ function RootComponent() {
     if (autenticado && role === "admin" && location.pathname === "/inicio") {
       navigate({ to: "/admin" });
     }
-  }, [
-    autenticado,
-    acessoPortalNegado,
-    role,
-    slugClinicaAtual,
-    portal,
-    location.pathname,
-    navigate,
-  ]);
+  }, [autenticado, acessoPortalNegado, role, slugClinicaAtual, portal, location.pathname, navigate]);
 
   useEffect(() => {
     if (role !== "admin" || location.pathname !== "/admin") return;
@@ -390,16 +380,13 @@ function RootComponent() {
       section.appendChild(canvas);
 
       const sincronizar = () => {
-        const iframe = document.getElementById(
-          "oricse-planos-preview-frame",
-        ) as HTMLIFrameElement | null;
+        const iframe = document.getElementById("oricse-planos-preview-frame") as HTMLIFrameElement | null;
         const doc = iframe?.contentDocument;
         if (!doc) return;
         const labels = Array.from(section.querySelectorAll("label"));
         const valor = (inicio: string) => {
           const label = labels.find((l) => (l.textContent || "").trim().startsWith(inicio));
-          const campo = label?.querySelector("input,textarea") as
-            HTMLInputElement | HTMLTextAreaElement | null;
+          const campo = label?.querySelector("input,textarea") as HTMLInputElement | HTMLTextAreaElement | null;
           return campo?.value || "";
         };
         const h1 = doc.querySelector("main header h1") as HTMLElement | null;
@@ -467,22 +454,6 @@ function RootComponent() {
       const tutorNormalizado = normalizar(tutorTexto);
 
       try {
-        const agendas = JSON.parse(localStorage.getItem("oricse-agendas-v2") || "[]") as any[];
-        for (const agenda of agendas) {
-          const evento = (agenda?.eventos || []).find(
-            (item: any) =>
-              normalizar(item?.paciente) &&
-              titulo.includes(normalizar(item.paciente)) &&
-              normalizar(item?.tutor) === tutorNormalizado &&
-              item?.animalId,
-          );
-          if (evento?.animalId) return String(evento.animalId);
-        }
-      } catch {
-        /* fallback abaixo */
-      }
-
-      try {
         const tutores = JSON.parse(localStorage.getItem("oricse-tutores-v1") || "[]") as any[];
         const animais = JSON.parse(localStorage.getItem("oricse-animais-v1") || "[]") as any[];
         const tutor = tutores.find((item: any) => normalizar(item?.nome) === tutorNormalizado);
@@ -522,9 +493,7 @@ function RootComponent() {
         navigate({ to: "/animal", search: { animalId } as never });
       };
 
-      let acoes = aside.querySelector(
-        "[data-oricse-atendimento-acoes='1']",
-      ) as HTMLDivElement | null;
+      let acoes = aside.querySelector("[data-oricse-atendimento-acoes='1']") as HTMLDivElement | null;
       if (!acoes) {
         acoes = document.createElement("div");
         acoes.dataset["oricseAtendimentoAcoes"] = "1";
@@ -533,9 +502,7 @@ function RootComponent() {
         acoes.appendChild(botaoIniciar);
       }
 
-      let finalizar = acoes.querySelector(
-        "[data-oricse-finalizar='1']",
-      ) as HTMLButtonElement | null;
+      let finalizar = acoes.querySelector("[data-oricse-finalizar='1']") as HTMLButtonElement | null;
       if (!finalizar) {
         finalizar = document.createElement("button");
         finalizar.type = "button";
@@ -553,25 +520,17 @@ function RootComponent() {
             ?.textContent?.replace(/^Tutor:\s*/i, "") || "";
         const tutor = normalizar(tutorTexto);
         const candidatos = Array.from(document.querySelectorAll("button")).filter(
-          (botao) =>
-            (botao.textContent || "").trim() === "Finalizar atendimento" && botao !== finalizar,
+          (botao) => (botao.textContent || "").trim() === "Finalizar atendimento" && botao !== finalizar,
         ) as HTMLButtonElement[];
-        const alvo =
-          candidatos.find((botao) => {
-            const texto = normalizar(botao.parentElement?.textContent);
-            return (
-              texto &&
-              nomeAnimal.split(" ").some((parte) => parte.length > 2 && texto.includes(parte)) &&
-              (!tutor || texto.includes(tutor))
-            );
-          }) || candidatos[0];
+        const alvo = candidatos.find((botao) => {
+          const texto = normalizar(botao.parentElement?.textContent);
+          return texto && nomeAnimal.split(" ").some((parte) => parte.length > 2 && texto.includes(parte)) && (!tutor || texto.includes(tutor));
+        }) || candidatos[0];
         if (!alvo) {
           window.alert("Não foi possível localizar este atendimento na agenda.");
           return;
         }
-        const fechar = aside.querySelector(
-          "button:not([data-oricse-finalizar='1'])",
-        ) as HTMLButtonElement | null;
+        const fechar = aside.querySelector("button:not([data-oricse-finalizar='1'])") as HTMLButtonElement | null;
         fechar?.click();
         setTimeout(() => alvo.click(), 0);
       };
@@ -592,12 +551,11 @@ function RootComponent() {
   const rotaPublica =
     ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
-      /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
+    /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;
-  const mostrarBloqueioTeste =
-    autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
+  const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
   const telaPortalRestrita = Boolean(
     !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) && autenticado && role !== "admin" && (acessoPortalNegado || (!portal && Boolean(portalError))),
@@ -613,8 +571,7 @@ function RootComponent() {
         {!rotaAdmin && <Splash />}
         {testeAtivo && mostrarClinico && (
           <div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
-            💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s)
-            restante(s).
+            💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s) restante(s).
           </div>
         )}
         {rotaAdmin && autenticado === null ? (
@@ -623,15 +580,8 @@ function RootComponent() {
           <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
             <section className="w-full max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm">
               <h1 className="text-2xl font-bold">Acesso restrito</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                A área administrativa é exclusiva da equipe Oricse.
-              </p>
-              <Link
-                to="/"
-                className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
-              >
-                Voltar ao início
-              </Link>
+              <p className="mt-2 text-sm text-muted-foreground">A área administrativa é exclusiva da equipe Oricse.</p>
+              <Link to="/" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Voltar ao início</Link>
             </section>
           </main>
         ) : telaPortalRestrita ? (
@@ -645,13 +595,7 @@ function RootComponent() {
                     ? portalError
                     : "Esta conta não está vinculada a uma clínica ativa. Solicite acesso ao responsável da sua clínica."}
               </p>
-              <button
-                type="button"
-                onClick={() => void supabase.auth.signOut()}
-                className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
-              >
-                Sair desta conta
-              </button>
+              <button type="button" onClick={() => void supabase.auth.signOut()} className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Sair desta conta</button>
             </section>
           </main>
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
@@ -660,26 +604,10 @@ function RootComponent() {
           <main className="flex min-h-[75vh] items-center justify-center bg-background px-4 py-10">
             <section className="w-full max-w-xl rounded-3xl border bg-card p-7 text-center shadow-lg">
               <div className="text-4xl">💚</div>
-              <h1 className="mt-4 text-3xl font-bold">
-                Seu período de carinho com a Oricse chegou ao fim
-              </h1>
-              <p className="mt-3 text-muted-foreground">
-                Seus dados estão guardadinhos aqui, exatamente como você deixou. Para continuar
-                usando a Oricse, escolha um plano e regularize sua conta.
-              </p>
-              <div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
-                <p>Nada foi apagado.</p>
-                <p className="mt-1">
-                  Enquanto a conta estiver pausada, edição, exportações, PDFs, downloads e backups
-                  ficam indisponíveis.
-                </p>
-              </div>
-              <Link
-                to="/planos"
-                className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground"
-              >
-                Escolher meu plano
-              </Link>
+              <h1 className="mt-4 text-3xl font-bold">Seu período de carinho com a Oricse chegou ao fim</h1>
+              <p className="mt-3 text-muted-foreground">Seus dados estão guardadinhos aqui, exatamente como você deixou. Para continuar usando a Oricse, escolha um plano e regularize sua conta.</p>
+              <div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground"><p>Nada foi apagado.</p><p className="mt-1">Enquanto a conta estiver pausada, edição, exportações, PDFs, downloads e backups ficam indisponíveis.</p></div>
+              <Link to="/planos" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">Escolher meu plano</Link>
             </section>
           </main>
         ) : (
