@@ -9,10 +9,10 @@ function PortalParceiro() {
   const segmentoValido = tipo === "vet" || tipo === "pet";
   const titulo = "Portal veterinário";
 
-  if (!segmentoValido) {
-    if (tipo === "pet") return <PortalTutorClinica slugDaClinica={slug} />;
+  if (tipo === "pet") return <PortalTutorClinica slugDaClinica={slug} />;
 
-  return <main className="grid min-h-screen place-items-center bg-muted/30 px-4"><section className="max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm"><h1 className="text-2xl font-black">Página não encontrada</h1><Link to="/" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Ir para Oricse</Link></section></main>;
+  if (!segmentoValido) {
+    return <main className="grid min-h-screen place-items-center bg-muted/30 px-4"><section className="max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm"><h1 className="text-2xl font-black">Página não encontrada</h1><Link to="/" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground">Ir para Oricse</Link></section></main>;
   }
 
   return <main className="grid min-h-screen place-items-center bg-gradient-to-b from-primary/10 to-background px-4 py-10">
