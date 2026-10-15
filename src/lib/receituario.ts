@@ -66,29 +66,6 @@ export type PosicaoSeloReceituario = {
 
 export type TipoReceita = "normal" | "especial";
 
-const CHAVE_NUMERACAO_RECEITA = "veterico-receita-especial-numero-v1";
-
-/** Próximo número da receita de controle especial, sequencial por ano (ex.: 0007/2026). */
-export function proximoNumeroReceitaEspecial(consumir: boolean): string {
-  const ano = new Date().getFullYear();
-  let ultimo = 0;
-  try {
-    const salvo = JSON.parse(window.localStorage.getItem(CHAVE_NUMERACAO_RECEITA) || "{}");
-    if (salvo.ano === ano) ultimo = Number(salvo.ultimo) || 0;
-  } catch {
-    ultimo = 0;
-  }
-  const numero = ultimo + 1;
-  if (consumir) {
-    try {
-      window.localStorage.setItem(CHAVE_NUMERACAO_RECEITA, JSON.stringify({ ano, ultimo: numero }));
-    } catch {
-      /* armazenamento indisponível */
-    }
-  }
-  return `${String(numero).padStart(4, "0")}/${ano}`;
-}
-
 export type DadosReceituario = {
   tipo?: TipoReceita;
   numero?: string | undefined;
