@@ -85,7 +85,8 @@ type RegistroLocal = {
   dados?: Record<string, unknown>;
 };
 type EventoAgendaLocal = { id: string; data?: string; hora?: string; tipo?: string; paciente?: string; tutor?: string; tutorId?: string; animalId?: string };
-type AgendaLocal = { id: string; eventos?: EventoAgendaLocal[] };
+type AgendaDb = { id: string; timezone: string };
+type AgendamentoDb = { id: string; agenda_id: string; tutor_id: string | null; animal_id: string | null; animal_referencia: string; inicio: string; estado: string; tipo: string; dados?: Record<string, unknown> | null };
 
 type Variaveis = { tutor?: string; animal?: string; data?: string; hora?: string; servico?: string; clinica?: string };
 
@@ -165,6 +166,20 @@ function deslocarData(data: string, dias: number) {
 function isoLocal(data: string, hora = "09:00") {
   const h = /^\d{2}:\d{2}/.test(hora) ? hora.slice(0, 5) : "09:00";
   return new Date(`${data}T${h}:00`).toISOString();
+}
+
+function dataHoraNoFuso(valor: string, timeZone: string) {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(valor));
+  const mapa = Object.fromEntries(partes.map((p) => [p.type, p.value]));
+  return { data: `${mapa.year}-${mapa.month}-${mapa.day}`, hora: `${mapa.hour}:${mapa.minute}` };
 }
 
 function proximoAniversario(nascimento?: string) {
@@ -274,7 +289,26 @@ function Crm() {
       const tutores = lerLista<TutorLocal>("oricse-tutores-v1");
       const animais = lerLista<AnimalLocal>("oricse-animais-v1");
       const registros = lerLista<RegistroLocal>("oricse-prontuario-animal-v1");
-      const agendas = lerLista<AgendaLocal>("oricse-agendas-v2");
+      const [agendasResp, agendamentosResp] = await Promise.all([
+        (supabase as any).from("oricse_agendas_online").select("id,timezone").eq("clinica_id", cfg.clinica_id),
+        (supabase as any).from("oricse_agendamentos_online").select("id,agenda_id,tutor_id,animal_id,animal_referencia,inicio,estado,tipo,dados").eq("clinica_id", cfg.clinica_id).neq("estado", "cancelado"),
+      ]);
+      if (agendasResp.error) throw agendasResp.error;
+      if (agendamentosResp.error) throw agendamentosResp.error;
+      const agendaPorId = new Map<string, AgendaDb>(((agendasResp.data || []) as AgendaDb[]).map((a) => [a.id, a]));
+      const todosEventos: EventoAgendaLocal[] = ((agendamentosResp.data || []) as AgendamentoDb[]).map((evento) => {
+        const timezone = agendaPorId.get(evento.agenda_id)?.timezone || "America/Sao_Paulo";
+        const dh = dataHoraNoFuso(evento.inicio, timezone);
+        return {
+          id: evento.id,
+          data: dh.data,
+          hora: dh.hora,
+          tipo: evento.tipo,
+          paciente: evento.animal_referencia,
+          tutorId: evento.tutor_id || undefined,
+          animalId: evento.animal_id || undefined,
+        };
+      });
       const tutorPorId = new Map(tutores.map((t) => [String(t.id), t]));
       const animalPorId = new Map(animais.map((a) => [String(a.id), a]));
       const candidatos: Candidato[] = [];
@@ -307,7 +341,6 @@ function Crm() {
         }
       }
 
-      const todosEventos = agendas.flatMap((agenda) => Array.isArray(agenda.eventos) ? agenda.eventos : []);
       if (cfg.gerar_agendamentos || cfg.gerar_pos_cirurgico || cfg.gerar_inativos) {
         for (const evento of todosEventos) {
           const dataEvento = normalizarData(evento.data);
