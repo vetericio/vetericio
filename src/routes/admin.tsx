@@ -439,6 +439,8 @@ function Admin() {
           base64: await arquivoEmBase64(file),
         },
       });
+      const { error: logoPersistError } = await (supabase as any).from("clinicas").update({ logo_url: resultado.logoUrl, updated_at: new Date().toISOString() }).eq("id", selecionada.id);
+      if (logoPersistError) throw logoPersistError;
       setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
       await carregarTudo();
       toast.success("Logo salva na pasta Logo do Drive da clínica.");
