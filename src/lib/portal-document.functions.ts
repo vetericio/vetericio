@@ -4,6 +4,7 @@ import { z } from "zod";
 const schema = z.object({
   accessToken: z.string().min(20),
   documentoId: z.string().uuid(),
+  tipo: z.enum(["documento", "exame", "receita"]).default("documento"),
 });
 
 async function carregarAdmin() {
@@ -79,6 +80,25 @@ async function portalIncluido(admin: Awaited<ReturnType<typeof carregarAdmin>>, 
   return Boolean(matriz?.permitido);
 }
 
+async function buscarRegistroPortal(admin: Awaited<ReturnType<typeof carregarAdmin>>, tipo: "documento" | "exame" | "receita", id: string) {
+  if (tipo === "exame") {
+    const { data } = await admin.from("oricse_portal_exames")
+      .select("id,clinica_id,animal_id,drive_arquivo_id,titulo,visivel_tutor")
+      .eq("id", id).eq("visivel_tutor", true).maybeSingle();
+    return data;
+  }
+  if (tipo === "receita") {
+    const { data } = await admin.from("oricse_portal_receitas")
+      .select("id,clinica_id,animal_id,drive_arquivo_id,titulo,visivel_tutor")
+      .eq("id", id).eq("visivel_tutor", true).maybeSingle();
+    return data;
+  }
+  const { data } = await admin.from("oricse_portal_documentos")
+    .select("id,clinica_id,animal_id,drive_arquivo_id,titulo,visivel_tutor")
+    .eq("id", id).eq("visivel_tutor", true).maybeSingle();
+  return data;
+}
+
 export const baixarDocumentoPortal = createServerFn({ method: "POST" })
   .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }) => {
@@ -86,34 +106,30 @@ export const baixarDocumentoPortal = createServerFn({ method: "POST" })
     const { data: authData, error: authError } = await admin.auth.getUser(data.accessToken);
     if (authError || !authData.user) throw new Error("Sessão inválida ou expirada.");
 
-    const { data: documento } = await admin.from("oricse_portal_documentos")
-      .select("id,clinica_id,animal_id,drive_arquivo_id,titulo,visivel_tutor")
-      .eq("id", data.documentoId)
-      .eq("visivel_tutor", true)
-      .maybeSingle();
-    if (!documento?.drive_arquivo_id) throw new Error("Este documento ainda não possui um arquivo disponível para download.");
-    if (!(await portalIncluido(admin, documento.clinica_id))) throw new Error("Portal indisponível para esta clínica.");
+    const registro = await buscarRegistroPortal(admin, data.tipo, data.documentoId);
+    if (!registro?.drive_arquivo_id) throw new Error("Este arquivo ainda não está disponível para download.");
+    if (!(await portalIncluido(admin, registro.clinica_id))) throw new Error("Portal indisponível para esta clínica.");
 
     const { data: portal } = await admin.from("oricse_portal_tutores")
       .select("tutor_id,ativo")
       .eq("auth_user_id", authData.user.id)
-      .eq("clinica_id", documento.clinica_id)
+      .eq("clinica_id", registro.clinica_id)
       .eq("ativo", true)
       .maybeSingle();
-    if (!portal) throw new Error("Você não tem acesso a este documento.");
+    if (!portal) throw new Error("Você não tem acesso a este arquivo.");
 
     const { data: animal } = await admin.from("oricse_animais")
       .select("id")
-      .eq("id", documento.animal_id)
-      .eq("clinica_id", documento.clinica_id)
+      .eq("id", registro.animal_id)
+      .eq("clinica_id", registro.clinica_id)
       .eq("tutor_id", portal.tutor_id)
       .maybeSingle();
-    if (!animal) throw new Error("Você não tem acesso a este documento.");
+    if (!animal) throw new Error("Você não tem acesso a este arquivo.");
 
     const { data: arquivo } = await admin.from("drive_arquivos")
       .select("id,clinica_id,nome,mime_type,tamanho_bytes,drive_file_id")
-      .eq("id", documento.drive_arquivo_id)
-      .eq("clinica_id", documento.clinica_id)
+      .eq("id", registro.drive_arquivo_id)
+      .eq("clinica_id", registro.clinica_id)
       .maybeSingle();
     if (!arquivo?.drive_file_id) throw new Error("Arquivo não encontrado.");
     if (Number(arquivo.tamanho_bytes || 0) > 20_000_000) throw new Error("Este arquivo é grande demais para abrir pelo portal.");
@@ -127,7 +143,7 @@ export const baixarDocumentoPortal = createServerFn({ method: "POST" })
     if (bytes.byteLength > 20_000_000) throw new Error("Este arquivo é grande demais para abrir pelo portal.");
 
     return {
-      nome: arquivo.nome || documento.titulo,
+      nome: arquivo.nome || registro.titulo,
       mimeType: arquivo.mime_type || "application/octet-stream",
       base64: bytes.toString("base64"),
     };
