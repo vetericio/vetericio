@@ -1,0 +1,36 @@
+name: Apply project audit fixes
+
+on:
+  push:
+    paths:
+      - "scripts/fix-project-audit.mjs"
+      - ".github/workflows/apply-project-audit-fixes.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply fixes
+        run: node scripts/fix-project-audit.mjs
+      - name: Commit fixes
+        run: |
+          if git diff -- src | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src
+            git commit -m "Corrige botões e navegação encontrados na auditoria"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          else
+            echo "No source changes"
+          fi
