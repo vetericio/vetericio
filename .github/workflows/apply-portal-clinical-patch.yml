@@ -28,6 +28,10 @@ jobs:
           inicio = '  const nomeArquivo = \\`${\'${dados.tipo === "especial" ? "receita-controle-especial" : "receituario"}\'}-${\'${paciente || "oricse"}\'}.pdf\\`;'
           s = s.replace(inicio, '  const nomeArquivo = (dados.tipo === "especial" ? "receita-controle-especial" : "receituario") + "-" + (paciente || "oricse") + ".pdf";')
           s = s.replace('  if (receitaError) throw new Error(`Receita baixada, mas falhou o registro no Portal do Tutor: ${\'${receitaError.message}\'}`);', '  if (receitaError) throw new Error("Receita baixada, mas falhou o registro no Portal do Tutor: " + receitaError.message);')
+          # O Portal já possui as telas de receitas, exames com PDF e comandas; aplica somente os blocos 1 a 4.
+          marcador = '// 5. Portal: exames abrem PDF e receitas ganham seção própria.'
+          if marcador in s:
+              s = s.split(marcador, 1)[0] + "\nconsole.log('Portal clinical integration patch applied.');\n"
           p.write_text(s)
           PY
       - name: Apply patch
