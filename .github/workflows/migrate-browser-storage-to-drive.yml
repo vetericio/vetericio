@@ -1,0 +1,37 @@
+name: Migrate browser storage to Drive
+
+on:
+  push:
+    paths:
+      - "scripts/migrate-browser-storage-to-drive.mjs"
+      - ".github/workflows/migrate-browser-storage-to-drive.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply migration
+        run: node scripts/migrate-browser-storage-to-drive.mjs
+      - name: Commit migration
+        shell: bash
+        run: |
+          if git diff -- src | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src
+            git commit -m "Remove dependência de armazenamento persistente do navegador"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          else
+            echo "No source changes"
+          fi
