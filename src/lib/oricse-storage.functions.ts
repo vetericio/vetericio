@@ -47,7 +47,7 @@ async function accessTokenServiceAccount(): Promise<string | null> {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth-type:jwt-bearer".replace("type", "grant"), assertion }),
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
   });
   const json = await response.json() as { access_token?: string; error?: string; error_description?: string };
   if (!response.ok || !json.access_token) throw new Error(json.error_description || json.error || "Falha ao autenticar o Google Drive.");
