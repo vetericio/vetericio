@@ -22,6 +22,8 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: UI audit
+        run: node scripts/audit-ui.mjs
       - name: Lint
         run: npm run lint
       - name: Build
