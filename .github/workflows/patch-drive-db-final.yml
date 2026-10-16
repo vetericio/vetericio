@@ -1,0 +1,28 @@
+name: Patch Drive DB final
+on:
+  push:
+    paths:
+      - "scripts/patch-drive-db-final.mjs"
+      - ".github/workflows/patch-drive-db-final.yml"
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/patch-drive-db-final.mjs
+      - shell: bash
+        run: |
+          if ! git diff --quiet -- src; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src
+            git commit -m "Fecha isolamento e escrita do Portal no Drive"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
