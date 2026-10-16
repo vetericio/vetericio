@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -39,7 +40,7 @@ const CHAVE_PRECISAO = "veterico:precisao-ml";
 
 function lerPrecisao(): 2 | 3 {
   if (typeof window === "undefined") return 2;
-  return window.localStorage.getItem(CHAVE_PRECISAO) === "3" ? 3 : 2;
+  return oricseStorage.getItem(CHAVE_PRECISAO) === "3" ? 3 : 2;
 }
 
 function digitos(texto: string): string { return texto; }
@@ -80,7 +81,7 @@ export function DialogoQuantidade({ pendente, onFechar, onConfirmar }: Props) {
     setCasas(novo);
     setLiquido(valor > 0 ? paraDigitos(valor, novo) : "");
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(CHAVE_PRECISAO, String(novo));
+      oricseStorage.setItem(CHAVE_PRECISAO, String(novo));
     }
   };
 

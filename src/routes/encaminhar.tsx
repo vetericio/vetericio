@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Clock3, ListPlus, PawPrint, Send, Stethoscope } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ function offsetMinutos(timeZone:string,data:string){try{const probe=new Date(`${
 function localParaIso(data:string,hora:string,timeZone:string){const[a,m,d]=data.split("-").map(Number);const[h,min]=hora.split(":").map(Number);return new Date(Date.UTC(a,(m||1)-1,d||1,h||0,min||0)-offsetMinutos(timeZone,data)*60000).toISOString();}
 function dataNoFuso(valor:string,timeZone:string){const p=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(valor));const m=Object.fromEntries(p.map(x=>[x.type,x.value]));return `${m.year}-${m.month}-${m.day}`;}
 function horaNoFuso(valor:string,timeZone:string){return new Intl.DateTimeFormat("pt-BR",{timeZone,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(valor));}
-function lerFila():FilaItem[]{if(typeof window==="undefined")return[];try{const v=JSON.parse(localStorage.getItem(FILA_KEY)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}
+function lerFila():FilaItem[]{if(typeof window==="undefined")return[];try{const v=JSON.parse(oricseStorage.getItem(FILA_KEY)||"[]");return Array.isArray(v)?v:[];}catch{return[];}}
 
 function Encaminhar(){
   const navigate=useNavigate();
@@ -44,7 +45,7 @@ function Encaminhar(){
 
   async function enviarAgenda(){if(!tutor||!animal||!agenda||!clinicaId)return;if(!hora)return void toast.error("Selecione um horário livre.");if(!livres.includes(hora))return void toast.error("Esse horário já está ocupado.");setSalvando(true);try{const inicio=localParaIso(data,hora,agenda.timezone);const fim=new Date(new Date(inicio).getTime()+agenda.intervalo_min*60000).toISOString();const{error}=await(supabase as any).from("oricse_agendamentos_online").insert({clinica_id:clinicaId,agenda_id:agenda.id,tutor_id:tutor.id,animal_id:animal.id,tutor_auth_id:null,animal_referencia:animal.nome,inicio,fim,estado:"confirmado",tipo:"Consulta",observacoes:null,origem:"recepcao",dados:{status_clinico:"Agendado",pagamento:"Pendente",tutor_nome:tutor.nome,especie:animal.especie,origem_recepcao:true}});if(error)throw error;toast.success(`${animal.nome} agendado com ${responsavel} em ${data} às ${hora}.`);voltar();}catch(e:any){toast.error(e?.code==="23P01"?"Esse horário acabou de ser ocupado. Escolha outro.":e?.message||"Não foi possível agendar.");}finally{setSalvando(false);}}
 
-  function enviarFila(){if(!tutor||!animal)return;const atual=lerFila();if(atual.some(i=>i.animalId===animal.id&&i.status==="Aguardando"))return void toast.error(`${animal.nome} já está na fila de espera.`);const item:FilaItem={id:crypto.randomUUID(),tutorId:tutor.id,tutor:tutor.nome,animalId:animal.id,animal:animal.nome,especie:animal.especie,entradaEm:new Date().toISOString(),status:"Aguardando"};localStorage.setItem(FILA_KEY,JSON.stringify([...atual,item]));toast.success(`${animal.nome} enviado para a fila de espera.`);voltar();}
+  function enviarFila(){if(!tutor||!animal)return;const atual=lerFila();if(atual.some(i=>i.animalId===animal.id&&i.status==="Aguardando"))return void toast.error(`${animal.nome} já está na fila de espera.`);const item:FilaItem={id:crypto.randomUUID(),tutorId:tutor.id,tutor:tutor.nome,animalId:animal.id,animal:animal.nome,especie:animal.especie,entradaEm:new Date().toISOString(),status:"Aguardando"};oricseStorage.setItem(FILA_KEY,JSON.stringify([...atual,item]));toast.success(`${animal.nome} enviado para a fila de espera.`);voltar();}
 
   if(carregando)return <main className="mx-auto max-w-3xl p-8 text-sm text-muted-foreground">Carregando...</main>;
   if(!tutor||!animal)return <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-8 sm:px-6"><Link to="/tutores" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/5 p-5">Tutor ou animal não encontrado no banco desta clínica.</div></main>;

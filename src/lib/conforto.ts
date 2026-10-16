@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 /**
  * Preferências de conforto (TDAH/autismo): modo do app, som e vibração.
  * "veterico" = o app exatamente como sempre foi.
@@ -38,7 +39,7 @@ export const TEMA_CALMO = "sobrio";
 export function carregarConforto(): Conforto {
   if (typeof window === "undefined") return CONFORTO_VETERICO;
   try {
-    const bruto = window.localStorage.getItem(CHAVE_CONFORTO);
+    const bruto = oricseStorage.getItem(CHAVE_CONFORTO);
     if (!bruto) return CONFORTO_VETERICO;
     const dados = JSON.parse(bruto) as Partial<Conforto>;
     const base = dados.modo === "calmo" ? CONFORTO_CALMO : CONFORTO_VETERICO;
@@ -62,7 +63,7 @@ export function carregarConforto(): Conforto {
 export function salvarConforto(c: Conforto) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE_CONFORTO, JSON.stringify(c));
+    oricseStorage.setItem(CHAVE_CONFORTO, JSON.stringify(c));
   } catch {
     /* armazenamento indisponível */
   }

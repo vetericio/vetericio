@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -64,9 +65,9 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
       return;
     const chave = `oricse-chunk-reload:${window.location.pathname}`;
     try {
-      const ultimaTentativa = Number(window.sessionStorage.getItem(chave) || 0);
+      const ultimaTentativa = Number(oricseSession.getItem(chave) || 0);
       if (Date.now() - ultimaTentativa < 30_000) return;
-      window.sessionStorage.setItem(chave, String(Date.now()));
+      oricseSession.setItem(chave, String(Date.now()));
     } catch {
       return;
     }
@@ -454,8 +455,8 @@ function RootComponent() {
       const tutorNormalizado = normalizar(tutorTexto);
 
       try {
-        const tutores = JSON.parse(localStorage.getItem("oricse-tutores-v1") || "[]") as any[];
-        const animais = JSON.parse(localStorage.getItem("oricse-animais-v1") || "[]") as any[];
+        const tutores = JSON.parse(oricseStorage.getItem("oricse-tutores-v1") || "[]") as any[];
+        const animais = JSON.parse(oricseStorage.getItem("oricse-animais-v1") || "[]") as any[];
         const tutor = tutores.find((item: any) => normalizar(item?.nome) === tutorNormalizado);
         if (!tutor) return "";
         const animal = animais.find(

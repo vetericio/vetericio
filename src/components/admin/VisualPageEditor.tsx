@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { Link } from "@tanstack/react-router";
 import {
   AlignCenter, AlignLeft, AlignRight, ArrowLeft, BringToFront, Copy, Eye, EyeOff,
@@ -333,7 +334,7 @@ export function VisualPageEditor() {
       setDocumento(payload);
       setVersions(history);
       setLastPublishedAt(payload.updatedAt);
-      localStorage.setItem("oricse:visual-published-at",payload.updatedAt);
+      oricseStorage.setItem("oricse:visual-published-at",payload.updatedAt);
       if(typeof BroadcastChannel!=="undefined"){
         const channel=new BroadcastChannel("oricse-visual-editor");
         channel.postMessage({type:"published",updatedAt:payload.updatedAt});

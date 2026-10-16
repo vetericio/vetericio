@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, Send, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -96,7 +97,7 @@ const vazio: Omit<Tutor, "id" | "criadoEm"> = {
 function carregar(): Tutor[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor: unknown = JSON.parse(localStorage.getItem(CHAVE) || "[]");
+    const valor: unknown = JSON.parse(oricseStorage.getItem(CHAVE) || "[]");
     if (!Array.isArray(valor)) return [];
     const tutores = migrarCodigosPublicosTutores(
       valor.filter((item): item is Tutor => Boolean(item) && typeof item === "object" && typeof item.id === "string" && typeof item.nome === "string"),
@@ -108,20 +109,20 @@ function carregar(): Tutor[] {
 
 function carregarAnimais(): AnimalResumo[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(ANIMAIS_CHAVE) || "[]"); } catch { return []; }
+  try { return JSON.parse(oricseStorage.getItem(ANIMAIS_CHAVE) || "[]"); } catch { return []; }
 }
 
 function salvarLista(lista: Tutor[]) {
   let registrosInvalidos: unknown[] = [];
   try {
-    const valor: unknown = JSON.parse(localStorage.getItem(CHAVE) || "[]");
+    const valor: unknown = JSON.parse(oricseStorage.getItem(CHAVE) || "[]");
     if (Array.isArray(valor)) {
       registrosInvalidos = valor.filter((item) => !item || typeof item !== "object" || !("id" in item) || typeof item.id !== "string" || !("nome" in item) || typeof item.nome !== "string");
     }
   } catch (error) {
     console.error("Não foi possível preservar registros locais inválidos de tutores:", error);
   }
-  localStorage.setItem(CHAVE, JSON.stringify([...lista, ...registrosInvalidos]));
+  oricseStorage.setItem(CHAVE, JSON.stringify([...lista, ...registrosInvalidos]));
 }
 
 function soDigitos(v: string) { return v.replace(/\D/g, ""); }

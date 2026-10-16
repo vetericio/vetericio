@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
@@ -21,7 +22,7 @@ export function BlocoNotas() {
 
   useEffect(() => {
     try {
-      setTexto(window.localStorage.getItem(CHAVE_BLOCO_NOTAS) ?? "");
+      setTexto(oricseStorage.getItem(CHAVE_BLOCO_NOTAS) ?? "");
     } catch {
       /* sem acesso: começa vazio */
     }
@@ -34,7 +35,7 @@ export function BlocoNotas() {
     }
     const id = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(CHAVE_BLOCO_NOTAS, texto);
+        oricseStorage.setItem(CHAVE_BLOCO_NOTAS, texto);
         setSalvo(true);
       } catch {
         /* espaço cheio: ignora */

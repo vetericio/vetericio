@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 const TUTORES_KEY = "oricse-tutores-v1";
 const ANIMAIS_KEY = "oricse-animais-v1";
 
@@ -114,13 +115,13 @@ export function inserirDadosDeTeste(inicial: string) {
   const { tutores, animais } = gerarDadosDeTeste(inicial);
   const lerLista = (chave: string) => {
     try {
-      const v: unknown = JSON.parse(localStorage.getItem(chave) || "[]");
+      const v: unknown = JSON.parse(oricseStorage.getItem(chave) || "[]");
       return Array.isArray(v) ? v : [];
     } catch {
       return [];
     }
   };
-  localStorage.setItem(TUTORES_KEY, JSON.stringify([...tutores, ...lerLista(TUTORES_KEY)]));
-  localStorage.setItem(ANIMAIS_KEY, JSON.stringify([...animais, ...lerLista(ANIMAIS_KEY)]));
+  oricseStorage.setItem(TUTORES_KEY, JSON.stringify([...tutores, ...lerLista(TUTORES_KEY)]));
+  oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify([...animais, ...lerLista(ANIMAIS_KEY)]));
   return { tutores: tutores.length, animais: animais.length };
 }

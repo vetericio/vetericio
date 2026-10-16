@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 /**
  * Assinatura e carimbo guardados no próprio aparelho (data URL PNG).
  * Entram no backup e na sincronização como itens simples.
@@ -15,7 +16,7 @@ export const CHAVE_SELO: Record<TipoSelo, string> = {
 export function lerSelo(tipo: TipoSelo): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(CHAVE_SELO[tipo]);
+    return oricseStorage.getItem(CHAVE_SELO[tipo]);
   } catch {
     return null;
   }
@@ -24,8 +25,8 @@ export function lerSelo(tipo: TipoSelo): string | null {
 export function gravarSelo(tipo: TipoSelo, dataUrl: string | null) {
   if (typeof window === "undefined") return;
   try {
-    if (dataUrl) window.localStorage.setItem(CHAVE_SELO[tipo], dataUrl);
-    else window.localStorage.removeItem(CHAVE_SELO[tipo]);
+    if (dataUrl) oricseStorage.setItem(CHAVE_SELO[tipo], dataUrl);
+    else oricseStorage.removeItem(CHAVE_SELO[tipo]);
   } catch {
     /* armazenamento indisponível */
   }

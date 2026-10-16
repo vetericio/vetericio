@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 export const TUTORES_LOCAL_KEY = "oricse-tutores-v1";
 const NOME_CLINICA_LOCAL_KEY = "oricse-clinica-nome-v1";
 const CODIGO_TUTOR_REGEX = /^#[A-Z][0-9]{6}$/;
@@ -24,7 +25,7 @@ export function codigoPublicoTutor(tutor: TutorComCodigo): string | undefined {
 export function lerNomeClinicaLocal(): string {
   if (typeof window === "undefined") return "Oricse";
   try {
-    return window.localStorage.getItem(NOME_CLINICA_LOCAL_KEY)?.trim() || "Oricse";
+    return oricseStorage.getItem(NOME_CLINICA_LOCAL_KEY)?.trim() || "Oricse";
   } catch {
     return "Oricse";
   }
@@ -98,8 +99,8 @@ export function migrarCodigosTutoresLocais(nomeClinica: string): void {
   if (!nome) return;
 
   try {
-    window.localStorage.setItem(NOME_CLINICA_LOCAL_KEY, nome);
-    const valor: unknown = JSON.parse(window.localStorage.getItem(TUTORES_LOCAL_KEY) || "[]");
+    oricseStorage.setItem(NOME_CLINICA_LOCAL_KEY, nome);
+    const valor: unknown = JSON.parse(oricseStorage.getItem(TUTORES_LOCAL_KEY) || "[]");
     if (!Array.isArray(valor)) return;
     const tutores = valor.filter(
       (item): item is TutorComCodigo =>
@@ -121,7 +122,7 @@ export function migrarCodigosTutoresLocais(nomeClinica: string): void {
       }
       return atualizados[indiceAtualizado++];
     });
-    window.localStorage.setItem(TUTORES_LOCAL_KEY, JSON.stringify(resultado));
+    oricseStorage.setItem(TUTORES_LOCAL_KEY, JSON.stringify(resultado));
   } catch (error) {
     console.error("Não foi possível atualizar os IDs públicos dos tutores:", error);
   }

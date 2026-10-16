@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 /**
  * Módulo Pendências: tudo que precisa de acompanhamento ou de cobrança ao tutor.
  * Guarda os dados separados da ficha (o PDF clínico não usa nada daqui).
@@ -251,7 +252,7 @@ export type LimitesAlerta = Partial<Record<ParametroAlerta, number>>;
 export function carregarLimites(): LimitesAlerta {
   if (typeof window === "undefined") return {};
   try {
-    const bruto = window.localStorage.getItem(CHAVE_ALERTAS);
+    const bruto = oricseStorage.getItem(CHAVE_ALERTAS);
     if (!bruto) return {};
     const dados = JSON.parse(bruto);
     return dados && typeof dados === "object" && !Array.isArray(dados)
@@ -265,7 +266,7 @@ export function carregarLimites(): LimitesAlerta {
 export function salvarRegras(regras: RegraAlerta[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE_REGRAS, JSON.stringify(regras));
+    oricseStorage.setItem(CHAVE_REGRAS, JSON.stringify(regras));
   } catch {
     /* armazenamento indisponível */
   }
@@ -275,7 +276,7 @@ export function salvarRegras(regras: RegraAlerta[]) {
 export function carregarRegras(): RegraAlerta[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE_REGRAS);
+    const bruto = oricseStorage.getItem(CHAVE_REGRAS);
     if (bruto) {
       const lista = JSON.parse(bruto);
       if (Array.isArray(lista)) {
@@ -316,7 +317,7 @@ export function regrasDisparadas(
 export function carregarPendencias(): ItemPendencia[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE_PENDENCIAS);
+    const bruto = oricseStorage.getItem(CHAVE_PENDENCIAS);
     if (!bruto) return [];
     const lista = JSON.parse(bruto);
     if (!Array.isArray(lista)) return [];
@@ -332,7 +333,7 @@ export function carregarPendencias(): ItemPendencia[] {
 export function salvarPendencias(lista: ItemPendencia[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE_PENDENCIAS, JSON.stringify(lista));
+    oricseStorage.setItem(CHAVE_PENDENCIAS, JSON.stringify(lista));
   } catch {
     /* armazenamento cheio */
   }

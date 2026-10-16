@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { carregarAnamneses, type Anamnese } from "./anamnese";
 import { normalizarNomeMedicamento } from "./nomes";
 import { blocoCurvasDoRegistro, type Curva } from "./curva";
@@ -537,7 +538,7 @@ export function salvarPlantoes(plantoes: Plantao[]) {
 function ler<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(chave);
+    const bruto = oricseStorage.getItem(chave);
     if (!bruto) return [];
     const dados = JSON.parse(bruto);
     return Array.isArray(dados) ? (dados as T[]) : [];
@@ -549,7 +550,7 @@ function ler<T>(chave: string): T[] {
 function escrever(chave: string, valor: unknown) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(chave, JSON.stringify(valor));
+    oricseStorage.setItem(chave, JSON.stringify(valor));
   } catch {
     /* armazenamento indisponível */
   }

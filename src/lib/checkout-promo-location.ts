@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { supabase } from "@/integrations/supabase/client";
 
 const BOX_ID = "oricse-promo-checkout";
@@ -22,20 +23,20 @@ function brl(valor: number) {
 
 function lerAplicado(): PromoAplicado | null {
   try {
-    return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null");
+    return JSON.parse(oricseSession.getItem(STORAGE_KEY) || "null");
   } catch {
     return null;
   }
 }
 
 function salvarAplicado(valor: PromoAplicado | null) {
-  if (valor) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(valor));
-  else sessionStorage.removeItem(STORAGE_KEY);
+  if (valor) oricseSession.setItem(STORAGE_KEY, JSON.stringify(valor));
+  else oricseSession.removeItem(STORAGE_KEY);
 }
 
 function dadosContratacao() {
   try {
-    return JSON.parse(localStorage.getItem("oricse-contratacao") || "{}");
+    return JSON.parse(oricseStorage.getItem("oricse-contratacao") || "{}");
   } catch {
     return {};
   }

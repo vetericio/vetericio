@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "oricse-promo-aplicado-v1";
@@ -37,10 +38,10 @@ function toIso(v: string) { return v ? new Date(v).toISOString() : null; }
 function fromIso(v?: string | null) { if (!v) return ""; const d = new Date(v); const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }
 
 function lerPromoAplicado(): PromoAplicado | null {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null"); } catch { return null; }
+  try { return JSON.parse(oricseSession.getItem(STORAGE_KEY) || "null"); } catch { return null; }
 }
 function salvarPromoAplicado(v: PromoAplicado | null) {
-  if (!v) sessionStorage.removeItem(STORAGE_KEY); else sessionStorage.setItem(STORAGE_KEY, JSON.stringify(v));
+  if (!v) oricseSession.removeItem(STORAGE_KEY); else oricseSession.setItem(STORAGE_KEY, JSON.stringify(v));
 }
 
 function instalarInterceptadorRpc() {
@@ -191,7 +192,7 @@ function acharTotalCheckout(botao: HTMLButtonElement) {
 }
 
 function dadosContratacao() {
-  try { return JSON.parse(localStorage.getItem("oricse-contratacao") || "{}"); } catch { return {}; }
+  try { return JSON.parse(oricseStorage.getItem("oricse-contratacao") || "{}"); } catch { return {}; }
 }
 
 function garantirCheckout() {

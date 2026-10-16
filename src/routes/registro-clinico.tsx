@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -98,7 +99,7 @@ const ETAPAS = [
 
 const vazioOlho = (): OlhoValores => ({ od: "", oe: "" });
 function oftalmoVazio(): OftalmoForm { return { schirmer:vazioOlho(), fluoresceina:vazioOlho(), jones:vazioOlho(), rosaBengala:vazioOlho(), lissaminaVerde:vazioOlho(), pio:vazioOlho(), equipamentoTonometria:"", reflexoPupilarDireto:vazioOlho(), reflexoPupilarConsensual:vazioOlho(), deambulacao:vazioOlho() }; }
-function ler<T>(chave:string):T[]{ if(typeof window==="undefined")return[]; try{const v=JSON.parse(localStorage.getItem(chave)||"[]"); return Array.isArray(v)?v:[]}catch{return[]} }
+function ler<T>(chave:string):T[]{ if(typeof window==="undefined")return[]; try{const v=JSON.parse(oricseStorage.getItem(chave)||"[]"); return Array.isArray(v)?v:[]}catch{return[]} }
 function normalizar(v?:string){ return (v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(); }
 function sinalPermitidoParaSexo(sinal: string, sexo?: string) {
   const sexoNormalizado = normalizar(sexo);
@@ -143,8 +144,8 @@ function RegistroClinico(){
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
 
   useEffect(()=>{let ativo=true; async function carregarResponsavel(){try{const {data,error}=await supabase.auth.getUser();if(error)throw error;if(!data.user)throw new Error("Sessão não encontrada.");const {data:perfil,error:erroPerfil}=await supabase.from("app_users").select("username,email").eq("user_id",data.user.id).maybeSingle();if(erroPerfil)throw erroPerfil;if(ativo)setResponsavel({id:data.user.id,nome:perfil?.username?`@${perfil.username}`:perfil?.email||data.user.email||data.user.id});}catch(error){console.error("Não foi possível identificar o responsável pelo atendimento:",error);}}void carregarResponsavel();return()=>{ativo=false};},[]);
-  useEffect(()=>{ if(!animalId)return; try{const salvo=localStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}}catch{} },[animalId]);
-  useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>localStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
+  useEffect(()=>{ if(!animalId)return; try{const salvo=oricseStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}}catch{} },[animalId]);
+  useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
   useEffect(()=>{ let ativo=true; async function carregarCatalogo(){ try{ const {data:auth}=await supabase.auth.getUser(); const userId=auth.user?.id; if(!userId)throw new Error("Sessão não encontrada."); const [{data:usuario},{data:vinculo}]=await Promise.all([(supabase as any).from("app_users").select("role").eq("user_id",userId).maybeSingle(),(supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id",userId).eq("ativo",true).limit(1).maybeSingle()]); let clinicaId=vinculo?.clinica_id||""; if(!clinicaId&&usuario?.role==="admin"){ const {data:clinicas,error}=await (supabase as any).from("clinicas").select("id").eq("status","ativa").order("nome").limit(1); if(error)throw error; clinicaId=clinicas?.[0]?.id||""; } if(!clinicaId)throw new Error("Nenhuma clínica vinculada ao atendimento."); const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaId).eq("ativo",true).order("nome"); if(error)throw error; if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");} }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}finally{if(ativo)setCatalogoCarregando(false);} } void carregarCatalogo(); return()=>{ativo=false}; },[]);
   useEffect(()=>{ if(etapa!==7||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:Boolean(itemCatalogo)||Boolean(existente?.precoConfigurado) } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
@@ -240,8 +241,8 @@ function RegistroClinico(){
       itens: itensPersistidos,
       pagamentos: pagamentoInicial ? [pagamentoInicial] : [],
     };
-    const comandasArmazenadas = localStorage.getItem(COMANDAS_KEY);
-    const lancamentosArmazenados = localStorage.getItem(LANCAMENTOS_KEY);
+    const comandasArmazenadas = oricseStorage.getItem(COMANDAS_KEY);
+    const lancamentosArmazenados = oricseStorage.getItem(LANCAMENTOS_KEY);
     try {
       salvarComandas([novaComanda, ...comandasAnteriores]);
       if (pagamentoInicial) {
@@ -280,11 +281,11 @@ function RegistroClinico(){
     } catch (error) {
       console.error("Não foi possível registrar a comanda da consulta:", error);
       try {
-        if (comandasArmazenadas === null) localStorage.removeItem(COMANDAS_KEY);
-        else localStorage.setItem(COMANDAS_KEY, comandasArmazenadas);
+        if (comandasArmazenadas === null) oricseStorage.removeItem(COMANDAS_KEY);
+        else oricseStorage.setItem(COMANDAS_KEY, comandasArmazenadas);
         window.dispatchEvent(new Event("oricse-comandas-atualizadas"));
-        if (lancamentosArmazenados === null) localStorage.removeItem(LANCAMENTOS_KEY);
-        else localStorage.setItem(LANCAMENTOS_KEY, lancamentosArmazenados);
+        if (lancamentosArmazenados === null) oricseStorage.removeItem(LANCAMENTOS_KEY);
+        else oricseStorage.setItem(LANCAMENTOS_KEY, lancamentosArmazenados);
       } catch (erroRestauracao) {
         console.error("Não foi possível restaurar os dados após falha ao registrar a comanda:", erroRestauracao);
       }
@@ -293,17 +294,17 @@ function RegistroClinico(){
     if (pesoConsulta) {
       const listaAnimais = ler<Animal>(ANIMAIS_KEY);
       const pesoAnterior = pesoValido(animal.peso || "");
-      localStorage.setItem(ANIMAIS_KEY, JSON.stringify(listaAnimais.map(item => item.id === animal.id ? { ...item, peso: pesoConsulta } : item)));
+      oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify(listaAnimais.map(item => item.id === animal.id ? { ...item, peso: pesoConsulta } : item)));
       if (pesoAnterior !== pesoConsulta) {
         const historico = ler<{id:string;animalId:string;peso:number;data:string;criadoEm:string}>(PESOS_KEY);
         const novoPeso = { id: crypto.randomUUID(), animalId: animal.id, peso: Number(pesoConsulta), data, criadoEm: new Date().toISOString() };
-        localStorage.setItem(PESOS_KEY, JSON.stringify([novoPeso, ...historico]));
+        oricseStorage.setItem(PESOS_KEY, JSON.stringify([novoPeso, ...historico]));
       }
     }
     const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
     const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Consulta",dados:consultaSalva};
-    localStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
-    localStorage.removeItem(chaveRascunho);
+    oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
+    oricseStorage.removeItem(chaveRascunho);
     setPagamentoAberto(false);
     toast.success(
       statusPagamento === "Pago"
@@ -313,7 +314,7 @@ function RegistroClinico(){
     navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
-  function salvarProcedimento(){ if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Cirurgia / Procedimentos",dados:procedimento}; localStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
+  function salvarProcedimento(){ if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
 
   const abrirConsulta=()=>{setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 

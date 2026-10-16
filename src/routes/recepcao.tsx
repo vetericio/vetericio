@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, ReceiptText, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -71,7 +72,7 @@ type ReforcoItem = {
 function lerLista<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor = JSON.parse(localStorage.getItem(chave) || "[]");
+    const valor = JSON.parse(oricseStorage.getItem(chave) || "[]");
     return Array.isArray(valor) ? valor : [];
   } catch {
     return [];
@@ -86,7 +87,7 @@ function lerRegistros(): RegistroReforco[] { return lerLista<RegistroReforco>(PR
 function lerLembretesReforcos(): Record<string, boolean> {
   if (typeof window === "undefined") return {};
   try {
-    const valor = JSON.parse(localStorage.getItem(LEMBRETES_REFORCOS_KEY) || "{}");
+    const valor = JSON.parse(oricseStorage.getItem(LEMBRETES_REFORCOS_KEY) || "{}");
     return valor && typeof valor === "object" && !Array.isArray(valor) ? valor : {};
   } catch {
     return {};
@@ -230,7 +231,7 @@ export function Recepcao() {
   const [lembretesReforcos, setLembretesReforcos] = useState<Record<string, boolean>>(lerLembretesReforcos);
   const [filaVisivel, setFilaVisivel] = useState(() => {
     if (typeof window === "undefined") return true;
-    return localStorage.getItem(FILA_VISIVEL_KEY) !== "false";
+    return oricseStorage.getItem(FILA_VISIVEL_KEY) !== "false";
   });
   const agendaWrapRef = useRef<HTMLDivElement>(null);
   const barraTopoRef = useRef<HTMLDivElement>(null);
@@ -281,7 +282,7 @@ export function Recepcao() {
   }, [registros, animais, tutores]);
 
   useEffect(() => {
-    localStorage.setItem(FILA_VISIVEL_KEY, String(filaVisivel));
+    oricseStorage.setItem(FILA_VISIVEL_KEY, String(filaVisivel));
   }, [filaVisivel]);
 
   useEffect(() => {
@@ -366,7 +367,7 @@ export function Recepcao() {
   function alternarLembrete(reforcoId: string) {
     const proximo = { ...lembretesReforcos, [reforcoId]: !lembretesReforcos[reforcoId] };
     setLembretesReforcos(proximo);
-    localStorage.setItem(LEMBRETES_REFORCOS_KEY, JSON.stringify(proximo));
+    oricseStorage.setItem(LEMBRETES_REFORCOS_KEY, JSON.stringify(proximo));
   }
 
   function abrirMensagemReforco(item: ReforcoItem) {

@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, CreditCard, Minus, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -61,7 +62,7 @@ function Contratar() {
   const ehTesteGratis = plano === "teste-gratis";
   const ciclo = ehTesteGratis ? "teste" : (params.get("ciclo") === "anual" ? "anual" : "mensal");
   const [etapa, setEtapa] = useState(1);
-  const [dados, setDados] = useState<Dados>(() => { try { return {...VAZIO,...JSON.parse(localStorage.getItem("oricse-contratacao") || "{}")}; } catch { return VAZIO; } });
+  const [dados, setDados] = useState<Dados>(() => { try { return {...VAZIO,...JSON.parse(oricseStorage.getItem("oricse-contratacao") || "{}")}; } catch { return VAZIO; } });
   const [configPlano, setConfigPlano] = useState<any>(null);
   const [texto, setTexto] = useState<any>(TEXTO_PADRAO);
   const [termos, setTermos] = useState(false);
@@ -82,7 +83,7 @@ function Contratar() {
           const atualQtd = Math.max(1, Number(atual.quantidade_usuarios) || 1);
           const minimoInicial = ehTesteGratis ? 1 : Math.min(atualQtd, Math.max(1, Number(planoResp.data.usuarios_inclusos) || 1));
           const novo = { ...atual, quantidade_usuarios: String(minimoInicial) };
-          localStorage.setItem("oricse-contratacao", JSON.stringify(novo));
+          oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo));
           return novo;
         });
       }
@@ -90,7 +91,7 @@ function Contratar() {
   }, [plano, ehTesteGratis]);
 
   const nomePlano = useMemo(() => configPlano?.nome || plano.charAt(0).toUpperCase()+plano.slice(1), [configPlano, plano]);
-  const salvarLocal = (novo: Dados) => { setDados(novo); localStorage.setItem("oricse-contratacao", JSON.stringify(novo)); };
+  const salvarLocal = (novo: Dados) => { setDados(novo); oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo)); };
 
   const perfisIncluidos = Math.max(1, Number(configPlano?.usuarios_inclusos) || 1);
   const quantidadeUsuarios = ehTesteGratis ? 1 : Math.max(1, Number(dados.quantidade_usuarios) || 1);

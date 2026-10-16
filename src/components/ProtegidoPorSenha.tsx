@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Delete } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +20,7 @@ function chave(area: AreaProtegida) {
 
 function lerLiberacao(area: AreaProtegida) {
   try {
-    const ate = Number(window.sessionStorage.getItem(chave(area)) ?? 0);
+    const ate = Number(oricseSession.getItem(chave(area)) ?? 0);
     return Number.isFinite(ate) && ate > Date.now() ? ate : 0;
   } catch {
     return 0;
@@ -72,7 +73,7 @@ export function ProtegidoPorSenha({
           return;
         }
         const ate = Date.now() + TEMPO_LIBERADO_MS;
-        window.sessionStorage.setItem(chave(area), String(ate));
+        oricseSession.setItem(chave(area), String(ate));
         setPin("");
         setLiberadoAte(ate);
         toast.success("Acesso liberado neste aparelho por 15 minutos.");

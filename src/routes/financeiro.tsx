@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -128,7 +129,7 @@ function valorEditavel(valor: number) {
 function lerLancamentos(): Lancamento[] {
   if (typeof window === "undefined") return [];
   try {
-    const dados = JSON.parse(localStorage.getItem(LANCAMENTOS_KEY) || "[]");
+    const dados = JSON.parse(oricseStorage.getItem(LANCAMENTOS_KEY) || "[]");
     return Array.isArray(dados) ? dados : [];
   } catch {
     return [];
@@ -138,7 +139,7 @@ function lerLancamentos(): Lancamento[] {
 function lerTutores(): TutorFinanceiro[] {
   if (typeof window === "undefined") return [];
   try {
-    const dados: unknown = JSON.parse(localStorage.getItem(TUTORES_KEY) || "[]");
+    const dados: unknown = JSON.parse(oricseStorage.getItem(TUTORES_KEY) || "[]");
     if (!Array.isArray(dados)) return [];
     const tutores = migrarCodigosPublicosTutores(
       dados.filter(
@@ -247,7 +248,7 @@ export function Financeiro() {
 
   function persistir(lista: Lancamento[]) {
     setLancamentos(lista);
-    localStorage.setItem(LANCAMENTOS_KEY, JSON.stringify(lista));
+    oricseStorage.setItem(LANCAMENTOS_KEY, JSON.stringify(lista));
   }
 
   function salvarLancamento(evento: FormEvent) {

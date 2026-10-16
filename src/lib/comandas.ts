@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 export const COMANDAS_KEY = "oricse-comandas-v1";
 export const LANCAMENTOS_FINANCEIROS_KEY = "oricse-financeiro-lancamentos-v1";
 
@@ -93,7 +94,7 @@ type LancamentoFinanceiro = {
 export function lerComandas(): Comanda[] {
   if (typeof window === "undefined") return [];
   try {
-    const dados: unknown = JSON.parse(window.localStorage.getItem(COMANDAS_KEY) || "[]");
+    const dados: unknown = JSON.parse(oricseStorage.getItem(COMANDAS_KEY) || "[]");
     if (!Array.isArray(dados)) return [];
     return dados.filter(
       (item): item is Comanda =>
@@ -112,7 +113,7 @@ export function lerComandas(): Comanda[] {
 }
 
 export function salvarComandas(comandas: Comanda[]): void {
-  window.localStorage.setItem(COMANDAS_KEY, JSON.stringify(comandas));
+  oricseStorage.setItem(COMANDAS_KEY, JSON.stringify(comandas));
   window.dispatchEvent(new Event("oricse-comandas-atualizadas"));
 }
 
@@ -147,7 +148,7 @@ export function registrarLancamentoComanda(lancamento: LancamentoFinanceiro): vo
   let existentes: LancamentoFinanceiro[] = [];
   try {
     const dados: unknown = JSON.parse(
-      window.localStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY) || "[]",
+      oricseStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY) || "[]",
     );
     if (Array.isArray(dados)) {
       existentes = dados.filter(
@@ -175,7 +176,7 @@ export function registrarLancamentoComanda(lancamento: LancamentoFinanceiro): vo
           return saldo > 0.009 ? [{ ...item, valor: saldo }] : [];
         })
       : existentes;
-  window.localStorage.setItem(
+  oricseStorage.setItem(
     LANCAMENTOS_FINANCEIROS_KEY,
     JSON.stringify([lancamento, ...atualizados]),
   );

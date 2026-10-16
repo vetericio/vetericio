@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarClock, Check, Mail, MessageCircle, RefreshCw, Settings2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -122,7 +123,7 @@ const ROTULOS: Record<TipoCrm, string> = {
 function lerLista<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor: unknown = JSON.parse(window.localStorage.getItem(chave) || "[]");
+    const valor: unknown = JSON.parse(oricseStorage.getItem(chave) || "[]");
     return Array.isArray(valor) ? (valor as T[]) : [];
   } catch {
     return [];

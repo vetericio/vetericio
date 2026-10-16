@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { AlertCircle, Check, CheckCircle2, ChevronRight, Droplets, FileCheck2, FlaskConical, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Especie } from "@/lib/ficha";
@@ -61,7 +62,7 @@ function resumoExame(nome: string) {
 export function ExamesLaboratoriais({ especie, exames, referencias, erroReferencias, onChange, onReferenciasChange, onLimpar }: Props) {
   const [grupoEditando, setGrupoEditando] = useState<GrupoExames | null>(null);
   const [favoritos, setFavoritos] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }
+    try { return JSON.parse(oricseStorage.getItem("vetericio-exames-favoritos") ?? "[]"); } catch { return []; }
   });
   const listas = normalizarExames(exames);
 
@@ -85,7 +86,7 @@ export function ExamesLaboratoriais({ especie, exames, referencias, erroReferenc
     const chave = `${exame.nome}::${exame.unidade ?? ""}`;
     const proximos = favoritos.includes(chave) ? favoritos.filter((x) => x !== chave) : [...favoritos, chave];
     setFavoritos(proximos);
-    localStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));
+    oricseStorage.setItem("vetericio-exames-favoritos", JSON.stringify(proximos));
   };
 
   const adicionar = (grupo: GrupoExames) => onChange({

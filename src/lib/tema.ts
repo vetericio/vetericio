@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 export type TemaId =
   | "original"
   | "vet"
@@ -126,7 +127,7 @@ const VARS_CUSTOM = [
 
 export function carregarTema(): TemaId {
   if (typeof window === "undefined") return "veterico";
-  const salvo = window.localStorage.getItem(CHAVE);
+  const salvo = oricseStorage.getItem(CHAVE);
   if (salvo?.startsWith("personalizado:")) {
     const personalizado = carregarTemasPersonalizados().find((t) => salvo === `personalizado:${t.id}`);
     if (personalizado) aplicarTemaPersonalizado(personalizado);
@@ -137,14 +138,14 @@ export function carregarTema(): TemaId {
 
 export function carregarCor(): string {
   if (typeof window === "undefined") return COR_PADRAO;
-  const salvo = window.localStorage.getItem(CHAVE_COR);
+  const salvo = oricseStorage.getItem(CHAVE_COR);
   return salvo && /^#[0-9a-fA-F]{6}$/.test(salvo) ? salvo : COR_PADRAO;
 }
 
 export function salvarCor(cor: string) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE_COR, cor);
+    oricseStorage.setItem(CHAVE_COR, cor);
   } catch {
     /* armazenamento indisponível */
   }
@@ -153,7 +154,7 @@ export function salvarCor(cor: string) {
 export function carregarTemasPersonalizados(): TemaPersonalizado[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor = JSON.parse(window.localStorage.getItem(CHAVE_PERSONALIZADOS) ?? "[]");
+    const valor = JSON.parse(oricseStorage.getItem(CHAVE_PERSONALIZADOS) ?? "[]");
     return Array.isArray(valor) ? valor.slice(0, 15) : [];
   } catch { return []; }
 }
@@ -163,13 +164,13 @@ export function salvarTemaPersonalizado(tema: TemaPersonalizado): boolean {
   const temas = carregarTemasPersonalizados();
   if (temas.length >= 15 && !temas.some((t) => t.id === tema.id)) return false;
   const novos = [tema, ...temas.filter((t) => t.id !== tema.id)].slice(0, 15);
-  try { window.localStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(novos)); return true; } catch { return false; }
+  try { oricseStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(novos)); return true; } catch { return false; }
 }
 
 export function excluirTemaPersonalizado(id: string) {
   if (typeof window === "undefined") return;
   const temas = carregarTemasPersonalizados().filter((t) => t.id !== id);
-  window.localStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(temas));
+  oricseStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(temas));
 }
 
 export function aplicarTemaPersonalizado(tema: TemaPersonalizado) {
@@ -181,7 +182,7 @@ export function aplicarTemaPersonalizado(tema: TemaPersonalizado) {
   document.body.style.backgroundSize = "cover";
   document.body.style.backgroundAttachment = "fixed";
   document.body.style.backgroundPosition = "center";
-  try { window.localStorage.setItem(CHAVE, `personalizado:${tema.id}`); } catch { /* ignore */ }
+  try { oricseStorage.setItem(CHAVE, `personalizado:${tema.id}`); } catch { /* ignore */ }
   window.dispatchEvent(new Event("vetericio:tema"));
 }
 
@@ -199,7 +200,7 @@ export function aplicarTema(id: TemaId, cor = carregarCor()) {
   if (id === "minha-cor") aplicarCorPersonalizada(cor);
 
   try {
-    window.localStorage.setItem(CHAVE, id);
+    oricseStorage.setItem(CHAVE, id);
   } catch {
     /* armazenamento indisponível */
   }

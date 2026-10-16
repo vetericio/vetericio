@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, ClipboardList, Stethoscope } from "lucide-react";
 import { useMemo } from "react";
@@ -27,7 +28,7 @@ const TUTORES_KEY = "oricse-tutores-v1";
 function ler<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor = JSON.parse(localStorage.getItem(chave) || "[]");
+    const valor = JSON.parse(oricseStorage.getItem(chave) || "[]");
     return Array.isArray(valor) ? valor : [];
   } catch {
     return [];

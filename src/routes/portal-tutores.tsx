@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Copy, ExternalLink, KeyRound, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ function normalizarUsuario(nome:string) {
 }
 function lerLocal<T>(chave:string):T[] {
   if(typeof window==="undefined") return [];
-  try { const v=JSON.parse(localStorage.getItem(chave)||"[]"); return Array.isArray(v)?v:[]; }
+  try { const v=JSON.parse(oricseStorage.getItem(chave)||"[]"); return Array.isArray(v)?v:[]; }
   catch { return []; }
 }
 

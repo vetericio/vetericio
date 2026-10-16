@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -65,7 +66,7 @@ const FORMAS_PAGAMENTO = [
 function lerLista<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const dados: unknown = JSON.parse(window.localStorage.getItem(chave) || "[]");
+    const dados: unknown = JSON.parse(oricseStorage.getItem(chave) || "[]");
     return Array.isArray(dados) ? (dados as T[]) : [];
   } catch {
     return [];
@@ -370,7 +371,7 @@ export function Comandas() {
       data: new Date().toISOString(),
       registradoPor: responsavel.nome,
     };
-    const lancamentosAntes = window.localStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY);
+    const lancamentosAntes = oricseStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY);
     try {
       registrarLancamentoComanda({
         id: `comanda-pagamento-${pagamento.id}`,
@@ -402,8 +403,8 @@ export function Comandas() {
       )
     ) {
       try {
-        if (lancamentosAntes === null) window.localStorage.removeItem(LANCAMENTOS_FINANCEIROS_KEY);
-        else window.localStorage.setItem(LANCAMENTOS_FINANCEIROS_KEY, lancamentosAntes);
+        if (lancamentosAntes === null) oricseStorage.removeItem(LANCAMENTOS_FINANCEIROS_KEY);
+        else oricseStorage.setItem(LANCAMENTOS_FINANCEIROS_KEY, lancamentosAntes);
       } catch (error) {
         console.error("Não foi possível restaurar o caixa após falha ao salvar a comanda:", error);
         toast.error("O pagamento foi lançado no caixa, mas a comanda não foi atualizada.");
@@ -418,13 +419,13 @@ export function Comandas() {
     pagamentoId: string,
     alterar: (l: Record<string, unknown>) => Record<string, unknown> | null,
   ) {
-    const lista = JSON.parse(window.localStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY) || "[]");
+    const lista = JSON.parse(oricseStorage.getItem(LANCAMENTOS_FINANCEIROS_KEY) || "[]");
     const nova = (Array.isArray(lista) ? lista : []).flatMap((l: Record<string, unknown>) => {
       if (l.id !== `comanda-pagamento-${pagamentoId}`) return [l];
       const r = alterar(l);
       return r ? [r] : [];
     });
-    window.localStorage.setItem(LANCAMENTOS_FINANCEIROS_KEY, JSON.stringify(nova));
+    oricseStorage.setItem(LANCAMENTOS_FINANCEIROS_KEY, JSON.stringify(nova));
   }
 
   function podeAlterarPagamentos() {

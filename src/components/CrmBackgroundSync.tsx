@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lerComandas, saldoComanda, totalComanda, totalPagoComanda } from "@/lib/comandas";
@@ -52,7 +53,7 @@ export function CrmBackgroundSync(){
       if(!ativo||typeof window==="undefined")return;
       const{data:sessao}=await supabase.auth.getSession();const userId=sessao.session?.user?.id;if(!userId)return;
       const{data:contexto}=await(supabase as any).rpc("oricse_contexto_clinica_atual");const clinicaId=contexto?.[0]?.clinica_id;if(!clinicaId)return;
-      const ler=(chave:string)=>{try{const valor=JSON.parse(window.localStorage.getItem(chave)||"[]");return Array.isArray(valor)?valor:[];}catch{return[];}};
+      const ler=(chave:string)=>{try{const valor=JSON.parse(oricseStorage.getItem(chave)||"[]");return Array.isArray(valor)?valor:[];}catch{return[];}};
       const[agendasResp,eventosResp]=await Promise.all([
         (supabase as any).from("oricse_agendas_online").select("id,nome,responsavel,timezone").eq("clinica_id",clinicaId),
         (supabase as any).from("oricse_agendamentos_online").select("id,agenda_id,tutor_id,animal_id,animal_referencia,inicio,estado,tipo,dados").eq("clinica_id",clinicaId).neq("estado","cancelado"),

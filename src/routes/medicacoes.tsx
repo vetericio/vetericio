@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { FormMedicamento } from "@/components/medicamentos/FormMedicamento";
@@ -203,7 +204,7 @@ function PaginaMedicacoes() {
             onClick={() => {
               let conteudo = "";
               try {
-                conteudo = window.localStorage.getItem("veterico-medicamentos-v1") || "";
+                conteudo = oricseStorage.getItem("veterico-medicamentos-v1") || "";
               } catch {
                 conteudo = "";
               }

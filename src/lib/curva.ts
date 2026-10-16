@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import type { Especie, Registro } from "./ficha";
 
 export type ParametroCurva = "glicemia" | "pas";
@@ -43,7 +44,7 @@ export function chaveDoAnimal(animal: string, especie: Especie | undefined): str
 export function carregarCurvas(): Curva[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE);
+    const bruto = oricseStorage.getItem(CHAVE);
     if (!bruto) return [];
     const dados = JSON.parse(bruto);
     return Array.isArray(dados) ? (dados as Curva[]) : [];
@@ -55,7 +56,7 @@ export function carregarCurvas(): Curva[] {
 export function salvarCurvas(curvas: Curva[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE, JSON.stringify(curvas));
+    oricseStorage.setItem(CHAVE, JSON.stringify(curvas));
   } catch {
     /* armazenamento indisponível */
   }

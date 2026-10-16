@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import type { ToqueId } from "./toques";
 
 export type Alarme = {
@@ -22,7 +23,7 @@ const CHAVE = "veterico-alarmes-v1";
 export function carregarAlarmes(): Alarme[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE);
+    const bruto = oricseStorage.getItem(CHAVE);
     if (!bruto) return [padraoJejum()];
     const dados = JSON.parse(bruto);
     return Array.isArray(dados) ? (dados as Alarme[]) : [padraoJejum()];
@@ -34,7 +35,7 @@ export function carregarAlarmes(): Alarme[] {
 export function salvarAlarmes(alarmes: Alarme[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE, JSON.stringify(alarmes));
+    oricseStorage.setItem(CHAVE, JSON.stringify(alarmes));
   } catch {
     /* armazenamento indisponível */
   }

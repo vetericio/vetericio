@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -23,14 +24,14 @@ const INTERVALO = 30000;
 
 function salaGuardada(): string | null {
   if (typeof window === "undefined") return null;
-  const v = window.localStorage.getItem(CHAVE_SALA) ?? "";
+  const v = oricseStorage.getItem(CHAVE_SALA) ?? "";
   return FORMATO_SALA.test(v) ? v : null;
 }
 
 function guardarSala(codigo: string | null) {
   if (typeof window === "undefined") return;
-  if (codigo) window.localStorage.setItem(CHAVE_SALA, codigo);
-  else window.localStorage.removeItem(CHAVE_SALA);
+  if (codigo) oricseStorage.setItem(CHAVE_SALA, codigo);
+  else oricseStorage.removeItem(CHAVE_SALA);
 }
 
 /** Aceita o código digitado ou o link do QR de sincronização. */

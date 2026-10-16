@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -33,7 +34,7 @@ const ANIMAIS_KEY = "oricse-animais-v1";
 function ler<T>(chave: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const valor = JSON.parse(localStorage.getItem(chave) || "[]");
+    const valor = JSON.parse(oricseStorage.getItem(chave) || "[]");
     return Array.isArray(valor) ? valor : [];
   } catch {
     return [];

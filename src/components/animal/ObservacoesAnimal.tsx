@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { Clock3, Eye, Pencil, Plus, Trash2, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -111,7 +112,7 @@ export function ObservacoesAnimal({
 
   function persistir(proximos: Registro[]) {
     onChange(proximos);
-    localStorage.setItem(PRONTUARIO_KEY, JSON.stringify(proximos));
+    oricseStorage.setItem(PRONTUARIO_KEY, JSON.stringify(proximos));
   }
 
   function abrirNovo() {

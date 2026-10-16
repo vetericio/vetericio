@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useRegistros } from "./useRegistros";
@@ -54,7 +55,7 @@ export function useFinalizarPlantao() {
     // A anamnese vale só para um plantão: some ao fechar (histórico fica em Evolução).
     setAnamneses([]);
     try {
-      window.localStorage.removeItem(CHAVE_BLOCO_NOTAS);
+      oricseStorage.removeItem(CHAVE_BLOCO_NOTAS);
     } catch {
       /* sem acesso: ignora */
     }

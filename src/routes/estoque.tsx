@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -197,7 +198,7 @@ export function Estoque() {
           if (!ativo) return;
           const disponiveis = clinicas || [];
           setClinicasDisponiveis(disponiveis);
-          const salva = typeof window !== "undefined" ? sessionStorage.getItem("oricse-admin-clinica-estoque") : null;
+          const salva = typeof window !== "undefined" ? oricseSession.getItem("oricse-admin-clinica-estoque") : null;
           if (salva && disponiveis.some(c => c.id === salva)) clinicaSelecionada = salva;
           else if (!clinicaSelecionada) clinicaSelecionada = disponiveis[0]?.id || "";
         }
@@ -354,7 +355,7 @@ export function Estoque() {
             try {
               await carregarDados(nova);
               setClinicaId(nova);
-              sessionStorage.setItem("oricse-admin-clinica-estoque", nova);
+              oricseSession.setItem("oricse-admin-clinica-estoque", nova);
             } catch (error) {
               toast.error(error instanceof Error ? error.message : "Não foi possível trocar a clínica.");
             } finally { setCarregando(false); }

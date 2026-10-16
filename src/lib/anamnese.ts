@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import type { Especie } from "./ficha";
 import { criarExamesPadrao } from "./exames-laboratoriais";
 
@@ -51,7 +52,7 @@ export const ANAMNESE_VAZIA: Omit<Anamnese, "id" | "atualizadoEm"> = {
 export function carregarAnamneses(): Anamnese[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE);
+    const bruto = oricseStorage.getItem(CHAVE);
     if (!bruto) return [];
     const lista = JSON.parse(bruto);
     return Array.isArray(lista) ? (lista as Anamnese[]) : [];
@@ -63,7 +64,7 @@ export function carregarAnamneses(): Anamnese[] {
 export function salvarAnamneses(lista: Anamnese[]): boolean {
   if (typeof window === "undefined") return false;
   try {
-    window.localStorage.setItem(CHAVE, JSON.stringify(lista));
+    oricseStorage.setItem(CHAVE, JSON.stringify(lista));
     return true;
   } catch {
     return false;

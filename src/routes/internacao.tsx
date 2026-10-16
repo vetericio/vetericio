@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useState } from "react";
 import { ReceiptText } from "lucide-react";
@@ -121,10 +122,10 @@ function Index() {
   // Abre em modo edição ou atualização quando vem da página de registros.
   useEffect(() => {
     if (!carregado) return;
-    const idEditar = window.localStorage.getItem("veterico-editar-id");
-    const idAtualizar = window.localStorage.getItem("veterico-atualizar-id");
-    window.localStorage.removeItem("veterico-editar-id");
-    window.localStorage.removeItem("veterico-atualizar-id");
+    const idEditar = oricseStorage.getItem("veterico-editar-id");
+    const idAtualizar = oricseStorage.getItem("veterico-atualizar-id");
+    oricseStorage.removeItem("veterico-editar-id");
+    oricseStorage.removeItem("veterico-atualizar-id");
 
     if (idEditar) {
       const alvo = registros.find((r) => r.id === idEditar);

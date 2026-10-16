@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 /**
  * Medicamentos cadastrados pelo usuário + cálculo de dose.
  * O app NUNCA sugere, busca ou altera doses: apenas guarda o que foi digitado
@@ -814,7 +815,7 @@ export function medicamentosDeTeste(): Medicamento[] {
 export function carregarMedicamentos(): Medicamento[] {
   if (typeof window === "undefined") return [];
   try {
-    const bruto = window.localStorage.getItem(CHAVE_MEDICAMENTOS);
+    const bruto = oricseStorage.getItem(CHAVE_MEDICAMENTOS);
     if (!bruto) return medicamentosPadrao();
     const lido = JSON.parse(bruto);
     if (!Array.isArray(lido)) return [];
@@ -823,14 +824,14 @@ export function carregarMedicamentos(): Medicamento[] {
       m.favorito === undefined && m.especial ? { ...m, favorito: true } : m,
     );
     // Uma única vez por navegador, acrescenta os padrões que faltam (sem alterar os existentes).
-    if (!window.localStorage.getItem(CHAVE_PADRAO_APLICADO)) {
+    if (!oricseStorage.getItem(CHAVE_PADRAO_APLICADO)) {
       const nomes = new Set(lista.map((m) => m.nome.trim().toLowerCase()));
       lista = [
         ...lista,
         ...medicamentosPadrao().filter((m) => !nomes.has(m.nome.trim().toLowerCase())),
       ];
-      window.localStorage.setItem(CHAVE_PADRAO_APLICADO, "1");
-      window.localStorage.setItem(CHAVE_MEDICAMENTOS, JSON.stringify(lista));
+      oricseStorage.setItem(CHAVE_PADRAO_APLICADO, "1");
+      oricseStorage.setItem(CHAVE_MEDICAMENTOS, JSON.stringify(lista));
     }
     return lista;
   } catch {
@@ -841,7 +842,7 @@ export function carregarMedicamentos(): Medicamento[] {
 export function salvarMedicamentos(lista: Medicamento[]) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(CHAVE_MEDICAMENTOS, JSON.stringify(lista));
+    oricseStorage.setItem(CHAVE_MEDICAMENTOS, JSON.stringify(lista));
   } catch {
     /* armazenamento indisponível */
   }

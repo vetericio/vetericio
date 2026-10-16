@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, PawPrint, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -85,11 +86,11 @@ const FORM_VAZIO: AnimalForm = {
 };
 
 function lerTutores(): Tutor[] {
-  try { return JSON.parse(localStorage.getItem(TUTORES_KEY) || "[]"); } catch { return []; }
+  try { return JSON.parse(oricseStorage.getItem(TUTORES_KEY) || "[]"); } catch { return []; }
 }
 
 function lerAnimais(): Animal[] {
-  try { return JSON.parse(localStorage.getItem(ANIMAIS_KEY) || "[]"); } catch { return []; }
+  try { return JSON.parse(oricseStorage.getItem(ANIMAIS_KEY) || "[]"); } catch { return []; }
 }
 
 function ordenarRacas(racas: string[]) {
@@ -156,7 +157,7 @@ function NovoAnimal() {
     if (!animalExistente) return;
     if (!window.confirm(`Excluir ${animalExistente.nome}? Esta ação não pode ser desfeita.`)) return;
     const novaLista = lerAnimais().filter((animal) => animal.id !== animalExistente.id);
-    localStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
+    oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
     toast.success(`${animalExistente.nome} excluído.`);
     navigate({ to: "/tutores" });
   }
@@ -171,20 +172,20 @@ function NovoAnimal() {
       const numero = Number(peso);
       if (!Number.isFinite(numero) || numero <= 0) return;
       try {
-        const existentes = JSON.parse(localStorage.getItem(PESOS_KEY) || "[]");
+        const existentes = JSON.parse(oricseStorage.getItem(PESOS_KEY) || "[]");
         const registro = { id: crypto.randomUUID(), animalId, peso: numero, data: new Date().toISOString().slice(0, 10), criadoEm: new Date().toISOString() };
-        localStorage.setItem(PESOS_KEY, JSON.stringify([registro, ...(Array.isArray(existentes) ? existentes : [])]));
+        oricseStorage.setItem(PESOS_KEY, JSON.stringify([registro, ...(Array.isArray(existentes) ? existentes : [])]));
       } catch { /* o peso do cadastro continua salvo no próprio animal */ }
     };
     if (animalExistente) {
       const atualizado: Animal = { ...animalExistente, ...form, tutorId: tutor.id };
       const novaLista = lista.map((a) => a.id === animalExistente.id ? atualizado : a);
-      localStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
+      oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
       if (form.peso && Number(form.peso) !== Number(String(animalExistente.peso || "").replace(",", "."))) registrarPeso(atualizado.id, form.peso);
       toast.success(atualizado.nome + " atualizado com sucesso.");
     } else {
       const novo: Animal = { ...form, id: crypto.randomUUID(), tutorId: tutor.id, criadoEm: new Date().toISOString() };
-      localStorage.setItem(ANIMAIS_KEY, JSON.stringify([novo, ...lista]));
+      oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify([novo, ...lista]));
       if (novo.peso) registrarPeso(novo.id, novo.peso);
       toast.success(novo.nome + " cadastrado com sucesso.");
     }

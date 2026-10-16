@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileDown, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -103,8 +104,8 @@ export function Receituario() {
     const tutorId = params.get("tutorId") || "";
     if (!animalId && !tutorId) return;
     try {
-      const animais = JSON.parse(localStorage.getItem("oricse-animais-v1") || "[]") as any[];
-      const tutores = JSON.parse(localStorage.getItem("oricse-tutores-v1") || "[]") as any[];
+      const animais = JSON.parse(oricseStorage.getItem("oricse-animais-v1") || "[]") as any[];
+      const tutores = JSON.parse(oricseStorage.getItem("oricse-tutores-v1") || "[]") as any[];
       const animal = animais.find((item) => String(item.id) === animalId);
       const tutorEncontrado = tutores.find((item) => String(item.id) === (tutorId || animal?.tutorId));
       if (animal) {

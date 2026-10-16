@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Clock3, Play, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -16,7 +17,7 @@ const ANIMAIS_KEY = "oricse-animais-v1";
 const FILA_KEY = "oricse-fila-espera-v1";
 const COLUNAS_FILA = "72px minmax(240px,1.45fr) 140px 120px minmax(180px,1.1fr) 140px 190px";
 
-function lerLocal<T>(chave: string): T[] { if (typeof window === "undefined") return []; try { const valor = JSON.parse(window.localStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor.filter((item): item is T => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : []; } catch { return []; } }
+function lerLocal<T>(chave: string): T[] { if (typeof window === "undefined") return []; try { const valor = JSON.parse(oricseStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor.filter((item): item is T => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : []; } catch { return []; } }
 function textoOpcional(valor: unknown) { return typeof valor === "string" ? valor : undefined; }
 function lerTutores() { const tutores = migrarCodigosPublicosTutores(lerLocal<Tutor>(TUTORES_KEY).filter((tutor) => typeof tutor.id === "string" && typeof tutor.nome === "string"), lerNomeClinicaLocal()); return tutores.map((tutor) => ({ ...tutor, telefone: textoOpcional(tutor.telefone), email: textoOpcional(tutor.email), cpf: textoOpcional(tutor.cpf || tutor.cpfCnpj), codigoPublico: textoOpcional(tutor.codigoPublico), codigo_publico: textoOpcional(tutor.codigo_publico) })); }
 function lerAnimais() { return lerLocal<Animal>(ANIMAIS_KEY).filter((animal) => typeof animal.id === "string" && typeof animal.tutorId === "string" && typeof animal.nome === "string").map((animal) => ({ ...animal, especie: textoOpcional(animal.especie), raca: textoOpcional(animal.raca) })); }
@@ -56,7 +57,7 @@ function FilaEspera() {
   const aguardando = useMemo(() => fila.filter((i)=>i.status==="Aguardando").sort((a,b)=>new Date(a.chegadaEm).getTime()-new Date(b.chegadaEm).getTime()), [fila]);
   const chamados = useMemo(() => fila.filter((i)=>i.status==="Chamado").sort((a,b)=>new Date(b.chamadoEm||b.chegadaEm).getTime()-new Date(a.chamadoEm||a.chegadaEm).getTime()), [fila]);
 
-  function persistir(proxima: ItemFila[]) { setFila(proxima); localStorage.setItem(FILA_KEY, JSON.stringify(proxima)); }
+  function persistir(proxima: ItemFila[]) { setFila(proxima); oricseStorage.setItem(FILA_KEY, JSON.stringify(proxima)); }
   function selecionarTutor(tutor:Tutor){ setTutorId(tutor.id); setAnimalId(""); setBuscaTutor(tutor.nome); setBuscaTutorAberta(false); }
   function limparTutor(){ setTutorId(""); setAnimalId(""); setBuscaTutor(""); setBuscaTutorAberta(false); }
   function adicionarFila(){ const tutor=tutores.find((i)=>i.id===tutorId); const animal=animais.find((i)=>i.id===animalId&&i.tutorId===tutorId); if(!tutor)return toast.error("Selecione o tutor."); if(!animal)return toast.error("Selecione o animal."); if(fila.some((i)=>i.animalId===animal.id&&i.status==="Aguardando"))return toast.error(`${animal.nome} já está na fila de espera.`); const novo:ItemFila={id:crypto.randomUUID(),tutorId:tutor.id,animalId:animal.id,tutorNome:tutor.nome,animalNome:animal.nome,especie:animal.especie,motivo:motivo.trim()||undefined,chegadaEm:new Date().toISOString(),status:"Aguardando"}; persistir([...fila,novo]); limparTutor(); setMotivo(""); toast.success(`${animal.nome} entrou na fila de espera.`); }

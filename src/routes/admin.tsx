@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -173,7 +174,7 @@ function Admin() {
   const [salvandoPermissoes, setSalvandoPermissoes] = useState<string | null>(null);
   const [excecoesClinica, setExcecoesClinica] = useState<Record<string,string>>({});
   const [salvandoExcecao, setSalvandoExcecao] = useState<string | null>(null);
-  const [cupons, setCupons] = useState<any[]>(() => { try { return JSON.parse(window.localStorage.getItem("vetericio-cupons") || "[]"); } catch { return []; } });
+  const [cupons, setCupons] = useState<any[]>(() => { try { return JSON.parse(oricseStorage.getItem("vetericio-cupons") || "[]"); } catch { return []; } });
   const [site, setSite] = useState<SiteConfig>(SITE_PADRAO);
   const [rotasEditadas, setRotasEditadas] = useState<Record<string,string>>({});
   const [salvandoRotas, setSalvandoRotas] = useState(false);
@@ -489,7 +490,7 @@ function Admin() {
   }
 
   async function salvarPlanos() {
-    window.localStorage.setItem("vetericio-cupons", JSON.stringify(cupons));
+    oricseStorage.setItem("vetericio-cupons", JSON.stringify(cupons));
     setOcupado(true);
     try {
       for (const p of planos) {

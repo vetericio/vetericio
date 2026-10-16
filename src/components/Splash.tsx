@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useEffect, useState } from "react";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 
@@ -11,7 +12,7 @@ export function Splash() {
 
   useEffect(() => {
     try {
-      setVisivel(window.sessionStorage.getItem(CHAVE_SPLASH_SESSAO) !== "1");
+      setVisivel(oricseSession.getItem(CHAVE_SPLASH_SESSAO) !== "1");
     } catch {
       setVisivel(true);
     }
@@ -19,7 +20,7 @@ export function Splash() {
 
   useEffect(() => {
     if (!visivel) return;
-    window.sessionStorage.setItem(CHAVE_SPLASH_SESSAO, "1");
+    oricseSession.setItem(CHAVE_SPLASH_SESSAO, "1");
     const timer = window.setTimeout(() => setVisivel(false), 900);
     const seguranca = window.setTimeout(() => setVisivel(false), 1800);
     return () => {

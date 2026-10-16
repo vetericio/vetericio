@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BedDouble, CalendarDays, ClipboardList, FileText, FileUp, FlaskConical, Image, Pencil, Plus, ReceiptText, Scale, Scissors, Stethoscope, Syringe, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -31,7 +32,7 @@ const PESOS_KEY="oricse-pesos-animal-v1";
 const ABAS=["Visão geral","Registros clínicos","Vacinas","Receitas","Exames","Agendamentos","Internações","Termos","Observações","Documentos","Galeria"] as const;
 type Aba=typeof ABAS[number];
 
-function ler<T>(chave:string):T[]{if(typeof window==="undefined")return[];try{const valor=JSON.parse(localStorage.getItem(chave)||"[]");return Array.isArray(valor)?valor:[];}catch{return[];}}
+function ler<T>(chave:string):T[]{if(typeof window==="undefined")return[];try{const valor=JSON.parse(oricseStorage.getItem(chave)||"[]");return Array.isArray(valor)?valor:[];}catch{return[];}}
 function idade(nascimento?:string){if(!nascimento)return"Não informada";const n=new Date(`${nascimento}T12:00:00`);if(Number.isNaN(n.getTime()))return"Não informada";const hoje=new Date();let anos=hoje.getFullYear()-n.getFullYear();let meses=hoje.getMonth()-n.getMonth();if(hoje.getDate()<n.getDate())meses--;if(meses<0){anos--;meses+=12;}if(anos<=0)return`${Math.max(0,meses)} meses`;return meses?`${anos}a ${meses}m`:`${anos} anos`;}
 function formatarData(data?:string){if(!data)return"—";try{return new Intl.DateTimeFormat("pt-BR").format(new Date(`${data.slice(0,10)}T12:00:00`));}catch{return data;}}
 function numeroPeso(valor?:string){if(!valor)return NaN;const texto=String(valor).trim();return Number(texto.includes(",")?texto.replace(/\./g,"").replace(",","."):texto);}
@@ -103,7 +104,7 @@ function AnimalFicha(){
         await carregarConteudosPortal();setModalTipo(null);setArquivoPdf(null);toast.success(`${modalTipo} adicionado no banco.`);
       }catch(error){toast.error(error instanceof Error?error.message:`Não foi possível salvar ${modalTipo.toLowerCase()}.`);}finally{setSalvandoPortal(false);}return;
     }
-    const novo:Registro={id:crypto.randomUUID(),animalId:animal.id,tipo:modalTipo,titulo:titulo.trim(),detalhe:detalhe.trim(),data,criadoEm:new Date().toISOString()};const lista=[novo,...registros];setRegistros(lista);localStorage.setItem(PRONTUARIO_KEY,JSON.stringify(lista));setModalTipo(null);toast.success(`${modalTipo} adicionado.`);
+    const novo:Registro={id:crypto.randomUUID(),animalId:animal.id,tipo:modalTipo,titulo:titulo.trim(),detalhe:detalhe.trim(),data,criadoEm:new Date().toISOString()};const lista=[novo,...registros];setRegistros(lista);oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify(lista));setModalTipo(null);toast.success(`${modalTipo} adicionado.`);
   }
 
   async function alternarVisibilidade(registro:Registro,valor:boolean){
@@ -112,7 +113,7 @@ function AnimalFicha(){
     setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:valor}:item));const{error}=await(supabase as any).from(tabela).update({visivel_tutor:valor,updated_at:new Date().toISOString()}).eq("id",registro.id).eq("clinica_id",clinicaId);if(error){setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:!valor}:item));toast.error("Não foi possível alterar a visibilidade no portal.");return;}toast.success(valor?"Registro liberado no Portal do Tutor.":"Registro ocultado do Portal do Tutor.");
   }
 
-  function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const novo:PesoRegistro={id:crypto.randomUUID(),animalId:animal.id,peso:n,data:dataPeso,criadoEm:new Date().toISOString()};const lista=[novo,...pesos];setPesos(lista);localStorage.setItem(PESOS_KEY,JSON.stringify(lista));const animaisAtualizados=ler<Animal>(ANIMAIS_KEY).map(item=>item.id===animal.id?{...item,peso:n.toFixed(3)}:item);localStorage.setItem(ANIMAIS_KEY,JSON.stringify(animaisAtualizados));setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
+  function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const novo:PesoRegistro={id:crypto.randomUUID(),animalId:animal.id,peso:n,data:dataPeso,criadoEm:new Date().toISOString()};const lista=[novo,...pesos];setPesos(lista);oricseStorage.setItem(PESOS_KEY,JSON.stringify(lista));const animaisAtualizados=ler<Animal>(ANIMAIS_KEY).map(item=>item.id===animal.id?{...item,peso:n.toFixed(3)}:item);oricseStorage.setItem(ANIMAIS_KEY,JSON.stringify(animaisAtualizados));setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
 
   if(!animal)return <main className="mx-auto max-w-5xl px-4 py-8"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">Animal não encontrado.</div></main>;
 

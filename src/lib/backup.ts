@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 /**
  * Backup e transferência de dados entre aparelhos — 100% offline.
  * Nada é enviado para a internet: gera um arquivo (ou um QR) com o conteúdo
@@ -63,7 +64,7 @@ export type ResumoBackup = {
 export function lerBruto(chave: string): unknown {
   if (typeof window === "undefined") return undefined;
   try {
-    const bruto = window.localStorage.getItem(chave);
+    const bruto = oricseStorage.getItem(chave);
     if (bruto === null) return undefined;
     try {
       return JSON.parse(bruto);
@@ -79,7 +80,7 @@ export function escreverBruto(chave: string, valor: unknown) {
   if (typeof window === "undefined") return;
   try {
     const texto = typeof valor === "string" ? valor : JSON.stringify(valor);
-    window.localStorage.setItem(chave, texto);
+    oricseStorage.setItem(chave, texto);
   } catch {
     /* armazenamento indisponível */
   }
@@ -363,7 +364,7 @@ export function aplicarBackup(b: Backup, modo: ModoRestauracao) {
       const apagadoRemoto = quandoApagado(apagadosRemotos, k);
       if (atual !== undefined && apagadoRemoto) {
         try {
-          window.localStorage.removeItem(CHAVES_BACKUP[nome]);
+          oricseStorage.removeItem(CHAVES_BACKUP[nome]);
         } catch {
           /* armazenamento indisponível */
         }

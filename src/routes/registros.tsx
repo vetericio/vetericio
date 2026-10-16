@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -242,11 +243,11 @@ function Registros() {
 
   const onCopiar = (r: Registro) => copiarTexto(formatarRegistro(r));
   const onEditar = (r: Registro) => {
-    window.localStorage.setItem("veterico-editar-id", r.id);
+    oricseStorage.setItem("veterico-editar-id", r.id);
     navigate({ to: "/internacao" });
   };
   const onAtualizar = (r: Registro) => {
-    window.localStorage.setItem("veterico-atualizar-id", r.id);
+    oricseStorage.setItem("veterico-atualizar-id", r.id);
     navigate({ to: "/internacao" });
   };
   const onExcluir = (id: string) => {

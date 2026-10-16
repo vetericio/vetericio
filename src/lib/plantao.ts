@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 export type Turno = "diurno" | "noturno";
 
 export type PlantaoAtual = {
@@ -108,7 +109,7 @@ function valido(dados: unknown): PlantaoAtual | null {
 export function carregarPlantaoAtual(): PlantaoAtual | null {
   if (typeof window === "undefined") return null;
   try {
-    const bruto = window.localStorage.getItem(CHAVE);
+    const bruto = oricseStorage.getItem(CHAVE);
     if (!bruto) return null;
     const dados: unknown = JSON.parse(bruto);
     // Plantão finalizado nunca volta a ser lido como ativo.
@@ -124,7 +125,7 @@ export function salvarPlantaoAtual(p: PlantaoAtual | null) {
   if (typeof window === "undefined") return;
   try {
     const valor: PlantaoSalvo = p ?? { finalizadoEm: new Date().toISOString() };
-    window.localStorage.setItem(CHAVE, JSON.stringify(valor));
+    oricseStorage.setItem(CHAVE, JSON.stringify(valor));
   } catch {
     /* armazenamento indisponível */
   }

@@ -1,3 +1,4 @@
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import type { ExameAnamnese } from "./anamnese";
 import type { Especie } from "./ficha";
 
@@ -157,7 +158,7 @@ function mapaValido(bruto: unknown): Record<string, string> {
 export function carregarReferenciasExames(): ReferenciasExames {
   try {
     if (typeof window === "undefined") return referenciasVazias();
-    const bruto: unknown = JSON.parse(window.localStorage.getItem(CHAVE_REFERENCIAS_EXAMES) ?? "{}");
+    const bruto: unknown = JSON.parse(oricseStorage.getItem(CHAVE_REFERENCIAS_EXAMES) ?? "{}");
     if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return referenciasVazias();
     const objeto = bruto as Record<string, unknown>;
     return {
@@ -172,7 +173,7 @@ export function carregarReferenciasExames(): ReferenciasExames {
 export function salvarReferenciasExames(referencias: ReferenciasExames): boolean {
   try {
     if (typeof window === "undefined") return false;
-    window.localStorage.setItem(CHAVE_REFERENCIAS_EXAMES, JSON.stringify(referencias));
+    oricseStorage.setItem(CHAVE_REFERENCIAS_EXAMES, JSON.stringify(referencias));
     return true;
   } catch {
     return false;
