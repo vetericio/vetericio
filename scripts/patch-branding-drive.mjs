@@ -19,7 +19,15 @@ const novo=`      const accessToken = await tokenAtual();
       });
       const upload = await enviarArquivoPublicoPlataforma({ data: { accessToken, nome: logoArquivo.name, mimeType: logoArquivo.type || "image/png", base64 } });
       const novaConfig = { ...site, logo_url: upload.url };`;
-if(!s.includes(antigo)) throw new Error('Bloco Supabase Storage do branding não encontrado');
-s=s.replace(antigo,novo);
+if(s.includes(antigo))s=s.replace(antigo,novo);
+
+const marca=`      setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
+      await carregarTudo();`;
+const marcaNova=`      const { error: logoPersistError } = await (supabase as any).from("clinicas").update({ logo_url: resultado.logoUrl, updated_at: new Date().toISOString() }).eq("id", selecionada.id);
+      if (logoPersistError) throw logoPersistError;
+      setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
+      await carregarTudo();`;
+if(s.includes(marca))s=s.replace(marca,marcaNova);
+
 fs.writeFileSync(p,s);
-console.log('Branding público migrado para Google Drive.');
+console.log('Branding e logos de clínicas persistem no Google Drive.');
