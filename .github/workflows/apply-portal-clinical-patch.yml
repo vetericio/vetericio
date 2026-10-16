@@ -19,6 +19,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Normalize patch script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/patch-portal-clinical-tests.mjs')
+          s = p.read_text()
+          inicio = '  const nomeArquivo = \\`${\'${dados.tipo === "especial" ? "receita-controle-especial" : "receituario"}\'}-${\'${paciente || "oricse"}\'}.pdf\\`;'
+          s = s.replace(inicio, '  const nomeArquivo = (dados.tipo === "especial" ? "receita-controle-especial" : "receituario") + "-" + (paciente || "oricse") + ".pdf";')
+          s = s.replace('  if (receitaError) throw new Error(`Receita baixada, mas falhou o registro no Portal do Tutor: ${\'${receitaError.message}\'}`);', '  if (receitaError) throw new Error("Receita baixada, mas falhou o registro no Portal do Tutor: " + receitaError.message);')
+          p.write_text(s)
+          PY
       - name: Apply patch
         run: node scripts/patch-portal-clinical-tests.mjs
       - name: Build
@@ -27,12 +38,12 @@ jobs:
           npm run build
       - name: Commit patch
         run: |
-          if git diff --quiet; then
-            echo "No changes"
-            exit 0
+          if git diff -- src | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src
+            git commit -m "Integra exames receitas e comandas ao portal"
+            git push origin HEAD:main
+          else
+            echo "No src changes"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src
-          git commit -m "Integra exames receitas e comandas ao portal"
-          git push origin HEAD:main
