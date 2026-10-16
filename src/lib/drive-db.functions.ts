@@ -6,7 +6,7 @@ const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const PUBLIC_READ = new Set(["oricse_planos", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
 const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
 const PORTAL_CLINIC_READ = new Set(["oricse_agendas_online"]);
-const PORTAL_DIRECT_WRITE = new Set<string>();
+const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);
 
 const filterSchema = z.object({ kind: z.string(), column: z.string().optional(), value: z.unknown().optional(), operator: z.string().optional() });
 const querySchema = z.object({
@@ -37,7 +37,7 @@ async function folder(t: string, parent: string, nome: string) { const esc = nom
 async function dbFolder(t: string) { const o = await folder(t, root(), ".oricse"); return folder(t, o, "database"); }
 async function findFile(t: string, parent: string, nome: string) { const esc = nome.replace(/'/g, "\\'"); const q = encodeURIComponent(`'${parent}' in parents and name='${esc}' and trashed=false`); const r = await gf(t, `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime,version)&pageSize=5`); const j = await r.json() as { files?: Array<{ id: string; name: string; modifiedTime?: string; version?: string }> }; return j.files?.[0] || null; }
 async function writeTable(t: string, table: string, folderId: string, fileId: string | null, rows: any[]) { const corpo = JSON.stringify(rows); if (fileId) { await gf(t, `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media`, { method: "PATCH", headers: { "content-type": "application/json;charset=utf-8" }, body: corpo }); return; } const form = new FormData(); form.append("metadata", new Blob([JSON.stringify({ name: `${table}.json`, parents: [folderId], appProperties: { oricseDatabase: "true", tabela: table } })], { type: "application/json" })); form.append("file", new Blob([corpo], { type: "application/json" }), `${table}.json`); await gf(t, "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", { method: "POST", body: form }); }
-async function readTable(t: string, table: string) { const f = await dbFolder(t), a = await findFile(t, f, `${table}.json`); if (!a) { const rows = seedTabela(table); if (rows.length) await writeTable(t, table, f, null, rows); return { folderId: f, fileId: null as string | null, rows }; } const r = await gf(t, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(a.id)}?alt=media`); let rows: any[] = []; try { const x = JSON.parse(await r.text()); rows = Array.isArray(x) ? x : []; } catch { rows = []; } return { folderId: f, fileId: a.id, rows }; }
+async function readTable(t: string, table: string) { const f = await dbFolder(t), a = await findFile(t, f, `${table}.json`); if (!a) { const rows = seedTabela(table); if (rows.length) { await writeTable(t, table, f, null, rows); const criado = await findFile(t, f, `${table}.json`); return { folderId: f, fileId: criado?.id || null, rows }; } return { folderId: f, fileId: null as string | null, rows }; } const r = await gf(t, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(a.id)}?alt=media`); let rows: any[] = []; try { const x = JSON.parse(await r.text()); rows = Array.isArray(x) ? x : []; } catch { rows = []; } return { folderId: f, fileId: a.id, rows }; }
 
 async function authContext(accessToken?: string | null): Promise<AuthContext> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -107,6 +107,7 @@ async function authorizedRows(t: string, table: string, rows: any[], ctx: AuthCo
   const animais = await animalIdsPortal(t, ctx);
   return rows.filter((r) => {
     const cid = rowClinic(r); if (!cid) return false; if (staff.has(cid)) return true; if (!portalClinicas.has(cid)) return false;
+    if (table === "tutores") return portalTutors.has(String(r.id));
     if (table === "oricse_animais") return portalTutors.has(String(r.tutor_id));
     if (r.tutor_id != null) return portalTutors.has(String(r.tutor_id));
     if (r.animal_id != null) return animais.has(String(r.animal_id));
@@ -119,6 +120,23 @@ async function executeDriveDb(q: z.infer<typeof querySchema>) {
   if (!ctx.userId && !(q.operation === "select" && PUBLIC_READ.has(q.table))) throw new Error("Autenticação necessária.");
   if (q.operation !== "select" && !ctx.admin && GLOBAL_ADMIN_ONLY.has(q.table)) throw new Error("Apenas a administração da plataforma pode alterar estes dados.");
   if (q.operation !== "select" && !ctx.admin && !ctx.clinicas.length && ctx.portal.length && !PORTAL_DIRECT_WRITE.has(q.table)) throw new Error("O Portal do Tutor não pode alterar esta tabela diretamente.");
+  if (q.operation !== "select" && !ctx.admin && !ctx.clinicas.length && ctx.portal.length) {
+    if (q.table === "tutores" && q.operation !== "update") throw new Error("O Portal do Tutor pode apenas atualizar o próprio cadastro.");
+    if (q.table === "oricse_agendamentos_online" && q.operation !== "insert") throw new Error("O Portal do Tutor pode apenas criar agendamentos pelo fluxo autorizado.");
+    if (q.table === "tutores") {
+      const permitidos = new Set(ctx.portal.map((x) => x.tutorId));
+      const alvo = q.filters.find((f) => f.kind === "eq" && f.column === "id")?.value;
+      if (!alvo || !permitidos.has(String(alvo))) throw new Error("Tutor fora do escopo desta sessão.");
+    }
+    if (q.table === "oricse_agendamentos_online") {
+      const lista = Array.isArray(q.payload) ? q.payload : [q.payload];
+      const animais = await animalIdsPortal(await driveToken(), ctx);
+      for (const item of lista.filter(Boolean) as any[]) {
+        const identidade = ctx.portal.find((x) => x.clinicaId === String(item.clinica_id) && x.tutorId === String(item.tutor_id));
+        if (!identidade || !animais.has(String(item.animal_id)) || String(item.tutor_auth_id || "") !== String(ctx.userId || "") || String(item.origem || "") !== "portal_tutor") throw new Error("Agendamento fora do escopo autorizado do tutor.");
+      }
+    }
+  }
   const t = await driveToken(), base = await readTable(t, q.table); let rows = base.rows;
   const visiveis = q.operation === "select" ? await authorizedRows(t, q.table, rows, ctx) : (ctx.admin ? rows : await authorizedRows(t, q.table, rows, ctx));
   const filtros = (lista: any[]) => lista.filter((r) => q.filters.every((f) => passa(r, f)));
