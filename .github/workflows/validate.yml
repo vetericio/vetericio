@@ -22,6 +22,20 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Browser persistence guard
+        shell: bash
+        run: |
+          if git grep -nE '\b(localStorage|sessionStorage|indexedDB)\b' -- 'src/**' ':!src/lib/oricse-storage.ts' ':!src/integrations/supabase/previewAuthStorage.ts'; then
+            echo 'ERRO: o ORICSE não permite persistência no navegador.'
+            exit 1
+          fi
+      - name: Supabase Storage guard
+        shell: bash
+        run: |
+          if git grep -nE 'supabase\.storage|\.storage\.from\(' -- 'src/**'; then
+            echo 'ERRO: documentos e arquivos devem ser armazenados no Google Drive, não no Supabase Storage.'
+            exit 1
+          fi
       - name: UI audit
         run: node scripts/audit-ui.mjs
       - name: Lint debt report
