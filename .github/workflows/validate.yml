@@ -36,6 +36,8 @@ jobs:
             echo 'ERRO: documentos e arquivos devem ser armazenados no Google Drive, não no Supabase Storage.'
             exit 1
           fi
+      - name: Supabase identity-only guard
+        run: node scripts/audit-supabase-identity-only.mjs
       - name: UI audit
         run: node scripts/audit-ui.mjs
       - name: Lint debt report
