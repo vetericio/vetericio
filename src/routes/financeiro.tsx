@@ -1114,7 +1114,7 @@ export function Financeiro() {
                 className="input min-h-24"
               />
             </Campo>
-            <button className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">
+            <button type="submit" className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">
               {editandoId ? "Salvar alterações" : "Salvar lançamento"}
             </button>
           </form>

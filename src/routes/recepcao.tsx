@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, ReceiptText, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { AgendaDayBoard } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
 
@@ -405,7 +406,7 @@ export function Recepcao() {
           <h1 className="mt-1 text-3xl font-bold">Recepção</h1>
           <p className="mt-1 text-muted-foreground">Cadastros, fila e agenda da clínica em uma única visão.</p>
         </div>
-        <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
+        <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={() => { const livre = document.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]'); if (livre) { livre.click(); livre.scrollIntoView({ behavior: "smooth", block: "center" }); } else { document.getElementById("agenda-recepcao")?.scrollIntoView({ behavior: "smooth", block: "start" }); toast.info("Não há horário livre visível nesta data. Escolha outra data ou agenda."); } }} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
       </div>
 
       <div className={`mt-6 grid items-start gap-4 ${filaVisivel ? "xl:grid-cols-[300px_minmax(0,1fr)]" : "grid-cols-1"}`}>
@@ -437,7 +438,7 @@ export function Recepcao() {
           <button type="button" onClick={() => setFilaVisivel(true)} className="mb-1 inline-flex w-fit items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-semibold shadow-sm"><Eye size={17} className="text-primary"/> Mostrar fila de espera</button>
         )}
 
-        <section className="min-w-0 rounded-2xl border-2 border-primary/15 bg-primary/[0.015] p-2 sm:p-3">
+        <section id="agenda-recepcao" className="min-w-0 scroll-mt-4 rounded-2xl border-2 border-primary/15 bg-primary/[0.015] p-2 sm:p-3">
           <div className="mb-2 flex items-center justify-between gap-3 px-1">
             <div className="flex items-center gap-2"><CalendarDays size={19} className="text-primary"/><h2 className="font-black">Agenda</h2></div>
             <span className="text-xs text-muted-foreground">Arraste a barra para navegar entre as agendas</span>
@@ -456,7 +457,7 @@ export function Recepcao() {
           const conteudo = <div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Icone className="text-primary" size={20}/></div><div><h2 className="font-semibold">{titulo}</h2><p className="mt-0.5 text-sm text-muted-foreground">{texto}</p></div></div>;
           if (destino === "aniversarios") return <button key={titulo} type="button" onClick={() => setAniversariosAbertos(true)} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
           if (destino === "reforcos") return <button key={titulo} type="button" onClick={() => setReforcosAbertos(true)} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
-          return destino ? <Link key={titulo} to={destino} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</Link> : <button key={titulo} type="button" className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</button>;
+          return destino ? <Link key={titulo} to={destino} className="rounded-2xl border bg-card p-4 text-left shadow-sm transition hover:border-primary hover:shadow-md">{conteudo}</Link> : <div key={titulo} aria-disabled="true" className="rounded-2xl border bg-card p-4 text-left opacity-70 shadow-sm">{conteudo}</div>;
         })}
       </section>
 

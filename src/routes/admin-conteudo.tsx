@@ -85,7 +85,7 @@ function CanvasPlanos({ cfg }: { cfg: Config }) {
             <p className="mt-2 min-h-9 text-xs text-slate-500">Uma opção da Oricse para sua operação.</p>
             <p className="mt-5 text-xl font-bold">{card.preco}</p>
             <p className="mt-1 text-[10px] font-semibold text-slate-400">{card.rotulo}</p>
-            <button className="mt-4 min-h-9 rounded-lg bg-primary px-3 text-xs font-bold text-white">{index === 0 ? (cfg.teste_gratis_botao || "Começar 7 dias grátis") : cfg.cta_plano}</button>
+            <div aria-disabled="true" className="mt-4 flex min-h-9 cursor-default items-center justify-center rounded-lg bg-primary px-3 text-xs font-bold text-white">{index === 0 ? (cfg.teste_gratis_botao || "Começar 7 dias grátis") : cfg.cta_plano}</div>
           </div>)}
         </div>
         <p className="mx-auto mt-5 max-w-2xl text-center text-[10px] text-slate-400">{cfg.rodape_planos}</p>

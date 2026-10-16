@@ -488,7 +488,7 @@ export function Estoque() {
                   <input value={regraPercentual} onChange={(event) => setRegraPercentual(event.target.value)} type="number" min="0" max="100" step="0.01" placeholder="0" className="h-10 w-full rounded-lg border bg-background px-3 pr-8 text-sm" />
                   <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">%</span>
                 </label>
-                <button className="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"><Plus size={15} /> Salvar</button>
+                <button type="submit" className="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"><Plus size={15} /> Salvar</button>
               </form>
             ) : <p className="mt-2 text-sm text-muted-foreground">Você possui acesso somente para visualizar.</p>}
             {itemSelecionadoRegra && <p className="mt-2 text-xs text-muted-foreground">A regra será aplicada a “{itemSelecionadoRegra.nome}”.</p>}
@@ -532,7 +532,7 @@ export function Estoque() {
                   <input value={percentualRemuneracao} onChange={(event) => setPercentualRemuneracao(event.target.value)} type="number" min="0" max="100" step="0.01" placeholder="0" className="h-10 w-full rounded-lg border bg-background px-3 pr-8 text-sm" />
                   <span className="absolute right-3 top-2.5 text-sm text-muted-foreground">%</span>
                 </label>
-                <button className="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"><Plus size={15} /> Salvar</button>
+                <button type="submit" className="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"><Plus size={15} /> Salvar</button>
               </form>
             ) : <p className="mt-2 text-sm text-muted-foreground">Você possui acesso somente para visualizar.</p>}
           </div>
