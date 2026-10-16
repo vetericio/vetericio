@@ -26,7 +26,6 @@ for (const arquivo of arquivos) {
 function rotaConhecida(destino) {
   if (rotas.has(destino)) return true;
   if (destino === '/admin/login') return true;
-  // Rotas dinâmicas usadas com parâmetros do TanStack são conhecidas pelo literal com $.
   for (const rota of rotas) {
     if (!rota.includes('$')) continue;
     const padrao = '^' + rota.split('/').map((p) => p.startsWith('$') ? '[^/]+' : p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('/') + '$';
@@ -38,19 +37,25 @@ function rotaConhecida(destino) {
 for (const arquivo of arquivos) {
   const texto = fs.readFileSync(arquivo, 'utf8');
   const nome = rel(arquivo);
+  const jsx = /\.(tsx|jsx)$/.test(nome);
 
-  for (const m of texto.matchAll(/<button\b[\s\S]*?>/g)) {
-    const tag = m[0];
-    const indice = m.index ?? 0;
-    const aciona = /\bonClick\s*=|\bonPointerDown\s*=|\bonMouseDown\s*=|\bformAction\s*=|\btype\s*=\s*["']submit["']/.test(tag);
-    const intencional = /\bdisabled\b|\baria-disabled\s*=\s*["']true["']/.test(tag);
-    if (!aciona && !intencional) problemas.push(`${nome}:${linhaDe(texto, indice)} botão sem ação explícita`);
+  if (jsx) {
+    for (const m of texto.matchAll(/<button\b[\s\S]*?>/g)) {
+      const tag = m[0];
+      const indice = m.index ?? 0;
+      const antes = texto.slice(Math.max(0, indice - 180), indice);
+      const aciona = /\bonClick\s*=|\bonPointerDown\s*=|\bonMouseDown\s*=|\bformAction\s*=|\btype\s*=\s*["']submit["']/.test(tag);
+      const intencional = /\bdisabled\b|\baria-disabled\s*=\s*["']true["']/.test(tag);
+      const triggerAsChild = /<(?:SheetTrigger|DropdownMenuTrigger|DialogTrigger|PopoverTrigger|TooltipTrigger)\b[^>]*\basChild\b[^>]*>\s*$/.test(antes);
+      if (!aciona && !intencional && !triggerAsChild) problemas.push(`${nome}:${linhaDe(texto, indice)} botão sem ação explícita`);
+    }
+
+    for (const m of texto.matchAll(/<a\b[\s\S]*?href\s*=\s*["']#["'][\s\S]*?>/g)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} link usa href="#"`);
+    for (const m of texto.matchAll(/onClick\s*=\s*\{\s*\(?.*?\)?\s*=>\s*\{\s*\}\s*\}/g)) problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick vazio`);
+    for (const m of texto.matchAll(/onClick\s*=\s*\{\s*undefined\s*\}/g)) problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick undefined`);
   }
 
-  for (const m of texto.matchAll(/<a\b[\s\S]*?href\s*=\s*["']#["'][\s\S]*?>/g)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} link usa href="#"`);
-  for (const m of texto.matchAll(/onClick\s*=\s*\{\s*\(?.*?\)?\s*=>\s*\{\s*\}\s*\}/g)) problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick vazio`);
-  for (const m of texto.matchAll(/onClick\s*=\s*\{\s*undefined\s*\}/g)) problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick undefined`);
-  for (const m of texto.matchAll(/\b(?:TODO|FIXME|NÃO IMPLEMENTADO|NAO IMPLEMENTADO)\b/gi)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} marcador pendente: ${m[0]}`);
+  for (const m of texto.matchAll(/\b(?:TODO|FIXME|NÃO IMPLEMENTADO|NAO IMPLEMENTADO)\b/g)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} marcador pendente: ${m[0]}`);
 
   const alvos = [
     ...texto.matchAll(/\bto\s*=\s*["'](\/[^"']*)["']/g),
