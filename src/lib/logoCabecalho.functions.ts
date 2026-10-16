@@ -1,46 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { deleteDriveJson, driveAccessToken, readDriveJson, writeDriveJson } from "@/lib/drive-kv.server";
 
-const CHAVE_GLOBAL = "__VETERICIO_LOGO_CABECALHO_GLOBAL__";
 const logoSchema = z.object({
-  logo: z.string().max(2_000_000).refine(
-    (v) => v === "" || /^data:image\/(png|jpeg);base64,/.test(v),
-    "Formato de imagem inválido",
-  ),
+  logo: z.string().max(2_000_000).refine((v) => v === "" || /^data:image\/(png|jpeg);base64,/.test(v), "Formato de imagem inválido"),
 });
+const PATH = [".oricse", "config"];
+const ARQUIVO = "logo-cabecalho.json";
 
 export const buscarLogoCabecalhoGlobal = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("sync_salas")
-    .select("dados")
-    .eq("codigo_hash", CHAVE_GLOBAL)
-    .maybeSingle();
-  if (error) throw new Error(`Falha ao carregar logo: ${error.message}`);
-  const dados = data?.dados as { logo?: unknown } | null;
-  return { logo: typeof dados?.logo === "string" ? dados.logo : "" };
+  const token = await driveAccessToken();
+  const { value } = await readDriveJson<{ logo?: string }>(token, PATH, ARQUIVO, {});
+  return { logo: typeof value?.logo === "string" ? value.logo : "" };
 });
 
 export const salvarLogoCabecalhoGlobal = createServerFn({ method: "POST" })
   .validator((input: unknown) => logoSchema.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (!data.logo) {
-      const { error } = await supabaseAdmin
-        .from("sync_salas")
-        .delete()
-        .eq("codigo_hash", CHAVE_GLOBAL);
-      if (error) throw new Error(`Falha ao restaurar logo: ${error.message}`);
-      return { ok: true };
-    }
-    const { error } = await supabaseAdmin.from("sync_salas").upsert(
-      {
-        codigo_hash: CHAVE_GLOBAL,
-        dados: { logo: data.logo } as never,
-        atualizado_em: new Date().toISOString(),
-      },
-      { onConflict: "codigo_hash" },
-    );
-    if (error) throw new Error(`Falha ao salvar logo: ${error.message}`);
+    const token = await driveAccessToken();
+    if (!data.logo) await deleteDriveJson(token, PATH, ARQUIVO);
+    else await writeDriveJson(token, PATH, ARQUIVO, { logo: data.logo, atualizado_em: new Date().toISOString() });
     return { ok: true };
   });
