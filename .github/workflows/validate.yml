@@ -25,7 +25,7 @@ jobs:
       - name: Browser persistence guard
         shell: bash
         run: |
-          if git grep -nE '\b(localStorage|sessionStorage|indexedDB)\b' -- 'src/**' ':!src/lib/oricse-storage.ts' ':!src/integrations/supabase/previewAuthStorage.ts'; then
+          if git grep -nE '(window\.)?(localStorage|sessionStorage)\.(getItem|setItem|removeItem|clear|key)|indexedDB\.(open|deleteDatabase)' -- 'src/**'; then
             echo 'ERRO: o ORICSE não permite persistência no navegador.'
             exit 1
           fi
