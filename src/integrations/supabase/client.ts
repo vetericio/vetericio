@@ -39,7 +39,8 @@ function createSupabaseClient(storageKey?: string) {
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 let _supabasePortal: ReturnType<typeof createSupabaseClient> | undefined;
-const TABELAS_USUARIOS = new Set(['app_users', 'clinica_usuarios']);
+// Estas tabelas são identidade/associação de usuários. Todo dado operacional vai para o Drive.
+const TABELAS_USUARIOS = new Set(['app_users', 'clinica_usuarios', 'oricse_portal_tutores']);
 
 type PollChannel = { on: (...args: any[]) => PollChannel; subscribe: (...args: any[]) => PollChannel; unsubscribe: () => Promise<'ok'>; __timer?: ReturnType<typeof setInterval>; __callbacks: Array<() => void> };
 const canais = new Set<PollChannel>();
