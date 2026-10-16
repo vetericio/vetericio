@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-// Execução final: fecha o isolamento do Portal do Tutor no banco armazenado no Drive.
+// Execução final: fecha o isolamento do Portal do Tutor e expõe o executor interno server-side.
 const p='src/lib/drive-db.functions.ts';
 let s=fs.readFileSync(p,'utf8');
 s=s.replace('const PORTAL_DIRECT_WRITE = new Set<string>();','const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);');
@@ -24,7 +24,8 @@ const replacement=`if (q.operation !== "select" && !ctx.admin && !ctx.clinicas.l
       }
     }
   }`;
-if(!s.includes(gate)) throw new Error('gate não encontrado');
-s=s.replace(gate,replacement);
+if(s.includes(gate))s=s.replace(gate,replacement);
+s=s.replace('async function executeDriveDb(q: z.infer<typeof querySchema>) {','export async function executarDriveDbInterno(q: z.infer<typeof querySchema>) {');
+s=s.replace('executeDriveDb(data));','executarDriveDbInterno(data));');
 fs.writeFileSync(p,s);
-console.log('Drive DB ajustado para seed único e escrita segura do Portal do Tutor.');
+console.log('Drive DB ajustado para seed único, escrita segura do Portal e acesso interno server-side.');
