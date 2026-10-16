@@ -21,6 +21,7 @@ import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { Rodape } from "@/components/Rodape";
 import { supabase, supabaseConfigurado } from "@/integrations/supabase/client";
+import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
 import {
   TenantContext,
@@ -146,6 +147,7 @@ function RootComponent() {
   const [portalError, setPortalError] = useState<string | null>(null);
   const [acessoPortalNegado, setAcessoPortalNegado] = useState(false);
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
+  const [dadosDriveProntos, setDadosDriveProntos] = useState(false);
 
   useEffect(() => {
     const rotasEditaveis = ["/recepcao", "/estoque", "/financeiro", "/comandas", "/minha-atividade"];
@@ -297,6 +299,23 @@ function RootComponent() {
       listener.subscription.unsubscribe();
     };
   }, [portal?.clinica_id, portalLoading]);
+
+  useEffect(() => {
+    let ativo = true;
+    if (!autenticado) {
+      limparMemoriaOricse();
+      setDadosDriveProntos(false);
+      return () => { ativo = false; };
+    }
+    setDadosDriveProntos(false);
+    void hidratarOricseStorage(true)
+      .then(() => { if (ativo) setDadosDriveProntos(true); })
+      .catch((error) => {
+        console.error("Não foi possível carregar os dados do Google Drive:", error);
+        if (ativo) setDadosDriveProntos(false);
+      });
+    return () => { ativo = false; };
+  }, [autenticado, role]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("visual_editor")) return;
@@ -599,6 +618,8 @@ function RootComponent() {
               <button type="button" onClick={() => void supabase.auth.signOut()} className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Sair desta conta</button>
             </section>
           </main>
+        ) : autenticado && !rotaPublica && !dadosDriveProntos ? (
+          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Sincronizando dados com o Google Drive...</div>
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
           <div className="min-h-screen" />
         ) : mostrarBloqueioTeste ? (
