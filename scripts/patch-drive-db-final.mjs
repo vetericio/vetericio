@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+// Execução final: fecha o isolamento do Portal do Tutor no banco armazenado no Drive.
 const p='src/lib/drive-db.functions.ts';
 let s=fs.readFileSync(p,'utf8');
 s=s.replace('const PORTAL_DIRECT_WRITE = new Set<string>();','const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);');
