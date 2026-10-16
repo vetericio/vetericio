@@ -1,0 +1,28 @@
+name: Patch branding to Drive
+on:
+  push:
+    paths:
+      - "scripts/patch-branding-drive.mjs"
+      - ".github/workflows/patch-branding-drive.yml"
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/patch-branding-drive.mjs
+      - shell: bash
+        run: |
+          if ! git diff --quiet -- src; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src
+            git commit -m "Move branding público para Google Drive"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
