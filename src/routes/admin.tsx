@@ -30,6 +30,7 @@ import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
+import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { excluirClinica } from "@/lib/admin-users.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -533,12 +534,15 @@ function Admin() {
     if (!logoArquivo) return toast.error("Escolha uma imagem primeiro.");
     setSalvandoLogo(true);
     try {
-      const extensao = logoArquivo.name.split(".").pop()?.toLowerCase() || "png";
-      const caminho = `site/logo-publica.${extensao}`;
-      const { error: uploadError } = await supabase.storage.from("oricse-branding").upload(caminho, logoArquivo, { upsert: true, contentType: logoArquivo.type, cacheControl: "3600" });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("oricse-branding").getPublicUrl(caminho);
-      const novaConfig = { ...site, logo_url: `${data.publicUrl}?v=${Date.now()}` };
+      const accessToken = await tokenAtual();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Não foi possível ler a imagem."));
+        reader.readAsDataURL(logoArquivo);
+      });
+      const upload = await enviarArquivoPublicoPlataforma({ data: { accessToken, nome: logoArquivo.name, mimeType: logoArquivo.type || "image/png", base64 } });
+      const novaConfig = { ...site, logo_url: upload.url };
       const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor: novaConfig, updated_at: new Date().toISOString() });
       if (error) throw error;
       setSite(novaConfig);
