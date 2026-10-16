@@ -17,6 +17,24 @@ const avisos = [];
 const rel = (p) => path.relative(process.cwd(), p).replaceAll('\\', '/');
 const linhaDe = (texto, indice) => texto.slice(0, indice).split('\n').length;
 
+const rotas = new Set(['/']);
+for (const arquivo of arquivos) {
+  const texto = fs.readFileSync(arquivo, 'utf8');
+  for (const m of texto.matchAll(/createFileRoute\(\s*["'`]([^"'`]+)["'`]\s*\)/g)) rotas.add(m[1]);
+}
+
+function rotaConhecida(destino) {
+  if (rotas.has(destino)) return true;
+  if (destino === '/admin/login') return true;
+  // Rotas dinâmicas usadas com parâmetros do TanStack são conhecidas pelo literal com $.
+  for (const rota of rotas) {
+    if (!rota.includes('$')) continue;
+    const padrao = '^' + rota.split('/').map((p) => p.startsWith('$') ? '[^/]+' : p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('/') + '$';
+    if (new RegExp(padrao).test(destino)) return true;
+  }
+  return false;
+}
+
 for (const arquivo of arquivos) {
   const texto = fs.readFileSync(arquivo, 'utf8');
   const nome = rel(arquivo);
@@ -29,21 +47,26 @@ for (const arquivo of arquivos) {
     if (!aciona && !intencional) problemas.push(`${nome}:${linhaDe(texto, indice)} botão sem ação explícita`);
   }
 
-  for (const m of texto.matchAll(/<a\b[\s\S]*?href\s*=\s*["']#["'][\s\S]*?>/g)) {
-    avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} link usa href="#"`);
-  }
-  for (const m of texto.matchAll(/onClick\s*=\s*\{\s*\(?.*?\)?\s*=>\s*\{\s*\}\s*\}/g)) {
-    problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick vazio`);
-  }
-  for (const m of texto.matchAll(/onClick\s*=\s*\{\s*undefined\s*\}/g)) {
-    problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick undefined`);
-  }
-  for (const m of texto.matchAll(/\b(?:TODO|FIXME|NÃO IMPLEMENTADO|NAO IMPLEMENTADO)\b/gi)) {
-    avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} marcador pendente: ${m[0]}`);
+  for (const m of texto.matchAll(/<a\b[\s\S]*?href\s*=\s*["']#["'][\s\S]*?>/g)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} link usa href="#"`);
+  for (const m of texto.matchAll(/onClick\s*=\s*\{\s*\(?.*?\)?\s*=>\s*\{\s*\}\s*\}/g)) problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick vazio`);
+  for (const m of texto.matchAll(/onClick\s*=\s*\{\s*undefined\s*\}/g)) problemas.push(`${nome}:${linhaDe(texto, m.index ?? 0)} onClick undefined`);
+  for (const m of texto.matchAll(/\b(?:TODO|FIXME|NÃO IMPLEMENTADO|NAO IMPLEMENTADO)\b/gi)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} marcador pendente: ${m[0]}`);
+
+  const alvos = [
+    ...texto.matchAll(/\bto\s*=\s*["'](\/[^"']*)["']/g),
+    ...texto.matchAll(/\bto\s*:\s*["'](\/[^"']*)["']/g),
+    ...texto.matchAll(/window\.location\.href\s*=\s*["'](\/[^"']*)["']/g),
+    ...texto.matchAll(/\bhref\s*=\s*["'](\/[^"'#?][^"']*)["']/g),
+  ];
+  for (const m of alvos) {
+    const destino = m[1].split('?')[0].split('#')[0];
+    if (destino.startsWith('//') || destino.startsWith('/api/')) continue;
+    if (!rotaConhecida(destino)) avisos.push(`${nome}:${linhaDe(texto, m.index ?? 0)} destino interno sem rota literal conhecida: ${destino}`);
   }
 }
 
 console.log(`Arquivos verificados: ${arquivos.length}`);
+console.log(`Rotas conhecidas: ${rotas.size}`);
 console.log(`Problemas: ${problemas.length}`);
 for (const p of problemas) console.log(`ERROR ${p}`);
 console.log(`Avisos: ${avisos.length}`);
