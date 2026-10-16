@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 import { createDriveFrom } from '@/lib/drive-db';
+import { createDriveRpc } from '@/lib/drive-rpc';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
@@ -66,9 +67,15 @@ function proxyPara(client: ReturnType<typeof createSupabaseClient>) {
     const { data } = await client.auth.getSession();
     return data.session?.access_token || null;
   });
+  const fromIdentity = (table: string) => {
+    if (!TABELAS_USUARIOS.has(table)) throw new Error(`A tabela ${table} não pertence à camada de identidade do Supabase.`);
+    return (client as any).from(table);
+  };
+  const rpcDrive = createDriveRpc({ auth: client.auth as any, fromDrive, fromIdentity });
   return new Proxy(client as any, {
     get(target, prop, receiver) {
       if (prop === 'from') return (table: string) => TABELAS_USUARIOS.has(table) ? target.from(table) : fromDrive(table);
+      if (prop === 'rpc') return (name: string, args?: Record<string, unknown>) => rpcDrive(name, args || {});
       if (prop === 'storage') return new Proxy({}, { get() { throw new Error('Supabase Storage está desativado. Use o Google Drive.'); } });
       if (prop === 'channel') return () => canalDrive();
       if (prop === 'removeChannel') return async (channel: PollChannel) => channel.unsubscribe();
