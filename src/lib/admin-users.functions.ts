@@ -1,305 +1,79 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const papelSchema = z.enum(["rt", "veterinario", "auxiliar_estagiario", "recepcao"]);
+const createSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), password:z.string().min(6).max(128), email:z.string().email().max(180), papel:papelSchema });
+const resetSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), password:z.string().min(6).max(128) });
+const excluirClinicaSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), confirmacao:z.literal("APAGAR") });
+const atualizarUsuarioSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), email:z.string().email().max(180) });
+const removerUsuarioSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), userId:z.string().uuid() });
 
-const createSchema = z.object({
-  accessToken: z.string().min(20),
-  clinicaId: z.string().uuid(),
-  username: z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/),
-  password: z.string().min(6).max(128),
-  email: z.string().email().max(180),
-  papel: papelSchema,
-});
-
-const resetSchema = z.object({
-  accessToken: z.string().min(20),
-  userId: z.string().uuid(),
-  password: z.string().min(6).max(128),
-});
-
-async function requirePlatformAdmin(accessToken: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
-  if (authError || !authData.user) throw new Error("Sessão inválida ou expirada.");
-  const { data: profile } = await supabaseAdmin.from("app_users").select("role").eq("user_id", authData.user.id).maybeSingle();
-  if (profile?.role !== "admin") throw new Error("Apenas o administrador da plataforma pode gerenciar usuários.");
+async function requirePlatformAdmin(accessToken:string){
+  const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+  const {data:authData,error:authError}=await supabaseAdmin.auth.getUser(accessToken);
+  if(authError||!authData.user)throw new Error("Sessão inválida ou expirada.");
+  const {data:profile}=await supabaseAdmin.from("app_users").select("role").eq("user_id",authData.user.id).maybeSingle();
+  if(profile?.role!=="admin")throw new Error("Apenas o administrador da plataforma pode gerenciar usuários.");
   return supabaseAdmin;
 }
 
-async function encontrarUsuarioAuthPorEmail(supabaseAdmin: Awaited<ReturnType<typeof requirePlatformAdmin>>, email: string) {
-  const usuariosPorPagina = 1000;
-  for (let pagina = 1; ; pagina += 1) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-      page: pagina,
-      perPage: usuariosPorPagina,
-    });
-    if (error) throw new Error(`Não foi possível verificar contas existentes: ${error.message}`);
-    const usuario = data.users.find((item) => item.email?.toLowerCase() === email);
-    if (usuario) return usuario;
-    if (data.users.length < usuariosPorPagina) return null;
+async function drive(accessToken:string,table:string,operation:"select"|"insert"|"update"|"delete"|"upsert",opts:Record<string,unknown>={}){
+  const {executarDriveDbInterno}=await import("@/lib/drive-db.functions");
+  return executarDriveDbInterno({ accessToken,table,operation,payload:opts.payload,columns:String(opts.columns||"*"),filters:(opts.filters as any[])||[],order:(opts.order as any[])||[],limit:opts.limit as number|undefined,range:opts.range as [number,number]|undefined,single:(opts.single as any)||"none",head:Boolean(opts.head),count:(opts.count as string|null)||null,onConflict:opts.onConflict as string|undefined } as any) as Promise<any>;
+}
+
+async function encontrarUsuarioAuthPorEmail(admin:Awaited<ReturnType<typeof requirePlatformAdmin>>,email:string){
+  const porPagina=1000;
+  for(let pagina=1;;pagina++){
+    const {data,error}=await admin.auth.admin.listUsers({page:pagina,perPage:porPagina});
+    if(error)throw new Error(`Não foi possível verificar contas existentes: ${error.message}`);
+    const usuario=data.users.find((item)=>item.email?.toLowerCase()===email);
+    if(usuario)return usuario;
+    if(data.users.length<porPagina)return null;
   }
 }
 
-export const criarUsuarioClinica = createServerFn({ method: "POST" })
-  .validator((input: unknown) => createSchema.parse(input))
-  .handler(async ({ data }) => {
-    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
-    const adminDb = supabaseAdmin as SupabaseClient;
-    const { data: clinica, error: clinicaError } = await adminDb
-      .from("clinicas")
-      .select("id,nome,limite_usuarios")
-      .eq("id", data.clinicaId)
-      .single();
-    if (clinicaError || !clinica) throw new Error("Clínica não encontrada.");
-
-    const username = data.username.trim().replace(/^@+/, "").toLowerCase();
-    const { data: existing, error: existingError } = await supabaseAdmin
-      .from("app_users")
-      .select("user_id")
-      .eq("username", username)
-      .maybeSingle();
-    if (existingError) throw new Error(`Não foi possível verificar o @usuário: ${existingError.message}`);
-    const technicalEmail = `${username}@vetericio.local`;
-    let authUser: User | null = null;
-    if (existing?.user_id) {
-      const { data: existingAuth, error: existingAuthError } =
-        await supabaseAdmin.auth.admin.getUserById(existing.user_id);
-      if (existingAuthError || !existingAuth.user) {
-        throw new Error("O perfil do @usuário existe, mas sua conta de acesso não foi encontrada.");
-      }
-      if (existingAuth.user.email?.toLowerCase() !== technicalEmail) {
-        throw new Error("Este @usuário já está em uso por outra conta.");
-      }
-      authUser = existingAuth.user;
-    }
-
-    if (!authUser) {
-      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: technicalEmail,
-        password: data.password,
-        email_confirm: true,
-        user_metadata: { username, contact_email: data.email.trim().toLowerCase(), clinica_id: data.clinicaId, papel: data.papel },
-      });
-      if (createError || !created.user) {
-        const contaJaExiste =
-          createError?.code === "email_exists" ||
-          /already (been )?registered|already exists|already in use/i.test(createError?.message || "");
-        if (!contaJaExiste) {
-          throw new Error(createError?.message || "Não foi possível criar a conta.");
-        }
-        authUser = await encontrarUsuarioAuthPorEmail(supabaseAdmin, technicalEmail);
-        if (!authUser) throw new Error(createError?.message || "A conta já existe, mas não foi possível localizá-la.");
-      } else {
-        authUser = created.user;
-      }
-    }
-
-    const { data: profile, error: profileReadError } = await supabaseAdmin
-      .from("app_users")
-      .select("user_id,username,role")
-      .eq("user_id", authUser.id)
-      .maybeSingle();
-    if (profileReadError) throw new Error(`Não foi possível verificar o perfil existente: ${profileReadError.message}`);
-    if (existing?.user_id && existing.user_id !== authUser.id) {
-      throw new Error("Este @usuário já está em uso por outra conta.");
-    }
-
-    const { data: vinculos, error: vinculosError } = await supabaseAdmin
-      .from("clinica_usuarios")
-      .select("clinica_id,ativo")
-      .eq("user_id", authUser.id);
-    if (vinculosError) throw new Error(`Não foi possível verificar os vínculos existentes: ${vinculosError.message}`);
-    const vinculoAtual = vinculos?.find((item) => item.clinica_id === data.clinicaId);
-    const vinculoAtivoEmOutraClinica = vinculos?.some(
-      (item) => item.ativo && item.clinica_id !== data.clinicaId,
-    );
-    if (vinculoAtivoEmOutraClinica) {
-      throw new Error("Esta conta já está vinculada a outra clínica.");
-    }
-
-    if (!vinculoAtual?.ativo) {
-      const { count, error: countError } = await supabaseAdmin
-        .from("clinica_usuarios")
-        .select("user_id", { count: "exact", head: true })
-        .eq("clinica_id", data.clinicaId)
-        .eq("ativo", true);
-      if (countError) throw new Error(`Não foi possível verificar as vagas da clínica: ${countError.message}`);
-      if ((count || 0) >= Number(clinica.limite_usuarios || 1)) {
-        throw new Error(`O limite atual desta clínica é ${clinica.limite_usuarios} usuário(s).`);
-      }
-    }
-
-    const { error: profileError } = await supabaseAdmin.from("app_users").upsert({
-      user_id: authUser.id,
-      username,
-      role: profile?.role || "user",
-      email: data.email.trim().toLowerCase(),
-    }, { onConflict: "user_id" });
-    if (profileError) {
-      throw new Error(`A conta existe, mas não foi possível salvar o perfil: ${profileError.message}`);
-    }
-
-    if (vinculoAtual) {
-      const { error: linkError } = await supabaseAdmin
-        .from("clinica_usuarios")
-        .update({ papel: data.papel, ativo: true })
-        .eq("clinica_id", data.clinicaId)
-        .eq("user_id", authUser.id);
-      if (linkError) throw new Error(`A conta existe, mas não foi possível reativar o vínculo: ${linkError.message}`);
-    } else {
-      const { error: linkError } = await supabaseAdmin.from("clinica_usuarios").insert({
-        clinica_id: data.clinicaId,
-        user_id: authUser.id,
-        papel: data.papel,
-        ativo: true,
-      });
-      if (linkError) throw new Error(`A conta existe, mas não foi possível vinculá-la à clínica: ${linkError.message}`);
-    }
-
-    return {
-      ok: true,
-      userId: authUser.id,
-      username,
-      email: data.email.trim().toLowerCase(),
-      papel: data.papel,
-      contaExistente: Boolean(profile),
-      vinculoExistente: Boolean(vinculoAtual),
-    };
-  });
-
-export const redefinirSenhaUsuario = createServerFn({ method: "POST" })
-  .validator((input: unknown) => resetSchema.parse(input))
-  .handler(async ({ data }) => {
-    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { password: data.password });
-    if (error) throw new Error(error.message || "Não foi possível alterar a senha.");
-    return { ok: true };
-  });
-
-const excluirClinicaSchema = z.object({
-  accessToken: z.string().min(20),
-  clinicaId: z.string().uuid(),
-  confirmacao: z.literal("APAGAR"),
+export const criarUsuarioClinica=createServerFn({method:"POST"}).validator((i:unknown)=>createSchema.parse(i)).handler(async({data})=>{
+  const admin=await requirePlatformAdmin(data.accessToken);
+  const clinicaResp=await drive(data.accessToken,"clinicas","select",{columns:"id,nome,limite_usuarios",filters:[{kind:"eq",column:"id",value:data.clinicaId}],single:"maybeSingle"});
+  const clinica=clinicaResp.data;
+  if(!clinica)throw new Error("Clínica não encontrada.");
+  const username=data.username.trim().replace(/^@+/,"").toLowerCase();
+  const {data:existing,error:existingError}=await admin.from("app_users").select("user_id").eq("username",username).maybeSingle();
+  if(existingError)throw new Error(`Não foi possível verificar o @usuário: ${existingError.message}`);
+  const technicalEmail=`${username}@vetericio.local`;
+  let authUser:User|null=null;
+  if(existing?.user_id){const {data:existingAuth,error}=await admin.auth.admin.getUserById(existing.user_id);if(error||!existingAuth.user)throw new Error("O perfil do @usuário existe, mas sua conta de acesso não foi encontrada.");if(existingAuth.user.email?.toLowerCase()!==technicalEmail)throw new Error("Este @usuário já está em uso por outra conta.");authUser=existingAuth.user;}
+  if(!authUser){const {data:created,error}=await admin.auth.admin.createUser({email:technicalEmail,password:data.password,email_confirm:true,user_metadata:{username,contact_email:data.email.trim().toLowerCase(),clinica_id:data.clinicaId,papel:data.papel}});if(error||!created.user){const existe=error?.code==="email_exists"||/already (been )?registered|already exists|already in use/i.test(error?.message||"");if(!existe)throw new Error(error?.message||"Não foi possível criar a conta.");authUser=await encontrarUsuarioAuthPorEmail(admin,technicalEmail);if(!authUser)throw new Error(error?.message||"A conta já existe, mas não foi possível localizá-la.");}else authUser=created.user;}
+  const {data:profile,error:profileReadError}=await admin.from("app_users").select("user_id,username,role").eq("user_id",authUser.id).maybeSingle();if(profileReadError)throw new Error(profileReadError.message);
+  if(existing?.user_id&&existing.user_id!==authUser.id)throw new Error("Este @usuário já está em uso por outra conta.");
+  const {data:vinculos,error:vinculosError}=await admin.from("clinica_usuarios").select("clinica_id,ativo").eq("user_id",authUser.id);if(vinculosError)throw new Error(vinculosError.message);
+  const vinculoAtual=vinculos?.find((x)=>x.clinica_id===data.clinicaId);if(vinculos?.some((x)=>x.ativo&&x.clinica_id!==data.clinicaId))throw new Error("Esta conta já está vinculada a outra clínica.");
+  if(!vinculoAtual?.ativo){const {count,error}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("clinica_id",data.clinicaId).eq("ativo",true);if(error)throw new Error(error.message);if((count||0)>=Number(clinica.limite_usuarios||1))throw new Error(`O limite atual desta clínica é ${clinica.limite_usuarios} usuário(s).`);}
+  const {error:profileError}=await admin.from("app_users").upsert({user_id:authUser.id,username,role:profile?.role||"user",email:data.email.trim().toLowerCase()},{onConflict:"user_id"});if(profileError)throw new Error(profileError.message);
+  const link=vinculoAtual?await admin.from("clinica_usuarios").update({papel:data.papel,ativo:true}).eq("clinica_id",data.clinicaId).eq("user_id",authUser.id):await admin.from("clinica_usuarios").insert({clinica_id:data.clinicaId,user_id:authUser.id,papel:data.papel,ativo:true});if(link.error)throw new Error(link.error.message);
+  return{ok:true,userId:authUser.id,username,email:data.email.trim().toLowerCase(),papel:data.papel,contaExistente:Boolean(profile),vinculoExistente:Boolean(vinculoAtual)};
 });
 
-export const excluirClinica = createServerFn({ method: "POST" })
-  .validator((input: unknown) => excluirClinicaSchema.parse(input))
-  .handler(async ({ data }) => {
-    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
-    const adminDb = supabaseAdmin as SupabaseClient;
+export const redefinirSenhaUsuario=createServerFn({method:"POST"}).validator((i:unknown)=>resetSchema.parse(i)).handler(async({data})=>{const admin=await requirePlatformAdmin(data.accessToken);const {error}=await admin.auth.admin.updateUserById(data.userId,{password:data.password});if(error)throw new Error(error.message||"Não foi possível alterar a senha.");return{ok:true};});
 
-    const { data: clinica, error: clinicaError } = await adminDb
-      .from("clinicas")
-      .select("id,nome")
-      .eq("id", data.clinicaId)
-      .maybeSingle();
-    if (clinicaError) throw new Error(clinicaError.message);
-    if (!clinica) throw new Error("Clínica não encontrada.");
-
-    const { data: vinculos, error: vinculosError } = await adminDb
-      .from("clinica_usuarios")
-      .select("user_id")
-      .eq("clinica_id", data.clinicaId);
-    if (vinculosError) throw new Error(vinculosError.message);
-    const usuarioIds = Array.from(new Set((vinculos || []).map((v: { user_id: string }) => v.user_id)));
-
-    // As tabelas da clínica (usuários, tutores, catálogo, Drive) são apagadas em cascata.
-    const { error: deleteError } = await adminDb.from("clinicas").delete().eq("id", data.clinicaId);
-    if (deleteError) throw new Error(deleteError.message || "Não foi possível excluir a clínica.");
-
-    let contasRemovidas = 0;
-    for (const userId of usuarioIds) {
-      const { data: perfil } = await adminDb.from("app_users").select("role").eq("user_id", userId).maybeSingle();
-      if (perfil?.role === "admin") continue;
-      const { count } = await adminDb
-        .from("clinica_usuarios")
-        .select("user_id", { count: "exact", head: true })
-        .eq("user_id", userId);
-      if ((count || 0) > 0) continue;
-      await adminDb.from("app_users").delete().eq("user_id", userId);
-      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-      if (!authError) contasRemovidas += 1;
-    }
-
-    return { ok: true, nome: clinica.nome as string, contasRemovidas };
-  });
-
-const atualizarUsuarioSchema = z.object({
-  accessToken: z.string().min(20),
-  userId: z.string().uuid(),
-  username: z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/),
-  email: z.string().email().max(180),
+export const excluirClinica=createServerFn({method:"POST"}).validator((i:unknown)=>excluirClinicaSchema.parse(i)).handler(async({data})=>{
+  const admin=await requirePlatformAdmin(data.accessToken);
+  const r=await drive(data.accessToken,"clinicas","select",{columns:"id,nome",filters:[{kind:"eq",column:"id",value:data.clinicaId}],single:"maybeSingle"});if(!r.data)throw new Error("Clínica não encontrada.");
+  const {data:vinculos,error}=await admin.from("clinica_usuarios").select("user_id").eq("clinica_id",data.clinicaId);if(error)throw new Error(error.message);const ids=Array.from(new Set((vinculos||[]).map((v)=>v.user_id)));
+  const del=await drive(data.accessToken,"clinicas","delete",{filters:[{kind:"eq",column:"id",value:data.clinicaId}]});if(del.error)throw new Error(del.error.message);
+  await admin.from("oricse_portal_tutores").delete().eq("clinica_id",data.clinicaId);
+  await admin.from("clinica_usuarios").delete().eq("clinica_id",data.clinicaId);
+  let contasRemovidas=0;
+  for(const userId of ids){const {data:perfil}=await admin.from("app_users").select("role").eq("user_id",userId).maybeSingle();if(perfil?.role==="admin")continue;const {count}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("user_id",userId);if((count||0)>0)continue;await admin.from("app_users").delete().eq("user_id",userId);const {error:authError}=await admin.auth.admin.deleteUser(userId);if(!authError)contasRemovidas++;}
+  return{ok:true,nome:r.data.nome as string,contasRemovidas};
 });
 
-export const atualizarUsuario = createServerFn({ method: "POST" })
-  .validator((input: unknown) => atualizarUsuarioSchema.parse(input))
-  .handler(async ({ data }) => {
-    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
-    const adminDb = supabaseAdmin as SupabaseClient;
-    const username = data.username.trim().replace(/^@+/, "").toLowerCase();
-    const email = data.email.trim().toLowerCase();
-
-    const { data: outro, error: outroError } = await adminDb
-      .from("app_users")
-      .select("user_id")
-      .eq("username", username)
-      .neq("user_id", data.userId)
-      .maybeSingle();
-    if (outroError) throw new Error(outroError.message);
-    if (outro) throw new Error("Este @usuário já está em uso por outra conta.");
-
-    const { data: atual, error: atualError } = await supabaseAdmin.auth.admin.getUserById(data.userId);
-    if (atualError || !atual.user) throw new Error("Conta de acesso não encontrada.");
-
-    // O login usa @usuário + domínio técnico, então o e-mail de acesso acompanha o @usuário.
-    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
-      email: `${username}@vetericio.local`,
-      email_confirm: true,
-      user_metadata: { ...(atual.user.user_metadata || {}), username, contact_email: email },
-    });
-    if (authError) throw new Error(authError.message || "Não foi possível atualizar a conta de acesso.");
-
-    const { error: perfilError } = await adminDb
-      .from("app_users")
-      .update({ username, email })
-      .eq("user_id", data.userId);
-    if (perfilError) throw new Error(perfilError.message);
-
-    return { ok: true };
-  });
-
-const removerUsuarioSchema = z.object({
-  accessToken: z.string().min(20),
-  clinicaId: z.string().uuid(),
-  userId: z.string().uuid(),
+export const atualizarUsuario=createServerFn({method:"POST"}).validator((i:unknown)=>atualizarUsuarioSchema.parse(i)).handler(async({data})=>{
+  const admin=await requirePlatformAdmin(data.accessToken);const username=data.username.trim().replace(/^@+/,"").toLowerCase(),email=data.email.trim().toLowerCase();const {data:outro,error}=await admin.from("app_users").select("user_id").eq("username",username).neq("user_id",data.userId).maybeSingle();if(error)throw new Error(error.message);if(outro)throw new Error("Este @usuário já está em uso por outra conta.");const {data:atual,error:erroAtual}=await admin.auth.admin.getUserById(data.userId);if(erroAtual||!atual.user)throw new Error("Conta de acesso não encontrada.");const {error:authError}=await admin.auth.admin.updateUserById(data.userId,{email:`${username}@vetericio.local`,email_confirm:true,user_metadata:{...(atual.user.user_metadata||{}),username,contact_email:email}});if(authError)throw new Error(authError.message);const {error:perfilError}=await admin.from("app_users").update({username,email}).eq("user_id",data.userId);if(perfilError)throw new Error(perfilError.message);return{ok:true};
 });
 
-export const removerUsuarioClinica = createServerFn({ method: "POST" })
-  .validator((input: unknown) => removerUsuarioSchema.parse(input))
-  .handler(async ({ data }) => {
-    const supabaseAdmin = await requirePlatformAdmin(data.accessToken);
-    const adminDb = supabaseAdmin as SupabaseClient;
-
-    const { error: vinculoError } = await adminDb
-      .from("clinica_usuarios")
-      .delete()
-      .eq("clinica_id", data.clinicaId)
-      .eq("user_id", data.userId);
-    if (vinculoError) throw new Error(vinculoError.message);
-
-    const { data: perfil } = await adminDb.from("app_users").select("role").eq("user_id", data.userId).maybeSingle();
-    const { count } = await adminDb
-      .from("clinica_usuarios")
-      .select("user_id", { count: "exact", head: true })
-      .eq("user_id", data.userId);
-
-    let contaExcluida = false;
-    if (perfil?.role !== "admin" && (count || 0) === 0) {
-      await adminDb.from("app_users").delete().eq("user_id", data.userId);
-      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-      contaExcluida = !authError;
-    }
-    return { ok: true, contaExcluida };
-  });
+export const removerUsuarioClinica=createServerFn({method:"POST"}).validator((i:unknown)=>removerUsuarioSchema.parse(i)).handler(async({data})=>{
+  const admin=await requirePlatformAdmin(data.accessToken);const {error}=await admin.from("clinica_usuarios").delete().eq("clinica_id",data.clinicaId).eq("user_id",data.userId);if(error)throw new Error(error.message);const {data:perfil}=await admin.from("app_users").select("role").eq("user_id",data.userId).maybeSingle();const {count}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("user_id",data.userId);let contaExcluida=false;if(perfil?.role!=="admin"&&(count||0)===0){await admin.from("app_users").delete().eq("user_id",data.userId);const {error:authError}=await admin.auth.admin.deleteUser(data.userId);contaExcluida=!authError;}return{ok:true,contaExcluida};
+});
