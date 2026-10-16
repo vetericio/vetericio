@@ -24,9 +24,11 @@ import { Route as AssinarRouteImport } from './routes/assinar'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as ComandasRouteImport } from './routes/comandas'
 import { Route as ConfiguracaoSiteRouteImport } from './routes/configuracao-site'
+import { Route as ConfigurarAgendaOnlineRouteImport } from './routes/configurar-agenda-online'
 import { Route as ConsultaRouteImport } from './routes/consulta'
 import { Route as ConsultorioRouteImport } from './routes/consultorio'
 import { Route as ContratarRouteImport } from './routes/contratar'
+import { Route as CrmRouteImport } from './routes/crm'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as EncaminharRouteImport } from './routes/encaminhar'
 import { Route as EstoqueRouteImport } from './routes/estoque'
@@ -42,6 +44,7 @@ import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
+import { Route as PortalTutoresRouteImport } from './routes/portal-tutores'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
@@ -54,6 +57,7 @@ import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as TutoresRouteImport } from './routes/tutores'
 import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
 import { Route as VetSlugRouteImport } from './routes/vet.$slug'
+import { Route as PetSlugPortalRouteImport } from './routes/pet/$slug/portal'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -130,6 +134,11 @@ const ConfiguracaoSiteRoute = ConfiguracaoSiteRouteImport.update({
   path: '/configuracao-site',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfigurarAgendaOnlineRoute = ConfigurarAgendaOnlineRouteImport.update({
+  id: '/configurar-agenda-online',
+  path: '/configurar-agenda-online',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConsultaRoute = ConsultaRouteImport.update({
   id: '/consulta',
   path: '/consulta',
@@ -143,6 +152,11 @@ const ConsultorioRoute = ConsultorioRouteImport.update({
 const ContratarRoute = ContratarRouteImport.update({
   id: '/contratar',
   path: '/contratar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmRoute = CrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CurvaRoute = CurvaRouteImport.update({
@@ -220,6 +234,11 @@ const PlantoesRoute = PlantoesRouteImport.update({
   path: '/plantoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalTutoresRoute = PortalTutoresRouteImport.update({
+  id: '/portal-tutores',
+  path: '/portal-tutores',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
@@ -280,6 +299,11 @@ const VetSlugRoute = VetSlugRouteImport.update({
   path: '/vet/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PetSlugPortalRoute = PetSlugPortalRouteImport.update({
+  id: '/pet/$slug/portal',
+  path: '/pet/$slug/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -297,9 +321,11 @@ export interface FileRoutesByFullPath {
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
+  '/configurar-agenda-online': typeof ConfigurarAgendaOnlineRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
+  '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
@@ -315,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/portal-tutores': typeof PortalTutoresRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
@@ -327,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
+  '/pet/$slug/portal': typeof PetSlugPortalRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -344,9 +372,11 @@ export interface FileRoutesByTo {
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
+  '/configurar-agenda-online': typeof ConfigurarAgendaOnlineRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
+  '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
@@ -362,6 +392,7 @@ export interface FileRoutesByTo {
   '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/portal-tutores': typeof PortalTutoresRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
@@ -374,6 +405,7 @@ export interface FileRoutesByTo {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
+  '/pet/$slug/portal': typeof PetSlugPortalRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -392,9 +424,11 @@ export interface FileRoutesById {
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
+  '/configurar-agenda-online': typeof ConfigurarAgendaOnlineRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
+  '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
@@ -410,6 +444,7 @@ export interface FileRoutesById {
   '/perfil-clinica': typeof PerfilClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/portal-tutores': typeof PortalTutoresRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
@@ -422,6 +457,7 @@ export interface FileRoutesById {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
+  '/pet/$slug/portal': typeof PetSlugPortalRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -441,9 +477,11 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
+    | '/configurar-agenda-online'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
+    | '/crm'
     | '/curva'
     | '/encaminhar'
     | '/estoque'
@@ -459,6 +497,7 @@ export interface FileRouteTypes {
     | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
+    | '/portal-tutores'
     | '/privacidade'
     | '/receituario'
     | '/recepcao'
@@ -471,6 +510,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
+    | '/pet/$slug/portal'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -488,9 +528,11 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
+    | '/configurar-agenda-online'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
+    | '/crm'
     | '/curva'
     | '/encaminhar'
     | '/estoque'
@@ -506,6 +548,7 @@ export interface FileRouteTypes {
     | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
+    | '/portal-tutores'
     | '/privacidade'
     | '/receituario'
     | '/recepcao'
@@ -518,6 +561,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
+    | '/pet/$slug/portal'
   id:
     | '__root__'
     | '/'
@@ -535,9 +579,11 @@ export interface FileRouteTypes {
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
+    | '/configurar-agenda-online'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
+    | '/crm'
     | '/curva'
     | '/encaminhar'
     | '/estoque'
@@ -553,6 +599,7 @@ export interface FileRouteTypes {
     | '/perfil-clinica'
     | '/planos'
     | '/plantoes'
+    | '/portal-tutores'
     | '/privacidade'
     | '/receituario'
     | '/recepcao'
@@ -565,6 +612,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
+    | '/pet/$slug/portal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -583,9 +631,11 @@ export interface RootRouteChildren {
   CatalogoRoute: typeof CatalogoRoute
   ComandasRoute: typeof ComandasRoute
   ConfiguracaoSiteRoute: typeof ConfiguracaoSiteRoute
+  ConfigurarAgendaOnlineRoute: typeof ConfigurarAgendaOnlineRoute
   ConsultaRoute: typeof ConsultaRoute
   ConsultorioRoute: typeof ConsultorioRoute
   ContratarRoute: typeof ContratarRoute
+  CrmRoute: typeof CrmRoute
   CurvaRoute: typeof CurvaRoute
   EncaminharRoute: typeof EncaminharRoute
   EstoqueRoute: typeof EstoqueRoute
@@ -601,6 +651,7 @@ export interface RootRouteChildren {
   PerfilClinicaRoute: typeof PerfilClinicaRoute
   PlanosRoute: typeof PlanosRoute
   PlantoesRoute: typeof PlantoesRoute
+  PortalTutoresRoute: typeof PortalTutoresRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ReceituarioRoute: typeof ReceituarioRoute
   RecepcaoRoute: typeof RecepcaoRoute
@@ -613,6 +664,7 @@ export interface RootRouteChildren {
   TutoresRoute: typeof TutoresRoute
   TipoSlugRoute: typeof TipoSlugRoute
   VetSlugRoute: typeof VetSlugRoute
+  PetSlugPortalRoute: typeof PetSlugPortalRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -722,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracaoSiteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configurar-agenda-online': {
+      id: '/configurar-agenda-online'
+      path: '/configurar-agenda-online'
+      fullPath: '/configurar-agenda-online'
+      preLoaderRoute: typeof ConfigurarAgendaOnlineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/consulta': {
       id: '/consulta'
       path: '/consulta'
@@ -741,6 +800,13 @@ declare module '@tanstack/react-router' {
       path: '/contratar'
       fullPath: '/contratar'
       preLoaderRoute: typeof ContratarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm': {
+      id: '/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/curva': {
@@ -848,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlantoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal-tutores': {
+      id: '/portal-tutores'
+      path: '/portal-tutores'
+      fullPath: '/portal-tutores'
+      preLoaderRoute: typeof PortalTutoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacidade': {
       id: '/privacidade'
       path: '/privacidade'
@@ -932,6 +1005,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VetSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pet/$slug/portal': {
+      id: '/pet/$slug/portal'
+      path: '/pet/$slug/portal'
+      fullPath: '/pet/$slug/portal'
+      preLoaderRoute: typeof PetSlugPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -951,9 +1031,11 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogoRoute: CatalogoRoute,
   ComandasRoute: ComandasRoute,
   ConfiguracaoSiteRoute: ConfiguracaoSiteRoute,
+  ConfigurarAgendaOnlineRoute: ConfigurarAgendaOnlineRoute,
   ConsultaRoute: ConsultaRoute,
   ConsultorioRoute: ConsultorioRoute,
   ContratarRoute: ContratarRoute,
+  CrmRoute: CrmRoute,
   CurvaRoute: CurvaRoute,
   EncaminharRoute: EncaminharRoute,
   EstoqueRoute: EstoqueRoute,
@@ -969,6 +1051,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerfilClinicaRoute: PerfilClinicaRoute,
   PlanosRoute: PlanosRoute,
   PlantoesRoute: PlantoesRoute,
+  PortalTutoresRoute: PortalTutoresRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ReceituarioRoute: ReceituarioRoute,
   RecepcaoRoute: RecepcaoRoute,
@@ -981,6 +1064,7 @@ const rootRouteChildren: RootRouteChildren = {
   TutoresRoute: TutoresRoute,
   TipoSlugRoute: TipoSlugRoute,
   VetSlugRoute: VetSlugRoute,
+  PetSlugPortalRoute: PetSlugPortalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
