@@ -117,7 +117,7 @@ async function authorizedRows(t: string, table: string, rows: any[], ctx: AuthCo
   });
 }
 
-export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coordinated = false) {
+export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coordinated = false, commitTimestamp?: string) {
   if (q.operation !== "select" && !coordinated) {
     return await executarEscritaCoordenada("db", q);
   }
@@ -218,7 +218,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     const alvo = new Set(filtros(visiveis)); afetados = rows.filter((r) => alvo.has(r)); rows = rows.filter((r) => !alvo.has(r)); for (const row of afetados) changes.push({ kind: "remove", id: String(row.id) });
   }
   // Persist only immutable per-operation events; never PATCH the shared table snapshot.
-  await appendJournal(journalRequest, base.folderId, q.table, changes, q.requestId); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
+  await appendJournal(journalRequest, base.folderId, q.table, changes, q.requestId, commitTimestamp); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
   if (q.single === "single") return out.length === 1 ? { data: out[0], error: null, count: q.count ? afetados.length : null } : { data: null, error: { message: "Resultado singular inválido.", code: "PGRST116" }, count: q.count ? afetados.length : null };
   if (q.single === "maybeSingle") return { data: out[0] ?? null, error: out.length > 1 ? { message: "Mais de um registro encontrado.", code: "PGRST116" } : null, count: q.count ? afetados.length : null };
   return { data: out, error: null, count: q.count ? afetados.length : null };
