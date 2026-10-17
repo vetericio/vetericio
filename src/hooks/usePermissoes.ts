@@ -75,8 +75,9 @@ export function usePermissoes() {
         .maybeSingle();
       if (plataforma?.role === "admin") {
         setPermissoes([]);
-        setClinicaId("");
         setAdminGlobal(true);
+        const { data: contextoAdmin } = await (supabase as any).rpc("oricse_contexto_clinica_atual");
+        setClinicaId(contextoAdmin?.[0]?.clinica_id || "");
         return;
       }
       setAdminGlobal(false);
