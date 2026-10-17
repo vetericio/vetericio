@@ -54,3 +54,5 @@ jobs:
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
+      - name: Cloudflare coordinator configuration audit
+        run: node scripts/check-worker-coordinator.mjs
