@@ -149,10 +149,26 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>) {
     return { data: projected, error: null, count: q.count ? total : null };
   }
   const payload = Array.isArray(q.payload) ? q.payload : [q.payload]; let afetados: any[] = [];
+  // Never allow tenant/owner identity to be reassigned by normal update requests.
+  // The row-level authorization check is applied to the existing record, so
+  // mutating clinica_id after that check would otherwise move data across tenants.
+  if (!ctx.admin && q.operation === "update") {
+    if (!q.payload || Array.isArray(q.payload) || typeof q.payload !== "object") throw new Error("Atualização inválida.");
+    const mudancas = q.payload as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(mudancas, "clinica_id") || Object.prototype.hasOwnProperty.call(mudancas, "id")) {
+      throw new Error("Não é permitido alterar identificadores ou a clínica de um registro.");
+    }
+    if (!ctx.clinicas.length && ctx.portal.length && q.table === "tutores") {
+      const camposPermitidos = new Set(["nome", "telefone", "outro_telefone", "email", "endereco", "nascimento"]);
+      if (Object.keys(mudancas).some((campo) => !camposPermitidos.has(campo))) {
+        throw new Error("O tutor só pode atualizar seus dados de contato e cadastro.");
+      }
+    }
+  }
   if (q.operation === "insert") {
     const novos = payload.filter(Boolean).map(ensureId); for (const r of novos) { const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); } rows = [...rows, ...novos]; afetados = novos;
   } else if (q.operation === "upsert") {
-    const campos = (q.onConflict || "id").split(",").map((x) => x.trim()).filter(Boolean); for (const p of payload.filter(Boolean)) { const r = ensureId(p); const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); const idx = rows.findIndex((x) => campos.every((c) => String(x?.[c] ?? "") === String(r?.[c] ?? ""))); if (idx >= 0) { rows[idx] = { ...rows[idx], ...r, updated_at: new Date().toISOString() }; afetados.push(rows[idx]); } else { rows.push(r); afetados.push(r); } }
+    const campos = (q.onConflict || "id").split(",").map((x) => x.trim()).filter(Boolean); for (const p of payload.filter(Boolean)) { const r = ensureId(p); const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); const idx = rows.findIndex((x) => campos.every((c) => String(x?.[c] ?? "") === String(r?.[c] ?? ""))); if (idx >= 0) { if (!ctx.admin && rowClinic(rows[idx]) !== cid) throw new Error("Não é permitido atualizar registro de outra clínica."); rows[idx] = { ...rows[idx], ...r, updated_at: new Date().toISOString() }; afetados.push(rows[idx]); } else { rows.push(r); afetados.push(r); } }
   } else if (q.operation === "update") {
     const alvo = new Set(filtros(visiveis)); rows = rows.map((r) => alvo.has(r) ? (afetados.push({ ...r, ...(q.payload as any), updated_at: new Date().toISOString() }), afetados[afetados.length - 1]) : r);
   } else if (q.operation === "delete") {
