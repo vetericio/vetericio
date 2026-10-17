@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { validarVersaoEstado } from "@/lib/drive-cas";
+import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.server";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const inputSchema = z.object({ accessToken: z.string().min(20) });
@@ -31,11 +32,7 @@ async function gravarEstado(token:string,folderId:string,fileId:string|null,esta
 export const carregarEstadoOricseDrive=createServerFn({method:"POST"}).validator((input:unknown)=>inputSchema.parse(input)).handler(async({data})=>{ const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId);if(!arquivo?.id)return{estado:{} as Record<string,string>,atualizadoEm:null as string|null};return{estado:await baixarEstado(token,arquivo.id),atualizadoEm:arquivo.modifiedTime||null}; });
 export async function salvarEstadoOricseInterno(data:z.infer<typeof salvarSchema>,coordinated=false){
   if(!coordinated){
-    let binding:{idFromName(name:string):unknown;get(id:unknown):{executeWrite(input:unknown):Promise<unknown>}}|undefined;
-    try{ const cloudflare=await import(/* @vite-ignore */ "cloudflare:workers");binding=(cloudflare.env as any).ORICSE_WRITE_COORDINATOR; }
-    catch{ throw new Error("Coordenação de escrita indisponível. Nenhum dado foi alterado."); }
-    if(!binding)throw new Error("Coordenação de escrita não configurada. Nenhum dado foi alterado.");
-    return await binding.get(binding.idFromName("oricse-drive-writes-v1")).executeWrite({kind:"state",input:data}) as {ok:boolean;quantidade:number};
+    return await executarEscritaCoordenada("state",data) as {ok:boolean;quantidade:number};
   }
   const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId),estado=arquivo?.id?await baixarEstado(token,arquivo.id):{};
   validarVersaoEstado(estado,data.alteracoes);
