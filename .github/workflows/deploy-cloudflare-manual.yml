@@ -2,6 +2,10 @@ name: Deploy ORICSE to Cloudflare (manual)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-cloudflare-manual.yml'
 
 permissions:
   contents: read
