@@ -32,7 +32,7 @@ function createSupabaseClient(storageKey?: string) {
     auth: {
       storage: brokeredPreviewStorage(),
       ...(storageKey ? { storageKey } : {}),
-      persistSession: false,
+      persistSession: true,
       autoRefreshToken: true,
     },
   });
