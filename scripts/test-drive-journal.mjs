@@ -32,7 +32,7 @@ const gf = async (url, init = {}) => {
     folderId = "folder-events"; return new Response(JSON.stringify({ id: folderId }), { status: 200 });
   }
   if (url.includes("alt=media")) {
-    const id = decodeURIComponent(url.match(/files\\/([^?]+)/)?.[1] || "");
+    const id = decodeURIComponent(url.split("/files/")[1]?.split("?")[0] || "");
     return new Response(JSON.stringify(files.get(id)?.journal), { status: 200 });
   }
   if (url.includes("/files?q=")) {
