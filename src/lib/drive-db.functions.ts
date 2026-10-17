@@ -12,7 +12,7 @@ const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_onl
 
 const filterSchema = z.object({ kind: z.string(), column: z.string().optional(), value: z.unknown().optional(), operator: z.string().optional() });
 const querySchema = z.object({
-  accessToken: z.string().nullable().optional(), table: z.string().regex(/^[a-zA-Z0-9_]+$/), operation: z.enum(["select", "insert", "update", "delete", "upsert"]), payload: z.unknown().optional(), columns: z.string().optional(), filters: z.array(filterSchema).default([]), order: z.array(z.object({ column: z.string(), ascending: z.boolean().default(true) })).default([]), limit: z.number().int().positive().max(10000).optional(), range: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]).optional(), single: z.enum(["none", "single", "maybeSingle"]).default("none"), head: z.boolean().default(false), count: z.string().nullable().optional(), onConflict: z.string().optional(), expectedRows: z.record(z.record(z.unknown())).optional(),
+  accessToken: z.string().nullable().optional(), table: z.string().regex(/^[a-zA-Z0-9_]+$/), operation: z.enum(["select", "insert", "update", "delete", "upsert"]), payload: z.unknown().optional(), columns: z.string().optional(), filters: z.array(filterSchema).default([]), order: z.array(z.object({ column: z.string(), ascending: z.boolean().default(true) })).default([]), limit: z.number().int().positive().max(10000).optional(), range: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]).optional(), single: z.enum(["none", "single", "maybeSingle"]).default("none"), head: z.boolean().default(false), count: z.string().nullable().optional(), onConflict: z.string().optional(), expectedRows: z.record(z.record(z.unknown())).optional(), requestId: z.string().uuid().optional(),
 });
 
 type AuthContext = { admin: boolean; userId: string | null; clinicas: string[]; portal: Array<{ clinicaId: string; tutorId: string }> };
@@ -144,7 +144,19 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   }
   const t = await driveToken(), base = await readTable(t, q.table);
   const journalRequest = (url: string, init?: RequestInit) => gf(t, url, init);
-  let rows = applyJournal(base.rows, await loadJournals(journalRequest, base.folderId, q.table));
+  const journals = await loadJournals(journalRequest, base.folderId, q.table);
+  let rows = applyJournal(base.rows, journals);
+  // Repeating a request whose response was lost must not apply the same
+  // movement twice, especially for payment/stock ledger records.
+  if (q.operation !== "select" && q.requestId) {
+    const previous = journals.find((entry) => entry.operationId === q.requestId);
+    if (previous) {
+      const ids = new Set(previous.changes.map((change) => change.id));
+      const permitted = await authorizedRows(t, q.table, rows, ctx);
+      const output = permitted.filter((row) => ids.has(String(row.id))).map((row) => project(row, q.columns));
+      return { data: q.head ? [] : q.single === "none" ? output : output[0] ?? null, error: null, count: q.count ? output.length : null };
+    }
+  }
   // Compare with the values actually displayed to the editor, not just
   // values freshly read by the server. The coordinator makes this comparison
   // and the subsequent append a single serialized write.
@@ -206,7 +218,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     const alvo = new Set(filtros(visiveis)); afetados = rows.filter((r) => alvo.has(r)); rows = rows.filter((r) => !alvo.has(r)); for (const row of afetados) changes.push({ kind: "remove", id: String(row.id) });
   }
   // Persist only immutable per-operation events; never PATCH the shared table snapshot.
-  await appendJournal(journalRequest, base.folderId, q.table, changes); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
+  await appendJournal(journalRequest, base.folderId, q.table, changes, q.requestId); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
   if (q.single === "single") return out.length === 1 ? { data: out[0], error: null, count: q.count ? afetados.length : null } : { data: null, error: { message: "Resultado singular inválido.", code: "PGRST116" }, count: q.count ? afetados.length : null };
   if (q.single === "maybeSingle") return { data: out[0] ?? null, error: out.length > 1 ? { message: "Mais de um registro encontrado.", code: "PGRST116" } : null, count: q.count ? afetados.length : null };
   return { data: out, error: null, count: q.count ? afetados.length : null };
