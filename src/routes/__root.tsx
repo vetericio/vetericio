@@ -340,9 +340,6 @@ function RootComponent() {
         navigate({ to: `/vet/${slugClinicaAtual}` as never });
       else if (role !== "admin") navigate({ to: "/inicio" });
     }
-    if (autenticado && role === "admin" && location.pathname === "/inicio") {
-      navigate({ to: "/admin" });
-    }
   }, [autenticado, acessoPortalNegado, role, slugClinicaAtual, portal, location.pathname, navigate]);
 
   useEffect(() => {
