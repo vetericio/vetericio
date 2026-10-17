@@ -1,4 +1,5 @@
 name: Deploy ORICSE to Cloudflare (manual)
+# Cloudflare bundle mode corrected and tested.
 
 on:
   workflow_dispatch:
