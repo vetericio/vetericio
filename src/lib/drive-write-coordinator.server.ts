@@ -1,31 +1,45 @@
 /**
- * A single Durable Object serializes operational Drive mutations across Worker
- * instances. No clinical, financial or customer records live in DO storage:
- * the sole persistent data store remains Google Drive.
+ * Cloudflare Durable Object: single writer for all ORICSE Drive mutations.
+ * Only coordination is held here. Clinical/financial records live exclusively
+ * in the Google Drive files managed by the persistence functions.
  *
- * All writes are queued in one coordinator until a per-clinic partition is
- * implemented with cross-clinic transactional guarantees.
+ * The classic fetch interface avoids client-side bundler imports of
+ * cloudflare:workers and is available exclusively through a Worker binding.
  */
-import { DurableObject } from "cloudflare:workers";
 import { executarDriveDbInterno } from "@/lib/drive-db.functions";
-import { SerialWriteQueue } from "@/lib/serial-write-queue";
 import { salvarEstadoOricseInterno } from "@/lib/oricse-storage.functions";
+import { SerialWriteQueue } from "@/lib/serial-write-queue";
 
-export class OricseWriteCoordinator extends DurableObject {
+export class OricseWriteCoordinator {
   private readonly writes = new SerialWriteQueue();
 
-  async executeWrite(input: unknown): Promise<unknown> {
-    return this.writes.run(async () => {
+  async fetch(request: Request): Promise<Response> {
+    if(request.method !== "POST" || new URL(request.url).pathname !== "/write") {
+      return new Response("Not found", { status: 404 });
+    }
+    const payload = await request.json() as { kind?: string; input?: unknown };
+    const result = await this.writes.run(async () => {
       try {
-        if(input && typeof input==="object" && (input as any).kind==="state") return await salvarEstadoOricseInterno((input as any).input, true);
-        return await executarDriveDbInterno(input as never, true);
+        if(payload.kind === "state") {
+          return await salvarEstadoOricseInterno(payload.input as never, true);
+        }
+        if(payload.kind === "db") {
+          return await executarDriveDbInterno(payload.input as never, true);
+        }
+        throw new Error("Operação de coordenação inválida.");
       } catch (error: any) {
         return {
           data: null,
-          error: { code: error?.code || "DRIVE_DB", message: error?.message || "Falha ao gravar no Google Drive.", field: error?.field, recordId: error?.recordId },
+          error: {
+            code: error?.code || "DRIVE_DB",
+            message: error?.message || "Falha ao gravar no Google Drive.",
+            field: error?.field,
+            recordId: error?.recordId,
+          },
           count: null,
         };
       }
     });
+    return Response.json(result);
   }
 }
