@@ -81,7 +81,7 @@ export async function loadJournals(gf: Requester, parent: string, table: string)
       (pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "");
     const result = await gf(url);
     const body = await result.json() as { files?: Array<{ id: string; name: string }>; nextPageToken?: string };
-    for (const file of body.files || []) if (/\\.json$/.test(file.name)) ids.push(file.id);
+    for (const file of body.files || []) if (file.name.endsWith(".json")) ids.push(file.id);
     pageToken = body.nextPageToken;
   } while (pageToken);
 
