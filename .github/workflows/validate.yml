@@ -56,3 +56,5 @@ jobs:
         run: npm run build
       - name: Cloudflare coordinator configuration audit
         run: node scripts/check-worker-coordinator.mjs
+      - name: Cloudflare deployment dry-run
+        run: npx --yes wrangler@4 deploy --dry-run --config .output/server/wrangler.json --outdir .wrangler-dry-run
