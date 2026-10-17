@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
@@ -95,6 +95,7 @@ function normalizarUsuario(valor: unknown) {
 }
 
 function Inicio() {
+  const navigate = useNavigate();
   const { marca } = useSiteBranding();
   const { carregando, pode, bloqueadaPeloPlano } = usePermissoes();
   const [verificandoUsuario, setVerificandoUsuario] = useState(true);
@@ -165,7 +166,7 @@ function Inicio() {
       clinicaSlug: clinica.slug || "",
       perfil,
     });
-    window.location.assign(destino);
+    void navigate({ to: destino as never });
   };
 
   if (verificandoUsuario) {
