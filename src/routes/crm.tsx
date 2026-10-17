@@ -231,6 +231,23 @@ function telefone(tutor: TutorLocal) {
   return String(tutor.telefone || tutor.outroTelefone || "");
 }
 
+async function comTempoLimite<T>(promessa: Promise<T>, milissegundos = 20000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promessa,
+      new Promise<T>((_, rejeitar) => {
+        timer = setTimeout(
+          () => rejeitar(new Error("O CRM demorou para responder. Tente novamente.")),
+          milissegundos,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function Crm() {
   const { carregando: carregandoPermissoes, clinicaId, pode, adminGlobal } = usePermissoes();
   const [aba, setAba] = useState<Aba>("fila");
@@ -239,6 +256,8 @@ function Crm() {
   const [eventos, setEventos] = useState<EventoCrm[]>([]);
   const [clinicaNome, setClinicaNome] = useState("Clínica");
   const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState("");
+  const [tentativa, setTentativa] = useState(0);
   const [sincronizando, setSincronizando] = useState(false);
   const [salvando, setSalvando] = useState<string | null>(null);
 
@@ -416,16 +435,22 @@ function Crm() {
   }
 
   useEffect(() => {
-    if (carregandoPermissoes || !clinicaId) return;
+    if (carregandoPermissoes) return;
+    if (!clinicaId) {
+      setErroCarregamento("Selecione uma clínica na página inicial antes de abrir o CRM.");
+      setCarregando(false);
+      return;
+    }
     let ativo = true;
     async function carregar() {
       setCarregando(true);
+      setErroCarregamento("");
       try {
-        const [configResult, modelosResult, clinicaResult] = await Promise.all([
+        const [configResult, modelosResult, clinicaResult] = await comTempoLimite(Promise.all([
           (supabase as any).from("oricse_crm_config").select("*").eq("clinica_id", clinicaId).maybeSingle(),
           (supabase as any).from("oricse_crm_modelos").select("*").eq("clinica_id", clinicaId).order("tipo"),
           (supabase as any).from("clinicas").select("nome").eq("id", clinicaId).maybeSingle(),
-        ]);
+        ]));
         if (configResult.error) throw configResult.error;
         if (modelosResult.error) throw modelosResult.error;
         if (clinicaResult.error) throw clinicaResult.error;
@@ -436,16 +461,20 @@ function Crm() {
         setConfig(cfg);
         setModelos(mods);
         setClinicaNome(nome);
-        await carregarEventos(clinicaId);
+        await comTempoLimite(carregarEventos(clinicaId));
       } catch (error) {
-        if (ativo) toast.error(error instanceof Error ? error.message : "Não foi possível carregar o CRM.");
+        if (ativo) {
+          const mensagem = error instanceof Error ? error.message : "Não foi possível carregar o CRM.";
+          setErroCarregamento(mensagem);
+          toast.error(mensagem);
+        }
       } finally {
         if (ativo) setCarregando(false);
       }
     }
     void carregar();
     return () => { ativo = false; };
-  }, [carregandoPermissoes, clinicaId]);
+  }, [carregandoPermissoes, clinicaId, tentativa]);
 
   const pendentes = useMemo(() => eventos.filter((evento) => evento.status === "pendente"), [eventos]);
   const vencidos = useMemo(() => pendentes.filter((evento) => new Date(evento.agendado_para).getTime() < Date.now()), [pendentes]);
@@ -494,6 +523,20 @@ function Crm() {
 
   if (carregandoPermissoes || carregando) {
     return <main className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">Carregando CRM...</main>;
+  }
+
+  if (erroCarregamento) {
+    return <main className="mx-auto max-w-2xl px-4 py-10">
+      <Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={17}/> Voltar ao início</Link>
+      <section className="mt-5 rounded-2xl border bg-card p-6 shadow-sm">
+        <h1 className="text-xl font-black">Não foi possível abrir o CRM</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{erroCarregamento}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {clinicaId && <button type="button" onClick={() => setTentativa((valor) => valor + 1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"><RefreshCw size={17}/> Tentar novamente</button>}
+          <Link to="/inicio" className="inline-flex min-h-11 items-center rounded-xl border px-4 text-sm font-bold">Selecionar clínica</Link>
+        </div>
+      </section>
+    </main>;
   }
 
   return <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6">
