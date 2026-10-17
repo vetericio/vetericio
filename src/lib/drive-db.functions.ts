@@ -166,7 +166,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>) {
     }
   }
   if (q.operation === "insert") {
-    const novos = payload.filter(Boolean).map(ensureId); for (const r of novos) { const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); } rows = [...rows, ...novos]; afetados = novos;
+    const novos = payload.filter(Boolean).map(ensureId); for (const r of novos) { const cid = rowClinic(r); if (!ctx.admin && (!cid || (!ctx.clinicas.includes(cid) && !(q.table === "oricse_agendamentos_online" && ctx.portal.some((x) => x.clinicaId === cid && x.tutorId === String(r.tutor_id)))))) throw new Error("Registro pertence a outra clínica."); } rows = [...rows, ...novos]; afetados = novos;
   } else if (q.operation === "upsert") {
     const campos = (q.onConflict || "id").split(",").map((x) => x.trim()).filter(Boolean); for (const p of payload.filter(Boolean)) { const r = ensureId(p); const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); const idx = rows.findIndex((x) => campos.every((c) => String(x?.[c] ?? "") === String(r?.[c] ?? ""))); if (idx >= 0) { if (!ctx.admin && rowClinic(rows[idx]) !== cid) throw new Error("Não é permitido atualizar registro de outra clínica."); rows[idx] = { ...rows[idx], ...r, updated_at: new Date().toISOString() }; afetados.push(rows[idx]); } else { rows.push(r); afetados.push(r); } }
   } else if (q.operation === "update") {
