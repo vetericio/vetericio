@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { validarVersaoEstado } from "@/lib/drive-cas";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const inputSchema = z.object({ accessToken: z.string().min(20) });
@@ -37,14 +38,7 @@ export async function salvarEstadoOricseInterno(data:z.infer<typeof salvarSchema
     return await binding.get(binding.idFromName("oricse-drive-writes-v1")).executeWrite({kind:"state",input:data}) as {ok:boolean;quantidade:number};
   }
   const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId),estado=arquivo?.id?await baixarEstado(token,arquivo.id):{};
-  // All-or-nothing compare before modifying any key in the file.
-  for(const alteracao of data.alteracoes){
-    if(Object.prototype.hasOwnProperty.call(alteracao,"esperado") && (estado[alteracao.chave]??null)!==(alteracao.esperado??null) && (estado[alteracao.chave]??null)!==(alteracao.valor??null)){
-      const e=new Error("Outros usuários alteraram dados de "+alteracao.chave+". Atualize a tela e revise antes de salvar.");
-      Object.assign(e,{code:"DRIVE_CONFLICT",field:alteracao.chave});
-      throw e;
-    }
-  }
+  validarVersaoEstado(estado,data.alteracoes);
   for(const alteracao of data.alteracoes){
     if(alteracao.valor===null)delete estado[alteracao.chave];else estado[alteracao.chave]=alteracao.valor;
   }
