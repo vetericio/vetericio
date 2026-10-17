@@ -12,6 +12,7 @@ import { SerialWriteQueue } from "@/lib/serial-write-queue";
 
 export class OricseWriteCoordinator {
   private readonly writes = new SerialWriteQueue();
+  private lastCommitMs = 0;
 
   async fetch(request: Request): Promise<Response> {
     if(request.method !== "POST" || new URL(request.url).pathname !== "/write") {
@@ -24,7 +25,8 @@ export class OricseWriteCoordinator {
           return await salvarEstadoOricseInterno(payload.input as never, true);
         }
         if(payload.kind === "db") {
-          return await executarDriveDbInterno(payload.input as never, true);
+          this.lastCommitMs = Math.max(Date.now(), this.lastCommitMs + 1);
+          return await executarDriveDbInterno(payload.input as never, true, new Date(this.lastCommitMs).toISOString());
         }
         throw new Error("Operação de coordenação inválida.");
       } catch (error: any) {
