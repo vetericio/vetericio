@@ -1,5 +1,6 @@
 /**
- * Versão do app: 1.xx, onde xx é a quantidade de rodadas de alterações feitas
- * desde o início. Ao concluir uma nova rodada, some 1 aqui.
+ * Versão do app: o primeiro número identifica a fase principal do sistema.
+ * O segundo número é a quantidade acumulada de rodadas de alterações.
+ * Ao concluir uma nova rodada, some 1 ao segundo número.
  */
-export const VERSAO = "1.58";
+export const VERSAO = "2.59";
