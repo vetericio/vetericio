@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { seedTabela } from "@/lib/drive-seed";
 import { appendJournal, applyJournal, loadJournals, type DriveChange } from "@/lib/drive-journal.server";
+import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.server";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const PUBLIC_READ = new Set(["oricse_planos", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
@@ -118,17 +119,7 @@ async function authorizedRows(t: string, table: string, rows: any[], ctx: AuthCo
 
 export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coordinated = false) {
   if (q.operation !== "select" && !coordinated) {
-    // Never silently fall back to concurrent writes when the Cloudflare
-    // coordinator has not been deployed or configured.
-    let binding: { idFromName(name: string): unknown; get(id: unknown): { executeWrite(input: unknown): Promise<unknown> } } | undefined;
-    try {
-      const cloudflare = await import(/* @vite-ignore */ "cloudflare:workers");
-      binding = (cloudflare.env as any).ORICSE_WRITE_COORDINATOR;
-    } catch {
-      throw new Error("A coordenação de escrita não está disponível. Nenhum dado foi alterado. Contate o administrador.");
-    }
-    if (!binding) throw new Error("Coordenação de escrita não configurada. Nenhum dado foi alterado.");
-    return await binding.get(binding.idFromName("oricse-drive-writes-v1")).executeWrite(q) as any;
+    return await executarEscritaCoordenada("db", q);
   }
   const ctx = await authContext(q.accessToken);
   if (!ctx.userId && !(q.operation === "select" && PUBLIC_READ.has(q.table))) throw new Error("Autenticação necessária.");
