@@ -62,7 +62,7 @@ fs.writeFileSync('src/integrations/supabase/previewAuthStorage.ts', `// Sessão 
     s = s.replace(alvo, efeito + alvo);
     s = s.replace(
       '        ) : autenticado === null && !rotaPublica && !rotaAdmin ? (\n          <div className="min-h-screen" />\n',
-      '        ) : autenticado && !rotaPublica && !dadosDriveProntos ? (\n          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Sincronizando dados com o Google Drive...</div>\n        ) : autenticado === null && !rotaPublica && !rotaAdmin ? (\n          <div className="min-h-screen" />\n',
+      '        ) : autenticado && !rotaPublica && !dadosDriveProntos ? (\n          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Sincronizando os dados no sistema Oricse...</div>\n        ) : autenticado === null && !rotaPublica && !rotaAdmin ? (\n          <div className="min-h-screen" />\n',
     );
     fs.writeFileSync(p, s);
   }
