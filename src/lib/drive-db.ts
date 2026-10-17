@@ -18,7 +18,7 @@ class DriveQuery implements PromiseLike<any>{
   private count:string|null=null;
   private onConflict?:string;
   private shouldThrow=false;
-  constructor(private table:string,private getToken:TokenProvider){}
+  constructor(private table:string,private getToken:TokenProvider,private snapshots:Map<string,Map<string,Record<string,unknown>>>){}
   select(columns="*",options?:{count?:string;head?:boolean}){this.columns=columns||"*";if(options?.count)this.count=options.count;if(options?.head)this.head=true;return this}
   insert(values:unknown,options?:{count?:string}){this.operation="insert";this.payload=values;if(options?.count)this.count=options.count;return this}
   update(values:unknown,options?:{count?:string}){this.operation="update";this.payload=values;if(options?.count)this.count=options.count;return this}
@@ -49,7 +49,27 @@ class DriveQuery implements PromiseLike<any>{
   abortSignal(_signal:AbortSignal){return this}
   returns<T>(){return this as unknown as PromiseLike<{data:T;error:any;count?:number|null}>}
   overrideTypes<T>(){return this as unknown as PromiseLike<{data:T;error:any;count?:number|null}>}
-  async execute(){try{const accessToken=await this.getToken();const result=await executarDriveDb({data:{accessToken,table:this.table,operation:this.operation,payload:this.payload,columns:this.columns,filters:this.filters,order:this.orders,limit:this.max,range:this.faixa,single:this.singular,head:this.head,count:this.count,onConflict:this.onConflict}} as never) as any;if(this.shouldThrow&&result?.error)throw Object.assign(new Error(result.error.message),result.error);return result}catch(error:any){if(error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined"){
+  async execute(){try{const accessToken=await this.getToken();
+  const tracked=this.snapshots.get(this.table)||new Map<string,Record<string,unknown>>();
+  const candidates=this.filters.filter(f=>f.kind==="eq"&&f.column==="id").map(f=>String(f.value));
+  if(this.operation==="upsert"||this.operation==="insert")for(const row of (Array.isArray(this.payload)?this.payload:[this.payload]) as any[])if(row?.id!=null)candidates.push(String(row.id));
+  const expectedRows=Object.fromEntries([...new Set(candidates)].filter(id=>tracked.has(id)).map(id=>[id,tracked.get(id)]));
+  const result=await executarDriveDb({data:{accessToken,table:this.table,operation:this.operation,payload:this.payload,columns:this.columns,filters:this.filters,order:this.orders,limit:this.max,range:this.faixa,single:this.singular,head:this.head,count:this.count,onConflict:this.onConflict,expectedRows}} as never) as any;
+  if(this.operation==="select"&&!result?.error){
+    const rows=Array.isArray(result.data)?result.data:result.data?[result.data]:[];
+    for(const row of rows)if(row&&typeof row==="object"&&row.id!=null)tracked.set(String(row.id),{...row});
+    this.snapshots.set(this.table,tracked);
+  }
+  if(this.operation!=="select"&&!result?.error){
+    for(const id of candidates)tracked.delete(id);
+  }
+  if(result?.error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined"){
+    toast.error("Conflito de edição",{
+      description:result.error.message||"Outro profissional já alterou estes dados.",
+      duration:Infinity,
+      action:{label:"Atualizar e revisar",onClick:()=>window.location.reload()},
+    });
+  }if(this.shouldThrow&&result?.error)throw Object.assign(new Error(result.error.message),result.error);return result}catch(error:any){if(error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined"){
     toast.error("Conflito de edição",{
       description:"Outro profissional alterou este campo. Recarregue para visualizar a versão mais recente antes de tentar novamente.",
       duration:Infinity,
@@ -60,4 +80,4 @@ class DriveQuery implements PromiseLike<any>{
   then<TResult1=any,TResult2=never>(onfulfilled?:((value:any)=>TResult1|PromiseLike<TResult1>)|null,onrejected?:((reason:any)=>TResult2|PromiseLike<TResult2>)|null):PromiseLike<TResult1|TResult2>{return this.execute().then(onfulfilled,onrejected)}
 }
 
-export function createDriveFrom(getToken:TokenProvider){return(table:string)=>new DriveQuery(table,getToken)}
+export function createDriveFrom(getToken:TokenProvider){const snapshots=new Map<string,Map<string,Record<string,unknown>>>();return(table:string)=>new DriveQuery(table,getToken,snapshots)}
