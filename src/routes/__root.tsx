@@ -333,7 +333,7 @@ function RootComponent() {
         location.pathname.startsWith("/vet/") ||
         (portal && location.pathname === "/"))
     ) {
-      if (role === "admin") navigate({ to: "/admin" });
+      if (role === "admin") navigate({ to: "/inicio" });
       else if (slugClinicaAtual && location.pathname.startsWith("/vet/"))
         navigate({ to: "/inicio" });
       else if (slugClinicaAtual && location.pathname === "/login")
@@ -616,7 +616,7 @@ function RootComponent() {
             </section>
           </main>
         ) : autenticado && !rotaPublica && !dadosDriveProntos ? (
-          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Sincronizando dados com o Google Drive...</div>
+          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Sincronizando os dados no sistema Oricse...</div>
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
           <div className="min-h-screen" />
         ) : mostrarBloqueioTeste ? (
