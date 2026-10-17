@@ -122,7 +122,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     // coordinator has not been deployed or configured.
     let binding: { idFromName(name: string): unknown; get(id: unknown): { executeWrite(input: unknown): Promise<unknown> } } | undefined;
     try {
-      const cloudflare = await import("cloudflare:workers");
+      const cloudflare = await import(/* @vite-ignore */ "cloudflare:workers");
       binding = (cloudflare.env as any).ORICSE_WRITE_COORDINATOR;
     } catch {
       throw new Error("A coordenação de escrita não está disponível. Nenhum dado foi alterado. Contate o administrador.");
