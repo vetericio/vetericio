@@ -8,20 +8,22 @@
  */
 import { DurableObject } from "cloudflare:workers";
 import { executarDriveDbInterno } from "@/lib/drive-db.functions";
+import { SerialWriteQueue } from "@/lib/serial-write-queue";
 
 export class OricseWriteCoordinator extends DurableObject {
-  private tail: Promise<void> = Promise.resolve();
+  private readonly writes = new SerialWriteQueue();
 
   async executeWrite(input: unknown): Promise<unknown> {
-    const previous = this.tail;
-    let release!: () => void;
-    this.tail = new Promise<void>((resolve) => { release = resolve; });
-    await previous;
-    try {
-      // Server-side authorization is executed inside the serialized section.
-      return await executarDriveDbInterno(input as never, true);
-    } finally {
-      release();
-    }
+    return this.writes.run(async () => {
+      try {
+        return await executarDriveDbInterno(input as never, true);
+      } catch (error: any) {
+        return {
+          data: null,
+          error: { code: error?.code || "DRIVE_DB", message: error?.message || "Falha ao gravar no Google Drive.", field: error?.field, recordId: error?.recordId },
+          count: null,
+        };
+      }
+    });
   }
 }
