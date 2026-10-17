@@ -7,32 +7,20 @@ export type ContextoAdminClinica = {
   perfil: PerfilAdminClinica;
 };
 
-const CHAVE = "oricse:admin-clinic-context";
+// Contexto transitório da aba; nunca persistido no armazenamento do navegador.
+// A identidade/autorização real continua sendo validada pelo backend.
+let contextoAtual: ContextoAdminClinica | null = null;
 
 export function lerContextoAdminClinica(): ContextoAdminClinica | null {
   if (typeof window === "undefined") return null;
-  try {
-    const bruto = window.sessionStorage.getItem(CHAVE);
-    if (!bruto) return null;
-    const contexto = JSON.parse(bruto) as Partial<ContextoAdminClinica>;
-    if (!contexto.clinicaId || !contexto.perfil) return null;
-    return {
-      clinicaId: String(contexto.clinicaId),
-      clinicaNome: String(contexto.clinicaNome || ""),
-      clinicaSlug: String(contexto.clinicaSlug || ""),
-      perfil: contexto.perfil,
-    };
-  } catch {
-    return null;
-  }
+  return contextoAtual ? { ...contextoAtual } : null;
 }
 
 export function salvarContextoAdminClinica(contexto: ContextoAdminClinica) {
   if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(CHAVE, JSON.stringify(contexto));
+  contextoAtual = { ...contexto };
 }
 
 export function limparContextoAdminClinica() {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.removeItem(CHAVE);
+  contextoAtual = null;
 }
