@@ -40,6 +40,8 @@ jobs:
         run: node scripts/audit-supabase-identity-only.mjs
       - name: Concurrent Drive journal regression
         run: node scripts/test-drive-journal.mjs
+      - name: Serial write coordinator regression
+        run: node scripts/test-drive-serial-queue.mjs
       - name: UI audit
         run: node scripts/audit-ui.mjs
       - name: Lint debt report
