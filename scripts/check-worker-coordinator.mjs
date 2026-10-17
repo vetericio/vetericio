@@ -22,7 +22,7 @@ function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const location = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(location);
-    else if (/\\.(mjs|js)$/.test(entry.name) && fs.readFileSync(location, "utf8").includes("OricseWriteCoordinator")) found = true;
+    else if (entry.name.endsWith(".mjs") || entry.name.endsWith(".js")) { if (fs.readFileSync(location, "utf8").includes("OricseWriteCoordinator")) found = true; }
   }
 }
 walk(".output/server");
