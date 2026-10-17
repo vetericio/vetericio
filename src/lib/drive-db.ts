@@ -1,4 +1,5 @@
 import { executarDriveDb } from "@/lib/drive-db.functions";
+import { toast } from "sonner";
 
 type TokenProvider=()=>Promise<string|null>;
 type Operation="select"|"insert"|"update"|"delete"|"upsert";
@@ -48,7 +49,14 @@ class DriveQuery implements PromiseLike<any>{
   abortSignal(_signal:AbortSignal){return this}
   returns<T>(){return this as unknown as PromiseLike<{data:T;error:any;count?:number|null}>}
   overrideTypes<T>(){return this as unknown as PromiseLike<{data:T;error:any;count?:number|null}>}
-  async execute(){try{const accessToken=await this.getToken();const result=await executarDriveDb({data:{accessToken,table:this.table,operation:this.operation,payload:this.payload,columns:this.columns,filters:this.filters,order:this.orders,limit:this.max,range:this.faixa,single:this.singular,head:this.head,count:this.count,onConflict:this.onConflict}} as never) as any;if(this.shouldThrow&&result?.error)throw Object.assign(new Error(result.error.message),result.error);return result}catch(error:any){if(this.shouldThrow)throw error;return{data:null,error:{message:error?.message||String(error),code:error?.code||"DRIVE_DB"},count:null}}}
+  async execute(){try{const accessToken=await this.getToken();const result=await executarDriveDb({data:{accessToken,table:this.table,operation:this.operation,payload:this.payload,columns:this.columns,filters:this.filters,order:this.orders,limit:this.max,range:this.faixa,single:this.singular,head:this.head,count:this.count,onConflict:this.onConflict}} as never) as any;if(this.shouldThrow&&result?.error)throw Object.assign(new Error(result.error.message),result.error);return result}catch(error:any){if(error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined"){
+    toast.error("Conflito de edição",{
+      description:"Outro profissional alterou este campo. Recarregue para visualizar a versão mais recente antes de tentar novamente.",
+      duration:Infinity,
+      action:{label:"Recarregar",onClick:()=>window.location.reload()},
+    });
+  }
+  if(this.shouldThrow)throw error;return{data:null,error:{message:error?.message||String(error),code:error?.code||"DRIVE_DB"},count:null}}}
   then<TResult1=any,TResult2=never>(onfulfilled?:((value:any)=>TResult1|PromiseLike<TResult1>)|null,onrejected?:((reason:any)=>TResult2|PromiseLike<TResult2>)|null):PromiseLike<TResult1|TResult2>{return this.execute().then(onfulfilled,onrejected)}
 }
 
