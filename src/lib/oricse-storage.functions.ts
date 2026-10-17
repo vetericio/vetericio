@@ -39,7 +39,7 @@ export async function salvarEstadoOricseInterno(data:z.infer<typeof salvarSchema
   const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId),estado=arquivo?.id?await baixarEstado(token,arquivo.id):{};
   // All-or-nothing compare before modifying any key in the file.
   for(const alteracao of data.alteracoes){
-    if(Object.prototype.hasOwnProperty.call(alteracao,"esperado") && (estado[alteracao.chave]??null)!==(alteracao.esperado??null)){
+    if(Object.prototype.hasOwnProperty.call(alteracao,"esperado") && (estado[alteracao.chave]??null)!==(alteracao.esperado??null) && (estado[alteracao.chave]??null)!==(alteracao.valor??null)){
       const e=new Error("Outros usuários alteraram dados de "+alteracao.chave+". Atualize a tela e revise antes de salvar.");
       Object.assign(e,{code:"DRIVE_CONFLICT",field:alteracao.chave});
       throw e;
