@@ -1,3 +1,4 @@
+export { OricseWriteCoordinator } from "./lib/drive-write-coordinator.server";
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
