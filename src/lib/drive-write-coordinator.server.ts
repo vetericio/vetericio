@@ -9,6 +9,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { executarDriveDbInterno } from "@/lib/drive-db.functions";
 import { SerialWriteQueue } from "@/lib/serial-write-queue";
+import { salvarEstadoOricseInterno } from "@/lib/oricse-storage.functions";
 
 export class OricseWriteCoordinator extends DurableObject {
   private readonly writes = new SerialWriteQueue();
@@ -16,6 +17,7 @@ export class OricseWriteCoordinator extends DurableObject {
   async executeWrite(input: unknown): Promise<unknown> {
     return this.writes.run(async () => {
       try {
+        if(input && typeof input==="object" && (input as any).kind==="state") return await salvarEstadoOricseInterno((input as any).input, true);
         return await executarDriveDbInterno(input as never, true);
       } catch (error: any) {
         return {
