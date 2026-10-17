@@ -42,6 +42,8 @@ jobs:
         run: node scripts/test-drive-journal.mjs
       - name: Serial write coordinator regression
         run: node scripts/test-drive-serial-queue.mjs
+      - name: Drive state compare-and-swap regression
+        run: node scripts/test-drive-state-cas.mjs
       - name: UI audit
         run: node scripts/audit-ui.mjs
       - name: Lint debt report
