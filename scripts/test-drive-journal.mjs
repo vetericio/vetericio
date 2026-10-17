@@ -16,6 +16,14 @@ assert.deepEqual(applyJournal(initial, [...journals].reverse()), [{ id: "animal-
 assert.equal(applyJournal(initial, [{ ...journals[0], changes: [{ kind: "remove", id: "animal-1" }] }]).length, 0);
 assert.deepEqual(applyJournal([], [{ ...journals[0], changes: [{ kind: "put", id: "a", data: { nome: "Rex" } }] }]), [{ id: "a", nome: "Rex" }]);
 
+// Same-field edit based on a stale value must surface an explicit conflict.
+const conflicting = [
+  { v: 1, timestamp: t, operationId: "c", changes: [{ kind: "patch", id: "animal-1", data: { peso: 7 }, expected: { peso: 5 } }] },
+  { v: 1, timestamp: t, operationId: "d", changes: [{ kind: "patch", id: "animal-1", data: { peso: 8 }, expected: { peso: 5 } }] },
+];
+assert.throws(() => applyJournal(initial, conflicting), (error) => error.code === "DRIVE_CONFLICT" && error.field === "peso");
+assert.equal(applyJournal(initial, [{ ...conflicting[0] }])[0].peso, 7);
+
 // Two overlapping uploads must create two DIFFERENT files, not PATCH a table JSON.
 const files = new Map();
 let folderId = null;
