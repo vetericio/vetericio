@@ -11,7 +11,7 @@ const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_onl
 
 const filterSchema = z.object({ kind: z.string(), column: z.string().optional(), value: z.unknown().optional(), operator: z.string().optional() });
 const querySchema = z.object({
-  accessToken: z.string().nullable().optional(), table: z.string().regex(/^[a-zA-Z0-9_]+$/), operation: z.enum(["select", "insert", "update", "delete", "upsert"]), payload: z.unknown().optional(), columns: z.string().optional(), filters: z.array(filterSchema).default([]), order: z.array(z.object({ column: z.string(), ascending: z.boolean().default(true) })).default([]), limit: z.number().int().positive().max(10000).optional(), range: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]).optional(), single: z.enum(["none", "single", "maybeSingle"]).default("none"), head: z.boolean().default(false), count: z.string().nullable().optional(), onConflict: z.string().optional(),
+  accessToken: z.string().nullable().optional(), table: z.string().regex(/^[a-zA-Z0-9_]+$/), operation: z.enum(["select", "insert", "update", "delete", "upsert"]), payload: z.unknown().optional(), columns: z.string().optional(), filters: z.array(filterSchema).default([]), order: z.array(z.object({ column: z.string(), ascending: z.boolean().default(true) })).default([]), limit: z.number().int().positive().max(10000).optional(), range: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]).optional(), single: z.enum(["none", "single", "maybeSingle"]).default("none"), head: z.boolean().default(false), count: z.string().nullable().optional(), onConflict: z.string().optional(), expectedRows: z.record(z.record(z.unknown())).optional(),
 });
 
 type AuthContext = { admin: boolean; userId: string | null; clinicas: string[]; portal: Array<{ clinicaId: string; tutorId: string }> };
@@ -154,6 +154,29 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   const t = await driveToken(), base = await readTable(t, q.table);
   const journalRequest = (url: string, init?: RequestInit) => gf(t, url, init);
   let rows = applyJournal(base.rows, await loadJournals(journalRequest, base.folderId, q.table));
+  // Compare with the values actually displayed to the editor, not just
+  // values freshly read by the server. The coordinator makes this comparison
+  // and the subsequent append a single serialized write.
+  if (q.operation !== "select" && q.expectedRows) {
+    for (const [id, baseline] of Object.entries(q.expectedRows)) {
+      const current = rows.find((row) => String(row.id) === id);
+      if (!current) continue;
+      const submitted = Array.isArray(q.payload)
+        ? (q.payload as any[]).find((row) => String(row?.id) === id)
+        : q.payload as Record<string, unknown> | undefined;
+      const changing = q.operation === "delete" ? Object.keys(baseline) :
+        Object.keys(submitted || {}).filter((field) => field !== "updated_at");
+      for (const field of changing) {
+        if (!Object.prototype.hasOwnProperty.call(baseline, field)) continue;
+        if (JSON.stringify(current[field] ?? null) !== JSON.stringify(baseline[field] ?? null)
+          && JSON.stringify(current[field] ?? null) !== JSON.stringify(submitted?.[field] ?? null)) {
+          const conflict = new Error(`Outro profissional alterou ${field} no registro ${id}. Atualize a tela antes de salvar.`);
+          Object.assign(conflict, { code: "DRIVE_CONFLICT", recordId: id, field });
+          throw conflict;
+        }
+      }
+    }
+  }
   const visiveis = q.operation === "select" ? await authorizedRows(t, q.table, rows, ctx) : (ctx.admin ? rows : await authorizedRows(t, q.table, rows, ctx));
   const filtros = (lista: any[]) => lista.filter((r) => q.filters.every((f) => passa(r, f)));
   if (q.operation === "select") {
@@ -198,4 +221,14 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   return { data: out, error: null, count: q.count ? afetados.length : null };
 }
 
-export const executarDriveDb = createServerFn({ method: "POST" }).validator((i: unknown) => querySchema.parse(i)).handler(async ({ data }) => executarDriveDbInterno(data));
+export const executarDriveDb = createServerFn({ method: "POST" }).validator((i: unknown) => querySchema.parse(i)).handler(async ({ data }) => {
+  try {
+    return await executarDriveDbInterno(data);
+  } catch (error: any) {
+    return {
+      data: null,
+      error: { code: error?.code || "DRIVE_DB", message: error?.message || "Falha ao acessar o Google Drive.", field: error?.field, recordId: error?.recordId },
+      count: null,
+    };
+  }
+});
