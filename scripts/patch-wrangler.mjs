@@ -22,6 +22,8 @@ if (existsSync(file)) {
     '',
   ].join(String.fromCharCode(10)));
   config.main = "./oricse-worker-entry.ts";
+  // Nitro usually emits no_bundle; the TypeScript wrapper needs Wrangler bundling.
+  config.no_bundle = false;
   // Durable Object is a coordinator only: all business data remains on Drive.
   config.durable_objects ||= {};
   config.durable_objects.bindings ||= [];
