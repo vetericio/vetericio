@@ -15,11 +15,12 @@ if (existsSync(file)) {
   const wrapperPath = resolve(dirname(file), "oricse-worker-entry.ts");
   const importMain = "./" + relative(dirname(wrapperPath), originalMain).replaceAll("\\\\", "/");
   const importCoordinator = "../../src/lib/drive-write-coordinator.server.ts";
-  writeFileSync(wrapperPath,
-    'import worker from ' + JSON.stringify(importMain) + ';\\n' +
-    'export { OricseWriteCoordinator } from ' + JSON.stringify(importCoordinator) + ';\\n' +
-    'export default worker;\\n'
-  );
+  writeFileSync(wrapperPath, [
+    'import worker from ' + JSON.stringify(importMain) + ';',
+    'export { OricseWriteCoordinator } from ' + JSON.stringify(importCoordinator) + ';',
+    'export default worker;',
+    '',
+  ].join(String.fromCharCode(10)));
   config.main = "./oricse-worker-entry.ts";
   // Durable Object is a coordinator only: all business data remains on Drive.
   config.durable_objects ||= {};
