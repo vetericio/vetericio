@@ -1,4 +1,5 @@
 import { FUNCIONALIDADES_POR_PLANO, PERMISSOES_PADRAO, PERMITIDAS_POR_PAPEL, PLANOS_PADRAO } from "@/lib/drive-seed";
+import { lerContextoAdminClinica } from "@/lib/admin-clinic-context";
 
 type FromFn = (table: string) => any;
 type AuthLike = {
@@ -26,7 +27,7 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity }: FactoryArgs) {
   async function membership(userId?: string) { const u = userId || (await user())?.id; if (!u) return null; const { data, error } = await fromIdentity("clinica_usuarios").select("clinica_id,user_id,papel,ativo,created_at").eq("user_id", u).eq("ativo", true).order("created_at").limit(1).maybeSingle(); if (error) throw error; return data || null; }
   async function isPlatformAdmin() { const u = await user(); if (!u) return false; const { data } = await fromIdentity("app_users").select("role").eq("user_id", u.id).maybeSingle(); return data?.role === "admin"; }
   async function clinic(clinicaId: string) { const { data, error } = await fromDrive("clinicas").select("*").eq("id", clinicaId).maybeSingle(); if (error) throw error; return data || null; }
-  async function currentContext() { const m = await membership(); if (!m?.clinica_id) return null; const c = await clinic(m.clinica_id); if (!c) return null; return { membership: m, clinic: c }; }
+  async function currentContext() {\n    if (await isPlatformAdmin()) {\n      const selecionado = lerContextoAdminClinica();\n      if (!selecionado?.clinicaId) return null;\n      const c = await clinic(selecionado.clinicaId);\n      if (!c) return null;\n      const u = await user();\n      return { membership: { clinica_id: c.id, user_id: u?.id || null, papel: selecionado.perfil, ativo: true }, clinic: c };\n    }\n    const m = await membership();\n    if (!m?.clinica_id) return null;\n    const c = await clinic(m.clinica_id);\n    if (!c) return null;\n    return { membership: m, clinic: c };\n  }
   async function planCode(c: any) { const plano = PLANOS_PADRAO.find((p) => p.codigo === c?.plano || p.nome === c?.plano); return plano?.codigo || String(c?.plano || ""); }
   async function featureAllowed(clinicaId: string, codigo: string) {
     if (await isPlatformAdmin()) return true;
