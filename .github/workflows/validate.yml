@@ -58,3 +58,9 @@ jobs:
         run: node scripts/check-worker-coordinator.mjs
       - name: Cloudflare deployment dry-run
         run: npx --yes wrangler@4 deploy --dry-run --config .output/server/wrangler.json --outdir .wrangler-dry-run
+      - name: Inspect compiled Worker exports
+        shell: bash
+        run: |
+          node -e 'const fs=require("fs"),p=".output/server/wrangler.json",c=JSON.parse(fs.readFileSync(p));console.log("WRANGLER MAIN:",c.main);const f=require("path").resolve(require("path").dirname(p),c.main);console.log("RESOLVED MAIN:",f);const t=fs.readFileSync(f,"utf8");console.log("MAIN HEAD:",t.slice(0,900));console.log("MAIN TAIL:",t.slice(-1400));console.log("COORDINATOR REFERENCES:",t.match(/.{0,120}OricseWriteCoordinator.{0,150}/g)?.slice(0,5));'
+          find .output/server -type f -name '*.mjs' | head -12
+
