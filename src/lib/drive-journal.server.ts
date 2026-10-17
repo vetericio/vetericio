@@ -65,12 +65,12 @@ async function eventsFolder(gf: Requester, parent: string, table: string, create
   return (await created.json() as { id: string }).id;
 }
 
-export async function appendJournal(gf: Requester, parent: string, table: string, changes: DriveChange[]): Promise<string> {
+export async function appendJournal(gf: Requester, parent: string, table: string, changes: DriveChange[], requestId?: string): Promise<string> {
   if (!changes.length) return "";
   const directory = await eventsFolder(gf, parent, table, true);
   if (!directory) throw new Error("Não foi possível criar o diretório do journal.");
   const timestamp = new Date().toISOString();
-  const operationId = crypto.randomUUID();
+  const operationId = requestId || crypto.randomUUID();
   const name = timestamp + "-" + operationId + ".json";
   const body: DriveJournal = { v: 1, timestamp, operationId, changes };
   const form = new FormData();
