@@ -116,7 +116,20 @@ async function authorizedRows(t: string, table: string, rows: any[], ctx: AuthCo
   });
 }
 
-export async function executarDriveDbInterno(q: z.infer<typeof querySchema>) {
+export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coordinated = false) {
+  if (q.operation !== "select" && !coordinated) {
+    // Never silently fall back to concurrent writes when the Cloudflare
+    // coordinator has not been deployed or configured.
+    let binding: { idFromName(name: string): unknown; get(id: unknown): { executeWrite(input: unknown): Promise<unknown> } } | undefined;
+    try {
+      const cloudflare = await import("cloudflare:workers");
+      binding = (cloudflare.env as any).ORICSE_WRITE_COORDINATOR;
+    } catch {
+      throw new Error("A coordenação de escrita não está disponível. Nenhum dado foi alterado. Contate o administrador.");
+    }
+    if (!binding) throw new Error("Coordenação de escrita não configurada. Nenhum dado foi alterado.");
+    return await binding.get(binding.idFromName("oricse-drive-writes-v1")).executeWrite(q) as any;
+  }
   const ctx = await authContext(q.accessToken);
   if (!ctx.userId && !(q.operation === "select" && PUBLIC_READ.has(q.table))) throw new Error("Autenticação necessária.");
   if (q.operation !== "select" && !ctx.admin && GLOBAL_ADMIN_ONLY.has(q.table)) throw new Error("Apenas a administração da plataforma pode alterar estes dados.");
