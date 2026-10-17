@@ -6,6 +6,7 @@ type Operation="select"|"insert"|"update"|"delete"|"upsert";
 type Filter={kind:string;column?:string;value?:unknown;operator?:string};
 
 class DriveQuery implements PromiseLike<any>{
+  private requestId=crypto.randomUUID();
   private operation:Operation="select";
   private payload:unknown;
   private columns="*";
@@ -54,7 +55,7 @@ class DriveQuery implements PromiseLike<any>{
   const candidates=this.filters.filter(f=>f.kind==="eq"&&f.column==="id").map(f=>String(f.value));
   if(this.operation==="upsert"||this.operation==="insert")for(const row of (Array.isArray(this.payload)?this.payload:[this.payload]) as any[])if(row?.id!=null)candidates.push(String(row.id));
   const expectedRows=Object.fromEntries([...new Set(candidates)].filter(id=>tracked.has(id)).map(id=>[id,tracked.get(id)]));
-  const result=await executarDriveDb({data:{accessToken,table:this.table,operation:this.operation,payload:this.payload,columns:this.columns,filters:this.filters,order:this.orders,limit:this.max,range:this.faixa,single:this.singular,head:this.head,count:this.count,onConflict:this.onConflict,expectedRows}} as never) as any;
+  const result=await executarDriveDb({data:{accessToken,table:this.table,operation:this.operation,payload:this.payload,columns:this.columns,filters:this.filters,order:this.orders,limit:this.max,range:this.faixa,single:this.singular,head:this.head,count:this.count,onConflict:this.onConflict,expectedRows,requestId:this.requestId}} as never) as any;
   if(this.operation==="select"&&!result?.error){
     const rows=Array.isArray(result.data)?result.data:result.data?[result.data]:[];
     for(const row of rows)if(row&&typeof row==="object"&&row.id!=null)tracked.set(String(row.id),{...row});
