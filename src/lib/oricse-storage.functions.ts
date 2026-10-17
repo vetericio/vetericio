@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const inputSchema = z.object({ accessToken: z.string().min(20) });
-const salvarSchema = inputSchema.extend({ alteracoes: z.array(z.object({ chave: z.string().min(1).max(240), valor: z.string().nullable() })).min(1).max(500) });
+const salvarSchema = inputSchema.extend({ alteracoes: z.array(z.object({ chave: z.string().min(1).max(240), valor: z.string().nullable(), esperado: z.string().nullable().optional() })).min(1).max(500) });
 type SupabaseAdmin = Awaited<ReturnType<typeof carregarSupabaseAdmin>>;
 async function carregarSupabaseAdmin(){ const { supabaseAdmin } = await import("@/integrations/supabase/client.server"); return supabaseAdmin; }
 function base64Url(input:string|Buffer){ const buffer=typeof input==="string"?Buffer.from(input,"utf8"):input; return buffer.toString("base64url"); }
@@ -28,4 +28,31 @@ async function localizarEstado(token:string,folderId:string){ const q=encodeURIC
 async function baixarEstado(token:string,fileId:string):Promise<Record<string,string>>{ const response=await googleJson(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);const texto=await response.text();if(!texto.trim())return{};const valor=JSON.parse(texto) as unknown;return valor&&typeof valor==="object"&&!Array.isArray(valor)?valor as Record<string,string>:{}; }
 async function gravarEstado(token:string,folderId:string,fileId:string|null,estado:Record<string,string>){ const corpo=JSON.stringify(estado);if(fileId){await googleJson(token,`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media`,{method:"PATCH",headers:{"content-type":"application/json; charset=utf-8"},body:corpo});return;}const form=new FormData();form.append("metadata",new Blob([JSON.stringify({name:"estado.json",parents:[folderId]})],{type:"application/json"}));form.append("file",new Blob([corpo],{type:"application/json"}),"estado.json");await googleJson(token,"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",{method:"POST",body:form}); }
 export const carregarEstadoOricseDrive=createServerFn({method:"POST"}).validator((input:unknown)=>inputSchema.parse(input)).handler(async({data})=>{ const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId);if(!arquivo?.id)return{estado:{} as Record<string,string>,atualizadoEm:null as string|null};return{estado:await baixarEstado(token,arquivo.id),atualizadoEm:arquivo.modifiedTime||null}; });
-export const salvarEstadoOricseDrive=createServerFn({method:"POST"}).validator((input:unknown)=>salvarSchema.parse(input)).handler(async({data})=>{ const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId),estado=arquivo?.id?await baixarEstado(token,arquivo.id):{};for(const alteracao of data.alteracoes){if(alteracao.valor===null)delete estado[alteracao.chave];else estado[alteracao.chave]=alteracao.valor;}await gravarEstado(token,folderId,arquivo?.id||null,estado);return{ok:true,quantidade:Object.keys(estado).length}; });
+export async function salvarEstadoOricseInterno(data:z.infer<typeof salvarSchema>,coordinated=false){
+  if(!coordinated){
+    let binding:{idFromName(name:string):unknown;get(id:unknown):{executeWrite(input:unknown):Promise<unknown>}}|undefined;
+    try{ const cloudflare=await import("cloudflare:workers");binding=(cloudflare.env as any).ORICSE_WRITE_COORDINATOR; }
+    catch{ throw new Error("Coordenação de escrita indisponível. Nenhum dado foi alterado."); }
+    if(!binding)throw new Error("Coordenação de escrita não configurada. Nenhum dado foi alterado.");
+    return await binding.get(binding.idFromName("oricse-drive-writes-v1")).executeWrite({kind:"state",input:data}) as {ok:boolean;quantidade:number};
+  }
+  const admin=await carregarSupabaseAdmin(),contexto=await contextoUsuario(admin,data.accessToken),token=await tokenGoogle(),folderId=await raizPersistencia(token,contexto),arquivo=await localizarEstado(token,folderId),estado=arquivo?.id?await baixarEstado(token,arquivo.id):{};
+  // All-or-nothing compare before modifying any key in the file.
+  for(const alteracao of data.alteracoes){
+    if(Object.prototype.hasOwnProperty.call(alteracao,"esperado") && (estado[alteracao.chave]??null)!==(alteracao.esperado??null)){
+      const e=new Error("Outros usuários alteraram dados de "+alteracao.chave+". Atualize a tela e revise antes de salvar.");
+      Object.assign(e,{code:"DRIVE_CONFLICT",field:alteracao.chave});
+      throw e;
+    }
+  }
+  for(const alteracao of data.alteracoes){
+    if(alteracao.valor===null)delete estado[alteracao.chave];else estado[alteracao.chave]=alteracao.valor;
+  }
+  await gravarEstado(token,folderId,arquivo?.id||null,estado);
+  return{ok:true,quantidade:Object.keys(estado).length};
+}
+export const salvarEstadoOricseDrive=createServerFn({method:"POST"}).validator((input:unknown)=>salvarSchema.parse(input)).handler(async({data})=>{
+  const response=await salvarEstadoOricseInterno(data);
+  if(response&&typeof response==="object"&&"error" in response)throw Object.assign(new Error((response as any).error?.message||"Falha ao salvar"),(response as any).error);
+  return response;
+});
