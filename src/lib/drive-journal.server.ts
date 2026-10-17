@@ -51,12 +51,13 @@ function safeTable(table: string) {
   return table;
 }
 
-async function eventsFolder(gf: Requester, parent: string, table: string): Promise<string> {
+async function eventsFolder(gf: Requester, parent: string, table: string, create = false): Promise<string | null> {
   const name = safeTable(table) + ".events";
   const q = encodeURIComponent("'" + parent + "' in parents and name='" + name + "' and mimeType='application/vnd.google-apps.folder' and trashed=false");
   const r = await gf("https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name)&pageSize=100");
   const existing = (await r.json() as { files?: Array<{ id: string; name: string }> }).files?.find(x => x.name === name);
   if (existing) return existing.id;
+  if (!create) return null;
   const created = await gf("https://www.googleapis.com/drive/v3/files?fields=id", {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parent] }),
@@ -66,7 +67,8 @@ async function eventsFolder(gf: Requester, parent: string, table: string): Promi
 
 export async function appendJournal(gf: Requester, parent: string, table: string, changes: DriveChange[]): Promise<string> {
   if (!changes.length) return "";
-  const directory = await eventsFolder(gf, parent, table);
+  const directory = await eventsFolder(gf, parent, table, true);
+  if (!directory) throw new Error("Não foi possível criar o diretório do journal.");
   const timestamp = new Date().toISOString();
   const operationId = crypto.randomUUID();
   const name = timestamp + "-" + operationId + ".json";
@@ -84,6 +86,7 @@ export async function appendJournal(gf: Requester, parent: string, table: string
 
 export async function loadJournals(gf: Requester, parent: string, table: string): Promise<DriveJournal[]> {
   const directory = await eventsFolder(gf, parent, table);
+  if (!directory) return [];
   let pageToken: string | undefined;
   const ids: string[] = [];
   do {
