@@ -32,7 +32,7 @@ export const carregarEstadoOricseDrive=createServerFn({method:"POST"}).validator
 export async function salvarEstadoOricseInterno(data:z.infer<typeof salvarSchema>,coordinated=false){
   if(!coordinated){
     let binding:{idFromName(name:string):unknown;get(id:unknown):{executeWrite(input:unknown):Promise<unknown>}}|undefined;
-    try{ const cloudflare=await import("cloudflare:workers");binding=(cloudflare.env as any).ORICSE_WRITE_COORDINATOR; }
+    try{ const cloudflare=await import(/* @vite-ignore */ "cloudflare:workers");binding=(cloudflare.env as any).ORICSE_WRITE_COORDINATOR; }
     catch{ throw new Error("Coordenação de escrita indisponível. Nenhum dado foi alterado."); }
     if(!binding)throw new Error("Coordenação de escrita não configurada. Nenhum dado foi alterado.");
     return await binding.get(binding.idFromName("oricse-drive-writes-v1")).executeWrite({kind:"state",input:data}) as {ok:boolean;quantidade:number};
