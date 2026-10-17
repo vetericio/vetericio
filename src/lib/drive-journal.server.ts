@@ -8,7 +8,7 @@
  * with every attempted edit retained for auditing; they are NOT serializable
  * transactions. Do not use this as a financial ledger without stronger locks.
  */
-export type DriveChange = { kind: "put" | "patch" | "remove"; id: string; data?: Record<string, unknown> };
+export type DriveChange = { kind: "put" | "patch" | "remove"; id: string; data?: Record<string, unknown>; expected?: Record<string, unknown> };
 export type DriveJournal = { v: 1; timestamp: string; operationId: string; changes: DriveChange[] };
 
 type Requester = (url: string, init?: RequestInit) => Promise<Response>;
@@ -27,7 +27,19 @@ export function applyJournal(initial: any[], journals: DriveJournal[]): any[] {
       else if (change.kind === "put") byId.set(id, { ...(change.data || {}), id });
       else if (change.kind === "patch") {
         const previous = byId.get(id);
-        if (previous) byId.set(id, { ...previous, ...(change.data || {}), id });
+        if (previous) {
+          // Optimistic field comparison: a stale writer must never silently
+          // replace a value that another writer changed after its read.
+          for (const [field, oldValue] of Object.entries(change.expected || {})) {
+            if (field === "updated_at") continue;
+            if (!Object.is(previous[field], oldValue) && !Object.is(previous[field], change.data?.[field])) {
+              const conflict = new Error(`Conflito de edição no registro ${id}, campo ${field}. Recarregue antes de continuar.`);
+              Object.assign(conflict, { code: "DRIVE_CONFLICT", recordId: id, field });
+              throw conflict;
+            }
+          }
+          byId.set(id, { ...previous, ...(change.data || {}), id });
+        }
       }
     }
   }
