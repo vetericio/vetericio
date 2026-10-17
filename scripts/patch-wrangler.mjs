@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve, dirname, relative } from "node:path";
 
 const file = ".output/server/wrangler.json";
 if (existsSync(file)) {
@@ -6,6 +7,20 @@ if (existsSync(file)) {
   // Mantém as variáveis/secrets cadastrados no painel da Cloudflare a cada deploy.
   config.keep_vars = true;
   config.name = "oricse";
+  // Nitro emits a default-only main module. Cloudflare Durable Objects must
+  // also be exported directly from the deployed entry module.
+  // The thin entrypoint preserves Nitro's handler and exports the DO class.
+  const originalMain = resolve(dirname(file), config.main);
+  if (!existsSync(originalMain)) throw new Error("Nitro Worker main not found: " + originalMain);
+  const wrapperPath = resolve(dirname(file), "oricse-worker-entry.ts");
+  const importMain = "./" + relative(dirname(wrapperPath), originalMain).replaceAll("\\\\", "/");
+  const importCoordinator = "../../src/lib/drive-write-coordinator.server.ts";
+  writeFileSync(wrapperPath,
+    'import worker from ' + JSON.stringify(importMain) + ';\\n' +
+    'export { OricseWriteCoordinator } from ' + JSON.stringify(importCoordinator) + ';\\n' +
+    'export default worker;\\n'
+  );
+  config.main = "./oricse-worker-entry.ts";
   // Durable Object is a coordinator only: all business data remains on Drive.
   config.durable_objects ||= {};
   config.durable_objects.bindings ||= [];
