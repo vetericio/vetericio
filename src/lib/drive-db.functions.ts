@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { seedTabela } from "@/lib/drive-seed";
+import { appendJournal, applyJournal, loadJournals, type DriveChange } from "@/lib/drive-journal.server";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const PUBLIC_READ = new Set(["oricse_planos", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
@@ -137,7 +138,9 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>) {
       }
     }
   }
-  const t = await driveToken(), base = await readTable(t, q.table); let rows = base.rows;
+  const t = await driveToken(), base = await readTable(t, q.table);
+  const journalRequest = (url: string, init?: RequestInit) => gf(t, url, init);
+  let rows = applyJournal(base.rows, await loadJournals(journalRequest, base.folderId, q.table));
   const visiveis = q.operation === "select" ? await authorizedRows(t, q.table, rows, ctx) : (ctx.admin ? rows : await authorizedRows(t, q.table, rows, ctx));
   const filtros = (lista: any[]) => lista.filter((r) => q.filters.every((f) => passa(r, f)));
   if (q.operation === "select") {
@@ -165,16 +168,18 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>) {
       }
     }
   }
+  const changes: DriveChange[] = [];
   if (q.operation === "insert") {
-    const novos = payload.filter(Boolean).map(ensureId); for (const r of novos) { const cid = rowClinic(r); if (!ctx.admin && (!cid || (!ctx.clinicas.includes(cid) && !(q.table === "oricse_agendamentos_online" && ctx.portal.some((x) => x.clinicaId === cid && x.tutorId === String(r.tutor_id)))))) throw new Error("Registro pertence a outra clínica."); } rows = [...rows, ...novos]; afetados = novos;
+    const novos = payload.filter(Boolean).map(ensureId); for (const r of novos) { const cid = rowClinic(r); if (!ctx.admin && (!cid || (!ctx.clinicas.includes(cid) && !(q.table === "oricse_agendamentos_online" && ctx.portal.some((x) => x.clinicaId === cid && x.tutorId === String(r.tutor_id)))))) throw new Error("Registro pertence a outra clínica."); } rows = [...rows, ...novos]; afetados = novos; for (const row of novos) changes.push({ kind: "put", id: String(row.id), data: row });
   } else if (q.operation === "upsert") {
-    const campos = (q.onConflict || "id").split(",").map((x) => x.trim()).filter(Boolean); for (const p of payload.filter(Boolean)) { const r = ensureId(p); const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); const idx = rows.findIndex((x) => campos.every((c) => String(x?.[c] ?? "") === String(r?.[c] ?? ""))); if (idx >= 0) { if (!ctx.admin && rowClinic(rows[idx]) !== cid) throw new Error("Não é permitido atualizar registro de outra clínica."); rows[idx] = { ...rows[idx], ...r, updated_at: new Date().toISOString() }; afetados.push(rows[idx]); } else { rows.push(r); afetados.push(r); } }
+    const campos = (q.onConflict || "id").split(",").map((x) => x.trim()).filter(Boolean); for (const p of payload.filter(Boolean)) { const r = ensureId(p); const cid = rowClinic(r); if (!ctx.admin && (!cid || !ctx.clinicas.includes(cid))) throw new Error("Registro pertence a outra clínica."); const idx = rows.findIndex((x) => campos.every((c) => String(x?.[c] ?? "") === String(r?.[c] ?? ""))); if (idx >= 0) { if (!ctx.admin && rowClinic(rows[idx]) !== cid) throw new Error("Não é permitido atualizar registro de outra clínica."); rows[idx] = { ...rows[idx], ...r, updated_at: new Date().toISOString() }; afetados.push(rows[idx]); changes.push({ kind: "patch", id: String(rows[idx].id), data: { ...r, updated_at: rows[idx].updated_at } }); } else { rows.push(r); afetados.push(r); changes.push({ kind: "put", id: String(r.id), data: r }); } }
   } else if (q.operation === "update") {
-    const alvo = new Set(filtros(visiveis)); rows = rows.map((r) => alvo.has(r) ? (afetados.push({ ...r, ...(q.payload as any), updated_at: new Date().toISOString() }), afetados[afetados.length - 1]) : r);
+    const alvo = new Set(filtros(visiveis)); rows = rows.map((r) => { if (!alvo.has(r)) return r; const patch = { ...(q.payload as any), updated_at: new Date().toISOString() }; const novo = { ...r, ...patch }; afetados.push(novo); changes.push({ kind: "patch", id: String(r.id), data: patch }); return novo; });
   } else if (q.operation === "delete") {
-    const alvo = new Set(filtros(visiveis)); afetados = rows.filter((r) => alvo.has(r)); rows = rows.filter((r) => !alvo.has(r));
+    const alvo = new Set(filtros(visiveis)); afetados = rows.filter((r) => alvo.has(r)); rows = rows.filter((r) => !alvo.has(r)); for (const row of afetados) changes.push({ kind: "remove", id: String(row.id) });
   }
-  await writeTable(t, q.table, base.folderId, base.fileId, rows); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
+  // Persist only immutable per-operation events; never PATCH the shared table snapshot.
+  await appendJournal(journalRequest, base.folderId, q.table, changes); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
   if (q.single === "single") return out.length === 1 ? { data: out[0], error: null, count: q.count ? afetados.length : null } : { data: null, error: { message: "Resultado singular inválido.", code: "PGRST116" }, count: q.count ? afetados.length : null };
   if (q.single === "maybeSingle") return { data: out[0] ?? null, error: out.length > 1 ? { message: "Mais de um registro encontrado.", code: "PGRST116" } : null, count: q.count ? afetados.length : null };
   return { data: out, error: null, count: q.count ? afetados.length : null };
