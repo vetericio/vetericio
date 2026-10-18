@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseBanco } from "@/integrations/supabase/client";
 export const Route=createFileRoute("/configurar-pagamentos")({component:ConfigurarPagamentos});
 type Taxa={clinica_id:string|null;modalidade:string;mp_percentual:number;mp_fixo_centavos:number;oricse_percentual:number};
 const modalidades=["pix","cartao","boleto"] as const;
@@ -12,11 +12,11 @@ function ConfigurarPagamentos(){
  const [taxas,setTaxas]=useState<Taxa[]>([]),[mp,setMp]=useState("0"),[fixo,setFixo]=useState("0"),[oricse,setOricse]=useState("0"),[salvando,setSalvando]=useState(false);
  async function carregar(){
   try{
-   const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Faça login.");
-   const {data:perfil,error:err}=await (supabase as any).from("app_users").select("role").eq("user_id",user.id).maybeSingle();
+   const {data:{user}}=await supabaseBanco.auth.getUser();if(!user)throw new Error("Faça login.");
+   const {data:perfil,error:err}=await (supabaseBanco as any).from("app_users").select("role").eq("user_id",user.id).maybeSingle();
    if(err)throw err;if(perfil?.role!=="admin")throw new Error("Acesso exclusivo ao Admin ORICSE.");
    setAdmin(true);
-   const [t,c]=await Promise.all([(supabase as any).rpc("oricse_listar_taxas_pagamento"),(supabase as any).from("clinicas").select("id,nome").order("nome")]);
+   const [t,c]=await Promise.all([(supabaseBanco as any).rpc("oricse_listar_taxas_pagamento"),(supabaseBanco as any).from("clinicas").select("id,nome").order("nome")]);
    if(t.error)throw t.error;if(c.error)throw c.error;
    setTaxas(t.data||[]);setClinicas(c.data||[]);
   }catch(e){toast.error(e instanceof Error?e.message:"Falha ao carregar taxas");}finally{setCarregando(false);}
@@ -28,7 +28,7 @@ function ConfigurarPagamentos(){
   const m=dec(mp),o=dec(oricse),f=Math.round(dec(fixo)*100);
   if(![m,o,f].every(Number.isFinite)||m<0||m>=100||o<0||o>=100||f<0){toast.error("Confira as tarifas.");return}
   setSalvando(true);
-  const {error}=await (supabase as any).rpc("oricse_configurar_taxa_pagamento",{p_clinica_id:clinica||null,p_modalidade:modalidade,p_mp_percentual:m,p_mp_fixo_centavos:f,p_oricse_percentual:o});
+  const {error}=await (supabaseBanco as any).rpc("oricse_configurar_taxa_pagamento",{p_clinica_id:clinica||null,p_modalidade:modalidade,p_mp_percentual:m,p_mp_fixo_centavos:f,p_oricse_percentual:o});
   setSalvando(false);if(error){toast.error(error.message);return;}toast.success("Configuração salva.");await carregar();
  }
  if(carregando)return <main className="p-6 text-foreground">Carregando configurações…</main>;
