@@ -78,8 +78,7 @@ export const GRUPOS_MENU = [
   {
     titulo: "Configurações",
     itens: [
-      { to: "/perfil-clinica", rotulo: "Perfil da clínica" },
-      { to: "/mercado-pago-clinica", rotulo: "Mercado Pago da clínica" },
+      { to: "/perfil-clinica", rotulo: "Configurações" },
       { to: "/precos-portal", rotulo: "Cobranças: Quero receber / Quero cobrar" },
       { to: "/configuracao-site", rotulo: "Site da clínica" },
       { to: "/temas", rotulo: "Temas" },
