@@ -98,3 +98,10 @@ export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>,
 export const supabasePortal = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop) { if (!_proxyPortal) _proxyPortal = proxyPara(clientePortal()); return Reflect.get(_proxyPortal, prop); },
 });
+
+/** Acesso direto às tabelas operacionais que já foram migradas ao PostgreSQL. */
+export const supabaseBanco = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
+  get(_, prop, receiver) {
+    return Reflect.get(rotaDoPortalTutor() ? clientePortal() : clientePrincipal(), prop, receiver);
+  },
+});
