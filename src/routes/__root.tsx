@@ -623,7 +623,7 @@ function RootComponent() {
         {mostrarClinico && <RockDecoracao />}
         {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
         {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><AlarmeAtivo /></div>}
-        {!rotaAdmin && <Splash />}
+        {!autenticado && location.pathname === "/" && <Splash />}
         {testeAtivo && mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
             💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s) restante(s).
