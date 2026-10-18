@@ -49,8 +49,7 @@ jobs:
       - name: Lint debt report
         continue-on-error: true
         run: npx eslint src --quiet --format json > eslint-report.json
-      - name: Typecheck debt report
-        continue-on-error: true
+      - name: Typecheck
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
