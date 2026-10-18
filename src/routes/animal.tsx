@@ -7,7 +7,7 @@ import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
@@ -46,8 +46,21 @@ function rotuloMotivo(codigo?:string|null){const mapa:Record<string,string>={rec
 function AnimalFicha(){
   const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
   const animalId=params.get("animalId")||"";
-  const animais=useMemo(()=>ler<Animal>(ANIMAIS_KEY),[]);const tutores=useMemo(()=>ler<Tutor>(TUTORES_KEY),[]);
-  const animal=animais.find(a=>a.id===animalId);const tutor=tutores.find(t=>t.id===animal?.tutorId);
+  const [animal,setAnimal]=useState<Animal|null>(null);
+  const [tutor,setTutor]=useState<Tutor|null>(null);
+  const [carregandoFicha,setCarregandoFicha]=useState(true);
+  useEffect(()=>{let vivo=true;(async()=>{try{
+    if(!animalId)throw Error("Selecione um animal.");
+    const {data:cid,error:eCid}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_animal:animalId});
+    if(eCid||!cid)throw Error(eCid?.message||"Clínica do animal não identificada.");
+    const {data,error}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:cid,p_animal:animalId});
+    if(error)throw error;
+    if(!vivo)return;
+    const a=data?.animal;const t=data?.tutor;
+    setAnimal(a?{...a,peso:a.peso==null?"":String(a.peso)}:null);
+    setTutor(t||null);setClinicaId(cid);
+  }catch(e){if(vivo)toast.error(e instanceof Error?e.message:"Não foi possível abrir o prontuário.");}
+  finally{if(vivo)setCarregandoFicha(false);}})();return()=>{vivo=false};},[animalId]);
   const[aba,setAba]=useState<Aba>("Visão geral");const[registros,setRegistros]=useState<Registro[]>(()=>ler<Registro>(PRONTUARIO_KEY));const[registrosPortal,setRegistrosPortal]=useState<Registro[]>([]);const[clinicaId,setClinicaId]=useState("");
   const[pesos,setPesos]=useState<PesoRegistro[]>(()=>ler<PesoRegistro>(PESOS_KEY));const[modalTipo,setModalTipo]=useState<RegistroTipo|null>(null);const[modalPeso,setModalPeso]=useState(false);const[pesoNovo,setPesoNovo]=useState("");const[dataPeso,setDataPeso]=useState(()=>new Date().toISOString().slice(0,10));
   const[titulo,setTitulo]=useState("");const[detalhe,setDetalhe]=useState("");const[data,setData]=useState(()=>new Date().toISOString().slice(0,10));const[visivelTutor,setVisivelTutor]=useState(false);const[reforcoEm,setReforcoEm]=useState("");const[lote,setLote]=useState("");const[tipoDetalhe,setTipoDetalhe]=useState("");const[salvandoPortal,setSalvandoPortal]=useState(false);const[arquivoPdf,setArquivoPdf]=useState<File|null>(null);
@@ -115,6 +128,7 @@ function AnimalFicha(){
 
   function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const novo:PesoRegistro={id:crypto.randomUUID(),animalId:animal.id,peso:n,data:dataPeso,criadoEm:new Date().toISOString()};const lista=[novo,...pesos];setPesos(lista);oricseStorage.setItem(PESOS_KEY,JSON.stringify(lista));const animaisAtualizados=ler<Animal>(ANIMAIS_KEY).map(item=>item.id===animal.id?{...item,peso:n.toFixed(3)}:item);oricseStorage.setItem(ANIMAIS_KEY,JSON.stringify(animaisAtualizados));setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
 
+  if(carregandoFicha)return <main className="mx-auto max-w-5xl p-8 text-sm text-muted-foreground">Carregando prontuário no Supabase…</main>;
   if(!animal)return <main className="mx-auto max-w-5xl px-4 py-8"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">Animal não encontrado.</div></main>;
 
   return <main className="mx-auto min-h-screen w-full max-w-[1760px] px-3 pb-28 pt-4 sm:px-5"><div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[240px_minmax(0,1fr)]"><aside className="hidden lg:block"><div className="sticky top-4 overflow-hidden rounded-2xl border bg-white shadow-sm"><nav className="p-2">{ABAS.map(nome=>{const Icon=iconFor(nome);const ativo=aba===nome;return <button key={nome} type="button" onClick={()=>setAba(nome)} className={`relative mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${ativo?"bg-secondary text-secondary-foreground":"text-muted-foreground hover:bg-muted/60 hover:text-foreground"}`}>{ativo&&<span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary"/>}<Icon size={18} className={ativo?"text-primary":"text-muted-foreground"}/><span>{nome}</span></button>})}</nav></div></aside><div className="min-w-0">
