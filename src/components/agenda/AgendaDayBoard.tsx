@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseBanco as supabase } from "@/integrations/supabase/client";
 
 export type AgendaMode = "recepcao" | "veterinario";
 type CorAgenda = "azul" | "verde" | "amarelo" | "vermelho" | "rosa" | "laranja" | "roxo" | "marrom" | "cinza" | "azul-petroleo";
