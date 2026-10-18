@@ -141,6 +141,12 @@ function ConfiguracaoSite() {
         </p>
       </header>
 
+      <section className="mb-5 rounded-2xl border bg-card p-5 shadow-sm">
+        <h2 className="text-lg font-bold text-foreground">Portal do Tutor — configurações do RT</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Personalize a mensagem de boas-vindas, contatos, orientações de agendamento e seções disponíveis aos tutores. O responsável técnico configura sem precisar alterar domínio ou infraestrutura.</p>
+        <Link to="/configurar-portal-tutor" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-primary-foreground">Configurar Portal do Tutor</Link>
+      </section>
+
       <section className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
         <div className="mb-4 flex items-center gap-2">
           <Globe2 size={18} className="text-primary" />
