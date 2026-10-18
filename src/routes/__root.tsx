@@ -148,6 +148,37 @@ function RootComponent() {
   const [acessoPortalNegado, setAcessoPortalNegado] = useState(false);
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
   const [dadosDriveProntos, setDadosDriveProntos] = useState(false);
+  const [menuFixo, setMenuFixo] = useState(false);
+
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      const { data: sessao } = await supabase.auth.getSession();
+      if (!sessao.session?.user || !ativo) return;
+      const { data } = await (supabase as any)
+        .from("oricse_preferencias_usuario")
+        .select("menu_lateral_fixo")
+        .eq("user_id", sessao.session.user.id)
+        .maybeSingle();
+      if (ativo) setMenuFixo(Boolean(data?.menu_lateral_fixo));
+    })();
+    return () => { ativo = false; };
+  }, [autenticado]);
+
+  const alterarMenuFixo = async (fixo: boolean) => {
+    setMenuFixo(fixo);
+    const { data: sessao } = await supabase.auth.getSession();
+    if (!sessao.session?.user) return;
+    const { error } = await (supabase as any).from("oricse_preferencias_usuario").upsert({
+      user_id: sessao.session.user.id,
+      menu_lateral_fixo: fixo,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      setMenuFixo(!fixo);
+      toast.error("Não foi possível salvar a preferência do menu.");
+    }
+  };
 
   useEffect(() => {
     const rotasEditaveis = ["/recepcao", "/estoque", "/financeiro", "/comandas", "/minha-atividade"];
@@ -583,13 +614,13 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <TenantContext.Provider value={contextoPortal}>
         <VisualPageRuntime />
-        {mostrarClinico && <Cabecalho />}
-        {mostrarClinico && <AlarmeAtivo />}
+        {mostrarClinico && <div className={menuFixo ? "lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
+        {mostrarClinico && <div className={menuFixo ? "lg:pl-80" : ""}><AlarmeAtivo /></div>}
         {!rotaAdmin && <Splash />}
         {testeAtivo && mostrarClinico && (
-          <div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
+          <div className={menuFixo ? "lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
             💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s) restante(s).
-          </div>
+          </div></div>
         )}
         {rotaAdmin && autenticado === null ? (
           <div className="min-h-screen" />
@@ -630,9 +661,9 @@ function RootComponent() {
             </section>
           </main>
         ) : (
-          <Outlet />
+          <div className={mostrarClinico && menuFixo ? "lg:pl-80" : ""}><Outlet /></div>
         )}
-        {mostrarClinico && <Rodape />}
+        {mostrarClinico && <div className={menuFixo ? "lg:pl-80" : ""}><Rodape /></div>}
         <Toaster position="top-center" />
       </TenantContext.Provider>
     </QueryClientProvider>
