@@ -57,7 +57,7 @@ export function Cabecalho({ menuFixo, aoMudarMenuFixo }: { menuFixo: boolean; ao
   }, []);
 
   return (
-    <header className="relative border-b border-border bg-card/60">
+    <header className="oricse-cabecalho relative border-b border-border bg-card/60">
       <CrmBackgroundSync />
       <ComandasBackgroundSync />
       <MenuLateral fixo={menuFixo} aoMudarFixo={aoMudarMenuFixo} />

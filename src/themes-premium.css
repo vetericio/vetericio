@@ -106,3 +106,68 @@
 .tema-natal-premium [data-sidebar="menu-sub"] { border-color:rgba(230,203,132,.45); }
 @media (max-width:900px) { .natal-vivo-guirlanda--esquerda,.natal-vivo-guirlanda--direita { opacity:.48; } .natal-vivo-canto { width:15rem; } }
 @media (max-width:640px) { .natal-vivo-guirlanda--topo { width:58rem; top:-.4rem; } .natal-vivo-guirlanda--esquerda,.natal-vivo-guirlanda--direita { display:none; } .natal-vivo-canto { width:13rem; bottom:-1.2rem; opacity:.78; } .natal-vivo-canto--esquerdo { left:-3rem; } .natal-vivo-canto--direito { right:-3rem; } .natal-vivo-luzes--topo { height:8rem; } }
+
+/* Natal Vivo: composição clínica — não é uma moldura sobreposta à tela. */
+.tema-natal-premium .natal-vivo-decoracao { z-index: 2; }
+.tema-natal-premium .oricse-cabecalho,
+.tema-natal-premium main,
+.tema-natal-premium [role="main"] { position:relative; z-index:3; }
+.tema-natal-premium .oricse-cabecalho {
+  min-height: 12rem;
+  border-bottom:1px solid rgba(192,143,54,.58)!important;
+  background:linear-gradient(90deg,rgba(255,251,241,.89),rgba(255,248,231,.62),rgba(255,251,241,.9)),url('/natal/fundo-champagne-bokeh.webp') center/cover!important;
+  box-shadow:0 3px 18px rgba(83,42,11,.15);
+  backdrop-filter:blur(1px);
+}
+.tema-natal-premium .oricse-cabecalho > div:not([role]) { min-height:12rem; padding-top:1.35rem; padding-bottom:.55rem; }
+.tema-natal-premium .oricse-cabecalho img { max-width:10.75rem!important; position:relative; z-index:4; filter:drop-shadow(0 3px 1px rgba(255,255,255,.82)); }
+.tema-natal-premium .oricse-menu-lateral {
+  z-index:4!important;
+  color:#fff9eb;
+  border-right:1px solid rgba(222,177,80,.76)!important;
+  background:
+    linear-gradient(180deg,rgba(2,54,35,.91),rgba(2,48,31,.98)),
+    url('/natal/fundo-champagne-bokeh.webp') center/cover!important;
+  box-shadow:inset -1px 0 rgba(255,223,145,.3),8px 0 22px rgba(25,24,5,.23)!important;
+}
+.tema-natal-premium .oricse-menu-lateral h2,
+.tema-natal-premium .oricse-menu-lateral button,
+.tema-natal-premium .oricse-menu-lateral a { color:inherit; }
+.tema-natal-premium .oricse-menu-lateral nav > div { border-color:rgba(221,180,89,.74)!important; background:rgba(2,45,29,.44); }
+.tema-natal-premium .oricse-menu-lateral nav > div > button { background:rgba(5,61,39,.68)!important; color:#fff7df!important; }
+.tema-natal-premium .oricse-menu-lateral nav > div > button:hover { background:rgba(39,104,68,.72)!important; }
+.tema-natal-premium .oricse-menu-lateral nav > div > div { background:rgba(0,42,27,.73)!important; }
+.tema-natal-premium .oricse-menu-lateral nav a:hover { background:rgba(240,203,117,.16)!important; }
+.tema-natal-premium .oricse-menu-lateral nav a.bg-primary,
+.tema-natal-premium .oricse-menu-lateral nav a[class*="bg-primary"] { background:linear-gradient(100deg,#a51532,#7c1029)!important; color:#fff9e9!important; box-shadow:inset 0 0 0 1px rgba(249,210,128,.65); }
+.tema-natal-premium .natal-vivo-guirlanda--topo {
+  top:-.2rem;
+  width:100%;
+  height:12.4rem;
+  object-fit:cover;
+  object-position:center top;
+  filter:drop-shadow(0 5px 8px rgba(38,18,3,.32));
+}
+.tema-natal-premium .natal-vivo-guirlanda--esquerda,
+.tema-natal-premium .natal-vivo-guirlanda--direita { top:10.5rem; width:36rem; opacity:.98; }
+.tema-natal-premium .natal-vivo-guirlanda--esquerda { left:-17.1rem; }
+.tema-natal-premium .natal-vivo-guirlanda--direita { right:-17.1rem; }
+.tema-natal-premium .natal-vivo-canto { bottom:-.7rem; width:min(18.5vw,19rem); opacity:.96; }
+.tema-natal-premium .natal-vivo-canto--esquerdo { left:-.7rem; }
+.tema-natal-premium .natal-vivo-canto--direito { right:-.7rem; }
+.tema-natal-premium .natal-vivo-luzes--topo { height:12.7rem; opacity:.33; }
+.tema-natal-premium .natal-vivo-luzes--lateral { width:4rem; opacity:.26; }
+.tema-natal-premium main header:not(.oricse-cabecalho) { background:transparent!important; backdrop-filter:none; }
+@media (max-width:1023px) {
+  .tema-natal-premium .oricse-cabecalho { min-height:10.5rem; }
+  .tema-natal-premium .oricse-cabecalho > div:not([role]) { min-height:10.5rem; }
+  .tema-natal-premium .natal-vivo-guirlanda--topo { height:10.8rem; }
+  .tema-natal-premium .natal-vivo-guirlanda--esquerda,.tema-natal-premium .natal-vivo-guirlanda--direita { opacity:.58; }
+}
+@media (max-width:640px) {
+  .tema-natal-premium .oricse-cabecalho { min-height:8.25rem; }
+  .tema-natal-premium .oricse-cabecalho > div:not([role]) { min-height:8.25rem; padding-top:.7rem; }
+  .tema-natal-premium .oricse-cabecalho img { max-width:8rem!important; }
+  .tema-natal-premium .natal-vivo-guirlanda--topo { height:8.5rem; }
+  .tema-natal-premium .natal-vivo-canto { width:10rem; opacity:.68; }
+}

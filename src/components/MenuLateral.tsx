@@ -143,7 +143,7 @@ export function MenuLateral({ fixo, aoMudarFixo }: { fixo: boolean; aoMudarFixo:
   </>;
 
   return <>
-    {fixo && <aside className="fixed inset-y-0 left-0 z-40 w-16 border-r bg-card p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
+    {fixo && <aside className="oricse-menu-lateral fixed inset-y-0 left-0 z-40 w-16 border-r bg-card p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
       <div className="hidden items-center gap-2 px-1 lg:flex"><Menu className="h-5 w-5 text-primary"/><h2 className="font-bold">Menu</h2></div>
       <div className="hidden lg:block">{navegacao(true)}</div>
       <nav aria-label="Atalhos fixos do sistema" className="flex h-full flex-col items-center gap-2 lg:hidden">
