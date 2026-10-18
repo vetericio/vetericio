@@ -18,6 +18,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Cabecalho } from "@/components/Cabecalho";
+import { RockDecoracao } from "@/components/RockDecoracao";
 import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
@@ -619,6 +620,7 @@ function RootComponent() {
       <TenantContext.Provider value={contextoPortal}>
         <VisualPageRuntime />
         {mostrarClinico && <NatalVivoDecoracao />}
+        {mostrarClinico && <RockDecoracao />}
         {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
         {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><AlarmeAtivo /></div>}
         {!rotaAdmin && <Splash />}

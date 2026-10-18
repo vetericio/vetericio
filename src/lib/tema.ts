@@ -29,12 +29,13 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   { id: "vet", nome: "Clínico", classe: "tema-vet", descricao: "Verde e azul hospitalares, com superfícies claras" },
   { id: "pro", nome: "Executivo", classe: "tema-pro", descricao: "Azul-marinho e aparência corporativa" },
   { id: "escuro", nome: "Alvorada", classe: "tema-escuro", descricao: "Luz de amanhecer, céu suave e dourado pêssego" },
+  { id: "verde-cinza", nome: "Aurora Boreal", classe: "tema-verde-cinza", descricao: "Céu estrelado e auroras verdes, azuis e violetas" },
   { id: "black", nome: "Grafite", classe: "tema-black", descricao: "Preto elegante e alto contraste" },
   { id: "sobrio", nome: "Minimalista", classe: "tema-sobrio", descricao: "Branco, cinza e preto: somente o essencial" },
-  { id: "verde-cinza", nome: "Laranja", classe: "tema-verde-cinza", descricao: "Laranja claro, âmbar e laranja escuro" },
   { id: "cansado", nome: "Conforto", classe: "tema-cansado", descricao: "Contraste suave para longas jornadas" },
   { id: "rosa", nome: "Rosa", classe: "tema-rosa", descricao: "Rosa blush, ameixa e detalhes delicados" },
   { id: "natal", nome: "Natal Vivo", classe: "tema-natal-premium", descricao: "Natal sofisticado: pinheiros, luzes quentes e detalhes vermelhos e dourados" },
+  { id: "rock", nome: "Rock", classe: "tema-rock", descricao: "Palco, guitarras, amplificadores, aço e luzes de show" },
 ];
 
 const CHAVE = "veterico-tema-v2";

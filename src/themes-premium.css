@@ -33,17 +33,54 @@
 .tema-escuro main .bg-card,.tema-escuro main .bg-white {background-color:#fffdf9!important;}
 .tema-escuro main > section {box-shadow:0 4px 16px #945b3510;}
 
-/* Laranja: superfícies claras, contraste em laranja queimado. */
-.tema-verde-cinza body {background:#fff3e6;}
-.tema-verde-cinza .oricse-cabecalho {background:linear-gradient(110deg,#fff7ec,#ffe0b8);border-color:#e6b17f;}
-.tema-verde-cinza .oricse-menu-lateral {background:linear-gradient(165deg,#9a420d,#713009)!important;color:#fff6e9;}
-.tema-verde-cinza .oricse-menu-lateral nav > div > button {background:#a34b13!important;color:#fff6e9;}
-.tema-verde-cinza .oricse-menu-lateral nav > div > div {background:#81380d!important;}
-.tema-verde-cinza .oricse-menu-lateral a {color:#fff6e9;}
-.tema-verde-cinza .oricse-menu-lateral a.bg-primary {background:#ffdfb2!important;color:#66300d!important;}
-.tema-verde-cinza .oricse-menu-lateral .text-primary {color:#ffe4bf;}
-.tema-verde-cinza main .bg-white,.tema-verde-cinza main .bg-slate-50 {background-color:#fff8ef!important;}
-.tema-verde-cinza input,.tema-verde-cinza textarea,.tema-verde-cinza select {background-color:#fffaf4;border-color:#dba473;}
+/* Aurora Boreal substitui Laranja, preservando a preferência já salva. */
+.tema-verde-cinza body {background:#071424 url('/temas/aurora-boreal.webp') center top/cover fixed no-repeat;}
+.tema-verde-cinza .oricse-cabecalho {min-height:170px;background:linear-gradient(110deg,#07142438,#11234440);border-color:#6ee7cf55;}
+.tema-verde-cinza .oricse-cabecalho>.mx-auto {padding-top:15px;padding-bottom:15px;}
+.tema-verde-cinza .oricse-cabecalho img {filter:brightness(0) invert(1);}
+.tema-verde-cinza .oricse-menu-lateral {background:linear-gradient(160deg,#0a1d32f5,#132139f5)!important;color:#e3f7ff;border-color:#6ee7cf55;}
+.tema-verde-cinza .oricse-menu-lateral nav > div > button {background:#193b4b!important;color:#e3f7ff;}
+.tema-verde-cinza .oricse-menu-lateral nav > div > div {background:#0b2136!important;}
+.tema-verde-cinza .oricse-menu-lateral a {color:#e3f7ff;}
+.tema-verde-cinza .oricse-menu-lateral a.bg-primary {background:#6ee7cf!important;color:#082c2c!important;}
+.tema-verde-cinza .oricse-menu-lateral .text-primary {color:#6ee7cf;}
+.tema-verde-cinza main .bg-white,.tema-verde-cinza main .bg-card,.tema-verde-cinza main .bg-slate-50 {background:linear-gradient(135deg,#0e2033f5,#18243ef5)!important;color:#e3f7ff;border-color:#507b8b;box-shadow:0 8px 24px #0004,inset 0 1px #bdebf514;}
+.tema-verde-cinza input,.tema-verde-cinza textarea,.tema-verde-cinza select {background:#0b1d31!important;color:#e3f7ff;border-color:#4f7b8b;}
+.tema-verde-cinza th {background:#17374a;color:#b6f4e8;}
+.tema-verde-cinza main .text-slate-900,.tema-verde-cinza main .text-slate-800 {color:#e3f7ff;}
+.tema-verde-cinza main .text-slate-500,.tema-verde-cinza main .text-slate-600 {color:#abc3d7;}
+
+/* Rock: palco real e equipamentos em camadas atrás da interface. */
+.rock-decoracao {display:none;position:fixed;inset:0;z-index:0;pointer-events:none!important;overflow:hidden;}
+.rock-decoracao * {pointer-events:none!important;user-select:none;}
+.tema-rock .rock-decoracao {display:block;}
+.rock-equipamento {position:absolute;bottom:-30px;width:clamp(150px,17vw,310px);height:auto;filter:drop-shadow(0 5px 12px #0009);}
+.rock-equipamento--esquerdo {left:0;}
+.rock-equipamento--direito {right:-40px;width:clamp(110px,12vw,230px);transform:scaleX(-1);}
+.tema-rock body {background:#111113 url('/temas/rock-palco.webp') center top/cover fixed no-repeat;}
+.tema-rock .oricse-cabecalho {min-height:190px;background:linear-gradient(180deg,#09090b22,#0c0c0f88);border-bottom:2px solid #9a282f;box-shadow:0 5px 18px #0006;}
+.tema-rock .oricse-cabecalho>.mx-auto {padding-top:28px;padding-bottom:18px;}
+.tema-rock .oricse-cabecalho img {filter:brightness(0) invert(1) drop-shadow(0 2px 5px #000);}
+.tema-rock main,.tema-rock footer {position:relative;z-index:1;}
+.tema-rock main .bg-white,.tema-rock main .bg-card,.tema-rock main .bg-slate-50 {background:linear-gradient(135deg,#242426f7,#151518f7)!important;color:#f8f3ed;border-color:#6e6263;box-shadow:0 7px 20px #0008,inset 0 1px #ffffff18;}
+.tema-rock main > section {border-top:2px solid #ae353d;}
+.tema-rock .oricse-menu-lateral {background:linear-gradient(155deg,#242124fa,#101012fa)!important;color:#f8f3ed;border-right:2px solid #933139;box-shadow:4px 0 18px #0007;}
+.tema-rock .oricse-menu-lateral nav > div {border-color:#69555a;}
+.tema-rock .oricse-menu-lateral nav > div > button {background:linear-gradient(100deg,#322b2e,#1b1b1e)!important;color:#f8f3ed;}
+.tema-rock .oricse-menu-lateral nav > div > div {background:#151518!important;}
+.tema-rock .oricse-menu-lateral a {color:#f8f3ed;}
+.tema-rock .oricse-menu-lateral a.bg-primary {background:linear-gradient(100deg,#a71f2b,#761825)!important;color:#fff;}
+.tema-rock .oricse-menu-lateral .text-primary {color:#f19c83;}
+.tema-rock .bg-primary {background:linear-gradient(135deg,#c72e39,#981a25);color:#fff;box-shadow:inset 0 1px #ffbba63d,0 3px 8px #0005;}
+.tema-rock input,.tema-rock textarea,.tema-rock select {background:#17171b!important;color:#f8f3ed;border-color:#76636a;}
+.tema-rock th {background:#34272c;color:#f5d8cf;}
+.tema-rock main .text-slate-900,.tema-rock main .text-slate-800 {color:#f8f3ed;}
+.tema-rock main .text-slate-500,.tema-rock main .text-slate-600 {color:#c1b8b7;}
+.tema-verde-cinza [data-theme-preview] .bg-card,.tema-rock [data-theme-preview] .bg-card {background:var(--card)!important;color:var(--card-foreground)!important;border-color:var(--border);box-shadow:none;}
+.tema-verde-cinza [data-theme-preview] .bg-primary,.tema-rock [data-theme-preview] .bg-primary {background:var(--primary)!important;color:var(--primary-foreground)!important;box-shadow:none;}
+[data-theme-preview].tema-verde-cinza > .bg-background {background:linear-gradient(#07142466,#071424cc),url('/temas/aurora-boreal.webp') center/cover;}
+[data-theme-preview].tema-rock > .bg-background {background:linear-gradient(#11111355,#111113dd),url('/temas/rock-palco.webp') center/cover;}
+@media(max-width:640px){.tema-rock .oricse-cabecalho{min-height:150px}.tema-verde-cinza .oricse-cabecalho{min-height:140px}.rock-equipamento{width:115px;opacity:.75}.rock-equipamento--direito{width:95px;right:-30px}}
 
 /* Clínico: verde cirúrgico, azul hospitalar e branco. */
 .tema-vet body {background:#edf8f6;}

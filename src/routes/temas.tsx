@@ -107,6 +107,7 @@ function PaginaTemas() {
     return (
       <button
         key={t.id}
+        data-theme-preview="true"
         type="button"
         onClick={() => escolher(t.id)}
         className={`${t.classe} overflow-hidden rounded-xl border-2 text-left transition-shadow hover:shadow-md ${
@@ -180,7 +181,7 @@ function PaginaTemas() {
         </div>
       </section>
 
-      <h2 className="mb-2 text-sm font-bold text-foreground">10 temas oficiais</h2>
+      <h2 className="mb-2 text-sm font-bold text-foreground">{TEMAS.length} temas oficiais</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{sobrios.map(cartao)}</div>
 
 

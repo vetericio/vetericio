@@ -405,33 +405,33 @@
 
 /* Tema verde e cinza. */
 .tema-verde-cinza {
-  --background: #fff3e6;
-  --foreground: #613011;
-  --card: #fffaf3;
-  --card-foreground: #613011;
-  --popover: #fffaf3;
-  --popover-foreground: #613011;
-  --primary: #a84408;
-  --primary-foreground: #ffffff;
-  --secondary: #ffe0b5;
-  --secondary-foreground: #613011;
-  --muted: #ffecd4;
-  --muted-foreground: #8a552f;
-  --accent: #ffc485;
-  --accent-foreground: #613011;
-  --border: #e6b17f;
-  --input: #e6b17f;
-  --ring: #b64e0c;
-  --sidebar: #793208;
-  --sidebar-foreground: #fff6e9;
-  --sidebar-primary: #a84408;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #a34b13;
-  --sidebar-accent-foreground: #fff6e9;
-  --sidebar-border: #e6b17f;
-  --sidebar-ring: #b64e0c;
-  --chart-1: #b64e0c;
-  --chart-2: #e98529;
+  --background: #071424;
+  --foreground: #e3f7ff;
+  --card: #101d32;
+  --card-foreground: #e3f7ff;
+  --popover: #101d32;
+  --popover-foreground: #e3f7ff;
+  --primary: #6ee7cf;
+  --primary-foreground: #082c2c;
+  --secondary: #1b3046;
+  --secondary-foreground: #e3f7ff;
+  --muted: #1b3046;
+  --muted-foreground: #abc3d7;
+  --accent: #294361;
+  --accent-foreground: #e3f7ff;
+  --border: #3c6876;
+  --input: #3c6876;
+  --ring: #6ee7cf;
+  --sidebar: #0a192c;
+  --sidebar-foreground: #e3f7ff;
+  --sidebar-primary: #6ee7cf;
+  --sidebar-primary-foreground: #082c2c;
+  --sidebar-accent: #1b3046;
+  --sidebar-accent-foreground: #e3f7ff;
+  --sidebar-border: #3c6876;
+  --chart-1: #6ee7cf;
+  --chart-2: #b39af5;
+  --radius: 0.85rem;
 }
 
 /* Tema profissional: azul-marinho sóbrio. */
@@ -628,32 +628,37 @@
 
 /* Tema rock. */
 .tema-rock {
-  --background: oklch(0.18 0.005 260);
-  --foreground: oklch(0.95 0.005 260);
-  --card: oklch(0.23 0.008 260);
-  --card-foreground: oklch(0.95 0.005 260);
-  --popover: oklch(0.23 0.008 260);
-  --popover-foreground: oklch(0.95 0.005 260);
-  --primary: oklch(0.55 0.22 25);
-  --primary-foreground: oklch(0.98 0.01 25);
-  --secondary: oklch(0.3 0.008 260);
-  --secondary-foreground: oklch(0.93 0.005 260);
-  --muted: oklch(0.28 0.006 260);
-  --muted-foreground: oklch(0.74 0.008 260);
-  --accent: oklch(0.68 0.01 260);
-  --accent-foreground: oklch(0.18 0.005 260);
-  --border: oklch(0.36 0.008 260);
-  --input: oklch(0.36 0.008 260);
-  --ring: oklch(0.55 0.22 25);
-  --chart-1: oklch(0.6 0.22 25);
-  --chart-2: oklch(0.8 0.01 260);
-  --radius: 0.4rem;
+  --background: #111113;
+  --foreground: #f8f3ed;
+  --card: #202024;
+  --card-foreground: #f8f3ed;
+  --popover: #202024;
+  --popover-foreground: #f8f3ed;
+  --primary: #c82f35;
+  --primary-foreground: #ffffff;
+  --secondary: #2b2b30;
+  --secondary-foreground: #f8f3ed;
+  --muted: #2b2b30;
+  --muted-foreground: #c1b8b7;
+  --accent: #4b3535;
+  --accent-foreground: #f8f3ed;
+  --border: #575157;
+  --input: #575157;
+  --ring: #c82f35;
+  --sidebar: #151517;
+  --sidebar-foreground: #f8f3ed;
+  --sidebar-primary: #c82f35;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2b2b30;
+  --sidebar-accent-foreground: #f8f3ed;
+  --sidebar-border: #575157;
+  --chart-1: #c82f35;
+  --chart-2: #e6b260;
+  --radius: 0.45rem;
 }
 
 .tema-rock body {
-  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Ctext x='18' y='44' font-size='26' opacity='0.2'%3E%F0%9F%8E%B8%3C/text%3E%3Ctext x='100' y='98' font-size='22' opacity='0.18'%3E%E2%9A%A1%3C/text%3E%3Ctext x='34' y='138' font-size='22' opacity='0.16'%3E%F0%9F%A4%98%3C/text%3E%3C/svg%3E");
-  background-attachment: fixed;
-  background-repeat: repeat;
+  background-color: #111113;
 }
 
 /* Tema Veterício: cores e padrão da logo (laranja + azul-petróleo). */
