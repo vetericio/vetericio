@@ -1,6 +1,6 @@
 -- Infraestrutura de preços e split, SEM ativação de pagamentos de produção.
 -- Percentuais do Mercado Pago são estimativas administrativas; confirmação é feita via API/webhook.
-create table if not exists public.oricse_taxas_pagamento (
+create table if not exists public.oricse_taxas_modalidade (
   id uuid primary key default gen_random_uuid(),
   clinica_id uuid references public.clinicas(id) on delete cascade,
   modalidade text not null check (modalidade in ('pix','cartao','boleto')),
@@ -10,8 +10,8 @@ create table if not exists public.oricse_taxas_pagamento (
   ativo boolean not null default true,
   updated_at timestamptz not null default now()
 );
-create unique index if not exists oricse_taxas_global_uniq on public.oricse_taxas_pagamento(modalidade) where clinica_id is null;
-create unique index if not exists oricse_taxas_clinica_uniq on public.oricse_taxas_pagamento(clinica_id,modalidade) where clinica_id is not null;
+create unique index if not exists oricse_taxas_modalidade_global_uniq on public.oricse_taxas_modalidade(modalidade) where clinica_id is null;
+create unique index if not exists oricse_taxas_modalidade_clinica_uniq on public.oricse_taxas_modalidade(clinica_id,modalidade) where clinica_id is not null;
 create table if not exists public.oricse_precos_portal (
   id uuid primary key default gen_random_uuid(),
   clinica_id uuid not null references public.clinicas(id) on delete cascade,
@@ -43,8 +43,8 @@ create table if not exists public.oricse_pagamentos (
 );
 -- Fail closed: nenhuma escrita/consulta direta pelo cliente nos dados financeiros sensíveis.
 -- Acesso financeiro exclusivamente através de funções servidoras autorizadas.
-alter table public.oricse_taxas_pagamento enable row level security;
+alter table public.oricse_taxas_modalidade enable row level security;
 alter table public.oricse_precos_portal enable row level security;
 alter table public.oricse_pagamentos enable row level security;
-revoke all on public.oricse_taxas_pagamento,public.oricse_precos_portal,public.oricse_pagamentos from anon,authenticated;
+revoke all on public.oricse_taxas_modalidade,public.oricse_precos_portal,public.oricse_pagamentos from anon,authenticated;
 comment on table public.oricse_pagamentos is 'Pagamentos financeiros: API servidor valida usuário e clínica, confirma webhook MP e concilia antes de mudar status.';
