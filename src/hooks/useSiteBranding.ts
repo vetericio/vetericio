@@ -9,7 +9,7 @@ export type SiteBranding = {
 
 const PADRAO: SiteBranding = {
   marca: "Oricse",
-  logo_url: "/oricse-logo.png",
+  logo_url: "/oricse-logo-oryx.svg",
   contato: "",
 };
 
