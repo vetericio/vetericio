@@ -22,6 +22,7 @@ import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { Rodape } from "@/components/Rodape";
+import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
@@ -617,6 +618,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <TenantContext.Provider value={contextoPortal}>
         <VisualPageRuntime />
+        {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
         {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><AlarmeAtivo /></div>}
         {!rotaAdmin && <Splash />}

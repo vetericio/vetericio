@@ -50,3 +50,58 @@
 .tema-natal-premium th{background:#ebf1e7!important;color:#16402c!important;}
 .tema-natal-premium button:focus-visible{outline:2px solid #c7a360;outline-offset:2px;}
 @media(max-width:740px){.tema-natal-premium body{background-size:auto 230px,cover,cover,cover;}}
+
+/* Natal Vivo — composição em camadas, ativa exclusivamente neste tema. */
+.tema-natal-premium {
+  --background: oklch(0.96 0.025 81);
+  --foreground: oklch(0.26 0.06 48);
+  --card: oklch(0.995 0.011 84);
+  --card-foreground: oklch(0.25 0.055 48);
+  --popover: oklch(0.995 0.011 84);
+  --popover-foreground: oklch(0.25 0.055 48);
+  --primary: oklch(0.39 0.13 18);
+  --primary-foreground: oklch(0.99 0.01 80);
+  --secondary: oklch(0.91 0.035 91);
+  --secondary-foreground: oklch(0.27 0.055 48);
+  --muted: oklch(0.93 0.025 82);
+  --muted-foreground: oklch(0.48 0.04 54);
+  --accent: oklch(0.76 0.1 77);
+  --accent-foreground: oklch(0.25 0.055 48);
+  --border: oklch(0.79 0.075 79);
+  --input: oklch(0.86 0.055 83);
+  --ring: oklch(0.62 0.12 72);
+  --sidebar: oklch(0.27 0.065 153);
+  --sidebar-foreground: oklch(0.97 0.025 90);
+  --sidebar-primary: oklch(0.42 0.125 18);
+  --sidebar-primary-foreground: oklch(0.99 0.01 80);
+  --sidebar-accent: oklch(0.33 0.07 151);
+  --sidebar-accent-foreground: oklch(0.97 0.025 90);
+  --sidebar-border: oklch(0.68 0.08 77);
+}
+.tema-natal-premium body {
+  background-image: linear-gradient(90deg,rgba(255,249,232,.9),rgba(255,249,232,.62)),url('/natal/fundo-champagne-bokeh.webp')!important;
+  background-size: cover!important;
+  background-position: center!important;
+  background-attachment: fixed!important;
+}
+.tema-natal-premium .natal-vivo-decoracao { display:block; }
+.natal-vivo-decoracao { display:none; pointer-events:none; position:fixed; inset:0; z-index:45; overflow:hidden; }
+.natal-vivo-guirlanda,.natal-vivo-canto { position:absolute; max-width:none; user-select:none; filter:drop-shadow(0 7px 8px rgba(50,23,3,.28)); }
+.natal-vivo-guirlanda--topo { z-index:2; top:-1.3rem; left:50%; width:max(104vw,1280px); height:auto; transform:translateX(-50%); }
+.natal-vivo-guirlanda--esquerda { z-index:1; top:8rem; left:-12rem; width:40rem; transform:rotate(90deg); transform-origin:center; opacity:.96; }
+.natal-vivo-guirlanda--direita { z-index:1; top:7.5rem; right:-13rem; width:42rem; transform:rotate(-90deg) scaleX(-1); transform-origin:center; opacity:.96; }
+.natal-vivo-canto { z-index:3; bottom:-2.4rem; width:min(34vw,34rem); }
+.natal-vivo-canto--esquerdo { left:-1.6rem; }
+.natal-vivo-canto--direito { right:-1.6rem; transform:scaleX(-1); }
+.natal-vivo-luzes { position:absolute; z-index:0; opacity:.78; filter:blur(13px); background:radial-gradient(circle,#fff9c8 0 3px,rgba(255,203,85,.66) 9px,transparent 22px); background-size:62px 62px; }
+.natal-vivo-luzes--topo { top:0; left:0; width:100%; height:14rem; }
+.natal-vivo-luzes--lateral { top:7rem; right:0; width:7rem; height:76%; background-size:45px 45px; }
+.tema-natal-premium header { border-bottom-color:color-mix(in oklab,var(--border),transparent 15%); background:rgba(255,253,245,.76)!important; backdrop-filter:blur(6px); }
+.tema-natal-premium .bg-card,.tema-natal-premium [class*="rounded"][class*="border"] { border-color:color-mix(in oklab,#c59b57,transparent 15%)!important; box-shadow:0 11px 25px rgba(76,47,9,.14),inset 0 1px rgba(255,255,255,.82)!important; }
+.tema-natal-premium input,.tema-natal-premium textarea,.tema-natal-premium select { border-color:#d5b373!important; box-shadow:inset 0 1px 2px rgba(104,65,16,.08); }
+.tema-natal-premium [data-sidebar="sidebar"] { background:linear-gradient(160deg,#06472e,#073d29 56%,#032f20)!important; }
+.tema-natal-premium [data-sidebar="menu-button"] { border:1px solid transparent; }
+.tema-natal-premium [data-sidebar="menu-button"]:hover { background:rgba(241,210,136,.14); border-color:rgba(229,193,108,.44); }
+.tema-natal-premium [data-sidebar="menu-sub"] { border-color:rgba(230,203,132,.45); }
+@media (max-width:900px) { .natal-vivo-guirlanda--esquerda,.natal-vivo-guirlanda--direita { opacity:.48; } .natal-vivo-canto { width:19rem; } }
+@media (max-width:640px) { .natal-vivo-guirlanda--topo { width:58rem; top:-.4rem; } .natal-vivo-guirlanda--esquerda,.natal-vivo-guirlanda--direita { display:none; } .natal-vivo-canto { width:13rem; bottom:-1.2rem; opacity:.78; } .natal-vivo-canto--esquerdo { left:-3rem; } .natal-vivo-canto--direito { right:-3rem; } .natal-vivo-luzes--topo { height:8rem; } }
