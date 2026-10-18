@@ -132,9 +132,9 @@ function NovoAnimal() {
   useEffect(()=>{let ativo=true;(async()=>{try{
    const {data:{user}}=await supabaseBanco.auth.getUser();
    if(!user)throw Error("Faça login novamente.");
-   const {data:contexto,error}=await supabase.rpc("oricse_contexto_clinica_atual");
-   const clinicaSelecionada=contexto?.[0]?.clinica_id;
-   if(error||!clinicaSelecionada)throw Error("Clínica ativa não identificada.");
+   // O vínculo do tutor define a clínica; não depender do contexto temporário do admin.
+   const {data:clinicaSelecionada,error:erroClinica}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_tutor:tutorIdParam||null,p_animal:animalId||null});
+   if(erroClinica||!clinicaSelecionada)throw Error(erroClinica?.message||"Clínica do tutor não identificada.");
    const {data,error:rpcError}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaSelecionada,p_tutor:tutorIdParam||null,p_animal:animalId||null});
    if(rpcError)throw rpcError;
    if(!ativo)return;
