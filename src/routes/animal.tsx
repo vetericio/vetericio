@@ -86,6 +86,8 @@ function AnimalFicha(){
   }
   useEffect(()=>{void carregarConteudosPortal();},[animalId]);
 
+  useEffect(()=>{if(!animalId)return;let vivo=true;void(async()=>{const {data,error}=await (supabaseBanco as any).rpc("oricse_animal_historico",{p_animal:animalId});if(!vivo)return;if(error){toast.error("Não foi possível carregar o histórico: "+error.message);return;}setRegistros(data?.registros||[]);setPesos(data?.pesos||[]);})();return()=>{vivo=false};},[animalId]);
+
   const registrosLocaisSemPortal=useMemo(()=>registros.filter(r=>!["Vacinas","Exames","Documentos","Receitas"].includes(r.tipo)),[registros]);
   const registrosAnimal=useMemo(()=>[...registrosLocaisSemPortal,...registrosPortal].filter(r=>r.animalId===animalId).sort((a,b)=>`${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)),[registrosLocaisSemPortal,registrosPortal,animalId]);
   const pesosAnimal=useMemo(()=>pesos.filter(p=>p.animalId===animalId).sort((a,b)=>`${b.data}${b.criadoEm}`.localeCompare(`${a.data}${a.criadoEm}`)),[pesos,animalId]);
@@ -117,7 +119,9 @@ function AnimalFicha(){
         await carregarConteudosPortal();setModalTipo(null);setArquivoPdf(null);toast.success(`${modalTipo} adicionado no banco.`);
       }catch(error){toast.error(error instanceof Error?error.message:`Não foi possível salvar ${modalTipo.toLowerCase()}.`);}finally{setSalvandoPortal(false);}return;
     }
-    const novo:Registro={id:crypto.randomUUID(),animalId:animal.id,tipo:modalTipo,titulo:titulo.trim(),detalhe:detalhe.trim(),data,criadoEm:new Date().toISOString()};const lista=[novo,...registros];setRegistros(lista);oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify(lista));setModalTipo(null);toast.success(`${modalTipo} adicionado.`);
+    const {data:historico,error}=await (supabaseBanco as any).rpc("oricse_animal_historico",{p_animal:animal.id,p_tipo:modalTipo,p_titulo:titulo.trim(),p_detalhe:detalhe.trim(),p_data:data});
+    if(error)return void toast.error("Não foi possível salvar o registro: "+error.message);
+    setRegistros(historico?.registros||[]);setModalTipo(null);toast.success(`${modalTipo} registrado no ORICSE.`);
   }
 
   async function alternarVisibilidade(registro:Registro,valor:boolean){
@@ -126,7 +130,7 @@ function AnimalFicha(){
     setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:valor}:item));const{error}=await(supabase as any).from(tabela).update({visivel_tutor:valor,updated_at:new Date().toISOString()}).eq("id",registro.id).eq("clinica_id",clinicaId);if(error){setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:!valor}:item));toast.error("Não foi possível alterar a visibilidade no portal.");return;}toast.success(valor?"Registro liberado no Portal do Tutor.":"Registro ocultado do Portal do Tutor.");
   }
 
-  function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const novo:PesoRegistro={id:crypto.randomUUID(),animalId:animal.id,peso:n,data:dataPeso,criadoEm:new Date().toISOString()};const lista=[novo,...pesos];setPesos(lista);oricseStorage.setItem(PESOS_KEY,JSON.stringify(lista));const animaisAtualizados=ler<Animal>(ANIMAIS_KEY).map(item=>item.id===animal.id?{...item,peso:n.toFixed(3)}:item);oricseStorage.setItem(ANIMAIS_KEY,JSON.stringify(animaisAtualizados));setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
+  async function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const {data:historico,error}=await (supabaseBanco as any).rpc("oricse_animal_historico",{p_animal:animal.id,p_peso:n,p_data:dataPeso});if(error)return void toast.error("Não foi possível salvar o peso: "+error.message);setPesos(historico?.pesos||[]);setAnimal(a=>a?{...a,peso:n.toFixed(3)}:a);setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
 
   if(carregandoFicha)return <main className="mx-auto max-w-5xl p-8 text-sm text-muted-foreground">Carregando prontuário no Supabase…</main>;
   if(!animal)return <main className="mx-auto max-w-5xl px-4 py-8"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">Animal não encontrado.</div></main>;
