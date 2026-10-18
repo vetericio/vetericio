@@ -166,7 +166,7 @@ function NovoAnimal() {
     if(!form.nome.trim()||!form.especie)return toast.error("Nome e espécie são obrigatórios.");
     const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
     if(error)return toast.error(error.message);
-    toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no Supabase.");
+    toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no ORICSE.");
     navigate({to:"/tutores"});
   }
   return (
