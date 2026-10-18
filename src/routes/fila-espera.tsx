@@ -83,17 +83,18 @@ function FilaEspera() {
   async function operar(acao:string,params:Record<string,unknown>={}){
     if(!clinicaId)return toast.error("Clínica não identificada.");
     const {error}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:clinicaId,p_acao:acao,...params});
-    if(error)return toast.error(error.message);
+    if(error){toast.error(error.message);return false;}
     await carregarFila(clinicaId);
+    return true;
   }
   function selecionarTutor(tutor:Tutor){setTutorId(tutor.id);setAnimalId("");setBuscaTutor(tutor.nome);setBuscaTutorAberta(false);}
   function limparTutor(){setTutorId("");setAnimalId("");setBuscaTutor("");setBuscaTutorAberta(false);}
   async function adicionarFila(){
     if(!tutorId||!animalId)return toast.error("Selecione tutor e animal.");
-    await operar("adicionar",{p_tutor:tutorId,p_animal:animalId,p_motivo:motivo.trim()});
-    limparTutor();setMotivo("");
+    const sucesso=await operar("adicionar",{p_tutor:tutorId,p_animal:animalId,p_motivo:motivo.trim()});
+    if(sucesso){limparTutor();setMotivo("");toast.success("Paciente registrado na fila.");}
   }
-  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;await operar("chamar",{p_item:id});window.location.href=`/animal?animalId=${encodeURIComponent(item.animalId)}`;}
+  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;const sucesso=await operar("chamar",{p_item:id});if(sucesso)window.location.href=`/animal?animalId=${encodeURIComponent(item.animalId)}`;}
   async function voltarParaFila(id:string){await operar("voltar",{p_item:id});}
   async function remover(id:string){const item=fila.find(i=>i.id===id);if(!item||!window.confirm(`Remover ${item.animalNome} da fila?`))return;await operar("remover",{p_item:id});}
 
