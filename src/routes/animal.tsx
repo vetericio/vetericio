@@ -61,8 +61,8 @@ function AnimalFicha(){
     setTutor(t||null);setClinicaId(cid);
   }catch(e){if(vivo)toast.error(e instanceof Error?e.message:"Não foi possível abrir o prontuário.");}
   finally{if(vivo)setCarregandoFicha(false);}})();return()=>{vivo=false};},[animalId]);
-  const[aba,setAba]=useState<Aba>("Visão geral");const[registros,setRegistros]=useState<Registro[]>(()=>ler<Registro>(PRONTUARIO_KEY));const[registrosPortal,setRegistrosPortal]=useState<Registro[]>([]);const[clinicaId,setClinicaId]=useState("");
-  const[pesos,setPesos]=useState<PesoRegistro[]>(()=>ler<PesoRegistro>(PESOS_KEY));const[modalTipo,setModalTipo]=useState<RegistroTipo|null>(null);const[modalPeso,setModalPeso]=useState(false);const[pesoNovo,setPesoNovo]=useState("");const[dataPeso,setDataPeso]=useState(()=>new Date().toISOString().slice(0,10));
+  const[aba,setAba]=useState<Aba>("Visão geral");const[registros,setRegistros]=useState<Registro[]>([]);const[registrosPortal,setRegistrosPortal]=useState<Registro[]>([]);const[clinicaId,setClinicaId]=useState("");
+  const[pesos,setPesos]=useState<PesoRegistro[]>([]);const[modalTipo,setModalTipo]=useState<RegistroTipo|null>(null);const[modalPeso,setModalPeso]=useState(false);const[pesoNovo,setPesoNovo]=useState("");const[dataPeso,setDataPeso]=useState(()=>new Date().toISOString().slice(0,10));
   const[titulo,setTitulo]=useState("");const[detalhe,setDetalhe]=useState("");const[data,setData]=useState(()=>new Date().toISOString().slice(0,10));const[visivelTutor,setVisivelTutor]=useState(false);const[reforcoEm,setReforcoEm]=useState("");const[lote,setLote]=useState("");const[tipoDetalhe,setTipoDetalhe]=useState("");const[salvandoPortal,setSalvandoPortal]=useState(false);const[arquivoPdf,setArquivoPdf]=useState<File|null>(null);
 
   async function carregarConteudosPortal(){
@@ -127,7 +127,7 @@ function AnimalFicha(){
   async function alternarVisibilidade(registro:Registro,valor:boolean){
     if(!registro.fontePortal||!clinicaId||registro.fontePortal==="receita")return;
     const tabela=registro.fontePortal==="vacina"?"oricse_portal_vacinas":registro.fontePortal==="exame"?"oricse_portal_exames":"oricse_portal_documentos";
-    setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:valor}:item));const{error}=await(supabase as any).from(tabela).update({visivel_tutor:valor,updated_at:new Date().toISOString()}).eq("id",registro.id).eq("clinica_id",clinicaId);if(error){setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:!valor}:item));toast.error("Não foi possível alterar a visibilidade no portal.");return;}toast.success(valor?"Registro liberado no Portal do Tutor.":"Registro ocultado do Portal do Tutor.");
+    setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:valor}:item));const{error}=await(supabaseBanco as any).from(tabela).update({visivel_tutor:valor,updated_at:new Date().toISOString()}).eq("id",registro.id).eq("clinica_id",clinicaId);if(error){setRegistrosPortal(lista=>lista.map(item=>item.id===registro.id?{...item,visivelTutor:!valor}:item));toast.error("Não foi possível alterar a visibilidade no portal.");return;}toast.success(valor?"Registro liberado no Portal do Tutor.":"Registro ocultado do Portal do Tutor.");
   }
 
   async function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const {data:historico,error}=await (supabaseBanco as any).rpc("oricse_animal_historico",{p_animal:animal.id,p_peso:n,p_data:dataPeso});if(error)return void toast.error("Não foi possível salvar o peso: "+error.message);setPesos(historico?.pesos||[]);setAnimal(a=>a?{...a,peso:n.toFixed(3)}:a);setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
