@@ -6,6 +6,7 @@ export const Route=createFileRoute("/mercado-pago-clinica")({component:MercadoPa
 const endpoint="https://mwrmfcyrdxfxssebgknz.supabase.co/functions/v1/oricse-mercadopago-oauth";
 function MercadoPagoClinica(){
  const [erroPagina,setErroPagina]=useState("");
+ const [adminGeral,setAdminGeral]=useState(false);
  const [clinica,setClinica]=useState(""),[nome,setNome]=useState(""),[papel,setPapel]=useState(""),[connected,setConnected]=useState(false),[collector,setCollector]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  async function request(action:string,clinic:string){
   const {data:{session}}=await supabase.auth.getSession();
@@ -17,13 +18,15 @@ function MercadoPagoClinica(){
   const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("É necessário entrar na sua conta.");
   const {data,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id,papel").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
   if(error||!data)throw new Error("Nenhuma clínica ativa associada à sua conta.");
+  const {data:perfilAdmin}=await supabaseBanco.from("app_users").select("role").eq("user_id",user.id).maybeSingle();
+  setAdminGeral(perfilAdmin?.role==="admin");
   setClinica(data.clinica_id);setPapel(data.papel);setNome("Clínica vinculada");
   const {data:clinicInfo}=await supabaseBanco.from("clinicas").select("nome").eq("id",data.clinica_id).maybeSingle();
   if(clinicInfo?.nome)setNome(clinicInfo.nome);
   const status=await request("status",data.clinica_id);setConnected(Boolean(status.connected));setCollector(status.collector_id||"");
  }catch(err){const msg=err instanceof Error?err.message:"Não foi possível carregar a conexão";setErroPagina(msg);toast.error(msg);}finally{setLoading(false)}})()},[]);
  async function conectar(){setBusy(true);try{const data=await request("start",clinica);if(!data.authorization_url)throw new Error("Autorização indisponível");window.location.assign(data.authorization_url);}catch(err){toast.error(err instanceof Error?err.message:"Falha ao conectar");setBusy(false);}}
- const allowed=["rt","admin","gestor"].includes(papel);
+ const allowed=adminGeral||["rt","admin","gestor"].includes(papel);
  const retorno=new URLSearchParams(typeof window==="undefined"?"":window.location.search).get("mp");
  return <main className="mx-auto max-w-3xl space-y-5 p-5 text-foreground"><header><h1 className="text-2xl font-black">Mercado Pago da clínica</h1><p className="text-sm text-muted-foreground">Administração → Configurações → Mercado Pago</p></header>
  {retorno==="conectado"&&<p role="status" className="rounded-xl border bg-secondary p-3 font-semibold">Conta Mercado Pago conectada à clínica com sucesso.</p>}
