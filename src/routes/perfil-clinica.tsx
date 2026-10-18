@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/perfil-clinica")({
   head: () => ({
     meta: [
-      { title: "Perfil da clínica — Oricse" },
+      { title: "Configurações da clínica — Oricse" },
       { name: "description", content: "Configurações operacionais da clínica na Oricse." },
     ],
   }),
@@ -148,11 +148,24 @@ function PerfilClinica() {
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 size={22} /></div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Perfil da clínica</h1>
+            <h1 className="text-2xl font-bold text-foreground">Configurações da clínica</h1>
             <p className="text-sm text-muted-foreground">{perfil?.nome || "Clínica"}</p>
           </div>
         </div>
       </header>
+
+      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Building2 className="mt-0.5 text-primary" size={21} />
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Mercado Pago</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Conecte a conta de recebimento exclusiva desta clínica. As cobranças dos tutores ficam vinculadas à sua conta.</p>
+            </div>
+          </div>
+          <Link to="/mercado-pago-clinica" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Configurar Mercado Pago</Link>
+        </div>
+      </section>
 
       <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
