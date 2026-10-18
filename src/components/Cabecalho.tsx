@@ -32,7 +32,7 @@ const AREAS_TROCA = [
   { to: "/financeiro", rotulo: "Caixa", permissao: "caixa.financeiro.visualizar" },
 ] as const;
 
-export function Cabecalho() {
+export function Cabecalho({ menuFixo, aoMudarMenuFixo }: { menuFixo: boolean; aoMudarMenuFixo: (fixo: boolean) => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { marca, logo_url } = useSiteBranding();
@@ -69,17 +69,17 @@ export function Cabecalho() {
     <header className="relative border-b border-border bg-card/60">
       <CrmBackgroundSync />
       <ComandasBackgroundSync />
-      <MenuLateral />
-      <div className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-4" : "pb-2 pt-2"}`}>
-        <div className={plantaoArea ? "mb-2 flex justify-center" : "mb-1 flex justify-center"}>
+      <MenuLateral fixo={menuFixo} aoMudarFixo={aoMudarMenuFixo} />
+      <div className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-3" : "pb-1 pt-1"}`}>
+        <div className={plantaoArea ? "mb-1 flex justify-center" : "mb-0 flex justify-center"}>
           <img
             src={logo_url}
             alt={`${marca} — sistema veterinário e petshop`}
-            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[180px] sm:max-w-[220px]" : "max-w-[90px] sm:max-w-[110px]"}`}
+            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[165px] sm:max-w-[200px]" : "max-w-[120px] sm:max-w-[145px]"}`}
           />
         </div>
 
-        <div className={plantaoArea ? "mb-2" : "mb-0"}>
+        <div className={plantaoArea ? "mb-1" : "mb-0"}>
           <button
             type="button"
             onClick={() => setTrocarArea((aberto) => !aberto)}
