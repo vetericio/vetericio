@@ -1,0 +1,23 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabaseBanco } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+export const Route=createFileRoute("/configurar-portal-tutor")({component:ConfigurarPortalTutor});
+type Config={mensagem_boas_vindas:string;telefone_publico:string;whatsapp_publico:string;instrucoes_agendamento:string;exibir_agendamento:boolean;exibir_documentos:boolean};
+const inicial:Config={mensagem_boas_vindas:"Bem-vindo ao Portal do Tutor!",telefone_publico:"",whatsapp_publico:"",instrucoes_agendamento:"",exibir_agendamento:true,exibir_documentos:true};
+function ConfigurarPortalTutor(){
+ const [clinica,setClinica]=useState(""),[nome,setNome]=useState(""),[config,setConfig]=useState<Config>(inicial),[busy,setBusy]=useState(true),[saving,setSaving]=useState(false),[erro,setErro]=useState("");
+ useEffect(()=>{void (async()=>{try{const {data:{user}}=await supabaseBanco.auth.getUser();if(!user)throw Error("Faça login.");const {data:membership,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();if(error||!membership?.clinica_id)throw Error("Clínica não encontrada.");setClinica(membership.clinica_id);const [c,r]=await Promise.all([supabaseBanco.from("clinicas").select("nome").eq("id",membership.clinica_id).maybeSingle(),(supabaseBanco as any).rpc("oricse_portal_config_gerenciar",{p_clinica_id:membership.clinica_id})]);if(r.error)throw r.error;setConfig({...inicial,...r.data});setNome(c.data?.nome||"Clínica");}catch(e){setErro(e instanceof Error?e.message:"Erro ao carregar");}finally{setBusy(false)}})()},[]);
+ const change=(k:keyof Config,v:string|boolean)=>setConfig(s=>({...s,[k]:v}));
+ async function salvar(){setSaving(true);const {error}=await (supabaseBanco as any).rpc("oricse_portal_config_gerenciar",{p_clinica_id:clinica,p_mensagem:config.mensagem_boas_vindas,p_telefone:config.telefone_publico,p_whatsapp:config.whatsapp_publico,p_instrucoes:config.instrucoes_agendamento,p_agendamento:config.exibir_agendamento,p_documentos:config.exibir_documentos});setSaving(false);if(error)toast.error(error.message);else toast.success("Configurações do Portal do Tutor salvas.");}
+ const fields:[keyof Config,string,number][]=[["mensagem_boas_vindas","Mensagem de boas-vindas",500],["telefone_publico","Telefone da clínica",40],["whatsapp_publico","WhatsApp de atendimento",40],["instrucoes_agendamento","Orientações para agendamento",1000]];
+ return <main className="mx-auto max-w-3xl space-y-5 p-5 text-foreground"><div><Link to="/configuracao-site" className="text-sm underline text-primary">← Site da clínica</Link><h1 className="mt-3 text-2xl font-bold">Configurar Portal do Tutor</h1><p className="text-sm text-muted-foreground">Personalização da clínica {nome}. Disponível ao RT, responsável e Admin geral.</p></div>
+ {busy?<p>Carregando configurações…</p>:erro?<p role="alert" className="rounded-lg border p-4 text-destructive">{erro}</p>:<section className="space-y-4 rounded-2xl border bg-card p-5">
+ {fields.map(([key,label,max])=><label key={key} className="block text-sm font-semibold">{label}{key==="mensagem_boas_vindas"||key==="instrucoes_agendamento"?<textarea maxLength={max} rows={2} value={String(config[key])} onChange={e=>change(key,e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3 text-foreground"/>:<input maxLength={max} value={String(config[key])} onChange={e=>change(key,e.target.value)} className="mt-1 w-full rounded-lg border bg-background p-3 text-foreground"/>}</label>)}
+ <label className="flex gap-3 text-sm"><input type="checkbox" checked={config.exibir_agendamento} onChange={e=>change("exibir_agendamento",e.target.checked)}/> Mostrar acesso à agenda no Portal do Tutor</label>
+ <label className="flex gap-3 text-sm"><input type="checkbox" checked={config.exibir_documentos} onChange={e=>change("exibir_documentos",e.target.checked)}/> Mostrar seção de documentos no Portal do Tutor</label>
+ <p className="text-xs text-muted-foreground">As agendas e formas de pagamento são configuradas separadamente. Ocultar um acesso não apaga registros existentes.</p>
+ <button disabled={saving} onClick={()=>void salvar()} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{saving?"Salvando…":"Salvar Portal do Tutor"}</button></section>}
+ <div className="flex flex-wrap gap-4 text-sm"><Link to="/configurar-agenda-online" className="underline text-primary">Configurar agendamentos</Link><Link to="/precos-portal" className="underline text-primary">Configurar preços e cobranças</Link></div>
+ </main>;
+}
