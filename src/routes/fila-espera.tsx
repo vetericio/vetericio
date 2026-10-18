@@ -59,11 +59,15 @@ function FilaEspera() {
     const idsT=new Set((result.tutores||[]).map((t:Tutor)=>t.id));
     const idsA=new Set((result.animais||[]).map((x:Animal)=>x.id));
     let mudou=false;
-    for(const item of lerFila()){
+    const registrosAntigos=lerFila();
+    const migrados=new Set<string>();
+    for(const item of registrosAntigos){
       if(item.status!=="Aguardando"||!idsT.has(item.tutorId)||!idsA.has(item.animalId))continue;
       const {error:err}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:cid,p_acao:"migrar",p_tutor:item.tutorId,p_animal:item.animalId,p_motivo:item.motivo||"",p_chegada:item.chegadaEm});
-      if(!err)mudou=true;
+      if(!err){mudou=true;migrados.add(item.id);}
     }
+    // Limpa apenas os itens já confirmados no banco; evita reimportação de pacientes atendidos.
+    if(migrados.size){oricseStorage.setItem(FILA_KEY,JSON.stringify(registrosAntigos.filter(item=>!migrados.has(item.id))));}
     if(mudou)await carregarFila(cid);
   }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Falha ao carregar fila de espera");}
   finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[]);
