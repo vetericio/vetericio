@@ -87,6 +87,11 @@ export function MenuLateral({ fixo, aoMudarFixo }: { fixo: boolean; aoMudarFixo:
     setAberto(false);
   };
 
+  const abrirAreaCompacta = (area: string) => {
+    setExpandido(area);
+    setAberto(true);
+  };
+
   const navegacao = (menuFixo = false) => <>
     <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
       {areas.map(area => {
@@ -138,13 +143,31 @@ export function MenuLateral({ fixo, aoMudarFixo }: { fixo: boolean; aoMudarFixo:
   </>;
 
   return <>
-    {fixo && <aside className="fixed inset-y-0 left-0 z-40 hidden w-80 overflow-y-auto border-r bg-card p-4 shadow-xl lg:block">
-      <div className="flex items-center gap-2 px-1"><Menu className="h-5 w-5 text-primary"/><h2 className="font-bold">Menu</h2></div>
-      {navegacao(true)}
+    {fixo && <aside className="fixed inset-y-0 left-0 z-40 w-16 border-r bg-card p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
+      <div className="hidden items-center gap-2 px-1 lg:flex"><Menu className="h-5 w-5 text-primary"/><h2 className="font-bold">Menu</h2></div>
+      <div className="hidden lg:block">{navegacao(true)}</div>
+      <nav aria-label="Atalhos fixos do sistema" className="flex h-full flex-col items-center gap-2 lg:hidden">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl text-primary"><Menu className="h-5 w-5" /></span>
+        {areas.map((area) => {
+          const itensVisiveis = carregandoPermissoes
+            ? area.itens
+            : area.itens.filter((item) => pode(item.permissao) || bloqueadaPeloPlano(item.permissao));
+          if (itensVisiveis.length === 0) return null;
+          const Icone = area.icone;
+          const ativo = itensVisiveis.some((item) => item.to === location.pathname && pode(item.permissao));
+          return <button key={area.titulo} type="button" aria-label={`Abrir ${area.titulo}`} title={area.titulo} onClick={() => abrirAreaCompacta(area.titulo)}
+            className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-colors ${ativo ? "border-primary bg-primary text-primary-foreground" : "border-border/70 hover:bg-secondary"}`}>
+            <Icone className="h-5 w-5" />
+          </button>;
+        })}
+        <button type="button" aria-label="Usar menu por três riscos" title="Usar menu por três riscos" onClick={() => alterarModo(false)} className="mt-auto flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 hover:bg-secondary">
+          <PanelLeftClose className="h-5 w-5" />
+        </button>
+      </nav>
     </aside>}
     <Sheet open={aberto} onOpenChange={setAberto}>
       <SheetTrigger asChild>
-        <button type="button" aria-label="Abrir menu lateral" className={`absolute left-3 top-3 z-30 flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm hover:bg-secondary ${fixo ? "lg:hidden" : ""}`}>
+        <button type="button" aria-label="Abrir menu lateral" className={`absolute left-3 top-3 z-30 flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm hover:bg-secondary ${fixo ? "hidden" : ""}`}>
           <Menu className="h-5 w-5" />
         </button>
       </SheetTrigger>
