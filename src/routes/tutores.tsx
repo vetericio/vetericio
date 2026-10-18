@@ -2,7 +2,7 @@ import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, Send, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { supabaseBanco } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { codigoPublicoTutor, gerarCodigoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
 import { inserirDadosDeTeste } from "@/lib/dados-teste";
@@ -146,7 +146,6 @@ function Tutores() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [clinicaId,setClinicaId]=useState("");
-  const [clinicasDisponiveis,setClinicasDisponiveis]=useState<Array<{id:string;nome:string}>>([]);
   const [carregando,setCarregando]=useState(true);
   const [animais,setAnimais] = useState<AnimalResumo[]>([]);
   const [busca, setBusca] = useState("");
@@ -161,15 +160,11 @@ function Tutores() {
   useEffect(()=>{let ativo=true;(async()=>{try{
     const {data:{user}}=await supabaseBanco.auth.getUser();
     if(!user)throw Error("Faça login para acessar os tutores.");
-    const {data:vinculos,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true);
-    if(error||!vinculos?.length)throw Error("Clínica não identificada.");
-    const ids=[...new Set(vinculos.map(v=>v.clinica_id))];
-    const {data:clinicas,error:eClinicas}=await supabaseBanco.from("clinicas").select("id,nome").in("id",ids);
-    if(eClinicas)throw eClinicas;
-    const escolha=new URLSearchParams(window.location.search).get("clinicaId");
-    const id=ids.includes(escolha||"")?escolha!:ids[0];
+    const {data:contexto,error}=await supabase.rpc("oricse_contexto_clinica_atual");
+    const id=contexto?.[0]?.clinica_id;
+    if(error||!id)throw Error("Clínica ativa não identificada. Entre novamente pela clínica correta.");
     if(!ativo)return;
-    setClinicasDisponiveis((clinicas||[]).map(c=>({id:c.id,nome:c.nome})));setClinicaId(id);
+    setClinicaId(id);
     await atualizarBanco(id);
    }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Erro ao carregar tutores do banco");}
    finally{if(ativo)setCarregando(false);}})();return()=>{ativo=false};},[]);
@@ -246,7 +241,7 @@ function Tutores() {
   return <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
     <div className="mb-6">
       <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link>
-      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">{clinicasDisponiveis.length>1&&<label className="flex items-center gap-2">Clínica <select aria-label="Selecionar clínica" className="rounded-lg border bg-card px-2 py-2 text-foreground" value={clinicaId} onChange={e=>{const id=e.target.value;setClinicaId(id);setCarregando(true);void atualizarBanco(id).catch(err=>toast.error(err.message)).finally(()=>setCarregando(false));window.history.replaceState(null,"",`/tutores?clinicaId=${encodeURIComponent(id)}`)}}>{clinicasDisponiveis.map(c=><option value={c.id} key={c.id}>{c.nome}</option>)}</select></label>}{carregando?"Carregando banco…":"Dados do Supabase"}</div></div>
+      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><span className="ml-auto text-xs text-muted-foreground">{carregando?"Carregando banco…":"Clínica ativa · Supabase"}</span></div>
     </div>
 
     <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
@@ -326,7 +321,7 @@ function TutorCard({ tutor, animais, onEdit, clinicaId }: { tutor: Tutor; animai
       <div className="mt-2 border-t pt-2">
         {pets.length ? <div className="space-y-1.5">{pets.map((pet) => <div key={pet.id} className="flex min-w-0 items-center gap-1.5">
           <PawPrint size={14} className="shrink-0 text-primary"/>
-          <a href={`/novo-animal?clinicaId=${encodeURIComponent(clinicaId)}&tutorId=${encodeURIComponent(tutor.id)}&animalId=${encodeURIComponent(pet.id)}`} className="min-w-0 flex-1 truncate font-semibold text-primary hover:underline">{pet.nome}</a>
+          <a href={`/novo-animal?tutorId=${encodeURIComponent(tutor.id)}&animalId=${encodeURIComponent(pet.id)}`} className="min-w-0 flex-1 truncate font-semibold text-primary hover:underline">{pet.nome}</a>
           <a href={`/encaminhar?tutorId=${encodeURIComponent(tutor.id)}&animalId=${encodeURIComponent(pet.id)}`} className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/5"><Send size={11}/> Enviar para…</a>
         </div>)}</div> : <div className="flex min-w-0 items-center gap-1.5"><PawPrint size={14} className="shrink-0 text-muted-foreground"/><span className="text-muted-foreground">Sem pet cadastrado</span></div>}
       </div>
