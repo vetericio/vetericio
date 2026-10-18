@@ -37,7 +37,7 @@
 .tema-verde-cinza body {background:#071424 url('/temas/aurora-boreal.webp') center top/cover fixed no-repeat;}
 .tema-verde-cinza .oricse-cabecalho {min-height:170px;background:linear-gradient(110deg,#07142438,#11234440);border-color:#6ee7cf55;}
 .tema-verde-cinza .oricse-cabecalho>.mx-auto {padding-top:15px;padding-bottom:15px;}
-.tema-verde-cinza .oricse-cabecalho img {filter:brightness(0) invert(1);}
+.tema-verde-cinza .oricse-cabecalho img,.tema-black .oricse-cabecalho img,.tema-cansado .oricse-cabecalho img {filter:brightness(0) invert(1);}
 .tema-verde-cinza .oricse-menu-lateral {background:linear-gradient(160deg,#0a1d32f5,#132139f5)!important;color:#e3f7ff;border-color:#6ee7cf55;}
 .tema-verde-cinza .oricse-menu-lateral nav > div > button {background:#193b4b!important;color:#e3f7ff;}
 .tema-verde-cinza .oricse-menu-lateral nav > div > div {background:#0b2136!important;}
