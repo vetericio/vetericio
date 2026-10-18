@@ -2,7 +2,7 @@ import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, PawPrint, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { supabaseBanco } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { RACAS as RACAS_COMPLETAS } from "@/data/racas";
@@ -132,12 +132,9 @@ function NovoAnimal() {
   useEffect(()=>{let ativo=true;(async()=>{try{
    const {data:{user}}=await supabaseBanco.auth.getUser();
    if(!user)throw Error("Faça login novamente.");
-   const {data:vinculos,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true);
-   if(error||!vinculos?.length)throw Error("Clínica não identificada.");
-   const solicitada=new URLSearchParams(window.location.search).get("clinicaId");
-   const autorizadas=vinculos.map(v=>v.clinica_id);
-   if(solicitada&&!autorizadas.includes(solicitada))throw Error("Sem acesso à clínica solicitada.");
-   const clinicaSelecionada=solicitada||autorizadas[0];
+   const {data:contexto,error}=await supabase.rpc("oricse_contexto_clinica_atual");
+   const clinicaSelecionada=contexto?.[0]?.clinica_id;
+   if(error||!clinicaSelecionada)throw Error("Clínica ativa não identificada.");
    const {data,error:rpcError}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaSelecionada,p_tutor:tutorIdParam||null,p_animal:animalId||null});
    if(rpcError)throw rpcError;
    if(!ativo)return;
