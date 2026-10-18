@@ -68,12 +68,12 @@ function AnimalFicha(){
   async function carregarConteudosPortal(){
     if(!animalId)return;
     try{
-      const{data:contexto,error:erroContexto}=await(supabase as any).rpc("oricse_contexto_clinica_atual");if(erroContexto)throw erroContexto;const ctx=Array.isArray(contexto)?contexto[0]:contexto;const cid=String(ctx?.clinica_id||"");if(!cid)return;setClinicaId(cid);
+      const{data:cid,error:erroClinica}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_animal:animalId});if(erroClinica||!cid)throw Error(erroClinica?.message||"Clínica não identificada.");setClinicaId(cid);
       const[vacinasResult,examesResult,docsResult,receitasResult]=await Promise.all([
-        (supabase as any).from("oricse_portal_vacinas").select("id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("aplicada_em",{ascending:false,nullsFirst:false}),
-        (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id,visivel_tutor,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("realizado_em",{ascending:false,nullsFirst:false}),
-        (supabase as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id,visivel_tutor,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("data_documento",{ascending:false,nullsFirst:false}),
-        (supabase as any).from("oricse_portal_receitas").select("id,animal_id,tipo,numero,titulo,emitida_em,visivel_tutor,motivo_ocultacao,motivo_outro,drive_arquivo_id,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("emitida_em",{ascending:false}),
+        (supabaseBanco as any).from("oricse_portal_vacinas").select("id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("aplicada_em",{ascending:false,nullsFirst:false}),
+        (supabaseBanco as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id,visivel_tutor,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("realizado_em",{ascending:false,nullsFirst:false}),
+        (supabaseBanco as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id,visivel_tutor,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("data_documento",{ascending:false,nullsFirst:false}),
+        (supabaseBanco as any).from("oricse_portal_receitas").select("id,animal_id,tipo,numero,titulo,emitida_em,visivel_tutor,motivo_ocultacao,motivo_outro,drive_arquivo_id,created_at").eq("clinica_id",cid).eq("animal_id",animalId).order("emitida_em",{ascending:false}),
       ]);for(const r of[vacinasResult,examesResult,docsResult,receitasResult])if(r.error)throw r.error;
       const vacinas=(vacinasResult.data||[]) as VacinaPortal[];const exames=(examesResult.data||[]) as ExamePortal[];const docs=(docsResult.data||[]) as DocumentoPortal[];const receitas=(receitasResult.data||[]) as ReceitaPortal[];
       const convertidos:Registro[]=[
@@ -101,7 +101,7 @@ function AnimalFicha(){
       setSalvandoPortal(true);
       try{
         if(modalTipo==="Vacinas"){
-          const{error}=await(supabase as any).from("oricse_portal_vacinas").insert({clinica_id:clinicaId,animal_id:animal.id,nome:titulo.trim(),aplicada_em:data||null,reforco_em:reforcoEm||null,lote:lote.trim()||null,observacoes:detalhe.trim()||null,visivel_tutor:visivelTutor});if(error)throw error;
+          const{error}=await(supabaseBanco as any).from("oricse_portal_vacinas").insert({clinica_id:clinicaId,animal_id:animal.id,nome:titulo.trim(),aplicada_em:data||null,reforco_em:reforcoEm||null,lote:lote.trim()||null,observacoes:detalhe.trim()||null,visivel_tutor:visivelTutor});if(error)throw error;
         }else if(modalTipo==="Exames"){
           const exameId=crypto.randomUUID();let driveArquivoId:string|null=null;
           if(arquivoPdf){
@@ -110,9 +110,9 @@ function AnimalFicha(){
             const upload=await enviarArquivoDrive({data:{accessToken,clinicaId,categoria:"exames",nome:arquivoPdf.name,mimeType:"application/pdf",base64,visibilidade:visivelTutor?"tutor":"interno",entidadeTipo:"exame",entidadeId:exameId,metadata:{animalId:animal.id,animalNome:animal.nome,titulo:titulo.trim(),tipo:tipoDetalhe.trim()||"Exame"}}});
             driveArquivoId=upload.arquivo.id;
           }
-          const{error}=await(supabase as any).from("oricse_portal_exames").insert({id:exameId,clinica_id:clinicaId,animal_id:animal.id,titulo:titulo.trim(),tipo:tipoDetalhe.trim()||"Exame",realizado_em:data||null,resultado_resumo:detalhe.trim()||null,drive_arquivo_id:driveArquivoId,visivel_tutor:visivelTutor});if(error)throw error;
+          const{error}=await(supabaseBanco as any).from("oricse_portal_exames").insert({id:exameId,clinica_id:clinicaId,animal_id:animal.id,titulo:titulo.trim(),tipo:tipoDetalhe.trim()||"Exame",realizado_em:data||null,resultado_resumo:detalhe.trim()||null,drive_arquivo_id:driveArquivoId,visivel_tutor:visivelTutor});if(error)throw error;
         }else{
-          const{error}=await(supabase as any).from("oricse_portal_documentos").insert({clinica_id:clinicaId,animal_id:animal.id,titulo:titulo.trim(),tipo:tipoDetalhe.trim()||"Documento",data_documento:data||null,observacoes:detalhe.trim()||null,visivel_tutor:visivelTutor});if(error)throw error;
+          const{error}=await(supabaseBanco as any).from("oricse_portal_documentos").insert({clinica_id:clinicaId,animal_id:animal.id,titulo:titulo.trim(),tipo:tipoDetalhe.trim()||"Documento",data_documento:data||null,observacoes:detalhe.trim()||null,visivel_tutor:visivelTutor});if(error)throw error;
         }
         await carregarConteudosPortal();setModalTipo(null);setArquivoPdf(null);toast.success(`${modalTipo} adicionado no banco.`);
       }catch(error){toast.error(error instanceof Error?error.message:`Não foi possível salvar ${modalTipo.toLowerCase()}.`);}finally{setSalvandoPortal(false);}return;
