@@ -132,12 +132,16 @@ function NovoAnimal() {
   useEffect(()=>{let ativo=true;(async()=>{try{
    const {data:{user}}=await supabaseBanco.auth.getUser();
    if(!user)throw Error("Faça login novamente.");
-   const {data:vinculo,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
-   if(error||!vinculo?.clinica_id)throw Error("Clínica não identificada.");
-   const {data,error:rpcError}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:vinculo.clinica_id,p_tutor:tutorIdParam||null,p_animal:animalId||null});
+   const {data:vinculos,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true);
+   if(error||!vinculos?.length)throw Error("Clínica não identificada.");
+   const solicitada=new URLSearchParams(window.location.search).get("clinicaId");
+   const autorizadas=vinculos.map(v=>v.clinica_id);
+   if(solicitada&&!autorizadas.includes(solicitada))throw Error("Sem acesso à clínica solicitada.");
+   const clinicaSelecionada=solicitada||autorizadas[0];
+   const {data,error:rpcError}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaSelecionada,p_tutor:tutorIdParam||null,p_animal:animalId||null});
    if(rpcError)throw rpcError;
    if(!ativo)return;
-   setClinicaId(vinculo.clinica_id);
+   setClinicaId(clinicaSelecionada);
    setTutor(data?.tutor||null);
    if(data?.animal){setAnimalExistente(data.animal);setForm({...FORM_VAZIO,...data.animal,peso:data.animal.peso==null?"":String(data.animal.peso),temperamentos:data.animal.temperamentos||[]});}
   }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Não foi possível consultar o tutor no Supabase");}
