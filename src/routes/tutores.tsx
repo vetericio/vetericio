@@ -1,7 +1,8 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, Send, UserPlus, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { codigoPublicoTutor, gerarCodigoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
 import { inserirDadosDeTeste } from "@/lib/dados-teste";
@@ -143,11 +144,29 @@ function Tutores() {
   const [modo, setModo] = useState<Modo>("procurar");
   const [form, setForm] = useState(vazio);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [tutores, setTutores] = useState<Tutor[]>(carregar);
-  const [animais] = useState<AnimalResumo[]>(carregarAnimais);
+  const [tutores, setTutores] = useState<Tutor[]>([]);
+  const [clinicaId,setClinicaId]=useState("");
+  const [carregando,setCarregando]=useState(true);
+  const [animais,setAnimais] = useState<AnimalResumo[]>([]);
   const [busca, setBusca] = useState("");
   const [letra, setLetra] = useState("TODOS");
   const [buscandoCep, setBuscandoCep] = useState(false);
+
+  async function atualizarBanco(id: string) {
+    const {data,error}=await (supabaseBanco as any).rpc("oricse_tutores_tela",{p_clinica:id});
+    if(error)throw error;
+    setTutores(data?.tutores||[]);setAnimais(data?.animais||[]);
+  }
+  useEffect(()=>{let ativo=true;(async()=>{try{
+    const {data:{user}}=await supabaseBanco.auth.getUser();
+    if(!user)throw Error("Faça login para acessar os tutores.");
+    const {data:vinculo,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
+    if(error||!vinculo?.clinica_id)throw Error("Clínica não identificada.");
+    if(!ativo)return;
+    setClinicaId(vinculo.clinica_id);
+    await atualizarBanco(vinculo.clinica_id);
+   }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Erro ao carregar tutores do banco");}
+   finally{if(ativo)setCarregando(false);}})();return()=>{ativo=false};},[]);
 
   const tutoresOrdenados = useMemo(() => [...tutores].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" })), [tutores]);
   const letrasDisponiveis = useMemo(() => new Set(tutoresOrdenados.map((t) => inicialNome(t.nome)).filter(Boolean)), [tutoresOrdenados]);
@@ -168,13 +187,6 @@ function Tutores() {
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
-  }
-
-  function gerarTeste() {
-    if (!window.confirm("Adicionar 22 tutores e 50 animais fictícios de teste neste navegador?")) return;
-    const r = inserirDadosDeTeste(lerNomeClinicaLocal().charAt(0).toUpperCase() || "O");
-    toast.success(`${r.tutores} tutores e ${r.animais} animais de teste criados.`);
-    window.setTimeout(() => window.location.reload(), 600);
   }
 
   function abrirNovo() {
@@ -213,46 +225,14 @@ function Tutores() {
     }
   }
 
-  function salvarTutor() {
-    if (!form.nome.trim()) return void toast.error("Informe o nome do tutor.");
-    if (!soDigitos(form.telefone).length) return void toast.error("Informe o telefone do tutor.");
-
-    const telefone = soDigitos(form.telefone);
-    const documento = soDigitos(form.cpfCnpj || "");
-    const email = (form.email || "").trim().toLowerCase();
-    const duplicado = tutores.find((t) => t.id !== editandoId && (
-      soDigitos(t.telefone) === telefone ||
-      (documento && soDigitos(t.cpfCnpj || "") === documento) ||
-      (email && (t.email || "").trim().toLowerCase() === email)
-    ));
-    if (duplicado) return void toast.error(`Já existe um tutor semelhante: ${duplicado.nome}.`);
-
-    if (editandoId) {
-      const lista = tutores.map((t) => t.id === editandoId ? { ...t, ...form } : t);
-      setTutores(lista);
-      salvarLista(lista);
-      toast.success("Cadastro do tutor atualizado.");
-      setBusca(form.nome);
-    } else {
-      let codigoPublico: string;
-      try {
-        codigoPublico = gerarCodigoTutor(tutores, lerNomeClinicaLocal());
-      } catch (error) {
-        console.error("Não foi possível gerar o ID público do tutor:", error);
-        return void toast.error(error instanceof Error ? error.message : "Não foi possível gerar o ID público do tutor.");
-      }
-      const novo: Tutor = { ...form, id: crypto.randomUUID(), codigoPublico, criadoEm: new Date().toISOString() };
-      const lista = [novo, ...tutores];
-      setTutores(lista);
-      salvarLista(lista);
-      setBusca(novo.nome);
-      toast.success("Tutor cadastrado com sucesso.");
-    }
-
-    setEditandoId(null);
-    setForm(vazio);
-    setModo("procurar");
-    setLetra("TODOS");
+  async function salvarTutor() {
+    if(!clinicaId)return toast.error("Clínica não identificada.");
+    if(!form.nome.trim()||!soDigitos(form.telefone).length)return toast.error("Informe nome e telefone.");
+    const {error}=await (supabaseBanco as any).rpc("oricse_tutor_salvar_tela",{p_clinica:clinicaId,p_dados:form,p_id:editandoId});
+    if(error)return toast.error(error.message);
+    await atualizarBanco(clinicaId);
+    toast.success(editandoId?"Tutor atualizado no Supabase.":"Tutor cadastrado no Supabase.");
+    setEditandoId(null);setForm(vazio);setModo("procurar");setLetra("TODOS");
   }
 
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
@@ -260,7 +240,7 @@ function Tutores() {
   return <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
     <div className="mb-6">
       <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link>
-      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><button type="button" onClick={gerarTeste} className="ml-auto rounded-xl border px-3 py-2 text-xs font-semibold text-muted-foreground">Gerar dados de teste</button></div>
+      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><span className="ml-auto text-xs text-muted-foreground">{carregando?"Carregando banco…":"Dados do Supabase"}</span></div>
     </div>
 
     <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
