@@ -50,7 +50,7 @@
   --sidebar-border: oklch(0.68 0.08 77);
 }
 
-.natal-vivo-decoracao{display:none;position:fixed;inset:0;z-index:41;overflow:hidden;pointer-events:none!important}
+.natal-vivo-decoracao{display:none;position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none!important}
 .natal-vivo-decoracao *{pointer-events:none!important;user-select:none}
 .tema-natal-premium .natal-vivo-decoracao{display:block}
 .tema-natal-premium body{background:#f9efdc url('/natal/fundo-champagne-bokeh.webp') center/cover fixed}
@@ -67,12 +67,14 @@
 .tema-natal-premium .oricse-menu-lateral a{color:#fff8e8}
 .tema-natal-premium .oricse-menu-lateral a.bg-primary{background:linear-gradient(100deg,#a41f34,#791527)!important}
 .tema-natal-premium .oricse-menu-lateral .text-primary{color:#fff1cc}
-.natal-vivo-guirlanda--topo{position:absolute;top:-12px;left:0;width:100%;height:218px;object-fit:fill;max-width:none;filter:drop-shadow(0 6px 6px #28100055)}
+.natal-vivo-guirlanda--topo{position:absolute;top:-12px;left:0;width:100%;height:240px;object-fit:cover;object-position:center top;max-width:none;filter:drop-shadow(0 3px 4px #28100035)}
 .natal-vivo-canto{position:absolute;bottom:-18px;width:280px;max-width:22vw;filter:drop-shadow(0 4px 5px #29160055)}
 .natal-vivo-canto--esquerdo{left:-14px}
 .natal-vivo-canto--direito{right:-26px;width:150px;max-width:11vw;transform:scaleX(-1)}
 .natal-vivo-luzes{display:none}
-.tema-natal-premium main{position:relative;padding-top:24px}
+.tema-natal-premium main{position:relative;z-index:1;padding-top:24px}
+.tema-natal-premium .oricse-cabecalho{z-index:1;background:linear-gradient(90deg,#fff6e438,#fff8ecb0 42%,#fff8ecb0 65%,#fff4dd38)}
+.tema-natal-premium footer{position:relative;z-index:1}
 .tema-natal-premium main>section.bg-white,.tema-natal-premium .bg-card{background:linear-gradient(145deg,#fffdfa,#fcf7ef)!important;border-color:#cda968!important;box-shadow:0 5px 10px #65441425}
 .tema-natal-premium main>section.bg-white{position:relative;overflow:visible}
 .tema-natal-premium main>section.bg-white::after{content:"";position:absolute;right:-9px;top:-13px;width:76px;height:59px;background:url('/natal/guirlanda-aberta-v3.webp') right top/250px 84px no-repeat;pointer-events:none}
