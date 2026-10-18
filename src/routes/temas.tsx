@@ -13,7 +13,6 @@ import {
   carregarTemasPersonalizados,
   carregarCor,
   carregarTema,
-  grupoDoTema,
   salvarCor,
   salvarTemaPersonalizado,
   excluirTemaPersonalizado,
@@ -86,7 +85,7 @@ function PaginaTemas() {
       cor,
       fundo: foto,
     };
-    if (!salvarTemaPersonalizado(novo)) { toast.error("Você já atingiu o limite de 15 temas."); return; }
+    if (!salvarTemaPersonalizado(novo)) { toast.error("Você já atingiu o limite de 2 temas."); return; }
     setPersonalizados(carregarTemasPersonalizados());
     aplicarTemaPersonalizado(novo);
     setNomePersonalizado("");
@@ -138,8 +137,8 @@ function PaginaTemas() {
     );
   };
 
-  const sobrios = TEMAS.filter((t) => grupoDoTema(t.id) === "sobrio");
-  const divertidos = TEMAS.filter((t) => grupoDoTema(t.id) === "divertido");
+  const sobrios = TEMAS;
+
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-10 pt-2">
@@ -181,13 +180,11 @@ function PaginaTemas() {
         </div>
       </section>
 
-      <h2 className="mb-2 text-sm font-bold text-foreground">Temas sóbrios</h2>
+      <h2 className="mb-2 text-sm font-bold text-foreground">8 temas profissionais</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{sobrios.map(cartao)}</div>
 
-      <h2 className="mb-2 mt-5 text-sm font-bold text-foreground">Temas divertidos</h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{divertidos.map(cartao)}</div>
 
-      {tema === "minha-cor" && (
+      {false && tema === "minha-cor" && (
         <div className="mt-4 rounded-xl bg-secondary/60 p-3 text-center">
           <p className="text-[11px] font-semibold text-muted-foreground">
             Escolha a sua cor — o app monta o tema inteiro a partir dela
@@ -217,8 +214,8 @@ function PaginaTemas() {
       )}
 
       <section className="mt-6 rounded-2xl border-2 border-primary bg-card p-3 shadow-md">
-        <h2 className="text-sm font-bold text-foreground">CRIAR TEMA: FOTO + COR</h2>
-        <p className="mt-1 text-[11px] text-muted-foreground">Envie a foto para o fundo e escolha a cor principal.</p>
+        <h2 className="text-sm font-bold text-foreground">Seus temas personalizados (até 2)</h2>
+        <p className="mt-1 text-[11px] text-muted-foreground">Escolha uma cor, um nome e uma imagem de fundo para criar seu tema.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-background px-3 py-4 text-sm font-semibold text-foreground">
             {foto ? "Trocar foto do fundo" : "Enviar foto para fundo"}
@@ -230,7 +227,7 @@ function PaginaTemas() {
           </div>
         </div>
         {foto && <img src={foto} alt="Prévia do fundo" className="mt-3 h-28 w-full rounded-xl object-cover" />}
-        <button type="button" onClick={salvarPersonalizado} className="mt-3 w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground">Salvar tema ({personalizados.length}/15)</button>
+        <button type="button" onClick={salvarPersonalizado} className="mt-3 w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground">Salvar tema ({personalizados.length}/2)</button>
         {personalizados.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{personalizados.map((p) => <div key={p.id} className="overflow-hidden rounded-xl border border-border bg-background"><button type="button" onClick={() => aplicarTemaPersonalizado(p)} className="block w-full text-left"><img src={p.fundo} alt="" className="h-20 w-full object-cover" /><span className="block truncate px-2 py-1.5 text-xs font-semibold text-foreground">{p.nome}</span></button><button type="button" onClick={() => { excluirTemaPersonalizado(p.id); setPersonalizados(carregarTemasPersonalizados()); }} className="w-full border-t border-border px-2 py-1 text-[10px] text-destructive">Excluir</button></div>)}</div>}
       </section>
     </main>
