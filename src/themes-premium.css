@@ -1,4 +1,4 @@
-/* ORICSE: temas Rosa e Natal Premium - decoração somente fora das áreas de leitura. */
+/* ORICSE: acabamentos visuais dos temas, isolados por classe. */
 .tema-rosa {
   --background: oklch(0.975 0.015 350);
   --foreground: oklch(0.26 0.045 340);
@@ -21,6 +21,55 @@
 .tema-rosa body {background-image: radial-gradient(ellipse at 95% 1%, #f3c1d63d, transparent 45%),linear-gradient(145deg,#fff8fb,#fceef4);background-attachment:fixed;}
 .tema-rosa [data-sidebar="sidebar"] { background:#70334e; color:#fff5fa; }
 .tema-rosa .bg-card {box-shadow:0 4px 18px #94395d0c;}
+
+/* Alvorada mantém o identificador antigo para preservar as preferências salvas. */
+.tema-escuro body {
+  background-color:#fff8ee;
+  background-image:radial-gradient(ellipse at 76% 10%,#fff7cccf 0,transparent 36%),linear-gradient(165deg,#e7f2fc 0%,#f8e6e4 34%,#ffe3bd 66%,#fff8ee 100%);
+  background-attachment:fixed;
+}
+.tema-escuro .oricse-cabecalho {background:linear-gradient(115deg,#e9f3fba6,#fff7e6bf 55%,#ffe6c9c9);border-color:#e5c9b6;}
+.tema-escuro .oricse-menu-lateral {background:linear-gradient(180deg,#f8e5d5,#f2d2b2)!important;color:#603c33;}
+.tema-escuro main .bg-card,.tema-escuro main .bg-white {background-color:#fffdf9!important;}
+.tema-escuro main > section {box-shadow:0 4px 16px #945b3510;}
+
+/* Laranja: superfícies claras, contraste em laranja queimado. */
+.tema-verde-cinza body {background:#fff3e6;}
+.tema-verde-cinza .oricse-cabecalho {background:linear-gradient(110deg,#fff7ec,#ffe0b8);border-color:#e6b17f;}
+.tema-verde-cinza .oricse-menu-lateral {background:linear-gradient(165deg,#9a420d,#713009)!important;color:#fff6e9;}
+.tema-verde-cinza .oricse-menu-lateral nav > div > button {background:#a34b13!important;color:#fff6e9;}
+.tema-verde-cinza .oricse-menu-lateral nav > div > div {background:#81380d!important;}
+.tema-verde-cinza .oricse-menu-lateral a {color:#fff6e9;}
+.tema-verde-cinza .oricse-menu-lateral a.bg-primary {background:#ffdfb2!important;color:#66300d!important;}
+.tema-verde-cinza .oricse-menu-lateral .text-primary {color:#ffe4bf;}
+.tema-verde-cinza main .bg-white,.tema-verde-cinza main .bg-slate-50 {background-color:#fff8ef!important;}
+.tema-verde-cinza input,.tema-verde-cinza textarea,.tema-verde-cinza select {background-color:#fffaf4;border-color:#dba473;}
+
+/* Clínico: verde cirúrgico, azul hospitalar e branco. */
+.tema-vet body {background:#edf8f6;}
+.tema-vet .oricse-cabecalho {background:linear-gradient(110deg,#dff3ec,#e3f2fc);border-color:#b9dcd8;}
+.tema-vet .oricse-menu-lateral {background:linear-gradient(165deg,#075b60,#073f59)!important;color:#effffc;}
+.tema-vet .oricse-menu-lateral nav > div > button {background:#0b6266!important;color:#effffc;}
+.tema-vet .oricse-menu-lateral nav > div > div {background:#084853!important;}
+.tema-vet .oricse-menu-lateral a {color:#effffc;}
+.tema-vet .oricse-menu-lateral a.bg-primary {background:#d8f4ec!important;color:#075b4c!important;}
+.tema-vet .oricse-menu-lateral .text-primary {color:#c1f0e5;}
+.tema-vet main .bg-white {background-color:#ffffff!important;}
+.tema-vet th {background:#dceff9;color:#164d64;}
+.tema-vet input,.tema-vet textarea,.tema-vet select {border-color:#add4d4;background-color:#ffffff;}
+
+/* Minimalista: superfícies planas, linhas discretas e cantos reduzidos. */
+.tema-sobrio body {background:#fafafa!important;background-image:none!important;}
+.tema-sobrio .oricse-cabecalho {background:#ffffff;border-color:#e5e5e5;}
+.tema-sobrio .oricse-menu-lateral {background:#ffffff!important;color:#292929;border-color:#e5e5e5;}
+.tema-sobrio main [class*="shadow"],.tema-sobrio .oricse-cabecalho,.tema-sobrio .oricse-menu-lateral {box-shadow:none!important;}
+.tema-sobrio main [class*="rounded"],.tema-sobrio .oricse-menu-lateral [class*="rounded"] {border-radius:4px;}
+.tema-sobrio main .bg-white,.tema-sobrio main .bg-card {background:#ffffff!important;}
+.tema-sobrio .oricse-menu-lateral nav > div {border-color:transparent;border-radius:0;border-bottom-color:#ededed;}
+.tema-sobrio .oricse-menu-lateral nav > div > button,.tema-sobrio .oricse-menu-lateral nav > div > div {background:#ffffff;}
+.tema-sobrio .oricse-menu-lateral a.bg-primary {background:#efefef;color:#202020;}
+.tema-sobrio main button,.tema-sobrio main a {background-image:none;}
+.tema-sobrio input,.tema-sobrio textarea,.tema-sobrio select {background:#ffffff;border-color:#d9d9d9;box-shadow:none;}
 
 
 .tema-natal-premium {

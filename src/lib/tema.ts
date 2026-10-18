@@ -26,12 +26,12 @@ export type TemaPersonalizado = { id: string; nome: string; cor: string; fundo: 
 
 export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: string }[] = [
   { id: "veterico", nome: "Oricse", classe: "tema-veterico", descricao: "Identidade oficial, sofisticada e acolhedora" },
-  { id: "vet", nome: "Clínico", classe: "tema-vet", descricao: "Verde hospitalar e superfícies claras" },
+  { id: "vet", nome: "Clínico", classe: "tema-vet", descricao: "Verde e azul hospitalares, com superfícies claras" },
   { id: "pro", nome: "Executivo", classe: "tema-pro", descricao: "Azul-marinho e aparência corporativa" },
-  { id: "escuro", nome: "Noturno", classe: "tema-escuro", descricao: "Ideal para plantões e baixa iluminação" },
+  { id: "escuro", nome: "Alvorada", classe: "tema-escuro", descricao: "Luz de amanhecer, céu suave e dourado pêssego" },
   { id: "black", nome: "Grafite", classe: "tema-black", descricao: "Preto elegante e alto contraste" },
-  { id: "sobrio", nome: "Minimalista", classe: "tema-sobrio", descricao: "Cinzas neutros e foco no conteúdo" },
-  { id: "verde-cinza", nome: "Sálvia", classe: "tema-verde-cinza", descricao: "Verde suave com cinza profissional" },
+  { id: "sobrio", nome: "Minimalista", classe: "tema-sobrio", descricao: "Branco, cinza e preto: somente o essencial" },
+  { id: "verde-cinza", nome: "Laranja", classe: "tema-verde-cinza", descricao: "Laranja claro, âmbar e laranja escuro" },
   { id: "cansado", nome: "Conforto", classe: "tema-cansado", descricao: "Contraste suave para longas jornadas" },
   { id: "rosa", nome: "Rosa", classe: "tema-rosa", descricao: "Rosa blush, ameixa e detalhes delicados" },
   { id: "natal", nome: "Natal Vivo", classe: "tema-natal-premium", descricao: "Natal sofisticado: pinheiros, luzes quentes e detalhes vermelhos e dourados" },
