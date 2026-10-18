@@ -24,63 +24,23 @@ export type TemaId =
 export type TemaPersonalizado = { id: string; nome: string; cor: string; fundo: string };
 
 export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: string }[] = [
-  { id: "original", nome: "Original", classe: "", descricao: "Como o app nasceu" },
-  { id: "vet", nome: "Veterinário", classe: "tema-vet", descricao: "Verde clínico" },
-  { id: "escuro", nome: "Escuro", classe: "tema-escuro", descricao: "Para o plantão noturno" },
-  { id: "sobrio", nome: "Sóbrio", classe: "tema-sobrio", descricao: "Cinzas neutros" },
-  { id: "fofo", nome: "Divertido", classe: "tema-fofo", descricao: "Com bichinhos" },
-  { id: "black", nome: "Black", classe: "tema-black", descricao: "Tudo preto" },
-  { id: "cinza", nome: "Tons de cinza", classe: "tema-cinza", descricao: "Sem nenhuma cor" },
-  { id: "noite", nome: "Escuro azulado", classe: "tema-noite", descricao: "Azul-noite" },
-  { id: "esponja", nome: "Bob Esponja", classe: "tema-esponja", descricao: "Amarelo e azul-mar" },
-  { id: "gatinhos", nome: "Gatinhos", classe: "tema-gatinhos", descricao: "Vários gatinhos" },
-  {
-    id: "verde-cinza",
-    nome: "Verde e cinza",
-    classe: "tema-verde-cinza",
-    descricao: "Verde folha com cinzas",
-  },
-  { id: "pro", nome: "Profissional", classe: "tema-pro", descricao: "Azul-marinho sóbrio" },
-  { id: "laranja", nome: "Laranja", classe: "tema-laranja", descricao: "Laranja quente" },
-  { id: "natal", nome: "Natal", classe: "tema-natal", descricao: "Verde, vermelho e dourado" },
-  {
-    id: "jack",
-    nome: "Jack Skellington",
-    classe: "tema-jack",
-    descricao: "Jack, Zero e a Cidade do Halloween",
-  },
-  { id: "cansado", nome: "Cansado", classe: "tema-cansado", descricao: "Contraste suave" },
-  { id: "feliz", nome: "Feliz", classe: "tema-feliz", descricao: "Cores alegres" },
-  { id: "rock", nome: "Rock", classe: "tema-rock", descricao: "Preto, prata e vermelho" },
-  {
-    id: "veterico",
-    nome: "Oricse",
-    classe: "tema-veterico",
-    descricao: "Cores e padrão da logo",
-  },
-  { id: "minha-cor", nome: "Minha cor", classe: "tema-minha-cor", descricao: "Você escolhe a cor" },
+  { id: "veterico", nome: "Oricse", classe: "tema-veterico", descricao: "Identidade oficial, sofisticada e acolhedora" },
+  { id: "vet", nome: "Clínico", classe: "tema-vet", descricao: "Verde hospitalar e superfícies claras" },
+  { id: "pro", nome: "Executivo", classe: "tema-pro", descricao: "Azul-marinho e aparência corporativa" },
+  { id: "escuro", nome: "Noturno", classe: "tema-escuro", descricao: "Ideal para plantões e baixa iluminação" },
+  { id: "black", nome: "Grafite", classe: "tema-black", descricao: "Preto elegante e alto contraste" },
+  { id: "sobrio", nome: "Minimalista", classe: "tema-sobrio", descricao: "Cinzas neutros e foco no conteúdo" },
+  { id: "verde-cinza", nome: "Sálvia", classe: "tema-verde-cinza", descricao: "Verde suave com cinza profissional" },
+  { id: "cansado", nome: "Conforto", classe: "tema-cansado", descricao: "Contraste suave para longas jornadas" },
 ];
 
 const CHAVE = "veterico-tema-v2";
 const CHAVE_COR = "veterico-tema-cor-v1";
 const CHAVE_PERSONALIZADOS = "veterico-temas-personalizados-v1";
-const CLASSES = TEMAS.map((t) => t.classe).filter(Boolean);
+const CLASSES = ["tema-vet", "tema-escuro", "tema-sobrio", "tema-fofo", "tema-black", "tema-cinza", "tema-noite", "tema-esponja", "tema-gatinhos", "tema-verde-cinza", "tema-pro", "tema-laranja", "tema-natal", "tema-jack", "tema-cansado", "tema-feliz", "tema-rock", "tema-veterico", "tema-minha-cor"];
 
 /** Temas calmos, de cores neutras — separados dos divertidos na tela de Temas. */
-export const TEMAS_SOBRIOS: TemaId[] = [
-  "original",
-  "sobrio",
-  "cinza",
-  "escuro",
-  "noite",
-  "black",
-  "pro",
-  "verde-cinza",
-  "cansado",
-  "vet",
-  "veterico",
-  "minha-cor",
-];
+export const TEMAS_SOBRIOS: TemaId[] = TEMAS.map((tema) => tema.id);
 
 export function grupoDoTema(id: TemaId): "sobrio" | "divertido" {
   return TEMAS_SOBRIOS.includes(id) ? "sobrio" : "divertido";
@@ -131,7 +91,7 @@ export function carregarTema(): TemaId {
   if (salvo?.startsWith("personalizado:")) {
     const personalizado = carregarTemasPersonalizados().find((t) => salvo === `personalizado:${t.id}`);
     if (personalizado) aplicarTemaPersonalizado(personalizado);
-    return "jack";
+    return "veterico";
   }
   return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "veterico";
 }
@@ -155,15 +115,15 @@ export function carregarTemasPersonalizados(): TemaPersonalizado[] {
   if (typeof window === "undefined") return [];
   try {
     const valor = JSON.parse(oricseStorage.getItem(CHAVE_PERSONALIZADOS) ?? "[]");
-    return Array.isArray(valor) ? valor.slice(0, 15) : [];
+    return Array.isArray(valor) ? valor.slice(0, 2) : [];
   } catch { return []; }
 }
 
 export function salvarTemaPersonalizado(tema: TemaPersonalizado): boolean {
   if (typeof window === "undefined") return false;
   const temas = carregarTemasPersonalizados();
-  if (temas.length >= 15 && !temas.some((t) => t.id === tema.id)) return false;
-  const novos = [tema, ...temas.filter((t) => t.id !== tema.id)].slice(0, 15);
+  if (temas.length >= 2 && !temas.some((t) => t.id === tema.id)) return false;
+  const novos = [tema, ...temas.filter((t) => t.id !== tema.id)].slice(0, 2);
   try { oricseStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(novos)); return true; } catch { return false; }
 }
 
