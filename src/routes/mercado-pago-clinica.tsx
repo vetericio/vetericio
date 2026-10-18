@@ -9,7 +9,7 @@ function MercadoPagoClinica(){
  async function request(action:string,clinic:string){
   const {data:{session}}=await supabase.auth.getSession();
   if(!session)throw new Error("Entre novamente na sua conta.");
-  const res=await fetch(endpoint+"?action="+action,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token,"apikey":import.meta.env.VITE_SUPABASE_ANON_KEY||""},body:JSON.stringify({clinica_id:clinic})});
+  const res=await fetch(endpoint+"?action="+action,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.access_token,"apikey":import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||""},body:JSON.stringify({clinica_id:clinic})});
   const data=await res.json();if(!res.ok)throw new Error(data.error||"Falha na conexão");return data;
  }
  useEffect(()=>{void(async()=>{try{
