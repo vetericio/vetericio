@@ -21,7 +21,7 @@ import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { Rodape } from "@/components/Rodape";
-import { supabase, supabaseConfigurado } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
 import {
@@ -156,12 +156,12 @@ function RootComponent() {
     (async () => {
       const { data: sessao } = await supabase.auth.getSession();
       if (!sessao.session?.user || !ativo) return;
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabaseBanco as any)
         .from("oricse_preferencias_usuario")
         .select("menu_lateral_fixo")
         .eq("user_id", sessao.session.user.id)
         .maybeSingle();
-      if (ativo) setMenuFixo(Boolean(data?.menu_lateral_fixo));
+      if (!error && ativo) setMenuFixo(Boolean(data?.menu_lateral_fixo));
     })();
     return () => { ativo = false; };
   }, [autenticado]);
@@ -170,7 +170,7 @@ function RootComponent() {
     setMenuFixo(fixo);
     const { data: sessao } = await supabase.auth.getSession();
     if (!sessao.session?.user) return;
-    const { error } = await (supabase as any).from("oricse_preferencias_usuario").upsert({
+    const { error } = await (supabaseBanco as any).from("oricse_preferencias_usuario").upsert({
       user_id: sessao.session.user.id,
       menu_lateral_fixo: fixo,
       updated_at: new Date().toISOString(),
