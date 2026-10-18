@@ -43,8 +43,9 @@ function PerfilClinica() {
   const [duracoes, setDuracoes] = useState<Duracoes>(DURACOES_PADRAO);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [adminGeral, setAdminGeral] = useState(false);
 
-  const podeEditar = perfil?.papel === "rt" || perfil?.papel === "recepcao";
+  const podeEditar = adminGeral || perfil?.papel === "rt" || perfil?.papel === "recepcao";
   const opcaoSelecionada = useMemo(
     () => OPCOES_INTERVALO.includes(intervalo) ? String(intervalo) : "personalizado",
     [intervalo],
@@ -58,6 +59,8 @@ function PerfilClinica() {
         const { data: authData } = await supabase.auth.getUser();
         const userId = authData.user?.id;
         if (!userId) throw new Error("Sessão não encontrada.");
+        const { data: contaAdmin } = await (supabase as any).from("app_users").select("role").eq("user_id", userId).maybeSingle();
+        if (ativo) setAdminGeral(contaAdmin?.role === "admin");
 
         const { data: vinculo, error: erroVinculo } = await (supabase as any)
           .from("clinica_usuarios")
@@ -104,7 +107,7 @@ function PerfilClinica() {
   }
 
   async function salvar() {
-    if (!podeEditar) return toast.error("Somente o RT ou a Recepção podem alterar esta configuração.");
+    if (!podeEditar) return toast.error("Somente a administração geral, o RT ou a Recepção podem alterar esta configuração.");
     const intervaloMin = Math.round(Number(intervalo));
     if (!Number.isFinite(intervaloMin) || intervaloMin < 5 || intervaloMin > 720) {
       return toast.error("Informe um intervalo entre 5 e 720 minutos.");
@@ -270,7 +273,7 @@ function PerfilClinica() {
 
         {!podeEditar && (
           <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-            Seu perfil pode visualizar esta configuração. A alteração fica disponível para RT e Recepção.
+            Seu perfil pode visualizar esta configuração. A alteração fica disponível para o Admin geral, RT e Recepção.
           </p>
         )}
 
