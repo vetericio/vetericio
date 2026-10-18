@@ -17,7 +17,7 @@ begin
  or p_valor_centavos is null or p_valor_centavos<=0 or p_valor_centavos>100000000
  then raise exception 'Parâmetros inválidos'; end if;
  select t.mp_percentual,t.mp_fixo_centavos,t.oricse_percentual into tx
- from public.oricse_taxas_pagamento t
+ from public.oricse_taxas_modalidade t
  where t.modalidade=p_modalidade and t.ativo=true and (t.clinica_id=cid or t.clinica_id is null)
  order by (t.clinica_id is not null) desc limit 1;
  if not found then raise exception 'Taxas ainda não configuradas para este meio de pagamento'; end if;
