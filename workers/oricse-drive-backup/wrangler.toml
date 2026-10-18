@@ -1,0 +1,5 @@
+name = "oricse-drive-backup"
+main = "src/index.ts"
+compatibility_date = "2026-10-17"
+[triggers]
+crons = ["*/5 * * * *"]
