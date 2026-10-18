@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Clock3, Play, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { codigoPublicoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/fila-espera")({ component: FilaEspera });
@@ -30,6 +31,8 @@ function tempoEspera(dataIso: string, agora = Date.now()) { const chegada = new 
 function emojiEspecie(especie?: string) { const mapa: Record<string,string>={"Cão":"🐶","Gato":"🐱","Coelho":"🐰","Hamster":"🐹","Rato":"🐭","Porquinho-da-índia":"🐹","Ave":"🦜","Réptil":"🦎","Quelônio":"🐢","Serpente":"🐍"}; return mapa[especie||""]||"🐾"; }
 
 function FilaEspera() {
+  const [clinicaId,setClinicaId]=useState("");
+  const [carregando,setCarregando]=useState(true);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]);
   const [fila, setFila] = useState<ItemFila[]>([]);
@@ -39,11 +42,31 @@ function FilaEspera() {
   const [animalId, setAnimalId] = useState("");
   const [motivo, setMotivo] = useState("");
 
-  useEffect(() => {
-    setTutores(lerTutores());
-    setAnimais(lerAnimais());
-    setFila(lerFila());
-  }, []);
+  async function carregarFila(cid:string){
+    const {data,error}=await (supabaseBanco as any).rpc("oricse_fila_tela",{p_clinica:cid});
+    if(error)throw error;
+    setTutores(data?.tutores||[]);setAnimais(data?.animais||[]);setFila(data?.fila||[]);
+    return data;
+  }
+  useEffect(()=>{let ativo=true;(async()=>{try{
+    const {data:contexto,error}=await supabase.rpc("oricse_contexto_clinica_atual");
+    const cid=contexto?.[0]?.clinica_id;
+    if(error||!cid)throw Error("Clínica ativa não identificada.");
+    if(!ativo)return;
+    setClinicaId(cid);
+    const result=await carregarFila(cid);
+    // Resgatar fila antiga somente quando tutor e animal pertencem à clínica ativa.
+    const idsT=new Set((result.tutores||[]).map((t:Tutor)=>t.id));
+    const idsA=new Set((result.animais||[]).map((x:Animal)=>x.id));
+    let mudou=false;
+    for(const item of lerFila()){
+      if(item.status!=="Aguardando"||!idsT.has(item.tutorId)||!idsA.has(item.animalId))continue;
+      const {error:err}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:cid,p_acao:"migrar",p_tutor:item.tutorId,p_animal:item.animalId,p_motivo:item.motivo||"",p_chegada:item.chegadaEm});
+      if(!err)mudou=true;
+    }
+    if(mudou)await carregarFila(cid);
+  }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Falha ao carregar fila de espera");}
+  finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[]);
 
   const tutorSelecionado = useMemo(() => tutores.find((t)=>t.id===tutorId), [tutores,tutorId]);
   const codigoTutorItem = (item: ItemFila) => codigoTutor(tutores.find((tutor) => tutor.id === item.tutorId) || { id: item.tutorId, nome: item.tutorNome });
@@ -57,13 +80,22 @@ function FilaEspera() {
   const aguardando = useMemo(() => fila.filter((i)=>i.status==="Aguardando").sort((a,b)=>new Date(a.chegadaEm).getTime()-new Date(b.chegadaEm).getTime()), [fila]);
   const chamados = useMemo(() => fila.filter((i)=>i.status==="Chamado").sort((a,b)=>new Date(b.chamadoEm||b.chegadaEm).getTime()-new Date(a.chamadoEm||a.chegadaEm).getTime()), [fila]);
 
-  function persistir(proxima: ItemFila[]) { setFila(proxima); oricseStorage.setItem(FILA_KEY, JSON.stringify(proxima)); }
-  function selecionarTutor(tutor:Tutor){ setTutorId(tutor.id); setAnimalId(""); setBuscaTutor(tutor.nome); setBuscaTutorAberta(false); }
-  function limparTutor(){ setTutorId(""); setAnimalId(""); setBuscaTutor(""); setBuscaTutorAberta(false); }
-  function adicionarFila(){ const tutor=tutores.find((i)=>i.id===tutorId); const animal=animais.find((i)=>i.id===animalId&&i.tutorId===tutorId); if(!tutor)return toast.error("Selecione o tutor."); if(!animal)return toast.error("Selecione o animal."); if(fila.some((i)=>i.animalId===animal.id&&i.status==="Aguardando"))return toast.error(`${animal.nome} já está na fila de espera.`); const novo:ItemFila={id:crypto.randomUUID(),tutorId:tutor.id,animalId:animal.id,tutorNome:tutor.nome,animalNome:animal.nome,especie:animal.especie,motivo:motivo.trim()||undefined,chegadaEm:new Date().toISOString(),status:"Aguardando"}; persistir([...fila,novo]); limparTutor(); setMotivo(""); toast.success(`${animal.nome} entrou na fila de espera.`); }
-  function chamar(id:string){ const item=fila.find((i)=>i.id===id); if(!item)return; const agora=new Date().toISOString(); persistir(fila.map((i)=>i.id===id?{...i,status:"Chamado" as const,chamadoEm:agora}:i)); window.location.href=`/animal?animalId=${encodeURIComponent(item.animalId)}`; }
-  function voltarParaFila(id:string){ persistir(fila.map((i)=>i.id===id?{...i,status:"Aguardando" as const,chamadoEm:undefined}:i)); }
-  function remover(id:string){ const item=fila.find((i)=>i.id===id); if(!item)return; if(!window.confirm(`Remover ${item.animalNome} da fila de espera?`))return; persistir(fila.filter((i)=>i.id!==id)); }
+  async function operar(acao:string,params:Record<string,unknown>={}){
+    if(!clinicaId)return toast.error("Clínica não identificada.");
+    const {error}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:clinicaId,p_acao:acao,...params});
+    if(error)return toast.error(error.message);
+    await carregarFila(clinicaId);
+  }
+  function selecionarTutor(tutor:Tutor){setTutorId(tutor.id);setAnimalId("");setBuscaTutor(tutor.nome);setBuscaTutorAberta(false);}
+  function limparTutor(){setTutorId("");setAnimalId("");setBuscaTutor("");setBuscaTutorAberta(false);}
+  async function adicionarFila(){
+    if(!tutorId||!animalId)return toast.error("Selecione tutor e animal.");
+    await operar("adicionar",{p_tutor:tutorId,p_animal:animalId,p_motivo:motivo.trim()});
+    limparTutor();setMotivo("");
+  }
+  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;await operar("chamar",{p_item:id});window.location.href=`/animal?animalId=${encodeURIComponent(item.animalId)}`;}
+  async function voltarParaFila(id:string){await operar("voltar",{p_item:id});}
+  async function remover(id:string){const item=fila.find(i=>i.id===id);if(!item||!window.confirm(`Remover ${item.animalNome} da fila?`))return;await operar("remover",{p_item:id});}
 
   const campo="min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
@@ -82,7 +114,7 @@ function FilaEspera() {
         <label className="text-sm font-semibold">Motivo da chegada <span className="font-normal text-muted-foreground">(opcional)</span><input value={motivo} onChange={(e)=>setMotivo(e.target.value)} placeholder="Ex.: vômito, retorno, vacina..." className={`${campo} mt-1`}/></label>
         <button type="button" onClick={adicionarFila} className="min-h-11 rounded-xl bg-primary px-5 font-bold text-primary-foreground">Adicionar</button>
       </div>
-      {tutores.length===0&&<p className="mt-3 text-sm text-muted-foreground">Nenhum tutor cadastrado. <Link to="/tutores" className="font-semibold text-primary underline">Cadastrar tutor</Link></p>}
+      {carregando&&<p className="mt-3 text-sm text-muted-foreground">Carregando tutores e fila…</p>}{!carregando&&tutores.length===0&&<p className="mt-3 text-sm text-muted-foreground">Nenhum tutor cadastrado. <Link to="/tutores" className="font-semibold text-primary underline">Cadastrar tutor</Link></p>}
     </section>
 
     <section className="mt-5 overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="flex items-center justify-between border-b px-5 py-3"><div className="flex items-center gap-2"><Clock3 size={19} className="text-primary"/><h2 className="font-bold">Fila de espera</h2></div><span className="text-sm text-muted-foreground">Ordem de chegada</span></div>
