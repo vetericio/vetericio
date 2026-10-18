@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBanco as supabase } from "@/integrations/supabase/client";
+import { salvarAgendaOnline } from "@/lib/agenda.functions";
 
 export type AgendaMode = "recepcao" | "veterinario";
 type CorAgenda = "azul" | "verde" | "amarelo" | "vermelho" | "rosa" | "laranja" | "roxo" | "marrom" | "cinza" | "azul-petroleo";
@@ -208,9 +209,10 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     if (!f.diasSemana.length) return void toast.error("Selecione ao menos um dia da semana.");
     setSalvando(true);
     try {
-      const payload = { clinica_id:clinicaId,nome:f.nome.trim(),responsavel:f.responsavel.trim(),tipo:f.tipo,inicio:f.inicio,fim:f.fim,dias_semana:f.diasSemana,intervalo_min:f.intervaloMin,portal_ativo:f.portalAtivo,modalidade:f.modalidade,antecedencia_horas:f.antecedenciaHoras,timezone:f.timezone.trim() || "America/Sao_Paulo",cor:f.cor,updated_at:new Date().toISOString() };
-      const resposta = agendaModal.id ? await (supabase as any).from("oricse_agendas_online").update(payload).eq("id", agendaModal.id).eq("clinica_id", clinicaId) : await (supabase as any).from("oricse_agendas_online").insert(payload);
-      if (resposta.error) throw resposta.error;
+      const { data: sessao } = await (supabase as any).auth.getSession();
+      const accessToken = sessao.session?.access_token;
+      if (!accessToken) throw new Error("Sessão expirada. Entre novamente.");
+      await salvarAgendaOnline({ data: { accessToken, clinicaId, agendaId: agendaModal.id, agenda: { nome:f.nome.trim(),responsavel:f.responsavel.trim(),tipo:f.tipo,inicio:f.inicio,fim:f.fim,dias_semana:f.diasSemana,intervalo_min:f.intervaloMin,portal_ativo:f.portalAtivo,modalidade:f.modalidade,antecedencia_horas:f.antecedenciaHoras,timezone:f.timezone.trim() || "America/Sao_Paulo",cor:f.cor } } });
       toast.success(agendaModal.id ? "Agenda atualizada." : "Agenda criada."); setAgendaModal(null); await carregar();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível salvar a agenda."); }
     finally { setSalvando(false); }
