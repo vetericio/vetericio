@@ -23,35 +23,6 @@
 .tema-rosa .bg-card {box-shadow:0 4px 18px #94395d0c;}
 
 
-/* Natal Vivo - versão vitrine premium aprovada */
-.tema-natal-premium body{
- background-color:#fff7e8;
- background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221440%22%20height%3D%22360%22%20viewBox%3D%220%200%201440%20360%22%3E%3Cdefs%3E%3CradialGradient%20id%3D%22light%22%3E%3Cstop%20stop-color%3D%22%23fff5c2%22%2F%3E%3Cstop%20offset%3D%22.3%22%20stop-color%3D%22%23ffe4a4%22%20stop-opacity%3D%22.7%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ffe4a4%22%20stop-opacity%3D%220%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Cg%3E%3Cpath%20d%3D%22M0%204Q350%2035%20700%203T1440%204%22%20stroke%3D%22%23173a27%22%20stroke-width%3D%2249%22%20fill%3D%22none%22%2F%3E%3Cpath%20d%3D%22M0%2017Q350%2045%20700%2017T1440%2017%22%20stroke%3D%22%23347549%22%20stroke-width%3D%2219%22%20stroke-dasharray%3D%229%2015%22%20fill%3D%22none%22%2F%3E%3Cpath%20d%3D%22M0%2025l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2270%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2270%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M48%2034.598922047715604l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2279.5989220477156%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2279.5989220477156%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M96%2040.84466446144285l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%2296%22%20cy%3D%2285.84466446144285%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%2296%22%20cy%3D%2285.84466446144285%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M144%2041.55540972492932l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22144%22%20cy%3D%2286.55540972492932%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22144%22%20cy%3D%2286.55540972492932%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M192%2036.482874069369565l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22192%22%20cy%3D%2281.48287406936956%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22192%22%20cy%3D%2281.48287406936956%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M240%2027.399040137017742l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22240%22%20cy%3D%2272.39904013701775%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22240%22%20cy%3D%2272.39904013701775%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M288%2017.477152463987515l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22288%22%20cy%3D%2262.477152463987515%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22288%22%20cy%3D%2262.477152463987515%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M336%2010.183211868969l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22336%22%20cy%3D%2255.183211868968996%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22336%22%20cy%3D%2255.183211868968996%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M384%208.065201649790708l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22384%22%20cy%3D%2253.06520164979071%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22384%22%20cy%3D%2253.06520164979071%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M432%2011.86300371154821l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22432%22%20cy%3D%2256.86300371154821%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22432%22%20cy%3D%2256.86300371154821%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M480%2020.24993653061826l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22480%22%20cy%3D%2265.24993653061826%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22480%22%20cy%3D%2265.24993653061826%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M528%2030.296203179727424l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22528%22%20cy%3D%2275.29620317972743%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22528%22%20cy%3D%2275.29620317972743%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M576%2038.492353685435596l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22576%22%20cy%3D%2283.4923536854356%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22576%22%20cy%3D%2283.4923536854356%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M624%2041.97523687136828l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22624%22%20cy%3D%2286.97523687136828%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22624%22%20cy%3D%2286.97523687136828%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M672%2039.52818143750077l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22672%22%20cy%3D%2284.52818143750076%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22672%22%20cy%3D%2284.52818143750076%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M720%2032.00601424910986l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22720%22%20cy%3D%2277.00601424910985%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22720%22%20cy%3D%2277.00601424910985%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M768%2022.036444719209346l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22768%22%20cy%3D%2267.03644471920934%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22768%22%20cy%3D%2267.03644471920934%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M816%2013.10213031090978l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22816%22%20cy%3D%2258.10213031090978%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22816%22%20cy%3D%2258.10213031090978%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M864%208.32408408886965l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22864%22%20cy%3D%2253.324084088869654%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22864%22%20cy%3D%2253.324084088869654%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M912%209.371415063700512l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22912%22%20cy%3D%2254.37141506370051%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22912%22%20cy%3D%2254.37141506370051%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M960%2015.878260393992607l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%22960%22%20cy%3D%2260.878260393992605%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%22960%22%20cy%3D%2260.878260393992605%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M1008%2025.571591802759325l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221008%22%20cy%3D%2270.57159180275933%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221008%22%20cy%3D%2270.57159180275933%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M1056%2035.065249750022794l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221056%22%20cy%3D%2280.06524975002279%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221056%22%20cy%3D%2280.06524975002279%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M1104%2041.04282638054977l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221104%22%20cy%3D%2286.04282638054977%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221104%22%20cy%3D%2286.04282638054977%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M1152%2041.416182201337726l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221152%22%20cy%3D%2286.41618220133773%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221152%22%20cy%3D%2286.41618220133773%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M1200%2036.05489328267099l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221200%22%20cy%3D%2281.05489328267099%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221200%22%20cy%3D%2281.05489328267099%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M1248%2026.831812089090548l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221248%22%20cy%3D%2271.83181208909055%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221248%22%20cy%3D%2271.83181208909055%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M1296%2016.968826231226075l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221296%22%20cy%3D%2261.968826231226075%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221296%22%20cy%3D%2261.968826231226075%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M1344%209.911360429114422l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221344%22%20cy%3D%2254.911360429114424%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221344%22%20cy%3D%2254.911360429114424%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cpath%20d%3D%22M1392%208.124790531999235l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221392%22%20cy%3D%2253.12479053199924%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221392%22%20cy%3D%2253.12479053199924%22%20r%3D%224%22%20fill%3D%22%23fff5d2%22%2F%3E%3Cpath%20d%3D%22M1440%2012.233216804881508l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%23185031%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221440%22%20cy%3D%2257.23321680488151%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221440%22%20cy%3D%2257.23321680488151%22%20r%3D%224%22%20fill%3D%22%23ffe0a0%22%2F%3E%3Cpath%20d%3D%22M1488%2020.801447750477386l-23%2036m23-36l24%2036m-24-36v43%22%20stroke%3D%22%232b603e%22%20stroke-width%3D%228%22%2F%3E%3Ccircle%20cx%3D%221488%22%20cy%3D%2265.8014477504774%22%20r%3D%2221%22%20fill%3D%22url(%23light)%22%2F%3E%3Ccircle%20cx%3D%221488%22%20cy%3D%2265.8014477504774%22%20r%3D%224%22%20fill%3D%22%23d42e34%22%2F%3E%3Cg%3E%3Cpath%20d%3D%22M155%2010v55%22%20stroke%3D%22%23e1c390%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22155%22%20cy%3D%2295%22%20r%3D%2237%22%20fill%3D%22%23ab1e2e%22%20stroke%3D%22%23e7c78d%22%20stroke-width%3D%225%22%2F%3E%3Cellipse%20cx%3D%22145%22%20cy%3D%2285%22%20rx%3D%229%22%20ry%3D%2217%22%20fill%3D%22%23ffefd0%22%20opacity%3D%22.2%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Cpath%20d%3D%22M330%2010v80%22%20stroke%3D%22%23e1c390%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%22330%22%20cy%3D%22120%22%20r%3D%2227%22%20fill%3D%22%23d1a358%22%20stroke%3D%22%23e7c78d%22%20stroke-width%3D%225%22%2F%3E%3Cellipse%20cx%3D%22320%22%20cy%3D%22110%22%20rx%3D%229%22%20ry%3D%2217%22%20fill%3D%22%23ffefd0%22%20opacity%3D%22.2%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Cpath%20d%3D%22M1070%2010v55%22%20stroke%3D%22%23e1c390%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%221070%22%20cy%3D%2295%22%20r%3D%2237%22%20fill%3D%22%23ab1e2e%22%20stroke%3D%22%23e7c78d%22%20stroke-width%3D%225%22%2F%3E%3Cellipse%20cx%3D%221060%22%20cy%3D%2285%22%20rx%3D%229%22%20ry%3D%2217%22%20fill%3D%22%23ffefd0%22%20opacity%3D%22.2%22%2F%3E%3C%2Fg%3E%3Cg%3E%3Cpath%20d%3D%22M1260%2010v80%22%20stroke%3D%22%23e1c390%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20cx%3D%221260%22%20cy%3D%22120%22%20r%3D%2227%22%20fill%3D%22%23d1a358%22%20stroke%3D%22%23e7c78d%22%20stroke-width%3D%225%22%2F%3E%3Cellipse%20cx%3D%221250%22%20cy%3D%22110%22%20rx%3D%229%22%20ry%3D%2217%22%20fill%3D%22%23ffefd0%22%20opacity%3D%22.2%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate(715%2018)%22%3E%3Cpath%20d%3D%22M0%2015q-63-66-91-20q14%2039%2090%2023q67%2017%2091-23q-28-45-90%2020Z%22%20fill%3D%22%239c2030%22%20stroke%3D%22%23dcad62%22%20stroke-width%3D%225%22%2F%3E%3Cpath%20d%3D%22M-8%2025l-37%2092%2038-14%2019%2023%2018-101M8%2025l35%2092-38-14-19%2023-18-101%22%20fill%3D%22%23b42b38%22%20stroke%3D%22%23d5a663%22%20stroke-width%3D%224%22%2F%3E%3Ccircle%20cy%3D%2218%22%20r%3D%2216%22%20fill%3D%22%23e0b269%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E"),radial-gradient(ellipse at 76% 18%,#f7d4908c,transparent 43%),radial-gradient(circle at 10% 60%,#f4e4c4,transparent 65%),linear-gradient(120deg,#fff9eb,#fff2df);
- background-position:center top;
- background-size:100% auto,cover,cover,cover;
- background-repeat:no-repeat;
- background-attachment:fixed;
-}
-.tema-natal-premium [data-sidebar="sidebar"]{
- background:linear-gradient(150deg,#06432e 0%,#063722 70%,#03291b 100%)!important;
- color:#fff9e9!important;border-right:3px solid #d5b373!important;
- box-shadow:inset 0 7px 0 #b98a45,5px 0 16px #082d1d30;
-}
-.tema-natal-premium [data-sidebar="menu-button"]{color:#fff7e7; border-radius:12px;}
-.tema-natal-premium [data-sidebar="menu-button"][data-active="true"]{background:linear-gradient(95deg,#a21e33,#7f1929);color:#fff7e8;border:1px solid #d5b16c;}
-.tema-natal-premium .bg-card{
- background:linear-gradient(160deg,#fffdfa,#fff8ed)!important;
- border:1px solid #ddc18d!important;
- box-shadow:0 10px 28px #51381821,0 2px 6px #51381813!important;
-}
-.tema-natal-premium .bg-primary{background:linear-gradient(135deg,#a22438,#7e182e)!important;color:#fffaf0!important;box-shadow:0 3px 9px #7e182e22;}
-.tema-natal-premium .bg-secondary{background:#e6eedf!important;}
-.tema-natal-premium input,.tema-natal-premium textarea,.tema-natal-premium select{background-color:#fffdfa!important;}
-.tema-natal-premium th{background:#ebf1e7!important;color:#16402c!important;}
-.tema-natal-premium button:focus-visible{outline:2px solid #c7a360;outline-offset:2px;}
-@media(max-width:740px){.tema-natal-premium body{background-size:auto 230px,cover,cover,cover;}}
-
-/* Natal Vivo — composição em camadas, ativa exclusivamente neste tema. */
 .tema-natal-premium {
   --background: oklch(0.96 0.025 81);
   --foreground: oklch(0.26 0.06 48);
@@ -78,96 +49,36 @@
   --sidebar-accent-foreground: oklch(0.97 0.025 90);
   --sidebar-border: oklch(0.68 0.08 77);
 }
-.tema-natal-premium body {
-  background-image: linear-gradient(90deg,rgba(255,249,232,.9),rgba(255,249,232,.62)),url('/natal/fundo-champagne-bokeh.webp')!important;
-  background-size: cover!important;
-  background-position: center!important;
-  background-attachment: fixed!important;
-}
-.tema-natal-premium .natal-vivo-decoracao { display:block; }
-.natal-vivo-decoracao { display:none; pointer-events:none!important; position:fixed; inset:0; z-index:45; overflow:hidden; }
-.natal-vivo-decoracao * { pointer-events:none!important; }
-.natal-vivo-guirlanda,.natal-vivo-canto { position:absolute; max-width:none; user-select:none; filter:drop-shadow(0 7px 8px rgba(50,23,3,.28)); }
-.natal-vivo-guirlanda--topo { z-index:2; top:-.65rem; left:50%; width:100%; height:clamp(10rem,13vw,14rem); object-fit:cover; object-position:center top; transform:translateX(-50%); }
-.natal-vivo-guirlanda--esquerda { z-index:1; top:11rem; left:-16rem; width:31rem; transform:rotate(90deg); transform-origin:center; opacity:.9; }
-.natal-vivo-guirlanda--direita { z-index:1; top:11rem; right:-16rem; width:31rem; transform:rotate(-90deg) scaleX(-1); transform-origin:center; opacity:.9; }
-.natal-vivo-canto { z-index:3; bottom:-1.6rem; width:min(22vw,22rem); }
-.natal-vivo-canto--esquerdo { left:-1.1rem; }
-.natal-vivo-canto--direito { right:-1.1rem; transform:scaleX(-1); }
-.natal-vivo-luzes { position:absolute; z-index:0; opacity:.78; filter:blur(13px); background:radial-gradient(circle,#fff9c8 0 3px,rgba(255,203,85,.66) 9px,transparent 22px); background-size:62px 62px; }
-.natal-vivo-luzes--topo { top:0; left:0; width:100%; height:14rem; }
-.natal-vivo-luzes--lateral { top:7rem; right:0; width:7rem; height:76%; background-size:45px 45px; }
-.tema-natal-premium header { border-bottom-color:color-mix(in oklab,var(--border),transparent 15%); background:rgba(255,253,245,.76)!important; backdrop-filter:blur(6px); }
-.tema-natal-premium .bg-card,.tema-natal-premium [class*="rounded"][class*="border"] { border-color:color-mix(in oklab,#c59b57,transparent 15%)!important; box-shadow:0 11px 25px rgba(76,47,9,.14),inset 0 1px rgba(255,255,255,.82)!important; }
-.tema-natal-premium input,.tema-natal-premium textarea,.tema-natal-premium select { border-color:#d5b373!important; box-shadow:inset 0 1px 2px rgba(104,65,16,.08); }
-.tema-natal-premium [data-sidebar="sidebar"] { background:linear-gradient(160deg,#06472e,#073d29 56%,#032f20)!important; }
-.tema-natal-premium [data-sidebar="menu-button"] { border:1px solid transparent; }
-.tema-natal-premium [data-sidebar="menu-button"]:hover { background:rgba(241,210,136,.14); border-color:rgba(229,193,108,.44); }
-.tema-natal-premium [data-sidebar="menu-sub"] { border-color:rgba(230,203,132,.45); }
-@media (max-width:900px) { .natal-vivo-guirlanda--esquerda,.natal-vivo-guirlanda--direita { opacity:.48; } .natal-vivo-canto { width:15rem; } }
-@media (max-width:640px) { .natal-vivo-guirlanda--topo { width:58rem; top:-.4rem; } .natal-vivo-guirlanda--esquerda,.natal-vivo-guirlanda--direita { display:none; } .natal-vivo-canto { width:13rem; bottom:-1.2rem; opacity:.78; } .natal-vivo-canto--esquerdo { left:-3rem; } .natal-vivo-canto--direito { right:-3rem; } .natal-vivo-luzes--topo { height:8rem; } }
 
-/* Natal Vivo: composição clínica — não é uma moldura sobreposta à tela. */
-.tema-natal-premium .natal-vivo-decoracao { z-index: 2; }
-.tema-natal-premium .oricse-cabecalho,
-.tema-natal-premium main,
-.tema-natal-premium [role="main"] { position:relative; z-index:3; }
-.tema-natal-premium .oricse-cabecalho {
-  min-height: 12rem;
-  border-bottom:1px solid rgba(192,143,54,.58)!important;
-  background:linear-gradient(90deg,rgba(255,251,241,.89),rgba(255,248,231,.62),rgba(255,251,241,.9)),url('/natal/fundo-champagne-bokeh.webp') center/cover!important;
-  box-shadow:0 3px 18px rgba(83,42,11,.15);
-  backdrop-filter:blur(1px);
-}
-.tema-natal-premium .oricse-cabecalho > div:not([role]) { min-height:12rem; padding-top:1.35rem; padding-bottom:.55rem; }
-.tema-natal-premium .oricse-cabecalho img { max-width:10.75rem!important; position:relative; z-index:4; filter:drop-shadow(0 3px 1px rgba(255,255,255,.82)); }
-.tema-natal-premium .oricse-menu-lateral {
-  z-index:4!important;
-  color:#fff9eb;
-  border-right:1px solid rgba(222,177,80,.76)!important;
-  background:
-    linear-gradient(180deg,rgba(2,54,35,.91),rgba(2,48,31,.98)),
-    url('/natal/fundo-champagne-bokeh.webp') center/cover!important;
-  box-shadow:inset -1px 0 rgba(255,223,145,.3),8px 0 22px rgba(25,24,5,.23)!important;
-}
-.tema-natal-premium .oricse-menu-lateral h2,
-.tema-natal-premium .oricse-menu-lateral button,
-.tema-natal-premium .oricse-menu-lateral a { color:inherit; }
-.tema-natal-premium .oricse-menu-lateral nav > div { border-color:rgba(221,180,89,.74)!important; background:rgba(2,45,29,.44); }
-.tema-natal-premium .oricse-menu-lateral nav > div > button { background:rgba(5,61,39,.68)!important; color:#fff7df!important; }
-.tema-natal-premium .oricse-menu-lateral nav > div > button:hover { background:rgba(39,104,68,.72)!important; }
-.tema-natal-premium .oricse-menu-lateral nav > div > div { background:rgba(0,42,27,.73)!important; }
-.tema-natal-premium .oricse-menu-lateral nav a:hover { background:rgba(240,203,117,.16)!important; }
-.tema-natal-premium .oricse-menu-lateral nav a.bg-primary,
-.tema-natal-premium .oricse-menu-lateral nav a[class*="bg-primary"] { background:linear-gradient(100deg,#a51532,#7c1029)!important; color:#fff9e9!important; box-shadow:inset 0 0 0 1px rgba(249,210,128,.65); }
-.tema-natal-premium .natal-vivo-guirlanda--topo {
-  top:-.2rem;
-  width:100%;
-  height:12.4rem;
-  object-fit:cover;
-  object-position:center top;
-  filter:drop-shadow(0 5px 8px rgba(38,18,3,.32));
-}
-.tema-natal-premium .natal-vivo-guirlanda--esquerda,
-.tema-natal-premium .natal-vivo-guirlanda--direita { top:10.5rem; width:36rem; opacity:.98; }
-.tema-natal-premium .natal-vivo-guirlanda--esquerda { left:-17.1rem; }
-.tema-natal-premium .natal-vivo-guirlanda--direita { right:-17.1rem; }
-.tema-natal-premium .natal-vivo-canto { bottom:-.7rem; width:min(18.5vw,19rem); opacity:.96; }
-.tema-natal-premium .natal-vivo-canto--esquerdo { left:-.7rem; }
-.tema-natal-premium .natal-vivo-canto--direito { right:-.7rem; }
-.tema-natal-premium .natal-vivo-luzes--topo { height:12.7rem; opacity:.33; }
-.tema-natal-premium .natal-vivo-luzes--lateral { width:4rem; opacity:.26; }
-.tema-natal-premium main header:not(.oricse-cabecalho) { background:transparent!important; backdrop-filter:none; }
-@media (max-width:1023px) {
-  .tema-natal-premium .oricse-cabecalho { min-height:10.5rem; }
-  .tema-natal-premium .oricse-cabecalho > div:not([role]) { min-height:10.5rem; }
-  .tema-natal-premium .natal-vivo-guirlanda--topo { height:10.8rem; }
-  .tema-natal-premium .natal-vivo-guirlanda--esquerda,.tema-natal-premium .natal-vivo-guirlanda--direita { opacity:.58; }
-}
-@media (max-width:640px) {
-  .tema-natal-premium .oricse-cabecalho { min-height:8.25rem; }
-  .tema-natal-premium .oricse-cabecalho > div:not([role]) { min-height:8.25rem; padding-top:.7rem; }
-  .tema-natal-premium .oricse-cabecalho img { max-width:8rem!important; }
-  .tema-natal-premium .natal-vivo-guirlanda--topo { height:8.5rem; }
-  .tema-natal-premium .natal-vivo-canto { width:10rem; opacity:.68; }
-}
+.natal-vivo-decoracao{display:none;position:fixed;inset:0;z-index:41;overflow:hidden;pointer-events:none!important}
+.natal-vivo-decoracao *{pointer-events:none!important;user-select:none}
+.tema-natal-premium .natal-vivo-decoracao{display:block}
+.tema-natal-premium body{background:#f9efdc url('/natal/fundo-champagne-bokeh.webp') center/cover fixed}
+.tema-natal-premium .oricse-cabecalho{position:relative;min-height:192px;border-bottom:1px solid #d7b577;background:linear-gradient(180deg,#790b15 0 60px,transparent 60px),linear-gradient(90deg,#fff6e4b8,#fff8ece0,#fff4dd9c);backdrop-filter:none!important;filter:none!important;transform:none!important;contain:none!important}
+.tema-natal-premium .oricse-cabecalho>.mx-auto{padding-top:26px;padding-bottom:14px;min-height:192px}
+.tema-natal-premium .oricse-cabecalho img{position:relative;z-index:42;width:142px!important;max-width:142px!important;height:150px;object-fit:contain}
+.tema-natal-premium .oricse-menu-lateral{z-index:40;top:60px;bottom:0;height:auto;padding:18px 18px 170px;background:linear-gradient(110deg,#053e29,#002e1f 80%)!important;color:#fff8e8;border-right:2px solid #c5a15d;box-shadow:4px 0 15px #172d1438}
+.tema-natal-premium .oricse-menu-lateral h2{font-size:20px}
+.tema-natal-premium .oricse-menu-lateral nav{margin-top:22px}
+.tema-natal-premium .oricse-menu-lateral nav>div{border-color:#be9b57b3;border-radius:17px}
+.tema-natal-premium .oricse-menu-lateral nav>div>button{background:#063922!important;color:#fff4dc!important}
+.tema-natal-premium .oricse-menu-lateral nav>div>button[aria-expanded="true"]{background:linear-gradient(90deg,#efdec0,#fff1d4)!important;color:#705036!important}
+.tema-natal-premium .oricse-menu-lateral nav>div>div{background:#002e1e!important}
+.tema-natal-premium .oricse-menu-lateral a{color:#fff8e8}
+.tema-natal-premium .oricse-menu-lateral a.bg-primary{background:linear-gradient(100deg,#a41f34,#791527)!important}
+.tema-natal-premium .oricse-menu-lateral .text-primary{color:#fff1cc}
+.natal-vivo-guirlanda--topo{position:absolute;top:-12px;left:0;width:100%;height:218px;object-fit:fill;max-width:none;filter:drop-shadow(0 6px 6px #28100055)}
+.natal-vivo-canto{position:absolute;bottom:-18px;width:280px;max-width:22vw;filter:drop-shadow(0 4px 5px #29160055)}
+.natal-vivo-canto--esquerdo{left:-14px}
+.natal-vivo-canto--direito{right:-26px;width:150px;max-width:11vw;transform:scaleX(-1)}
+.natal-vivo-luzes{display:none}
+.tema-natal-premium main{position:relative;padding-top:24px}
+.tema-natal-premium main>section.bg-white,.tema-natal-premium .bg-card{background:linear-gradient(145deg,#fffdfa,#fcf7ef)!important;border-color:#cda968!important;box-shadow:0 5px 10px #65441425}
+.tema-natal-premium main>section.bg-white{position:relative;overflow:visible}
+.tema-natal-premium main>section.bg-white::after{content:"";position:absolute;right:-9px;top:-13px;width:76px;height:59px;background:url('/natal/guirlanda-aberta-v3.webp') right top/250px 84px no-repeat;pointer-events:none}
+.tema-natal-premium .bg-primary{background:linear-gradient(130deg,#a01426,#780914)!important;color:#fff9ef!important}
+.tema-natal-premium input,.tema-natal-premium textarea,.tema-natal-premium select{background:#fffcf7!important;border-color:#cfb58a!important}
+.tema-natal-premium th{background:#f2e7d3;color:#4a2f1d}
+@media(min-width:1024px){.tema-natal-premium main{max-width:1440px;padding-left:64px;padding-right:64px}}
+@media(max-width:1023px){.tema-natal-premium .oricse-menu-lateral{padding:8px 8px 110px}.natal-vivo-guirlanda--topo{height:190px}.natal-vivo-canto{width:180px}}
+@media(max-width:640px){.tema-natal-premium .oricse-cabecalho,.tema-natal-premium .oricse-cabecalho>.mx-auto{min-height:145px}.tema-natal-premium .oricse-cabecalho>.mx-auto{padding-top:28px}.tema-natal-premium .oricse-cabecalho img{width:105px!important;height:105px;max-width:105px!important}.natal-vivo-guirlanda--topo{height:157px;width:150%;left:-25%}.natal-vivo-canto{width:130px;max-width:29vw;opacity:.88}.natal-vivo-canto--direito{width:90px;max-width:20vw}}
