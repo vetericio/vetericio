@@ -156,7 +156,8 @@ export function Backup({
         const mudou = await sincronizar(sala);
         if (mudou && vivo) {
           recarregando = true;
-          window.location.reload();
+          window.dispatchEvent(new CustomEvent("oricse-dados-sincronizados"));
+          recarregando = false;
         }
       } catch {
         if (vivo) setConectado(false);
