@@ -68,9 +68,7 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
                 className="mx-auto mb-4 max-h-16 max-w-[190px] object-contain"
               />
             ) : (
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl font-bold">
-                {clinic.clinica_nome.trim().charAt(0).toLocaleUpperCase("pt-BR")}
-              </div>
+              <img src="/oricse-logo-oryx.svg" alt="Oricse" className="mx-auto mb-4 h-16 w-16 object-contain" />
             )}
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
               Acesso exclusivo
