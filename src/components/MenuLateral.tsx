@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { Activity, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble, Lock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Activity, House, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble, Lock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DialogoTurno } from "@/components/DialogoTurno";
@@ -94,6 +94,7 @@ export function MenuLateral({ fixo, aoMudarFixo }: { fixo: boolean; aoMudarFixo:
 
   const navegacao = (menuFixo = false) => <>
     <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
+      <Link to="/inicio" onClick={() => setAberto(false)} className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 text-sm font-semibold ${location.pathname==="/inicio"?"bg-primary/10 text-primary border-primary/30":"bg-secondary/40 hover:bg-secondary"}`}><House className="h-5 w-5"/><span>Início</span></Link>
       {areas.map(area => {
         const itensVisiveis = carregandoPermissoes
           ? area.itens
