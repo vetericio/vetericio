@@ -45,7 +45,17 @@ function Encaminhar(){
 
   async function enviarAgenda(){if(!tutor||!animal||!agenda||!clinicaId)return;if(!hora)return void toast.error("Selecione um horário livre.");if(!livres.includes(hora))return void toast.error("Esse horário já está ocupado.");setSalvando(true);try{const inicio=localParaIso(data,hora,agenda.timezone);const fim=new Date(new Date(inicio).getTime()+agenda.intervalo_min*60000).toISOString();const{error}=await(supabaseBanco as any).from("oricse_agendamentos_online").insert({clinica_id:clinicaId,agenda_id:agenda.id,tutor_id:tutor.id,animal_id:animal.id,tutor_auth_id:null,animal_referencia:animal.nome,inicio,fim,estado:"confirmado",tipo:"Consulta",observacoes:null,origem:"recepcao",dados:{status_clinico:"Agendado",pagamento:"Pendente",tutor_nome:tutor.nome,especie:animal.especie,origem_recepcao:true}});if(error)throw error;toast.success(`${animal.nome} agendado com ${responsavel} em ${data} às ${hora}.`);voltar();}catch(e:any){toast.error(e?.code==="23P01"?"Esse horário acabou de ser ocupado. Escolha outro.":e?.message||"Não foi possível agendar.");}finally{setSalvando(false);}}
 
-  function enviarFila(){if(!tutor||!animal)return;const atual=lerFila();if(atual.some(i=>i.animalId===animal.id&&i.status==="Aguardando"))return void toast.error(`${animal.nome} já está na fila de espera.`);const item:FilaItem={id:crypto.randomUUID(),tutorId:tutor.id,tutor:tutor.nome,animalId:animal.id,animal:animal.nome,especie:animal.especie,entradaEm:new Date().toISOString(),status:"Aguardando"};oricseStorage.setItem(FILA_KEY,JSON.stringify([...atual,item]));toast.success(`${animal.nome} enviado para a fila de espera.`);voltar();}
+  async function enviarFila(){
+    if(!tutor||!animal||!clinicaId)return;
+    setSalvando(true);
+    try{
+      const {error}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:clinicaId,p_acao:"adicionar",p_tutor:tutor.id,p_animal:animal.id,p_motivo:""});
+      if(error)throw error;
+      toast.success(`${animal.nome} enviado para a fila de espera.`);
+      voltar();
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível enviar à fila.");}
+    finally{setSalvando(false);}
+  }
 
   if(carregando)return <main className="mx-auto max-w-3xl p-8 text-sm text-muted-foreground">Carregando...</main>;
   if(!tutor||!animal)return <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-8 sm:px-6"><Link to="/tutores" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/5 p-5">Tutor ou animal não encontrado no banco desta clínica.</div></main>;
