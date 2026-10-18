@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
@@ -37,7 +37,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema" | "paginas";
+type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
@@ -98,6 +98,7 @@ const ABAS: { id: Aba; nome: string; icone: typeof Gauge }[] = [
   { id: "clinicas", nome: "Clínicas", icone: Building2 },
   { id: "planos", nome: "Planos", icone: BadgeDollarSign },
   { id: "site", nome: "Site e marca", icone: PanelsTopLeft },
+  { id: "pagamentos", nome: "Pagamentos", icone: CreditCard },
   { id: "sistema", nome: "Sistema", icone: Settings },
   { id: "paginas", nome: "Páginas e URLs", icone: Globe2 },
 ];
@@ -189,6 +190,9 @@ function Admin() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [salvandoLogo, setSalvandoLogo] = useState(false);
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
+  const [taxasGerais, setTaxasGerais] = useState({ taxa_mercado_pago_percentual: 0, taxa_mercado_pago_fixa: 0, taxa_oricse_percentual: 10 });
+  const [taxasPorClinica, setTaxasPorClinica] = useState<Record<string, { id?: string; taxa_mercado_pago_percentual: number; taxa_mercado_pago_fixa: number; taxa_oricse_percentual: number }>>({});
+  const [salvandoTaxas, setSalvandoTaxas] = useState(false);
 
   const clinicasFiltradas = useMemo(() => {
     const q = buscaClinica.trim().toLowerCase();
@@ -214,13 +218,14 @@ function Admin() {
   }
 
   async function carregarTudo() {
-    const [c, u, v, p, cfg, arqs] = await Promise.all([
+    const [c, u, v, p, cfg, arqs, taxas] = await Promise.all([
       (supabase as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
       (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
+      (supabaseBanco as any).from("oricse_taxas_pagamento").select("id,clinica_id,taxa_mercado_pago_percentual,taxa_mercado_pago_fixa,taxa_oricse_percentual"),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
@@ -236,10 +241,35 @@ function Admin() {
     })));
     setSite({ ...SITE_PADRAO, ...(cfg.data?.valor || {}) });
     setArquivosDrive(arqs.count || 0);
+    if (!taxas.error) {
+      const geral = (taxas.data || []).find((item: any) => !item.clinica_id);
+      if (geral) setTaxasGerais({ taxa_mercado_pago_percentual: Number(geral.taxa_mercado_pago_percentual), taxa_mercado_pago_fixa: Number(geral.taxa_mercado_pago_fixa), taxa_oricse_percentual: Number(geral.taxa_oricse_percentual) });
+      setTaxasPorClinica(Object.fromEntries((taxas.data || []).filter((item: any) => item.clinica_id).map((item: any) => [item.clinica_id, { id: item.id, taxa_mercado_pago_percentual: Number(item.taxa_mercado_pago_percentual), taxa_mercado_pago_fixa: Number(item.taxa_mercado_pago_fixa), taxa_oricse_percentual: Number(item.taxa_oricse_percentual) }])));
+    }
     if (selecionada) {
       const atual = (c.data || []).find((x: Clinica) => x.id === selecionada.id);
       if (atual) setSelecionada(atual);
     }
+  }
+
+  async function salvarTaxas(clinicaId?: string) {
+    const valores = clinicaId ? taxasPorClinica[clinicaId] : taxasGerais;
+    if (!valores) return;
+    const numeros = [valores.taxa_mercado_pago_percentual, valores.taxa_mercado_pago_fixa, valores.taxa_oricse_percentual].map(Number);
+    if (numeros.some((valor) => !Number.isFinite(valor) || valor < 0) || numeros[0] > 100 || numeros[2] > 100) return void toast.error("Informe taxas válidas.");
+    setSalvandoTaxas(true);
+    const payload = {
+      ...(clinicaId ? { clinica_id: clinicaId } : {}),
+      taxa_mercado_pago_percentual: numeros[0], taxa_mercado_pago_fixa: numeros[1], taxa_oricse_percentual: numeros[2],
+    };
+    const operacao = clinicaId
+      ? (supabaseBanco as any).from("oricse_taxas_pagamento").upsert(payload, { onConflict: "clinica_id" })
+      : (supabaseBanco as any).from("oricse_taxas_pagamento").update(payload).is("clinica_id", null);
+    const { error } = await operacao;
+    setSalvandoTaxas(false);
+    if (error) return toast.error(error.message);
+    toast.success(clinicaId ? "Taxas da clínica salvas." : "Taxas gerais salvas.");
+    await carregarTudo();
   }
 
   async function carregarDrive(id: string) {
@@ -794,5 +824,9 @@ function Admin() {
 
   const renderSistema = () => <Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div></Card>;
 
-  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><div className="flex flex-wrap items-center gap-2"><a href="/inicio" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"><PanelsTopLeft size={18}/> Página inicial do sistema</a><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></div></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if (id !== "clinicas") setSelecionada(null); if(id==="paginas") void carregarRotas(); if(id==="planos") void carregarFuncionalidades(); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}{aba === "paginas" && renderPaginas()}</section></div></div>{renderNovaClinica()}</main>;
+  const renderPagamentos = () => <div className="space-y-6"><div><h2 className="text-2xl font-black">Pagamentos e repasses</h2><p className="mt-1 text-sm text-muted-foreground">O Mercado Pago desconta primeiro; a comissão ORICSE é aplicada sobre o restante. As taxas são usadas no cálculo exibido antes da cobrança.</p></div><Card><h3 className="font-black">Taxas gerais da ORICSE</h3><TaxasForm valores={taxasGerais} onChange={setTaxasGerais} onSave={()=>void salvarTaxas()} salvando={salvandoTaxas}/></Card><Card><h3 className="font-black">Exceção por clínica</h3><p className="mt-1 text-sm text-muted-foreground">Sem exceção, a clínica usa as taxas gerais.</p><div className="mt-4 space-y-4">{clinicas.map(clinica=>{const valores=taxasPorClinica[clinica.id]||taxasGerais;const proprio=Boolean(taxasPorClinica[clinica.id]);return <div key={clinica.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><strong>{clinica.nome}</strong><p className="text-xs text-muted-foreground">{proprio?"Taxas próprias":"Usando taxas gerais"}</p></div><button className="rounded-lg border px-3 py-2 text-xs font-bold" onClick={()=>setTaxasPorClinica(atual=>({...atual,[clinica.id]:atual[clinica.id]||{...taxasGerais}}))}>{proprio?"Editar":"Criar exceção"}</button></div>{proprio&&<TaxasForm valores={valores} onChange={(novo)=>setTaxasPorClinica(atual=>({...atual,[clinica.id]:{...atual[clinica.id],...novo}}))} onSave={()=>void salvarTaxas(clinica.id)} salvando={salvandoTaxas}/>}</div>})}</div></Card></div>;
+
+  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><div className="flex flex-wrap items-center gap-2"><label className="min-w-[230px] rounded-xl border bg-white px-3 py-1.5 text-left"><span className="block text-[10px] font-black uppercase tracking-wide text-muted-foreground">Clínica selecionada</span><select value={selecionada?.id || ""} onChange={e=>{const clinica=clinicas.find(item=>item.id===e.target.value)||null;setSelecionada(clinica);if(clinica)setAba("clinicas");}} className="w-full bg-transparent text-sm font-bold outline-none"><option value="">Todas as clínicas ORICSE</option>{clinicas.map(clinica=><option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}</select></label><a href="/inicio" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"><PanelsTopLeft size={18}/> Página inicial do sistema</a><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></div></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if(id==="paginas") void carregarRotas(); if(id==="planos") void carregarFuncionalidades(); if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}{aba === "paginas" && renderPaginas()}{aba === "pagamentos" && renderPagamentos()}</section></div></div>{renderNovaClinica()}</main>;
 }
+
+function TaxasForm({valores,onChange,onSave,salvando}:{valores:{taxa_mercado_pago_percentual:number;taxa_mercado_pago_fixa:number;taxa_oricse_percentual:number};onChange:(v:any)=>void;onSave:()=>void;salvando:boolean}){return <div className="mt-4 grid gap-3 sm:grid-cols-4"><label className="text-sm font-bold">Mercado Pago (%)<input type="number" min="0" max="100" step="0.01" value={valores.taxa_mercado_pago_percentual} onChange={e=>onChange({...valores,taxa_mercado_pago_percentual:Number(e.target.value)})} className="mt-1 min-h-10 w-full rounded-lg border px-3 font-normal"/></label><label className="text-sm font-bold">Mercado Pago (R$)<input type="number" min="0" step="0.01" value={valores.taxa_mercado_pago_fixa} onChange={e=>onChange({...valores,taxa_mercado_pago_fixa:Number(e.target.value)})} className="mt-1 min-h-10 w-full rounded-lg border px-3 font-normal"/></label><label className="text-sm font-bold">ORICSE (%)<input type="number" min="0" max="100" step="0.01" value={valores.taxa_oricse_percentual} onChange={e=>onChange({...valores,taxa_oricse_percentual:Number(e.target.value)})} className="mt-1 min-h-10 w-full rounded-lg border px-3 font-normal"/></label><button disabled={salvando} onClick={onSave} className="self-end rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">{salvando?"Salvando...":"Salvar taxas"}</button></div>}
