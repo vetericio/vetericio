@@ -149,6 +149,7 @@ export function MenuLateral({ fixo, aoMudarFixo }: { fixo: boolean; aoMudarFixo:
       <div className="hidden lg:block">{navegacao(true)}</div>
       <nav aria-label="Atalhos fixos do sistema" className="flex h-full flex-col items-center gap-2 lg:hidden">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl text-primary"><Menu className="h-5 w-5" /></span>
+        <Link to="/inicio" aria-label="Início" title="Início" className={`flex h-11 w-11 items-center justify-center rounded-xl border ${location.pathname==="/inicio"?"border-primary bg-primary text-primary-foreground":"border-border/70 hover:bg-secondary"}`}><House className="h-5 w-5"/></Link>
         {areas.map((area) => {
           const itensVisiveis = carregandoPermissoes
             ? area.itens
