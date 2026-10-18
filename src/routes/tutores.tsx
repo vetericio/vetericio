@@ -146,6 +146,7 @@ function Tutores() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [clinicaId,setClinicaId]=useState("");
+  const [clinicasDisponiveis,setClinicasDisponiveis]=useState<Array<{id:string;nome:string}>>([]);
   const [carregando,setCarregando]=useState(true);
   const [animais,setAnimais] = useState<AnimalResumo[]>([]);
   const [busca, setBusca] = useState("");
@@ -160,11 +161,16 @@ function Tutores() {
   useEffect(()=>{let ativo=true;(async()=>{try{
     const {data:{user}}=await supabaseBanco.auth.getUser();
     if(!user)throw Error("Faça login para acessar os tutores.");
-    const {data:vinculo,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
-    if(error||!vinculo?.clinica_id)throw Error("Clínica não identificada.");
+    const {data:vinculos,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true);
+    if(error||!vinculos?.length)throw Error("Clínica não identificada.");
+    const ids=[...new Set(vinculos.map(v=>v.clinica_id))];
+    const {data:clinicas,error:eClinicas}=await supabaseBanco.from("clinicas").select("id,nome").in("id",ids);
+    if(eClinicas)throw eClinicas;
+    const escolha=new URLSearchParams(window.location.search).get("clinicaId");
+    const id=ids.includes(escolha||"")?escolha!:ids[0];
     if(!ativo)return;
-    setClinicaId(vinculo.clinica_id);
-    await atualizarBanco(vinculo.clinica_id);
+    setClinicasDisponiveis((clinicas||[]).map(c=>({id:c.id,nome:c.nome})));setClinicaId(id);
+    await atualizarBanco(id);
    }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Erro ao carregar tutores do banco");}
    finally{if(ativo)setCarregando(false);}})();return()=>{ativo=false};},[]);
 
@@ -240,7 +246,7 @@ function Tutores() {
   return <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
     <div className="mb-6">
       <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link>
-      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><span className="ml-auto text-xs text-muted-foreground">{carregando?"Carregando banco…":"Dados do Supabase"}</span></div>
+      <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">{clinicasDisponiveis.length>1&&<label className="flex items-center gap-2">Clínica <select aria-label="Selecionar clínica" className="rounded-lg border bg-card px-2 py-2 text-foreground" value={clinicaId} onChange={e=>{const id=e.target.value;setClinicaId(id);setCarregando(true);void atualizarBanco(id).catch(err=>toast.error(err.message)).finally(()=>setCarregando(false));window.history.replaceState(null,"",`/tutores?clinicaId=${encodeURIComponent(id)}`)}}>{clinicasDisponiveis.map(c=><option value={c.id} key={c.id}>{c.nome}</option>)}</select></label>}{carregando?"Carregando banco…":"Dados do Supabase"}</div></div>
     </div>
 
     <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
@@ -251,7 +257,7 @@ function Tutores() {
     {modo === "procurar" ? (
       <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
         <div className="relative"><Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome, ID, telefone, CPF/CNPJ ou e-mail" className="min-h-12 w-full rounded-xl border bg-white pl-11 pr-4 outline-none focus:border-primary"/></div>
-        {busca.trim() && <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{resultados.length ? resultados.map((t) => <TutorCard key={t.id} tutor={t} animais={animais} onEdit={abrirEdicao}/>) : <div className="rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">Nenhum tutor encontrado.</div>}</div>}
+        {busca.trim() && <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{resultados.length ? resultados.map((t) => <TutorCard key={t.id} tutor={t} animais={animais} onEdit={abrirEdicao} clinicaId={clinicaId}/>) : <div className="rounded-xl border border-dashed bg-slate-50 p-5 text-sm text-muted-foreground md:col-span-2 xl:col-span-3">Nenhum tutor encontrado.</div>}</div>}
       </section>
     ) : (
       <section className="mt-5 overflow-hidden rounded-2xl border bg-white shadow-sm">
@@ -299,12 +305,12 @@ function Tutores() {
     <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
       <h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary"/> Tutores cadastrados <span className="text-sm text-muted-foreground">({tutores.length})</span></h2>
       <div className="mt-4 flex flex-wrap gap-1.5"><button type="button" onClick={() => setLetra("TODOS")} className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${letra === "TODOS" ? "bg-primary text-primary-foreground" : "bg-white"}`}>Todos</button>{ALFABETO.map((l) => <button key={l} type="button" disabled={!letrasDisponiveis.has(l)} onClick={() => setLetra(l)} className={`h-8 min-w-8 rounded-lg border text-sm font-bold ${letra === l ? "bg-primary text-primary-foreground" : "bg-white"} disabled:opacity-25`}>{l}</button>)}</div>
-      {tutores.length === 0 ? <div className="mt-4 rounded-xl border border-dashed bg-slate-50 p-7 text-center"><p className="text-sm text-muted-foreground">Nenhum tutor cadastrado ainda.</p><button type="button" onClick={abrirNovo} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Cadastrar tutor</button></div> : <div className="mt-5 space-y-5">{gruposAlfabeticos.map(([i, lista]) => <div key={i}><div className="mb-2 text-xl font-black text-primary">{i}</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{lista.map((t) => <TutorCard key={t.id} tutor={t} animais={animais} onEdit={abrirEdicao}/>)}</div></div>)}</div>}
+      {tutores.length === 0 ? <div className="mt-4 rounded-xl border border-dashed bg-slate-50 p-7 text-center"><p className="text-sm text-muted-foreground">Nenhum tutor cadastrado ainda.</p><button type="button" onClick={abrirNovo} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Cadastrar tutor</button></div> : <div className="mt-5 space-y-5">{gruposAlfabeticos.map(([i, lista]) => <div key={i}><div className="mb-2 text-xl font-black text-primary">{i}</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{lista.map((t) => <TutorCard key={t.id} tutor={t} animais={animais} onEdit={abrirEdicao} clinicaId={clinicaId}/>)}</div></div>)}</div>}
     </section>
   </main>;
 }
 
-function TutorCard({ tutor, animais, onEdit }: { tutor: Tutor; animais: AnimalResumo[]; onEdit: (tutor: Tutor) => void }) {
+function TutorCard({ tutor, animais, onEdit, clinicaId }: { tutor: Tutor; animais: AnimalResumo[]; onEdit: (tutor: Tutor) => void; clinicaId:string }) {
   const pets = animais.filter((a) => a.tutorId === tutor.id);
   return <article className="flex h-full min-w-0 flex-col rounded-xl border bg-white p-3 text-sm shadow-sm">
     <div className="min-w-0">
@@ -320,7 +326,7 @@ function TutorCard({ tutor, animais, onEdit }: { tutor: Tutor; animais: AnimalRe
       <div className="mt-2 border-t pt-2">
         {pets.length ? <div className="space-y-1.5">{pets.map((pet) => <div key={pet.id} className="flex min-w-0 items-center gap-1.5">
           <PawPrint size={14} className="shrink-0 text-primary"/>
-          <a href={`/novo-animal?tutorId=${encodeURIComponent(tutor.id)}&animalId=${encodeURIComponent(pet.id)}`} className="min-w-0 flex-1 truncate font-semibold text-primary hover:underline">{pet.nome}</a>
+          <a href={`/novo-animal?clinicaId=${encodeURIComponent(clinicaId)}&tutorId=${encodeURIComponent(tutor.id)}&animalId=${encodeURIComponent(pet.id)}`} className="min-w-0 flex-1 truncate font-semibold text-primary hover:underline">{pet.nome}</a>
           <a href={`/encaminhar?tutorId=${encodeURIComponent(tutor.id)}&animalId=${encodeURIComponent(pet.id)}`} className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold text-primary hover:bg-primary/5"><Send size={11}/> Enviar para…</a>
         </div>)}</div> : <div className="flex min-w-0 items-center gap-1.5"><PawPrint size={14} className="shrink-0 text-muted-foreground"/><span className="text-muted-foreground">Sem pet cadastrado</span></div>}
       </div>
