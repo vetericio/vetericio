@@ -52,7 +52,9 @@ Deno.serve(async(req)=>{
   const body=await req.json(),clinicaId=body?.clinica_id;
   if(typeof clinicaId!=="string")return response({error:"Clínica não informada"},400);
   const {data:vinculo}=await supabase.from("clinica_usuarios").select("papel,ativo").eq("user_id",user.id).eq("clinica_id",clinicaId).eq("ativo",true).maybeSingle();
-  if(!vinculo||!["rt","admin","gestor"].includes(String(vinculo.papel)))return response({error:"Apenas responsáveis autorizados da clínica podem configurar pagamentos"},403);
+  const {data:perfil}=await supabase.from("app_users").select("role").eq("user_id",user.id).maybeSingle();
+  const isAdminGeral=perfil?.role==="admin";
+  if(!isAdminGeral&&(!vinculo||!["rt","admin","gestor"].includes(String(vinculo.papel))))return response({error:"Apenas responsáveis autorizados da clínica podem configurar pagamentos"},403);
   if(action==="status"){
    const {data}=await supabase.from("oricse_mercadopago_conexoes").select("collector_id,status,connected_at").eq("clinica_id",clinicaId).maybeSingle();
    return response({connected:data?.status==="conectada",collector_id:data?.collector_id??null,connected_at:data?.connected_at??null});
