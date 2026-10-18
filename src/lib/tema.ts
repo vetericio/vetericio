@@ -34,7 +34,7 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   { id: "verde-cinza", nome: "Sálvia", classe: "tema-verde-cinza", descricao: "Verde suave com cinza profissional" },
   { id: "cansado", nome: "Conforto", classe: "tema-cansado", descricao: "Contraste suave para longas jornadas" },
   { id: "rosa", nome: "Rosa", classe: "tema-rosa", descricao: "Rosa blush, ameixa e detalhes delicados" },
-  { id: "natal", nome: "Natal Premium", classe: "tema-natal-premium", descricao: "Pinheiros, guirlandas, bolas, luzes e dourado elegante" },
+  { id: "natal", nome: "Natal Clássico Intenso", classe: "tema-natal-premium", descricao: "Guirlandas exuberantes, laços, pinheiros, luzes e ornamentos dourados" },
 ];
 
 const CHAVE = "veterico-tema-v2";
