@@ -86,14 +86,14 @@ function PaginaInicial() {
 }
 
 function PaginaInicialOricse() {
-  const { marca, contato } = useSiteBranding();
+  const { marca, contato, logo_url } = useSiteBranding();
   const suporte = linkSuporte(contato);
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#FBF7F2] text-[#4A1826]">
       <header className="relative z-10 mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
         <Link to="/" aria-label={`${marca} — início`} className="flex min-h-11 items-center">
-          <img src="/oricse-logo-full.svg" alt="Oricse — sistema veterinário e petshop" className="h-36 w-auto max-w-[300px] object-contain object-left sm:h-44 sm:max-w-[360px]" />
+          <img src={logo_url} alt="Oricse — sistema veterinário e petshop" className="h-36 w-auto max-w-[300px] object-contain object-left sm:h-44 sm:max-w-[360px]" />
         </Link>
         <nav
           aria-label="Navegação principal"
