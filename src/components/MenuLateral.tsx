@@ -46,7 +46,7 @@ const areas = [
     { to: "/estoque", rotulo: "Produtos e estoque", permissao: "estoque.catalogo.visualizar" },
   ] },
   { titulo: "Administração", icone: Settings, itens: [
-    { to: "/perfil-clinica", rotulo: "Perfil da clínica", permissao: "administracao.configuracoes" },
+    { to: "/perfil-clinica", rotulo: "Configurações", permissao: "administracao.configuracoes" },
     { to: "/configuracao-site", rotulo: "Site da clínica", permissao: "administracao.site" },
     { to: "/temas", rotulo: "Temas", permissao: "administracao.temas" },
   ] },
