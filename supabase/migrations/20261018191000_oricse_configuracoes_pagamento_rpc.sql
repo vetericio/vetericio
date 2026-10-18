@@ -11,12 +11,12 @@ begin
  or p_mp_percentual<0 or p_mp_percentual>=100 or p_oricse_percentual<0 or p_oricse_percentual>=100
  or p_mp_fixo_centavos is null or p_mp_fixo_centavos<0 then raise exception 'Tarifas inválidas'; end if;
  if p_clinica_id is null then
-  insert into public.oricse_taxas_pagamento(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual)
+  insert into public.oricse_taxas_modalidade(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual)
   values(null,p_modalidade,p_mp_percentual,p_mp_fixo_centavos,p_oricse_percentual)
   on conflict (modalidade) where clinica_id is null
   do update set mp_percentual=excluded.mp_percentual,mp_fixo_centavos=excluded.mp_fixo_centavos,oricse_percentual=excluded.oricse_percentual,updated_at=now();
  else
-  insert into public.oricse_taxas_pagamento(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual)
+  insert into public.oricse_taxas_modalidade(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual)
   values(p_clinica_id,p_modalidade,p_mp_percentual,p_mp_fixo_centavos,p_oricse_percentual)
   on conflict (clinica_id,modalidade) where clinica_id is not null
   do update set mp_percentual=excluded.mp_percentual,mp_fixo_centavos=excluded.mp_fixo_centavos,oricse_percentual=excluded.oricse_percentual,updated_at=now();
@@ -28,7 +28,7 @@ language plpgsql security definer set search_path=public as $$
 begin
  if auth.uid() is null or not exists(select 1 from public.app_users where user_id=auth.uid() and role='admin')
  then raise exception 'Não autorizado'; end if;
- return query select t.clinica_id,t.modalidade,t.mp_percentual,t.mp_fixo_centavos,t.oricse_percentual from public.oricse_taxas_pagamento t;
+ return query select t.clinica_id,t.modalidade,t.mp_percentual,t.mp_fixo_centavos,t.oricse_percentual from public.oricse_taxas_modalidade t;
 end $$;
 create or replace function public.oricse_salvar_preco_portal(p_id uuid,p_titulo text,p_modo text,p_valor_centavos integer)
 returns uuid language plpgsql security definer set search_path=public as $$
