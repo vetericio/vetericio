@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseBanco } from "@/integrations/supabase/client";
 import type { ModoCobranca } from "@/lib/payment-split";
 export const Route=createFileRoute("/precos-portal")({component:PrecosPortal});
 type Preco={id:string;titulo:string;modo:ModoCobranca;valor_centavos:number;ativo:boolean;area:"consulta"|"portal"|"outros"};
@@ -11,12 +11,12 @@ function PrecosPortal(){
  const [previa,setPrevia]=useState<{cobrado_tutor_centavos:number;liquido_clinica_centavos:number;desconto_mp_centavos:number;comissao_oricse_centavos:number}|null>(null);
  const [erroPrevia,setErroPrevia]=useState("");
  const [lista,setLista]=useState<Preco[]>([]),[nome,setNome]=useState("Consulta"),[modo,setModo]=useState<ModoCobranca>("receber"),[valor,setValor]=useState("50,00"),[editando,setEditando]=useState<string|null>(null),[salvando,setSalvando]=useState(false),[erro,setErro]=useState("");
- async function carregar(){const {data,error}=await (supabase as any).rpc("oricse_listar_precos_portal");if(error){setErro(error.message);return;}setErro("");setLista(data||[]);}
+ async function carregar(){const {data,error}=await (supabaseBanco as any).rpc("oricse_listar_precos_portal");if(error){setErro(error.message);return;}setErro("");setLista(data||[]);}
  useEffect(()=>{void carregar()},[]);
- useEffect(()=>{let ativo=true;setPrevia(null);setErroPrevia("");const cents=Math.round(Number(valor.replace(",","."))*100);if(!Number.isInteger(cents)||cents<=0)return;const timer=setTimeout(async()=>{const {data,error}=await (supabase as any).rpc("oricse_previsualizar_cobranca",{p_modo:modo,p_valor_centavos:cents,p_modalidade:meio});if(!ativo)return;if(error)setErroPrevia("Prévia indisponível: tarifas pendentes de configuração.");else setPrevia(data?.[0]||null);},350);return()=>{ativo=false;clearTimeout(timer)};},[modo,valor,meio]);
+ useEffect(()=>{let ativo=true;setPrevia(null);setErroPrevia("");const cents=Math.round(Number(valor.replace(",","."))*100);if(!Number.isInteger(cents)||cents<=0)return;const timer=setTimeout(async()=>{const {data,error}=await (supabaseBanco as any).rpc("oricse_previsualizar_cobranca",{p_modo:modo,p_valor_centavos:cents,p_modalidade:meio});if(!ativo)return;if(error)setErroPrevia("Prévia indisponível: tarifas pendentes de configuração.");else setPrevia(data?.[0]||null);},350);return()=>{ativo=false;clearTimeout(timer)};},[modo,valor,meio]);
  function editar(x:Preco){setEditando(x.id);setNome(x.titulo);setModo(x.modo);setValor((x.valor_centavos/100).toFixed(2).replace(".",","));setArea(x.area||"portal");}
  async function salvar(){const c=Math.round(Number(valor.replace(",","."))*100);if(!nome.trim()||!Number.isSafeInteger(c)||c<=0){toast.error("Informe serviço e preço válido.");return;}setSalvando(true);
- const {error}=await (supabase as any).rpc("oricse_salvar_preco_portal",{p_id:editando,p_titulo:nome,p_modo:modo,p_valor_centavos:c,p_area:area});
+ const {error}=await (supabaseBanco as any).rpc("oricse_salvar_preco_portal",{p_id:editando,p_titulo:nome,p_modo:modo,p_valor_centavos:c,p_area:area});
  setSalvando(false);if(error){toast.error(error.message);return;}toast.success("Preço salvo.");setEditando(null);setNome("");setValor("50,00");await carregar();}
  return <main className="mx-auto max-w-3xl space-y-5 p-5 text-foreground"><header><h1 className="text-2xl font-bold">Cobranças da clínica</h1><p className="text-sm text-muted-foreground">Configure cada cobrança de consulta ou Portal do Tutor. Escolha quanto deseja cobrar do tutor ou receber líquido.</p></header>
  <nav className="grid gap-2 sm:grid-cols-3">{([["consulta","Consultas"],["portal","Portal do Tutor"],["outros","Outras cobranças"]] as const).map(([id,rotulo])=><button key={id} type="button" onClick={()=>setArea(id)} aria-pressed={area===id} className={`rounded-xl border p-3 font-semibold ${area===id?"border-primary bg-secondary":"bg-card"}`}>{rotulo}</button>)}</nav><section className="rounded-xl border bg-card p-5 space-y-4">
