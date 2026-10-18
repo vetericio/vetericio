@@ -15,6 +15,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
@@ -614,11 +615,11 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <TenantContext.Provider value={contextoPortal}>
         <VisualPageRuntime />
-        {mostrarClinico && <div className={menuFixo ? "lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
-        {mostrarClinico && <div className={menuFixo ? "lg:pl-80" : ""}><AlarmeAtivo /></div>}
+        {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
+        {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><AlarmeAtivo /></div>}
         {!rotaAdmin && <Splash />}
         {testeAtivo && mostrarClinico && (
-          <div className={menuFixo ? "lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
             💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s) restante(s).
           </div></div>
         )}
@@ -661,9 +662,9 @@ function RootComponent() {
             </section>
           </main>
         ) : (
-          <div className={mostrarClinico && menuFixo ? "lg:pl-80" : ""}><Outlet /></div>
+          <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}><Outlet /></div>
         )}
-        {mostrarClinico && <div className={menuFixo ? "lg:pl-80" : ""}><Rodape /></div>}
+        {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Rodape /></div>}
         <Toaster position="top-center" />
       </TenantContext.Provider>
     </QueryClientProvider>
