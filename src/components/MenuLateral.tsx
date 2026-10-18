@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { Activity, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble, Lock } from "lucide-react";
+import { Activity, CalendarCheck, ChevronDown, LogOut, Menu, Settings, Stethoscope, Wallet, BedDouble, Lock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DialogoTurno } from "@/components/DialogoTurno";
@@ -52,7 +52,7 @@ const areas = [
   ] },
 ] as const;
 
-export function MenuLateral() {
+export function MenuLateral({ fixo, aoMudarFixo }: { fixo: boolean; aoMudarFixo: (fixo: boolean) => void }) {
   const [aberto, setAberto] = useState(false);
   const [expandido, setExpandido] = useState<string | null>("Atividade");
   const [turnoAberto, setTurnoAberto] = useState(false);
@@ -82,58 +82,75 @@ export function MenuLateral() {
     void navigate({ to: "/" });
   }
 
+  const alterarModo = (proximo: boolean) => {
+    aoMudarFixo(proximo);
+    setAberto(false);
+  };
+
+  const navegacao = (menuFixo = false) => <>
+    <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
+      {areas.map(area => {
+        const itensVisiveis = carregandoPermissoes
+          ? area.itens
+          : area.itens.filter((item) => pode(item.permissao) || bloqueadaPeloPlano(item.permissao));
+        if (itensVisiveis.length === 0) return null;
+        const Icone = area.icone;
+        const ativo = itensVisiveis.some(item => item.to === location.pathname && pode(item.permissao));
+        const abertoGrupo = expandido === area.titulo;
+        return <div key={area.titulo} className="overflow-hidden rounded-xl border border-border/70">
+          <button type="button" aria-expanded={abertoGrupo} onClick={() => setExpandido(abertoGrupo ? null : area.titulo)}
+            className={`flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors ${ativo ? "bg-primary/10 text-primary" : "bg-secondary/40 hover:bg-secondary"}`}>
+            <Icone className="h-5 w-5 shrink-0" />
+            <span className="flex-1">{area.titulo}</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${abertoGrupo ? "rotate-180" : ""}`} />
+          </button>
+          {abertoGrupo && <div className="space-y-1 bg-background p-2">
+            {itensVisiveis.map((item,i) => {
+              const bloqueioPlano = !carregandoPermissoes && bloqueadaPeloPlano(item.permissao);
+              if (bloqueioPlano) return <button key={item.to+i} type="button" aria-disabled="true" onClick={() => toast.info("Recurso disponível somente em um plano que inclua esta funcionalidade.")}
+                className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground opacity-55">
+                <Lock className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1">{item.rotulo}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide">Plano</span>
+              </button>;
+              const bloqueadoPlantao = !plantao && (SO_COM_PLANTAO.includes(item.to) && !(area.titulo === "Consultório" && item.to === "/medicacoes"));
+              if (bloqueadoPlantao) return <button key={item.to+i} type="button" disabled={!podeGerenciarPlantao} onClick={() => { if (!podeGerenciarPlantao) return; setAberto(false); setTurnoAberto(true); }}
+                className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60">
+                {item.rotulo}<span className="block text-[11px]">{podeGerenciarPlantao ? "Abrir plantão clínico primeiro" : "Aguarde um responsável iniciar o plantão"}</span>
+              </button>;
+              return <Link key={item.to+i} to={item.to} onClick={() => setAberto(false)}
+                className={`block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname===item.to ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>
+                {item.rotulo}
+              </Link>;
+            })}
+          </div>}
+        </div>;
+      })}
+      <button type="button" disabled={saindo} onClick={sair}
+        className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50">
+        <LogOut className="h-5 w-5" />{saindo ? "Saindo..." : "Sair da conta"}
+      </button>
+    </nav>
+    <button type="button" onClick={() => alterarModo(!menuFixo)} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold hover:bg-secondary">
+      {menuFixo ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+      {menuFixo ? "Usar menu por três riscos" : "Fixar menu na lateral"}
+    </button>
+  </>;
+
   return <>
+    {fixo && <aside className="fixed inset-y-0 left-0 z-40 hidden w-80 overflow-y-auto border-r bg-card p-4 shadow-xl lg:block">
+      <div className="flex items-center gap-2 px-1"><Menu className="h-5 w-5 text-primary"/><h2 className="font-bold">Menu</h2></div>
+      {navegacao(true)}
+    </aside>}
     <Sheet open={aberto} onOpenChange={setAberto}>
       <SheetTrigger asChild>
-        <button type="button" aria-label="Abrir menu lateral" className="absolute left-3 top-3 z-30 flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm hover:bg-secondary">
+        <button type="button" aria-label="Abrir menu lateral" className={`absolute left-3 top-3 z-30 flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm hover:bg-secondary ${fixo ? "lg:hidden" : ""}`}>
           <Menu className="h-5 w-5" />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-80 overflow-y-auto">
         <SheetHeader><SheetTitle>Menu</SheetTitle></SheetHeader>
-        <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
-          {areas.map(area => {
-            const itensVisiveis = carregandoPermissoes
-              ? area.itens
-              : area.itens.filter((item) => pode(item.permissao) || bloqueadaPeloPlano(item.permissao));
-            if (itensVisiveis.length === 0) return null;
-            const Icone = area.icone;
-            const ativo = itensVisiveis.some(item => item.to === location.pathname && pode(item.permissao));
-            const abertoGrupo = expandido === area.titulo;
-            return <div key={area.titulo} className="overflow-hidden rounded-xl border border-border/70">
-              <button type="button" aria-expanded={abertoGrupo} onClick={() => setExpandido(abertoGrupo ? null : area.titulo)}
-                className={`flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors ${ativo ? "bg-primary/10 text-primary" : "bg-secondary/40 hover:bg-secondary"}`}>
-                <Icone className="h-5 w-5 shrink-0" />
-                <span className="flex-1">{area.titulo}</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${abertoGrupo ? "rotate-180" : ""}`} />
-              </button>
-              {abertoGrupo && <div className="space-y-1 bg-background p-2">
-                {itensVisiveis.map((item,i) => {
-                  const bloqueioPlano = !carregandoPermissoes && bloqueadaPeloPlano(item.permissao);
-                  if (bloqueioPlano) return <button key={item.to+i} type="button" aria-disabled="true" onClick={() => toast.info("Recurso disponível somente em um plano que inclua esta funcionalidade.")}
-                    className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground opacity-55">
-                    <Lock className="h-3.5 w-3.5 shrink-0" />
-                    <span className="flex-1">{item.rotulo}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wide">Plano</span>
-                  </button>;
-                  const bloqueadoPlantao = !plantao && (SO_COM_PLANTAO.includes(item.to) && !(area.titulo === "Consultório" && item.to === "/medicacoes"));
-                  if (bloqueadoPlantao) return <button key={item.to+i} type="button" disabled={!podeGerenciarPlantao} onClick={() => { if (!podeGerenciarPlantao) return; setAberto(false); setTurnoAberto(true); }}
-                    className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60">
-                    {item.rotulo}<span className="block text-[11px]">{podeGerenciarPlantao ? "Abrir plantão clínico primeiro" : "Aguarde um responsável iniciar o plantão"}</span>
-                  </button>;
-                  return <Link key={item.to+i} to={item.to} onClick={() => setAberto(false)}
-                    className={`block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname===item.to ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>
-                    {item.rotulo}
-                  </Link>;
-                })}
-              </div>}
-            </div>;
-          })}
-          <button type="button" disabled={saindo} onClick={sair}
-            className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50">
-            <LogOut className="h-5 w-5" />{saindo ? "Saindo..." : "Sair da conta"}
-          </button>
-        </nav>
+        {navegacao(false)}
       </SheetContent>
     </Sheet>
     <DialogoTurno aberto={turnoAberto} onFechar={() => setTurnoAberto(false)} />
