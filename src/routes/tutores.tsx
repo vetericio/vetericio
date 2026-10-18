@@ -160,8 +160,8 @@ function Tutores() {
   useEffect(()=>{let ativo=true;(async()=>{try{
     const {data:{user}}=await supabaseBanco.auth.getUser();
     if(!user)throw Error("Faça login para acessar os tutores.");
-    const {data:contexto,error}=await supabase.rpc("oricse_contexto_clinica_atual");
-    const id=contexto?.[0]?.clinica_id;
+    const {data:cidAtiva,error}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
+    const id=cidAtiva;
     if(error||!id)throw Error("Clínica ativa não identificada. Entre novamente pela clínica correta.");
     if(!ativo)return;
     setClinicaId(id);
