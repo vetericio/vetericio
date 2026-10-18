@@ -28,9 +28,10 @@ function PrecosServicos(){
  useEffect(()=>{if(!cobrar){setPrevia(null);return;}let ativo=true;const n=paraCentavos(online);if(n<=0){setPrevia(null);return;}const timer=setTimeout(async()=>{const {data,error}=await (supabaseBanco as any).rpc("oricse_previsualizar_cobranca",{p_modo:modo,p_valor_centavos:n,p_modalidade:meio});if(!ativo)return;if(error){setErroPrevia("Taxas online ainda não configuradas pelo Admin ORICSE.");setPrevia(null)}else{setErroPrevia("");setPrevia(data?.[0]||null)}},300);return()=>{ativo=false;clearTimeout(timer)}},[cobrar,online,modo,meio]);
  async function salvar(){const servico=servicos.find(x=>x.id===id),centavos=paraCentavos(preco);if(!servico||centavos<0||!Number.isSafeInteger(centavos)){toast.error("Escolha um serviço e informe seu preço.");return;}const onlineCents=cobrar?paraCentavos(online):Math.max(centavos,1);if(cobrar&&(!onlineCents||!previa)){toast.error("Configure antes as taxas do pagamento online.");return;}setSalvando(true);
  try{
-  const {error:e}=await supabase.from("clinica_catalogo_itens").update({preco:centavos/100}).eq("id",servico.id);if(e)throw e;
   const {error:pErr}=await (supabaseBanco as any).rpc("oricse_configurar_pagamento_catalogo",{p_catalogo_item_id:servico.id,p_titulo:servico.nome,p_valor_referencia:centavos,p_cobrar_portal:cobrar,p_modo:cobrar?modo:"cobrar",p_valor_online:onlineCents});
-  if(pErr)throw Error("Preço do catálogo salvo, mas a configuração online não foi concluída: "+pErr.message);
+  if(pErr)throw Error("Não foi possível salvar a configuração online: "+pErr.message);
+  const {error:e}=await supabase.from("clinica_catalogo_itens").update({preco:centavos/100}).eq("id",servico.id).eq("tipo","servico");
+  if(e)throw Error("Configuração do portal salva, mas a atualização do catálogo falhou: "+e.message);
   toast.success("Preço do catálogo e opção online salvos.");await carregar();
  }catch(e){toast.error(e instanceof Error?e.message:"Erro ao salvar")}finally{setSalvando(false)}}
  const item=servicos.find(s=>s.id===id);
