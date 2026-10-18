@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { usePermissoes } from "@/hooks/usePermissoes";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import {
   limparContextoAdminClinica,
   salvarContextoAdminClinica,
@@ -154,12 +154,14 @@ function Inicio() {
     return () => { ativo = false; };
   }, [eVetAdmin27]);
 
-  const entrarComo = (perfil: PerfilAdminClinica, destino: string) => {
+  const entrarComo = async (perfil: PerfilAdminClinica, destino: string) => {
     const clinica = clinicas.find((item) => item.id === clinicaId);
     if (!clinica) {
       setErroClinicas("Selecione uma clínica antes de entrar.");
       return;
     }
+    const {error}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_definir",{p_clinica:clinica.id});
+    if(error){setErroClinicas("Não foi possível ativar a clínica: "+error.message);return;}
     salvarContextoAdminClinica({
       clinicaId: clinica.id,
       clinicaNome: clinica.nome,
