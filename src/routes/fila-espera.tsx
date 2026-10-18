@@ -49,8 +49,8 @@ function FilaEspera() {
     return data;
   }
   useEffect(()=>{let ativo=true;(async()=>{try{
-    const {data:contexto,error}=await supabase.rpc("oricse_contexto_clinica_atual");
-    const cid=contexto?.[0]?.clinica_id;
+    const {data:cidAtiva,error}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
+    const cid=cidAtiva;
     if(error||!cid)throw Error("Clínica ativa não identificada.");
     if(!ativo)return;
     setClinicaId(cid);
