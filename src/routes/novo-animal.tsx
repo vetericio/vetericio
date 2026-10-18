@@ -1,7 +1,8 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, PawPrint, Save, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { RACAS as RACAS_COMPLETAS } from "@/data/racas";
@@ -122,18 +123,25 @@ function NovoAnimal() {
   const tutorIdParam = params.get("tutorId") || "";
   const animalId = params.get("animalId") || "";
 
-  const tutores = useMemo(() => lerTutores(), []);
-  const animais = useMemo(() => lerAnimais(), []);
-  const animalExistente = useMemo(() => animais.find((a) => a.id === animalId), [animais, animalId]);
-  const tutorId = tutorIdParam || animalExistente?.tutorId || "";
-  const tutor = tutores.find((t) => t.id === tutorId);
-  const editando = Boolean(animalExistente);
-
-  const [form, setForm] = useState<AnimalForm>(() => {
-    if (!animalExistente) return FORM_VAZIO;
-    const { id: _id, tutorId: _tutorId, criadoEm: _criadoEm, ...dados } = animalExistente;
-    return { ...FORM_VAZIO, ...dados, peso: dados.peso ? Number(String(dados.peso).replace(",", ".")).toFixed(3) : "", temperamentos: dados.temperamentos || [] };
-  });
+  const [tutor,setTutor]=useState<Tutor|null>(null);
+  const [animalExistente,setAnimalExistente]=useState<Animal|null>(null);
+  const [clinicaId,setClinicaId]=useState("");
+  const [carregando,setCarregando]=useState(true);
+  const [form,setForm]=useState<AnimalForm>(FORM_VAZIO);
+  const editando=Boolean(animalId);
+  useEffect(()=>{let ativo=true;(async()=>{try{
+   const {data:{user}}=await supabaseBanco.auth.getUser();
+   if(!user)throw Error("Faça login novamente.");
+   const {data:vinculo,error}=await supabaseBanco.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
+   if(error||!vinculo?.clinica_id)throw Error("Clínica não identificada.");
+   const {data,error:rpcError}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:vinculo.clinica_id,p_tutor:tutorIdParam||null,p_animal:animalId||null});
+   if(rpcError)throw rpcError;
+   if(!ativo)return;
+   setClinicaId(vinculo.clinica_id);
+   setTutor(data?.tutor||null);
+   if(data?.animal){setAnimalExistente(data.animal);setForm({...FORM_VAZIO,...data.animal,peso:data.animal.peso==null?"":String(data.animal.peso),temperamentos:data.animal.temperamentos||[]});}
+  }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Não foi possível consultar o tutor no Supabase");}
+  finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[tutorIdParam,animalId]);
 
   const racasInternacionais = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
   const racas = useMemo(() => ordenarRacas(racasInternacionais.map((r) => nomeRacaBrasil(form.especie, r))), [form.especie, racasInternacionais]);
@@ -153,45 +161,14 @@ function NovoAnimal() {
     setForm((f) => ({ ...f, temperamentos: f.temperamentos.includes(nome) ? f.temperamentos.filter((x) => x !== nome) : [...f.temperamentos, nome] }));
   }
 
-  function excluirAnimal() {
-    if (!animalExistente) return;
-    if (!window.confirm(`Excluir ${animalExistente.nome}? Esta ação não pode ser desfeita.`)) return;
-    const novaLista = lerAnimais().filter((animal) => animal.id !== animalExistente.id);
-    oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
-    toast.success(`${animalExistente.nome} excluído.`);
-    navigate({ to: "/tutores" });
+  async function salvar() {
+    if(!tutor||!clinicaId)return toast.error("Tutor não identificado no Supabase.");
+    if(!form.nome.trim()||!form.especie)return toast.error("Nome e espécie são obrigatórios.");
+    const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
+    if(error)return toast.error(error.message);
+    toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no Supabase.");
+    navigate({to:"/tutores"});
   }
-
-  function salvar() {
-    if (!tutor) return toast.error("Tutor não encontrado. Volte e selecione o tutor novamente.");
-    if (!form.nome.trim()) return toast.error("Informe o nome do animal.");
-    if (!form.especie) return toast.error("Selecione a espécie.");
-
-    const lista = lerAnimais();
-    const registrarPeso = (animalId: string, peso: string) => {
-      const numero = Number(peso);
-      if (!Number.isFinite(numero) || numero <= 0) return;
-      try {
-        const existentes = JSON.parse(oricseStorage.getItem(PESOS_KEY) || "[]");
-        const registro = { id: crypto.randomUUID(), animalId, peso: numero, data: new Date().toISOString().slice(0, 10), criadoEm: new Date().toISOString() };
-        oricseStorage.setItem(PESOS_KEY, JSON.stringify([registro, ...(Array.isArray(existentes) ? existentes : [])]));
-      } catch { /* o peso do cadastro continua salvo no próprio animal */ }
-    };
-    if (animalExistente) {
-      const atualizado: Animal = { ...animalExistente, ...form, tutorId: tutor.id };
-      const novaLista = lista.map((a) => a.id === animalExistente.id ? atualizado : a);
-      oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify(novaLista));
-      if (form.peso && Number(form.peso) !== Number(String(animalExistente.peso || "").replace(",", "."))) registrarPeso(atualizado.id, form.peso);
-      toast.success(atualizado.nome + " atualizado com sucesso.");
-    } else {
-      const novo: Animal = { ...form, id: crypto.randomUUID(), tutorId: tutor.id, criadoEm: new Date().toISOString() };
-      oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify([novo, ...lista]));
-      if (novo.peso) registrarPeso(novo.id, novo.peso);
-      toast.success(novo.nome + " cadastrado com sucesso.");
-    }
-    navigate({ to: "/tutores" });
-  }
-
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
       <Link to="/tutores" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Tutores</Link>
@@ -203,7 +180,7 @@ function NovoAnimal() {
         </div>
       </div>
 
-      {!tutor || (animalId && !animalExistente) ? <div className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm">{animalId && !animalExistente ? "Animal não encontrado." : <>Tutor não encontrado. Volte à tela de tutores e use o botão <strong>Cadastrar animal</strong>.</>}</div> : (
+      {carregando ? <div className="mt-5 rounded-xl border p-5">Carregando tutor do Supabase…</div> : !tutor || (animalId && !animalExistente) ? <div className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm">{animalId && !animalExistente ? "Animal não encontrado." : <>Tutor não encontrado. Volte à tela de tutores e use o botão <strong>Cadastrar animal</strong>.</>}</div> : (
         <div className="mt-5 space-y-5">
           <Bloco titulo="Identificação">
             <label className="sm:col-span-2 text-sm font-semibold">Nome do animal *<input autoFocus value={form.nome} onChange={(e) => set("nome", e.target.value)} className={campo}/></label>
@@ -242,7 +219,7 @@ function NovoAnimal() {
 
           <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><label className="text-sm font-semibold">Observações gerais<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} className={`${campo} py-3`}/></label></section>
 
-          <div className="flex flex-wrap justify-end gap-2">{editando && <button type="button" onClick={excluirAnimal} className="mr-auto inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-semibold text-rose-700 hover:bg-rose-100"><Trash2 size={17}/> Excluir animal</button>}<Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"><Save size={17}/> {editando ? "Salvar alterações" : "Salvar animal"}</button></div>
+          <div className="flex flex-wrap justify-end gap-2"><Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"><Save size={17}/> {editando ? "Salvar alterações" : "Salvar animal"}</button></div>
         </div>
       )}
     </main>
