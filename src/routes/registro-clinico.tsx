@@ -177,6 +177,7 @@ function RegistroClinico(){
   function confirmarPagamento(){ if(!formaPagamento)return void toast.error("Selecione como foi pago."); if(formaPagamento==="Outros"&&!outroPagamento.trim())return void toast.error("Especifique a forma de pagamento."); salvarConsulta("Pago",formaPagamento==="Outros"?outroPagamento.trim():formaPagamento); }
 
   function salvarConsulta(statusPagamento:StatusPagamento="Pendente",pagamento="A definir"){
+    if (!animal) return void toast.error("Animal não encontrado.");
     if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal.");
     if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda.");
     if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda.");
@@ -314,9 +315,9 @@ function RegistroClinico(){
     navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
-  function salvarProcedimento(){ if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
+  function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:new Date().toISOString(),subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
 
-  const abrirConsulta=()=>{setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
+  const abrirConsulta=()=>{if (!animal) return; setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 
   return <main className="mx-auto min-h-screen w-full max-w-[1500px] px-3 pb-28 pt-3 sm:px-5 sm:pt-4">
     <section className="rounded-xl border bg-white px-4 py-3 shadow-sm">
