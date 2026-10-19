@@ -9,7 +9,42 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+type WorkerBindings = { ORICSE_WRITE_COORDINATOR?: unknown };
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+
+function securityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  headers.set(
+    "content-security-policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://drive.google.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  );
+  headers.set("x-frame-options", "DENY");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function sitemap(origin: string): Response {
+  const urls = ["/", "/planos", "/login"]
+    .map((path) => `  <url><loc>${origin}${path}</loc></url>`)
+    .join("\n");
+  return new Response(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`,
+    {
+      headers: {
+        "content-type": "application/xml; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+      },
+    },
+  );
+}
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -48,17 +83,23 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    setDriveCoordinatorBinding((env as any)?.ORICSE_WRITE_COORDINATOR);
+    setDriveCoordinatorBinding((env as WorkerBindings | undefined)?.ORICSE_WRITE_COORDINATOR);
     try {
+      const url = new URL(request.url);
+      if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin));
+      if (url.pathname === "/favicon.ico")
+        return securityHeaders(Response.redirect(new URL("/favicon-oricse.png", url), 302));
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return securityHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return securityHeaders(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };
