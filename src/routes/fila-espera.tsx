@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock3, Play, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ function tempoEspera(dataIso: string, agora = Date.now()) { const chegada = new 
 function emojiEspecie(especie?: string) { const mapa: Record<string,string>={"Cão":"🐶","Gato":"🐱","Coelho":"🐰","Hamster":"🐹","Rato":"🐭","Porquinho-da-índia":"🐹","Ave":"🦜","Réptil":"🦎","Quelônio":"🐢","Serpente":"🐍"}; return mapa[especie||""]||"🐾"; }
 
 function FilaEspera() {
+  const navigate=useNavigate();
   const [clinicaId,setClinicaId]=useState("");
   const [carregando,setCarregando]=useState(true);
   const [erroCarregamento,setErroCarregamento]=useState("");
@@ -110,7 +111,7 @@ function FilaEspera() {
     const sucesso=await operar("adicionar",{p_tutor:tutorId,p_animal:animalId,p_motivo:motivo.trim()});
     if(sucesso){limparTutor();setMotivo("");toast.success("Paciente registrado na fila.");}
   }
-  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;const sucesso=await operar("chamar",{p_item:id});if(sucesso)window.location.href=`/animal?animalId=${encodeURIComponent(item.animalId)}`;}
+  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;const sucesso=await operar("chamar",{p_item:id});if(sucesso)void navigate({to:"/animal",search:{animalId:item.animalId} as never});}
   async function voltarParaFila(id:string){await operar("voltar",{p_item:id});}
   async function remover(id:string){const item=fila.find(i=>i.id===id);if(!item||!window.confirm(`Remover ${item.animalNome} da fila?`))return;await operar("remover",{p_item:id});}
 
