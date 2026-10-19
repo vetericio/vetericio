@@ -25,6 +25,8 @@ import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as ComandasRouteImport } from './routes/comandas'
 import { Route as ConfiguracaoSiteRouteImport } from './routes/configuracao-site'
 import { Route as ConfigurarAgendaOnlineRouteImport } from './routes/configurar-agenda-online'
+import { Route as ConfigurarPagamentosRouteImport } from './routes/configurar-pagamentos'
+import { Route as ConfigurarPortalTutorRouteImport } from './routes/configurar-portal-tutor'
 import { Route as ConsultaRouteImport } from './routes/consulta'
 import { Route as ConsultorioRouteImport } from './routes/consultorio'
 import { Route as ContratarRouteImport } from './routes/contratar'
@@ -38,6 +40,7 @@ import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
+import { Route as MercadoPagoClinicaRouteImport } from './routes/mercado-pago-clinica'
 import { Route as MinhaAtividadeRouteImport } from './routes/minha-atividade'
 import { Route as NovoAnimalRouteImport } from './routes/novo-animal'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
@@ -45,11 +48,13 @@ import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
 import { Route as PortalTutoresRouteImport } from './routes/portal-tutores'
+import { Route as PrecosPortalRouteImport } from './routes/precos-portal'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
 import { Route as RegistroClinicoRouteImport } from './routes/registro-clinico'
 import { Route as RegistrosRouteImport } from './routes/registros'
+import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
@@ -57,6 +62,7 @@ import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as TutoresRouteImport } from './routes/tutores'
 import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
 import { Route as VetSlugRouteImport } from './routes/vet.$slug'
+import { Route as ApiMercadopagoCallbackRouteImport } from './routes/api/mercadopago/callback'
 import { Route as PetSlugPortalRouteImport } from './routes/pet/$slug/portal'
 
 const IndexRoute = IndexRouteImport.update({
@@ -139,6 +145,16 @@ const ConfigurarAgendaOnlineRoute = ConfigurarAgendaOnlineRouteImport.update({
   path: '/configurar-agenda-online',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfigurarPagamentosRoute = ConfigurarPagamentosRouteImport.update({
+  id: '/configurar-pagamentos',
+  path: '/configurar-pagamentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigurarPortalTutorRoute = ConfigurarPortalTutorRouteImport.update({
+  id: '/configurar-portal-tutor',
+  path: '/configurar-portal-tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConsultaRoute = ConsultaRouteImport.update({
   id: '/consulta',
   path: '/consulta',
@@ -204,6 +220,11 @@ const MedicacoesRoute = MedicacoesRouteImport.update({
   path: '/medicacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MercadoPagoClinicaRoute = MercadoPagoClinicaRouteImport.update({
+  id: '/mercado-pago-clinica',
+  path: '/mercado-pago-clinica',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MinhaAtividadeRoute = MinhaAtividadeRouteImport.update({
   id: '/minha-atividade',
   path: '/minha-atividade',
@@ -239,6 +260,11 @@ const PortalTutoresRoute = PortalTutoresRouteImport.update({
   path: '/portal-tutores',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrecosPortalRoute = PrecosPortalRouteImport.update({
+  id: '/precos-portal',
+  path: '/precos-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
@@ -262,6 +288,11 @@ const RegistroClinicoRoute = RegistroClinicoRouteImport.update({
 const RegistrosRoute = RegistrosRouteImport.update({
   id: '/registros',
   path: '/registros',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimuladorPagamentosRoute = SimuladorPagamentosRouteImport.update({
+  id: '/simulador-pagamentos',
+  path: '/simulador-pagamentos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SincronizacaoRoute = SincronizacaoRouteImport.update({
@@ -299,6 +330,11 @@ const VetSlugRoute = VetSlugRouteImport.update({
   path: '/vet/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMercadopagoCallbackRoute = ApiMercadopagoCallbackRouteImport.update({
+  id: '/api/mercadopago/callback',
+  path: '/api/mercadopago/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PetSlugPortalRoute = PetSlugPortalRouteImport.update({
   id: '/pet/$slug/portal',
   path: '/pet/$slug/portal',
@@ -322,6 +358,8 @@ export interface FileRoutesByFullPath {
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
   '/configurar-agenda-online': typeof ConfigurarAgendaOnlineRoute
+  '/configurar-pagamentos': typeof ConfigurarPagamentosRoute
+  '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
@@ -335,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
@@ -342,11 +381,13 @@ export interface FileRoutesByFullPath {
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/portal-tutores': typeof PortalTutoresRoute
+  '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -354,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
+  '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
 }
 export interface FileRoutesByTo {
@@ -373,6 +415,8 @@ export interface FileRoutesByTo {
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
   '/configurar-agenda-online': typeof ConfigurarAgendaOnlineRoute
+  '/configurar-pagamentos': typeof ConfigurarPagamentosRoute
+  '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
@@ -386,6 +430,7 @@ export interface FileRoutesByTo {
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
@@ -393,11 +438,13 @@ export interface FileRoutesByTo {
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/portal-tutores': typeof PortalTutoresRoute
+  '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -405,6 +452,7 @@ export interface FileRoutesByTo {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
+  '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
 }
 export interface FileRoutesById {
@@ -425,6 +473,8 @@ export interface FileRoutesById {
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
   '/configurar-agenda-online': typeof ConfigurarAgendaOnlineRoute
+  '/configurar-pagamentos': typeof ConfigurarPagamentosRoute
+  '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratar': typeof ContratarRoute
@@ -438,6 +488,7 @@ export interface FileRoutesById {
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
+  '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
@@ -445,11 +496,13 @@ export interface FileRoutesById {
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
   '/portal-tutores': typeof PortalTutoresRoute
+  '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -457,6 +510,7 @@ export interface FileRoutesById {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/vet/$slug': typeof VetSlugRoute
+  '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
 }
 export interface FileRouteTypes {
@@ -478,6 +532,8 @@ export interface FileRouteTypes {
     | '/comandas'
     | '/configuracao-site'
     | '/configurar-agenda-online'
+    | '/configurar-pagamentos'
+    | '/configurar-portal-tutor'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
@@ -491,6 +547,7 @@ export interface FileRouteTypes {
     | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/mercado-pago-clinica'
     | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
@@ -498,11 +555,13 @@ export interface FileRouteTypes {
     | '/planos'
     | '/plantoes'
     | '/portal-tutores'
+    | '/precos-portal'
     | '/privacidade'
     | '/receituario'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/temas'
     | '/termos'
@@ -510,6 +569,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
+    | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -529,6 +589,8 @@ export interface FileRouteTypes {
     | '/comandas'
     | '/configuracao-site'
     | '/configurar-agenda-online'
+    | '/configurar-pagamentos'
+    | '/configurar-portal-tutor'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
@@ -542,6 +604,7 @@ export interface FileRouteTypes {
     | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/mercado-pago-clinica'
     | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
@@ -549,11 +612,13 @@ export interface FileRouteTypes {
     | '/planos'
     | '/plantoes'
     | '/portal-tutores'
+    | '/precos-portal'
     | '/privacidade'
     | '/receituario'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/temas'
     | '/termos'
@@ -561,6 +626,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
+    | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
   id:
     | '__root__'
@@ -580,6 +646,8 @@ export interface FileRouteTypes {
     | '/comandas'
     | '/configuracao-site'
     | '/configurar-agenda-online'
+    | '/configurar-pagamentos'
+    | '/configurar-portal-tutor'
     | '/consulta'
     | '/consultorio'
     | '/contratar'
@@ -593,6 +661,7 @@ export interface FileRouteTypes {
     | '/internacao'
     | '/login'
     | '/medicacoes'
+    | '/mercado-pago-clinica'
     | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
@@ -600,11 +669,13 @@ export interface FileRouteTypes {
     | '/planos'
     | '/plantoes'
     | '/portal-tutores'
+    | '/precos-portal'
     | '/privacidade'
     | '/receituario'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/temas'
     | '/termos'
@@ -612,6 +683,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/vet/$slug'
+    | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
   fileRoutesById: FileRoutesById
 }
@@ -632,6 +704,8 @@ export interface RootRouteChildren {
   ComandasRoute: typeof ComandasRoute
   ConfiguracaoSiteRoute: typeof ConfiguracaoSiteRoute
   ConfigurarAgendaOnlineRoute: typeof ConfigurarAgendaOnlineRoute
+  ConfigurarPagamentosRoute: typeof ConfigurarPagamentosRoute
+  ConfigurarPortalTutorRoute: typeof ConfigurarPortalTutorRoute
   ConsultaRoute: typeof ConsultaRoute
   ConsultorioRoute: typeof ConsultorioRoute
   ContratarRoute: typeof ContratarRoute
@@ -645,6 +719,7 @@ export interface RootRouteChildren {
   InternacaoRoute: typeof InternacaoRoute
   LoginRoute: typeof LoginRoute
   MedicacoesRoute: typeof MedicacoesRoute
+  MercadoPagoClinicaRoute: typeof MercadoPagoClinicaRoute
   MinhaAtividadeRoute: typeof MinhaAtividadeRoute
   NovoAnimalRoute: typeof NovoAnimalRoute
   PendenciasRoute: typeof PendenciasRoute
@@ -652,11 +727,13 @@ export interface RootRouteChildren {
   PlanosRoute: typeof PlanosRoute
   PlantoesRoute: typeof PlantoesRoute
   PortalTutoresRoute: typeof PortalTutoresRoute
+  PrecosPortalRoute: typeof PrecosPortalRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ReceituarioRoute: typeof ReceituarioRoute
   RecepcaoRoute: typeof RecepcaoRoute
   RegistroClinicoRoute: typeof RegistroClinicoRoute
   RegistrosRoute: typeof RegistrosRoute
+  SimuladorPagamentosRoute: typeof SimuladorPagamentosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
@@ -664,6 +741,7 @@ export interface RootRouteChildren {
   TutoresRoute: typeof TutoresRoute
   TipoSlugRoute: typeof TipoSlugRoute
   VetSlugRoute: typeof VetSlugRoute
+  ApiMercadopagoCallbackRoute: typeof ApiMercadopagoCallbackRoute
   PetSlugPortalRoute: typeof PetSlugPortalRoute
 }
 
@@ -781,6 +859,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfigurarAgendaOnlineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configurar-pagamentos': {
+      id: '/configurar-pagamentos'
+      path: '/configurar-pagamentos'
+      fullPath: '/configurar-pagamentos'
+      preLoaderRoute: typeof ConfigurarPagamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configurar-portal-tutor': {
+      id: '/configurar-portal-tutor'
+      path: '/configurar-portal-tutor'
+      fullPath: '/configurar-portal-tutor'
+      preLoaderRoute: typeof ConfigurarPortalTutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/consulta': {
       id: '/consulta'
       path: '/consulta'
@@ -872,6 +964,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MedicacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mercado-pago-clinica': {
+      id: '/mercado-pago-clinica'
+      path: '/mercado-pago-clinica'
+      fullPath: '/mercado-pago-clinica'
+      preLoaderRoute: typeof MercadoPagoClinicaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/minha-atividade': {
       id: '/minha-atividade'
       path: '/minha-atividade'
@@ -921,6 +1020,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalTutoresRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/precos-portal': {
+      id: '/precos-portal'
+      path: '/precos-portal'
+      fullPath: '/precos-portal'
+      preLoaderRoute: typeof PrecosPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacidade': {
       id: '/privacidade'
       path: '/privacidade'
@@ -954,6 +1060,13 @@ declare module '@tanstack/react-router' {
       path: '/registros'
       fullPath: '/registros'
       preLoaderRoute: typeof RegistrosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simulador-pagamentos': {
+      id: '/simulador-pagamentos'
+      path: '/simulador-pagamentos'
+      fullPath: '/simulador-pagamentos'
+      preLoaderRoute: typeof SimuladorPagamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sincronizacao': {
@@ -1005,6 +1118,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VetSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mercadopago/callback': {
+      id: '/api/mercadopago/callback'
+      path: '/api/mercadopago/callback'
+      fullPath: '/api/mercadopago/callback'
+      preLoaderRoute: typeof ApiMercadopagoCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pet/$slug/portal': {
       id: '/pet/$slug/portal'
       path: '/pet/$slug/portal'
@@ -1032,6 +1152,8 @@ const rootRouteChildren: RootRouteChildren = {
   ComandasRoute: ComandasRoute,
   ConfiguracaoSiteRoute: ConfiguracaoSiteRoute,
   ConfigurarAgendaOnlineRoute: ConfigurarAgendaOnlineRoute,
+  ConfigurarPagamentosRoute: ConfigurarPagamentosRoute,
+  ConfigurarPortalTutorRoute: ConfigurarPortalTutorRoute,
   ConsultaRoute: ConsultaRoute,
   ConsultorioRoute: ConsultorioRoute,
   ContratarRoute: ContratarRoute,
@@ -1045,6 +1167,7 @@ const rootRouteChildren: RootRouteChildren = {
   InternacaoRoute: InternacaoRoute,
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
+  MercadoPagoClinicaRoute: MercadoPagoClinicaRoute,
   MinhaAtividadeRoute: MinhaAtividadeRoute,
   NovoAnimalRoute: NovoAnimalRoute,
   PendenciasRoute: PendenciasRoute,
@@ -1052,11 +1175,13 @@ const rootRouteChildren: RootRouteChildren = {
   PlanosRoute: PlanosRoute,
   PlantoesRoute: PlantoesRoute,
   PortalTutoresRoute: PortalTutoresRoute,
+  PrecosPortalRoute: PrecosPortalRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ReceituarioRoute: ReceituarioRoute,
   RecepcaoRoute: RecepcaoRoute,
   RegistroClinicoRoute: RegistroClinicoRoute,
   RegistrosRoute: RegistrosRoute,
+  SimuladorPagamentosRoute: SimuladorPagamentosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
@@ -1064,6 +1189,7 @@ const rootRouteChildren: RootRouteChildren = {
   TutoresRoute: TutoresRoute,
   TipoSlugRoute: TipoSlugRoute,
   VetSlugRoute: VetSlugRoute,
+  ApiMercadopagoCallbackRoute: ApiMercadopagoCallbackRoute,
   PetSlugPortalRoute: PetSlugPortalRoute,
 }
 export const routeTree = rootRouteImport
