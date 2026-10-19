@@ -57,7 +57,7 @@ function FilaEspera() {
     // A escolha do Admin pode ainda estar em memória enquanto a persistência sincroniza.
     // O backend valida a permissão e registra a escolha antes de consultar qualquer paciente.
     let cid=cidBanco as string|null;
-    if(contextoAdmin?.clinicaId && contextoAdmin.clinicaId!==cidBanco){
+    if(!cid && contextoAdmin?.clinicaId){
       const {data:registrada,error:erroRegistro}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_definir",{p_clinica:contextoAdmin.clinicaId});
       if(erroRegistro)throw erroRegistro;
       cid=registrada;
