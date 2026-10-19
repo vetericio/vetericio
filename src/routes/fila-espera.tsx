@@ -67,21 +67,8 @@ function FilaEspera() {
     if(ativo)setErroCarregamento("");
     if(!ativo)return;
     setClinicaId(cid);
-    const result=await carregarFila(cid);
-    // Resgatar fila antiga somente quando tutor e animal pertencem à clínica ativa.
-    const idsT=new Set((result.tutores||[]).map((t:Tutor)=>t.id));
-    const idsA=new Set((result.animais||[]).map((x:Animal)=>x.id));
-    let mudou=false;
-    const registrosAntigos=lerFila();
-    const migrados=new Set<string>();
-    for(const item of registrosAntigos){
-      if(item.status!=="Aguardando"||!idsT.has(item.tutorId)||!idsA.has(item.animalId))continue;
-      const {error:err}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:cid,p_acao:"migrar",p_tutor:item.tutorId,p_animal:item.animalId,p_motivo:item.motivo||"",p_chegada:item.chegadaEm});
-      if(!err){mudou=true;migrados.add(item.id);}
-    }
-    // Limpa apenas os itens já confirmados no banco; evita reimportação de pacientes atendidos.
-    if(migrados.size){oricseStorage.setItem(FILA_KEY,JSON.stringify(registrosAntigos.filter(item=>!migrados.has(item.id))));}
-    if(mudou)await carregarFila(cid);
+    await carregarFila(cid);
+    // O Supabase é a fonte única. Não reimportar registros antigos durante a abertura da tela.
   }catch(e){if(ativo){const msg=e instanceof Error?e.message:"Falha ao carregar fila de espera";setErroCarregamento(msg);toast.error(msg);}}
   finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[]);
 
