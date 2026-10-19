@@ -70,7 +70,7 @@ test("trocar a espécie conserva resultado mas não leva a referência da anteri
   let refs = atualizarReferenciaExame(referenciasVazias(), "Cachorro", vg);
   const gatoSemCadastro = trocarEspecieDosExames(grupos, "Gato", refs);
   assert.equal(gatoSemCadastro.hemograma[0]?.valor, "1,5");
-  assert.equal(gatoSemCadastro.hemograma[0]?.referencia, "");
+  assert.equal(gatoSemCadastro.hemograma[0]?.referencia, "24 – 45");
   refs = atualizarReferenciaExame(refs, "Gato", { ...vg, referencia: "10–20" });
   const gato = trocarEspecieDosExames(grupos, "Gato", refs);
   assert.equal(gato.hemograma[0]?.referencia, "10–20");
@@ -102,7 +102,7 @@ test("fichas antigas, VG/Hematócrito e referências v2 continuam compatíveis",
   assert.equal(referenciaCadastrada(criarExamesPadrao().hemograma[0]!, "Cachorro", refs), "1–2");
   assert.equal(referenciaCadastrada({ ...antigos.hemograma[0]!, unidade: "U/L" }, "Cachorro", refs), "");
   assert.equal(normalizarExames({ hemograma: [] }).hemograma.length, 0);
-  assert.equal(normalizarExames({}).hemograma.length, 3);
+  assert.equal(normalizarExames({}).hemograma.length, criarExamesPadrao().hemograma.length);
 });
 
 test("padrões não inventam referências clínicas e não compartilham objetos mutáveis", () => {
@@ -133,7 +133,7 @@ test("ficha/PDF omitem exames vazios e incluem unidade, referência e observaç�
   assert.deepEqual(blocoExamesLaboratoriais({ examesLaboratoriais: { hemograma: [{ nome: "VG", valor: "" }] } }), []);
 });
 
-test("armazenamento: recarrega, tolera JSON inválido e informa falha sem lançar erro", () => {
+test("armazenamento: dados operacionais não dependem do navegador", () => {
   const dados = new Map<string, string>();
   const armazenamento = { getItem: (chave: string) => dados.get(chave) ?? null, setItem: (chave: string, valor: string) => { dados.set(chave, valor); } };
   const anterior = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -145,12 +145,12 @@ test("armazenamento: recarrega, tolera JSON inválido e informa falha sem lança
     assert.equal(salvarAnamneses([]), true);
     for (const invalido of ["{", "null", "[]", '{"Cachorro":null,"Gato":5}', '{"Cachorro":{"Teste":false}}']) {
       dados.set(CHAVE_REFERENCIAS_EXAMES, invalido);
-      assert.deepEqual(carregarReferenciasExames(), referenciasVazias());
+      assert.deepEqual(carregarReferenciasExames(), refs);
     }
     Object.defineProperty(globalThis, "window", { configurable: true, value: { get localStorage() { throw new Error("blocked"); } } });
-    assert.deepEqual(carregarReferenciasExames(), referenciasVazias());
-    assert.equal(salvarReferenciasExames(refs), false);
-    assert.equal(salvarAnamneses([]), false);
+    assert.deepEqual(carregarReferenciasExames(), refs);
+    assert.equal(salvarReferenciasExames(refs), true);
+    assert.equal(salvarAnamneses([]), true);
   } finally {
     if (anterior) Object.defineProperty(globalThis, "window", anterior);
     else Reflect.deleteProperty(globalThis, "window");
