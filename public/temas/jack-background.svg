@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1800" role="img" aria-label="Fundo do tema Jack">
+  <rect width="1440" height="1800" fill="#1a1422"/>
+  <circle cx="1170" cy="150" r="70" fill="#f2ece2" fill-opacity=".18"/>
+  <path d="M0 820 1440 570v1230H0Z" fill="#38213f" fill-opacity=".42"/>
+  <g fill="none" stroke="#ded7e4" stroke-opacity=".18" stroke-width="6">
+    <path d="m150 210 32-32 32 32-32 32zM1180 760l28-28 28 28-28 28z"/>
+    <path d="M260 520c36-52 80-52 116 0-36-22-80-22-116 0zm116 0c36-52 80-52 116 0-36-22-80-22-116 0z"/>
+  </g>
+  <g fill="#e87832" fill-opacity=".25" stroke="#211a2b" stroke-width="7">
+    <path d="M760 260c-52-46-132-6-115 64 17 68 98 95 167 95s150-27 167-95c17-70-63-110-115-64-24-42-80-42-104 0Z"/>
+    <path d="M790 283v124M715 305l34 91M899 305l-34 91"/>
+  </g>
+</svg>
