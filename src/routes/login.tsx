@@ -11,7 +11,17 @@ import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { ClinicLogin, PortalUnavailable } from "@/components/ClinicLogin";
 import { useTenantContext } from "@/lib/tenant-context";
 
-export const Route = createFileRoute("/login")({ component: Login });
+export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [
+      { title: "Entrar — Oricse" },
+      { name: "description", content: "Acesse sua conta Oricse." },
+      { property: "og:title", content: "Entrar — Oricse" },
+      { property: "og:url", content: "https://oricse.vetericio.workers.dev/login" },
+    ],
+  }),
+  component: Login,
+});
 
 function Login() {
   const navigate = useNavigate();
@@ -91,17 +101,14 @@ function Login() {
                 alt={`${marca}`}
                 className="h-36 w-auto max-w-[320px] object-contain object-left brightness-0 invert lg:h-40 lg:max-w-[360px]"
               />
-              <p className="mt-20 text-xs font-bold uppercase tracking-[0.22em] text-[#C59A5C]">
-                Seu espaço de cuidado
-              </p>
-              <h1 className="mt-4 font-display text-4xl font-semibold leading-tight lg:text-[2.7rem]">
+              <h1 className="mt-20 max-w-[13ch] font-display text-4xl font-semibold leading-tight lg:text-[2.7rem]">
                 A rotina da sua clínica, em boas mãos.
               </h1>
-              <p className="mt-4 max-w-sm text-sm leading-6 text-[#FBF7F2]/80">
+              <p className="mt-4 max-w-sm text-base leading-6 text-[#FBF7F2]/80">
                 Acesse seus atendimentos, pacientes e ferramentas clínicas em um só lugar.
               </p>
             </div>
-            <p className="relative text-xs text-[#FBF7F2]/70">
+            <p className="relative text-sm text-[#FBF7F2]/70">
               Acesso seguro e exclusivo para sua equipe.
             </p>
           </section>
@@ -118,13 +125,10 @@ function Login() {
               />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-                Bem-vindo de volta
-              </p>
-              <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground">
+              <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground">
                 Acesse sua conta
               </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              <p className="mt-2 text-base leading-6 text-muted-foreground">
                 Entre com os dados da sua clínica para continuar.
               </p>
             </div>
@@ -170,6 +174,15 @@ function Login() {
                 </button>
               </span>
             </label>
+
+            <a
+              href="https://wa.me/5531995512795?text=Ol%C3%A1%2C%20preciso%20recuperar%20minha%20senha%20da%20Oricse."
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 w-fit text-sm font-semibold text-primary underline underline-offset-4"
+            >
+              Esqueci minha senha
+            </a>
 
             <button
               disabled={entrando}
