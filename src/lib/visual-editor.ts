@@ -70,7 +70,7 @@ export function visualSelector(element: Element): string {
     let part = current.tagName.toLowerCase();
     const parent = current.parentElement;
     if (parent) {
-      const siblings = Array.from(parent.children).filter((item) => item.tagName === current!.tagName);
+      const siblings = (Array.from(parent.children) as Element[]).filter((item) => item.tagName === current!.tagName);
       if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
     }
     parts.unshift(part);
