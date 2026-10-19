@@ -110,7 +110,7 @@ export function blocoExamesLaboratoriais(r: Pick<Registro, "examesLaboratoriais"
 
 /** Bloco de texto da anamnese vinculada, vazio quando não houver. */
 export function blocoAnamnese(
-  r: Pick<Registro, "anamneseId" | "observacoes">,
+  r: Pick<Registro, "anamneseId"> & Partial<Pick<Registro, "observacoes">>,
   anamneses?: Anamnese[],
 ): string[] {
   if (!r.anamneseId) return [];
@@ -121,7 +121,7 @@ export function blocoAnamnese(
   const labs = (titulo: string, lista = [] as { nome: string; unidade?: string; valor: string; referencia: string }[]) => {
     const preenchidos = lista.filter((x) => x.nome?.trim() && x.valor?.trim());
     if (!preenchidos.length) return [];
-    return [`  ${titulo}:`, ...preenchidos.map((x) => `    ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}`)];
+    return [`  ${titulo}:`, ...preenchidos.map((x) => `    ${x.nome.trim()}${x.unidade?.trim() ? ` (${x.unidade.trim()})` : ""}: ${x.valor.trim()}${x.referencia?.trim() ? ` (Ref.: ${x.referencia.trim()})` : ""}`)];
   };
   const laboratoriais = [
     ...labs("Hemograma", a.hemograma),
@@ -134,7 +134,7 @@ export function blocoAnamnese(
     a.conduta.trim() && `Conduta: ${a.conduta.trim()}`,
     a.atencao.trim() && `Atenção: ${a.atencao.trim()}`,
     // Observações digitadas no Início pertencem ao bloco de Parâmetros no PDF/ficha.
-    ...(r.observacoes.trim() ? [`Observações: ${r.observacoes.trim()}`] : []),
+    ...((r.observacoes ?? "").trim() ? [`Observações: ${(r.observacoes ?? "").trim()}`] : []),
   ].filter(Boolean) as string[];
   if (!a.relato.trim() && !exameLivre && laboratoriais.length === 0 && outras.length === 0) return [];
   return [
