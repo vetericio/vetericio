@@ -574,7 +574,10 @@ export function calcularEntrada(p: EntradaCalculo) {
   const inverso = p.origem === "quantidade"
     ? calcularDosePeloVolume({ ...p, volume: p.quantidade, unidadeQuantidade })
     : null;
-  const dose = p.origem === "dose" ? p.dose : inverso?.ok ? arredondar(inverso.dose, 2) : "";
+  // Do not collapse the value typed in the quantity field to two decimals.
+  // That caused a valid small dose to become a different dose on the next
+  // calculation (and could turn it into zero).
+  const dose = p.origem === "dose" ? p.dose : inverso?.ok ? textoDecimal(inverso.dose) : "";
   const resultado = p.origem === "quantidade" && inverso && !inverso.ok
     ? inverso
     : calcularDose({ ...p, dose });
@@ -589,21 +592,16 @@ export function calcularEntrada(p: EntradaCalculo) {
 /* ---------- formatação de quantidade ---------- */
 
 /**
- * mL: duas casas por padrão. Usa três somente quando as duas primeiras seriam
- * zero, para não esconder volumes como 0,003 mL. Nunca exibe quatro casas.
+ * Formats operational quantities without grouping or artificial trailing
+ * zeroes. Small calculated volumes retain up to fifteen decimals so the display
+ * never changes the value that would be used by the reverse calculation.
  */
 export function formatarVolume(valor: number): string {
   if (!Number.isFinite(valor)) return "";
-  const tres = valor.toLocaleString("pt-BR", {
-    useGrouping: false,
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
-  if (Math.abs(valor) < 0.01 && tres !== "0,010" && tres !== "-0,010") return tres;
   return valor.toLocaleString("pt-BR", {
     useGrouping: false,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 15,
   });
 }
 
