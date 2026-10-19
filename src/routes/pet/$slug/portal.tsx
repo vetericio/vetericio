@@ -32,7 +32,7 @@ function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?
 export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string}={}){
   const params=Route.useParams();
   const slug=slugDaClinica??(params as {slug?:string}).slug??"";
-  const [extrasPublicos,setExtrasPublicos]=useState<{opcoes?:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({});
+  const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean}>({});
   const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);
   const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);
