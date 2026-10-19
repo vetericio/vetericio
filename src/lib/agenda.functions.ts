@@ -28,10 +28,12 @@ async function podeEditarAgenda(admin: any, userId: string, clinicaId: string) {
   const { data: vinculo, error: vinculoErro } = await admin.from('clinica_usuarios').select('papel,ativo').eq('clinica_id', clinicaId).eq('user_id', userId).eq('ativo', true).maybeSingle();
   if (vinculoErro) throw new Error(vinculoErro.message);
   if (!vinculo) throw new Error('Você não tem acesso a esta clínica.');
-  const { data: individual } = await admin.from('oricse_permissoes_usuario').select('permitido').eq('clinica_id', clinicaId).eq('user_id', userId).eq('permissao_codigo', 'recepcao.agenda').maybeSingle();
+  const { data: individual, error: individualErro } = await admin.from('oricse_permissoes_usuario').select('permitido').eq('clinica_id', clinicaId).eq('user_id', userId).eq('permissao_codigo', 'recepcao.agenda').maybeSingle();
+  if (individualErro) throw new Error(individualErro.message);
   if (individual?.permitido === false) throw new Error('Você não tem permissão para editar a agenda.');
   if (individual?.permitido === true) return;
-  const { data: papel } = await admin.from('oricse_permissoes_papel').select('permitido').eq('papel', vinculo.papel).eq('permissao_codigo', 'recepcao.agenda').maybeSingle();
+  const { data: papel, error: papelErro } = await admin.from('oricse_permissoes_papel').select('permitido').eq('papel', vinculo.papel).eq('permissao_codigo', 'recepcao.agenda').maybeSingle();
+  if (papelErro) throw new Error(papelErro.message);
   if (!papel?.permitido) throw new Error('Você não tem permissão para editar a agenda.');
 }
 
