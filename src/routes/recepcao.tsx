@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, ReceiptText, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { supabaseBanco } from "@/integrations/supabase/client";
 import { AgendaDayBoard } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
 
@@ -218,7 +219,8 @@ function mensagemReforco(item: ReforcoItem) {
 }
 
 export function Recepcao() {
-  const [fila, setFila] = useState<FilaResumo[]>(lerFila);
+  const [fila, setFila] = useState<FilaResumo[]>([]);
+  const [erroFila,setErroFila]=useState("");
   const [tutores, setTutores] = useState<TutorAniversario[]>(lerTutores);
   const [animais, setAnimais] = useState<AnimalResumo[]>(lerAnimais);
   const [registros, setRegistros] = useState<RegistroReforco[]>(lerRegistros);
@@ -286,8 +288,18 @@ export function Recepcao() {
   }, [filaVisivel]);
 
   useEffect(() => {
+    let ativa=true;
+    const carregarFilaBanco=async()=>{
+      const {data:cid,error:eCtx}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
+      if(eCtx||!cid){if(ativa)setErroFila("Selecione a clínica no Início.");return;}
+      const {data,error}=await (supabaseBanco as any).rpc("oricse_fila_tela",{p_clinica:cid});
+      if(!ativa)return;
+      if(error){setErroFila(error.message);return;}
+      setErroFila("");setFila(data?.fila||[]);
+    };
+    void carregarFilaBanco();
     const atualizar = () => {
-      setFila(lerFila());
+      void carregarFilaBanco();
       setTutores(lerTutores());
       setAnimais(lerAnimais());
       setRegistros(lerRegistros());
@@ -296,6 +308,7 @@ export function Recepcao() {
     window.addEventListener("storage", atualizar);
     window.addEventListener("focus", atualizar);
     return () => {
+      ativa=false;
       window.removeEventListener("storage", atualizar);
       window.removeEventListener("focus", atualizar);
     };
@@ -418,7 +431,7 @@ export function Recepcao() {
               <button type="button" onClick={() => setFilaVisivel(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" title="Ocultar fila de espera" aria-label="Ocultar fila de espera"><EyeOff size={17}/></button>
             </div>
             <div className="max-h-[68vh] overflow-y-auto">
-              {aguardando.length === 0 ? <div className="p-5 text-center text-sm text-muted-foreground">Ninguém aguardando.</div> : aguardando.map((item, index) => {
+              {aguardando.length === 0 ? <div className="p-5 text-center text-sm text-muted-foreground">{erroFila || "Ninguém aguardando."}</div> : aguardando.map((item, index) => {
                 const chegada = item.chegadaEm || item.entradaEm;
                 return <div key={item.id || index} className="border-b px-4 py-3 last:border-b-0">
                   <div className="flex items-start gap-2">
