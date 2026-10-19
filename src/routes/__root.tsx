@@ -19,7 +19,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Cabecalho } from "@/components/Cabecalho";
 import { RockDecoracao } from "@/components/RockDecoracao";
-import { Splash } from "@/components/Splash";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { Rodape } from "@/components/Rodape";
@@ -103,8 +102,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0f4d47" },
+      { name: "theme-color", content: "#4A1826" },
       { name: "author", content: "Oricse" },
+      { name: "description", content: "Sistema de gestão para clínicas veterinárias e petshops." },
+      { property: "og:site_name", content: "Oricse" },
+      { property: "og:type", content: "website" },
+      { property: "og:locale", content: "pt_BR" },
+      { property: "og:image", content: "https://oricse.vetericio.workers.dev/og-oricse.svg" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -115,6 +120,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
       },
       { rel: "manifest", href: "/manifest.webmanifest?v=13" },
+      { rel: "canonical", href: "https://oricse.vetericio.workers.dev/" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-oricse.png?v=13" },
       { rel: "shortcut icon", type: "image/png", href: "/favicon-oricse.png?v=13" },
       { rel: "apple-touch-icon", type: "image/png", href: "/icon-192.png?v=13" },
@@ -167,7 +173,9 @@ function RootComponent() {
         .maybeSingle();
       if (!error && ativo) setMenuFixo(Boolean(data?.menu_lateral_fixo));
     })();
-    return () => { ativo = false; };
+    return () => {
+      ativo = false;
+    };
   }, [autenticado]);
 
   const alterarMenuFixo = async (fixo: boolean) => {
@@ -186,16 +194,32 @@ function RootComponent() {
   };
 
   useEffect(() => {
-    const rotasEditaveis = ["/recepcao", "/estoque", "/financeiro", "/comandas", "/minha-atividade"];
+    const rotasEditaveis = [
+      "/recepcao",
+      "/estoque",
+      "/financeiro",
+      "/comandas",
+      "/minha-atividade",
+    ];
     if (!rotasEditaveis.includes(location.pathname)) return;
     let ativo = true;
     (async () => {
-      const { data, error } = await (supabase as any).from("oricse_rotas_personalizadas")
-        .select("rota_publica").eq("rota_original", location.pathname).maybeSingle();
+      const { data, error } = await (supabase as any)
+        .from("oricse_rotas_personalizadas")
+        .select("rota_publica")
+        .eq("rota_original", location.pathname)
+        .maybeSingle();
       if (!ativo || error || !data?.rota_publica || data.rota_publica === location.pathname) return;
-      void navigate({ to: data.rota_publica as any, search: location.search as any, hash: location.hash, replace: true });
+      void navigate({
+        to: data.rota_publica as any,
+        search: location.search as any,
+        hash: location.hash,
+        replace: true,
+      });
     })();
-    return () => { ativo = false; };
+    return () => {
+      ativo = false;
+    };
   }, [location.pathname, location.search, location.hash, navigate]);
 
   useEffect(() => {
@@ -212,8 +236,8 @@ function RootComponent() {
         host.endsWith(".workers.dev");
       try {
         const { data, error } = await supabase.rpc("oricse_clinica_publica_portal", {
-          p_host: host || null,
-          p_slug: slug,
+          p_host: host || undefined,
+          p_slug: slug || undefined,
         });
         if (error) throw error;
         const clinica = data?.[0];
@@ -341,16 +365,22 @@ function RootComponent() {
     if (!autenticado) {
       limparMemoriaOricse();
       setDadosDriveProntos(false);
-      return () => { ativo = false; };
+      return () => {
+        ativo = false;
+      };
     }
     setDadosDriveProntos(false);
     void hidratarOricseStorage(true)
-      .then(() => { if (ativo) setDadosDriveProntos(true); })
+      .then(() => {
+        if (ativo) setDadosDriveProntos(true);
+      })
       .catch((error) => {
         console.error("Não foi possível carregar os dados do Google Drive:", error);
         if (ativo) setDadosDriveProntos(false);
       });
-    return () => { ativo = false; };
+    return () => {
+      ativo = false;
+    };
   }, [autenticado, role]);
 
   useEffect(() => {
@@ -376,7 +406,15 @@ function RootComponent() {
         navigate({ to: `/vet/${slugClinicaAtual}` as never });
       else if (role !== "admin") navigate({ to: "/inicio" });
     }
-  }, [autenticado, acessoPortalNegado, role, slugClinicaAtual, portal, location.pathname, navigate]);
+  }, [
+    autenticado,
+    acessoPortalNegado,
+    role,
+    slugClinicaAtual,
+    portal,
+    location.pathname,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (role !== "admin" || location.pathname !== "/admin") return;
@@ -433,13 +471,16 @@ function RootComponent() {
       section.appendChild(canvas);
 
       const sincronizar = () => {
-        const iframe = document.getElementById("oricse-planos-preview-frame") as HTMLIFrameElement | null;
+        const iframe = document.getElementById(
+          "oricse-planos-preview-frame",
+        ) as HTMLIFrameElement | null;
         const doc = iframe?.contentDocument;
         if (!doc) return;
         const labels = Array.from(section.querySelectorAll("label"));
         const valor = (inicio: string) => {
           const label = labels.find((l) => (l.textContent || "").trim().startsWith(inicio));
-          const campo = label?.querySelector("input,textarea") as HTMLInputElement | HTMLTextAreaElement | null;
+          const campo = label?.querySelector("input,textarea") as
+            HTMLInputElement | HTMLTextAreaElement | null;
           return campo?.value || "";
         };
         const h1 = doc.querySelector("main header h1") as HTMLElement | null;
@@ -536,7 +577,8 @@ function RootComponent() {
       if (!aside) return;
 
       botaoIniciar.textContent = "Iniciar atendimento";
-      botaoIniciar.className = "flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground";
+      botaoIniciar.className =
+        "flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground";
       botaoIniciar.onclick = () => {
         const animalId = localizarAnimalId(aside);
         if (!animalId) {
@@ -546,7 +588,9 @@ function RootComponent() {
         navigate({ to: "/animal", search: { animalId } as never });
       };
 
-      let acoes = aside.querySelector("[data-oricse-atendimento-acoes='1']") as HTMLDivElement | null;
+      let acoes = aside.querySelector(
+        "[data-oricse-atendimento-acoes='1']",
+      ) as HTMLDivElement | null;
       if (!acoes) {
         acoes = document.createElement("div");
         acoes.dataset["oricseAtendimentoAcoes"] = "1";
@@ -555,13 +599,16 @@ function RootComponent() {
         acoes.appendChild(botaoIniciar);
       }
 
-      let finalizar = acoes.querySelector("[data-oricse-finalizar='1']") as HTMLButtonElement | null;
+      let finalizar = acoes.querySelector(
+        "[data-oricse-finalizar='1']",
+      ) as HTMLButtonElement | null;
       if (!finalizar) {
         finalizar = document.createElement("button");
         finalizar.type = "button";
         finalizar.dataset["oricseFinalizar"] = "1";
         finalizar.textContent = "Finalizar atendimento";
-        finalizar.className = "flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700";
+        finalizar.className =
+          "flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700";
         acoes.appendChild(finalizar);
       }
 
@@ -573,17 +620,25 @@ function RootComponent() {
             ?.textContent?.replace(/^Tutor:\s*/i, "") || "";
         const tutor = normalizar(tutorTexto);
         const candidatos = Array.from(document.querySelectorAll("button")).filter(
-          (botao) => (botao.textContent || "").trim() === "Finalizar atendimento" && botao !== finalizar,
+          (botao) =>
+            (botao.textContent || "").trim() === "Finalizar atendimento" && botao !== finalizar,
         ) as HTMLButtonElement[];
-        const alvo = candidatos.find((botao) => {
-          const texto = normalizar(botao.parentElement?.textContent);
-          return texto && nomeAnimal.split(" ").some((parte) => parte.length > 2 && texto.includes(parte)) && (!tutor || texto.includes(tutor));
-        }) || candidatos[0];
+        const alvo =
+          candidatos.find((botao) => {
+            const texto = normalizar(botao.parentElement?.textContent);
+            return (
+              texto &&
+              nomeAnimal.split(" ").some((parte) => parte.length > 2 && texto.includes(parte)) &&
+              (!tutor || texto.includes(tutor))
+            );
+          }) || candidatos[0];
         if (!alvo) {
           window.alert("Não foi possível localizar este atendimento na agenda.");
           return;
         }
-        const fechar = aside.querySelector("button:not([data-oricse-finalizar='1'])") as HTMLButtonElement | null;
+        const fechar = aside.querySelector(
+          "button:not([data-oricse-finalizar='1'])",
+        ) as HTMLButtonElement | null;
         fechar?.click();
         setTimeout(() => alvo.click(), 0);
       };
@@ -608,10 +663,14 @@ function RootComponent() {
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;
-  const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
+  const mostrarBloqueioTeste =
+    autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
   const telaPortalRestrita = Boolean(
-    !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) && autenticado && role !== "admin" && (acessoPortalNegado || (!portal && Boolean(portalError))),
+    !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) &&
+    autenticado &&
+    role !== "admin" &&
+    (acessoPortalNegado || (!portal && Boolean(portalError))),
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
 
@@ -621,13 +680,23 @@ function RootComponent() {
         <VisualPageRuntime />
         {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && <RockDecoracao />}
-        {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} /></div>}
-        {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><AlarmeAtivo /></div>}
-        {!autenticado && location.pathname === "/" && <Splash />}
+        {mostrarClinico && (
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
+            <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
+          </div>
+        )}
+        {mostrarClinico && (
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
+            <AlarmeAtivo />
+          </div>
+        )}
         {testeAtivo && mostrarClinico && (
-          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
-            💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s) restante(s).
-          </div></div>
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
+            <div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
+              💚 Seu teste gratuito está ativo. {Number(acessoTeste?.dias_restantes || 0)} dia(s)
+              restante(s).
+            </div>
+          </div>
         )}
         {rotaAdmin && autenticado === null ? (
           <div className="min-h-screen" />
@@ -635,8 +704,15 @@ function RootComponent() {
           <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
             <section className="w-full max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm">
               <h1 className="text-2xl font-bold">Acesso restrito</h1>
-              <p className="mt-2 text-sm text-muted-foreground">A área administrativa é exclusiva da equipe Oricse.</p>
-              <Link to="/" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Voltar ao início</Link>
+              <p className="mt-2 text-sm text-muted-foreground">
+                A área administrativa é exclusiva da equipe Oricse.
+              </p>
+              <Link
+                to="/"
+                className="mt-5 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
+                Voltar ao início
+              </Link>
             </section>
           </main>
         ) : telaPortalRestrita ? (
@@ -650,27 +726,57 @@ function RootComponent() {
                     ? portalError
                     : "Esta conta não está vinculada a uma clínica ativa. Solicite acesso ao responsável da sua clínica."}
               </p>
-              <button type="button" onClick={() => void supabase.auth.signOut()} className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Sair desta conta</button>
+              <button
+                type="button"
+                onClick={() => void supabase.auth.signOut()}
+                className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
+                Sair desta conta
+              </button>
             </section>
           </main>
         ) : autenticado && !rotaPublica && !dadosDriveProntos ? (
-          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">Sincronizando os dados no sistema Oricse...</div>
+          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
+            Sincronizando os dados no sistema Oricse...
+          </div>
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
           <div className="min-h-screen" />
         ) : mostrarBloqueioTeste ? (
           <main className="flex min-h-[75vh] items-center justify-center bg-background px-4 py-10">
             <section className="w-full max-w-xl rounded-3xl border bg-card p-7 text-center shadow-lg">
               <div className="text-4xl">💚</div>
-              <h1 className="mt-4 text-3xl font-bold">Seu período de carinho com a Oricse chegou ao fim</h1>
-              <p className="mt-3 text-muted-foreground">Seus dados estão guardadinhos aqui, exatamente como você deixou. Para continuar usando a Oricse, escolha um plano e regularize sua conta.</p>
-              <div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground"><p>Nada foi apagado.</p><p className="mt-1">Enquanto a conta estiver pausada, edição, exportações, PDFs, downloads e backups ficam indisponíveis.</p></div>
-              <Link to="/planos" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">Escolher meu plano</Link>
+              <h1 className="mt-4 text-3xl font-bold">
+                Seu período de carinho com a Oricse chegou ao fim
+              </h1>
+              <p className="mt-3 text-muted-foreground">
+                Seus dados estão guardadinhos aqui, exatamente como você deixou. Para continuar
+                usando a Oricse, escolha um plano e regularize sua conta.
+              </p>
+              <div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                <p>Nada foi apagado.</p>
+                <p className="mt-1">
+                  Enquanto a conta estiver pausada, edição, exportações, PDFs, downloads e backups
+                  ficam indisponíveis.
+                </p>
+              </div>
+              <Link
+                to="/planos"
+                className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground"
+              >
+                Escolher meu plano
+              </Link>
             </section>
           </main>
         ) : (
-          <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}><Outlet /></div>
+          <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
+            <Outlet />
+          </div>
         )}
-        {mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><Rodape /></div>}
+        {mostrarClinico && (
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
+            <Rodape />
+          </div>
+        )}
         <Toaster position="top-center" />
       </TenantContext.Provider>
     </QueryClientProvider>
