@@ -76,7 +76,7 @@ function ConfiguracaoSite() {
     try {
       const { data, error } = await supabase.rpc("oricse_configurar_site_clinica", {
         p_slug: slugLimpo,
-        p_dominio: dominioLimpo || null,
+        p_dominio: dominioLimpo || undefined,
       });
       if (error) throw error;
       const resultado = data?.[0];
