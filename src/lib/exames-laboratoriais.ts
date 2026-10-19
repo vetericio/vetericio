@@ -116,7 +116,7 @@ function normalizar(texto: string) {
 
 function nomeChave(nome: string) {
   const chave = normalizar(nome);
-  return ["vg", "hematocrito", "hematocrito (vg)"].includes(chave) ? "hematocrito" : chave;
+  return chave === "vg" || chave.includes("hematocrito") ? "hematocrito" : chave;
 }
 
 function chaveExame(exame: Pick<ExameAnamnese, "nome" | "unidade">) {
