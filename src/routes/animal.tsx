@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BedDouble, CalendarDays, ClipboardList, FileText, FileUp, FlaskConical, Image, Pencil, Plus, ReceiptText, Scale, Scissors, Stethoscope, Syringe, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -44,22 +44,23 @@ function arquivoParaDataUrl(file:File){return new Promise<string>((resolve,rejec
 function rotuloMotivo(codigo?:string|null){const mapa:Record<string,string>={receita_substituida:"Receita substituída",receita_cancelada:"Receita cancelada",erro_emissao:"Erro de emissão",documento_incompleto:"Documento incompleto",aguardando_assinatura:"Aguardando assinatura/carimbo",uso_interno:"Uso interno da clínica",orientacao_veterinario:"Orientação do veterinário",solicitacao_tutor:"Solicitação do tutor",duplicidade:"Duplicidade",necessita_orientacao_presencial:"Necessita orientação presencial",outro:"Outro"};return codigo?mapa[codigo]||codigo:"";}
 
 function AnimalFicha(){
-  const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
-  const animalId=params.get("animalId")||"";
+  const busca=useSearch({strict:false});
+  const animalId=typeof busca.animalId==="string"?busca.animalId:"";
   const [animal,setAnimal]=useState<Animal|null>(null);
   const [tutor,setTutor]=useState<Tutor|null>(null);
   const [carregandoFicha,setCarregandoFicha]=useState(true);
+  const [erroFicha,setErroFicha]=useState("");
   useEffect(()=>{let vivo=true;(async()=>{try{
-    if(!animalId)throw Error("Selecione um animal.");
+    if(!animalId)throw Error("Identificação do animal ausente no link. Abra a ficha a partir da fila ou da lista de animais.");
     const {data:cid,error:eCid}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_animal:animalId});
     if(eCid||!cid)throw Error(eCid?.message||"Clínica do animal não identificada.");
     const {data,error}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:cid,p_animal:animalId});
     if(error)throw error;
     if(!vivo)return;
     const a=data?.animal;const t=data?.tutor;
-    setAnimal(a?{...a,peso:a.peso==null?"":String(a.peso)}:null);
+    setErroFicha("");setAnimal(a?{...a,peso:a.peso==null?"":String(a.peso)}:null);
     setTutor(t||null);setClinicaId(cid);
-  }catch(e){if(vivo)toast.error(e instanceof Error?e.message:"Não foi possível abrir o prontuário.");}
+  }catch(e){if(vivo){const msg=e instanceof Error?e.message:"Não foi possível abrir o prontuário.";setErroFicha(msg);toast.error(msg);}}
   finally{if(vivo)setCarregandoFicha(false);}})();return()=>{vivo=false};},[animalId]);
   const[aba,setAba]=useState<Aba>("Visão geral");const[registros,setRegistros]=useState<Registro[]>([]);const[registrosPortal,setRegistrosPortal]=useState<Registro[]>([]);const[clinicaId,setClinicaId]=useState("");
   const[pesos,setPesos]=useState<PesoRegistro[]>([]);const[modalTipo,setModalTipo]=useState<RegistroTipo|null>(null);const[modalPeso,setModalPeso]=useState(false);const[pesoNovo,setPesoNovo]=useState("");const[dataPeso,setDataPeso]=useState(()=>new Date().toISOString().slice(0,10));
@@ -133,7 +134,7 @@ function AnimalFicha(){
   async function salvarPeso(){if(!animal)return;const n=numeroPeso(pesoNovo);if(!Number.isFinite(n)||n<=0)return void toast.error("Informe um peso válido.");const {data:historico,error}=await (supabaseBanco as any).rpc("oricse_animal_historico",{p_animal:animal.id,p_peso:n,p_data:dataPeso});if(error)return void toast.error("Não foi possível salvar o peso: "+error.message);setPesos(historico?.pesos||[]);setAnimal(a=>a?{...a,peso:n.toFixed(3)}:a);setModalPeso(false);setPesoNovo("");toast.success(`Peso de ${formatarPeso(n)} registrado.`);}
 
   if(carregandoFicha)return <main className="mx-auto max-w-5xl p-8 text-sm text-muted-foreground">Carregando prontuário no Supabase…</main>;
-  if(!animal)return <main className="mx-auto max-w-5xl px-4 py-8"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">Animal não encontrado.</div></main>;
+  if(!animal)return <main className="mx-auto max-w-5xl px-4 py-8"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link><div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">{erroFicha||"Animal não encontrado no banco desta clínica."}</div></main>;
 
   return <main className="mx-auto min-h-screen w-full max-w-[1760px] px-3 pb-28 pt-4 sm:px-5"><div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[240px_minmax(0,1fr)]"><aside className="hidden lg:block"><div className="sticky top-4 overflow-hidden rounded-2xl border bg-white shadow-sm"><nav className="p-2">{ABAS.map(nome=>{const Icon=iconFor(nome);const ativo=aba===nome;return <button key={nome} type="button" onClick={()=>setAba(nome)} className={`relative mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${ativo?"bg-secondary text-secondary-foreground":"text-muted-foreground hover:bg-muted/60 hover:text-foreground"}`}>{ativo&&<span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary"/>}<Icon size={18} className={ativo?"text-primary":"text-muted-foreground"}/><span>{nome}</span></button>})}</nav></div></aside><div className="min-w-0">
     <div className="mb-3 flex items-center justify-between gap-3"><Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Animais</Link><Link to="/novo-animal" search={{animalId:animal.id} as never} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-4 text-sm font-bold"><Pencil size={16}/> Editar animal</Link></div>
