@@ -123,22 +123,20 @@ function FilaEspera() {
         : aguardando.length===0
           ? <div className="p-8 text-center text-sm text-muted-foreground">Nenhum paciente aguardando no momento.</div>
           : <div className="divide-y">
-            {aguardando.map((item,index)=><article key={item.id} className="grid min-w-0 gap-4 px-4 py-4 sm:px-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-              <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
-                <div className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">
-                  <div className="flex items-start gap-2">
-                    <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-sm font-extrabold !text-slate-900">#{index+1}</span>
-                    <div className="min-w-0"><p className="break-words font-bold">{emojiEspecie(item.especie)} {item.animalNome}</p><p className="break-words text-xs text-muted-foreground">{item.tutorNome}{codigoTutorItem(item)&&<span className="ml-1 font-mono">{codigoTutorItem(item)}</span>}</p></div>
-                  </div>
-                </div>
-                <div><p className="text-[11px] font-bold uppercase text-muted-foreground">Chegada</p><p className="font-semibold tabular-nums">{hora(item.chegadaEm)}</p></div>
-                <div><p className="text-[11px] font-bold uppercase text-muted-foreground">Espera</p><p className="tabular-nums">{tempoEspera(item.chegadaEm)}</p></div>
-                <div className="min-w-0"><p className="text-[11px] font-bold uppercase text-muted-foreground">Motivo</p><p className="break-words text-sm">{item.motivo||"Sem motivo informado"}</p></div>
+            {aguardando.map((item,index)=><article key={item.id} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 sm:px-4">
+              <span className="shrink-0 text-sm font-black text-primary">#{index+1}</span>
+              <div className="min-w-[150px] flex-[1_1_210px]">
+                <p className="truncate text-sm font-bold leading-5">{emojiEspecie(item.especie)} {item.animalNome}</p>
+                <p className="truncate text-xs leading-4 text-muted-foreground">{item.tutorNome}{codigoTutorItem(item)&&<span className="ml-1 font-mono">{codigoTutorItem(item)}</span>}</p>
               </div>
-              <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2 border-t pt-3 xl:w-auto xl:border-t-0 xl:pt-0">
-                <span className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-3 py-2 text-xs font-bold !text-amber-950">Aguardando</span>
-                <button type="button" onClick={()=>void chamar(item.id)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#155e75] bg-[#155e75] px-4 py-2 text-sm font-extrabold !text-white shadow-sm hover:bg-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155e75]"><Play size={16}/> Chamar</button>
-                <button type="button" onClick={()=>void remover(item.id)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#9f1239] bg-white px-3 py-2 text-sm font-bold !text-[#9f1239] shadow-sm hover:bg-[#fff1f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9f1239]"><X size={16}/> Remover</button>
+              <div className="flex shrink-0 items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                <span title="Chegada">🕒 {hora(item.chegadaEm)}</span><span title="Tempo de espera">{tempoEspera(item.chegadaEm)}</span>
+              </div>
+              {item.motivo&&<span title={item.motivo} className="max-w-[140px] truncate text-xs text-muted-foreground">{item.motivo}</span>}
+              <span className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[11px] font-bold !text-amber-950">Aguardando</span>
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                <button type="button" onClick={()=>void chamar(item.id)} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-[#155e75] bg-[#155e75] px-3 py-1.5 text-xs font-extrabold !text-white hover:bg-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155e75]"><Play size={13}/> Chamar</button>
+                <button type="button" onClick={()=>void remover(item.id)} aria-label="Remover da fila" title="Remover da fila" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#9f1239] bg-white !text-[#9f1239] hover:bg-[#fff1f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9f1239]"><X size={15}/></button>
               </div>
             </article>)}
           </div>}
