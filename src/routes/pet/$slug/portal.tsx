@@ -30,7 +30,7 @@ function emoji(especie?:string){const e=(especie||"").toLowerCase();if(e.include
 function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?"Aguardando aprovação":v==="reservado"?"Reservado":v;}
 
 export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string}={}){
-  const params=Route.useParams({strict:false});
+  const params=Route.useParams();
   const slug=slugDaClinica??(params as {slug?:string}).slug??"";
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes?:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean}>({});

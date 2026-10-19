@@ -1,6 +1,5 @@
 // Supabase fica restrito à autenticação e aos registros de usuários/vínculos.
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 import { createDriveFrom } from '@/lib/drive-db';
 import { createDriveRpc } from '@/lib/drive-rpc';
@@ -27,7 +26,9 @@ export const supabaseMensagemConfiguracao = 'A conexão segura do sistema ainda 
 
 function createSupabaseClient(storageKey?: string) {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) throw new Error(supabaseMensagemConfiguracao);
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  // O schema publicado ainda não descreve todos os RPCs operacionais já usados.
+  // Mantemos a validação de nulidade no app, sem inferir um contrato incompleto.
+  return createClient<any>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: { fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY) },
     auth: {
       storage: brokeredPreviewStorage(),

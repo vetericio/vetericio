@@ -29,7 +29,7 @@ export function Cabecalho({ menuFixo, aoMudarMenuFixo }: { menuFixo: boolean; ao
   const location = useLocation();
   const { marca, logo_url } = useSiteBranding();
   const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
-  useProtecaoDadosLocais({ permitidas, carregando: carregandoPermissoes, adminGlobal });
+  useProtecaoDadosLocais();
   const plantaoArea = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const { registros } = useRegistros();
   const { plantao, definirTurno, carregado } = usePlantaoAtual();

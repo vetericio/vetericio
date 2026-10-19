@@ -22,7 +22,7 @@ export class OricseWriteCoordinator {
     const result = await this.writes.run(async () => {
       try {
         if(payload.kind === "state") {
-          return await salvarEstadoOricseInterno(payload.input as never, true);
+          return await salvarEstadoOricseInterno(payload.input as never);
         }
         if(payload.kind === "db") {
           this.lastCommitMs = Math.max(Date.now(), this.lastCommitMs + 1);
