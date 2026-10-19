@@ -38,7 +38,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 export const Route = createFileRoute("/admin")({ component: Admin });
 
 type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos";
-type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive";
+type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive" | "autorizacoes";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
 type FiltroClinica = "todas" | "pagas" | "inadimplentes" | "canceladas";
