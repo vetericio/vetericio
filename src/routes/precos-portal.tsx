@@ -17,9 +17,9 @@ function PrecosServicos(){
  [erro,setErro]=useState(""),[carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
  async function carregar(){setCarregando(true);try{
   const {data:{user}}=await supabase.auth.getUser();if(!user)throw Error("Faça login.");
-  const {data:vinculo,error:vErr}=await supabase.from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
-  if(vErr||!vinculo?.clinica_id)throw Error("Clínica não identificada.");
-  const [catalogo,pag]=await Promise.all([supabase.from("clinica_catalogo_itens").select("id,nome,preco,tipo").eq("clinica_id",vinculo.clinica_id).eq("tipo","servico").eq("ativo",true).order("nome"),(supabaseBanco as any).rpc("oricse_listar_pagamentos_catalogo")]);
+  const {data:clinicaId,error:vErr}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
+  if(vErr||!clinicaId)throw Error("Selecione a clínica ativa no Início antes de configurar cobranças.");
+  const [catalogo,pag]=await Promise.all([supabase.from("clinica_catalogo_itens").select("id,nome,preco,tipo").eq("clinica_id",clinicaId).eq("tipo","servico").eq("ativo",true).order("nome"),(supabaseBanco as any).rpc("oricse_listar_pagamentos_catalogo")]);
   if(catalogo.error)throw catalogo.error;if(pag.error)throw pag.error;
   setServicos(catalogo.data||[]);setConfigs(pag.data||[]);setErro("");
  }catch(e){setErro(e instanceof Error?e.message:"Falha ao carregar serviços")}finally{setCarregando(false)}}
