@@ -1,11 +1,10 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock3, Play, Plus, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { lerContextoAdminClinica } from "@/lib/admin-clinic-context";
-import { codigoPublicoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
+import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/fila-espera")({ component: FilaEspera });
 
@@ -14,16 +13,8 @@ type Animal = { id: string; tutorId: string; nome: string; especie?: string; rac
 type StatusFila = "Aguardando" | "Chamado";
 type ItemFila = { id: string; tutorId: string; animalId: string; tutorNome: string; animalNome: string; especie?: string; motivo?: string; chegadaEm: string; status: StatusFila; chamadoEm?: string };
 
-const TUTORES_KEY = "oricse-tutores-v1";
-const ANIMAIS_KEY = "oricse-animais-v1";
-const FILA_KEY = "oricse-fila-espera-v1";
 const COLUNAS_FILA = "72px minmax(240px,1.45fr) 140px 120px minmax(180px,1.1fr) 140px 190px";
 
-function lerLocal<T>(chave: string): T[] { if (typeof window === "undefined") return []; try { const valor = JSON.parse(oricseStorage.getItem(chave) || "[]"); return Array.isArray(valor) ? valor.filter((item): item is T => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : []; } catch { return []; } }
-function textoOpcional(valor: unknown) { return typeof valor === "string" ? valor : undefined; }
-function lerTutores() { const tutores = migrarCodigosPublicosTutores(lerLocal<Tutor>(TUTORES_KEY).filter((tutor) => typeof tutor.id === "string" && typeof tutor.nome === "string"), lerNomeClinicaLocal()); return tutores.map((tutor) => ({ ...tutor, telefone: textoOpcional(tutor.telefone), email: textoOpcional(tutor.email), cpf: textoOpcional(tutor.cpf || tutor.cpfCnpj), codigoPublico: textoOpcional(tutor.codigoPublico), codigo_publico: textoOpcional(tutor.codigo_publico) })); }
-function lerAnimais() { return lerLocal<Animal>(ANIMAIS_KEY).filter((animal) => typeof animal.id === "string" && typeof animal.tutorId === "string" && typeof animal.nome === "string").map((animal) => ({ ...animal, especie: textoOpcional(animal.especie), raca: textoOpcional(animal.raca) })); }
-function lerFila() { return lerLocal<ItemFila>(FILA_KEY).filter((item) => typeof item.id === "string" && typeof item.tutorId === "string" && typeof item.animalId === "string" && typeof item.tutorNome === "string" && typeof item.animalNome === "string" && typeof item.chegadaEm === "string" && (item.status === "Aguardando" || item.status === "Chamado")).map((item) => ({ ...item, motivo: textoOpcional(item.motivo), especie: textoOpcional(item.especie), chamadoEm: textoOpcional(item.chamadoEm) })); }
 function normalizar(valor?: string) { return (typeof valor === "string" ? valor : "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
 function somenteDigitos(valor?: string) { return (typeof valor === "string" ? valor : "").replace(/\D/g, ""); }
 function codigoTutor(tutor: Tutor) { return codigoPublicoTutor(tutor) || ""; }
