@@ -134,7 +134,10 @@ function Inicio() {
     setCarregandoClinicas(true);
     setErroClinicas("");
     void (async () => {
-      // Clínicas são dados operacionais migrados para o PostgreSQL. Usar o\n      // cliente direto aqui evita que o proxy legado tente buscá-las no Drive\n      // e deixe o administrador sem uma clínica ativa.\n      const { data, error } = await (supabaseBanco as any)
+      // Clínicas são dados operacionais migrados para o PostgreSQL. Usar o
+      // cliente direto aqui evita que o proxy legado tente buscá-las no Drive
+      // e deixe o administrador sem uma clínica ativa.
+      const { data, error } = await (supabaseBanco as any)
         .from("clinicas")
         .select("id,nome,slug,status")
         .order("nome");
