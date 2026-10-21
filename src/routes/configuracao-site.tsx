@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Copy, ExternalLink, Globe2, Save } from "lucide-react";
+import { ArrowLeft, Copy, ExternalLink, Globe2, ImageUp, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import type { ClinicTenantInfo } from "@/lib/tenant-context";
 
 export const Route = createFileRoute("/configuracao-site")({ component: ConfiguracaoSite });
@@ -15,6 +16,7 @@ function ConfiguracaoSite() {
   const [podeEditar, setPodeEditar] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -111,6 +113,48 @@ function ConfiguracaoSite() {
     }
   }
 
+  async function enviarLogo(file?: File) {
+    if (!file || !clinica || !podeEditar) return;
+    if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(file.type)) {
+      return void toast.error("Use PNG, JPG, WEBP ou SVG.");
+    }
+    if (file.size > 5 * 1024 * 1024) return void toast.error("A logo deve ter no máximo 5 MB.");
+    setEnviandoLogo(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) throw new Error("Faça login novamente.");
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          resolve(
+            String(reader.result || "")
+              .split(",")
+              .pop() || "",
+          );
+        reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+        reader.readAsDataURL(file);
+      });
+      const resultado = await enviarLogoClinica({
+        data: {
+          accessToken,
+          clinicaId: clinica.clinica_id,
+          fileName: file.name,
+          mimeType: file.type as "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml",
+          base64,
+        },
+      });
+      setClinica((atual) => (atual ? { ...atual, clinica_logo_url: resultado.logoUrl } : atual));
+      toast.success(
+        "Logo da clínica atualizada. Ela será exibida no sistema e no Portal do Tutor.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a logo.");
+    } finally {
+      setEnviandoLogo(false);
+    }
+  }
+
   const caminhoPublico = slug ? `/vet/${slug}` : "";
   const linkFallback =
     typeof window !== "undefined" && caminhoPublico
@@ -143,8 +187,53 @@ function ConfiguracaoSite() {
 
       <section className="mb-5 rounded-2xl border bg-card p-5 shadow-sm">
         <h2 className="text-lg font-bold text-foreground">Portal do Tutor — configurações do RT</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Personalize a mensagem de boas-vindas, contatos, orientações de agendamento e seções disponíveis aos tutores. O responsável técnico configura sem precisar alterar domínio ou infraestrutura.</p>
-        <Link to="/configurar-portal-tutor" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-primary-foreground">Configurar Portal do Tutor</Link>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Personalize a mensagem de boas-vindas, contatos, orientações de agendamento e seções
+          disponíveis aos tutores. O responsável técnico configura sem precisar alterar domínio ou
+          infraestrutura.
+        </p>
+        <Link
+          to="/configurar-portal-tutor"
+          className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
+        >
+          Configurar Portal do Tutor
+        </Link>
+      </section>
+
+      <section className="mb-5 rounded-2xl border bg-card p-5 shadow-sm">
+        <h2 className="text-lg font-bold">Logo da clínica</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Esta é a única identidade exibida dentro do sistema. No Portal do Tutor, ela aparece junto
+          da personalização completa da clínica.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border bg-muted/30 p-2">
+            {clinica?.clinica_logo_url ? (
+              <img
+                src={clinica.clinica_logo_url}
+                alt={`Logo de ${clinica.clinica_nome}`}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-center text-xs text-muted-foreground">Sem logo enviada</span>
+            )}
+          </div>
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">
+            <ImageUp size={17} /> {enviandoLogo ? "Enviando…" : "Enviar logo"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              disabled={!podeEditar || enviandoLogo}
+              onChange={(event) => void enviarLogo(event.target.files?.[0])}
+            />
+          </label>
+        </div>
+        {!podeEditar && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Somente responsável, RT ou administrador da plataforma pode alterar a logo.
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
