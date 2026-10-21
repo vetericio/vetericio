@@ -1,14 +1,192 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const DEFAULT_ROOT_FOLDER_ID="1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
-const inputSchema=z.object({accessToken:z.string().min(20),clinicaId:z.string().uuid(),fileName:z.string().min(1).max(180),mimeType:z.enum(["image/png","image/jpeg","image/webp","image/svg+xml"]),base64:z.string().min(20)});
-const MAX_BYTES=5*1024*1024;
-function root(){return process.env["ORICSE_DRIVE_ROOT_FOLDER_ID"]||process.env["GOOGLE_DRIVE_ROOT_FOLDER_ID"]||DEFAULT_ROOT_FOLDER_ID}
-function b64(v:string|Buffer){return(typeof v==="string"?Buffer.from(v):v).toString("base64url")}
-async function token(){const email=process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL"],raw=process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY"];if(email&&raw){const now=Math.floor(Date.now()/1000),h=b64(JSON.stringify({alg:"RS256",typ:"JWT"})),p=b64(JSON.stringify({iss:email,scope:"https://www.googleapis.com/auth/drive",aud:"https://oauth2.googleapis.com/token",iat:now,exp:now+3600})),u=`${h}.${p}`;const{createSign}=await import("node:crypto");const s=createSign("RSA-SHA256");s.update(u);s.end();const assertion=`${u}.${b64(s.sign(raw.replace(/\\n/g,"\n")))}`;const r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:new URLSearchParams({grant_type:"urn:ietf:params:oauth:grant-type:jwt-bearer",assertion})});const j=await r.json() as any;if(r.ok&&j.access_token)return j.access_token as string;throw new Error(j.error_description||j.error||"Falha no Google Drive")};const id=process.env["GOOGLE_DRIVE_CLIENT_ID"],secret=process.env["GOOGLE_DRIVE_CLIENT_SECRET"],refresh=process.env["GOOGLE_DRIVE_REFRESH_TOKEN"];if(id&&secret&&refresh){const r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:id,client_secret:secret,refresh_token:refresh,grant_type:"refresh_token"})});const j=await r.json() as any;if(r.ok&&j.access_token)return j.access_token as string;throw new Error(j.error_description||j.error||"Falha no Google Drive")};throw new Error("Google Drive não configurado")}
-async function gf(t:string,url:string,init:RequestInit={}){const h=new Headers(init.headers);h.set("authorization",`Bearer ${t}`);const r=await fetch(url,{...init,headers:h});if(!r.ok)throw new Error(`Google Drive: ${r.status} ${await r.text()}`);return r}
-async function folder(t:string,parent:string,nome:string){const esc=nome.replace(/'/g,"\\'");const q=encodeURIComponent(`'${parent}' in parents and name='${esc}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);const l=await gf(t,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=10`);const j=await l.json() as any;if(j.files?.[0]?.id)return j.files[0].id;const c=await gf(t,"https://www.googleapis.com/drive/v3/files?fields=id",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:nome,mimeType:"application/vnd.google-apps.folder",parents:[parent]})});return((await c.json())as any).id as string}
-function seguro(nome:string,mime:string){const ext=mime==="image/png"?".png":mime==="image/jpeg"?".jpg":mime==="image/webp"?".webp":".svg";const n=nome.replace(/[^a-zA-Z0-9._-]/g,"-").replace(/-+/g,"-").slice(0,140);return/\.(png|jpe?g|webp|svg)$/i.test(n)?n:`${n||"logo"}${ext}`}
+const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
+const inputSchema = z.object({
+  accessToken: z.string().min(20),
+  clinicaId: z.string().uuid(),
+  fileName: z.string().min(1).max(180),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]),
+  base64: z.string().min(20),
+});
+const MAX_BYTES = 5 * 1024 * 1024;
+function root() {
+  return (
+    process.env["ORICSE_DRIVE_ROOT_FOLDER_ID"] ||
+    process.env["GOOGLE_DRIVE_ROOT_FOLDER_ID"] ||
+    DEFAULT_ROOT_FOLDER_ID
+  );
+}
+function b64(v: string | Buffer) {
+  return (typeof v === "string" ? Buffer.from(v) : v).toString("base64url");
+}
+async function token() {
+  const email = process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL"],
+    raw = process.env["GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY"];
+  if (email && raw) {
+    const now = Math.floor(Date.now() / 1000),
+      h = b64(JSON.stringify({ alg: "RS256", typ: "JWT" })),
+      p = b64(
+        JSON.stringify({
+          iss: email,
+          scope: "https://www.googleapis.com/auth/drive",
+          aud: "https://oauth2.googleapis.com/token",
+          iat: now,
+          exp: now + 3600,
+        }),
+      ),
+      u = `${h}.${p}`;
+    const { createSign } = await import("node:crypto");
+    const s = createSign("RSA-SHA256");
+    s.update(u);
+    s.end();
+    const assertion = `${u}.${b64(s.sign(raw.replace(/\\n/g, "\n")))}`;
+    const r = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+      }),
+    });
+    const j = (await r.json()) as any;
+    if (r.ok && j.access_token) return j.access_token as string;
+    throw new Error(j.error_description || j.error || "Falha no Google Drive");
+  }
+  const id = process.env["GOOGLE_DRIVE_CLIENT_ID"],
+    secret = process.env["GOOGLE_DRIVE_CLIENT_SECRET"],
+    refresh = process.env["GOOGLE_DRIVE_REFRESH_TOKEN"];
+  if (id && secret && refresh) {
+    const r = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: id,
+        client_secret: secret,
+        refresh_token: refresh,
+        grant_type: "refresh_token",
+      }),
+    });
+    const j = (await r.json()) as any;
+    if (r.ok && j.access_token) return j.access_token as string;
+    throw new Error(j.error_description || j.error || "Falha no Google Drive");
+  }
+  throw new Error("Google Drive não configurado");
+}
+async function gf(t: string, url: string, init: RequestInit = {}) {
+  const h = new Headers(init.headers);
+  h.set("authorization", `Bearer ${t}`);
+  const r = await fetch(url, { ...init, headers: h });
+  if (!r.ok) throw new Error(`Google Drive: ${r.status} ${await r.text()}`);
+  return r;
+}
+async function folder(t: string, parent: string, nome: string) {
+  const esc = nome.replace(/'/g, "\\'");
+  const q = encodeURIComponent(
+    `'${parent}' in parents and name='${esc}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+  );
+  const l = await gf(
+    t,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=10`,
+  );
+  const j = (await l.json()) as any;
+  if (j.files?.[0]?.id) return j.files[0].id;
+  const c = await gf(t, "https://www.googleapis.com/drive/v3/files?fields=id", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: nome,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parent],
+    }),
+  });
+  return ((await c.json()) as any).id as string;
+}
+function seguro(nome: string, mime: string) {
+  const ext =
+    mime === "image/png"
+      ? ".png"
+      : mime === "image/jpeg"
+        ? ".jpg"
+        : mime === "image/webp"
+          ? ".webp"
+          : ".svg";
+  const n = nome
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 140);
+  return /\.(png|jpe?g|webp|svg)$/i.test(n) ? n : `${n || "logo"}${ext}`;
+}
 
-export const enviarLogoClinica=createServerFn({method:"POST"}).validator((i:unknown)=>inputSchema.parse(i)).handler(async({data})=>{const{supabaseAdmin}=await import("@/integrations/supabase/client.server");const{data:a,error}=await supabaseAdmin.auth.getUser(data.accessToken);if(error||!a.user)throw new Error("Sessão inválida ou expirada.");const{data:p}=await supabaseAdmin.from("app_users").select("role").eq("user_id",a.user.id).maybeSingle();if(p?.role!=="admin")throw new Error("Apenas o administrador da plataforma pode alterar a logo da clínica.");const bytes=Buffer.from(data.base64.replace(/^data:[^;]+;base64,/,""),"base64");if(!bytes.length||bytes.length>MAX_BYTES)throw new Error("A imagem deve ter no máximo 5 MB.");const t=await token();const clinicas=await folder(t,root(),"Clinicas"),clinica=await folder(t,clinicas,`clinica-${data.clinicaId}`),logos=await folder(t,clinica,"Logo");const nome=`${Date.now()}-${seguro(data.fileName,data.mimeType)}`;const form=new FormData();form.append("metadata",new Blob([JSON.stringify({name:nome,parents:[logos],appProperties:{clinicaId:data.clinicaId,oricseTipo:"logo-clinica"}})],{type:"application/json"}));form.append("file",new Blob([bytes],{type:data.mimeType}),nome);const up=await gf(t,"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",{method:"POST",body:form});const arq=await up.json() as any;await gf(t,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arq.id)}/permissions`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({role:"reader",type:"anyone",allowFileDiscovery:false})});const logoUrl=`https://drive.google.com/uc?export=view&id=${encodeURIComponent(arq.id)}`;return{ok:true,logoUrl,driveFileId:arq.id,logoFolderId:logos,webViewLink:arq.webViewLink||null};});
+export const enviarLogoClinica = createServerFn({ method: "POST" })
+  .validator((i: unknown) => inputSchema.parse(i))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: a, error } = await supabaseAdmin.auth.getUser(data.accessToken);
+    if (error || !a.user) throw new Error("Sessão inválida ou expirada.");
+    const [{ data: p }, { data: vinculo }] = await Promise.all([
+      supabaseAdmin.from("app_users").select("role").eq("user_id", a.user.id).maybeSingle(),
+      supabaseAdmin
+        .from("clinica_usuarios")
+        .select("papel")
+        .eq("user_id", a.user.id)
+        .eq("clinica_id", data.clinicaId)
+        .eq("ativo", true)
+        .maybeSingle(),
+    ]);
+    const podeEditar =
+      p?.role === "admin" || ["responsavel", "admin_clinica", "rt"].includes(vinculo?.papel || "");
+    if (!podeEditar)
+      throw new Error("Somente o responsável, RT ou administrador da plataforma pode alterar a logo desta clínica.");
+    const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+    if (!bytes.length || bytes.length > MAX_BYTES)
+      throw new Error("A imagem deve ter no máximo 5 MB.");
+    const t = await token();
+    const clinicas = await folder(t, root(), "Clinicas"),
+      clinica = await folder(t, clinicas, `clinica-${data.clinicaId}`),
+      logos = await folder(t, clinica, "Logo");
+    const nome = `${Date.now()}-${seguro(data.fileName, data.mimeType)}`;
+    const form = new FormData();
+    form.append(
+      "metadata",
+      new Blob(
+        [
+          JSON.stringify({
+            name: nome,
+            parents: [logos],
+            appProperties: { clinicaId: data.clinicaId, oricseTipo: "logo-clinica" },
+          }),
+        ],
+        { type: "application/json" },
+      ),
+    );
+    form.append("file", new Blob([bytes], { type: data.mimeType }), nome);
+    const up = await gf(
+      t,
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",
+      { method: "POST", body: form },
+    );
+    const arq = (await up.json()) as any;
+    await gf(
+      t,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arq.id)}/permissions`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ role: "reader", type: "anyone", allowFileDiscovery: false }),
+      },
+    );
+    const logoUrl = `https://drive.google.com/uc?export=view&id=${encodeURIComponent(arq.id)}`;
+    const { error: saveError } = await supabaseAdmin
+      .from("clinicas")
+      .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+      .eq("id", data.clinicaId);
+    if (saveError) throw new Error("Logo enviada, mas não foi possível vinculá-la à clínica.");
+    return {
+      ok: true,
+      logoUrl,
+      driveFileId: arq.id,
+      logoFolderId: logos,
+      webViewLink: arq.webViewLink || null,
+    };
+  });
