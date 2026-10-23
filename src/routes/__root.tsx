@@ -375,6 +375,15 @@ function RootComponent() {
         ativo = false;
       };
     }
+    // A conta da plataforma não pertence a uma clínica específica. Não existe
+    // estado operacional global para hidratar; tentar carregá-lo deixava o
+    // admin preso indefinidamente em “Sincronizando os dados”.
+    if (role === "admin") {
+      setDadosDriveProntos(true);
+      return () => {
+        ativo = false;
+      };
+    }
     setDadosDriveProntos(false);
     void hidratarOricseStorage(true)
       .then(() => {
