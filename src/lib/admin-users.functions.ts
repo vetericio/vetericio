@@ -75,6 +75,8 @@ async function encontrarUsuarioAuthPorEmail(admin:Awaited<ReturnType<typeof requ
 
 export const criarUsuarioClinica=createServerFn({method:"POST"}).validator((i:unknown)=>createSchema.parse(i)).handler(async({data})=>{
   const admin=await requirePlatformAdmin(data.accessToken);
+  // Validar todos os documentos antes de criar a conta Auth, evitando cadastros parciais.
+  const pessoaNormalizada=normalizarPessoa(data.pessoa);
   const clinicaResp=await drive(data.accessToken,"clinicas","select",{columns:"id,nome,limite_usuarios",filters:[{kind:"eq",column:"id",value:data.clinicaId}],single:"maybeSingle"});
   const clinica=clinicaResp.data;
   if(!clinica)throw new Error("Clínica não encontrada.");
@@ -92,7 +94,7 @@ export const criarUsuarioClinica=createServerFn({method:"POST"}).validator((i:un
   if(!vinculoAtual?.ativo){const {count,error}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("clinica_id",data.clinicaId).eq("ativo",true);if(error)throw new Error(error.message);if((count||0)>=Number(clinica.limite_usuarios||1))throw new Error(`O limite atual desta clínica é ${clinica.limite_usuarios} usuário(s).`);}
   const {error:profileError}=await admin.from("app_users").upsert({user_id:authUser.id,username,role:profile?.role||"user",email:data.email.trim().toLowerCase()},{onConflict:"user_id"});if(profileError)throw new Error(profileError.message);
   const {error:pessoaError}=await admin.from("oricse_pessoas").upsert({
-    user_id:authUser.id,...normalizarPessoa(data.pessoa),
+    user_id:authUser.id,...pessoaNormalizada,
   },{onConflict:"user_id"});
   if(pessoaError)throw new Error("Não foi possível salvar os dados da pessoa: "+pessoaError.message);
   const link=vinculoAtual?await admin.from("clinica_usuarios").update({papel:data.papel,ativo:true}).eq("clinica_id",data.clinicaId).eq("user_id",authUser.id):await admin.from("clinica_usuarios").insert({clinica_id:data.clinicaId,user_id:authUser.id,papel:data.papel,ativo:true});if(link.error)throw new Error(link.error.message);
