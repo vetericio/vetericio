@@ -245,7 +245,7 @@ function ConfigurarPortalTutor() {
     <main className="mx-auto max-w-3xl space-y-5 p-5 text-foreground">
       <div>
         <Link to="/configuracao-site" className="text-sm underline text-primary">
-          ← Site da clínica
+          ← Portal do Tutor
         </Link>
         <h1 className="mt-3 text-2xl font-bold">Configurar Portal do Tutor</h1>
         <p className="text-sm text-muted-foreground">
