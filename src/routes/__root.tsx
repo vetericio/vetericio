@@ -37,7 +37,9 @@ const Cabecalho = lazy(() =>
   import("@/components/Cabecalho").then((module) => ({ default: module.Cabecalho })),
 );
 const VisualPageRuntime = lazy(() =>
-  import("@/components/VisualPageRuntime").then((module) => ({ default: module.VisualPageRuntime })),
+  import("@/components/VisualPageRuntime").then((module) => ({
+    default: module.VisualPageRuntime,
+  })),
 );
 
 function NotFoundComponent() {
@@ -76,7 +78,8 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
     url.searchParams.set("oricse_build", String(Date.now()));
     void (async () => {
       try {
-        const registros = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistrations() : [];
+        const registros =
+          "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistrations() : [];
         await Promise.all(registros.map((registro) => registro.unregister()));
         if ("caches" in window) {
           const chaves = await caches.keys();
@@ -694,15 +697,16 @@ function RootComponent() {
       if (url.searchParams.has("oricse_module_retry")) return;
       url.searchParams.set("oricse_module_retry", "1");
       url.searchParams.set("oricse_build", String(Date.now()));
-      void navigator.serviceWorker?.getRegistrations().then((registros) =>
-        Promise.all(registros.map((registro) => registro.unregister())),
-      ).finally(() => window.location.replace(url.toString()));
+      void navigator.serviceWorker
+        ?.getRegistrations()
+        .then((registros) => Promise.all(registros.map((registro) => registro.unregister())))
+        .finally(() => window.location.replace(url.toString()));
     };
 
     window.addEventListener("vite:preloadError", recuperarModuloExpirado);
     window.addEventListener("unhandledrejection", recuperarModuloExpirado);
     if ("serviceWorker" in navigator)
-      navigator.serviceWorker.register("/sw.js?v=12", { scope: "/" }).catch(() => undefined);
+      navigator.serviceWorker.register("/sw.js?v=13", { scope: "/" }).catch(() => undefined);
     return () => {
       window.removeEventListener("vite:preloadError", recuperarModuloExpirado);
       window.removeEventListener("unhandledrejection", recuperarModuloExpirado);
