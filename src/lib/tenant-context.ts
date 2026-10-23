@@ -29,7 +29,15 @@ export function useTenantContext() {
 
 export function slugDaRota(pathname: string): string | null {
   const resultado = pathname.match(/^\/vet\/([^/]+)\/?$/i);
-  return resultado?.[1] ? decodeURIComponent(resultado[1]).toLowerCase() : null;
+  if (!resultado?.[1]) return null;
+  try {
+    const slug = decodeURIComponent(resultado[1]).toLowerCase();
+    // Rejeita segmentos codificados que poderiam virar uma rota diferente.
+    return /^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(slug) ? slug : null;
+  } catch {
+    // Um escape de URL inválido não deve derrubar o carregamento do aplicativo.
+    return null;
+  }
 }
 
 export function hostDaPagina(): string {
