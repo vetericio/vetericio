@@ -2,10 +2,48 @@ import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { atualizarUsuario, criarUsuarioClinica, redefinirSenhaUsuario, removerUsuarioClinica } from "@/lib/admin-users.functions";
+import { atualizarUsuario, atualizarPerfilPessoa, criarUsuarioClinica, obterPerfilPessoa, redefinirSenhaUsuario, removerUsuarioClinica } from "@/lib/admin-users.functions";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
+type DadosPessoa = {
+  nomeCompleto: string;
+  crmv: string;
+  crmvUf: string;
+  cpf: string;
+  mapa: string;
+  telefone: string;
+  endereco: string;
+};
+const pessoaVazia = (): DadosPessoa => ({
+  nomeCompleto: "", crmv: "", crmvUf: "", cpf: "", mapa: "", telefone: "", endereco: "",
+});
+function CamposPessoa({ value, onChange }: { value: DadosPessoa; onChange: (valor: DadosPessoa) => void }) {
+  const atualizar = (campo: keyof DadosPessoa, valor: string) => onChange({ ...value, [campo]: valor });
+  const campos: { campo: keyof DadosPessoa; rotulo: string; placeholder: string }[] = [
+    {campo:"nomeCompleto",rotulo:"Nome completo *",placeholder:"Nome e sobrenome"},
+    {campo:"cpf",rotulo:"CPF",placeholder:"000.000.000-00"},
+    {campo:"crmv",rotulo:"CRMV (número)",placeholder:"Número do registro"},
+    {campo:"crmvUf",rotulo:"CRMV (UF)",placeholder:"MG"},
+    {campo:"mapa",rotulo:"Registro MAPA",placeholder:"Se aplicável"},
+    {campo:"telefone",rotulo:"Telefone / WhatsApp",placeholder:"(31) 99999-9999"},
+  ];
+  return <>
+    {campos.map(({campo,rotulo,placeholder}) => <label key={campo} className="text-sm font-semibold">
+      {rotulo}
+      <input value={value[campo]} onChange={(e) => atualizar(campo, e.target.value)}
+        placeholder={placeholder} maxLength={campo==="cpf"?14:undefined}
+        className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"
+        autoComplete={campo==="nomeCompleto"?"name":campo==="telefone"?"tel":"off"} />
+    </label>)}
+    <label className="text-sm font-semibold md:col-span-2">
+      Endereço
+      <input value={value.endereco} onChange={(e) => atualizar("endereco", e.target.value)}
+        placeholder="Rua, número, complemento, bairro, cidade, UF e CEP"
+        className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" autoComplete="street-address" />
+    </label>
+  </>;
+}
 
 type PerfilInfo = {
   nome: string;
@@ -50,6 +88,46 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
   const [editId, setEditId] = useState<string | null>(null);
   const [editUsername, setEditUsername] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [pessoa, setPessoa] = useState<DadosPessoa>(pessoaVazia);
+  const [editPessoaId, setEditPessoaId] = useState<string | null>(null);
+  const [editPessoa, setEditPessoa] = useState<DadosPessoa>(pessoaVazia);
+  const [carregandoPessoa, setCarregandoPessoa] = useState(false);
+
+  async function abrirCadastroPessoa(userId: string) {
+    setEditPessoaId(userId);
+    setCarregandoPessoa(true);
+    try {
+      const perfil = await obterPerfilPessoa({ data: { accessToken: await tokenAtual(), userId } });
+      setEditPessoa({
+        nomeCompleto: perfil?.nome_completo || "",
+        crmv: perfil?.crmv || "",
+        crmvUf: perfil?.crmv_uf || "",
+        cpf: perfil?.cpf || "",
+        mapa: perfil?.mapa || "",
+        telefone: perfil?.telefone || "",
+        endereco: perfil?.endereco || "",
+      });
+    } catch (error) {
+      setEditPessoaId(null);
+      toast.error((error as Error).message || "Não foi possível carregar o cadastro.");
+    } finally {
+      setCarregandoPessoa(false);
+    }
+  }
+  async function salvarCadastroPessoa(userId: string) {
+    if (editPessoa.nomeCompleto.trim().length < 3) return void toast.error("Informe o nome completo.");
+    setSalvando(true);
+    try {
+      await atualizarPerfilPessoa({ data: { accessToken: await tokenAtual(), userId, pessoa: editPessoa } });
+      setEditPessoaId(null);
+      toast.success("Cadastro individual atualizado.");
+      await onRefresh();
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível salvar o cadastro.");
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   async function salvarEdicao(userId: string) {
     const nome = limparUsuario(editUsername);
@@ -94,6 +172,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       toast.error("Informe um @usuário com pelo menos 3 caracteres.");
       return;
     }
+    if (pessoa.nomeCompleto.trim().length < 3) { toast.error("Informe o nome completo da pessoa."); return; }
     if (password.length < 6) {
       toast.error("A senha deve ter pelo menos 6 caracteres.");
       return;
@@ -113,12 +192,14 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
           password,
           email: email.trim().toLowerCase(),
           papel,
+          pessoa,
         },
       });
       setUsername("");
       setPassword("");
       setEmail("");
       setPapel("veterinario");
+      setPessoa(pessoaVazia());
       await onRefresh();
       toast.success(
         resultado.contaExistente
@@ -189,7 +270,24 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
                 <button onClick={() => setEditId(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold">Cancelar</button>
               </div>
             </div>}
+            {editPessoaId === vinculo.user_id && <div className="mb-3 rounded-xl border bg-secondary/20 p-4">
+              <h4 className="mb-3 font-bold">Cadastro individual da pessoa</h4>
+              {carregandoPessoa ? <p className="text-sm text-muted-foreground">Carregando cadastro…</p> : <>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <CamposPessoa value={editPessoa} onChange={setEditPessoa}/>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button disabled={salvando} onClick={() => void salvarCadastroPessoa(vinculo.user_id)}
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">Salvar cadastro</button>
+                  <button onClick={() => setEditPessoaId(null)} className="rounded-xl border px-4 py-2 text-sm font-semibold">Cancelar</button>
+                </div>
+              </>}
+            </div>}
             <div className="mb-3 flex flex-wrap gap-2">
+              <button onClick={() => void abrirCadastroPessoa(vinculo.user_id)}
+                className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold">
+                <Pencil size={15}/> Cadastro pessoal / CRMV
+              </button>
               <button onClick={() => { setEditId(vinculo.user_id); setEditUsername(usuario?.username || ""); setEditEmail(usuario?.email || ""); }} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold"><Pencil size={15}/> Editar @usuário e e-mail</button>
               {vinculo.ativo && <UserPermissionsPanel clinicaId={clinica.id} userId={vinculo.user_id} nomeUsuario={usuario?.username ? `@${usuario.username}` : "Usuário"} />}
               <button disabled={salvando} onClick={() => void remover(vinculo.user_id, usuario?.username ? `@${usuario.username}` : "este usuário")} className="inline-flex items-center gap-2 rounded-xl border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"><Trash2 size={15}/> Remover</button>
@@ -215,7 +313,9 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
         <label className="text-sm font-semibold">Senha<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha inicial" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" autoComplete="new-password" /></label>
         <label className="text-sm font-semibold">E-mail<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@email.com" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label>
         <label className="text-sm font-semibold">Cargo<select value={papel} onChange={(e) => setPapel(e.target.value as PapelClinica)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{Object.entries(perfis).map(([id, p]) => <option key={id} value={id}>{p.nome}</option>)}</select></label>
+        <CamposPessoa value={pessoa} onChange={setPessoa}/>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">CRMV e MAPA são informados quando aplicáveis. Dados pessoais protegidos e vinculados à conta, não à clínica.</p>
       <button disabled={salvando} onClick={() => void criar()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><UserPlus size={17}/>{salvando ? "Criando..." : "Criar e vincular usuário"}</button>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">{Object.entries(perfis).map(([id, p]) => <div key={id} className={`rounded-xl border p-4 ${papel === id ? "border-primary bg-primary/5" : ""}`}><div className="font-bold">{p.nome}</div><p className="mt-1 text-sm text-muted-foreground">{p.resumo}</p><div className="mt-3 text-xs"><strong>Acesso:</strong> {p.acessos.join(" · ")}</div>{p.bloqueios.length > 0 && <div className="mt-2 text-xs text-muted-foreground"><strong>Sem acesso:</strong> {p.bloqueios.join(" · ")}</div>}</div>)}</div>
