@@ -66,6 +66,7 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
     const url = new URL(window.location.href);
     if (url.searchParams.has("oricse_recovery")) return;
     url.searchParams.set("oricse_recovery", "1");
+    url.searchParams.set("oricse_build", String(Date.now()));
     void (async () => {
       try {
         const registros = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistrations() : [];
@@ -358,12 +359,7 @@ function RootComponent() {
     }
     supabase.auth.getSession().then(({ data }) => void validarSessao(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        // Não chamar RPC nem consultar o cliente Supabase dentro do lock de Auth.
-        setTimeout(() => {
-          if (ativo) void validarSessao(session);
-        }, 0);
-      },
+      (_event, session) => void validarSessao(session),
     );
     return () => {
       ativo = false;
@@ -671,8 +667,28 @@ function RootComponent() {
   }, [location.pathname, navigate]);
 
   useEffect(() => {
+    const recuperarModuloExpirado = (event: Event | PromiseRejectionEvent) => {
+      const motivo = event instanceof PromiseRejectionEvent ? event.reason : event;
+      const mensagem = motivo instanceof Error ? motivo.message : String(motivo ?? "");
+      if (!/dynamically imported module|vite:preloaderror/i.test(mensagem)) return;
+      event.preventDefault?.();
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("oricse_module_retry")) return;
+      url.searchParams.set("oricse_module_retry", "1");
+      url.searchParams.set("oricse_build", String(Date.now()));
+      void navigator.serviceWorker?.getRegistrations().then((registros) =>
+        Promise.all(registros.map((registro) => registro.unregister())),
+      ).finally(() => window.location.replace(url.toString()));
+    };
+
+    window.addEventListener("vite:preloadError", recuperarModuloExpirado);
+    window.addEventListener("unhandledrejection", recuperarModuloExpirado);
     if ("serviceWorker" in navigator)
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+      navigator.serviceWorker.register("/sw.js?v=12", { scope: "/" }).catch(() => undefined);
+    return () => {
+      window.removeEventListener("vite:preloadError", recuperarModuloExpirado);
+      window.removeEventListener("unhandledrejection", recuperarModuloExpirado);
+    };
   }, []);
 
   const rotaAdmin = location.pathname.startsWith("/admin");
