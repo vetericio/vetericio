@@ -13,7 +13,7 @@ type WorkerBindings = { ORICSE_WRITE_COORDINATOR?: unknown };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
-function securityHeaders(response: Response): Response {
+function securityHeaders(response: Response, pathname?: string): Response {
   const headers = new Headers(response.headers);
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   headers.set(
@@ -24,6 +24,14 @@ function securityHeaders(response: Response): Response {
   headers.set("x-content-type-options", "nosniff");
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
   headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  // O HTML aponta para chunks com hash. Mantê-lo em cache depois de um deploy
+  // faz o navegador pedir chunks que já não existem e quebra a navegação.
+  const contentType = headers.get("content-type") ?? "";
+  if (pathname === "/sw.js") {
+    headers.set("cache-control", "no-store, max-age=0");
+  } else if (contentType.includes("text/html")) {
+    headers.set("cache-control", "no-store, max-age=0, must-revalidate");
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -86,12 +94,12 @@ export default {
     setDriveCoordinatorBinding((env as WorkerBindings | undefined)?.ORICSE_WRITE_COORDINATOR);
     try {
       const url = new URL(request.url);
-      if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin));
+      if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin), url.pathname);
       if (url.pathname === "/favicon.ico")
-        return securityHeaders(Response.redirect(new URL("/favicon-oricse.png", url), 302));
+        return securityHeaders(Response.redirect(new URL("/favicon-oricse.png", url), 302), url.pathname);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return securityHeaders(await normalizeCatastrophicSsrResponse(response));
+      return securityHeaders(await normalizeCatastrophicSsrResponse(response), url.pathname);
     } catch (error) {
       console.error(error);
       return securityHeaders(
@@ -99,6 +107,7 @@ export default {
           status: 500,
           headers: { "content-type": "text/html; charset=utf-8" },
         }),
+        new URL(request.url).pathname,
       );
     }
   },
