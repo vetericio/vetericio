@@ -1,4 +1,4 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
+import { oricseStorage } from "@/lib/oricse-storage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -60,22 +60,25 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
     reportLovableError(erro, { boundary: "tanstack_root_error_component" });
   }, [error]);
   useEffect(() => {
-    const mensagem = error instanceof Error ? error.message : String(error);
-    if (
-      !/dynamically imported module|importing a module script failed|error loading dynamically imported module|chunkloaderror/i.test(
-        mensagem,
-      )
-    )
-      return;
-    const chave = `oricse-chunk-reload:${window.location.pathname}`;
-    try {
-      const ultimaTentativa = Number(oricseSession.getItem(chave) || 0);
-      if (Date.now() - ultimaTentativa < 30_000) return;
-      oricseSession.setItem(chave, String(Date.now()));
-    } catch {
-      return;
-    }
-    window.location.reload();
+    // A troca de versão pode deixar o HTML aberto apontando para chunks já
+    // removidos no deploy. A antiga proteção usava memória em JS e era perdida
+    // no reload, impedindo uma recuperação confiável no Firefox e em PWAs.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("oricse_recovery")) return;
+    url.searchParams.set("oricse_recovery", "1");
+    void (async () => {
+      try {
+        const registros = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistrations() : [];
+        await Promise.all(registros.map((registro) => registro.unregister()));
+        if ("caches" in window) {
+          const chaves = await caches.keys();
+          await Promise.all(chaves.map((chave) => caches.delete(chave)));
+        }
+      } catch (erroRecuperacao) {
+        console.warn("Não foi possível limpar o cache do ORICSE:", erroRecuperacao);
+      }
+      window.location.replace(url.toString());
+    })();
   }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -84,6 +87,9 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
         <div className="mt-6">
           <button
             onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.delete("oricse_recovery");
+              window.history.replaceState(null, "", url.toString());
               router.invalidate();
               reset();
             }}
