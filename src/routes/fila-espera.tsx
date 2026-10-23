@@ -25,6 +25,7 @@ function FilaEspera() {
   const navigate=useNavigate();
   const [clinicaId,setClinicaId]=useState("");
   const [carregando,setCarregando]=useState(true);
+  const [operando,setOperando]=useState(false);
   const [erroCarregamento,setErroCarregamento]=useState("");
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]);
@@ -60,7 +61,22 @@ function FilaEspera() {
     await carregarFila(cid);
     // O Supabase é a fonte única. Não reimportar registros antigos durante a abertura da tela.
   }catch(e){if(ativo){const msg=e instanceof Error?e.message:"Falha ao carregar fila de espera";setErroCarregamento(msg);toast.error(msg);}}
-  finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[]);
+  finally{if(ativo)setCarregando(false)}})();
+  let atualizando=false;
+  const atualizarFila=async()=>{
+    if(!ativo||atualizando||document.hidden)return;
+    atualizando=true;
+    try{
+      const {data:cid}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
+      if(cid)await carregarFila(cid);
+    }catch(e){
+      if(ativo)console.error("Falha ao atualizar a fila:",e);
+    }finally{atualizando=false;}
+  };
+  const timer=window.setInterval(()=>void atualizarFila(),15000);
+  const aoFocar=()=>void atualizarFila();
+  window.addEventListener("focus",aoFocar);
+  return()=>{ativo=false;window.clearInterval(timer);window.removeEventListener("focus",aoFocar);};},[]);
 
   const tutorSelecionado = useMemo(() => tutores.find((t)=>t.id===tutorId), [tutores,tutorId]);
   const codigoTutorItem = (item: ItemFila) => codigoTutor(tutores.find((tutor) => tutor.id === item.tutorId) || { id: item.tutorId, nome: item.tutorNome });
@@ -75,11 +91,20 @@ function FilaEspera() {
   const chamados = useMemo(() => fila.filter((i)=>i.status==="Chamado").sort((a,b)=>new Date(b.chamadoEm||b.chegadaEm).getTime()-new Date(a.chamadoEm||a.chegadaEm).getTime()), [fila]);
 
   async function operar(acao:string,params:Record<string,unknown>={}){
-    if(!clinicaId)return toast.error("Clínica não identificada.");
-    const {error}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:clinicaId,p_acao:acao,...params});
-    if(error){toast.error(error.message);return false;}
-    await carregarFila(clinicaId);
-    return true;
+    if(!clinicaId){toast.error("Clínica não identificada.");return false;}
+    if(operando)return false;
+    setOperando(true);
+    try{
+      const {error}=await (supabaseBanco as any).rpc("oricse_fila_operar",{p_clinica:clinicaId,p_acao:acao,...params});
+      if(error)throw error;
+      await carregarFila(clinicaId);
+      return true;
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"Não foi possível atualizar a fila.");
+      return false;
+    }finally{
+      setOperando(false);
+    }
   }
   function selecionarTutor(tutor:Tutor){setTutorId(tutor.id);setAnimalId("");setBuscaTutor(tutor.nome);setBuscaTutorAberta(false);}
   function limparTutor(){setTutorId("");setAnimalId("");setBuscaTutor("");setBuscaTutorAberta(false);}
@@ -108,7 +133,7 @@ function FilaEspera() {
         </div>
         <label className="text-sm font-semibold">Animal<select value={animalId} onChange={(e)=>setAnimalId(e.target.value)} disabled={!tutorId} className={`${campo} mt-1 disabled:opacity-50`}><option value="">{tutorId?"Selecione o animal":"Selecione o tutor primeiro"}</option>{animaisDoTutor.map((a)=><option key={a.id} value={a.id}>{emojiEspecie(a.especie)} {a.nome}</option>)}</select></label>
         <label className="text-sm font-semibold">Motivo da chegada <span className="font-normal text-muted-foreground">(opcional)</span><input value={motivo} onChange={(e)=>setMotivo(e.target.value)} placeholder="Ex.: vômito, retorno, vacina..." className={`${campo} mt-1`}/></label>
-        <button type="button" onClick={adicionarFila} disabled={carregando||!!erroCarregamento||!clinicaId} className="min-h-11 rounded-xl bg-primary px-5 font-bold text-primary-foreground">Adicionar</button>
+        <button type="button" onClick={adicionarFila} disabled={carregando||operando||!!erroCarregamento||!clinicaId} className="min-h-11 rounded-xl bg-primary px-5 font-bold text-primary-foreground">Adicionar</button>
       </div>
       {carregando&&<p className="mt-3 text-sm text-muted-foreground">Carregando tutores e fila…</p>}{!carregando&&tutores.length===0&&<p className="mt-3 text-sm text-muted-foreground">Nenhum tutor cadastrado. <Link to="/tutores" className="font-semibold text-primary underline">Cadastrar tutor</Link></p>}
     </section>
@@ -135,13 +160,13 @@ function FilaEspera() {
               {item.motivo&&<span title={item.motivo} className="max-w-[140px] truncate text-xs text-muted-foreground">{item.motivo}</span>}
               <span className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[11px] font-bold !text-amber-950">Aguardando</span>
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                <button type="button" onClick={()=>void chamar(item.id)} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-[#155e75] bg-[#155e75] px-3 py-1.5 text-xs font-extrabold !text-white hover:bg-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155e75]"><Play size={13}/> Chamar</button>
-                <button type="button" onClick={()=>void remover(item.id)} aria-label="Remover da fila" title="Remover da fila" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#9f1239] bg-white !text-[#9f1239] hover:bg-[#fff1f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9f1239]"><X size={15}/></button>
+                <button type="button" onClick={()=>void chamar(item.id)} disabled={operando} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-[#155e75] bg-[#155e75] px-3 py-1.5 text-xs font-extrabold !text-white hover:bg-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#155e75]"><Play size={13}/> Chamar</button>
+                <button type="button" onClick={()=>void remover(item.id)} disabled={operando} aria-label="Remover da fila" title="Remover da fila" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#9f1239] bg-white !text-[#9f1239] hover:bg-[#fff1f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9f1239]"><X size={15}/></button>
               </div>
             </article>)}
           </div>}
     </section>
 
-    {chamados.length>0&&<section className="mt-5 overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-4 py-3 sm:px-5"><h2 className="font-bold">Chamados recentemente</h2></div><div className="divide-y">{chamados.slice(0,20).map((item)=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"><div><div className="font-semibold">{emojiEspecie(item.especie)} {item.animalNome} <span className="font-normal text-muted-foreground">· {item.tutorNome}{codigoTutorItem(item) && <span className="ml-1 font-mono text-primary">{codigoTutorItem(item)}</span>}</span></div><div className="text-xs text-muted-foreground">Chegou {hora(item.chegadaEm)} · chamado {item.chamadoEm?hora(item.chamadoEm):"agora"}{item.motivo?` · ${item.motivo}`:""}</div></div><div className="flex gap-2"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Chamado</span><button type="button" onClick={()=>voltarParaFila(item.id)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold"><RotateCcw size={13}/> Voltar à fila</button><Link to="/animal" search={{animalId:item.animalId} as any} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">Abrir ficha</Link></div></div>)}</div></section>}
+    {chamados.length>0&&<section className="mt-5 overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-4 py-3 sm:px-5"><h2 className="font-bold">Chamados recentemente</h2></div><div className="divide-y">{chamados.slice(0,20).map((item)=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"><div><div className="font-semibold">{emojiEspecie(item.especie)} {item.animalNome} <span className="font-normal text-muted-foreground">· {item.tutorNome}{codigoTutorItem(item) && <span className="ml-1 font-mono text-primary">{codigoTutorItem(item)}</span>}</span></div><div className="text-xs text-muted-foreground">Chegou {hora(item.chegadaEm)} · chamado {item.chamadoEm?hora(item.chamadoEm):"agora"}{item.motivo?` · ${item.motivo}`:""}</div></div><div className="flex gap-2"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Chamado</span><button type="button" onClick={()=>void voltarParaFila(item.id)} disabled={operando} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold"><RotateCcw size={13}/> Voltar à fila</button><Link to="/animal" search={{animalId:item.animalId} as any} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">Abrir ficha</Link></div></div>)}</div></section>}
   </main>;
 }
