@@ -17,7 +17,7 @@ import {
   salvarComandas,
 } from "@/lib/comandas";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
@@ -122,10 +122,33 @@ function RegistroClinico(){
   const navigate=useNavigate();
   const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
   const animalId=params.get("animalId")||"";
-  const animais=useMemo(()=>ler<Animal>(ANIMAIS_KEY),[]);
-  const tutores=useMemo(()=>ler<Tutor>(TUTORES_KEY),[]);
-  const animal=animais.find(a=>a.id===animalId);
-  const tutor=tutores.find(t=>t.id===animal?.tutorId);
+  const [animal,setAnimal]=useState<Animal|null>(()=>ler<Animal>(ANIMAIS_KEY).find(a=>a.id===animalId)||null);
+  const [tutor,setTutor]=useState<Tutor|null>(()=>ler<Tutor>(TUTORES_KEY).find(t=>t.id===animal?.tutorId)||null);
+  const [carregandoAnimal,setCarregandoAnimal]=useState(Boolean(animalId));
+  const [erroAnimal,setErroAnimal]=useState("");
+  useEffect(()=>{
+    let ativo=true;
+    async function carregarAnimal(){
+      if(!animalId){setCarregandoAnimal(false);setErroAnimal("Identificação do animal ausente.");return;}
+      try{
+        const {data:clinicaId,error:erroClinica}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_animal:animalId});
+        if(erroClinica||!clinicaId)throw new Error(erroClinica?.message||"Clínica do animal não identificada.");
+        const {data,error}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaId,p_animal:animalId});
+        if(error)throw error;
+        if(!data?.animal)throw new Error("Animal não encontrado nesta clínica.");
+        if(!ativo)return;
+        setAnimal({...data.animal,peso:data.animal.peso==null?"":String(data.animal.peso)} as Animal);
+        setTutor((data.tutor||null) as Tutor|null);
+        setErroAnimal("");
+      }catch(error){
+        if(ativo)setErroAnimal(error instanceof Error?error.message:"Não foi possível carregar o animal.");
+      }finally{
+        if(ativo)setCarregandoAnimal(false);
+      }
+    }
+    void carregarAnimal();
+    return()=>{ativo=false;};
+  },[animalId]);
   const [modo,setModo]=useState<""|"consulta"|"procedimento">(()=>{ const tipo=params.get("tipo"); return tipo==="consulta"||tipo==="procedimento"?tipo:""; });
   const [etapa,setEtapa]=useState(1);
   const [consulta,setConsulta]=useState<ConsultaForm>(()=>({...formConsultaVazio(),peso:animal?.peso||""}));
@@ -144,13 +167,14 @@ function RegistroClinico(){
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
 
   useEffect(()=>{let ativo=true; async function carregarResponsavel(){try{const {data,error}=await supabase.auth.getUser();if(error)throw error;if(!data.user)throw new Error("Sessão não encontrada.");const {data:perfil,error:erroPerfil}=await supabase.from("app_users").select("username,email").eq("user_id",data.user.id).maybeSingle();if(erroPerfil)throw erroPerfil;if(ativo)setResponsavel({id:data.user.id,nome:perfil?.username?`@${perfil.username}`:perfil?.email||data.user.email||data.user.id});}catch(error){console.error("Não foi possível identificar o responsável pelo atendimento:",error);}}void carregarResponsavel();return()=>{ativo=false};},[]);
+  useEffect(()=>{if(animal?.peso)setConsulta(atual=>atual.peso?atual:{...atual,peso:animal.peso||""});},[animal?.id,animal?.peso]);
   useEffect(()=>{ if(!animalId)return; try{const salvo=oricseStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}}catch{} },[animalId]);
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
   useEffect(()=>{ let ativo=true; async function carregarCatalogo(){ try{ const {data:auth}=await supabase.auth.getUser(); const userId=auth.user?.id; if(!userId)throw new Error("Sessão não encontrada."); const {data:contexto,error:erroContexto}=await (supabase as any).rpc("oricse_contexto_clinica_atual"); if(erroContexto)throw erroContexto; const clinicaId=contexto?.[0]?.clinica_id||""; if(!clinicaId)throw new Error("Selecione uma clínica na página Início antes de realizar o atendimento."); const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaId).eq("ativo",true).order("nome"); if(error)throw error; if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");} }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}finally{if(ativo)setCatalogoCarregando(false);} } void carregarCatalogo(); return()=>{ativo=false}; },[]);
   useEffect(()=>{ if(etapa!==7||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:Boolean(itemCatalogo)||Boolean(existente?.precoConfigurado) } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
 
-  if(!animal)return <main className="mx-auto max-w-4xl px-4 py-8"><Link to="/animais" className="text-sm text-muted-foreground">← Voltar</Link><div className="mt-5 rounded-2xl border p-6">Animal não encontrado.</div></main>;
+  if(!animal)return <main className="mx-auto max-w-4xl px-4 py-8"><Link to="/animais" className="text-sm text-muted-foreground">← Voltar</Link><div role={erroAnimal?"alert":undefined} className="mt-5 rounded-2xl border p-6">{carregandoAnimal?"Carregando ficha do animal…":erroAnimal||"Animal não encontrado."}</div></main>;
 
   const toggleExposicao=(nome:string)=>setConsulta(f=>({...f,exposicoes:f.exposicoes.includes(nome)?f.exposicoes.filter(x=>x!==nome):[...f.exposicoes,nome]}));
   const toggleSinal=(sistema:string,sinal:string)=>setConsulta(f=>({...f,sistemas:{...f.sistemas,[sistema]:{...f.sistemas[sistema],sinais:f.sistemas[sistema].sinais.includes(sinal)?f.sistemas[sistema].sinais.filter(x=>x!==sinal):[...f.sistemas[sistema].sinais,sinal]}}}));
