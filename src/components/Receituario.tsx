@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileDown, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { obterPerfilPessoa } from "@/lib/admin-users.functions";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { lerSelo, type TipoSelo } from "@/lib/assinatura";
 import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
@@ -264,9 +265,26 @@ export function Receituario() {
     if (!enviarPortal && motivoOcultacao === "outro" && motivoOutro.trim().length < 3) return void toast.error("Explique o motivo em pelo menos 3 caracteres.");
     setGerando(true);
     try {
+      // Os dados do prescritor vêm sempre da conta autenticada, não de outro usuário.
+      const { data: sessaoPerfil } = await supabase.auth.getSession();
+      const token = sessaoPerfil.session?.access_token;
+      if (!token) throw new Error("Entre novamente para identificar o profissional.");
+      const profissional = await obterPerfilPessoa({ data: { accessToken: token } });
+      if (!profissional?.nome_completo || !profissional.crmv || !profissional.crmv_uf) {
+        throw new Error("Cadastre nome completo, CRMV e UF no cadastro pessoal antes de emitir receitas.");
+      }
       const especial = tipoReceita === "especial";
       const numero = especial ? await emitirReceitaControladaNoBanco({ paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco }) : undefined;
-      const dadosPdf = { tipo: tipoReceita, numero, paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie: especie === "Outro" ? outraEspecie.trim() : especie, raca, sexo, peso, data, itens, observacoes, endereco, posicoesSelos };
+      const dadosPdf = {
+        tipo: tipoReceita, numero, paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade,
+        especie: especie === "Outro" ? outraEspecie.trim() : especie, raca, sexo, peso, data, itens,
+        observacoes, endereco, posicoesSelos,
+        profissional: {
+          nomeCompleto: profissional.nome_completo,
+          crmv: profissional.crmv, crmvUf: profissional.crmv_uf,
+          mapa: profissional.mapa, telefone: profissional.telefone, endereco: profissional.endereco,
+        },
+      };
       const doc = await criarReceituario(dadosPdf);
       const pacienteArquivo = paciente.trim().replace(/\s+/g, "-").toLowerCase();
       doc.save(`${tipoReceita === "especial" ? "receita-controle-especial" : "receituario"}-${pacienteArquivo || "oricse"}.pdf`);
@@ -279,7 +297,7 @@ export function Receituario() {
       }
     } catch (erro) {
       console.error("Falha ao gerar receituário:", erro);
-      toast.error("Não foi possível gerar o PDF. Tente novamente.");
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível gerar o PDF. Tente novamente.");
     } finally {
       setGerando(false);
     }
