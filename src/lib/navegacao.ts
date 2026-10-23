@@ -80,7 +80,7 @@ export const GRUPOS_MENU = [
     itens: [
       { to: "/perfil-clinica", rotulo: "Configurações" },
       { to: "/precos-portal", rotulo: "Cobranças: Quero receber / Quero cobrar" },
-      { to: "/configuracao-site", rotulo: "Site da clínica" },
+      { to: "/configuracao-site", rotulo: "Personalizar Portal do Tutor" },
       { to: "/temas", rotulo: "Temas" },
       { to: "/sincronizacao", rotulo: "Sincronização" },
       { to: "/admin-planos", rotulo: "Editar planos" },
