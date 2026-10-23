@@ -192,10 +192,10 @@ function normalizarAgendamento(evento: Partial<AgendamentoDb>): AgendamentoDb {
 }
 
 export class AgendaErrorBoundary extends Component<{ children: ReactNode }, { falhou: boolean }> {
-  state = { falhou: false };
+  override state = { falhou: false };
   static getDerivedStateFromError() { return { falhou: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error("Falha isolada no painel de agenda:", error, info); }
-  render() {
+  override componentDidCatch(error: Error, info: ErrorInfo) { console.error("Falha isolada no painel de agenda:", error, info); }
+  override render() {
     if (this.state.falhou) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center"><strong>A agenda não pôde ser exibida agora.</strong><p className="mt-1 text-sm text-muted-foreground">A Recepção continua disponível. Atualize para tentar abrir a agenda novamente.</p><button type="button" onClick={() => this.setState({ falhou: false })} className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Tentar abrir agenda</button></section>;
     return this.props.children;
   }
