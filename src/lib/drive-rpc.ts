@@ -11,7 +11,7 @@ type AuthLike = {
   getSession: () => Promise<any>;
   getUser: () => Promise<any>;
 };
-type FactoryArgs = { auth: AuthLike; fromDrive: FromFn; fromIdentity: FromFn };
+type FactoryArgs = { auth: AuthLike; fromDrive: FromFn; fromIdentity: FromFn; getSelectedClinicId: () => Promise<string | null> };
 
 function erro(message: string, code = "DRIVE_RPC") {
   return { message, code };
@@ -103,7 +103,7 @@ function localParaIso(data: string, hora: string, timeZone: string) {
   ).toISOString();
 }
 
-export function createDriveRpc({ auth, fromDrive, fromIdentity }: FactoryArgs) {
+export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClinicId }: FactoryArgs) {
   async function user() {
     const { data, error } = await auth.getUser();
     if (error) throw error;
@@ -147,15 +147,18 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity }: FactoryArgs) {
   async function currentContext() {
     if (await isPlatformAdmin()) {
       const selecionado = lerContextoAdminClinica();
-      if (!selecionado?.clinicaId) return null;
-      const c = await clinic(selecionado.clinicaId);
+      // A escolha do administrador também está salva no servidor e sobrevive ao refresh.
+      // Nunca selecionar automaticamente a primeira clínica disponível.
+      const clinicaId = selecionado?.clinicaId || (await getSelectedClinicId());
+      if (!clinicaId) return null;
+      const c = await clinic(clinicaId);
       if (!c) return null;
       const u = await user();
       return {
         membership: {
           clinica_id: c.id,
           user_id: u?.id || null,
-          papel: selecionado.perfil,
+          papel: selecionado?.clinicaId === clinicaId ? selecionado.perfil : "admin",
           ativo: true,
         },
         clinic: c,
