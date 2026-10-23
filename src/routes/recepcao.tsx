@@ -4,7 +4,7 @@ import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
-import { AgendaDayBoard } from "@/components/agenda/AgendaDayBoard";
+import { AgendaDayBoard, AgendaErrorBoundary } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
 
 export const Route = createFileRoute("/recepcao")({ component: Recepcao });
@@ -461,7 +461,7 @@ export function Recepcao() {
             <div style={{ width: Math.max(larguraTrilho, 1), height: 2 }} />
           </div>
           <div ref={agendaWrapRef} className="agenda-recepcao-wrap min-w-0">
-            <AgendaDayBoard mode="recepcao" />
+            <AgendaErrorBoundary><AgendaDayBoard mode="recepcao" /></AgendaErrorBoundary>
           </div>
         </section>
       </div>
