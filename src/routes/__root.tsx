@@ -10,17 +10,15 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import premiumCss from "../themes-premium.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { Cabecalho } from "@/components/Cabecalho";
 import { RockDecoracao } from "@/components/RockDecoracao";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
-import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { Rodape } from "@/components/Rodape";
 import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
@@ -32,6 +30,15 @@ import {
   slugDaRota,
   type ClinicPortalInfo,
 } from "@/lib/tenant-context";
+
+// O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
+// fora do bundle inicial deixa login, início e administração responsivos.
+const Cabecalho = lazy(() =>
+  import("@/components/Cabecalho").then((module) => ({ default: module.Cabecalho })),
+);
+const VisualPageRuntime = lazy(() =>
+  import("@/components/VisualPageRuntime").then((module) => ({ default: module.VisualPageRuntime })),
+);
 
 function NotFoundComponent() {
   return (
@@ -241,6 +248,17 @@ function RootComponent() {
         host === "127.0.0.1" ||
         host.endsWith(".lovable.app") ||
         host.endsWith(".workers.dev");
+      // Nas telas internas do domínio da plataforma não existe portal para
+      // resolver. Evitar essa RPC remove uma espera de rede de cada troca de
+      // página e libera a validação de sessão imediatamente.
+      if (!slug && hostDaPlataforma) {
+        if (ativo) {
+          setPortal(null);
+          setPortalError(null);
+          setPortalLoading(false);
+        }
+        return;
+      }
       try {
         const { data, error } = await supabase.rpc("oricse_clinica_publica_portal", {
           p_host: host || undefined,
@@ -709,16 +727,23 @@ function RootComponent() {
     (acessoPortalNegado || (!portal && Boolean(portalError))),
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
+  const mostrarRuntimeVisual = rotaPublica && !rotaAdmin;
 
   return (
     <QueryClientProvider client={queryClient}>
       <TenantContext.Provider value={contextoPortal}>
-        <VisualPageRuntime />
+        {mostrarRuntimeVisual && (
+          <Suspense fallback={null}>
+            <VisualPageRuntime />
+          </Suspense>
+        )}
         {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && <RockDecoracao />}
         {mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
-            <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
+            <Suspense fallback={null}>
+              <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
+            </Suspense>
           </div>
         )}
         {mostrarClinico && (
