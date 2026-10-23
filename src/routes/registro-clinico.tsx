@@ -1,7 +1,7 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
+import { oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import {
@@ -122,8 +122,9 @@ function RegistroClinico(){
   const navigate=useNavigate();
   const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
   const animalId=params.get("animalId")||"";
-  const [animal,setAnimal]=useState<Animal|null>(()=>ler<Animal>(ANIMAIS_KEY).find(a=>a.id===animalId)||null);
-  const [tutor,setTutor]=useState<Tutor|null>(()=>ler<Tutor>(TUTORES_KEY).find(t=>t.id===animal?.tutorId)||null);
+  // Nunca exibir ficha de outra fonte antes de validar a clínica e o animal no servidor.
+  const [animal,setAnimal]=useState<Animal|null>(null);
+  const [tutor,setTutor]=useState<Tutor|null>(null);
   const [carregandoAnimal,setCarregandoAnimal]=useState(Boolean(animalId));
   const [erroAnimal,setErroAnimal]=useState("");
   useEffect(()=>{
