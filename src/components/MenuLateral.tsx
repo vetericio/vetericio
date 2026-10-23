@@ -47,7 +47,7 @@ const areas = [
   ] },
   { titulo: "Administração", icone: Settings, itens: [
     { to: "/perfil-clinica", rotulo: "Configurações", permissao: "administracao.configuracoes" },
-    { to: "/configuracao-site", rotulo: "Site da clínica", permissao: "administracao.site" },
+    { to: "/configuracao-site", rotulo: "Personalizar Portal do Tutor", permissao: "administracao.site" },
     { to: "/temas", rotulo: "Temas", permissao: "administracao.temas" },
   ] },
 ] as const;
