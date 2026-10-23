@@ -1,4 +1,4 @@
-const CACHE_NAME = "oricse-pwa-v10";
+const CACHE_NAME = "oricse-pwa-v11";
 const APP_SHELL = [
   "/manifest.webmanifest?v=10",
   "/icon-192-v3.svg",
