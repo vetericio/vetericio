@@ -109,7 +109,10 @@ export function usePermissoes() {
 
   useEffect(() => {
     void carregar();
-    const { data } = supabase.auth.onAuthStateChange(() => void carregar());
+    // Evita fazer chamadas ao cliente de auth dentro do callback de mudança de sessão.
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      setTimeout(() => void carregar(), 0);
+    });
     return () => data.subscription.unsubscribe();
   }, [carregar]);
 
