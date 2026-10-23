@@ -71,7 +71,16 @@ function proxyPara(client: ReturnType<typeof createSupabaseClient>) {
     if (!TABELAS_USUARIOS.has(table)) throw new Error(`A tabela ${table} não pertence à camada de identidade do Supabase.`);
     return (client as any).from(table);
   };
-  const rpcDrive = createDriveRpc({ auth: client.auth as any, fromDrive, fromIdentity });
+  const rpcDrive = createDriveRpc({
+    auth: client.auth as any,
+    fromDrive,
+    fromIdentity,
+    getSelectedClinicId: async () => {
+      const { data, error } = await client.rpc('oricse_clinica_ativa_obter');
+      if (error) throw error;
+      return typeof data === 'string' ? data : null;
+    },
+  });
   return new Proxy(client as any, {
     get(target, prop, receiver) {
       if (prop === 'from') return (table: string) => TABELAS_USUARIOS.has(table) ? target.from(table) : fromDrive(table);

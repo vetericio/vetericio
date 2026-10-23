@@ -358,7 +358,12 @@ function RootComponent() {
     }
     supabase.auth.getSession().then(({ data }) => void validarSessao(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => void validarSessao(session),
+      (_event, session) => {
+        // Não chamar RPC nem consultar o cliente Supabase dentro do lock de Auth.
+        setTimeout(() => {
+          if (ativo) void validarSessao(session);
+        }, 0);
+      },
     );
     return () => {
       ativo = false;

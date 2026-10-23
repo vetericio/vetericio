@@ -1,7 +1,8 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { oricseStorage } from "@/lib/oricse-storage";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, ClipboardList, Stethoscope } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+import { supabaseBanco } from "@/integrations/supabase/client";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 
 export const Route = createFileRoute("/consulta")({ component: ConsultaSalva });
@@ -49,23 +50,83 @@ function separarDetalhe(detalhe?: string) {
 }
 
 function ConsultaSalva() {
-  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const registroId = params.get("registroId") || "";
-  const animalIdParam = params.get("animalId") || "";
+  const busca = useSearch({ strict: false }) as { registroId?: unknown; animalId?: unknown };
+  const registroId = typeof busca.registroId === "string" ? busca.registroId : "";
+  const animalIdParam = typeof busca.animalId === "string" ? busca.animalId : "";
+  const [registro, setRegistro] = useState<Registro | null>(null);
+  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [tutor, setTutor] = useState<Tutor | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
 
-  const registros = useMemo(() => ler<Registro>(PRONTUARIO_KEY), []);
-  const animais = useMemo(() => ler<Animal>(ANIMAIS_KEY), []);
-  const tutores = useMemo(() => ler<Tutor>(TUTORES_KEY), []);
+  useEffect(() => {
+    let ativo = true;
+    setCarregando(true);
+    setErro("");
+    setRegistro(null);
+    setAnimal(null);
+    setTutor(null);
+    async function carregar() {
+      try {
+        if (!animalIdParam || !registroId) {
+          throw new Error("O link da consulta não contém a identificação do animal ou do registro.");
+        }
+        // As fichas atuais são consultadas no PostgreSQL, a mesma fonte usada pela tela do animal.
+        const { data: clinicaId, error: erroClinica } = await (supabaseBanco as any).rpc(
+          "oricse_resolver_clinica_cadastro_animal",
+          { p_animal: animalIdParam },
+        );
+        if (erroClinica || !clinicaId)
+          throw new Error(erroClinica?.message || "Clínica do animal não identificada.");
+        const [ficha, historico] = await Promise.all([
+          (supabaseBanco as any).rpc("oricse_animal_cadastro_tela", {
+            p_clinica: clinicaId,
+            p_animal: animalIdParam,
+          }),
+          (supabaseBanco as any).rpc("oricse_animal_historico", {
+            p_animal: animalIdParam,
+          }),
+        ]);
+        if (ficha.error) throw ficha.error;
+        if (historico.error) throw historico.error;
+        if (!ficha.data?.animal) throw new Error("Animal não encontrado nesta clínica.");
 
-  const registro = registros.find((item) => item.id === registroId && (!animalIdParam || item.animalId === animalIdParam));
-  const animal = animais.find((item) => item.id === (registro?.animalId || animalIdParam));
-  const tutor = tutores.find((item) => item.id === animal?.tutorId);
+        const registrosBanco: Registro[] = historico.data?.registros || [];
+        const encontradoBanco = registrosBanco.find(
+          (item) => item.id === registroId && item.animalId === animalIdParam,
+        );
+        // Compatibilidade somente para registros legados do MESMO animal autorizado pelo backend.
+        const encontradoLegado = ler<Registro>(PRONTUARIO_KEY).find(
+          (item) => item.id === registroId && item.animalId === animalIdParam,
+        );
+        const encontrado = encontradoBanco || encontradoLegado;
+        if (!encontrado) throw new Error("Consulta não encontrada no histórico do animal.");
+        if (!ativo) return;
+        setAnimal({
+          ...ficha.data.animal,
+          id: animalIdParam,
+          tutorId: ficha.data.animal.tutorId || ficha.data.tutor?.id || "",
+        });
+        setTutor(ficha.data.tutor || null);
+        setRegistro(encontrado);
+      } catch (error) {
+        if (ativo) setErro(error instanceof Error ? error.message : "Não foi possível abrir esta consulta.");
+      } finally {
+        if (ativo) setCarregando(false);
+      }
+    }
+    void carregar();
+    return () => { ativo = false; };
+  }, [animalIdParam, registroId]);
+
   const linhas = separarDetalhe(registro?.detalhe);
 
-  if (!registro || !animal) {
+  if (carregando || !registro || !animal) {
     return <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-8 sm:px-6">
       <Link to="/animais" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link>
-      <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6">Consulta não encontrada.</div>
+      <div role={!carregando && erro ? "alert" : undefined} className="mt-6 rounded-2xl border p-6">
+        {carregando ? "Carregando consulta…" : erro || "Consulta não encontrada."}
+      </div>
     </main>;
   }
 

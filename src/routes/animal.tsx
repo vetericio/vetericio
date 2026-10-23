@@ -462,7 +462,20 @@ function AnimalFicha() {
         toast.error("Não foi possível carregar o histórico: " + error.message);
         return;
       }
-      setRegistros(data?.registros || []);
+      // Durante a migração, consultas e procedimentos legados ainda podem estar no Drive.
+      // O animal já foi autorizado no banco antes de chegar a esta consulta.
+      const registrosBanco = (data?.registros || []) as Registro[];
+      const registrosDrive = ler<Registro>(PRONTUARIO_KEY).filter(
+        (registro) => registro.animalId === animalId,
+      );
+      const unidos = new Map<string, Registro>();
+      for (const registro of registrosDrive) unidos.set(registro.id, registro);
+      for (const registro of registrosBanco) unidos.set(registro.id, registro);
+      setRegistros(
+        [...unidos.values()].sort(
+          (a, b) => String(b.criadoEm || b.data || "").localeCompare(String(a.criadoEm || a.data || "")),
+        ),
+      );
       setPesos(data?.pesos || []);
     })();
     return () => {
