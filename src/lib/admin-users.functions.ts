@@ -3,7 +3,46 @@ import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
 
 const papelSchema = z.enum(["rt", "veterinario", "auxiliar_estagiario", "recepcao"]);
-const createSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), password:z.string().min(6).max(128), email:z.string().email().max(180), papel:papelSchema });
+const dadosPessoaSchema = z.object({
+  nomeCompleto: z.string().trim().min(3).max(180),
+  crmv: z.string().trim().max(40).default(""),
+  crmvUf: z.string().trim().max(2).default(""),
+  cpf: z.string().trim().max(18).default(""),
+  mapa: z.string().trim().max(70).default(""),
+  telefone: z.string().trim().max(30).default(""),
+  endereco: z.string().trim().max(350).default(""),
+});
+const createSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), password:z.string().min(6).max(128), email:z.string().email().max(180), papel:papelSchema, pessoa:dadosPessoaSchema });
+const lerPessoaSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid().optional() });
+const atualizarPessoaSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), pessoa:dadosPessoaSchema });
+
+function validarCpf(cpf: string): string | null {
+  const digitos = cpf.replace(/\D/g, "");
+  if (!digitos) return null;
+  if (digitos.length !== 11 || /^(\d)\1{10}$/.test(digitos)) throw new Error("CPF inválido.");
+  const digito = (tamanho: number) => {
+    const soma = [...digitos.slice(0, tamanho)].reduce((acc, n, i) => acc + Number(n) * (tamanho + 1 - i), 0);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+  if (digito(9) !== Number(digitos[9]) || digito(10) !== Number(digitos[10])) throw new Error("CPF inválido.");
+  return digitos;
+}
+
+function normalizarPessoa(pessoa: z.infer<typeof dadosPessoaSchema>) {
+  const uf = pessoa.crmvUf.trim().toUpperCase();
+  if (uf && !/^[A-Z]{2}$/.test(uf)) throw new Error("Informe a UF do CRMV com duas letras.");
+  return {
+    nome_completo: pessoa.nomeCompleto.trim(),
+    crmv: pessoa.crmv.trim() || null,
+    crmv_uf: uf || null,
+    cpf: validarCpf(pessoa.cpf),
+    mapa: pessoa.mapa.trim() || null,
+    telefone: pessoa.telefone.trim() || null,
+    endereco: pessoa.endereco.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+}
 const resetSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), password:z.string().min(6).max(128) });
 const excluirClinicaSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), confirmacao:z.literal("APAGAR") });
 const atualizarUsuarioSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), email:z.string().email().max(180) });
@@ -52,9 +91,47 @@ export const criarUsuarioClinica=createServerFn({method:"POST"}).validator((i:un
   const vinculoAtual=vinculos?.find((x)=>x.clinica_id===data.clinicaId);if(vinculos?.some((x)=>x.ativo&&x.clinica_id!==data.clinicaId))throw new Error("Esta conta já está vinculada a outra clínica.");
   if(!vinculoAtual?.ativo){const {count,error}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("clinica_id",data.clinicaId).eq("ativo",true);if(error)throw new Error(error.message);if((count||0)>=Number(clinica.limite_usuarios||1))throw new Error(`O limite atual desta clínica é ${clinica.limite_usuarios} usuário(s).`);}
   const {error:profileError}=await admin.from("app_users").upsert({user_id:authUser.id,username,role:profile?.role||"user",email:data.email.trim().toLowerCase()},{onConflict:"user_id"});if(profileError)throw new Error(profileError.message);
+  const {error:pessoaError}=await admin.from("oricse_pessoas").upsert({
+    user_id:authUser.id,...normalizarPessoa(data.pessoa),
+  },{onConflict:"user_id"});
+  if(pessoaError)throw new Error("Não foi possível salvar os dados da pessoa: "+pessoaError.message);
   const link=vinculoAtual?await admin.from("clinica_usuarios").update({papel:data.papel,ativo:true}).eq("clinica_id",data.clinicaId).eq("user_id",authUser.id):await admin.from("clinica_usuarios").insert({clinica_id:data.clinicaId,user_id:authUser.id,papel:data.papel,ativo:true});if(link.error)throw new Error(link.error.message);
   return{ok:true,userId:authUser.id,username,email:data.email.trim().toLowerCase(),papel:data.papel,contaExistente:Boolean(profile),vinculoExistente:Boolean(vinculoAtual)};
 });
+
+
+/** Cadastro pessoal isolado da tabela pública de identidade. */
+export const obterPerfilPessoa=createServerFn({method:"POST"})
+  .validator((input:unknown)=>lerPessoaSchema.parse(input))
+  .handler(async({data})=>{
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {data:auth,error:authError}=await supabaseAdmin.auth.getUser(data.accessToken);
+    if(authError||!auth.user)throw new Error("Sessão expirada.");
+    const userId=data.userId||auth.user.id;
+    if(userId!==auth.user.id){
+      const {data:perfil,error:perfilError}=await supabaseAdmin.from("app_users").select("role").eq("user_id",auth.user.id).maybeSingle();
+      if(perfilError||perfil?.role!=="admin")throw new Error("Sem permissão para consultar este cadastro.");
+    }
+    const {data:perfil,error}=await supabaseAdmin.from("oricse_pessoas")
+      .select("user_id,nome_completo,crmv,crmv_uf,cpf,mapa,telefone,endereco,updated_at")
+      .eq("user_id",userId).maybeSingle();
+    if(error)throw new Error("Não foi possível carregar o cadastro: "+error.message);
+    return perfil||null;
+  });
+
+export const atualizarPerfilPessoa=createServerFn({method:"POST"})
+  .validator((input:unknown)=>atualizarPessoaSchema.parse(input))
+  .handler(async({data})=>{
+    const admin=await requirePlatformAdmin(data.accessToken);
+    const {data:conta,error:contaError}=await admin.from("app_users").select("user_id")
+      .eq("user_id",data.userId).maybeSingle();
+    if(contaError||!conta)throw new Error("Usuário não encontrado.");
+    const {error}=await admin.from("oricse_pessoas").upsert({
+      user_id:data.userId,...normalizarPessoa(data.pessoa),
+    },{onConflict:"user_id"});
+    if(error)throw new Error("Não foi possível salvar o cadastro pessoal: "+error.message);
+    return {ok:true};
+  });
 
 export const redefinirSenhaUsuario=createServerFn({method:"POST"}).validator((i:unknown)=>resetSchema.parse(i)).handler(async({data})=>{const admin=await requirePlatformAdmin(data.accessToken);const {error}=await admin.auth.admin.updateUserById(data.userId,{password:data.password});if(error)throw new Error(error.message||"Não foi possível alterar a senha.");return{ok:true};});
 
