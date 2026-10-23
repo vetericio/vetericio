@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -132,9 +132,47 @@ function localParaIso(data: string, hora: string, timeZone: string) {
   const utc = Date.UTC(a, (m || 1) - 1, d || 1, h || 0, min || 0) - offsetMinutos(timeZone, data) * 60000;
   return new Date(utc).toISOString();
 }
-function horaNoFuso(valor: string, timeZone: string) { return new Intl.DateTimeFormat("pt-BR", { timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(valor)); }
-function dataNoFuso(valor: string, timeZone: string) { const partes = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(valor)); const mapa = Object.fromEntries(partes.map((p) => [p.type, p.value])); return `${mapa.year}-${mapa.month}-${mapa.day}`; }
+function fusoSeguro(timeZone?: string | null) {
+  const candidato = typeof timeZone === "string" ? timeZone.trim() : "";
+  if (!candidato) return "America/Sao_Paulo";
+  try { new Intl.DateTimeFormat("pt-BR", { timeZone: candidato }); return candidato; }
+  catch { return "America/Sao_Paulo"; }
+}
+function horaNoFuso(valor: string, timeZone: string) {
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: fusoSeguro(timeZone), hour: "2-digit", minute: "2-digit", hour12: false }).format(data);
+}
+function dataNoFuso(valor: string, timeZone: string) {
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return "";
+  const partes = new Intl.DateTimeFormat("en-CA", { timeZone: fusoSeguro(timeZone), year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(data);
+  const mapa = Object.fromEntries(partes.map((p) => [p.type, p.value]));
+  return `${mapa.year}-${mapa.month}-${mapa.day}`;
+}
 function agendaFormPadrao(): AgendaForm { return { nome: "Consultas", responsavel: "", tipo: "Consultório", inicio: "08:00", fim: "17:00", diasSemana: [1,2,3,4,5], intervaloMin: 30, portalAtivo: false, modalidade: "aprovacao", antecedenciaHoras: 2, timezone: "America/Sao_Paulo", cor: "verde" }; }
+
+function normalizarAgenda(agenda: Partial<AgendaDb>): AgendaDb {
+  const intervalo = Number(agenda.intervalo_min);
+  const dias = Array.isArray(agenda.dias_semana) ? agenda.dias_semana.map(Number).filter((dia) => Number.isInteger(dia) && dia >= 0 && dia <= 6) : [];
+  return {
+    id: String(agenda.id || ""), clinica_id: String(agenda.clinica_id || ""), nome: String(agenda.nome || "Agenda"), responsavel: String(agenda.responsavel || ""),
+    inicio: String(agenda.inicio || "08:00"), fim: String(agenda.fim || "17:00"), dias_semana: dias.length ? dias : [1,2,3,4,5],
+    intervalo_min: Number.isFinite(intervalo) && intervalo >= 5 && intervalo <= 240 ? intervalo : 30,
+    portal_ativo: Boolean(agenda.portal_ativo), modalidade: agenda.modalidade === "livre" || agenda.modalidade === "pagamento" ? agenda.modalidade : "aprovacao",
+    antecedencia_horas: Math.max(0, Number(agenda.antecedencia_horas) || 0), timezone: fusoSeguro(agenda.timezone), tipo: String(agenda.tipo || "Consultório"), cor: corValida(agenda.cor),
+  };
+}
+
+export class AgendaErrorBoundary extends Component<{ children: ReactNode }, { falhou: boolean }> {
+  state = { falhou: false };
+  static getDerivedStateFromError() { return { falhou: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error("Falha isolada no painel de agenda:", error, info); }
+  render() {
+    if (this.state.falhou) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center"><strong>A agenda não pôde ser exibida agora.</strong><p className="mt-1 text-sm text-muted-foreground">A Recepção continua disponível. Atualize para tentar abrir a agenda novamente.</p><button type="button" onClick={() => this.setState({ falhou: false })} className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Tentar abrir agenda</button></section>;
+    return this.props.children;
+  }
+}
 
 export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   const [clinicaId, setClinicaId] = useState("");
@@ -167,8 +205,9 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
         (supabase as any).from("clinicas").select("duracao_padrao_atendimento_min,duracoes_atendimento_min").eq("id", cid).maybeSingle(),
       ]);
       for (const r of [agendasResp, eventosResp, tutoresResp, animaisResp, configResp]) if (r.error) throw r.error;
-      setAgendas((agendasResp.data || []).map((a: AgendaDb) => ({ ...a, cor: corValida(a.cor) })));
-      setEventos(eventosResp.data || []); setTutores(tutoresResp.data || []); setAnimais(animaisResp.data || []);
+      setAgendas((agendasResp.data || []).map((a: AgendaDb) => normalizarAgenda(a)).filter((a: AgendaDb) => a.id));
+      setEventos((eventosResp.data || []).filter((evento: AgendamentoDb) => !Number.isNaN(new Date(evento.inicio).getTime()) && !Number.isNaN(new Date(evento.fim).getTime())));
+      setTutores(tutoresResp.data || []); setAnimais(animaisResp.data || []);
       setConfig(configResp.data || { duracao_padrao_atendimento_min: 30, duracoes_atendimento_min: {} });
     } catch (error) {
       console.error("Erro ao carregar agenda única:", error);
@@ -195,7 +234,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
 
   function eventosAgenda(agenda: AgendaDb) { return eventos.filter((e) => e.agenda_id === agenda.id && dataNoFuso(e.inicio, agenda.timezone) === data); }
   function duracaoPadrao(tipo: string) { return Math.max(5, Number(config.duracoes_atendimento_min?.[tipo]) || DURACOES_PADRAO[tipo] || Number(config.duracao_padrao_atendimento_min) || 30); }
-  function slots(agenda: AgendaDb) { const lista: string[] = []; for (let m = minutos(hhmm(agenda.inicio)); m + agenda.intervalo_min <= minutos(hhmm(agenda.fim)); m += agenda.intervalo_min) lista.push(horaDeMinutos(m)); return lista; }
+  function slots(agenda: AgendaDb) { const lista: string[] = []; const intervalo = Number(agenda.intervalo_min); if (!Number.isFinite(intervalo) || intervalo < 5) return lista; for (let m = minutos(hhmm(agenda.inicio)), guard = 0; m + intervalo <= minutos(hhmm(agenda.fim)) && guard < 288; m += intervalo, guard += 1) lista.push(horaDeMinutos(m)); return lista; }
   function ocupa(agenda: AgendaDb, hora: string) { const m = minutos(hora); return eventosAgenda(agenda).find((e) => { if (["cancelado","expirado"].includes(e.estado)) return false; const ini = minutos(horaNoFuso(e.inicio, agenda.timezone)); return m >= ini && m < ini + duracaoEntre(e.inicio, e.fim); }); }
 
   function abrirNovaAgenda() { setAgendaModal({ form: agendaFormPadrao() }); }
