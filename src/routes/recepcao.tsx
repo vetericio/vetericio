@@ -322,13 +322,6 @@ export function Recepcao() {
     let trilho: HTMLElement | null = null;
     let sincronizando = false;
 
-    const localizar = () => {
-      trilho = wrap.querySelector<HTMLElement>("div.flex.flex-nowrap.gap-3.overflow-x-auto");
-      if (!trilho) return;
-      setLarguraTrilho(trilho.scrollWidth);
-      barra.scrollLeft = trilho.scrollLeft;
-    };
-
     const syncDaAgenda = () => {
       if (!trilho || sincronizando) return;
       sincronizando = true;
@@ -343,18 +336,30 @@ export function Recepcao() {
       requestAnimationFrame(() => { sincronizando = false; });
     };
 
-    const timer = window.setTimeout(() => {
-      localizar();
-      trilho?.addEventListener("scroll", syncDaAgenda, { passive: true });
-    }, 100);
+    const localizar = () => {
+      // A grade pode aparecer depois do carregamento assíncrono da agenda.
+      const novoTrilho = wrap.querySelector<HTMLElement>('[data-oricse-agenda-trilho="true"]');
+      if (novoTrilho !== trilho) {
+        trilho?.removeEventListener("scroll", syncDaAgenda);
+        trilho = novoTrilho;
+        trilho?.addEventListener("scroll", syncDaAgenda, { passive: true });
+      }
+      const largura = trilho?.scrollWidth || barra.clientWidth;
+      setLarguraTrilho((atual) => atual === largura ? atual : largura);
+      if (trilho) barra.scrollLeft = trilho.scrollLeft;
+    };
+
     barra.addEventListener("scroll", syncDaBarra, { passive: true });
+    const observer = new MutationObserver(localizar);
+    observer.observe(wrap, { childList: true, subtree: true });
     const resize = new ResizeObserver(localizar);
     resize.observe(wrap);
+    localizar();
 
     return () => {
-      window.clearTimeout(timer);
       trilho?.removeEventListener("scroll", syncDaAgenda);
       barra.removeEventListener("scroll", syncDaBarra);
+      observer.disconnect();
       resize.disconnect();
     };
   }, []);
@@ -411,7 +416,7 @@ export function Recepcao() {
   ] as const;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1650px] px-4 pb-28 pt-6 sm:px-6">
+    <main className="mx-auto min-h-screen w-full min-w-0 max-w-[1650px] overflow-x-clip px-4 pb-28 pt-6 sm:px-6">
       <Link to="/inicio" className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar</Link>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -420,12 +425,12 @@ export function Recepcao() {
           <h1 className="mt-1 text-3xl font-bold">Recepção</h1>
           <p className="mt-1 text-muted-foreground">Cadastros, fila e agenda da clínica em uma única visão.</p>
         </div>
-        <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={() => { const livre = document.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]'); if (livre) { livre.click(); livre.scrollIntoView({ behavior: "smooth", block: "center" }); } else { document.getElementById("agenda-recepcao")?.scrollIntoView({ behavior: "smooth", block: "start" }); toast.info("Não há horário livre visível nesta data. Escolha outra data ou agenda."); } }} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
+        <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={() => { const livre = document.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]'); if (livre) { livre.click(); livre.scrollIntoView({ behavior: "smooth", block: "center" }); } else if (document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')) { document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')?.click(); } else { document.getElementById("agenda-recepcao")?.scrollIntoView({ behavior: "smooth", block: "start" }); toast.info("Não há horário livre visível nesta data. Escolha outra data ou agenda."); } }} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
       </div>
 
       <div className={`mt-6 grid items-start gap-4 ${filaVisivel ? "xl:grid-cols-[300px_minmax(0,1fr)]" : "grid-cols-1"}`}>
         {filaVisivel ? (
-          <aside className="rounded-2xl border-2 border-primary/25 bg-white shadow-sm xl:sticky xl:top-3">
+          <aside className="min-w-0 rounded-2xl border-2 border-primary/25 bg-white shadow-sm xl:sticky xl:top-3">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <div className="flex items-center gap-2"><ClipboardList size={19} className="text-primary"/><h2 className="font-black">Fila de espera</h2></div>
               <button type="button" onClick={() => setFilaVisivel(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" title="Ocultar fila de espera" aria-label="Ocultar fila de espera"><EyeOff size={17}/></button>
