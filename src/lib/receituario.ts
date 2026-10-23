@@ -86,15 +86,27 @@ export type DadosReceituario = {
   itens: ItemReceituario[];
   observacoes: string;
   endereco: string;
+  profissional?: {
+    nomeCompleto: string;
+    crmv: string;
+    crmvUf: string;
+    mapa?: string | null;
+    telefone?: string | null;
+    endereco?: string | null;
+  };
   posicoesSelos: Partial<Record<TipoSelo, PosicaoSeloReceituario>>;
 };
 
-const DADOS_PROFISSIONAL = [
-  "Dr. Fabrício Fernando Jesus Gonçalves",
-  "Médico-Veterinário · CRMV-MG 34.538",
-  "MAPA MV00816392025 · CNPJ 67.995.338/0001-76",
-  "Veterício Serviços Veterinários Ltda.",
-];
+function linhasProfissional(dados: DadosReceituario): string[] {
+  const profissional = dados.profissional;
+  if (!profissional) return ["Profissional não identificado"];
+  return [
+    profissional.nomeCompleto,
+    `Médico-Veterinário · CRMV-${profissional.crmvUf} ${profissional.crmv}`,
+    profissional.mapa ? `Registro MAPA ${profissional.mapa}` : "",
+    profissional.telefone ? `Telefone: ${profissional.telefone}` : "",
+  ].filter(Boolean);
+}
 
 function limparPonto(texto: string) {
   return texto.trim().replace(/[.\s]+$/, "");
@@ -182,7 +194,7 @@ export async function criarReceituario(dados: DadosReceituario) {
     doc.text("VETERÍCIO", margem + 56, y + 8);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
-    DADOS_PROFISSIONAL.forEach((linha, indice) =>
+    linhasProfissional(dados).forEach((linha, indice) =>
       doc.text(linha, margem + 56, y + 22 + indice * 10),
     );
     y += 66;
