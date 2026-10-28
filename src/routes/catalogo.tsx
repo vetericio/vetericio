@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { categoriaCatalogoExame, categoriaExame, EXAMES_PADRAO, type CategoriaExame } from "@/lib/exames-catalogo";
 
 export const Route = createFileRoute("/catalogo")({ component: Catalogo });
 
@@ -51,6 +52,11 @@ function moeda(valor: number | string | null | undefined) {
   return Number.isFinite(n) ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—";
 }
 
+function valorParaCampo(valor: number | string) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero.toFixed(2).replace(".", ",") : "";
+}
+
 function Catalogo() {
   const [clinicaId, setClinicaId] = useState("");
   const [papel, setPapel] = useState("");
@@ -59,18 +65,23 @@ function Catalogo() {
   const [itens, setItens] = useState<ItemCatalogo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [novo, setNovo] = useState(false);
+  const [cadastroExame, setCadastroExame] = useState(false);
   const [tipo, setTipo] = useState<TipoItem>("servico");
   const [form, setForm] = useState(vazio);
   const [janelaFiscal, setJanelaFiscal] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [semeandoExames, setSemeandoExames] = useState(false);
+  const [precosExames, setPrecosExames] = useState<Record<string, string>>({});
+  const [salvandoPrecoExame, setSalvandoPrecoExame] = useState("");
 
   const podeEditar = adminGlobal || ["clinica", "rt"].includes(papel);
   const titulo = tipo === "servico" ? "Cadastrar serviço" : "Cadastrar produto";
   const descricao = tipo === "servico"
     ? "Serviços não movimentam estoque."
     : "Produtos podem ter estoque atual e mínimo.";
-  const servicos = useMemo(() => itens.filter((item) => item.tipo === "servico"), [itens]);
+  const servicos = useMemo(() => itens.filter((item) => item.tipo === "servico" && !categoriaExame(item.categoria)), [itens]);
   const produtos = useMemo(() => itens.filter((item) => item.tipo === "produto"), [itens]);
+  const exames = useMemo(() => itens.filter((item) => categoriaExame(item.categoria)), [itens]);
 
   async function carregarItensDaClinica(id: string) {
     const { data, error } = await (supabase as any)
@@ -143,8 +154,61 @@ function Catalogo() {
     if (!clinicaId) return toast.error("Selecione uma clínica antes de cadastrar.");
     setTipo(novoTipo);
     setForm(vazio);
+    setCadastroExame(false);
     setJanelaFiscal(false);
     setNovo(true);
+  }
+
+  function abrirCadastroExame() {
+    if (!podeEditar) return toast.error("Somente Admin ORICSE, Clínica ou RT podem cadastrar.");
+    if (!clinicaId) return toast.error("Selecione uma clínica antes de cadastrar.");
+    setTipo("servico");
+    setForm({ ...vazio, categoria: categoriaCatalogoExame("Outros") });
+    setCadastroExame(true);
+    setJanelaFiscal(false);
+    setNovo(true);
+  }
+
+  async function adicionarExamesPadrao() {
+    if (!podeEditar || !clinicaId) return;
+    const existentes = new Set(itens.map((item) => item.nome.trim().toLocaleLowerCase("pt-BR")));
+    const novos = EXAMES_PADRAO.filter((item) => !existentes.has(item.nome.toLocaleLowerCase("pt-BR")));
+    if (!novos.length) return void toast.info("Todos os exames padrão já estão cadastrados.");
+    setSemeandoExames(true);
+    try {
+      const { data, error } = await (supabase as any).from("clinica_catalogo_itens").insert(novos.map((item) => ({
+        clinica_id: clinicaId,
+        tipo: "servico",
+        nome: item.nome,
+        preco: 0,
+        categoria: categoriaCatalogoExame(item.categoria),
+      }))).select();
+      if (error) throw error;
+      setItens((atual) => [...atual, ...(data || [])].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+      toast.success(`${novos.length} exames adicionados. Agora informe os valores de cada um.`);
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível cadastrar os exames padrão.");
+    } finally {
+      setSemeandoExames(false);
+    }
+  }
+
+  async function salvarPrecoExame(item: ItemCatalogo) {
+    if (!podeEditar) return;
+    const preco = numero(precosExames[item.id] ?? String(item.preco));
+    if (preco === null || Number.isNaN(preco) || preco < 0) return void toast.error("Informe um valor válido para o exame.");
+    setSalvandoPrecoExame(item.id);
+    try {
+      const { error } = await (supabase as any).from("clinica_catalogo_itens").update({ preco }).eq("id", item.id).eq("clinica_id", clinicaId);
+      if (error) throw error;
+      setItens((atual) => atual.map((atualItem) => atualItem.id === item.id ? { ...atualItem, preco } : atualItem));
+      setPrecosExames((atual) => ({ ...atual, [item.id]: valorParaCampo(preco) }));
+      toast.success("Valor do exame atualizado.");
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível atualizar o valor do exame.");
+    } finally {
+      setSalvandoPrecoExame("");
+    }
   }
 
   async function salvar() {
@@ -205,7 +269,7 @@ function Catalogo() {
         <h1 className="mt-1 text-2xl font-black text-foreground">Serviços e produtos</h1>
         <p className="mt-1 text-sm text-muted-foreground">Cadastre o que a clínica oferece e o que controla em estoque.</p>
       </div>
-      <button type="button" disabled={!podeEditar || !clinicaId} onClick={() => abrirCadastro("servico")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><PackagePlus size={18} /> Cadastrar serviço / produto</button>
+      <div className="flex flex-wrap gap-2"><button type="button" disabled={!podeEditar || !clinicaId} onClick={abrirCadastroExame} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 text-sm font-black text-sky-900 disabled:cursor-not-allowed disabled:opacity-50"><PackagePlus size={18} /> Cadastrar exame</button><button type="button" disabled={!podeEditar || !clinicaId} onClick={() => abrirCadastro("servico")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><PackagePlus size={18} /> Serviço / produto</button></div>
     </header>
 
     {adminGlobal && clinicasAdmin.length > 1 && <label className="mt-5 block max-w-md text-sm font-bold text-foreground">Clínica para este catálogo<select value={clinicaId} onChange={(e) => void carregarItensDaClinica(e.target.value).catch((erro) => toast.error(erro.message || "Não foi possível trocar a clínica."))} className="mt-1 min-h-11 w-full rounded-xl border bg-card px-3 font-normal"><option value="">Selecione</option>{clinicasAdmin.map((clinica) => <option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}</select></label>}
@@ -214,7 +278,7 @@ function Catalogo() {
 
     {novo && <section className="mt-6 rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div><h2 className="text-lg font-black">{titulo}</h2><p className="mt-1 text-sm text-muted-foreground">{descricao}</p></div>
+        <div><h2 className="text-lg font-black">{cadastroExame ? "Cadastrar exame" : titulo}</h2><p className="mt-1 text-sm text-muted-foreground">{cadastroExame ? "Defina a categoria e o valor que será lançado automaticamente na comanda." : descricao}</p></div>
         <button type="button" onClick={() => setNovo(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Fechar cadastro"><X size={19} /></button>
       </div>
 
@@ -226,7 +290,7 @@ function Catalogo() {
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Campo label={tipo === "servico" ? "Nome do serviço *" : "Nome do produto *"} value={form.nome} onChange={(nome) => setForm({ ...form, nome })} placeholder={tipo === "servico" ? "Ex.: Consulta clínica" : "Ex.: Vermífugo"} />
         <Campo label="Preço *" value={form.preco} onChange={(preco) => setForm({ ...form, preco })} inputMode="decimal" placeholder="0,00" />
-        <Campo label="Categoria" value={form.categoria} onChange={(categoria) => setForm({ ...form, categoria })} placeholder={tipo === "servico" ? "Ex.: Consulta, procedimento" : "Ex.: Medicamento, alimento"} />
+        {cadastroExame ? <label className="block text-sm font-bold text-foreground">Categoria do exame<select value={categoriaExame(form.categoria) || "Outros"} onChange={(e) => setForm({ ...form, categoria: categoriaCatalogoExame(e.target.value as CategoriaExame) })} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal outline-none focus:border-primary">{(["Sangue", "Urina", "Fezes", "Imagem", "Outros"] as CategoriaExame[]).map((categoria) => <option key={categoria}>{categoria}</option>)}</select></label> : <Campo label="Categoria" value={form.categoria} onChange={(categoria) => setForm({ ...form, categoria })} placeholder={tipo === "servico" ? "Ex.: Consulta, procedimento" : "Ex.: Medicamento, alimento"} />}
         <Campo label="Comissão (opcional)" value={form.comissao} onChange={(comissao) => setForm({ ...form, comissao })} inputMode="decimal" placeholder="0,00" />
 
         {tipo === "produto" && <>
@@ -242,6 +306,8 @@ function Catalogo() {
         <button type="button" disabled={salvando} onClick={salvar} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground disabled:opacity-50"><Save size={17} /> {salvando ? "Salvando..." : "Salvar cadastro"}</button>
       </div>
     </section>}
+
+    <section className="mt-6 rounded-2xl border border-sky-200 bg-sky-50/50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="font-black text-sky-950">Exames e valores</h2><p className="mt-1 text-sm text-sky-900/75">Configurados pelo RT/Admin. Ao selecionar na consulta, entram na comanda com este valor.</p></div><button type="button" disabled={!podeEditar || semeandoExames} onClick={() => void adicionarExamesPadrao()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-black text-white disabled:opacity-50"><PackagePlus size={17}/>{semeandoExames ? "Adicionando..." : "Adicionar lista padrão"}</button></div>{exames.length ? <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{exames.map((item) => <div key={item.id} className="rounded-xl border bg-white px-4 py-3"><p className="font-bold text-foreground">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{categoriaExame(item.categoria)}</p><div className="mt-3 flex items-end gap-2"><label className="min-w-0 flex-1 text-xs font-bold text-muted-foreground">Valor<input disabled={!podeEditar} inputMode="decimal" value={precosExames[item.id] ?? valorParaCampo(item.preco)} onChange={(e) => setPrecosExames((atual) => ({ ...atual, [item.id]: e.target.value }))} className="mt-1 min-h-10 w-full rounded-lg border bg-white px-2 text-sm font-normal text-foreground outline-none focus:border-primary disabled:opacity-60"/></label><button type="button" disabled={!podeEditar || salvandoPrecoExame===item.id} onClick={() => void salvarPrecoExame(item)} className="min-h-10 rounded-lg bg-sky-700 px-3 text-xs font-black text-white disabled:opacity-50">{salvandoPrecoExame===item.id ? "..." : "Salvar"}</button></div></div>)}</div> : <p className="mt-4 rounded-xl border border-dashed bg-white/70 p-4 text-sm text-sky-950/70">Ainda não há exames cadastrados. Use “Adicionar lista padrão” e depois informe o preço de cada exame.</p>}</section>
 
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
       <Lista titulo="Serviços" descricao="Não têm controle de estoque." itens={servicos} icone={<Wrench size={20} />} />
