@@ -1,7 +1,7 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import {
@@ -176,9 +176,9 @@ function RegistroClinico(){
   const setOftalmoPar=(chave:keyof Omit<OftalmoForm,"equipamentoTonometria">,olho:keyof OlhoValores,valor:string)=>setConsulta(f=>({...f,oftalmo:{...f.oftalmo,[chave]:{...f.oftalmo[chave],[olho]:valor}}}));
   const examesSelecionados=consulta.examesSolicitados.split(" · ").map(x=>x.trim()).filter(Boolean);
   const toggleExame=(nome:string)=>setConsulta(f=>{const atuais=f.examesSolicitados.split(" · ").map(x=>x.trim()).filter(Boolean); const novos=atuais.includes(nome)?atuais.filter(x=>x!==nome):[...atuais,nome]; return {...f,examesSolicitados:novos.join(" · ")}});
-  const examesConfigurados = useMemo(() => catalogo
+  const examesConfigurados = catalogo
     .map((item) => ({ ...item, categoriaExame: categoriaExame(item.categoria) }))
-    .filter((item): item is ItemCatalogo & { categoriaExame: CategoriaExame } => Boolean(item.categoriaExame)), [catalogo]);
+    .filter((item): item is ItemCatalogo & { categoriaExame: CategoriaExame } => Boolean(item.categoriaExame));
   const examesDisponiveis = examesConfigurados.length
     ? examesConfigurados.map((item) => ({ nome: item.nome, categoria: item.categoriaExame }))
     : EXAMES_PADRAO;
