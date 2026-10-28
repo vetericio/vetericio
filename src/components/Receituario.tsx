@@ -257,6 +257,7 @@ export function Receituario() {
   const gerar = async () => {
     if (gerando) return;
     if (!paciente.trim()) return void toast.error("Informe o nome do paciente.");
+    if (!telefoneTutor.trim()) return void toast.error("Informe o telefone do tutor.");
     if (!itens.some((item) => item.medicamento.trim())) return void toast.error("Informe ao menos um medicamento.");
     if (!especie) return void toast.error("Selecione a espécie.");
     if (especie === "Outro" && !outraEspecie.trim()) return void toast.error("Informe a outra espécie.");
@@ -342,7 +343,7 @@ export function Receituario() {
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label><span className={rotulo}>Paciente</span><input value={paciente} onChange={(e) => setPaciente(e.target.value)} className={campo} placeholder="Nome do animal" /></label>
           <label><span className={rotulo}>Tutor</span><input value={tutor} onChange={(e) => setTutor(e.target.value)} className={campo} placeholder="Nome do responsável" /></label>
-          <label><span className={rotulo}>Telefone do tutor (opcional)</span><input type="tel" inputMode="tel" value={telefoneTutor} onChange={(e) => setTelefoneTutor(e.target.value)} className={campo} placeholder="(31) 99999-9999" /></label>
+          <label><span className={rotulo}>Telefone do tutor</span><input type="tel" inputMode="tel" required value={telefoneTutor} onChange={(e) => setTelefoneTutor(e.target.value)} className={campo} placeholder="(31) 99999-9999" /></label>
         </div>
         <fieldset className="mt-4"><legend className={rotulo}>Espécie</legend><div className="mt-2 grid grid-cols-3 gap-2">{(["Canina", "Felina", "Outro"] as const).map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="especie-receituario" checked={especie === opcao} onChange={() => mudarEspecie(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
         {especie === "Outro" && <label className="mt-3 block"><span className={rotulo}>Qual espécie?</span><input value={outraEspecie} onChange={(e) => setOutraEspecie(e.target.value)} className={campo} placeholder="Ex.: Equina" /></label>}
