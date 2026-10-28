@@ -46,10 +46,10 @@ function FilaEspera() {
     const {data:cidBanco,error}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
     if(error)throw error;
     const contextoAdmin=lerContextoAdminClinica();
-    // A escolha do Admin pode ainda estar em memória enquanto a persistência sincroniza.
-    // O backend valida a permissão e registra a escolha antes de consultar qualquer paciente.
-    let cid=cidBanco as string|null;
-    if(!cid && contextoAdmin?.clinicaId){
+    // Para o Admin, a clínica escolhida no painel tem prioridade sobre uma
+    // clínica que tenha ficado gravada de uma navegação anterior.
+    let cid=contextoAdmin?.clinicaId || cidBanco as string|null;
+    if(contextoAdmin?.clinicaId && cidBanco!==contextoAdmin.clinicaId){
       const {data:registrada,error:erroRegistro}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_definir",{p_clinica:contextoAdmin.clinicaId});
       if(erroRegistro)throw erroRegistro;
       cid=registrada;
@@ -113,7 +113,14 @@ function FilaEspera() {
     const sucesso=await operar("adicionar",{p_tutor:tutorId,p_animal:animalId,p_motivo:motivo.trim()});
     if(sucesso){limparTutor();setMotivo("");toast.success("Paciente registrado na fila.");}
   }
-  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;const sucesso=await operar("chamar",{p_item:id});if(sucesso)void navigate({to:"/animal",search:{animalId:item.animalId} as never});}
+  async function abrirFicha(item:ItemFila){
+    if(!item.animalId)return toast.error("Este item da fila não possui um animal vinculado.");
+    // Garante que o Admin abre a ficha dentro da mesma clínica da fila.
+    const {error}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_definir",{p_clinica:clinicaId});
+    if(error)return toast.error(error.message||"Não foi possível preparar a ficha do animal.");
+    void navigate({to:"/animal",search:{animalId:item.animalId} as never});
+  }
+  async function chamar(id:string){const item=fila.find(i=>i.id===id);if(!item)return;const sucesso=await operar("chamar",{p_item:id});if(sucesso)await abrirFicha(item);}
   async function voltarParaFila(id:string){await operar("voltar",{p_item:id});}
   async function remover(id:string){const item=fila.find(i=>i.id===id);if(!item||!window.confirm(`Remover ${item.animalNome} da fila?`))return;await operar("remover",{p_item:id});}
 
@@ -167,6 +174,6 @@ function FilaEspera() {
           </div>}
     </section>
 
-    {chamados.length>0&&<section className="mt-5 overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-4 py-3 sm:px-5"><h2 className="font-bold">Chamados recentemente</h2></div><div className="divide-y">{chamados.slice(0,20).map((item)=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"><div><div className="font-semibold">{emojiEspecie(item.especie)} {item.animalNome} <span className="font-normal text-muted-foreground">· {item.tutorNome}{codigoTutorItem(item) && <span className="ml-1 font-mono text-primary">{codigoTutorItem(item)}</span>}</span></div><div className="text-xs text-muted-foreground">Chegou {hora(item.chegadaEm)} · chamado {item.chamadoEm?hora(item.chamadoEm):"agora"}{item.motivo?` · ${item.motivo}`:""}</div></div><div className="flex gap-2"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Chamado</span><button type="button" onClick={()=>void voltarParaFila(item.id)} disabled={operando} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold"><RotateCcw size={13}/> Voltar à fila</button><Link to="/animal" search={{animalId:item.animalId} as any} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">Abrir ficha</Link></div></div>)}</div></section>}
+    {chamados.length>0&&<section className="mt-5 overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-4 py-3 sm:px-5"><h2 className="font-bold">Chamados recentemente</h2></div><div className="divide-y">{chamados.slice(0,20).map((item)=><div key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"><div><div className="font-semibold">{emojiEspecie(item.especie)} {item.animalNome} <span className="font-normal text-muted-foreground">· {item.tutorNome}{codigoTutorItem(item) && <span className="ml-1 font-mono text-primary">{codigoTutorItem(item)}</span>}</span></div><div className="text-xs text-muted-foreground">Chegou {hora(item.chegadaEm)} · chamado {item.chamadoEm?hora(item.chamadoEm):"agora"}{item.motivo?` · ${item.motivo}`:""}</div></div><div className="flex gap-2"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">Chamado</span><button type="button" onClick={()=>void voltarParaFila(item.id)} disabled={operando} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold"><RotateCcw size={13}/> Voltar à fila</button><button type="button" onClick={()=>void abrirFicha(item)} disabled={operando} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">Abrir ficha</button></div></div>)}</div></section>}
   </main>;
 }
