@@ -11,6 +11,16 @@ type ServerEntry = {
 
 type WorkerBindings = { ORICSE_WRITE_COORDINATOR?: unknown };
 
+function getWorkerBindings(env?: unknown): WorkerBindings | undefined {
+  // Nitro forwards the Cloudflare bindings to the outer Worker handler and
+  // stores them on the runtime global before it invokes the SSR service. The
+  // SSR service itself receives only the Request, so its `env` argument is
+  // empty in production. Prefer the explicit argument for compatibility, but
+  // use Nitro's runtime binding when it is the only source available.
+  return (env as WorkerBindings | undefined)
+    ?? (globalThis as typeof globalThis & { __env__?: WorkerBindings }).__env__;
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 function securityHeaders(response: Response, pathname?: string): Response {
@@ -91,7 +101,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    setDriveCoordinatorBinding((env as WorkerBindings | undefined)?.ORICSE_WRITE_COORDINATOR);
+    setDriveCoordinatorBinding(getWorkerBindings(env)?.ORICSE_WRITE_COORDINATOR);
     try {
       const url = new URL(request.url);
       if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin), url.pathname);
