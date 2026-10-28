@@ -274,6 +274,12 @@ function AnimalFicha() {
           { p_animal: animalId },
         );
         if (eCid || !cid) throw Error(eCid?.message || "Clínica do animal não identificada.");
+        // Ao abrir pelo Admin, alinha o contexto da sessão à clínica do paciente.
+        const { error: eAtiva } = await (supabaseBanco as any).rpc(
+          "oricse_clinica_ativa_definir",
+          { p_clinica: cid },
+        );
+        if (eAtiva) throw eAtiva;
         const { data, error } = await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela", {
           p_clinica: cid,
           p_animal: animalId,
