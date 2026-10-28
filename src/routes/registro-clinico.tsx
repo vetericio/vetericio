@@ -1,7 +1,7 @@
-import { oricseStorage } from "@/lib/oricse-storage";
+import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import {
@@ -17,7 +17,10 @@ import {
   salvarComandas,
 } from "@/lib/comandas";
 
-import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
+import { Medicacoes } from "@/components/Medicacoes";
+import type { Medicacao } from "@/lib/ficha";
+import { categoriaExame, EXAMES_PADRAO, type CategoriaExame } from "@/lib/exames-catalogo";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
@@ -31,7 +34,7 @@ type ConsultaForm = {
   acessoRua: SimNao; contatoAnimais: SimNao; ambiente: string; moradia: string; ventilacao: string; apetite: string; exposicoes: string[]; vacinacao: string; vermifugacao: string; dieta: string; doencasPrevias: string; medicamentosRecentes: string; alergias: string; queixa: string;
   sistemas: Record<string, { sinais: string[]; observacoes: string }>;
   oftalmo: OftalmoForm;
-  peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; conduta: string; retorno: string;
+  peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; medicacoesDetalhadas: Medicacao[]; conduta: string; retorno: string;
 };
 type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anestesia: string; achados: string; materiais: string; intercorrencias: string; posOperatorio: string; observacoes: string };
 type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null };
@@ -83,10 +86,6 @@ const SISTEMAS: Record<string, string[]> = {
   Outros: [],
 };
 
-const EXAMES_OPCOES = [
-  "Hemograma completo", "Bioquímica sérica", "Urina tipo 1", "Urocultura", "Ultrassonografia abdominal", "Radiografia", "Ecocardiograma", "Eletrocardiograma", "Pressão arterial", "Teste rápido", "Citologia", "Histopatológico", "Coprológico", "Dosagem hormonal", "Hemogasometria", "Coagulograma", "Sorologia", "PCR",
-];
-
 const ETAPAS = [
   { n: 1, titulo: "Tutor / rotina", subtitulo: "Histórico e ambiente" },
   { n: 2, titulo: "Queixa principal", subtitulo: "Motivo da consulta" },
@@ -116,40 +115,20 @@ function numeroMoeda(valor: string) { const numero=parseValorMonetario(valor); r
 function moeda(valor: number) { return valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
 function valorCampo(valor: number | string | null | undefined) { const numero=Number(valor); return Number.isFinite(numero)?numero.toFixed(2).replace(".",","):""; }
 
-function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", conduta:"", retorno:"" }; }
+function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", medicacoesDetalhadas:[], conduta:"", retorno:"" }; }
+
+function resumoMedicacoes(lista: Medicacao[]) {
+  return lista.map((item) => [item.nome, item.dose, item.quantidade, item.via, item.duracao ? `a cada ${item.duracao}` : "", item.observacao].filter(Boolean).join(" · ")).join("\n");
+}
 
 function RegistroClinico(){
   const navigate=useNavigate();
   const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
   const animalId=params.get("animalId")||"";
-  // Nunca exibir ficha de outra fonte antes de validar a clínica e o animal no servidor.
-  const [animal,setAnimal]=useState<Animal|null>(null);
-  const [tutor,setTutor]=useState<Tutor|null>(null);
-  const [carregandoAnimal,setCarregandoAnimal]=useState(Boolean(animalId));
-  const [erroAnimal,setErroAnimal]=useState("");
-  useEffect(()=>{
-    let ativo=true;
-    async function carregarAnimal(){
-      if(!animalId){setCarregandoAnimal(false);setErroAnimal("Identificação do animal ausente.");return;}
-      try{
-        const {data:clinicaId,error:erroClinica}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_animal:animalId});
-        if(erroClinica||!clinicaId)throw new Error(erroClinica?.message||"Clínica do animal não identificada.");
-        const {data,error}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaId,p_animal:animalId});
-        if(error)throw error;
-        if(!data?.animal)throw new Error("Animal não encontrado nesta clínica.");
-        if(!ativo)return;
-        setAnimal({...data.animal,peso:data.animal.peso==null?"":String(data.animal.peso)} as Animal);
-        setTutor((data.tutor||null) as Tutor|null);
-        setErroAnimal("");
-      }catch(error){
-        if(ativo)setErroAnimal(error instanceof Error?error.message:"Não foi possível carregar o animal.");
-      }finally{
-        if(ativo)setCarregandoAnimal(false);
-      }
-    }
-    void carregarAnimal();
-    return()=>{ativo=false;};
-  },[animalId]);
+  const animais=useMemo(()=>ler<Animal>(ANIMAIS_KEY),[]);
+  const tutores=useMemo(()=>ler<Tutor>(TUTORES_KEY),[]);
+  const animal=animais.find(a=>a.id===animalId);
+  const tutor=tutores.find(t=>t.id===animal?.tutorId);
   const [modo,setModo]=useState<""|"consulta"|"procedimento">(()=>{ const tipo=params.get("tipo"); return tipo==="consulta"||tipo==="procedimento"?tipo:""; });
   const [etapa,setEtapa]=useState(1);
   const [consulta,setConsulta]=useState<ConsultaForm>(()=>({...formConsultaVazio(),peso:animal?.peso||""}));
@@ -168,20 +147,28 @@ function RegistroClinico(){
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
 
   useEffect(()=>{let ativo=true; async function carregarResponsavel(){try{const {data,error}=await supabase.auth.getUser();if(error)throw error;if(!data.user)throw new Error("Sessão não encontrada.");const {data:perfil,error:erroPerfil}=await supabase.from("app_users").select("username,email").eq("user_id",data.user.id).maybeSingle();if(erroPerfil)throw erroPerfil;if(ativo)setResponsavel({id:data.user.id,nome:perfil?.username?`@${perfil.username}`:perfil?.email||data.user.email||data.user.id});}catch(error){console.error("Não foi possível identificar o responsável pelo atendimento:",error);}}void carregarResponsavel();return()=>{ativo=false};},[]);
-  useEffect(()=>{if(animal?.peso)setConsulta(atual=>atual.peso?atual:{...atual,peso:animal.peso||""});},[animal?.id,animal?.peso]);
   useEffect(()=>{ if(!animalId)return; try{const salvo=oricseStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}}catch{} },[animalId]);
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
-  useEffect(()=>{ let ativo=true; async function carregarCatalogo(){ try{ const {data:auth}=await supabase.auth.getUser(); const userId=auth.user?.id; if(!userId)throw new Error("Sessão não encontrada."); const {data:contexto,error:erroContexto}=await (supabase as any).rpc("oricse_contexto_clinica_atual"); if(erroContexto)throw erroContexto; const clinicaId=contexto?.[0]?.clinica_id||""; if(!clinicaId)throw new Error("Selecione uma clínica na página Início antes de realizar o atendimento."); const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaId).eq("ativo",true).order("nome"); if(error)throw error; if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");} }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}finally{if(ativo)setCatalogoCarregando(false);} } void carregarCatalogo(); return()=>{ativo=false}; },[]);
+  useEffect(()=>{ let ativo=true; async function carregarCatalogo(){ try{ const {data:auth}=await supabase.auth.getUser(); const userId=auth.user?.id; if(!userId)throw new Error("Sessão não encontrada."); const [{data:usuario},{data:vinculo}]=await Promise.all([(supabase as any).from("app_users").select("role").eq("user_id",userId).maybeSingle(),(supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id",userId).eq("ativo",true).limit(1).maybeSingle()]); let clinicaId=vinculo?.clinica_id||""; if(!clinicaId&&usuario?.role==="admin"){ const {data:clinicas,error}=await (supabase as any).from("clinicas").select("id").eq("status","ativa").order("nome").limit(1); if(error)throw error; clinicaId=clinicas?.[0]?.id||""; } if(!clinicaId)throw new Error("Nenhuma clínica vinculada ao atendimento."); const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaId).eq("ativo",true).order("nome"); if(error)throw error; if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");} }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}finally{if(ativo)setCatalogoCarregando(false);} } void carregarCatalogo(); return()=>{ativo=false}; },[]);
   useEffect(()=>{ if(etapa!==7||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:Boolean(itemCatalogo)||Boolean(existente?.precoConfigurado) } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
 
-  if(!animal)return <main className="mx-auto max-w-4xl px-4 py-8"><Link to="/animais" className="text-sm text-muted-foreground">← Voltar</Link><div role={erroAnimal?"alert":undefined} className="mt-5 rounded-2xl border p-6">{carregandoAnimal?"Carregando ficha do animal…":erroAnimal||"Animal não encontrado."}</div></main>;
+  if(!animal)return <main className="mx-auto max-w-4xl px-4 py-8"><Link to="/animais" className="text-sm text-muted-foreground">← Voltar</Link><div className="mt-5 rounded-2xl border p-6">Animal não encontrado.</div></main>;
 
   const toggleExposicao=(nome:string)=>setConsulta(f=>({...f,exposicoes:f.exposicoes.includes(nome)?f.exposicoes.filter(x=>x!==nome):[...f.exposicoes,nome]}));
   const toggleSinal=(sistema:string,sinal:string)=>setConsulta(f=>({...f,sistemas:{...f.sistemas,[sistema]:{...f.sistemas[sistema],sinais:f.sistemas[sistema].sinais.includes(sinal)?f.sistemas[sistema].sinais.filter(x=>x!==sinal):[...f.sistemas[sistema].sinais,sinal]}}}));
   const setOftalmoPar=(chave:keyof Omit<OftalmoForm,"equipamentoTonometria">,olho:keyof OlhoValores,valor:string)=>setConsulta(f=>({...f,oftalmo:{...f.oftalmo,[chave]:{...f.oftalmo[chave],[olho]:valor}}}));
   const examesSelecionados=consulta.examesSolicitados.split(" · ").map(x=>x.trim()).filter(Boolean);
   const toggleExame=(nome:string)=>setConsulta(f=>{const atuais=f.examesSolicitados.split(" · ").map(x=>x.trim()).filter(Boolean); const novos=atuais.includes(nome)?atuais.filter(x=>x!==nome):[...atuais,nome]; return {...f,examesSolicitados:novos.join(" · ")}});
+  const examesConfigurados = useMemo(() => catalogo
+    .map((item) => ({ ...item, categoriaExame: categoriaExame(item.categoria) }))
+    .filter((item): item is ItemCatalogo & { categoriaExame: CategoriaExame } => Boolean(item.categoriaExame)), [catalogo]);
+  const examesDisponiveis = examesConfigurados.length
+    ? examesConfigurados.map((item) => ({ nome: item.nome, categoria: item.categoriaExame }))
+    : EXAMES_PADRAO;
+  const examesPorCategoria = (["Sangue", "Urina", "Fezes", "Imagem", "Outros"] as CategoriaExame[])
+    .map((categoria) => ({ categoria, itens: examesDisponiveis.filter((item) => item.categoria === categoria) }))
+    .filter((grupo) => grupo.itens.length);
   const totalComanda=itensComanda.reduce((total,item)=>total+(numeroMoeda(item.valorUnitario)||0)*item.quantidade,0);
   const itensSemPreco=itensComanda.filter(item=>numeroMoeda(item.valorUnitario)===null);
   function adicionarItemCatalogo(){ const item=catalogo.find(cadastrado=>cadastrado.id===itemCatalogoId); if(!item)return; setItensComanda(atuais=>{ const existente=atuais.find(linha=>linha.catalogoId===item.id); return existente?atuais.map(linha=>linha.id===existente.id?{...linha,quantidade:linha.quantidade+1}:linha):[...atuais,{id:crypto.randomUUID(),catalogoId:item.id,nome:item.nome,tipo:item.tipo,quantidade:1,valorUnitario:valorCampo(item.preco),precoConfigurado:true}]; }); setItemCatalogoId(""); }
@@ -426,8 +413,8 @@ function RegistroClinico(){
             </>}
             {etapa===5&&<><div className="grid gap-4 md:grid-cols-2"><Textarea grande label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={v=>setConsulta({...consulta,suspeitas:v})}/><Textarea grande label="Conduta / orientações" value={consulta.conduta} onChange={v=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-4 max-w-lg"><Input label="Retorno" value={consulta.retorno} onChange={v=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: 7 dias ou antes se piorar"/></div></>}
             {etapa===6&&<div className="grid gap-4 xl:grid-cols-2">
-              <section className="rounded-2xl border bg-violet-50/35 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><FileText size={22}/></div><div><h3 className="text-lg font-black">Receita</h3><p className="text-sm text-muted-foreground">Registre a prescrição desta consulta ou abra o receituário completo.</p></div></div><div className="mt-4"><Textarea label="Medicações / tratamento" value={consulta.medicacoes} onChange={v=>setConsulta({...consulta,medicacoes:v})} placeholder="Ex.: Dipirona 500 mg — administrar..."/></div><Link to="/receituario" search={{animalId:animal.id,tutorId:tutor?.id||""} as never} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-700 px-4 text-sm font-black text-white">Abrir receituário</Link></section>
-              <section className="rounded-2xl border bg-sky-50/40 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><FlaskConical size={22}/></div><div><h3 className="text-lg font-black">Pedido de exame</h3><p className="text-sm text-muted-foreground">Selecione um ou mais exames. Eles ficam vinculados a esta consulta.</p></div></div><div className="mt-4 flex flex-wrap gap-2">{EXAMES_OPCOES.map(nome=><Chip key={nome} ativo={examesSelecionados.includes(nome)} onClick={()=>toggleExame(nome)}>{nome}</Chip>)}</div><div className="mt-4"><Textarea label="Outros exames / observações" value={consulta.examesSolicitados} onChange={v=>setConsulta({...consulta,examesSolicitados:v})} placeholder="Você também pode complementar manualmente o pedido..."/></div></section>
+              <section className="rounded-2xl border bg-violet-50/35 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><FileText size={22}/></div><div><h3 className="text-lg font-black">Receita</h3><p className="text-sm text-muted-foreground">Escolha no banco de medicações: a dose é calculada pelo peso deste paciente e segue editável.</p></div></div><div className="mt-4"><Medicacoes lista={consulta.medicacoesDetalhadas} especie={/gato|fel/i.test(animal.especie||"")?"Gato":"Cachorro"} peso={consulta.peso||animal.peso||""} onChange={medicacoesDetalhadas=>setConsulta(f=>({...f,medicacoesDetalhadas,medicacoes:resumoMedicacoes(medicacoesDetalhadas)}))}/></div><div className="mt-4"><Textarea label="Observações do tratamento" value={consulta.medicacoes} onChange={v=>setConsulta({...consulta,medicacoes:v})} placeholder="Observações adicionais da prescrição..."/></div><Link to="/receituario" search={{animalId:animal.id,tutorId:tutor?.id||""} as never} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-700 px-4 text-sm font-black text-white">Abrir receituário</Link></section>
+              <section className="rounded-2xl border bg-sky-50/40 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><FlaskConical size={22}/></div><div><h3 className="text-lg font-black">Pedido de exame</h3><p className="text-sm text-muted-foreground">Os valores são definidos pelo RT/Admin e cada exame selecionado entra automaticamente na comanda.</p></div></div><div className="mt-4 space-y-4">{examesPorCategoria.map(grupo=><div key={grupo.categoria}><p className="mb-2 text-xs font-black uppercase tracking-wide text-sky-800">{grupo.categoria}</p><div className="flex flex-wrap gap-2">{grupo.itens.map(item=><Chip key={item.nome} ativo={examesSelecionados.includes(item.nome)} onClick={()=>toggleExame(item.nome)}>{item.nome}</Chip>)}</div></div>)}</div><div className="mt-4"><Textarea label="Outros exames / observações" value={consulta.examesSolicitados} onChange={v=>setConsulta({...consulta,examesSolicitados:v})} placeholder="Você também pode complementar manualmente o pedido..."/></div></section>
             </div>}
             {etapa===7&&<div className="space-y-5">
               <section className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShoppingCart size={22}/></div><div><h3 className="text-lg font-black">Comanda desta consulta</h3><p className="text-sm text-muted-foreground">A consulta e os exames solicitados entram automaticamente. Confira os valores e acrescente o que mais será cobrado.</p></div></div><div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select value={itemCatalogoId} onChange={e=>setItemCatalogoId(e.target.value)} disabled={catalogoCarregando} className="min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-primary"><option value="">{catalogoCarregando?"Carregando serviços e produtos...":"Adicionar serviço ou produto"}</option>{catalogo.map(item=><option key={item.id} value={item.id}>{item.nome} · {moeda(Number(item.preco)||0)}</option>)}</select><button type="button" onClick={adicionarItemCatalogo} disabled={!itemCatalogoId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar</button></div>{catalogoAviso&&<p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{catalogoAviso} Você ainda pode preencher os valores manualmente.</p>}</section>
