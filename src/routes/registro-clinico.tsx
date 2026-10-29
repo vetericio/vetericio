@@ -1,6 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BedDouble, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
@@ -199,6 +199,26 @@ function RegistroClinico(){
     if(n===5)return Boolean(consulta.suspeitas||consulta.conduta||consulta.retorno);
     if(n===6)return Boolean(consulta.examesSolicitados||consulta.medicacoes);
     return itensComanda.length>0&&itensSemPreco.length===0;
+  }
+
+  function encaminharParaInternacao(){
+    if(!animal)return void toast.error("Animal não encontrado.");
+    const especie = /gato|fel/i.test(animal.especie || "") ? "Gato" : /cao|cão|can/i.test(animal.especie || "") ? "Cachorro" : "";
+    const relato = [
+      "Encaminhado da consulta clínica.",
+      consulta.exameGeral.trim() && `Exame físico: ${consulta.exameGeral.trim()}`,
+      consulta.suspeitas.trim() && `Hipóteses / suspeitas: ${consulta.suspeitas.trim()}`,
+    ].filter(Boolean).join("\n");
+    navigate({ to:"/anamnese", search:{
+      origem:"consulta",
+      animal:animal.nome,
+      especie,
+      peso:consulta.peso || animal.peso || "",
+      queixa:consulta.queixa,
+      relato,
+      conduta:consulta.conduta,
+      atencao:consulta.retorno ? `Reavaliar: ${consulta.retorno}` : "",
+    } as never });
   }
 
   function abrirPagamento(){ if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal."); if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda."); if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda."); salvarConsulta("Pendente","A definir"); }
@@ -427,7 +447,7 @@ function RegistroClinico(){
               <p className="mt-3 text-xs font-medium text-muted-foreground">Referência normal para {animal?.especie || "cão"}: temperatura {normaisPara(animal?.especie).temperatura} · FC {normaisPara(animal?.especie).fc} · FR {normaisPara(animal?.especie).fr} · PAS {normaisPara(animal?.especie).pas} · glicemia {normaisPara(animal?.especie).glicemia}</p>
               <div className="mt-3"><Textarea label="Exame físico / avaliação geral" value={consulta.exameGeral} onChange={v=>setConsulta({...consulta,exameGeral:v})}/></div>
             </>}
-            {etapa===5&&<><div className="grid gap-4 md:grid-cols-2"><Textarea grande label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={v=>setConsulta({...consulta,suspeitas:v})}/><Textarea grande label="Conduta / orientações" value={consulta.conduta} onChange={v=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-4 max-w-lg"><Input label="Retorno" value={consulta.retorno} onChange={v=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: 7 dias ou antes se piorar"/></div></>}
+            {etapa===5&&<><div className="grid gap-4 md:grid-cols-2"><Textarea grande label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={v=>setConsulta({...consulta,suspeitas:v})}/><Textarea grande label="Conduta / orientações" value={consulta.conduta} onChange={v=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-4 max-w-lg"><Input label="Retorno" value={consulta.retorno} onChange={v=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: 7 dias ou antes se piorar"/></div><section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/[0.04] p-4"><div><h3 className="font-black">Precisa de internação?</h3><p className="mt-1 text-sm text-muted-foreground">Abra a anamnese de internação com os dados desta consulta já preenchidos.</p></div><button type="button" onClick={encaminharParaInternacao} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground"><BedDouble size={18}/> Encaminhar para internação</button></section></>}
             {etapa===6&&<div className="grid gap-4 xl:grid-cols-2">
               <section className="rounded-2xl border bg-violet-50/35 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700"><FileText size={22}/></div><div><h3 className="text-lg font-black">Receita</h3><p className="text-sm text-muted-foreground">Escolha no banco de medicações: a dose é calculada pelo peso deste paciente e segue editável.</p></div></div><div className="mt-4"><Medicacoes lista={consulta.medicacoesDetalhadas} especie={/gato|fel/i.test(animal.especie||"")?"Gato":"Cachorro"} peso={consulta.peso||animal.peso||""} onChange={medicacoesDetalhadas=>setConsulta(f=>({...f,medicacoesDetalhadas,medicacoes:resumoMedicacoes(medicacoesDetalhadas)}))}/></div><div className="mt-4"><Textarea label="Observações do tratamento" value={consulta.medicacoes} onChange={v=>setConsulta({...consulta,medicacoes:v})} placeholder="Observações adicionais da prescrição..."/></div><Link to="/receituario" search={{animalId:animal.id,tutorId:tutor?.id||""} as never} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-700 px-4 text-sm font-black text-white">Abrir receituário</Link></section>
               <section className="rounded-2xl border bg-sky-50/40 p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><FlaskConical size={22}/></div><div><h3 className="text-lg font-black">Pedido de exame</h3><p className="text-sm text-muted-foreground">Os valores são definidos pelo RT/Admin e cada exame selecionado entra automaticamente na comanda.</p></div></div><div className="mt-4 space-y-4">{examesPorCategoria.map(grupo=><div key={grupo.categoria}><p className="mb-2 text-xs font-black uppercase tracking-wide text-sky-800">{grupo.categoria}</p><div className="flex flex-wrap gap-2">{grupo.itens.map(item=><Chip key={item.nome} ativo={examesSelecionados.includes(item.nome)} onClick={()=>toggleExame(item.nome)}>{item.nome}</Chip>)}</div></div>)}</div><div className="mt-4"><Textarea label="Outros exames / observações" value={consulta.examesSolicitados} onChange={v=>setConsulta({...consulta,examesSolicitados:v})} placeholder="Você também pode complementar manualmente o pedido..."/></div></section>
