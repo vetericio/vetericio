@@ -104,7 +104,21 @@ function AnamnesePagina() {
 function AnamneseConteudo() {
   const { anamneses, setAnamneses, carregado } = useAnamneses();
   const { registros } = useRegistros();
-  const [form, setForm] = useState<Omit<Anamnese, "id" | "atualizadoEm">>(ANAMNESE_VAZIA);
+  const [form, setForm] = useState<Omit<Anamnese, "id" | "atualizadoEm">>(() => {
+    const parametros = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+    if (parametros.get("origem") !== "consulta") return ANAMNESE_VAZIA;
+    const especie = parametros.get("especie");
+    return {
+      ...ANAMNESE_VAZIA,
+      animal: parametros.get("animal") || "",
+      especie: especie === "Cachorro" || especie === "Gato" ? especie : "",
+      peso: parametros.get("peso") || "",
+      queixa: parametros.get("queixa") || "",
+      relato: parametros.get("relato") || "",
+      conduta: parametros.get("conduta") || "",
+      atencao: parametros.get("atencao") || "",
+    };
+  });
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [visualizando, setVisualizando] = useState<Anamnese | null>(null);
   const [novaPendencia, setNovaPendencia] = useState("");
