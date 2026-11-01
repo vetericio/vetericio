@@ -28,6 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 type MenuRoute =
   | "/recepcao"
+  | "/hotelzinho"
   | "/configurar-agenda-online"
   | "/tutores"
   | "/animais"
@@ -106,7 +107,7 @@ const areas: AreaMenu[] = [
   {
     titulo: "Hotelzinho",
     icone: BedDouble,
-    itens: [{ rotulo: "Módulo em preparação", emBreve: true }],
+    itens: [{ to: "/hotelzinho", rotulo: "Abrir Hotelzinho", permissao: "hotelzinho.visualizar" }],
   },
   {
     titulo: "Banho e tosa",
