@@ -36,6 +36,7 @@ import { Route as EncaminharRouteImport } from './routes/encaminhar'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as HotelzinhoRouteImport } from './routes/hotelzinho'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
@@ -198,6 +199,11 @@ const FilaEsperaRoute = FilaEsperaRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HotelzinhoRoute = HotelzinhoRouteImport.update({
+  id: '/hotelzinho',
+  path: '/hotelzinho',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InicioRoute = InicioRouteImport.update({
@@ -369,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
+  '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
@@ -426,6 +433,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
+  '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
@@ -484,6 +492,7 @@ export interface FileRoutesById {
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
+  '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
@@ -543,6 +552,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
+    | '/hotelzinho'
     | '/inicio'
     | '/internacao'
     | '/login'
@@ -600,6 +610,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
+    | '/hotelzinho'
     | '/inicio'
     | '/internacao'
     | '/login'
@@ -657,6 +668,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
+    | '/hotelzinho'
     | '/inicio'
     | '/internacao'
     | '/login'
@@ -715,6 +727,7 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   FilaEsperaRoute: typeof FilaEsperaRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  HotelzinhoRoute: typeof HotelzinhoRoute
   InicioRoute: typeof InicioRoute
   InternacaoRoute: typeof InternacaoRoute
   LoginRoute: typeof LoginRoute
@@ -934,6 +947,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hotelzinho': {
+      id: '/hotelzinho'
+      path: '/hotelzinho'
+      fullPath: '/hotelzinho'
+      preLoaderRoute: typeof HotelzinhoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inicio': {
@@ -1163,6 +1183,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   FilaEsperaRoute: FilaEsperaRoute,
   FinanceiroRoute: FinanceiroRoute,
+  HotelzinhoRoute: HotelzinhoRoute,
   InicioRoute: InicioRoute,
   InternacaoRoute: InternacaoRoute,
   LoginRoute: LoginRoute,
