@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import {
-  Activity,
   BarChart3,
   BedDouble,
   CalendarCheck,
@@ -28,8 +27,10 @@ import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+type MenuRoute = "/recepcao" | "/configurar-agenda-online" | "/tutores" | "/animais" | "/consultorio" | "/assinar" | "/receituario" | "/medicacoes" | "/internacao" | "/registros" | "/anamnese" | "/curva" | "/alarmes" | "/pendencias" | "/plantoes" | "/crm" | "/financeiro" | "/comandas" | "/estoque" | "/minha-atividade" | "/perfil-clinica" | "/configurar-portal-tutor" | "/temas";
+
 type ItemMenu = {
-  to?: string;
+  to?: MenuRoute;
   rotulo: string;
   permissao?: string;
   emBreve?: boolean;
