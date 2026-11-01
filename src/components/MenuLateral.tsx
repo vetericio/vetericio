@@ -6,7 +6,6 @@ import {
   CalendarCheck,
   ChevronDown,
   Clock3,
-  House,
   Lock,
   LogOut,
   Menu,
@@ -61,7 +60,7 @@ type ItemMenu = {
 
 type AreaMenu = {
   titulo: string;
-  icone: typeof House;
+  icone: typeof CalendarCheck;
   itens: ItemMenu[];
 };
 
@@ -239,14 +238,6 @@ export function MenuLateral({
   const navegacao = (menuFixo = false) => (
     <>
       <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
-        <Link
-          to="/inicio"
-          onClick={() => setAberto(false)}
-          className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 text-sm font-semibold ${location.pathname === "/inicio" ? "bg-primary/10 text-primary border-primary/30" : "bg-secondary/40 hover:bg-secondary"}`}
-        >
-          <House className="h-5 w-5" />
-          <span>Painel</span>
-        </Link>
         {areas.map((area) => {
           const itens = itensVisiveis(area);
           if (itens.length === 0) return null;
@@ -390,14 +381,6 @@ export function MenuLateral({
             <span className="flex h-11 w-11 items-center justify-center rounded-xl text-primary">
               <Menu className="h-5 w-5" />
             </span>
-            <Link
-              to="/inicio"
-              aria-label="Painel"
-              title="Painel"
-              className={`flex h-11 w-11 items-center justify-center rounded-xl border ${location.pathname === "/inicio" ? "border-primary bg-primary text-primary-foreground" : "border-border/70 hover:bg-secondary"}`}
-            >
-              <House className="h-5 w-5" />
-            </Link>
             {areas.map((area) => {
               const itens = itensVisiveis(area);
               if (itens.length === 0) return null;
