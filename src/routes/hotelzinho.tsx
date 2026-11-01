@@ -521,70 +521,312 @@ function Hotelzinho() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3 px-1">
-          <div>
-            <h2 className="text-sm font-bold text-foreground">Menu do Hotelzinho</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Acesse rapidamente cada etapa da hospedagem.
-            </p>
+      <div className="grid items-start gap-4 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6">
+        <nav
+          aria-label="Seções do Hotelzinho"
+          className="rounded-2xl border border-border bg-card p-3 shadow-sm lg:sticky lg:top-4"
+        >
+          <div className="mb-2 flex items-center justify-between px-2 py-1">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Hotelzinho
+            </h2>
+            <span className="text-xs tabular-nums text-muted-foreground">08</span>
           </div>
-          <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-            8 áreas
-          </span>
-        </div>
-        <nav aria-label="Hotelzinho" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {ABAS.map((item) => {
-            const Icone = item.icone;
-            const ativa = aba === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-current={ativa ? "page" : undefined}
-                onClick={() => setAba(item.id)}
-                className={`group flex min-h-[4.25rem] min-w-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${ativa ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border/80 bg-background text-foreground hover:border-primary/40 hover:bg-secondary/60"}`}
-              >
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${ativa ? "bg-white/15 text-primary-foreground" : "bg-primary/10 text-primary group-hover:bg-primary/15"}`}
-                >
-                  <Icone className="h-[18px] w-[18px]" />
-                </span>
-                <span className="text-sm font-semibold leading-tight">{item.nome}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </section>
-
-      {aba === "painel" && (
-        <section className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              ["Hóspedes ativos", String(hospedes.length), Dog],
-              ["Reservas confirmadas", String(reservas.length), CalendarDays],
-              ["Chegadas hoje", String(chegadasHoje.length), Check],
-              ["Saídas previstas hoje", String(saidasHoje.length), Clock3],
-            ].map(([rotulo, valor, Icone]) => {
-              const Icon = Icone as typeof BedDouble;
+          <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-1">
+            {ABAS.map((item) => {
+              const Icone = item.icone;
+              const ativa = aba === item.id;
               return (
-                <div key={String(rotulo)} className={`${painel} flex items-center gap-3`}>
-                  <span className="rounded-xl bg-primary/10 p-3 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-sm text-muted-foreground">{String(rotulo)}</p>
-                    <p className="text-2xl font-bold">{String(valor)}</p>
-                  </div>
-                </div>
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-current={ativa ? "page" : undefined}
+                  onClick={() => setAba(item.id)}
+                  className={`flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${ativa ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"}`}
+                >
+                  <Icone className="h-4 w-4 shrink-0" />
+                  <span className="leading-tight">{item.nome}</span>
+                </button>
               );
             })}
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-3">
-              <h2 className="font-semibold">Chegadas de hoje</h2>
-              {chegadasHoje.length ? (
-                chegadasHoje.map((item) =>
+        </nav>
+
+        <div className="min-w-0 space-y-5">
+          {aba === "painel" && (
+            <section className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  ["Hóspedes ativos", String(hospedes.length), Dog],
+                  ["Reservas confirmadas", String(reservas.length), CalendarDays],
+                  ["Chegadas hoje", String(chegadasHoje.length), Check],
+                  ["Saídas previstas hoje", String(saidasHoje.length), Clock3],
+                ].map(([rotulo, valor, Icone]) => {
+                  const Icon = Icone as typeof BedDouble;
+                  return (
+                    <div key={String(rotulo)} className={`${painel} flex items-center gap-3`}>
+                      <span className="rounded-xl bg-primary/10 p-3 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-sm text-muted-foreground">{String(rotulo)}</p>
+                        <p className="text-2xl font-bold">{String(valor)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <h2 className="font-semibold">Chegadas de hoje</h2>
+                  {chegadasHoje.length ? (
+                    chegadasHoje.map((item) =>
+                      cartaoEstadia(
+                        item,
+                        podeOperar && (
+                          <button
+                            type="button"
+                            onClick={() => void fazerCheckin(item)}
+                            className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+                          >
+                            Fazer check-in
+                          </button>
+                        ),
+                      ),
+                    )
+                  ) : (
+                    <p className={`${painel} text-sm text-muted-foreground`}>
+                      Nenhuma chegada prevista para hoje.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <h2 className="font-semibold">Saídas de hoje</h2>
+                  {saidasHoje.length ? (
+                    saidasHoje.map((item) =>
+                      cartaoEstadia(
+                        item,
+                        podeOperar && (
+                          <button
+                            type="button"
+                            onClick={() => void fazerCheckout(item)}
+                            className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+                          >
+                            Fazer check-out
+                          </button>
+                        ),
+                      ),
+                    )
+                  ) : (
+                    <p className={`${painel} text-sm text-muted-foreground`}>
+                      Nenhuma saída prevista para hoje.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {aba === "reservas" && (
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Reservas</h2>
+                {podeOperar && (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarReserva(!mostrarReserva)}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                  >
+                    <Plus className="h-4 w-4" /> Nova reserva
+                  </button>
+                )}
+              </div>
+              {mostrarReserva && (
+                <form onSubmit={salvarReserva} className={`${painel} grid gap-3 sm:grid-cols-2`}>
+                  <label className="space-y-1 text-sm font-medium sm:col-span-2">
+                    Animal
+                    <select
+                      required
+                      value={formReserva.animal_id}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, animal_id: e.target.value })
+                      }
+                      className={campo}
+                    >
+                      <option value="">Selecione um pet cadastrado</option>
+                      {animais.map((animal) => (
+                        <option key={animal.id} value={animal.id}>
+                          {animal.nome} — {tutoresPorId.get(animal.tutor_id)?.nome || "Tutor"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Chegada prevista
+                    <input
+                      required
+                      type="datetime-local"
+                      value={formReserva.chegada_prevista}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, chegada_prevista: e.target.value })
+                      }
+                      className={campo}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Saída prevista
+                    <input
+                      required
+                      type="datetime-local"
+                      value={formReserva.saida_prevista}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, saida_prevista: e.target.value })
+                      }
+                      className={campo}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Acomodação
+                    <select
+                      value={formReserva.acomodacao_id}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, acomodacao_id: e.target.value })
+                      }
+                      className={campo}
+                    >
+                      <option value="">Definir depois</option>
+                      {acomodacoes
+                        .filter((a) => a.ativa)
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.nome} · {a.especie} · capacidade {a.capacidade}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Valor da diária (R$)
+                    <input
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={formReserva.diaria}
+                      onChange={(e) => setFormReserva({ ...formReserva, diaria: e.target.value })}
+                      className={campo}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Alimentação
+                    <textarea
+                      value={formReserva.alimentacao}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, alimentacao: e.target.value })
+                      }
+                      className={campo}
+                      rows={2}
+                      placeholder="Ração, quantidade e horários"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Medicamentos prescritos
+                    <textarea
+                      value={formReserva.medicacoes}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, medicacoes: e.target.value })
+                      }
+                      className={campo}
+                      rows={2}
+                      placeholder="Nome, dose, via e horário conforme prescrição"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Restrições ou alergias
+                    <textarea
+                      value={formReserva.restricoes}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, restricoes: e.target.value })
+                      }
+                      className={campo}
+                      rows={2}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Pertences entregues
+                    <input
+                      value={formReserva.pertences}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, pertences: e.target.value })
+                      }
+                      className={campo}
+                      placeholder="Separar por vírgula"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium sm:col-span-2">
+                    Instruções e observações
+                    <textarea
+                      value={formReserva.instrucoes}
+                      onChange={(e) =>
+                        setFormReserva({ ...formReserva, instrucoes: e.target.value })
+                      }
+                      className={campo}
+                      rows={2}
+                    />
+                  </label>
+                  <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => setMostrarReserva(false)}
+                      className="rounded-xl border px-4 py-2 text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      disabled={salvando}
+                      className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      {salvando ? "Salvando…" : "Salvar reserva"}
+                    </button>
+                  </div>
+                </form>
+              )}
+              <div className="space-y-3">
+                {reservas.length ? (
+                  reservas.map((item) =>
+                    cartaoEstadia(
+                      item,
+                      podeOperar && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void fazerCheckin(item)}
+                            className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+                          >
+                            Check-in
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void cancelarReserva(item)}
+                            className="rounded-xl border px-3 py-2 text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ),
+                    ),
+                  )
+                ) : (
+                  <p className={`${painel} text-sm text-muted-foreground`}>
+                    Ainda não há reservas cadastradas.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {aba === "checkin" && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Check-in pendentes</h2>
+              {reservas.length ? (
+                reservas.map((item) =>
                   cartaoEstadia(
                     item,
                     podeOperar && (
@@ -593,21 +835,213 @@ function Hotelzinho() {
                         onClick={() => void fazerCheckin(item)}
                         className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
                       >
-                        Fazer check-in
+                        Registrar entrada
                       </button>
                     ),
                   ),
                 )
               ) : (
                 <p className={`${painel} text-sm text-muted-foreground`}>
-                  Nenhuma chegada prevista para hoje.
+                  Não há reservas aguardando entrada.
                 </p>
               )}
-            </div>
-            <div className="space-y-3">
-              <h2 className="font-semibold">Saídas de hoje</h2>
-              {saidasHoje.length ? (
-                saidasHoje.map((item) =>
+            </section>
+          )}
+
+          {aba === "hospedes" && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Hóspedes ativos</h2>
+              {hospedes.length ? (
+                hospedes.map((item) =>
+                  cartaoEstadia(
+                    item,
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEstadiaSelecionada(item.id);
+                        setAba("cuidados");
+                      }}
+                      className="rounded-xl border px-3 py-2 text-sm"
+                    >
+                      Ver cuidados
+                    </button>,
+                  ),
+                )
+              ) : (
+                <p className={`${painel} text-sm text-muted-foreground`}>
+                  Nenhum pet está hospedado agora.
+                </p>
+              )}
+            </section>
+          )}
+
+          {aba === "cuidados" && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold">Rotina e cuidados</h2>
+              <form
+                onSubmit={salvarCuidado}
+                className={`${painel} grid gap-3 sm:grid-cols-[1fr_180px_2fr_auto] sm:items-end`}
+              >
+                <label className="space-y-1 text-sm font-medium">
+                  Hóspede
+                  <select
+                    required
+                    value={estadiaSelecionada}
+                    onChange={(e) => setEstadiaSelecionada(e.target.value)}
+                    className={campo}
+                  >
+                    <option value="">Selecione</option>
+                    {hospedes.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {petNome(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm font-medium">
+                  Tipo
+                  <select
+                    value={tipoCuidado}
+                    onChange={(e) => setTipoCuidado(e.target.value as Cuidado["tipo"])}
+                    className={campo}
+                  >
+                    <option value="alimentacao">Alimentação</option>
+                    <option value="passeio">Passeio</option>
+                    <option value="medicacao">Medicação</option>
+                    <option value="observacao">Observação</option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm font-medium">
+                  Registro
+                  <textarea
+                    required
+                    value={descricaoCuidado}
+                    onChange={(e) => setDescricaoCuidado(e.target.value)}
+                    className={campo}
+                    rows={1}
+                    placeholder="O que foi feito e em qual horário"
+                  />
+                </label>
+                <button
+                  disabled={!podeOperar || salvando || !hospedes.length}
+                  className="min-h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  Registrar
+                </button>
+              </form>
+              {estadiaRotina && (
+                <div className={`${painel} space-y-2`}>
+                  <h3 className="font-semibold">Plano de estadia de {petNome(estadiaRotina)}</h3>
+                  <p className="text-sm">
+                    <b>Alimentação:</b> {estadiaRotina.alimentacao || "Sem instrução registrada."}
+                  </p>
+                  <p className="text-sm">
+                    <b>Medicamentos:</b> {estadiaRotina.medicacoes || "Nenhum registrado."}
+                  </p>
+                  <p className="text-sm">
+                    <b>Restrições:</b> {estadiaRotina.restricoes || "Nenhuma registrada."}
+                  </p>
+                  <p className="text-sm">
+                    <b>Instruções:</b> {estadiaRotina.instrucoes || "Nenhuma registrada."}
+                  </p>
+                </div>
+              )}
+              <div className="space-y-2">
+                {cuidados
+                  .filter((item) => !estadiaSelecionada || item.estadia_id === estadiaSelecionada)
+                  .map((item) => (
+                    <article
+                      key={item.id}
+                      className={`${painel} flex flex-wrap items-center justify-between gap-2`}
+                    >
+                      <div>
+                        <span className="rounded-full bg-secondary px-2 py-1 text-xs capitalize">
+                          {item.tipo}
+                        </span>
+                        <p className="mt-2 text-sm">{item.descricao}</p>
+                      </div>
+                      <time className="text-xs text-muted-foreground">
+                        {mostrarData(item.ocorrido_em)}
+                      </time>
+                    </article>
+                  ))}
+              </div>
+            </section>
+          )}
+
+          {aba === "tutores" && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold">Atualizações para tutores</h2>
+              <form onSubmit={abrirWhatsApp} className={`${painel} space-y-3`}>
+                <label className="block space-y-1 text-sm font-medium">
+                  Hóspede
+                  <select
+                    required
+                    value={estadiaSelecionada}
+                    onChange={(e) => setEstadiaSelecionada(e.target.value)}
+                    className={campo}
+                  >
+                    <option value="">Selecione</option>
+                    {hospedes.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {petNome(item)} — {tutorNome(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block space-y-1 text-sm font-medium">
+                  Mensagem
+                  <textarea
+                    required
+                    value={textoAtualizacao}
+                    onChange={(e) => setTextoAtualizacao(e.target.value)}
+                    className={campo}
+                    rows={4}
+                    placeholder="Escreva uma atualização da estadia. O texto abrirá preenchido no WhatsApp."
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  O ORICSE prepara a mensagem e abre a conversa. A equipe revisa e envia pelo
+                  WhatsApp.
+                </p>
+                <button
+                  disabled={!podeOperar || !hospedes.length}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#087f5b] px-4 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  <Send className="h-4 w-4" /> Abrir WhatsApp
+                </button>
+              </form>
+              <div className="space-y-2">
+                {atualizacoes.map((item) => {
+                  const estadia = estadias.find((x) => x.id === item.estadia_id);
+                  return (
+                    <article key={item.id} className={painel}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold">
+                          {estadia ? petNome(estadia) : "Estadia"} ·{" "}
+                          {estadia ? tutorNome(estadia) : "Tutor"}
+                        </p>
+                        <time className="text-xs text-muted-foreground">
+                          {mostrarData(item.created_at)}
+                        </time>
+                      </div>
+                      <p className="mt-2 text-sm text-muted-foreground">{item.mensagem}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {aba === "checkout" && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Check-out</h2>
+              <p className="text-sm text-muted-foreground">
+                O total considera as diárias entre a entrada registrada e a saída, com mínimo de uma
+                diária.
+              </p>
+              {hospedes.length ? (
+                hospedes.map((item) =>
                   cartaoEstadia(
                     item,
                     podeOperar && (
@@ -616,553 +1050,130 @@ function Hotelzinho() {
                         onClick={() => void fazerCheckout(item)}
                         className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
                       >
-                        Fazer check-out
+                        Registrar saída
                       </button>
                     ),
                   ),
                 )
               ) : (
                 <p className={`${painel} text-sm text-muted-foreground`}>
-                  Nenhuma saída prevista para hoje.
+                  Não há hóspedes aguardando check-out.
                 </p>
               )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {aba === "reservas" && (
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Reservas</h2>
-            {podeOperar && (
-              <button
-                type="button"
-                onClick={() => setMostrarReserva(!mostrarReserva)}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
-              >
-                <Plus className="h-4 w-4" /> Nova reserva
-              </button>
-            )}
-          </div>
-          {mostrarReserva && (
-            <form onSubmit={salvarReserva} className={`${painel} grid gap-3 sm:grid-cols-2`}>
-              <label className="space-y-1 text-sm font-medium sm:col-span-2">
-                Animal
-                <select
-                  required
-                  value={formReserva.animal_id}
-                  onChange={(e) => setFormReserva({ ...formReserva, animal_id: e.target.value })}
-                  className={campo}
-                >
-                  <option value="">Selecione um pet cadastrado</option>
-                  {animais.map((animal) => (
-                    <option key={animal.id} value={animal.id}>
-                      {animal.nome} — {tutoresPorId.get(animal.tutor_id)?.nome || "Tutor"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Chegada prevista
-                <input
-                  required
-                  type="datetime-local"
-                  value={formReserva.chegada_prevista}
-                  onChange={(e) =>
-                    setFormReserva({ ...formReserva, chegada_prevista: e.target.value })
-                  }
-                  className={campo}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Saída prevista
-                <input
-                  required
-                  type="datetime-local"
-                  value={formReserva.saida_prevista}
-                  onChange={(e) =>
-                    setFormReserva({ ...formReserva, saida_prevista: e.target.value })
-                  }
-                  className={campo}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Acomodação
-                <select
-                  value={formReserva.acomodacao_id}
-                  onChange={(e) =>
-                    setFormReserva({ ...formReserva, acomodacao_id: e.target.value })
-                  }
-                  className={campo}
-                >
-                  <option value="">Definir depois</option>
-                  {acomodacoes
-                    .filter((a) => a.ativa)
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.nome} · {a.especie} · capacidade {a.capacidade}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Valor da diária (R$)
-                <input
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={formReserva.diaria}
-                  onChange={(e) => setFormReserva({ ...formReserva, diaria: e.target.value })}
-                  className={campo}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Alimentação
-                <textarea
-                  value={formReserva.alimentacao}
-                  onChange={(e) => setFormReserva({ ...formReserva, alimentacao: e.target.value })}
-                  className={campo}
-                  rows={2}
-                  placeholder="Ração, quantidade e horários"
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Medicamentos prescritos
-                <textarea
-                  value={formReserva.medicacoes}
-                  onChange={(e) => setFormReserva({ ...formReserva, medicacoes: e.target.value })}
-                  className={campo}
-                  rows={2}
-                  placeholder="Nome, dose, via e horário conforme prescrição"
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Restrições ou alergias
-                <textarea
-                  value={formReserva.restricoes}
-                  onChange={(e) => setFormReserva({ ...formReserva, restricoes: e.target.value })}
-                  className={campo}
-                  rows={2}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Pertences entregues
-                <input
-                  value={formReserva.pertences}
-                  onChange={(e) => setFormReserva({ ...formReserva, pertences: e.target.value })}
-                  className={campo}
-                  placeholder="Separar por vírgula"
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium sm:col-span-2">
-                Instruções e observações
-                <textarea
-                  value={formReserva.instrucoes}
-                  onChange={(e) => setFormReserva({ ...formReserva, instrucoes: e.target.value })}
-                  className={campo}
-                  rows={2}
-                />
-              </label>
-              <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
-                <button
-                  type="button"
-                  onClick={() => setMostrarReserva(false)}
-                  className="rounded-xl border px-4 py-2 text-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  disabled={salvando}
-                  className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-                >
-                  {salvando ? "Salvando…" : "Salvar reserva"}
-                </button>
-              </div>
-            </form>
+            </section>
           )}
-          <div className="space-y-3">
-            {reservas.length ? (
-              reservas.map((item) =>
-                cartaoEstadia(
-                  item,
-                  podeOperar && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => void fazerCheckin(item)}
-                        className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-                      >
-                        Check-in
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void cancelarReserva(item)}
-                        className="rounded-xl border px-3 py-2 text-sm"
-                      >
-                        Cancelar
-                      </button>
-                    </>
-                  ),
-                ),
-              )
-            ) : (
-              <p className={`${painel} text-sm text-muted-foreground`}>
-                Ainda não há reservas cadastradas.
-              </p>
-            )}
-          </div>
-        </section>
-      )}
 
-      {aba === "checkin" && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Check-in pendentes</h2>
-          {reservas.length ? (
-            reservas.map((item) =>
-              cartaoEstadia(
-                item,
-                podeOperar && (
+          {aba === "acomodacoes" && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold">Acomodações</h2>
+              {podeGerenciar && (
+                <form
+                  onSubmit={adicionarAcomodacao}
+                  className={`${painel} grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}
+                >
+                  <label className="space-y-1 text-sm font-medium">
+                    Nome
+                    <input
+                      required
+                      value={nomeAcomodacao}
+                      onChange={(e) => setNomeAcomodacao(e.target.value)}
+                      className={campo}
+                      placeholder="Ex.: Suíte 1"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Espécie
+                    <select
+                      value={especieAcomodacao}
+                      onChange={(e) => setEspecieAcomodacao(e.target.value)}
+                      className={campo}
+                    >
+                      <option>Todos</option>
+                      <option>Cães</option>
+                      <option>Gatos</option>
+                      <option>Pequenos animais</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Capacidade
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={capacidadeAcomodacao}
+                      onChange={(e) => setCapacidadeAcomodacao(e.target.value)}
+                      className={campo}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm font-medium">
+                    Descrição
+                    <input
+                      value={descricaoAcomodacao}
+                      onChange={(e) => setDescricaoAcomodacao(e.target.value)}
+                      className={campo}
+                      placeholder="Observações do espaço"
+                    />
+                  </label>
                   <button
-                    type="button"
-                    onClick={() => void fazerCheckin(item)}
-                    className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+                    disabled={salvando}
+                    className="min-h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2 lg:col-span-4"
                   >
-                    Registrar entrada
+                    Adicionar acomodação
                   </button>
-                ),
-              ),
-            )
-          ) : (
-            <p className={`${painel} text-sm text-muted-foreground`}>
-              Não há reservas aguardando entrada.
-            </p>
-          )}
-        </section>
-      )}
-
-      {aba === "hospedes" && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Hóspedes ativos</h2>
-          {hospedes.length ? (
-            hospedes.map((item) =>
-              cartaoEstadia(
-                item,
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEstadiaSelecionada(item.id);
-                    setAba("cuidados");
-                  }}
-                  className="rounded-xl border px-3 py-2 text-sm"
-                >
-                  Ver cuidados
-                </button>,
-              ),
-            )
-          ) : (
-            <p className={`${painel} text-sm text-muted-foreground`}>
-              Nenhum pet está hospedado agora.
-            </p>
-          )}
-        </section>
-      )}
-
-      {aba === "cuidados" && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Rotina e cuidados</h2>
-          <form
-            onSubmit={salvarCuidado}
-            className={`${painel} grid gap-3 sm:grid-cols-[1fr_180px_2fr_auto] sm:items-end`}
-          >
-            <label className="space-y-1 text-sm font-medium">
-              Hóspede
-              <select
-                required
-                value={estadiaSelecionada}
-                onChange={(e) => setEstadiaSelecionada(e.target.value)}
-                className={campo}
-              >
-                <option value="">Selecione</option>
-                {hospedes.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {petNome(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm font-medium">
-              Tipo
-              <select
-                value={tipoCuidado}
-                onChange={(e) => setTipoCuidado(e.target.value as Cuidado["tipo"])}
-                className={campo}
-              >
-                <option value="alimentacao">Alimentação</option>
-                <option value="passeio">Passeio</option>
-                <option value="medicacao">Medicação</option>
-                <option value="observacao">Observação</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-sm font-medium">
-              Registro
-              <textarea
-                required
-                value={descricaoCuidado}
-                onChange={(e) => setDescricaoCuidado(e.target.value)}
-                className={campo}
-                rows={1}
-                placeholder="O que foi feito e em qual horário"
-              />
-            </label>
-            <button
-              disabled={!podeOperar || salvando || !hospedes.length}
-              className="min-h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              Registrar
-            </button>
-          </form>
-          {estadiaRotina && (
-            <div className={`${painel} space-y-2`}>
-              <h3 className="font-semibold">Plano de estadia de {petNome(estadiaRotina)}</h3>
-              <p className="text-sm">
-                <b>Alimentação:</b> {estadiaRotina.alimentacao || "Sem instrução registrada."}
-              </p>
-              <p className="text-sm">
-                <b>Medicamentos:</b> {estadiaRotina.medicacoes || "Nenhum registrado."}
-              </p>
-              <p className="text-sm">
-                <b>Restrições:</b> {estadiaRotina.restricoes || "Nenhuma registrada."}
-              </p>
-              <p className="text-sm">
-                <b>Instruções:</b> {estadiaRotina.instrucoes || "Nenhuma registrada."}
-              </p>
-            </div>
-          )}
-          <div className="space-y-2">
-            {cuidados
-              .filter((item) => !estadiaSelecionada || item.estadia_id === estadiaSelecionada)
-              .map((item) => (
-                <article
-                  key={item.id}
-                  className={`${painel} flex flex-wrap items-center justify-between gap-2`}
-                >
-                  <div>
-                    <span className="rounded-full bg-secondary px-2 py-1 text-xs capitalize">
-                      {item.tipo}
-                    </span>
-                    <p className="mt-2 text-sm">{item.descricao}</p>
-                  </div>
-                  <time className="text-xs text-muted-foreground">
-                    {mostrarData(item.ocorrido_em)}
-                  </time>
-                </article>
-              ))}
-          </div>
-        </section>
-      )}
-
-      {aba === "tutores" && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Atualizações para tutores</h2>
-          <form onSubmit={abrirWhatsApp} className={`${painel} space-y-3`}>
-            <label className="block space-y-1 text-sm font-medium">
-              Hóspede
-              <select
-                required
-                value={estadiaSelecionada}
-                onChange={(e) => setEstadiaSelecionada(e.target.value)}
-                className={campo}
-              >
-                <option value="">Selecione</option>
-                {hospedes.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {petNome(item)} — {tutorNome(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block space-y-1 text-sm font-medium">
-              Mensagem
-              <textarea
-                required
-                value={textoAtualizacao}
-                onChange={(e) => setTextoAtualizacao(e.target.value)}
-                className={campo}
-                rows={4}
-                placeholder="Escreva uma atualização da estadia. O texto abrirá preenchido no WhatsApp."
-              />
-            </label>
-            <p className="text-xs text-muted-foreground">
-              O ORICSE prepara a mensagem e abre a conversa. A equipe revisa e envia pelo WhatsApp.
-            </p>
-            <button
-              disabled={!podeOperar || !hospedes.length}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#087f5b] px-4 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" /> Abrir WhatsApp
-            </button>
-          </form>
-          <div className="space-y-2">
-            {atualizacoes.map((item) => {
-              const estadia = estadias.find((x) => x.id === item.estadia_id);
-              return (
-                <article key={item.id} className={painel}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold">
-                      {estadia ? petNome(estadia) : "Estadia"} ·{" "}
-                      {estadia ? tutorNome(estadia) : "Tutor"}
-                    </p>
-                    <time className="text-xs text-muted-foreground">
-                      {mostrarData(item.created_at)}
-                    </time>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.mensagem}</p>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {aba === "checkout" && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Check-out</h2>
-          <p className="text-sm text-muted-foreground">
-            O total considera as diárias entre a entrada registrada e a saída, com mínimo de uma
-            diária.
-          </p>
-          {hospedes.length ? (
-            hospedes.map((item) =>
-              cartaoEstadia(
-                item,
-                podeOperar && (
-                  <button
-                    type="button"
-                    onClick={() => void fazerCheckout(item)}
-                    className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-                  >
-                    Registrar saída
-                  </button>
-                ),
-              ),
-            )
-          ) : (
-            <p className={`${painel} text-sm text-muted-foreground`}>
-              Não há hóspedes aguardando check-out.
-            </p>
-          )}
-        </section>
-      )}
-
-      {aba === "acomodacoes" && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Acomodações</h2>
-          {podeGerenciar && (
-            <form
-              onSubmit={adicionarAcomodacao}
-              className={`${painel} grid gap-3 sm:grid-cols-2 lg:grid-cols-4`}
-            >
-              <label className="space-y-1 text-sm font-medium">
-                Nome
-                <input
-                  required
-                  value={nomeAcomodacao}
-                  onChange={(e) => setNomeAcomodacao(e.target.value)}
-                  className={campo}
-                  placeholder="Ex.: Suíte 1"
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Espécie
-                <select
-                  value={especieAcomodacao}
-                  onChange={(e) => setEspecieAcomodacao(e.target.value)}
-                  className={campo}
-                >
-                  <option>Todos</option>
-                  <option>Cães</option>
-                  <option>Gatos</option>
-                  <option>Pequenos animais</option>
-                </select>
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Capacidade
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={capacidadeAcomodacao}
-                  onChange={(e) => setCapacidadeAcomodacao(e.target.value)}
-                  className={campo}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium">
-                Descrição
-                <input
-                  value={descricaoAcomodacao}
-                  onChange={(e) => setDescricaoAcomodacao(e.target.value)}
-                  className={campo}
-                  placeholder="Observações do espaço"
-                />
-              </label>
-              <button
-                disabled={salvando}
-                className="min-h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2 lg:col-span-4"
-              >
-                Adicionar acomodação
-              </button>
-            </form>
-          )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {acomodacoes.map((item) => {
-              const ocupadas = estadias.filter(
-                (e) =>
-                  e.acomodacao_id === item.id &&
-                  ["reservada", "hospedado"].includes(e.status) &&
-                  new Date(e.saida_prevista) > new Date(),
-              ).length;
-              return (
-                <article key={item.id} className={`${painel} space-y-2`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-semibold">{item.nome}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {item.especie} · capacidade {item.capacidade}
+                </form>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {acomodacoes.map((item) => {
+                  const ocupadas = estadias.filter(
+                    (e) =>
+                      e.acomodacao_id === item.id &&
+                      ["reservada", "hospedado"].includes(e.status) &&
+                      new Date(e.saida_prevista) > new Date(),
+                  ).length;
+                  return (
+                    <article key={item.id} className={`${painel} space-y-2`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-semibold">{item.nome}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {item.especie} · capacidade {item.capacidade}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs ${item.ativa ? "bg-emerald-100 text-emerald-800" : "bg-secondary text-muted-foreground"}`}
+                        >
+                          {item.ativa ? "Ativa" : "Inativa"}
+                        </span>
+                      </div>
+                      <p className="text-sm">
+                        Ocupação atual/reservada: {ocupadas} de {item.capacidade}
                       </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs ${item.ativa ? "bg-emerald-100 text-emerald-800" : "bg-secondary text-muted-foreground"}`}
-                    >
-                      {item.ativa ? "Ativa" : "Inativa"}
-                    </span>
-                  </div>
-                  <p className="text-sm">
-                    Ocupação atual/reservada: {ocupadas} de {item.capacidade}
-                  </p>
-                  {item.descricao && (
-                    <p className="text-sm text-muted-foreground">{item.descricao}</p>
-                  )}
-                  {podeGerenciar && (
-                    <button
-                      type="button"
-                      onClick={() => void alterarAtiva(item)}
-                      className="rounded-lg border px-3 py-2 text-xs font-medium"
-                    >
-                      {item.ativa ? "Desativar" : "Reativar"}
-                    </button>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-          {!acomodacoes.length && (
-            <p className={`${painel} text-sm text-muted-foreground`}>
-              Cadastre os espaços disponíveis para organizar a ocupação.
-            </p>
+                      {item.descricao && (
+                        <p className="text-sm text-muted-foreground">{item.descricao}</p>
+                      )}
+                      {podeGerenciar && (
+                        <button
+                          type="button"
+                          onClick={() => void alterarAtiva(item)}
+                          className="rounded-lg border px-3 py-2 text-xs font-medium"
+                        >
+                          {item.ativa ? "Desativar" : "Reativar"}
+                        </button>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+              {!acomodacoes.length && (
+                <p className={`${painel} text-sm text-muted-foreground`}>
+                  Cadastre os espaços disponíveis para organizar a ocupação.
+                </p>
+              )}
+            </section>
           )}
-        </section>
-      )}
+        </div>
+      </div>
     </main>
   );
 }
