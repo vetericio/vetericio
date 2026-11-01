@@ -29,6 +29,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 type MenuRoute =
   | "/recepcao"
   | "/hotelzinho"
+  | "/horarios-medicacoes"
   | "/configurar-agenda-online"
   | "/tutores"
   | "/animais"
@@ -98,7 +99,7 @@ const areas: AreaMenu[] = [
       { to: "/registros", rotulo: "Animais internados", permissao: "internacao.painel" },
       { to: "/anamnese", rotulo: "Anamnese", permissao: "internacao.registrar" },
       { to: "/curva", rotulo: "Curvas e parâmetros", permissao: "internacao.registrar" },
-      { to: "/medicacoes", rotulo: "Medicações da internação", permissao: "internacao.medicacoes" },
+      { to: "/horarios-medicacoes", rotulo: "Horários das medicações", permissao: "internacao.medicacoes" },
       { to: "/alarmes", rotulo: "Alarmes", permissao: "internacao.registrar" },
       { to: "/pendencias", rotulo: "Pendências", permissao: "internacao.registrar" },
       { to: "/plantoes", rotulo: "Histórico de plantões", permissao: "internacao.plantoes" },

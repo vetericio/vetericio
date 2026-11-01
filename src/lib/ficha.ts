@@ -19,6 +19,8 @@ export type Medicacao = {
   quantidade?: string;
   /** Momento da aplicação (ISO), quando registrada pela tela de Medicações. */
   aplicadoEm?: string;
+  /** Horário local da primeira dose, usado na agenda de internação. */
+  horarioInicial?: string;
   /** Peso do animal no momento da ministração, ex.: "3,500 kg". */
   peso?: string;
   /** Observação livre digitada na confirmação da ministração. */
@@ -33,6 +35,8 @@ export type ExamesLaboratoriais = { hemograma?: ExameLaboratorial[]; bioquimico?
 export type Registro = {
   id: string;
   animal: string;
+  tutor?: string;
+  baia?: string;
   especie?: Especie;
   /** Peso do animal em kg, ex.: "9,9". Usado no cálculo das medicações. */
   peso?: string;

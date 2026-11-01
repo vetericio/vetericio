@@ -238,6 +238,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const [modoQuantidade, setModoQuantidade] = useState<"ml" | "dose">("dose");
   const [duracao, setDuracao] = useState<DuracaoPadrao>("");
   const [duracaoOutros, setDuracaoOutros] = useState("");
+  const [horarioInicial, setHorarioInicial] = useState("");
   // Padrão: modo rápido (só nomes). A setinha abre o formulário completo.
   const [formCompleto, setFormCompleto] = useState(false);
   const [nomesRapidos, setNomesRapidos] = useState<string[]>(["", ""]);
@@ -384,6 +385,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setModoQuantidade("ml");
     setDuracao("");
     setDuracaoOutros("");
+    setHorarioInicial("");
     setEditando(null);
     setRefCalculo(null);
     setDoseUsada("");
@@ -401,6 +403,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
         nome: nomeLimpo,
         dose: ref && dose.trim() ? `${dose} ${ref.unidadeDose}`.trim() : "",
         duracao: ref?.intervalo ? `${ref.intervalo}h` : "",
+        ...(horarioInicial ? { horarioInicial } : {}),
         ...(conta?.ok ? { quantidade: `${conta.volumeTexto} ${conta.unidade}` } : {}),
       });
     });
@@ -441,6 +444,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       nome: nomeLimpo,
       dose,
       duracao: duracaoSalva,
+      ...(horarioInicial ? { horarioInicial } : {}),
       ...(refCalculo && quantidadeFinal
         ? { quantidade: `${quantidadeFinal} ${unidadeCalculada || unidade}` }
         : {}),
@@ -497,6 +501,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     setModoQuantidade(doseEditada ? "dose" : "ml");
     setDuracao(modo);
     setDuracaoOutros(outros);
+    setHorarioInicial(item.horarioInicial ?? "");
     setEditando(indice);
     setFormCompleto(true);
     setAberto(true);
@@ -520,6 +525,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       dose: doseFinal,
       quantidade: quantidadeFinal,
       duracao: edicaoInline.duracao.trim(),
+      horarioInicial: horarioInicial || undefined,
     } : m));
     setEdicaoInline(null);
     resetForm();
@@ -786,6 +792,15 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                             />
                           </label>
                         </span>
+                        <label className="block text-[10px] text-muted-foreground">
+                          Horário da primeira dose
+                          <input
+                            type="time"
+                            value={horarioInicial}
+                            onChange={(e) => setHorarioInicial(e.target.value)}
+                            className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+                          />
+                        </label>
                         {refCalculo && calculo && !calculo.ok && (
                           <span className="block text-[10px] text-destructive">{calculo.motivo}</span>
                         )}
@@ -880,6 +895,15 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
             {!formCompleto && editando === null ? (
               <>
+                <label className="block text-xs font-semibold text-muted-foreground">
+                  Horário da primeira dose
+                  <input
+                    type="time"
+                    value={horarioInicial}
+                    onChange={(e) => setHorarioInicial(e.target.value)}
+                    className={`${campo} mt-1`}
+                  />
+                </label>
                 <div className="space-y-1.5" ref={rapidosRef}>
                   {nomesRapidos.map((valor, i) => {
                     const ref = refDaLinha(i);
@@ -988,6 +1012,15 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
               </>
             ) : (
             <>
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Horário da primeira dose
+              <input
+                type="time"
+                value={horarioInicial}
+                onChange={(e) => setHorarioInicial(e.target.value)}
+                className={`${campo} mt-1`}
+              />
+            </label>
             <div className="grid gap-1.5 sm:grid-cols-3">
               <CampoNomeMedicacao
                 inputRef={nomeRef}

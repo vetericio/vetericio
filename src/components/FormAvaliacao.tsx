@@ -296,6 +296,31 @@ export function FormAvaliacao({
         )}
       </div>
 
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Tutor
+          </span>
+          <input
+            value={valores.tutor ?? ""}
+            onChange={(e) => set("tutor", e.target.value)}
+            placeholder="Nome do tutor"
+            className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Baia
+          </span>
+          <input
+            value={valores.baia ?? ""}
+            onChange={(e) => set("baia", e.target.value)}
+            placeholder="Ex.: Baia 2"
+            className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+          />
+        </label>
+      </div>
+
 
       <div className="mt-3 flex flex-row items-start gap-3">
         <div className="flex-1 min-w-0">
