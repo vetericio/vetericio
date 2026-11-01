@@ -521,22 +521,41 @@ function Hotelzinho() {
         </div>
       )}
 
-      <nav aria-label="Hotelzinho" className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
-        {ABAS.map((item) => {
-          const Icone = item.icone;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setAba(item.id)}
-              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${aba === item.id ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-secondary"}`}
-            >
-              <Icone className="h-4 w-4 shrink-0" />
-              {item.nome}
-            </button>
-          );
-        })}
-      </nav>
+      <section className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+          <div>
+            <h2 className="text-sm font-bold text-foreground">Menu do Hotelzinho</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Acesse rapidamente cada etapa da hospedagem.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+            8 áreas
+          </span>
+        </div>
+        <nav aria-label="Hotelzinho" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {ABAS.map((item) => {
+            const Icone = item.icone;
+            const ativa = aba === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={ativa ? "page" : undefined}
+                onClick={() => setAba(item.id)}
+                className={`group flex min-h-[4.25rem] min-w-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${ativa ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border/80 bg-background text-foreground hover:border-primary/40 hover:bg-secondary/60"}`}
+              >
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${ativa ? "bg-white/15 text-primary-foreground" : "bg-primary/10 text-primary group-hover:bg-primary/15"}`}
+                >
+                  <Icone className="h-[18px] w-[18px]" />
+                </span>
+                <span className="text-sm font-semibold leading-tight">{item.nome}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </section>
 
       {aba === "painel" && (
         <section className="space-y-4">
