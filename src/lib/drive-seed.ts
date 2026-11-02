@@ -85,16 +85,37 @@ export const CLINICAS_PADRAO=[
   {id:"b2248b47-f22e-474b-a67c-f3f4326f2450",nome:"Oricse — Clínica de Testes",slug:"oricse-clinica-testes-isolamento",status:"ativa",plano:"Master (Equipe)",logo_url:null,dominio:null,limite_usuarios:5,duracao_padrao_atendimento_min:30,duracoes_atendimento_min:{Vacina:30,Retorno:30,Cirurgia:120,Consulta:30,"Banho e Tosa":60,Procedimento:30},created_at:AGORA,updated_at:AGORA},
 ];
 
+// O journal exige ID estável para aplicar patches. Linhas iniciais de
+// matrizes/permissões não tinham ID e desapareciam ao hidratar o estado.
+// Este identificador é determinístico e usado só nas linhas de seed do Drive.
+function idEstavelSeed(nome: string, registro: Record<string, unknown>, indice: number) {
+  const base = nome + ":" + String(registro.codigo || registro.chave || registro.funcionalidade_codigo || "") +
+    ":" + String(registro.plano_id || registro.papel || "") + ":" + indice;
+  const partes = [2166136261, 2246822519, 3266489917, 668265263];
+  for (let i = 0; i < base.length; i++) {
+    for (let p = 0; p < 4; p++) {
+      partes[p] = Math.imul((partes[p] ^ base.charCodeAt(i) ^ (p * 257)) >>> 0, 16777619) >>> 0;
+    }
+  }
+  const hex = partes.map((valor) => valor.toString(16).padStart(8, "0")).join("");
+  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-4" + hex.slice(13, 16) +
+    "-8" + hex.slice(17, 20) + "-" + hex.slice(20, 32);
+}
+function comIds(nome: string, lista: any[]): any[] {
+  return lista.map((item, indice) => item.id != null ? item :
+    { ...item, id: idEstavelSeed(nome, item, indice) });
+}
+
 export function seedTabela(nome:string):any[]{
   switch(nome){
     case "oricse_planos": return structuredClone(PLANOS_PADRAO);
-    case "oricse_funcionalidades": return structuredClone([...FUNCIONALIDADES_PADRAO,...ACOES_PADRAO]);
-    case "oricse_permissoes": return structuredClone(PERMISSOES_PADRAO);
-    case "oricse_permissoes_papel": return structuredClone(PERMISSOES_PAPEL_PADRAO);
-    case "oricse_plano_funcionalidades": return structuredClone(PLANO_FUNCIONALIDADES_PADRAO);
+    case "oricse_funcionalidades": return comIds(nome,structuredClone([...FUNCIONALIDADES_PADRAO,...ACOES_PADRAO]));
+    case "oricse_permissoes": return comIds(nome,structuredClone(PERMISSOES_PADRAO));
+    case "oricse_permissoes_papel": return comIds(nome,structuredClone(PERMISSOES_PAPEL_PADRAO));
+    case "oricse_plano_funcionalidades": return comIds(nome,structuredClone(PLANO_FUNCIONALIDADES_PADRAO));
     case "oricse_planos_auditoria": return [];
     case "clinicas": return structuredClone(CLINICAS_PADRAO);
-    case "oricse_config": return [{chave:"site_publico",valor:{marca:"Oricse",contato:"",logo_url:"",cta_plano:"Escolher plano",titulo_planos:"Escolha o plano ideal para sua clínica",subtitulo_planos:"Organize atendimento, internação, prontuários, financeiro e estoque em um só sistema."},updated_at:AGORA}];
+    case "oricse_config": return comIds(nome,[{chave:"site_publico",valor:{marca:"Oricse",contato:"",logo_url:"",cta_plano:"Escolher plano",titulo_planos:"Escolha o plano ideal para sua clínica",subtitulo_planos:"Organize atendimento, internação, prontuários, financeiro e estoque em um só sistema."},updated_at:AGORA}]);
     default:return [];
   }
 }
