@@ -171,6 +171,7 @@ function Inicio() {
       clinicaSlug: clinica.slug || "",
       perfil,
     });
+    window.dispatchEvent(new Event("oricse:clinica-alterada"));
     void navigate({ to: destino as never });
   };
 
