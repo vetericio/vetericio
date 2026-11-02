@@ -114,6 +114,7 @@ const areas: AreaMenu[] = [
       { to: "/hotelzinho", abaHotel: "checkin", rotulo: "Check-in", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "hospedes", rotulo: "Hóspedes ativos", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "cuidados", rotulo: "Rotina e cuidados", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "extras", rotulo: "Acrescentar item à estadia", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "tutores", rotulo: "Atualizações para tutores", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "checkout", rotulo: "Check-out", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "acomodacoes", rotulo: "Acomodações", permissao: "hotelzinho.visualizar" },
