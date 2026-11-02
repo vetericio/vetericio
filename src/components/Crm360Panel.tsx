@@ -12,8 +12,8 @@ type Agenda = { tutor_id?: string | null; inicio?: string | null; estado?: strin
 type Estadia = { tutor_id?: string | null; status?: string | null };
 type BanhoTosa = { tutor_id?: string | null; status?: string | null };
 type Cobranca = { tutor_id?: string | null; status?: string | null; valor?: number | null };
-type Campanha = { id: string; nome: string; assunto: string; mensagem: string; canal: Canal; status: string; publico: Record<string, unknown> | null; total_destinatarios: number; criado_em: string };
-type Tarefa = { id: string; titulo: string; descricao?: string | null; status: string; vencimento?: string | null; prioridade: string };
+type Campanha = { id: string; nome: string; assunto: string; mensagem: string; canal: Canal; status: string; audiencia_estimada: number; enviados: number; created_at: string };
+type Tarefa = { id: string; titulo: string; descricao?: string | null; status: string; vencimento_em?: string | null; prioridade: string };
 
 type Base = { tutores: Tutor[]; animais: Animal[]; agenda: Agenda[]; hotel: Estadia[]; banho_tosa: BanhoTosa[]; cobrancas: Cobranca[] };
 
@@ -102,7 +102,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   useEffect(() => { setSelecionados(alvo.map((tutor) => tutor.id)); }, [filtro, base.tutores.length]);
 
   const receitaEmAberto = useMemo(() => base.cobrancas.filter((item) => !["pago", "cancelado"].includes(String(item.status).toLowerCase())).reduce((soma, item) => soma + Number(item.valor || 0), 0), [base.cobrancas]);
-  const notificacoesPendentes = useMemo(() => campanhas.filter((item) => item.status === "publicada").reduce((soma, item) => soma + Number(item.total_destinatarios || 0), 0), [campanhas]);
+  const notificacoesPendentes = useMemo(() => campanhas.reduce((soma, item) => soma + Number(item.audiencia_estimada || 0), 0), [campanhas]);
 
   function alternarTutor(id: string) {
     setSelecionados((lista) => lista.includes(id) ? lista.filter((item) => item !== id) : [...lista, id]);
@@ -117,7 +117,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
       const tutor = porTutor.get(id);
       return {
         tutor_id: id,
-        destinatario_nome: tutor?.nome || "Tutor",
+        nome: tutor?.nome || "Tutor",
         telefone: tutor?.telefone || tutor?.outro_telefone || "",
         email: tutor?.email || "",
         canal: canal === "manual" ? primeiroCanal(tutor || { id: "", nome: "" }) : canal,
@@ -125,7 +125,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     });
     const { data: criada, error: erroCriar } = await (supabaseBanco as any)
       .from("oricse_crm_campanhas")
-      .insert({ clinica_id: clinicaId, nome: nome.trim(), assunto: assunto.trim(), mensagem: mensagem.trim(), canal, status: "rascunho", publico: { filtro, selecionados }, total_destinatarios: 0 })
+      .insert({ clinica_id: clinicaId, nome: nome.trim(), assunto: assunto.trim(), mensagem: mensagem.trim(), canal, status: "rascunho", metadados: { filtro, selecionados } })
       .select("id")
       .single();
     if (erroCriar) {
@@ -143,7 +143,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
 
   async function adicionarTarefa() {
     if (!novaTarefa.trim() || !podeOperar) return;
-    const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").insert({ clinica_id: clinicaId, titulo: novaTarefa.trim(), status: "pendente", prioridade: "normal" });
+    const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").insert({ clinica_id: clinicaId, titulo: novaTarefa.trim(), status: "aberta", prioridade: "normal" });
     if (error) return void toast.error(error.message);
     setNovaTarefa("");
     await carregar();
@@ -151,7 +151,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
 
   async function concluirTarefa(tarefa: Tarefa) {
     if (!podeOperar) return;
-    const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").update({ status: tarefa.status === "concluida" ? "pendente" : "concluida", concluido_em: tarefa.status === "concluida" ? null : new Date().toISOString() }).eq("id", tarefa.id);
+    const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").update({ status: tarefa.status === "concluida" ? "aberta" : "concluida", concluida_em: tarefa.status === "concluida" ? null : new Date().toISOString() }).eq("id", tarefa.id);
     if (error) return void toast.error(error.message);
     await carregar();
   }
@@ -205,11 +205,11 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
         <section className="rounded-3xl border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2"><ClipboardList className="text-primary" size={20}/><h3 className="font-black">Plano de ação da equipe</h3></div>
           <div className="mt-3 flex gap-2"><input value={novaTarefa} onChange={(e) => setNovaTarefa(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void adicionarTarefa(); }} placeholder="Nova ação de relacionamento" className="h-10 min-w-0 flex-1 rounded-xl border bg-background px-3 text-sm"/><button type="button" onClick={() => void adicionarTarefa()} disabled={!podeOperar} className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Plus size={18}/></button></div>
-          <div className="mt-3 space-y-2">{tarefas.map((tarefa) => <button type="button" key={tarefa.id} onClick={() => void concluirTarefa(tarefa)} className="flex w-full items-start gap-2 rounded-xl border p-3 text-left"><CheckCircle2 size={17} className={tarefa.status === "concluida" ? "mt-0.5 text-emerald-600" : "mt-0.5 text-muted-foreground"}/><span><span className={`block text-sm font-bold ${tarefa.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>{tarefa.titulo}</span><span className="text-xs text-muted-foreground">{dataCurta(tarefa.vencimento)} · {tarefa.prioridade}</span></span></button>)}{!tarefas.length && <p className="py-4 text-center text-sm text-muted-foreground">Defina a próxima ação do time.</p>}</div>
+          <div className="mt-3 space-y-2">{tarefas.map((tarefa) => <button type="button" key={tarefa.id} onClick={() => void concluirTarefa(tarefa)} className="flex w-full items-start gap-2 rounded-xl border p-3 text-left"><CheckCircle2 size={17} className={tarefa.status === "concluida" ? "mt-0.5 text-emerald-600" : "mt-0.5 text-muted-foreground"}/><span><span className={`block text-sm font-bold ${tarefa.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>{tarefa.titulo}</span><span className="text-xs text-muted-foreground">{dataCurta(tarefa.vencimento_em)} · {tarefa.prioridade}</span></span></button>)}{!tarefas.length && <p className="py-4 text-center text-sm text-muted-foreground">Defina a próxima ação do time.</p>}</div>
         </section>
         <section className="rounded-3xl border bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2"><MessageCircle className="text-primary" size={20}/><h3 className="font-black">Últimas campanhas</h3></div>
-          <div className="mt-3 space-y-2">{campanhas.map((item) => <div key={item.id} className="rounded-xl border p-3"><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.total_destinatarios || 0} destinatários · {dataCurta(item.criado_em)} · {item.status}</p></div>)}{!campanhas.length && <p className="py-4 text-center text-sm text-muted-foreground">Sua primeira campanha aparecerá aqui.</p>}</div>
+          <div className="mt-3 space-y-2">{campanhas.map((item) => <div key={item.id} className="rounded-xl border p-3"><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.audiencia_estimada || 0} destinatários · {dataCurta(item.created_at)} · {item.status}</p></div>)}{!campanhas.length && <p className="py-4 text-center text-sm text-muted-foreground">Sua primeira campanha aparecerá aqui.</p>}</div>
         </section>
       </aside>
     </div>
