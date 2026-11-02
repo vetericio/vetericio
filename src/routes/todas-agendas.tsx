@@ -134,8 +134,8 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
       <a href="#agenda-hotel" className="group flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-left transition hover:border-emerald-400 hover:shadow-sm dark:border-emerald-900 dark:bg-emerald-950/20"><span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 font-bold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100">03</span><span><strong className="block text-sm text-foreground">Hotelzinho</strong><span className="text-xs text-muted-foreground">Hospedagens e ocupação</span></span></a>
     </nav>}
     {!somenteHotel && <>
-    <section id="agenda-clinica" aria-labelledby="titulo-agenda-clinica" className="scroll-mt-5 space-y-4 rounded-3xl border border-sky-200/80 bg-sky-50/30 p-3 shadow-sm sm:p-5 dark:border-sky-900 dark:bg-sky-950/10">
-      <header className="flex items-center gap-3 border-b border-sky-200/70 pb-4 dark:border-sky-900"><span className="rounded-xl bg-sky-100 px-3 py-2 text-sm font-bold text-sky-800 dark:bg-sky-900 dark:text-sky-100">01</span><div><h2 id="titulo-agenda-clinica" className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-2xl">Clínica veterinária</h2><p className="text-sm text-muted-foreground">Consultas e procedimentos por profissional e horário</p></div></header>
+    <section id="agenda-clinica" aria-label="Agenda da clínica veterinária" className="scroll-mt-5 space-y-4 rounded-3xl border border-sky-200/80 bg-sky-50/30 p-3 shadow-sm sm:p-5 dark:border-sky-900 dark:bg-sky-950/10">
+      
       <AgendaErrorBoundary><AgendaDayBoard key={`clinica-${chaveAgendas}`} mode="recepcao"/></AgendaErrorBoundary>
     </section>
     <section id="agenda-banho" aria-labelledby="titulo-agenda-banho" className="scroll-mt-5 space-y-4 rounded-3xl border border-violet-200/80 bg-violet-50/30 p-3 shadow-sm sm:p-5 dark:border-violet-900 dark:bg-violet-950/10">
