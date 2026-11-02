@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import {
   CalendarDays,
@@ -16,7 +17,7 @@ import { toast } from "sonner";
 import { supabaseBanco as supabase } from "@/integrations/supabase/client";
 import { salvarAgendaOnline } from "@/lib/agenda.functions";
 
-export type AgendaMode = "recepcao" | "veterinario";
+export type AgendaMode = "recepcao" | "veterinario" | "banho";
 type CorAgenda = "azul" | "verde" | "amarelo" | "vermelho" | "rosa" | "laranja" | "roxo" | "marrom" | "cinza" | "azul-petroleo";
 type Modalidade = "livre" | "aprovacao" | "pagamento";
 type StatusClinico = "Agendado" | "Em atendimento" | "Finalizado" | "Cancelado";
@@ -202,6 +203,7 @@ export class AgendaErrorBoundary extends Component<{ children: ReactNode }, { fa
 }
 
 export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
+  const navigate=useNavigate();
   const [clinicaId, setClinicaId] = useState("");
   const [agendas, setAgendas] = useState<AgendaDb[]>([]);
   const [eventos, setEventos] = useState<AgendamentoDb[]>([]);
@@ -229,24 +231,26 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
       }
       setClinicaId(cid);
       const base = dataPorIso(data); const de = new Date(base); de.setDate(de.getDate() - 1); de.setHours(0,0,0,0); const ate = new Date(base); ate.setDate(ate.getDate() + 2); ate.setHours(23,59,59,999);
-      const [agendasResp, eventosResp, tutoresResp, animaisResp, configResp] = await Promise.all([
+      const [agendasResp, eventosResp, tutoresResp, animaisResp, configResp, banhoResp] = await Promise.all([
         (supabase as any).from("oricse_agendas_online").select("id,clinica_id,nome,responsavel,inicio,fim,dias_semana,intervalo_min,portal_ativo,modalidade,antecedencia_horas,timezone,tipo,cor").eq("clinica_id", cid).order("nome"),
         (supabase as any).from("oricse_agendamentos_online").select("id,clinica_id,agenda_id,tutor_id,animal_id,animal_referencia,inicio,fim,estado,tipo,observacoes,origem,dados").eq("clinica_id", cid).gte("inicio", de.toISOString()).lte("inicio", ate.toISOString()).order("inicio"),
         (supabase as any).from("tutores").select("id,nome,telefone,codigo_publico").eq("clinica_id", cid).order("nome"),
         (supabase as any).from("oricse_animais").select("id,tutor_id,nome,especie,raca,sexo").eq("clinica_id", cid).order("nome"),
         (supabase as any).from("clinicas").select("duracao_padrao_atendimento_min,duracoes_atendimento_min").eq("id", cid).maybeSingle(),
+         mode === "banho" ? (supabase as any).from("oricse_banho_tosa_agendamentos").select("id,animal_id,tutor_id,servico_nome,inicio,fim,status,profissional,observacoes").eq("clinica_id",cid).gte("inicio",de.toISOString()).lte("inicio",ate.toISOString()).limit(1000) : Promise.resolve({data:[],error:null}),
       ]);
       // Falhas em dados auxiliares não devem impedir o calendário de abrir.
       if (agendasResp.error) throw agendasResp.error;
-      if (eventosResp.error) throw eventosResp.error;
+      if (eventosResp.error && mode !== "banho") throw eventosResp.error;
+       if (banhoResp.error) throw banhoResp.error;
       if (tutoresResp.error || animaisResp.error || configResp.error) {
         console.warn("Falha ao carregar dados auxiliares da agenda.", {
           tutores: tutoresResp.error?.code, animais: animaisResp.error?.code,
           configuracao: configResp.error?.code,
         });
       }
-      setAgendas((agendasResp.data || []).map((a: AgendaDb) => normalizarAgenda(a)).filter((a: AgendaDb) => a.id));
-      setEventos((eventosResp.data || [])
+      setAgendas((agendasResp.data || []).map((a: AgendaDb) => normalizarAgenda(a)).filter((a: AgendaDb) => a.id && (mode === "banho" ? a.tipo.toLocaleLowerCase("pt-BR").includes("banho") : !a.tipo.toLocaleLowerCase("pt-BR").includes("banho"))));
+      setEventos((mode === "banho" ? (banhoResp.data || []).map((b: any)=>({id:b.id,clinica_id:cid,agenda_id:((agendasResp.data||[]).find((a:any)=>a.responsavel?.trim().toLocaleLowerCase("pt-BR")===b.profissional?.trim().toLocaleLowerCase("pt-BR")&&String(a.tipo).toLocaleLowerCase("pt-BR").includes("banho"))?.id)||"",tutor_id:b.tutor_id,animal_id:b.animal_id,animal_referencia:"",inicio:b.inicio,fim:b.fim,estado:b.status==="cancelado"?"cancelado":"confirmado",tipo:b.servico_nome,observacoes:b.observacoes,origem:"banho",dados:{status_clinico:b.status}})) : (eventosResp.data || []))
         .map((evento: AgendamentoDb) => normalizarAgendamento(evento))
         .filter((evento: AgendamentoDb) => evento.id && evento.agenda_id && !Number.isNaN(new Date(evento.inicio).getTime()) && !Number.isNaN(new Date(evento.fim).getTime())));
       setTutores(Array.isArray(tutoresResp.data) ? tutoresResp.data : []);
@@ -258,7 +262,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
       console.error("Erro ao carregar agenda única:", error);
       setErroCarregamento(error instanceof Error ? error.message : "Não foi possível carregar a agenda da clínica.");
     } finally { setCarregando(false); }
-  }, [data]);
+  }, [data,mode]);
 
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => {
@@ -282,7 +286,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   function slots(agenda: AgendaDb) { const lista: string[] = []; const intervalo = Number(agenda.intervalo_min); if (!Number.isFinite(intervalo) || intervalo < 5) return lista; for (let m = minutos(hhmm(agenda.inicio)), guard = 0; m + intervalo <= minutos(hhmm(agenda.fim)) && guard < 288; m += intervalo, guard += 1) lista.push(horaDeMinutos(m)); return lista; }
   function ocupa(agenda: AgendaDb, hora: string) { const m = minutos(hora); return eventosAgenda(agenda).find((e) => { if (["cancelado","expirado"].includes(e.estado)) return false; const ini = minutos(horaNoFuso(e.inicio, agenda.timezone)); return m >= ini && m < ini + duracaoEntre(e.inicio, e.fim); }); }
 
-  function abrirNovaAgenda() { setAgendaModal({ form: agendaFormPadrao() }); }
+  function abrirNovaAgenda() { setAgendaModal({ form: mode==="banho"?{...agendaFormPadrao(),nome:"Banho e tosa",tipo:"Banho e Tosa",cor:"roxo"}:agendaFormPadrao() }); }
   function editarAgenda(a: AgendaDb) { setAgendaModal({ id: a.id, form: { nome:a.nome,responsavel:a.responsavel,tipo:a.tipo,inicio:hhmm(a.inicio),fim:hhmm(a.fim),diasSemana:[...a.dias_semana],intervaloMin:a.intervalo_min,portalAtivo:a.portal_ativo,modalidade:a.modalidade,antecedenciaHoras:a.antecedencia_horas,timezone:a.timezone,cor:corValida(a.cor) } }); }
 
   async function salvarAgenda() {
@@ -311,6 +315,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   }
 
   function abrirHorario(agenda: AgendaDb, hora: string, existente?: AgendamentoDb) {
+    if(mode==="banho") { if(existente){void navigate({to:"/banho-tosa",hash:"fila"});} else {void navigate({to:"/banho-tosa",hash:"novo",search:{profissional:agenda.responsavel,inicio:`${data}T${hora}`} as any});} return; }
     const tipo = existente?.tipo || "Consulta";
     setEventoModal({ agenda, evento: existente, form: { tipo, hora: existente ? horaNoFuso(existente.inicio, agenda.timezone) : hora, duracaoMin: existente ? duracaoEntre(existente.inicio, existente.fim) : duracaoPadrao(tipo), tutorId: existente?.tutor_id || "", animalId: existente?.animal_id || "", pagamento: existente ? pagamentoEvento(existente) : "Pendente", observacoes: existente?.observacoes || "" } });
   }
@@ -348,7 +353,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
 
   return <section className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
     {erroCarregamento && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><strong>Não foi possível atualizar a agenda.</strong><p className="mt-1">{erroCarregamento}</p><button type="button" onClick={() => void carregar()} className="mt-2 rounded-lg border border-amber-400 px-3 py-2 font-bold">Tentar novamente</button></div>}
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><CalendarDays size={22} className="text-primary"/><h2 className="text-2xl font-bold">{mode === "recepcao" ? "Agenda do dia" : "Minha agenda"}</h2></div><p className="mt-1 text-sm text-muted-foreground">Recepção e Portal do Tutor usam agora a mesma agenda no banco.</p></div><div className="flex flex-wrap gap-2"><select value={filtro} onChange={e=>setFiltro(e.target.value)} className="min-h-10 rounded-xl border bg-white px-3 text-sm font-semibold"><option value="todas">Todas as agendas</option>{agendas.map(a=><option key={a.id} value={a.id}>{a.nome} · {a.responsavel||"Sem responsável"}</option>)}</select><button data-oricse-criar-agenda="true" onClick={abrirNovaAgenda} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold"><Plus size={15}/> Criar agenda</button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><CalendarDays size={22} className="text-primary"/><h2 className="text-2xl font-bold">{mode === "banho" ? "Agenda do Banho e Tosa" : mode === "recepcao" ? "Agenda do dia" : "Minha agenda"}</h2></div><p className="mt-1 text-sm text-muted-foreground">{mode === "banho" ? "Agenda por profissional e horários do Banho e Tosa." : "Recepção e Portal do Tutor usam agora a mesma agenda no banco."}</p></div><div className="flex flex-wrap gap-2"><select value={filtro} onChange={e=>setFiltro(e.target.value)} className="min-h-10 rounded-xl border bg-white px-3 text-sm font-semibold"><option value="todas">Todas as agendas</option>{agendas.map(a=><option key={a.id} value={a.id}>{a.nome} · {a.responsavel||"Sem responsável"}</option>)}</select><button data-oricse-criar-agenda="true" onClick={abrirNovaAgenda} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold"><Plus size={15}/> Criar agenda</button></div></div>
     <div className="mt-4 flex items-center gap-3 rounded-2xl border bg-[#f8faf8] p-3"><button onClick={()=>{const d=dataPorIso(data);d.setDate(d.getDate()-1);setData(dataIso(d));}} className="rounded-xl border bg-white p-2.5"><ChevronLeft size={19}/></button><button onClick={()=>setData(dataIso(new Date()))} className="min-w-0 flex-1 rounded-lg text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166e61]"><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#126b5e]">DATA DA AGENDA</div><div className="mt-0.5 text-xl font-black text-[#172b3c] sm:text-2xl">{formatarData(data)}</div><div className="text-[10px] font-medium text-[#586678]">Clique para voltar para hoje</div></button><button onClick={()=>{const d=dataPorIso(data);d.setDate(d.getDate()+1);setData(dataIso(d));}} className="rounded-xl border bg-white p-2.5"><ChevronRight size={19}/></button></div>
 
     {!agendas.length ? <div className="mt-5 rounded-2xl border border-dashed p-8 text-center"><CalendarDays className="mx-auto text-muted-foreground"/><h3 className="mt-3 text-lg font-bold">Nenhuma agenda criada</h3><p className="mt-1 text-sm text-muted-foreground">Crie a primeira agenda. Ela poderá ser publicada no Portal do Tutor no mesmo cadastro.</p><button onClick={abrirNovaAgenda} className="mt-4 rounded-xl bg-primary px-4 py-2 font-bold text-primary-foreground">Criar primeira agenda</button></div> :
