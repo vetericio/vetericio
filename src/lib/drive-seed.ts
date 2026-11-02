@@ -7,7 +7,7 @@ export const PLANOS_PADRAO = [
 ];
 
 export const FUNCIONALIDADES_PADRAO = [
-  ["atividade.ponto","Registro de atividade e ponto","Atividade",10],["recepcao.agenda","Agenda e fila de espera","Recepção",20],["recepcao.cadastros","Cadastro de tutores e animais","Recepção",21],["consultorio.atendimentos","Consultas e prontuários","Consultório",30],["consultorio.medicacoes","Calculadora de medicações","Consultório",31],["consultorio.receituario","Receituário","Consultório",32],["internacao.painel","Painel de internação","Internação",40],["internacao.medicacoes","Medicações na internação","Internação",41],["internacao.plantoes","Plantões e histórico","Internação",42],["caixa.financeiro","Financeiro e caixa","Caixa",50],["caixa.comandas","Comandas","Caixa",51],["estoque.catalogo","Catálogo de produtos e serviços","Estoque",60],["estoque.movimentar","Movimentações de estoque","Estoque",61],["equipe.pagamentos","Pagamento da equipe","Equipe",70],["crm.inteligente","CRM inteligente","CRM",75],["administracao.site","Site da clínica","Administração",80],["administracao.temas","Temas","Administração",81],["portal_tutor.acesso","Portal do tutor","Portal do tutor",89],["portal_tutor.agendamento_online","Agendamento online do tutor","Portal do tutor",90],
+  ["atividade.ponto","Registro de atividade e ponto","Atividade",10],["recepcao.agenda","Agenda e fila de espera","Recepção",20],["recepcao.cadastros","Cadastro de tutores e animais","Recepção",21],["consultorio.atendimentos","Consultas e prontuários","Consultório",30],["consultorio.medicacoes","Calculadora de medicações","Consultório",31],["consultorio.receituario","Receituário","Consultório",32],["internacao.painel","Painel de internação","Internação",40],["internacao.medicacoes","Medicações na internação","Internação",41],["internacao.plantoes","Plantões e histórico","Internação",42],["caixa.financeiro","Financeiro e caixa","Caixa",50],["caixa.comandas","Comandas","Caixa",51],["estoque.catalogo","Catálogo de produtos e serviços","Estoque",60],["estoque.movimentar","Movimentações de estoque","Estoque",61],["equipe.pagamentos","Pagamento da equipe","Equipe",70],["crm.inteligente","CRM inteligente","CRM",75],["administracao.site","Site da clínica","Administração",80],["administracao.temas","Temas","Administração",81],["hotelzinho.modulo","Hotelzinho","Hotelzinho",85],["portal_tutor.acesso","Portal do tutor","Portal do tutor",89],["portal_tutor.agendamento_online","Agendamento online do tutor","Portal do tutor",90],
 ].map(([codigo,nome,grupo,ordem])=>({codigo,nome,grupo,ordem,ativo:true}));
 
 const PERMISSOES = [
@@ -40,9 +40,20 @@ const PERMISSOES = [
   ["administracao.temas","Temas","Administração","Alterar aparência e temas.","administracao.temas",82],
   ["administracao.usuarios","Usuários da clínica","Administração","Criar, desativar e alterar cargos de usuários.",null,83],
   ["administracao.permissoes","Permissões dos usuários","Administração","Conceder ou retirar permissões individuais.",null,84],
+  ["hotelzinho.visualizar","Visualizar hotelzinho","Hotelzinho","Consultar reservas e ocupação.","hotelzinho.modulo",85],
+  ["hotelzinho.operar","Operar hospedagens","Hotelzinho","Realizar check-in, check-out e registrar cuidados.","hotelzinho.modulo",86],
+  ["hotelzinho.gerenciar","Gerenciar hotelzinho","Hotelzinho","Administrar reservas e configurações do hotelzinho.","hotelzinho.modulo",87],
   ["portal_tutor.gerenciar","Gerenciar portal do tutor","Portal do tutor","Ativar acessos, emitir convites e administrar o portal dos tutores da clínica.","portal_tutor.acesso",89],
 ] as const;
 export const PERMISSOES_PADRAO=PERMISSOES.map(([codigo,nome,grupo,descricao,funcionalidade_codigo,ordem])=>({codigo,nome,grupo,descricao,funcionalidade_codigo,ordem,ativo:true}));
+export const ACOES_PADRAO = PERMISSOES_PADRAO.map((p) => ({
+  codigo: "acao." + String(p.codigo),
+  nome: String(p.nome),
+  grupo: String(p.grupo),
+  ordem: Number(p.ordem) * 10 + 1,
+  ativo: true,
+}));
+
 
 const ADMIN=[...PERMISSOES_PADRAO.map(p=>p.codigo)];
 export const PERMITIDAS_POR_PAPEL:Record<string,string[]>={
@@ -59,7 +70,11 @@ export const FUNCIONALIDADES_POR_PLANO:Record<string,string[]>={
   "plus-clinica":["administracao.temas","atividade.ponto","caixa.comandas","caixa.financeiro","consultorio.atendimentos","consultorio.medicacoes","consultorio.receituario","estoque.catalogo","estoque.movimentar","portal_tutor.acesso","portal_tutor.agendamento_online","recepcao.agenda","recepcao.cadastros"],
   "master-equipe":FUNCIONALIDADES_PADRAO.map(f=>String(f.codigo)),
 };
-export const PLANO_FUNCIONALIDADES_PADRAO=PLANOS_PADRAO.flatMap(plano=>FUNCIONALIDADES_PADRAO.map(f=>({plano_id:plano.id,funcionalidade_codigo:String(f.codigo),permitido:FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(f.codigo))||false})));
+export const PLANO_FUNCIONALIDADES_PADRAO=PLANOS_PADRAO.flatMap(plano=>[
+  ...FUNCIONALIDADES_PADRAO.map(f=>({plano_id:plano.id,funcionalidade_codigo:String(f.codigo),permitido:FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(f.codigo))||false})),
+  ...PERMISSOES_PADRAO.map(p=>({plano_id:plano.id,funcionalidade_codigo:"acao."+String(p.codigo),
+    permitido:!p.funcionalidade_codigo || Boolean(FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(p.funcionalidade_codigo)))})),
+]);
 
 export const CLINICAS_PADRAO=[
   {id:"d9efe5af-3bf6-4230-ac1e-62249a88c155",nome:"Vetericio",slug:"vetericio",status:"ativa",plano:"Master (Equipe)",logo_url:"https://lh3.googleusercontent.com/d/1c_NPgVwvK7lgrhCNDFKoWNJxNpqkAA4K",dominio:null,limite_usuarios:5,duracao_padrao_atendimento_min:30,duracoes_atendimento_min:{Vacina:30,Retorno:30,Cirurgia:120,Consulta:30,"Banho e Tosa":60,Procedimento:30},created_at:AGORA,updated_at:AGORA},
@@ -69,10 +84,11 @@ export const CLINICAS_PADRAO=[
 export function seedTabela(nome:string):any[]{
   switch(nome){
     case "oricse_planos": return structuredClone(PLANOS_PADRAO);
-    case "oricse_funcionalidades": return structuredClone(FUNCIONALIDADES_PADRAO);
+    case "oricse_funcionalidades": return structuredClone([...FUNCIONALIDADES_PADRAO,...ACOES_PADRAO]);
     case "oricse_permissoes": return structuredClone(PERMISSOES_PADRAO);
     case "oricse_permissoes_papel": return structuredClone(PERMISSOES_PAPEL_PADRAO);
     case "oricse_plano_funcionalidades": return structuredClone(PLANO_FUNCIONALIDADES_PADRAO);
+    case "oricse_planos_auditoria": return [];
     case "clinicas": return structuredClone(CLINICAS_PADRAO);
     case "oricse_config": return [{chave:"site_publico",valor:{marca:"Oricse",contato:"",logo_url:"",cta_plano:"Escolher plano",titulo_planos:"Escolha o plano ideal para sua clínica",subtitulo_planos:"Organize atendimento, internação, prontuários, financeiro e estoque em um só sistema."},updated_at:AGORA}];
     default:return [];
