@@ -39,7 +39,7 @@ const hasTeamPermissionsPath = menu.includes('to: "/permissoes-equipe"') &&
   read("src/hooks/usePermissoes.ts").includes('"/permissoes-equipe"') &&
   read("src/routes/permissoes-equipe.tsx").includes("UserPermissionsPanel");
 const hasWritePlanGuards = driveDb.includes("const permissoesEscrita:") &&
-  driveDb.includes("matrizA") && driveDb.includes("papelOk &&") &&
+  driveDb.includes("matrizA") && driveDb.includes("baseOk && acaoOk && papelOk") &&
   driveDb.includes("oricse_hotel_estadias");
 const hasClinicAdminLink = menu.includes('to: "/plano-clinica"') &&
   read("src/routes/perfil-clinica.tsx").includes('to="/plano-clinica"');
