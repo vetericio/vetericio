@@ -178,9 +178,11 @@ function AdminPlanos() {
 
   function valorPlano(planoId: string, item: ItemCatalogo): boolean {
     const linha = matriz[planoId];
+    // A ação nunca supera o bloqueio do módulo-pai.
+    if (item.tipo === "acao" && item.pai && !linha?.[item.pai]) return false;
     if (Object.prototype.hasOwnProperty.call(linha || {}, item.codigo)) return Boolean(linha?.[item.codigo]);
-    // Regras anteriores continuam valendo até decisão expressa do administrador.
-    return item.tipo === "acao" ? (!item.pai || Boolean(linha?.[item.pai])) : false;
+    // Permissões preexistentes não são alteradas antes de decisão do administrador.
+    return item.tipo === "acao";
   }
 
   const visiveis = useMemo(() => {
@@ -188,10 +190,7 @@ function AdminPlanos() {
     return catalogo.filter((f) =>
       (grupoFiltro === "todos" || f.grupo === grupoFiltro)
       && (!apenasPendentes || !f.catalogada || planos.some((p) => matriz[p.id]?.[f.codigo] === undefined))
-      && (!apenasDiferencas || new Set(planos.map((p) => {
-        const linha = matriz[p.id] || {};
-        return f.codigo in linha ? Boolean(linha[f.codigo]) : f.tipo === "acao" ? (!f.pai || Boolean(linha[f.pai])) : false;
-      })).size > 1)
+      && (!apenasDiferencas || new Set(planos.map((p) => valorPlano(p.id, f))).size > 1)
       && (!texto || [f.nome, f.descricao, f.codigo, f.grupo].some((v) => v.toLocaleLowerCase("pt-BR").includes(texto)))
     );
   }, [catalogo, busca, grupoFiltro, apenasPendentes, apenasDiferencas, planos, matriz]);
