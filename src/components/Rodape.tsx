@@ -1,13 +1,7 @@
-import { useEffect } from "react";
 import { Backup } from "@/components/Backup";
 import { VERSAO } from "@/lib/versao";
-import { aplicarTema, carregarCor, carregarTema } from "@/lib/tema";
 
 export function Rodape() {
-  useEffect(() => {
-    aplicarTema(carregarTema(), carregarCor());
-  }, []);
-
   const anoAtual = new Date().getFullYear();
 
   return (
