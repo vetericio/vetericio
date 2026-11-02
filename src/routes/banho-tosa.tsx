@@ -72,6 +72,10 @@ function BanhoTosa(){
   const comeco=new Date(inicio);
   if(!animal||!servico||!Number.isFinite(comeco.getTime()))return toast.error("Selecione animal, serviço e horário.");
   const fim=new Date(comeco.getTime()+servico.duracao_min*60000);
+  if(profissional.trim()){
+    const conflito=atendimentos.some(a=>a.status!=="cancelado" && a.profissional.trim().toLocaleLowerCase("pt-BR")===profissional.trim().toLocaleLowerCase("pt-BR") && comeco.getTime()<new Date(a.fim).getTime() && fim.getTime()>new Date(a.inicio).getTime());
+    if(conflito)return toast.error("Este profissional já possui atendimento nesse horário. Escolha outro horário ou profissional.");
+  }
   setSalvando(true);
   const {error}=await db.from("oricse_banho_tosa_agendamentos").insert({clinica_id:clinicaId,animal_id:animal.id,tutor_id:animal.tutor_id,servico_id:servico.id,servico_nome:servico.nome,inicio:comeco.toISOString(),fim:fim.toISOString(),profissional,observacoes:obs,valor_centavos:servico.preco_centavos});
   setSalvando(false);if(error)return toast.error(error.message);
