@@ -26,7 +26,7 @@ const campo="mt-1 w-full min-h-11 rounded-xl border bg-background px-3 text-fore
 function BanhoTosa(){
  const {clinicaId,carregando:carregandoPermissoes,adminGlobal,pode}=usePermissoes();
  const location=useLocation();
- const abaDaUrl=(hash:string):Aba=>abas.find(a=>a.id===hash.slice(1))?.id||"painel";
+ const abaDaUrl=(hash:string):Aba=>abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
  const [aba,setAba]=useState<Aba>(()=>typeof window!=="undefined"?abaDaUrl(window.location.hash):"painel");
  useEffect(()=>setAba(abaDaUrl(location.hash)),[location.hash]);
  const [carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
