@@ -389,6 +389,123 @@ function AdminPlanos() {
       <h1 className="mt-6 text-3xl font-black tracking-tight">Planos e funcionalidades</h1>
       <p className="mt-1 max-w-3xl text-sm text-muted-foreground">O plano define o teto de acesso da clínica. O cargo e a permissão individual só funcionam dentro do que o plano libera. Exceções por clínica são controladas exclusivamente pelo Admin ORICSE.</p>
 
+      <section className="mt-6 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black">Catálogo mestre de funcionalidades</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Controle por módulo e por ação. Ações não aprovadas permanecem identificadas como pendentes.</p>
+          </div>
+          <button type="button" onClick={() => setNovoPlanoAberto((v) => !v)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold">
+            <Plus size={16}/> Criar plano
+          </button>
+        </div>
+
+        {novoPlanoAberto && <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border p-3">
+          <Campo rotulo="Nome do novo plano" valor={novoPlanoNome} onChange={setNovoPlanoNome}/>
+          <Campo rotulo="Código (sem espaços)" valor={novoPlanoCodigo} onChange={setNovoPlanoCodigo}/>
+          <button type="button" disabled={salvando === "novo-plano"} onClick={() => void criarPlano()}
+            className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50">
+            Criar plano inativo
+          </button>
+        </div>}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border p-3"><strong className="text-2xl">{catalogo.length}</strong><p className="text-xs text-muted-foreground">Recursos classificados (módulos e ações)</p></div>
+          <div className="rounded-xl border p-3"><strong className="text-2xl">{quantidadePendentes}</strong><p className="text-xs text-muted-foreground">Aguardando classificação completa</p></div>
+          <div className="rounded-xl border p-3"><strong className="text-2xl">{chavesPendentes.length}</strong><p className="text-xs text-muted-foreground">Alterações não salvas</p></div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[210px] flex-[2_1_280px]">
+            <Search size={16} className="absolute left-3 top-3 text-muted-foreground"/>
+            <input value={busca} onChange={(e) => setBusca(e.target.value)}
+              aria-label="Pesquisar funcionalidades" placeholder="Pesquisar nome, código ou descrição"
+              className="min-h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm"/>
+          </div>
+          <select aria-label="Filtrar grupo" value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value)}
+            className="min-h-11 max-w-full rounded-xl border bg-background px-3 text-sm">
+            <option value="todos">Todos os grupos</option>
+            {[...new Set(catalogo.map((f) => f.grupo))].map((grupo) => <option key={grupo} value={grupo}>{grupo}</option>)}
+          </select>
+          <label className="inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold">
+            <input type="checkbox" checked={apenasDiferencas} onChange={(e)=>setApenasDiferencas(e.target.checked)}/>
+            <GitCompare size={15}/> Só diferenças
+          </label>
+          <label className="inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold">
+            <input type="checkbox" checked={apenasPendentes} onChange={(e)=>setApenasPendentes(e.target.checked)}/>
+            <SlidersHorizontal size={15}/> Pendentes
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Um controle desligado no módulo limita suas ações. Para registrar uma decisão individual, ative ou desative o controle correspondente.
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => { if (chavesPendentes.length && !window.confirm("Descartar mudanças ainda não salvas?")) return; void carregar(); }}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold">
+              <RotateCcw size={15}/> Descartar
+            </button>
+            <button type="button" disabled={!chavesPendentes.length || salvando === "matriz"}
+              onClick={() => void salvarMatriz()}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50">
+              <Save size={16}/> {salvando === "matriz" ? "Salvando..." : "Salvar alterações"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 max-w-full overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[670px] border-collapse text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-secondary">
+              <tr>
+                <th className="sticky left-0 z-20 min-w-[240px] border-b bg-secondary px-3 py-3">Funcionalidade / ação</th>
+                {planos.map((p) => <th key={p.id} className="min-w-[125px] border-b px-3 py-3 text-center">
+                  <span className="block font-black">{p.nome}</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    {catalogo.filter((f)=>valorPlano(p.id,f)).length} liberadas
+                  </span>
+                </th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {grupos.map(([grupo,itens]) => <FragmentoGrupo key={grupo} grupo={grupo} itens={itens}
+                fechado={Boolean(gruposFechados[grupo])}
+                onToggle={()=>setGruposFechados((atual)=>({...atual,[grupo]:!atual[grupo]}))}
+                planos={planos} matriz={matriz} valorPlano={valorPlano}
+                alterarFuncionalidade={alterarFuncionalidade} alterarGrupo={alterarGrupo}/>)}
+              {visiveis.length===0 && <tr><td colSpan={planos.length+1} className="p-6 text-center text-muted-foreground">Nenhum recurso encontrado com estes filtros.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border p-4">
+            <h3 className="flex items-center gap-2 font-bold"><Eye size={17}/> Visualizar como clínica</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Prévia somente de leitura; não altera acessos de usuários.</p>
+            <select value={planoSimulado} onChange={(e)=>setPlanoSimulado(e.target.value)} className="mt-3 min-h-10 w-full rounded-lg border bg-background px-3 text-sm">
+              <option value="">Selecionar plano</option>
+              {planos.map((p)=><option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+            {planoSimulado && <div className="mt-3 max-h-36 overflow-y-auto text-xs">
+              {catalogo.filter((f)=>valorPlano(planoSimulado,f)).map((f)=><div key={f.codigo} className="py-1">✓ {f.grupo} · {f.nome}</div>)}
+            </div>}
+          </div>
+          <div className="rounded-xl border p-4">
+            <h3 className="font-bold">Histórico de alterações</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Últimas decisões registradas pelo administrador.</p>
+            <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
+              {historico.length===0 && <p className="text-xs text-muted-foreground">Nenhuma alteração registrada ainda.</p>}
+              {historico.map((h)=><div key={h.id} className="rounded-lg bg-secondary/40 p-2 text-xs">
+                <span className="font-bold">{new Date(h.data).toLocaleString("pt-BR")}</span>
+                <span className="ml-2">{h.alteracoes?.length || 0} decisões</span>
+                <p className="mt-1 text-muted-foreground">Administrador: {h.usuario_id}</p>
+              </div>)}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="mt-7 space-y-5">
         {planos.map((plano) => {
           const liberadas = funcionalidades.filter((f) => matriz[plano.id]?.[f.codigo]).length;
@@ -414,13 +531,9 @@ function AdminPlanos() {
             </div>
             <label className="mt-3 block text-xs font-bold">Itens comerciais exibidos na página pública<textarea rows={4} value={plano.itens.join("\n")} onChange={(e)=>alterarPlano(plano.id,"itens",e.target.value.split("\n").map((x)=>x.trim()).filter(Boolean))} className="mt-1 w-full rounded-xl border bg-background p-3 text-sm font-normal"/></label>
 
-            <div className="mt-5 border-t pt-5">
-              <h3 className="font-black">Matriz de funcionalidades</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Desligado aqui = nenhum funcionário desta clínica acessa a função, mesmo que o cargo ou a permissão individual estejam liberados.</p>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                {grupos.map(([grupo, itens]) => <fieldset key={grupo} className="rounded-xl border p-3"><legend className="px-1 text-xs font-black uppercase tracking-wider text-muted-foreground">{grupo}</legend><div className="space-y-2">{itens.map((f)=><label key={f.codigo} className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-secondary/35 px-3 text-sm"><span>{f.nome}</span><input type="checkbox" checked={Boolean(matriz[plano.id]?.[f.codigo])} onChange={(e)=>alterarFuncionalidade(plano.id,f.codigo,e.target.checked)} className="h-4 w-4"/></label>)}</div></fieldset>)}
-              </div>
-            </div>
+            <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
+              As permissões detalhadas são gerenciadas na matriz central acima. Salvar este cartão altera somente dados comerciais.
+            </p>
           </article>;
         })}
       </section>
