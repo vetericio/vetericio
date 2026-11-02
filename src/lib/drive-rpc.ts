@@ -1,4 +1,5 @@
 import {
+  ACOES_LEGADAS,
   FUNCIONALIDADES_POR_PLANO,
   PERMISSOES_PADRAO,
   PERMITIDAS_POR_PAPEL,
@@ -203,7 +204,7 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
       // Ações antigas sem regra granular seguem o teto de seu módulo;
       // qualquer nova ação não classificada permanece bloqueada.
       if (codigo.startsWith("acao."))
-        return PERMISSOES_PADRAO.some((p) => p.codigo === codigo.slice(5));
+        return ACOES_LEGADAS.has(codigo.slice(5));
       return regrasAntigas.includes(codigo);
     };
   }
