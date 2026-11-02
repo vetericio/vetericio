@@ -307,7 +307,7 @@ export function MenuLateral({
                 />
               </button>
               {abertoGrupo && (
-                <div className="space-y-1 bg-background p-2">
+                <div className={area.titulo === "Gestão de clientes" ? "bg-background py-1" : "space-y-1 bg-background p-2"}>
                   {itens.map((item, i) => {
                     const chave = (item.to || item.rotulo) + i;
                     if (item.separador) return (
@@ -386,7 +386,9 @@ export function MenuLateral({
                         to={item.to}
                         hash={item.abaHotel || undefined}
                         onClick={() => setAberto(false)}
-                        className={`block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                        className={area.titulo === "Gestão de clientes"
+                          ? "flex min-h-11 items-center border-t border-border/60 px-4 pl-11 text-sm transition-colors first:border-t-0 hover:bg-secondary/60"
+                          : `block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
                       >
                         {item.rotulo}
                       </Link>
