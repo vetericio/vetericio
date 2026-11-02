@@ -61,6 +61,7 @@ type ItemMenu = {
   rotulo: string;
   permissao?: string;
   emBreve?: boolean;
+  abaHotel?: string;
   separador?: "consultorio" | "internacao";
 };
 
@@ -107,7 +108,16 @@ const areas: AreaMenu[] = [
   {
     titulo: "Hotelzinho",
     icone: BedDouble,
-    itens: [{ to: "/hotelzinho", rotulo: "Abrir Hotelzinho", permissao: "hotelzinho.visualizar" }],
+    itens: [
+      { to: "/hotelzinho", abaHotel: "painel", rotulo: "Painel do hotel", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "reservas", rotulo: "Reservas", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "checkin", rotulo: "Check-in", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "hospedes", rotulo: "Hóspedes ativos", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "cuidados", rotulo: "Rotina e cuidados", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "tutores", rotulo: "Atualizações para tutores", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "checkout", rotulo: "Check-out", permissao: "hotelzinho.visualizar" },
+      { to: "/hotelzinho", abaHotel: "acomodacoes", rotulo: "Acomodações", permissao: "hotelzinho.visualizar" },
+    ],
   },
   {
     titulo: "Banho e tosa",
@@ -357,8 +367,9 @@ export function MenuLateral({
                       <Link
                         key={chave}
                         to={item.to}
+                        hash={item.abaHotel || undefined}
                         onClick={() => setAberto(false)}
-                        className={`block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname === item.to ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                        className={`block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
                       >
                         {item.rotulo}
                       </Link>
