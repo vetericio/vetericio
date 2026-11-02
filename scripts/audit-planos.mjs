@@ -38,8 +38,10 @@ const driveRpc = read("src/lib/drive-rpc.ts");
 const hasTeamPermissionsPath = menu.includes('to: "/permissoes-equipe"') &&
   read("src/hooks/usePermissoes.ts").includes('"/permissoes-equipe"') &&
   read("src/routes/permissoes-equipe.tsx").includes("UserPermissionsPanel");
+const sharedPolicy = read("src/lib/plan-policy.ts");
+const hasSharedPolicy = driveDb.includes('from "@/lib/plan-policy"') && driveRpc.includes('from "@/lib/plan-policy"') && sharedPolicy.includes("export function permissaoEfetiva");
 const hasWritePlanGuards = driveDb.includes("const permissoesEscrita:") &&
-  driveDb.includes("matrizA") && driveDb.includes("baseOk && acaoOk && papelOk") &&
+  driveDb.includes("matrizA") && driveDb.includes("permissaoEfetiva({") &&
   driveDb.includes("oricse_hotel_estadias");
 const hasClinicAdminLink = menu.includes('to: "/plano-clinica"') &&
   read("src/routes/perfil-clinica.tsx").includes('to="/plano-clinica"');
@@ -67,6 +69,7 @@ const result = {
     protecaoExcecoesEPermissoes:hasServerPlanExceptionGuard,
     novasPermissoesBloqueadas:newPermissionsDefaultDenied && newActionsDefaultDenied,
     adminLocalEquipe:hasTeamPermissionsPath, escritaClinicaProtegida:hasWritePlanGuards,
+    nucleoUnificado:hasSharedPolicy,
   },
   observacoes:[
     "Contagem de handlers é estática e aproximada; não equivale a funções completas auditadas.",
