@@ -627,7 +627,11 @@ function AnimalFicha() {
         await carregarConteudosPortal();
         setModalTipo(null);
         setArquivoPdf(null);
-        toast.success(`${modalTipo} adicionado no banco.`);
+        toast.success(
+          visivelTutor && ["Exames", "Documentos"].includes(modalTipo)
+            ? `${modalTipo} disponível no Portal. O aviso com link foi adicionado ao CRM.`
+            : `${modalTipo} adicionado no banco.`,
+        );
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -676,7 +680,11 @@ function AnimalFicha() {
       return;
     }
     toast.success(
-      valor ? "Registro liberado no Portal do Tutor." : "Registro ocultado do Portal do Tutor.",
+      valor
+        ? registro.fontePortal === "exame" || registro.fontePortal === "documento"
+          ? "Registro liberado no Portal. O CRM criou o aviso com link seguro."
+          : "Registro liberado no Portal do Tutor."
+        : "Registro ocultado do Portal do Tutor.",
     );
   }
 
@@ -1084,7 +1092,9 @@ function AnimalFicha() {
                       <div>
                         <div className="text-sm font-black">Visível no Portal do Tutor</div>
                         <div className="text-xs text-muted-foreground">
-                          O tutor só verá este registro se esta opção estiver ativada.
+                          {modalTipo === "Exames" || modalTipo === "Documentos"
+                            ? "Ao publicar, o CRM prepara um aviso com link seguro para o Portal do Tutor."
+                            : "O tutor só verá este registro se esta opção estiver ativada."}
                         </div>
                       </div>
                       <input
