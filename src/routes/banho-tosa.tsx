@@ -1,5 +1,6 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
 import { usePermissoes } from "@/hooks/usePermissoes";
@@ -40,6 +41,7 @@ function BanhoTosa(){
  const [avaliacao,setAvaliacao]=useState(""),[restricoes,setRestricoes]=useState(""),[saida,setSaida]=useState("");
  const [extraNome,setExtraNome]=useState(""),[extraQuantidade,setExtraQuantidade]=useState("1"),[extraPreco,setExtraPreco]=useState("");
  const [data,setData]=useState(hoje);
+ const [visaoAgenda,setVisaoAgenda]=useState<"dia"|"semana"|"mes">("semana");
  const [animalId,setAnimalId]=useState(""),[servicoId,setServicoId]=useState(""),[inicio,setInicio]=useState(isoLocal),[profissional,setProfissional]=useState(""),[obs,setObs]=useState("");
  const [nomeServico,setNomeServico]=useState(""),[duracao,setDuracao]=useState("60"),[preco,setPreco]=useState("");
  const db=supabaseBanco as any;
@@ -67,6 +69,25 @@ function BanhoTosa(){
  useEffect(()=>{if(!carregandoPermissoes&&clinicaId)void carregar();else if(!carregandoPermissoes){setCarregando(false);setErro("Selecione uma clínica.");}},[clinicaId,carregandoPermissoes]);
  const selecionado=servicos.find(s=>s.id===servicoId);
  const doDia=atendimentos.filter(a=>a.inicio.slice(0,10)===data||new Date(a.inicio).toLocaleDateString("en-CA")===data).sort((a,b)=>a.inicio.localeCompare(b.inicio));
+ const datasAgenda=useMemo(()=>{
+  const [ano,mes,diaMes]=data.split("-").map(Number);
+  const referencia=new Date(ano,mes-1,diaMes);
+  if(visaoAgenda==="dia")return [data];
+  const inicio=new Date(referencia);
+  if(visaoAgenda==="semana")inicio.setDate(inicio.getDate()-inicio.getDay());
+  else{inicio.setDate(1);inicio.setDate(inicio.getDate()-inicio.getDay());}
+  const fim=new Date(inicio);
+  if(visaoAgenda==="semana")fim.setDate(inicio.getDate()+6);
+  else{const ultimo=new Date(ano,mes,0);fim.setTime(ultimo.getTime());fim.setDate(fim.getDate()+6-fim.getDay());}
+  const quantidade=Math.round((Date.UTC(fim.getFullYear(),fim.getMonth(),fim.getDate())-Date.UTC(inicio.getFullYear(),inicio.getMonth(),inicio.getDate()))/86400000)+1;
+  return Array.from({length:quantidade},(_,i)=>{const d=new Date(inicio.getFullYear(),inicio.getMonth(),inicio.getDate()+i);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;});
+ },[data,visaoAgenda]);
+ function navegarAgenda(delta:number){
+  const [ano,mes,diaMes]=data.split("-").map(Number);
+  const d=new Date(ano,mes-1,diaMes);
+  if(visaoAgenda==="mes"){const proximo=new Date(ano,mes-1+delta,1);const ultimo=new Date(proximo.getFullYear(),proximo.getMonth()+1,0).getDate();proximo.setDate(Math.min(diaMes,ultimo));setData(`${proximo.getFullYear()}-${String(proximo.getMonth()+1).padStart(2,"0")}-${String(proximo.getDate()).padStart(2,"0")}`);}
+  else{d.setDate(d.getDate()+delta*(visaoAgenda==="semana"?7:1));setData(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);}
+ }
  const ativos=atendimentos.filter(a=>!["entregue","cancelado"].includes(a.status));
  const encerrados=atendimentos.filter(a=>["entregue","cancelado"].includes(a.status));
  const detalhe=atendimentos.find(a=>a.id===detalheId);
@@ -174,7 +195,37 @@ function BanhoTosa(){
   {erro&&<div role="alert" className="rounded-xl border border-destructive p-4 text-destructive">{erro}</div>}
   {carregando?<p>Carregando registros…</p>:<>
    {aba==="painel"&&<section className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Agendados hoje",doDia.length],["Em atendimento",ativos.filter(x=>x.status==="em_execucao").length],["Prontos",ativos.filter(x=>x.status==="pronto").length],["Serviços cadastrados",servicos.filter(x=>x.ativo).length]].map(([nome,valor])=><div key={String(nome)} className={card}><p className="text-sm text-muted-foreground">{nome}</p><p className="text-3xl font-bold">{valor}</p></div>)}</div><h2 className="font-bold text-xl">Próximos serviços</h2>{ativos.slice(0,10).map(registro)}</section>}
-   {aba==="agenda"&&<section className="space-y-3"><label className="block font-medium">Data<input type="date" className={campo} value={data} onChange={e=>setData(e.target.value)}/></label>{doDia.length?doDia.map(registro):<p className={card}>Nenhum agendamento para esta data.</p>}</section>}
+   {aba==="agenda"&&<section className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <CalendarDays className="h-5 w-5 text-primary"/>
+        <button type="button" aria-label="Período anterior" className="rounded-xl border p-2.5 hover:bg-muted" onClick={()=>navegarAgenda(-1)}><ChevronLeft size={18}/></button>
+        <input aria-label="Data da agenda" type="date" className="min-h-10 rounded-xl border bg-background px-3" value={data} onChange={e=>e.target.value&&setData(e.target.value)}/>
+        <button type="button" aria-label="Próximo período" className="rounded-xl border p-2.5 hover:bg-muted" onClick={()=>navegarAgenda(1)}><ChevronRight size={18}/></button>
+        <button type="button" className="rounded-xl border px-3 py-2 text-sm hover:bg-muted" onClick={()=>setData(hoje())}>Hoje</button>
+      </div>
+      <div className="flex rounded-xl border bg-muted/30 p-1" role="group" aria-label="Visualização da agenda">
+        {([["dia","Dia"],["semana","Semana"],["mes","Mês"]] as const).map(([id,nome])=><button key={id} type="button" aria-pressed={visaoAgenda===id} onClick={()=>setVisaoAgenda(id)} className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${visaoAgenda===id?"bg-primary text-primary-foreground shadow-sm":"hover:bg-muted"}`}>{nome}</button>)}
+      </div>
+      <p className="text-sm text-muted-foreground">{atendimentos.filter(a=>a.status!=="cancelado"&&datasAgenda.includes(a.inicio.slice(0,10))).length} agendamento(s) no período</p>
+    </div>
+    {visaoAgenda==="dia" ? (doDia.length?doDia.map(registro):<p className={card}>Nenhum agendamento para esta data.</p>) :
+      <div className="overflow-x-auto rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
+        <div className="grid min-w-[770px] grid-cols-7 gap-2">
+          {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((nome,i)=><div key={nome} className={`py-2 text-center text-xs font-semibold uppercase tracking-wide ${i===0?"text-rose-600":"text-muted-foreground"}`}>{nome}</div>)}
+          {datasAgenda.map(d=>{
+            const diaData=new Date(d+"T12:00:00");
+            const lista=atendimentos.filter(a=>a.status!=="cancelado"&&a.inicio.slice(0,10)===d).sort((a,b)=>a.inicio.localeCompare(b.inicio));
+            const mesAtual=d.slice(0,7)===data.slice(0,7);
+            return <button key={d} type="button" onClick={()=>{setData(d);setVisaoAgenda("dia")}} className={`flex min-h-40 flex-col rounded-xl border p-2.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/20 ${d===hoje()?"ring-2 ring-primary/30":""} ${diaData.getDay()===0?"bg-rose-50/30 dark:bg-rose-950/10":"bg-background"} ${visaoAgenda==="mes"&&!mesAtual?"opacity-45":""}`}>
+              <div className="w-full border-b border-border/60 pb-2"><span className="text-lg font-semibold">{diaData.getDate()}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][diaData.getDay()]}</span></div>
+              <p className="mt-2 text-xs text-muted-foreground">{lista.length?lista.length+" agendamento(s)":"Sem agendamentos"}</p>
+              <div className="mt-2 w-full space-y-1.5">{lista.slice(0,3).map(a=><div key={a.id} className="rounded-lg border border-primary/15 bg-primary/5 p-2"><p className="truncate text-xs font-semibold">{nomesAnimais.get(a.animal_id)?.nome||"Animal"}</p><p className="truncate text-[11px] text-muted-foreground">{new Date(a.inicio).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})} · {a.servico_nome}</p></div>)}{lista.length>3&&<span className="text-xs text-muted-foreground">+{lista.length-3} outros</span>}</div>
+            </button>;
+          })}
+        </div>
+      </div>}
+  </section>}
    {aba==="novo"&&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
     <label>Animal<select required className={campo} value={animalId} onChange={e=>setAnimalId(e.target.value)}><option value="">Selecione</option>{animais.map(a=><option key={a.id} value={a.id}>{a.nome} — {nomesTutores.get(a.tutor_id)||"Tutor"}</option>)}</select></label>
     <label>Serviço<select required className={campo} value={servicoId} onChange={e=>setServicoId(e.target.value)}><option value="">Selecione</option>{servicos.filter(x=>x.ativo).map(x=><option key={x.id} value={x.id}>{x.nome} · {dinheiro(x.preco_centavos)}</option>)}</select></label>
