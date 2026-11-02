@@ -234,10 +234,13 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
     if (!vinculo) throw new Error("Usuário sem vínculo ativo com esta clínica.");
     const papel = String(vinculo.papel);
     const defaults = new Set(PERMITIDAS_POR_PAPEL[papel] || []);
-    const { data: overrides } = await fromDrive("oricse_permissoes_usuario")
-      .select("permissao_codigo,permitido")
-      .eq("clinica_id", clinicaId)
-      .eq("user_id", alvo);
+    const [{ data: overrides, error: overrideError }, { data: catalogo, error: catalogoError }] = await Promise.all([
+      fromDrive("oricse_permissoes_usuario")
+        .select("permissao_codigo,permitido").eq("clinica_id", clinicaId).eq("user_id", alvo),
+      fromDrive("oricse_permissoes")
+        .select("codigo,nome,grupo,descricao,funcionalidade_codigo,ordem,ativo").eq("ativo", true),
+    ]);
+    if (overrideError || catalogoError) throw new Error("Não foi possível consultar as permissões da clínica.");
     const mapa = new Map(
       (overrides || []).map((x: any) => [String(x.permissao_codigo), Boolean(x.permitido)]),
     );
@@ -251,7 +254,7 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
       origem: "plano" | "usuario" | "cargo";
       ordem: number;
     }> = [];
-    for (const p of PERMISSOES_PADRAO) {
+    for (const p of (catalogo || PERMISSOES_PADRAO)) {
       const planoOk = Boolean(
         (!p.funcionalidade_codigo || planoPermite(String(p.funcionalidade_codigo)))
         && planoPermite(`acao.${p.codigo}`)
