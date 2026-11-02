@@ -357,6 +357,7 @@ export function Financeiro() {
   }
 
   function abrirEdicao(lancamento: Lancamento) {
+    if (lancamento.id.startsWith("caixa:")) return void toast.error("Registros centralizados são somente leitura nesta tela.");
     setEditandoId(lancamento.id);
     setForm({
       tipo: lancamento.tipo,
@@ -380,6 +381,7 @@ export function Financeiro() {
   }
 
   function remover(id: string) {
+    if (id.startsWith("caixa:")) return void toast.error("Registros centralizados não podem ser apagados nesta tela.");
     persistir(lancamentos.filter((item) => item.id !== id));
   }
   function darBaixa(id: string) {
@@ -397,10 +399,24 @@ export function Financeiro() {
     }
   }
 
-  const doDia = useMemo(() => lancamentos.filter((l) => l.data === dataAtual), [lancamentos, dataAtual]);
+  // Caixa unificado: operações da clínica no PostgreSQL, lançamentos anteriores
+  // preservados durante a transição. Identificadores de origem impedem sobreposição.
+  const lancamentosUnificados = useMemo<Lancamento[]>(() => {
+    const vindosBanco: Lancamento[] = caixaGeral.map(p => ({
+      id: "caixa:" + p.id, tipo: p.tipo === "saida" ? "Saída" : "Entrada",
+      descricao: p.descricao, categoria: p.setor,
+      valor: p.valor_centavos / 100, data: dataLocalISO(new Date(p.registrado_em)),
+      formaPagamento: p.forma_pagamento,
+      status: p.status === "pago" ? "Pago" : "Pendente",
+      observacao: "Registro centralizado · " + p.setor,
+    }));
+    const idsBanco = new Set(vindosBanco.map(l => l.id));
+    return [...vindosBanco, ...lancamentos.filter(l => !idsBanco.has(l.id))];
+  }, [caixaGeral, lancamentos]);
+  const doDia = useMemo(() => lancamentosUnificados.filter((l) => l.data === dataAtual), [lancamentosUnificados, dataAtual]);
   const doMes = useMemo(
-    () => lancamentos.filter((l) => l.data.startsWith(dataAtual.slice(0, 7))),
-    [lancamentos, dataAtual],
+    () => lancamentosUnificados.filter((l) => l.data.startsWith(dataAtual.slice(0, 7))),
+    [lancamentosUnificados, dataAtual],
   );
   const entradasDia = doDia
     .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
@@ -417,17 +433,17 @@ export function Financeiro() {
   const despesasMes = doMes
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
-  const recebidoTotal = lancamentos
+  const recebidoTotal = lancamentosUnificados
     .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
-  const despesasTotal = lancamentos
+  const despesasTotal = lancamentosUnificados
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
-  const contasReceber = lancamentos.filter((l) => l.tipo === "Entrada" && l.status === "Pendente");
+  const contasReceber = lancamentosUnificados.filter((l) => l.tipo === "Entrada" && l.status === "Pendente");
 
   const comandasDia = useMemo(() => comandas.filter(c => dataLocalISO(new Date(c.abertaEm)) === dataAtual).sort((a,b) => b.abertaEm.localeCompare(a.abertaEm)), [comandas, dataAtual]);
   const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && dataLocalISO(new Date(c.abertaEm)) < dataAtual).sort((a,b) => a.abertaEm.localeCompare(b.abertaEm)), [comandas, dataAtual]);
-  const lancamentosPeriodo = useMemo(() => lancamentos.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentos, periodoInicio, periodoFim]);
+  const lancamentosPeriodo = useMemo(() => lancamentosUnificados.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentos, periodoInicio, periodoFim]);
   const recebidoPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Entrada" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
   const despesasPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Saída" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
 
@@ -594,16 +610,6 @@ export function Financeiro() {
           <p className="mt-3 text-xs text-muted-foreground">Consultas, internação e banho e tosa devem registrar cobranças e pagamentos em um livro financeiro comum para compor o caixa real sem duplicações. Os valores acima são apenas informativos.</p>
         </section>
       )}
-      {(aba==="inicio"||aba==="dia"||aba==="mes")&&<section className="mb-5 rounded-2xl border bg-card p-4">
-        <h2 className="text-lg font-bold">Caixa geral da clínica · registros centralizados</h2>
-        <p className="text-sm text-muted-foreground">Recebimentos por setor registrados no banco da clínica. Estes valores são mostrados separadamente dos lançamentos locais legados para evitar dupla contagem enquanto a migração financeira é concluída.</p>
-        {erroCaixaGeral&&<p className="text-sm text-destructive">{erroCaixaGeral}</p>}
-        <div className="mt-3 flex flex-wrap gap-3">
-          <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs">Recebido hoje no caixa geral</p><strong>{dinheiro(caixaGeral.filter(p=>p.tipo==="entrada"&&p.status==="pago"&&new Date(p.registrado_em).toLocaleDateString("en-CA")===dataAtual).reduce((n,p)=>n+p.valor_centavos,0)/100)}</strong></div>
-          <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs">Recebido no mês no caixa geral</p><strong>{dinheiro(caixaGeral.filter(p=>p.tipo==="entrada"&&p.status==="pago"&&new Date(p.registrado_em).toLocaleDateString("en-CA").startsWith(dataAtual.slice(0,7))).reduce((n,p)=>n+p.valor_centavos,0)/100)}</strong></div>
-        </div>
-        <div className="mt-3 space-y-2">{caixaGeral.filter(p=>new Date(p.registrado_em).toLocaleDateString("en-CA")===dataAtual).slice(0,30).map(p=><div key={p.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-2 text-sm"><span>{p.setor} · {p.descricao} · {p.forma_pagamento}</span><strong>{dinheiro(p.valor_centavos/100)}</strong></div>)}</div>
-      </section>}
       {aba === "dia" && (
         <ModuloCaixa
           titulo="Movimentações de hoje"
