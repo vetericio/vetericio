@@ -139,7 +139,7 @@ const TIPOS_OPERACAO = [
     "nome": "Outro tipo de operação"
   }
 ] as const;
-const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica","hospital","consultorio","domicilio","movel","especialidades","diagnostico","laboratorio","imagem","reabilitacao","misto","clinica_banho_tosa","clinica_hotel","centro_pet"]);
+const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica","hospital","consultorio","especialidades","diagnostico","laboratorio","imagem","reabilitacao","misto","clinica_banho_tosa","clinica_hotel","centro_pet"]);
 
 const TEXTO_PADRAO = {
   voltar_planos: "Voltar aos planos",
