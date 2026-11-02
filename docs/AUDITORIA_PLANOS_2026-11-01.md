@@ -41,3 +41,28 @@ No repositório foram encontrados **539 arquivos**, incluindo **58 rotas TSX**, 
 ## Validação
 
 Acompanhar `Actions → Validate` para os commits da branch `main`. O script `scripts/audit-planos.mjs` imprime o inventário e as rotas sem mapeamento explícito. Verificar as etapas de build, TypeScript, auditoria de UI e dry-run Cloudflare antes de implantar.
+
+## Caminhos de administração implementados
+
+- **Admin Geral:** `/admin` → aba **Planos** → **Abrir gerenciador geral de planos** (`/admin-planos`).
+  A tela principal permite editar os planos e aprovar/bloquear módulos e ações.
+- **Administração da Clínica:** menu lateral **Configurações** → **Meu plano e funcionalidades** (`/plano-clinica`).
+  Apenas visualização: plano contratado, limites e acessos efetivos do plano.
+- **Administração da Clínica:** menu lateral **Configurações** → **Permissões da equipe** (`/permissoes-equipe`).
+  RT/gestores podem ajustar permissões individuais, mas não ampliar os benefícios comerciais do plano.
+
+## Proteções adicionais nesta etapa
+
+- Escritas de tutores/animais, agendas, catálogos, Hotelzinho e remuneração verificam permissões do plano e do cargo na camada Drive; alterações individuais respeitam o plano.
+- Escritas em tabelas globais de planos, exceções comerciais e permissões de cargo exigem Admin Geral.
+- Alterações em permissões individuais exigem RT/gestor ativo; funcionário comum não pode elevar seus próprios privilégios diretamente pela API.
+- A matriz e as permissões anteriores são preservadas; novas ações desconhecidas são negadas até aprovação.
+
+## Verificações ainda necessárias antes de publicar
+
+- Testes end-to-end autenticados como Admin Geral, RT, recepção, veterinário e tutor, em duas clínicas diferentes.
+- Revisão das RPCs PostgreSQL legadas e das chamadas diretas a `supabaseBanco`; nem todas obedecem à matriz mantida no Drive.
+- Completar catálogo de operações que ainda não constam de `oricse_permissoes`.
+- Medição de latência do acesso ao Drive após inclusão das verificações de autorização de escrita.
+- Validar o fluxo de publicar no Cloudflare; nenhuma implantação foi iniciada.
+
