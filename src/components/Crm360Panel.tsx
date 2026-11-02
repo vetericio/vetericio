@@ -60,7 +60,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     setCarregando(true);
     const [baseResult, campanhasResult, tarefasResult] = await Promise.all([
       (supabaseBanco as any).rpc("oricse_crm_360_base", { p_clinica_id: clinicaId }),
-      (supabaseBanco as any).from("oricse_crm_campanhas").select("*").eq("clinica_id", clinicaId).order("criado_em", { ascending: false }).limit(6),
+      (supabaseBanco as any).from("oricse_crm_campanhas").select("*").eq("clinica_id", clinicaId).order("created_at", { ascending: false }).limit(6),
       (supabaseBanco as any).from("oricse_crm_tarefas").select("*").eq("clinica_id", clinicaId).order("vencimento", { ascending: true }).limit(6),
     ]);
     setCarregando(false);
