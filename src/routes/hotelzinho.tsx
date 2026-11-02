@@ -186,6 +186,7 @@ function Hotelzinho() {
     setAtualizando(Boolean(salvo));
     if (!forcar && salvo && Date.now()-salvo.em<30000) { setAtualizando(false); return; }
     setErro("");
+    try {
     const [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR, extrasR] =
       await Promise.all([
         db.from("tutores").select("id,nome,telefone").eq("clinica_id", clinicaId).order("nome"),
@@ -233,6 +234,12 @@ function Hotelzinho() {
     cacheHotel.set(clinicaId,{em:Date.now(),dados:[tutoresR.data||[],animaisR.data||[],acomodacoesR.data||[],estadiasR.data||[],cuidadosR.data||[],atualizacoesR.data||[],extrasR.data||[]]});
     setCarregando(false);
     setAtualizando(false);
+    } catch (error) {
+      console.error("Erro de carregamento do Hotelzinho:", error);
+      setErro("Falha de conexão ao carregar o Hotelzinho. Tente novamente.");
+      setCarregando(false);
+      setAtualizando(false);
+    }
   }
 
   useEffect(() => {
