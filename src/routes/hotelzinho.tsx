@@ -155,6 +155,7 @@ function Hotelzinho() {
   const [valorExtra, setValorExtra] = useState("");
   const [atualizacoes, setAtualizacoes] = useState<Atualizacao[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [mostrarReserva, setMostrarReserva] = useState(false);
@@ -182,7 +183,8 @@ function Hotelzinho() {
       setTutores(t);setAnimais(a);setAcomodacoes(ac);setEstadias(e);setCuidados(c);setAtualizacoes(at);setExtras(x);
     }
     setCarregando(!salvo);
-    if (!forcar && salvo && Date.now()-salvo.em<30000) return;
+    setAtualizando(Boolean(salvo));
+    if (!forcar && salvo && Date.now()-salvo.em<30000) { setAtualizando(false); return; }
     setErro("");
     const [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR, extrasR] =
       await Promise.all([
@@ -218,6 +220,7 @@ function Hotelzinho() {
     if (falha?.error) {
       setErro(falha.error.message || "Não foi possível carregar o Hotelzinho.");
       setCarregando(false);
+      setAtualizando(false);
       return;
     }
     setTutores((tutoresR.data || []) as Tutor[]);
@@ -229,6 +232,7 @@ function Hotelzinho() {
     setExtras(extrasR.data || []);
     cacheHotel.set(clinicaId,{em:Date.now(),dados:[tutoresR.data||[],animaisR.data||[],acomodacoesR.data||[],estadiasR.data||[],cuidadosR.data||[],atualizacoesR.data||[],extrasR.data||[]]});
     setCarregando(false);
+    setAtualizando(false);
   }
 
   useEffect(() => {
@@ -524,7 +528,7 @@ function Hotelzinho() {
     );
   }
 
-  if (carregandoPermissoes || carregando)
+  if (carregandoPermissoes || (carregando && !cacheHotel.has(clinicaId || "")))
     return (
       <main className="mx-auto max-w-6xl p-5 text-sm text-muted-foreground">
         Carregando Hotelzinho…
@@ -549,7 +553,7 @@ function Hotelzinho() {
         </div>
         <button
           type="button"
-          onClick={() => void carregar(true)}
+          onClick={() => void carregar(true)} disabled={atualizando}
           className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
         >
           <RefreshCw className="h-4 w-4" /> Atualizar
