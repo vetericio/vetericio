@@ -34,6 +34,7 @@ import {
   totalPagoComanda,
 } from "@/lib/comandas";
 import { toast } from "sonner";
+import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 
@@ -1102,7 +1103,7 @@ export function Financeiro() {
               <Campo label="Valor">
                 <input
                   value={form.valor}
-                  onChange={(e) => setForm({ ...form, valor: e.target.value })}
+                  onChange={(e) => setForm({ ...form, valor: digitarCentavos(e.target.value) })}
                   className="input"
                   inputMode="decimal"
                   placeholder="0,00"
