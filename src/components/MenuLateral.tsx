@@ -414,7 +414,7 @@ export function MenuLateral({
           <button
             type="button"
             aria-label="Abrir menu lateral"
-            className={`absolute left-3 top-3 z-30 flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm hover:bg-secondary ${fixo ? "hidden" : ""}`}
+            className={`fixed left-3 top-3 z-50 flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm hover:bg-secondary ${fixo ? "hidden" : ""}`}
           >
             <Menu className="h-5 w-5" />
           </button>
