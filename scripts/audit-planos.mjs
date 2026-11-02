@@ -35,6 +35,12 @@ const menu = read("src/components/MenuLateral.tsx");
 const generalAdmin = read("src/routes/admin.tsx");
 const driveDb = read("src/lib/drive-db.functions.ts");
 const driveRpc = read("src/lib/drive-rpc.ts");
+const hasTeamPermissionsPath = menu.includes('to: "/permissoes-equipe"') &&
+  read("src/hooks/usePermissoes.ts").includes('"/permissoes-equipe"') &&
+  read("src/routes/permissoes-equipe.tsx").includes("UserPermissionsPanel");
+const hasWritePlanGuards = driveDb.includes("const permissoesEscrita:") &&
+  driveDb.includes("matrizA") && driveDb.includes("papelOk &&") &&
+  driveDb.includes("oricse_hotel_estadias");
 const hasClinicAdminLink = menu.includes('to: "/plano-clinica"') &&
   read("src/routes/perfil-clinica.tsx").includes('to="/plano-clinica"');
 const hasGeneralAdminLink = generalAdmin.includes('to="/admin-planos"');
@@ -60,6 +66,7 @@ const result = {
     consultaDePlanoAutorizada:hasAuthorizedClinicSummary,
     protecaoExcecoesEPermissoes:hasServerPlanExceptionGuard,
     novasPermissoesBloqueadas:newPermissionsDefaultDenied && newActionsDefaultDenied,
+    adminLocalEquipe:hasTeamPermissionsPath, escritaClinicaProtegida:hasWritePlanGuards,
   },
   observacoes:[
     "Contagem de handlers é estática e aproximada; não equivale a funções completas auditadas.",
