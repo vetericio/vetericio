@@ -77,18 +77,11 @@ function permissoesDaChave(chave: string): string[] {
   return [];
 }
 
-async function validarAlteracoesPorPlano(
+async function obterPermissoesUsuario(
   accessToken: string,
   contexto: { userId: string; clinicaId: string | null },
-  alteracoes: Array<{ chave: string }>,
-) {
-  if (!contexto.clinicaId) return;
-  const regras = new Map<string, string[]>();
-  for (const item of alteracoes) {
-    const candidatas = permissoesDaChave(item.chave);
-    if (candidatas.length) regras.set(item.chave, candidatas);
-  }
-  if (!regras.size) return;
+): Promise<Set<string>> {
+  if (!contexto.clinicaId) return new Set();
   const admin = await carregarAdmin();
   const { createDriveFrom } = await import("@/lib/drive-db");
   const { createDriveRpc } = await import("@/lib/drive-rpc");
@@ -108,7 +101,22 @@ async function validarAlteracoesPorPlano(
   if (error || !Array.isArray(data)) {
     throw new Error(error?.message || "Não foi possível conferir os acessos do plano.");
   }
-  const permitidas = new Set(data.filter((p: any) => p.permitido).map((p: any) => String(p.codigo)));
+  return new Set<string>(data.filter((p: any) => p.permitido).map((p: any) => String(p.codigo)));
+}
+
+async function validarAlteracoesPorPlano(
+  accessToken: string,
+  contexto: { userId: string; clinicaId: string | null },
+  alteracoes: Array<{ chave: string }>,
+) {
+  if (!contexto.clinicaId) return;
+  const regras = new Map<string, string[]>();
+  for (const item of alteracoes) {
+    const candidatas = permissoesDaChave(item.chave);
+    if (candidatas.length) regras.set(item.chave, candidatas);
+  }
+  if (!regras.size) return;
+  const permitidas = await obterPermissoesUsuario(accessToken, contexto);
   for (const [chave, candidatas] of regras) {
     if (!candidatas.some((codigo) => permitidas.has(codigo))) {
       throw new Error("O plano ou cargo não permite alterar o recurso: " + chave);
@@ -117,7 +125,7 @@ async function validarAlteracoesPorPlano(
 }
 
 /** Estado principal no PostgreSQL; o trigger da tabela enfileira a cópia para o Drive. */
-async function lerEstado(accessToken: string) {
+async function lerEstado(accessToken: string, filtrarLeitura = false) {
   const contexto = await contextoUsuario(accessToken);
   if (!contexto.clinicaId) return { contexto, estado: {} as Record<string, string> };
   const admin = await carregarAdmin();
@@ -129,16 +137,23 @@ async function lerEstado(accessToken: string) {
   if (error) throw error;
   const bruto = data?.dados;
   const estado = bruto && typeof bruto === "object" && !Array.isArray(bruto) ? bruto as Record<string, unknown> : {};
-  return {
-    contexto,
-    estado: Object.fromEntries(Object.entries(estado).filter(([, valor]) => typeof valor === "string").map(([chave, valor]) => [chave, valor as string])),
-  };
+  let pares = Object.entries(estado)
+    .filter(([, valor]) => typeof valor === "string")
+    .map(([chave, valor]) => [chave, valor as string] as const);
+  if (filtrarLeitura && pares.some(([chave]) => permissoesDaChave(chave).length)) {
+    const permitidas = await obterPermissoesUsuario(accessToken, contexto);
+    pares = pares.filter(([chave]) => {
+      const exigidas = permissoesDaChave(chave);
+      return !exigidas.length || exigidas.some((codigo) => permitidas.has(codigo));
+    });
+  }
+  return { contexto, estado: Object.fromEntries(pares) };
 }
 
 export const carregarEstadoOricseDrive = createServerFn({ method: "POST" })
   .validator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data }) => {
-    const { estado } = await lerEstado(data.accessToken);
+    const { estado } = await lerEstado(data.accessToken, true);
     return { estado, atualizadoEm: null as string | null };
   });
 
