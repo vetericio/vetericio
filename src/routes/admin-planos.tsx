@@ -560,6 +560,69 @@ function AdminPlanos() {
   </main>;
 }
 
+function FragmentoGrupo({
+  grupo, itens, fechado, onToggle, planos, matriz, valorPlano, alterarFuncionalidade, alterarGrupo,
+}: {
+  grupo: string;
+  itens: ItemCatalogo[];
+  fechado: boolean;
+  onToggle: () => void;
+  planos: Plano[];
+  matriz: Matriz;
+  valorPlano: (planoId: string, item: ItemCatalogo) => boolean;
+  alterarFuncionalidade: (planoId: string, codigo: string, permitido: boolean) => void;
+  alterarGrupo: (planoId: string, itens: ItemCatalogo[], permitido: boolean) => void;
+}) {
+  return <>
+    <tr className="bg-secondary/50">
+      <th className="sticky left-0 bg-secondary/90 px-3 py-2">
+        <button type="button" onClick={onToggle} className="w-full text-left font-black">
+          {fechado ? "▸" : "▾"} {grupo} <span className="text-xs font-normal">({itens.length})</span>
+        </button>
+      </th>
+      {planos.map((p) => <td key={p.id} className="px-2 py-1.5 text-center">
+        <div className="flex items-center justify-center gap-1">
+          <button type="button" onClick={()=>alterarGrupo(p.id,itens,true)}
+            title={"Liberar grupo no plano " + p.nome}
+            className="rounded border px-2 py-1 text-[10px] font-bold">Todos ✓</button>
+          <button type="button" onClick={()=>alterarGrupo(p.id,itens,false)}
+            title={"Bloquear grupo no plano " + p.nome}
+            className="rounded border px-2 py-1 text-[10px] font-bold">Todos ✕</button>
+        </div>
+      </td>)}
+    </tr>
+    {!fechado && itens.map((item) => <tr key={item.codigo} className="border-t">
+      <th scope="row" className="sticky left-0 bg-card px-3 py-2 font-normal">
+        <div className="font-semibold">{item.nome}</div>
+        <div className="mt-0.5 text-[10px] text-muted-foreground">{item.codigo}</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">{item.descricao}</div>
+        <div className="mt-1 text-[10px] font-semibold text-primary">
+          {item.tipo==="acao" ? "AÇÃO INDIVIDUAL" : "MÓDULO"}
+          {!item.catalogada ? " · PENDENTE DE CLASSIFICAÇÃO" : ""}
+        </div>
+      </th>
+      {planos.map((plano) => {
+        const explicita = Object.prototype.hasOwnProperty.call(matriz[plano.id] || {},item.codigo);
+        const paiLiberado = !item.pai || Boolean(matriz[plano.id]?.[item.pai]);
+        const checked = valorPlano(plano.id,item);
+        return <td key={plano.id} className="px-3 py-2 text-center">
+          <label className="inline-flex cursor-pointer flex-col items-center gap-1">
+            <input type="checkbox" aria-label={item.nome+" — "+plano.nome}
+              disabled={item.tipo==="acao" && !paiLiberado}
+              checked={checked}
+              onChange={(e)=>alterarFuncionalidade(plano.id,item.codigo,e.target.checked)}
+              className="h-5 w-5 accent-primary"/>
+            <span className="text-[10px] text-muted-foreground">
+              {item.tipo==="acao" && !paiLiberado ? "Módulo bloqueado" :
+                !explicita ? "Herdado / pendente" : checked ? "Liberado" : "Bloqueado"}
+            </span>
+          </label>
+        </td>;
+      })}
+    </tr>)}
+  </>;
+}
+
 function Campo({ rotulo, valor, onChange }: { rotulo: string; valor: string; onChange: (valor: string) => void }) {
   return <label className="text-xs font-bold">{rotulo}<input value={valor || ""} onChange={(e)=>onChange(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"/></label>;
 }
