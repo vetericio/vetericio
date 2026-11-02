@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, PackagePlus, Save, Wrench, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { digitarCentavos } from "@/lib/moeda-centavos";
 
 import { supabase } from "@/integrations/supabase/client";
 import { categoriaCatalogoExame, categoriaExame, EXAMES_PADRAO, type CategoriaExame } from "@/lib/exames-catalogo";
@@ -299,7 +300,7 @@ function Catalogo() {
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Campo label={tipo === "servico" ? "Nome do serviço *" : "Nome do produto *"} value={form.nome} onChange={(nome) => setForm({ ...form, nome })} placeholder={tipo === "servico" ? "Ex.: Consulta clínica" : "Ex.: Vermífugo"} />
-        <Campo label="Preço *" value={form.preco} onChange={(preco) => setForm({ ...form, preco })} inputMode="decimal" placeholder="0,00" />
+        <Campo label="Preço *" value={form.preco} onChange={(preco) => setForm({ ...form, preco: digitarCentavos(preco) })} inputMode="decimal" placeholder="0,00" />
         {cadastroExame ? <label className="block text-sm font-bold text-foreground">Categoria do exame<select value={categoriaExame(form.categoria) || "Outros"} onChange={(e) => setForm({ ...form, categoria: categoriaCatalogoExame(e.target.value as CategoriaExame) })} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal outline-none focus:border-primary">{(["Sangue", "Urina", "Fezes", "Imagem", "Outros"] as CategoriaExame[]).map((categoria) => <option key={categoria}>{categoria}</option>)}</select></label> : <Campo label="Categoria" value={form.categoria} onChange={(categoria) => setForm({ ...form, categoria })} placeholder={tipo === "servico" ? "Ex.: Consulta, procedimento" : "Ex.: Medicamento, alimento"} />}
         <Campo label="Comissão (opcional)" value={form.comissao} onChange={(comissao) => setForm({ ...form, comissao })} inputMode="decimal" placeholder="0,00" />
 
