@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { supabase, supabaseConfigurado } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
+import { usePermissoes } from "@/hooks/usePermissoes";
 import { type ItemCatalogo, type RegraComissao, percentualComissaoNaData } from "@/lib/comissoes";
 import {
   type Comanda,
@@ -100,12 +101,15 @@ function origemDaUrl(): OrigemComanda {
 
 export function Comandas() {
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
-  const [tutores] = useState<Tutor[]>(() => lerLista<Tutor>(TUTORES_KEY));
+  const { clinicaId, carregando: carregandoPermissoes } = usePermissoes();
+  const [tutores, setTutores] = useState<Tutor[]>([]);
+  const [carregandoCadastros, setCarregandoCadastros] = useState(true);
+  const [erroCadastros, setErroCadastros] = useState("");
   const telefoneTutor = (id: string): string => {
     const tutor = tutores.find(t => t.id === id);
     return tutor?.telefone || tutor?.outroTelefone || "Telefone não informado";
   };
-  const [animais] = useState<Animal[]>(() => lerLista<Animal>(ANIMAIS_KEY));
+  const [animais, setAnimais] = useState<Animal[]>([]);
   const [responsavel, setResponsavel] = useState<Responsavel>({ id: "", nome: "Equipe clínica" });
   const [comandaSelecionadaId, setComandaSelecionadaId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -209,6 +213,52 @@ export function Comandas() {
       window.removeEventListener("oricse-comandas-atualizadas", atualizar);
     };
   }, []);
+
+  // Cadastros pertencem à clínica ativa no banco; armazenamento local não é a fonte de verdade.
+  useEffect(() => {
+    if (carregandoPermissoes) return;
+    let ativo = true;
+    setTutores([]);
+    setAnimais([]);
+    setCarregandoCadastros(true);
+    setErroCadastros("");
+    if (!clinicaId) {
+      setErroCadastros("Selecione uma clínica para consultar tutores e animais.");
+      setCarregandoCadastros(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const [tutoresResp, animaisResp] = await Promise.all([
+          (supabaseBanco as any).from("tutores").select("id,nome,codigo_publico,cpf,telefone,dados").eq("clinica_id", clinicaId).order("nome"),
+          (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,dados").eq("clinica_id", clinicaId).order("nome"),
+        ]);
+        if (tutoresResp.error) throw tutoresResp.error;
+        if (animaisResp.error) throw animaisResp.error;
+        if (!ativo) return;
+        setTutores((tutoresResp.data || []).map((t: any) => ({
+          id: String(t.id), nome: String(t.nome || t.dados?.nome || "Tutor"),
+          codigoPublico: t.codigo_publico || t.dados?.codigoPublico,
+          telefone: t.telefone || t.dados?.telefone || "",
+          outroTelefone: t.dados?.outroTelefone || "",
+          cpfCnpj: t.cpf || t.dados?.cpfCnpj || "",
+        })));
+        setAnimais((animaisResp.data || []).map((a: any) => ({
+          id: String(a.id), nome: String(a.nome || a.dados?.nome || "Animal"),
+          tutorId: String(a.tutor_id || a.dados?.tutorId || ""),
+          especie: String(a.especie || a.dados?.especie || ""),
+        })));
+        setErroCadastros("");
+      } catch (error) {
+        if (!ativo) return;
+        console.error("Falha ao carregar tutores e animais para comandas:", error);
+        setErroCadastros("Não foi possível carregar os cadastros da clínica. Atualize a página.");
+      } finally {
+        if (ativo) setCarregandoCadastros(false);
+      }
+    })();
+    return () => { ativo = false; };
+  }, [clinicaId, carregandoPermissoes]);
 
   const animaisDoTutor = useMemo(
     () =>
