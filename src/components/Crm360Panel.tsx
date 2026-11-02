@@ -184,7 +184,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
         </div>
         <label className="mt-3 block text-xs font-bold">Canal preferido<select value={canal} onChange={(e) => setCanal(e.target.value as Canal)} className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"><option value="whatsapp">WhatsApp</option><option value="email">E-mail</option><option value="manual">Melhor contato cadastrado</option></select></label>
         <label className="mt-3 block text-xs font-bold">Mensagem<textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border bg-background p-3 text-sm font-normal"/></label>
-        <p className="mt-1 text-[11px] text-muted-foreground">Use {{tutor}} para personalizar a mensagem. O contato é aberto somente pela equipe, na fila do CRM.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">Use {"{{tutor}}"} para personalizar a mensagem. O contato é aberto somente pela equipe, na fila do CRM.</p>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {filtros.map((item) => <button key={item.id} type="button" onClick={() => setFiltro(item.id)} className={`rounded-xl border p-3 text-left transition ${filtro === item.id ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.detalhe}</p></button>)}
