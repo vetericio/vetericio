@@ -30,6 +30,22 @@ const bases = [...new Set([...baseBlock.matchAll(/\["([a-z0-9._-]+)","/g)].map(m
 const usesActions = read("src/lib/drive-rpc.ts").includes('planoPermite(`acao.${p.codigo}`)');
 const pageHasMatrix = read("src/routes/admin-planos.tsx").includes("FragmentoGrupo");
 const hasAuditHistory = read("src/routes/admin-planos.tsx").includes("oricse_planos_auditoria");
+const clinicPage = read("src/routes/plano-clinica.tsx");
+const menu = read("src/components/MenuLateral.tsx");
+const generalAdmin = read("src/routes/admin.tsx");
+const driveDb = read("src/lib/drive-db.functions.ts");
+const driveRpc = read("src/lib/drive-rpc.ts");
+const hasClinicAdminLink = menu.includes('to: "/plano-clinica"') &&
+  read("src/routes/perfil-clinica.tsx").includes('to="/plano-clinica"');
+const hasGeneralAdminLink = generalAdmin.includes('to="/admin-planos"');
+const hasAuthorizedClinicSummary = clinicPage.includes('oricse_plano_resumo_clinica') &&
+  driveRpc.includes('case "oricse_plano_resumo_clinica"') &&
+  driveRpc.includes("Somente a administração da clínica");
+const hasServerPlanExceptionGuard = driveDb.includes('"oricse_clinica_funcionalidade_excecoes"') &&
+  driveDb.includes('"oricse_permissoes_papel"') &&
+  driveDb.includes('gestores.has(cid)');
+const newPermissionsDefaultDenied = read("src/lib/drive-seed.ts").includes("ACOES_LEGADAS.has");
+const newActionsDefaultDenied = read("src/routes/admin-planos.tsx").includes('item.catalogada;');
 const handlers = source.reduce((sum,file)=>sum+[...fs.readFileSync(file,"utf8").matchAll(/\bonClick\s*=|\bonSubmit\s*=|\bcreateServerFn\(/g)].length,0);
 const result = {
   arquivos: { rotas:routes.length, componentes:components.length, funcoesServidor:serverFns.length },
@@ -38,7 +54,13 @@ const result = {
   funcionalidadesBaseDoSeed:bases.length,
   permissoesDeAcaoDoSeed:permissions.length,
   elementosComAcaoOuFuncoesServidorAproximados:handlers,
-  verificacoes:{autorizacaoGranularDrive:usesActions,matrizAdmin:pageHasMatrix,historicoAdmin:hasAuditHistory},
+  verificacoes:{
+    autorizacaoGranularDrive:usesActions,matrizAdmin:pageHasMatrix,historicoAdmin:hasAuditHistory,
+    menuAdminClinica:hasClinicAdminLink,menuAdminGeral:hasGeneralAdminLink,
+    consultaDePlanoAutorizada:hasAuthorizedClinicSummary,
+    protecaoExcecoesEPermissoes:hasServerPlanExceptionGuard,
+    novasPermissoesBloqueadas:newPermissionsDefaultDenied && newActionsDefaultDenied,
+  },
   observacoes:[
     "Contagem de handlers é estática e aproximada; não equivale a funções completas auditadas.",
     "Rotas dinâmicas e endpoints podem ter regras de acesso próprias fora do menu.",
@@ -46,4 +68,4 @@ const result = {
   ],
 };
 console.log(JSON.stringify(result,null,2));
-if (!usesActions||!pageHasMatrix||!hasAuditHistory) process.exitCode=1;
+if (Object.values(result.verificacoes).some((value) => !value)) process.exitCode=1;
