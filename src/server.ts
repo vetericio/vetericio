@@ -50,7 +50,7 @@ function securityHeaders(response: Response, pathname?: string): Response {
 }
 
 async function consultarCepNoServidor(cep: string): Promise<Response> {
-  if (!/^\\d{8}$/.test(cep)) return Response.json({ erro: "CEP inválido" }, { status: 400 });
+  if (!/^\d{8}$/.test(cep)) return Response.json({ erro: "CEP inválido" }, { status: 400 });
   for (const url of [`https://brasilapi.com.br/api/cep/v1/${cep}`, `https://viacep.com.br/ws/${cep}/json/`]) {
     try {
       const resposta = await fetch(url, { signal: AbortSignal.timeout(5500), headers: { accept: "application/json" } });
