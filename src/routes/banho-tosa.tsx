@@ -15,6 +15,8 @@ type Pagamento = {id:string;agendamento_banho_tosa_id:string;valor_centavos:numb
 type Extra = {id:string;agendamento_id:string;descricao:string;quantidade:number;valor_unitario_centavos:number};
 const etapas = ["agendado","recebido","em_execucao","pronto","entregue"];
 const verificacoes = ["Conferência da pele e pelagem","Conferência de olhos e ouvidos","Banho realizado","Secagem concluída","Escovação final","Perfume/acessórios autorizados","Tutor avisado","Conferência antes da entrega"];
+const obrigatoriasEntrega = ["Conferência da pele e pelagem","Conferência de olhos e ouvidos","Conferência antes da entrega"];
+const requisitosPorServico = (nome:string) => {const n=nome.toLocaleLowerCase("pt-BR");return [...obrigatoriasEntrega,...(n.includes("banho")?["Banho realizado","Secagem concluída"]:[]),...(n.includes("tosa")?["Escovação final"]:[])];};
 const abas = [{id:"painel",nome:"Painel"},{id:"agenda",nome:"Agenda"},{id:"novo",nome:"Novo agendamento"},{id:"fila",nome:"Fila de serviços"},{id:"servicos",nome:"Serviços e preços"},{id:"historico",nome:"Histórico"}] as const;
 type Aba = typeof abas[number]["id"];
 const dinheiro=(c:number)=> (c/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -95,7 +97,7 @@ function BanhoTosa(){
   setNomeServico("");setPreco("");toast.success("Serviço cadastrado.");await carregar();
  }
  async function mudarStatus(item:Atendimento,status:string){
-  if(status==="entregue" && verificacoes.some(v=>!item.checklist?.[v]))return toast.error("Conclua o checklist antes da entrega.");
+  if(status==="entregue") {const faltando=requisitosPorServico(item.servico_nome).filter(v=>!item.checklist?.[v]);if(faltando.length){setDetalheId(item.id);setAvaliacao(item.avaliacao_entrada||"");setRestricoes(item.restricoes||"");setSaida(item.observacoes_saida||"");toast.error(`Antes da entrega, conclua: ${faltando.join(", ")}.`);return;}}
   if(!podeOperar)return;
   const {error}=await db.from("oricse_banho_tosa_agendamentos").update({status,atualizado_em:new Date().toISOString(),...(status==="recebido"?{entrada_em:new Date().toISOString()}:{}),...(status==="em_execucao"?{inicio_real_em:new Date().toISOString()}:{}),...(status==="pronto"?{pronto_em:new Date().toISOString()}:{}),...(status==="entregue"?{entregue_em:new Date().toISOString()}:{} )}).eq("id",item.id).eq("clinica_id",clinicaId);
   if(error)return toast.error(error.message);
@@ -151,7 +153,7 @@ function BanhoTosa(){
      <label className="text-sm font-semibold">Restrições e cuidados especiais<textarea className={campo} rows={3} value={restricoes} onChange={e=>setRestricoes(e.target.value)} placeholder="Sensibilidades, produtos proibidos, sinais de atenção…"/></label>
     </div>
     <button type="button" disabled={!podeOperar} onClick={()=>void salvarFicha(detalhe,{avaliacao_entrada:avaliacao,restricoes})} className="rounded-xl bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50">Salvar avaliação</button>
-    <div><h3 className="font-bold">Checklist operacional</h3><div className="mt-2 grid gap-2 sm:grid-cols-2">{verificacoes.map(texto=><label key={texto} className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={Boolean(detalhe.checklist?.[texto])} disabled={!podeOperar} onChange={e=>void salvarFicha(detalhe,{checklist:{...(detalhe.checklist||{}),[texto]:e.target.checked}})}/>{texto}</label>)}</div></div>
+    <div><h3 className="font-bold">Checklist operacional</h3><p className="mt-1 text-sm text-muted-foreground">Obrigatórios para a entrega: {requisitosPorServico(detalhe.servico_nome).filter(v=>!detalhe.checklist?.[v]).length} pendentes. Os demais itens são opcionais quando não se aplicarem ao serviço.</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{verificacoes.map(texto=><label key={texto} className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={Boolean(detalhe.checklist?.[texto])} disabled={!podeOperar} onChange={e=>void salvarFicha(detalhe,{checklist:{...(detalhe.checklist||{}),[texto]:e.target.checked}})}/>{texto}</label>)}</div></div>
     <div><h3 className="font-bold">Produtos e serviços adicionais</h3>
       <form onSubmit={adicionarExtra} className="mt-2 grid gap-2 sm:grid-cols-4">
        <input aria-label="Produto ou serviço extra" required placeholder="Produto ou serviço" className={campo+" sm:col-span-2"} value={extraNome} onChange={e=>setExtraNome(e.target.value)}/>
