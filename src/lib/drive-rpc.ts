@@ -6,6 +6,7 @@ import {
   PLANOS_PADRAO,
 } from "@/lib/drive-seed";
 import { lerContextoAdminClinica } from "@/lib/admin-clinic-context";
+import { recursoLiberado } from "@/lib/plan-policy";
 
 type FromFn = (table: string) => any;
 type AuthLike = {
@@ -188,25 +189,18 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
     const plano = (planosRes.data || []).find((p: any) =>
       p.codigo === c.plano || p.nome === c.plano);
     if (!plano || !plano.ativo) return (_codigo: string) => false;
-    const matriz = new Map<string, boolean>(
-      (regrasRes.data || []).filter((r: any) => r.plano_id === plano.id)
-        .map((r: any) => [String(r.funcionalidade_codigo), Boolean(r.permitido)]),
-    );
-    const excecoes = new Map<string, boolean>(
-      (excecoesRes.data || [])
-        .filter((r: any) => !r.expira_em || new Date(r.expira_em).getTime() > Date.now())
-        .map((r: any) => [String(r.funcionalidade_codigo), Boolean(r.permitido)]),
-    );
-    const regrasAntigas = FUNCIONALIDADES_POR_PLANO[String(plano.codigo)] || [];
-    return (codigo: string) => {
-      if (excecoes.has(codigo)) return excecoes.get(codigo)!;
-      if (matriz.has(codigo)) return matriz.get(codigo)!;
-      // Ações antigas sem regra granular seguem o teto de seu módulo;
-      // qualquer nova ação não classificada permanece bloqueada.
-      if (codigo.startsWith("acao."))
-        return ACOES_LEGADAS.has(codigo.slice(5));
-      return regrasAntigas.includes(codigo);
+    const contexto = {
+      statusClinica: String(c.status),
+      planoAtivo: Boolean(plano.ativo),
+      planoId: String(plano.id),
+      codigoPlano: String(plano.codigo),
+      clinicaId,
+      regras: regrasRes.data || [],
+      excecoes: excecoesRes.data || [],
+      legados: FUNCIONALIDADES_POR_PLANO[String(plano.codigo)] || [],
+      acoesLegadas: ACOES_LEGADAS,
     };
+    return (codigo: string) => recursoLiberado(codigo, contexto);
   }
   async function featureAllowed(clinicaId: string, codigo: string) {
     if (await isPlatformAdmin()) return true;
