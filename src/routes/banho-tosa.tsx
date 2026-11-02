@@ -11,7 +11,7 @@ type Tutor = {id:string;nome:string};
 type Animal = {id:string;nome:string;tutor_id:string;especie:string};
 type Servico = {id:string;nome:string;duracao_min:number;preco_centavos:number;ativo:boolean};
 type Atendimento = {id:string;animal_id:string;tutor_id:string;servico_id:string|null;servico_nome:string;inicio:string;fim:string;status:string;profissional:string;observacoes:string;valor_centavos:number;pago:boolean;avaliacao_entrada:string;restricoes:string;checklist:Record<string,boolean>;entrada_em:string|null;inicio_real_em:string|null;pronto_em:string|null;entregue_em:string|null;observacoes_saida:string};
-type Pagamento = {id:string;agendamento_id:string;valor_centavos:number;forma:string;registrado_em:string};
+type Pagamento = {id:string;agendamento_banho_tosa_id:string;valor_centavos:number;forma_pagamento:string;registrado_em:string};
 type Extra = {id:string;agendamento_id:string;descricao:string;quantidade:number;valor_unitario_centavos:number};
 const etapas = ["agendado","recebido","em_execucao","pronto","entregue"];
 const verificacoes = ["Conferência da pele e pelagem","Conferência de olhos e ouvidos","Banho realizado","Secagem concluída","Escovação final","Perfume/acessórios autorizados","Tutor avisado","Conferência antes da entrega"];
@@ -56,7 +56,7 @@ function BanhoTosa(){
     db.from("oricse_banho_tosa_servicos").select("*").eq("clinica_id",clinicaId).order("nome"),
     db.from("oricse_banho_tosa_agendamentos").select("*").eq("clinica_id",clinicaId).order("inicio",{ascending:false}).limit(500),
     db.from("oricse_banho_tosa_extras").select("*").eq("clinica_id",clinicaId).limit(1000),
-    db.from("oricse_banho_tosa_pagamentos").select("id,agendamento_id,valor_centavos,forma,registrado_em").eq("clinica_id",clinicaId).limit(1000),
+    db.from("oricse_caixa_lancamentos").select("id,agendamento_banho_tosa_id,valor_centavos,forma_pagamento,registrado_em").eq("clinica_id",clinicaId).eq("setor","Banho e tosa").eq("status","pago").limit(1000),
    ]);
    const falha=[ts,as,ss,ag,ex,pg].find(x=>x.error);
    if(falha)throw falha.error;
@@ -118,12 +118,12 @@ function BanhoTosa(){
  async function registrarPagamento(e:FormEvent){
   e.preventDefault();
   if(!detalhe||!clinicaId||salvando)return;
-  const total=detalhe.valor_centavos+extras.filter(x=>x.agendamento_id===detalhe.id).reduce((n,x)=>n+Math.round(x.quantidade*x.valor_unitario_centavos),0);
-  const pago=pagamentos.filter(x=>x.agendamento_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0);
+  const total=detalhe.valor_centavos+extras.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+Math.round(x.quantidade*x.valor_unitario_centavos),0);
+  const pago=pagamentos.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0);
   const valor=centavosDoCampo(valorPagamento);
   if(valor<=0||valor>total-pago)return toast.error("Informe um valor maior que zero e até o saldo em aberto.");
   setSalvando(true);
-  const {error}=await db.from("oricse_banho_tosa_pagamentos").insert({clinica_id:clinicaId,agendamento_id:detalhe.id,valor_centavos:valor,forma:formaPagamento});
+  const {error}=await db.from("oricse_caixa_lancamentos").insert({clinica_id:clinicaId,setor:"Banho e tosa",origem_tipo:"banho_tosa_pagamento",origem_id:crypto.randomUUID(),agendamento_banho_tosa_id:detalhe.id,tipo:"entrada",status:"pago",descricao:`Banho e tosa · ${detalhe.servico_nome}`,valor_centavos:valor,forma_pagamento:formaPagamento});
   setSalvando(false);
   if(error)return toast.error(error.message);
   setValorPagamento("");toast.success("Pagamento registrado e disponível no Financeiro.");await carregar();
@@ -159,10 +159,10 @@ function BanhoTosa(){
        <input aria-label="Valor em reais" inputMode="numeric" placeholder="0,00" className={campo} value={extraPreco} onChange={e=>setExtraPreco(digitarCentavos(e.target.value))}/>
        <button disabled={!podeOperar} className="rounded-xl border px-3 py-2 sm:col-span-4">+ Adicionar à ficha</button>
       </form>
-      <div className="mt-3 space-y-1">{extras.filter(x=>x.agendamento_id===detalhe.id).map(x=><div key={x.id} className="flex justify-between gap-3 rounded-lg bg-secondary/40 p-2 text-sm"><span>{x.quantidade} × {x.descricao}</span><strong>{dinheiro(Math.round(x.quantidade*x.valor_unitario_centavos))}</strong></div>)}</div>
-      <p className="mt-2 font-bold">Total do atendimento: {dinheiro(detalhe.valor_centavos+extras.filter(x=>x.agendamento_id===detalhe.id).reduce((t,x)=>t+Math.round(x.quantidade*x.valor_unitario_centavos),0))}</p>
+      <div className="mt-3 space-y-1">{extras.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).map(x=><div key={x.id} className="flex justify-between gap-3 rounded-lg bg-secondary/40 p-2 text-sm"><span>{x.quantidade} × {x.descricao}</span><strong>{dinheiro(Math.round(x.quantidade*x.valor_unitario_centavos))}</strong></div>)}</div>
+      <p className="mt-2 font-bold">Total do atendimento: {dinheiro(detalhe.valor_centavos+extras.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((t,x)=>t+Math.round(x.quantidade*x.valor_unitario_centavos),0))}</p>
       <p className="text-xs text-muted-foreground">Cobrança prevista; não equivale a pagamento recebido.</p>
-      <p className="mt-2 text-sm font-semibold">Recebido: {dinheiro(pagamentos.filter(x=>x.agendamento_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0))}</p>
+      <p className="mt-2 text-sm font-semibold">Recebido: {dinheiro(pagamentos.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0))}</p>
       <form onSubmit={registrarPagamento} className="mt-2 flex flex-wrap items-end gap-2">
         <label className="text-sm">Pagamento (R$)<input className={campo} inputMode="numeric" placeholder="0,00" value={valorPagamento} onChange={e=>setValorPagamento(digitarCentavos(e.target.value))}/></label>
         <label className="text-sm">Forma<select className={campo} value={formaPagamento} onChange={e=>setFormaPagamento(e.target.value)}>{["Pix","Dinheiro","Débito","Crédito","Transferência"].map(x=><option key={x}>{x}</option>)}</select></label>
