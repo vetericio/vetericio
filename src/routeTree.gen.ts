@@ -39,6 +39,7 @@ import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as HorariosMedicacoesRouteImport } from './routes/horarios-medicacoes'
 import { Route as HotelzinhoRouteImport } from './routes/hotelzinho'
+import { Route as AgendaHotelRouteImport } from './routes/agenda-hotel'
 import { Route as BanhoTosaRouteImport } from './routes/banho-tosa'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as InternacaoRouteImport } from './routes/internacao'
@@ -219,6 +220,11 @@ const HorariosMedicacoesRoute = HorariosMedicacoesRouteImport.update({
 const BanhoTosaRoute = BanhoTosaRouteImport.update({
   id: '/banho-tosa',
   path: '/banho-tosa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaHotelRoute = AgendaHotelRouteImport.update({
+  id: '/agenda-hotel',
+  path: '/agenda-hotel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HotelzinhoRoute = HotelzinhoRouteImport.update({
@@ -408,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
   '/banho-tosa': typeof BanhoTosaRoute
+  '/agenda-hotel': typeof AgendaHotelRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
@@ -472,6 +479,7 @@ export interface FileRoutesByTo {
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
   '/banho-tosa': typeof BanhoTosaRoute
+  '/agenda-hotel': typeof AgendaHotelRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
@@ -537,6 +545,7 @@ export interface FileRoutesById {
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
   '/banho-tosa': typeof BanhoTosaRoute
+  '/agenda-hotel': typeof AgendaHotelRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
@@ -603,6 +612,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/horarios-medicacoes'
     | '/banho-tosa'
+    | '/agenda-hotel'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
@@ -666,6 +676,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/horarios-medicacoes'
     | '/banho-tosa'
+    | '/agenda-hotel'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
@@ -729,6 +740,7 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/horarios-medicacoes'
     | '/banho-tosa'
+    | '/agenda-hotel'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
@@ -1034,7 +1046,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BanhoTosaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/hotelzinho': {
+    '/agenda-hotel': {
+      id: '/agenda-hotel'
+      path: '/agenda-hotel'
+      fullPath: '/agenda-hotel'
+      preLoaderRoute: typeof AgendaHotelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  '/hotelzinho': {
       id: '/hotelzinho'
       path: '/hotelzinho'
       fullPath: '/hotelzinho'
@@ -1285,6 +1304,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceiroRoute: FinanceiroRoute,
   HorariosMedicacoesRoute: HorariosMedicacoesRoute,
   BanhoTosaRoute: BanhoTosaRoute,
+  AgendaHotelRoute: AgendaHotelRoute,
   HotelzinhoRoute: HotelzinhoRoute,
   InicioRoute: InicioRoute,
   InternacaoRoute: InternacaoRoute,
