@@ -38,6 +38,7 @@ import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as HorariosMedicacoesRouteImport } from './routes/horarios-medicacoes'
 import { Route as HotelzinhoRouteImport } from './routes/hotelzinho'
+import { Route as BanhoTosaRouteImport } from './routes/banho-tosa'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
@@ -206,6 +207,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
 const HorariosMedicacoesRoute = HorariosMedicacoesRouteImport.update({
   id: '/horarios-medicacoes',
   path: '/horarios-medicacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BanhoTosaRoute = BanhoTosaRouteImport.update({
+  id: '/banho-tosa',
+  path: '/banho-tosa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HotelzinhoRoute = HotelzinhoRouteImport.update({
@@ -388,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
+  '/banho-tosa': typeof BanhoTosaRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
@@ -449,6 +456,7 @@ export interface FileRoutesByTo {
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
+  '/banho-tosa': typeof BanhoTosaRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
@@ -511,6 +519,7 @@ export interface FileRoutesById {
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
+  '/banho-tosa': typeof BanhoTosaRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
@@ -574,6 +583,7 @@ export interface FileRouteTypes {
     | '/fila-espera'
     | '/financeiro'
     | '/horarios-medicacoes'
+    | '/banho-tosa'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
@@ -634,6 +644,7 @@ export interface FileRouteTypes {
     | '/fila-espera'
     | '/financeiro'
     | '/horarios-medicacoes'
+    | '/banho-tosa'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
@@ -694,6 +705,7 @@ export interface FileRouteTypes {
     | '/fila-espera'
     | '/financeiro'
     | '/horarios-medicacoes'
+    | '/banho-tosa'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
@@ -984,6 +996,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HorariosMedicacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/banho-tosa': {
+      id: '/banho-tosa'
+      path: '/banho-tosa'
+      fullPath: '/banho-tosa'
+      preLoaderRoute: typeof BanhoTosaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hotelzinho': {
       id: '/hotelzinho'
       path: '/hotelzinho'
@@ -1226,6 +1245,7 @@ const rootRouteChildren: RootRouteChildren = {
   FilaEsperaRoute: FilaEsperaRoute,
   FinanceiroRoute: FinanceiroRoute,
   HorariosMedicacoesRoute: HorariosMedicacoesRoute,
+  BanhoTosaRoute: BanhoTosaRoute,
   HotelzinhoRoute: HotelzinhoRoute,
   InicioRoute: InicioRoute,
   InternacaoRoute: InternacaoRoute,
