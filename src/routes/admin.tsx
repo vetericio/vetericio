@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   BadgeDollarSign,
@@ -796,10 +796,10 @@ function Admin() {
           no catálogo oficial, com comparação e histórico.
         </p>
       </div>
-      <a href="/admin-planos"
+      <Link to="/admin-planos"
         className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">
         <BadgeDollarSign size={19}/> Abrir gerenciador geral de planos
-      </a>
+      </Link>
       <p className="text-xs text-muted-foreground">
         Caminho: Admin Geral → Planos → Gerenciador geral. As clínicas
         visualizam seu próprio plano em Configurações → Meu plano.
