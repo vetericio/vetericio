@@ -30,6 +30,7 @@ type MenuRoute =
   | "/recepcao"
   | "/todas-agendas"
   | "/hotelzinho"
+  | "/agenda-hotel"
   | "/banho-tosa"
   | "/horarios-medicacoes"
   | "/configurar-agenda-online"
@@ -113,6 +114,7 @@ const areas: AreaMenu[] = [
     icone: BedDouble,
     itens: [
       { to: "/hotelzinho", abaHotel: "painel", rotulo: "Painel do hotel", permissao: "hotelzinho.visualizar" },
+      { to: "/agenda-hotel", rotulo: "Agenda do hotel", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "reservas", rotulo: "Reservas", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "checkin", rotulo: "Check-in", permissao: "hotelzinho.visualizar" },
       { to: "/hotelzinho", abaHotel: "hospedes", rotulo: "Hóspedes ativos", permissao: "hotelzinho.visualizar" },
