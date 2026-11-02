@@ -405,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/todas-agendas': typeof TodasAgendasRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
@@ -464,6 +465,7 @@ export interface FileRoutesByTo {
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
@@ -526,6 +528,7 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
   '/todas-agendas': typeof TodasAgendasRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
@@ -587,6 +590,7 @@ export interface FileRouteTypes {
     | '/precos-portal'
     | '/privacidade'
     | '/receituario'
+    | '/todas-agendas'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
@@ -646,6 +650,7 @@ export interface FileRouteTypes {
     | '/precos-portal'
     | '/privacidade'
     | '/receituario'
+    | '/todas-agendas'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
@@ -705,6 +710,7 @@ export interface FileRouteTypes {
     | '/precos-portal'
     | '/privacidade'
     | '/receituario'
+    | '/todas-agendas'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
