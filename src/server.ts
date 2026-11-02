@@ -49,6 +49,29 @@ function securityHeaders(response: Response, pathname?: string): Response {
   });
 }
 
+async function consultarCepNoServidor(cep: string): Promise<Response> {
+  if (!/^\\d{8}$/.test(cep)) return Response.json({ erro: "CEP inválido" }, { status: 400 });
+  for (const url of [`https://brasilapi.com.br/api/cep/v1/${cep}`, `https://viacep.com.br/ws/${cep}/json/`]) {
+    try {
+      const resposta = await fetch(url, { signal: AbortSignal.timeout(5500), headers: { accept: "application/json" } });
+      if (!resposta.ok) continue;
+      const dado = await resposta.json() as Record<string, unknown>;
+      if (dado.erro) continue;
+      const brasil = url.includes("brasilapi");
+      const endereco = {
+        logradouro: String((brasil ? dado.street : dado.logradouro) || ""),
+        bairro: String((brasil ? dado.neighborhood : dado.bairro) || ""),
+        localidade: String((brasil ? dado.city : dado.localidade) || ""),
+        uf: String((brasil ? dado.state : dado.uf) || ""),
+      };
+      if (endereco.localidade && /^[A-Z]{2}$/.test(endereco.uf)) {
+        return Response.json(endereco, { headers: { "cache-control": "public, max-age=3600" } });
+      }
+    } catch (erro) { console.warn("Falha ao consultar provedor CEP", erro); }
+  }
+  return Response.json({ erro: "CEP não localizado" }, { status: 502 });
+}
+
 function sitemap(origin: string): Response {
   const urls = ["/", "/planos", "/login"]
     .map((path) => `  <url><loc>${origin}${path}</loc></url>`)
@@ -104,6 +127,10 @@ export default {
     setDriveCoordinatorBinding(getWorkerBindings(env)?.ORICSE_WRITE_COORDINATOR);
     try {
       const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/cep/")) {
+        if (request.method !== "GET") return securityHeaders(new Response(null, { status: 405 }), url.pathname);
+        return securityHeaders(await consultarCepNoServidor(url.pathname.slice("/api/cep/".length)), url.pathname);
+      }
       if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin), url.pathname);
       if (url.pathname === "/favicon.ico")
         return securityHeaders(Response.redirect(new URL("/favicon-oricse.png", url), 302), url.pathname);
