@@ -34,7 +34,8 @@ import {
   totalPagoComanda,
 } from "@/lib/comandas";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { usePermissoes } from "@/hooks/usePermissoes";
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
@@ -173,6 +174,23 @@ function lerTutores(): TutorFinanceiro[] {
 
 export function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
+  const { clinicaId } = usePermissoes();
+  const [estadiasHotel, setEstadiasHotel] = useState<Array<{id:string;status:string;valor_diaria_centavos:number;valor_final_centavos:number|null;chegada_prevista:string;saida_prevista:string;checkout_em:string|null}>>([]);
+  const [erroHotel, setErroHotel] = useState("");
+  useEffect(() => {
+    if (!clinicaId) { setEstadiasHotel([]); return; }
+    let ativo = true;
+    const carregar = async () => {
+      const {data,error} = await (supabaseBanco as any).from("oricse_hotel_estadias").select("id,status,valor_diaria_centavos,valor_final_centavos,chegada_prevista,saida_prevista,checkout_em").eq("clinica_id",clinicaId);
+      if (!ativo) return;
+      if(error) {setErroHotel("Falha ao consultar hospedagens.");return;}
+      setEstadiasHotel(data || []);setErroHotel("");
+    };
+    void carregar();
+    window.addEventListener("focus",carregar);
+    document.addEventListener("visibilitychange",carregar);
+    return () => {ativo=false;window.removeEventListener("focus",carregar);document.removeEventListener("visibilitychange",carregar);};
+  },[clinicaId]);
   const [dataAtual, setDataAtual] = useState(hojeISO);
   useEffect(() => {
     const atualizarData = () => setDataAtual(hojeISO());
@@ -544,6 +562,23 @@ export function Financeiro() {
         </>
       )}
 
+      {(aba === "inicio" || aba === "dia" || aba === "mes") && (
+        <section className="mb-5 rounded-2xl border bg-card p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-lg font-bold">Integração financeira dos setores</h2>
+              <p className="text-sm text-muted-foreground">Visão de valores de hospedagem. Reservas e check-outs não são lançados automaticamente como dinheiro recebido.</p></div>
+            <Link to="/hotelzinho" className="text-sm font-semibold text-primary underline">Ver hotelzinho</Link>
+          </div>
+          {erroHotel ? <p className="mt-3 text-sm text-destructive">{erroHotel}</p> : (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs text-muted-foreground">Hospedagens em aberto</p><p className="mt-1 text-xl font-bold">{estadiasHotel.filter(e => ["reservada","hospedado"].includes(e.status)).length}</p></div>
+              <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs text-muted-foreground">Diárias de reservas (valor base)</p><p className="mt-1 text-xl font-bold">{dinheiro(estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).reduce((n,e)=>n+Math.max(0,e.valor_diaria_centavos||0),0)/100)}</p></div>
+              <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs text-muted-foreground">Check-outs concluídos (total apurado)</p><p className="mt-1 text-xl font-bold">{dinheiro(estadiasHotel.filter(e=>e.status==="concluida").reduce((n,e)=>n+Math.max(0,e.valor_final_centavos||0),0)/100)}</p></div>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">Consultas, internação e banho e tosa devem registrar cobranças e pagamentos em um livro financeiro comum para compor o caixa real sem duplicações. Os valores acima são apenas informativos.</p>
+        </section>
+      )}
       {aba === "dia" && (
         <ModuloCaixa
           titulo="Movimentações de hoje"
