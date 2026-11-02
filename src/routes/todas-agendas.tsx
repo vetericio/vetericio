@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { AgendaDayBoard, AgendaErrorBoundary } from "@/components/agenda/AgendaDayBoard";
+import { AgendaBanhoTosaBoard } from "@/components/agenda/AgendaBanhoTosaBoard";
 import "@/components/agenda/agenda-color-overrides.css";
 
 export const Route = createFileRoute("/todas-agendas")({ component: TodasAgendas });
@@ -128,14 +129,11 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
       <button type="button" onClick={() => setAtualizacao(n => n + 1)} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><RefreshCw size={16}/> Atualizar reservas</button>
     </div>
     {!somenteHotel && <>
-    <section className="space-y-2"><h2 className="flex items-center gap-2 text-xl font-semibold"><CalendarDays size={20}/> Clínica e banho e tosa</h2>
-      <p className="text-sm text-muted-foreground">Visualize as agendas existentes e filtre por profissional e tipo diretamente no calendário.</p>
+    <section className="space-y-2"><h2 className="flex items-center gap-2 text-xl font-semibold"><CalendarDays size={20}/> Clínica veterinária</h2>
+      <p className="text-sm text-muted-foreground">Visualize as agendas clínicas por profissional e horário.</p>
       <AgendaErrorBoundary><AgendaDayBoard mode="recepcao"/></AgendaErrorBoundary>
     </section>
-    <section className="rounded-2xl border bg-card p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Banho e tosa</h2><p className="text-sm text-muted-foreground">Próximos atendimentos, serviços e horários.</p></div><Link to="/banho-tosa" hash="agenda" className="text-sm font-semibold text-primary underline">Abrir agenda</Link></div>
-      <div className="mt-4 space-y-2">{banhoAgendamentos.filter(a=>a.status!=="cancelado" && new Date(a.inicio).getTime() >= Date.now()-86400000).sort((a,b)=>a.inicio.localeCompare(b.inicio)).slice(0,15).map(a=><div key={a.id} className="flex flex-wrap justify-between gap-2 rounded-xl border p-3"><div><strong>{animais.find(x=>x.id===a.animal_id)?.nome||"Animal"} · {a.servico_nome}</strong><p className="text-sm text-muted-foreground">{dataHora(a.inicio)} até {dataHora(a.fim)}</p></div><span className="text-sm">{a.status.replaceAll("_"," ")}</span></div>)}{!banhoAgendamentos.some(a=>a.status!=="cancelado" && new Date(a.inicio).getTime()>=Date.now()-86400000)&&<p className="text-sm text-muted-foreground">Sem atendimentos recentes ou futuros.</p>}</div>
-    </section>
+    <AgendaErrorBoundary><AgendaBanhoTosaBoard/></AgendaErrorBoundary>
     </>}
     <section className="rounded-2xl border bg-card p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
