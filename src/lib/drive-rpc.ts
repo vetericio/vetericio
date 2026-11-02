@@ -452,6 +452,54 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           if (error) throw error;
           return { data: null, error: null };
         }
+        case "oricse_plano_resumo_clinica": {
+          const ctx = await currentContext();
+          if (!ctx?.clinic?.id) throw new Error("Selecione uma clínica para consultar o plano.");
+          const cid = String(ctx.clinic.id);
+          if (!(await isPlatformAdmin()) && !(await canManagePermissions(cid))) {
+            throw new Error("Somente a administração da clínica pode consultar os detalhes do plano.");
+          }
+          const [planosResult, funcionalidadesResult, permissoesResult] = await Promise.all([
+            fromDrive("oricse_planos").select("id,codigo,nome,descricao,usuarios_inclusos,dominio_incluso,ativo,preco_mensal,preco_anual"),
+            fromDrive("oricse_funcionalidades").select("codigo,nome,grupo,ordem,ativo"),
+            fromDrive("oricse_permissoes").select("codigo,nome,grupo,descricao,funcionalidade_codigo,ordem,ativo"),
+          ]);
+          if (planosResult.error || funcionalidadesResult.error || permissoesResult.error) {
+            throw new Error("Não foi possível carregar o catálogo do seu plano.");
+          }
+          const plano = (planosResult.data || []).find((p: any) =>
+            p.codigo === ctx.clinic.plano || p.nome === ctx.clinic.plano);
+          const permite = await matrizEfetiva(cid);
+          const modulos = (funcionalidadesResult.data || [])
+            .filter((f: any) => f.ativo !== false && !String(f.codigo).startsWith("acao."));
+          const acoes = (permissoesResult.data || [])
+            .filter((p: any) => p.ativo !== false);
+          const recursos = [
+            ...modulos.map((f: any) => ({
+              codigo: String(f.codigo), nome: String(f.nome), grupo: String(f.grupo),
+              descricao: "Acesso ao módulo", tipo: "modulo",
+              permitido: permite(String(f.codigo)), ordem: Number(f.ordem) || 0,
+            })),
+            ...acoes.map((p: any) => ({
+              codigo: "acao." + String(p.codigo), nome: String(p.nome), grupo: String(p.grupo),
+              descricao: String(p.descricao || ""), tipo: "acao",
+              permitido: (!p.funcionalidade_codigo || permite(String(p.funcionalidade_codigo))) &&
+                permite("acao." + String(p.codigo)), ordem: Number(p.ordem) || 0,
+            })),
+          ].sort((a, b) => a.grupo.localeCompare(b.grupo, "pt-BR") ||
+            a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
+          return {
+            data: {
+              clinica: {
+                id: cid, nome: String(ctx.clinic.nome),
+                plano: String(ctx.clinic.plano), status: String(ctx.clinic.status),
+                limite_usuarios: ctx.clinic.limite_usuarios ?? null,
+              },
+              plano: plano || null, recursos,
+            },
+            error: null,
+          };
+        }
         case "oricse_permissoes_efetivas":
           return {
             data: await effectivePermissions(
