@@ -178,16 +178,16 @@ export function Financeiro() {
   const { clinicaId } = usePermissoes();
   const [estadiasHotel, setEstadiasHotel] = useState<Array<{id:string;status:string;valor_diaria_centavos:number;valor_final_centavos:number|null;chegada_prevista:string;saida_prevista:string;checkout_em:string|null}>>([]);
   const [erroHotel, setErroHotel] = useState("");
-  const [pagamentosBanho,setPagamentosBanho]=useState<Array<{id:string;agendamento_id:string;valor_centavos:number;forma:string;registrado_em:string}>>([]);
-  const [erroBanho,setErroBanho]=useState("");
+  const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string}>>([]);
+  const [erroCaixaGeral,setErroCaixaGeral]=useState("");
   useEffect(()=>{
-    if(!clinicaId){setPagamentosBanho([]);return;}
+    if(!clinicaId){setCaixaGeral([]);return;}
     let ativo=true;
     const carregar=async()=>{
-      const {data,error}=await (supabaseBanco as any).from("oricse_banho_tosa_pagamentos").select("id,agendamento_id,valor_centavos,forma,registrado_em").eq("clinica_id",clinicaId).order("registrado_em",{ascending:false}).limit(1000);
+      const {data,error}=await (supabaseBanco as any).from("oricse_caixa_lancamentos").select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo").eq("clinica_id",clinicaId).order("registrado_em",{ascending:false}).limit(2000);
       if(!ativo)return;
-      if(error){setErroBanho("Não foi possível consultar recebimentos de banho e tosa.");return;}
-      setPagamentosBanho(data||[]);setErroBanho("");
+      if(error){setErroCaixaGeral("Não foi possível consultar o caixa geral.");return;}
+      setCaixaGeral(data||[]);setErroCaixaGeral("");
     };
     void carregar();window.addEventListener("focus",carregar);
     return()=>{ativo=false;window.removeEventListener("focus",carregar);};
@@ -595,14 +595,14 @@ export function Financeiro() {
         </section>
       )}
       {(aba==="inicio"||aba==="dia"||aba==="mes")&&<section className="mb-5 rounded-2xl border bg-card p-4">
-        <h2 className="text-lg font-bold">Recebimentos de banho e tosa</h2>
-        <p className="text-sm text-muted-foreground">Pagamentos registrados no banco por atendimento, sem duplicar lançamentos manuais. A integração ao fechamento consolidado ainda exige conciliação.</p>
-        {erroBanho&&<p role="alert" className="mt-2 text-sm text-destructive">{erroBanho}</p>}
+        <h2 className="text-lg font-bold">Caixa geral da clínica · registros centralizados</h2>
+        <p className="text-sm text-muted-foreground">Recebimentos por setor registrados no banco da clínica. Estes valores são mostrados separadamente dos lançamentos locais legados para evitar dupla contagem enquanto a migração financeira é concluída.</p>
+        {erroCaixaGeral&&<p className="text-sm text-destructive">{erroCaixaGeral}</p>}
         <div className="mt-3 flex flex-wrap gap-3">
-          <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs">Recebido hoje</p><strong>{dinheiro(pagamentosBanho.filter(p=>new Date(p.registrado_em).toLocaleDateString("en-CA")===dataAtual).reduce((n,p)=>n+p.valor_centavos,0)/100)}</strong></div>
-          <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs">Recebido neste mês</p><strong>{dinheiro(pagamentosBanho.filter(p=>new Date(p.registrado_em).toLocaleDateString("en-CA").startsWith(dataAtual.slice(0,7))).reduce((n,p)=>n+p.valor_centavos,0)/100)}</strong></div>
+          <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs">Recebido hoje no caixa geral</p><strong>{dinheiro(caixaGeral.filter(p=>p.tipo==="entrada"&&p.status==="pago"&&new Date(p.registrado_em).toLocaleDateString("en-CA")===dataAtual).reduce((n,p)=>n+p.valor_centavos,0)/100)}</strong></div>
+          <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs">Recebido no mês no caixa geral</p><strong>{dinheiro(caixaGeral.filter(p=>p.tipo==="entrada"&&p.status==="pago"&&new Date(p.registrado_em).toLocaleDateString("en-CA").startsWith(dataAtual.slice(0,7))).reduce((n,p)=>n+p.valor_centavos,0)/100)}</strong></div>
         </div>
-        <div className="mt-3 space-y-2">{pagamentosBanho.filter(p=>new Date(p.registrado_em).toLocaleDateString("en-CA")===dataAtual).slice(0,20).map(p=><div key={p.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-2 text-sm"><span>Banho e tosa · {p.forma} · {new Date(p.registrado_em).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span><strong>{dinheiro(p.valor_centavos/100)}</strong></div>)}</div>
+        <div className="mt-3 space-y-2">{caixaGeral.filter(p=>new Date(p.registrado_em).toLocaleDateString("en-CA")===dataAtual).slice(0,30).map(p=><div key={p.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-2 text-sm"><span>{p.setor} · {p.descricao} · {p.forma_pagamento}</span><strong>{dinheiro(p.valor_centavos/100)}</strong></div>)}</div>
       </section>}
       {aba === "dia" && (
         <ModuloCaixa
