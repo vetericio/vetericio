@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
@@ -130,7 +130,13 @@ function valorEmCentavos(valor: string) {
 
 function Hotelzinho() {
   const { carregando: carregandoPermissoes, clinicaId, pode, adminGlobal } = usePermissoes();
-  const [aba, setAba] = useState<Aba>("painel");
+  const location = useLocation();
+  const abaDaUrl = (hash: string): Aba => {
+    const valor = hash.replace(/^#/, "");
+    return ABAS.some(item => item.id === valor) ? valor as Aba : "painel";
+  };
+  const [aba, setAba] = useState<Aba>(() => typeof window !== "undefined" ? abaDaUrl(window.location.hash) : "painel");
+  useEffect(() => { setAba(abaDaUrl(location.hash)); }, [location.hash]);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]);
   const [acomodacoes, setAcomodacoes] = useState<Acomodacao[]>([]);
@@ -522,30 +528,6 @@ function Hotelzinho() {
       )}
 
       <div className="space-y-5">
-        <nav
-          aria-label="Seções do Hotelzinho"
-          className="rounded-2xl border border-border bg-card p-2 shadow-sm"
-        >
-          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Navegação do hotelzinho">
-            {ABAS.map((item) => {
-              const Icone = item.icone;
-              const ativa = aba === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-current={ativa ? "page" : undefined}
-                  onClick={() => setAba(item.id)}
-                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${ativa ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"}`}
-                >
-                  <Icone className="h-4 w-4 shrink-0" />
-                  <span className="leading-tight">{item.nome}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
         <div className="min-w-0 space-y-5">
           {aba === "painel" && (
             <section className="space-y-4">
