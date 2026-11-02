@@ -66,3 +66,17 @@ Acompanhar `Actions → Validate` para os commits da branch `main`. O script `sc
 - Medição de latência do acesso ao Drive após inclusão das verificações de autorização de escrita.
 - Validar o fluxo de publicar no Cloudflare; nenhuma implantação foi iniciada.
 
+
+## Revisão adicional: autorização e armazenamento legado
+
+- As regras de módulo, plano e ação agora utilizam o núcleo compartilhado `src/lib/plan-policy.ts`.
+- `scripts/test-plan-policy.mjs` executa 13 testes automáticos de permissão e isolamento.
+- O serviço de armazenamento antigo (`src/lib/oricse-storage.functions.ts`) passou a validar, antes de gravar, os grupos de chaves mapeados de tutores, animais, receituário/prontuários, agenda, internação, financeiro, comandas e preferências administrativas.
+- Na leitura desse armazenamento, os grupos protegidos sem acesso são ocultados da resposta; a gravação usa o estado integral para não excluir os outros registros.
+- A atualização de saldo de estoque está separada da permissão para editar o cadastro de produtos.
+- A mudança de clínica dispara uma atualização das permissões da interface.
+- Novas permissões catalogadas no Drive são exibidas dinamicamente, em vez de dependerem somente de uma lista fixa.
+
+### Limites do resultado
+
+As regras de gravação no Drive, o armazenamento legado e os caminhos administrativos têm cobertura ampliada, mas **não equivalem à aprovação de todos os endpoints**: RPCs PostgreSQL históricas, operações não mapeadas e fluxos completos por cargo exigem auditoria adicional de acesso e testes autenticados. Não interpretar build verde ou testes unitários como garantia de sistema totalmente livre de bugs. Nenhuma implantação de produção foi realizada nesta intervenção.
