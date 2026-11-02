@@ -26,6 +26,14 @@ function dataHora(iso: string) {
 function hora(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
+const FERIADOS: Record<string,string> = {"01-01":"Confraternização Universal","04-21":"Tiradentes","05-01":"Dia do Trabalho","09-07":"Independência do Brasil","10-12":"Nossa Senhora Aparecida","11-02":"Finados","11-15":"Proclamação da República","11-20":"Consciência Negra","12-25":"Natal"};
+const DIAS = ["DOMINGO","SEGUNDA","TERÇA","QUARTA","QUINTA","SEXTA","SÁBADO"];
+function feriado(data:string) {
+ const d=diaDeIso(data); const fixo=FERIADOS[data.slice(5)]; if(fixo)return fixo;
+ const ano=d.getFullYear(),a=ano%19,b=Math.floor(ano/100),c=ano%100,dd=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-dd-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k+700)%7,m=Math.floor((a+11*h+22*l)/451),n=h+l-7*m+114;
+ const sexta=new Date(ano,Math.floor(n/31)-1,n%31+1);sexta.setDate(sexta.getDate()-2);
+ return diaLocal(sexta)===data?"Sexta-feira Santa":null;
+}
 function TodasAgendas() {
   const { clinicaId } = usePermissoes();
   const [dia, setDia] = useState(() => diaLocal(new Date()));
@@ -142,23 +150,27 @@ function TodasAgendas() {
               {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(nome => <div key={nome} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{nome}</div>)}
               {diasVisiveis.map(data => {
                 const lista = estadiasPorDia.get(data) || [];
-                const foraMes = visao === "mes" && diaDeIso(data).getMonth() !== diaDeIso(dia).getMonth();
-                return <button type="button" key={data} onClick={() => {setDia(data);setVisao("dia");}} className={`min-h-32 rounded-xl border p-2 text-left align-top hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${foraMes ? "opacity-45" : "bg-background"} ${data === diaLocal(new Date()) ? "border-primary/70" : ""}`}>
-                  <span className="text-sm font-bold">{diaDeIso(data).getDate()}</span>
-                  <span className="ml-1 text-[10px] text-muted-foreground">{lista.length ? `· ${lista.length}` : ""}</span>
-                  <div className="mt-2 space-y-1">{lista.slice(0,visao === "mes" ? 3 : 6).map(e => {
-                    const animal = animais.find(a => a.id === e.animal_id);
-                    const inicio = new Date(e.chegada_prevista).getTime();
-                    const fim = new Date(e.saida_prevista).getTime();
-                    const diaInicio = diaDeIso(data).getTime();
-                    const diaFim = diaDeIso(mudarDia(data,1)).getTime();
-                    const parte = Math.max(0, Math.min(fim,diaFim) - Math.max(inicio,diaInicio));
-                    const duracao = Math.round(parte / 3600000);
-                    return <div key={e.id} title={`${animal?.nome || "Animal"}: ${dataHora(e.chegada_prevista)} até ${dataHora(e.saida_prevista)}`} className={`rounded-md px-1.5 py-1 text-[11px] font-medium text-white ${e.status === "hospedado" ? "bg-emerald-600" : "bg-amber-600"}`}>
-                      <div className="truncate">{animal?.nome || "Animal"}</div>
-                      <div className="truncate text-[10px] opacity-90">{duracao}h neste dia · {inicio >= diaInicio && inicio < diaFim ? hora(e.chegada_prevista) : "continua"} → {fim <= diaFim ? hora(e.saida_prevista) : "continua"}</div>
+                const dt = diaDeIso(data), nomeDia = DIAS[dt.getDay()], nomeFeriado = feriado(data);
+                const destaque = dt.getDay() === 0 || Boolean(nomeFeriado);
+                const foraMes = visao === "mes" && dt.getMonth() !== diaDeIso(dia).getMonth();
+                const limite = visao === "mes" ? 3 : 6;
+                return <button key={data} type="button" onClick={() => {setDia(data);setVisao("dia");}}
+                  aria-label={`${dt.getDate()} - ${nomeDia}; ${nomeFeriado || ""}; ${lista.length} hóspedes`}
+                  className={`flex min-h-40 flex-col rounded-2xl border p-2.5 text-left transition hover:border-primary hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${destaque ? "border-rose-200 bg-rose-50/70 dark:bg-rose-950/20" : "bg-card"} ${foraMes ? "opacity-45" : ""} ${data === diaLocal(new Date()) ? "ring-2 ring-primary/40" : ""}`}>
+                  <div className={`w-full border-b pb-2 ${destaque ? "border-rose-200" : "border-border/60"}`}>
+                    <div className={`text-base font-extrabold ${destaque ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{dt.getDate()} <span className="text-[10px] font-bold">{nomeDia}</span></div>
+                    {nomeFeriado && <div className="mt-1 break-words text-[10px] font-semibold text-rose-700 dark:text-rose-300">{nomeFeriado}</div>}
+                  </div>
+                  <div className="mt-2 flex w-full items-center justify-between gap-1"><span className="text-[11px] font-medium text-muted-foreground">{lista.length === 1 ? "1 hóspede" : `${lista.length} hóspedes`}</span><span className={`h-2 w-2 shrink-0 rounded-full ${lista.length ? "bg-emerald-500" : "bg-border"}`}/></div>
+                  <div className="mt-2 w-full space-y-1.5">{lista.slice(0,limite).map(e => {
+                    const animal=animais.find(a=>a.id===e.animal_id);
+                    const inicio=new Date(e.chegada_prevista).getTime(), fim=new Date(e.saida_prevista).getTime();
+                    const diaInicio=dt.getTime(), diaFim=diaDeIso(mudarDia(data,1)).getTime();
+                    return <div key={e.id} title={`${animal?.nome || "Animal"}: ${dataHora(e.chegada_prevista)} até ${dataHora(e.saida_prevista)}`} className={`overflow-hidden rounded-lg px-2 py-1.5 text-white ${e.status==="hospedado"?"bg-emerald-600":"bg-amber-600"}`}>
+                      <div className="truncate text-[11px] font-semibold">{animal?.nome || "Animal"}</div>
+                      <div className="truncate text-[10px] opacity-90">{inicio>=diaInicio&&inicio<diaFim?`Entrada ${hora(e.chegada_prevista)}`:fim>diaInicio&&fim<=diaFim?`Saída ${hora(e.saida_prevista)}`:"Em hospedagem"}</div>
                     </div>;
-                  })}{lista.length > (visao === "mes" ? 3 : 6) && <div className="text-xs text-muted-foreground">+{lista.length - (visao === "mes" ? 3 : 6)} hospedagens</div>}</div>
+                  })}{lista.length>limite&&<div className="px-1 text-[10px] font-semibold text-muted-foreground">+{lista.length-limite} hóspedes</div>}</div>
                 </button>;
               })}
             </div>
