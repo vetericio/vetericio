@@ -387,7 +387,7 @@ export function MenuLateral({
                         hash={item.abaHotel || undefined}
                         onClick={() => setAberto(false)}
                         className={area.titulo === "Gestão de clientes"
-                          ? "flex min-h-11 items-center border-t border-border/60 px-4 pl-11 text-sm transition-colors first:border-t-0 hover:bg-secondary/60"
+                          ? "flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors hover:bg-secondary/60 focus-visible:bg-secondary focus-visible:outline-none"
                           : `block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
                       >
                         {item.rotulo}
