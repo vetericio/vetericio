@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ACOES_LEGADAS, FUNCIONALIDADES_POR_PLANO, PERMISSOES_PADRAO, PERMITIDAS_POR_PAPEL, seedTabela } from "@/lib/drive-seed";
+import { permissaoEfetiva } from "@/lib/plan-policy";
 import { appendJournal, applyJournal, loadJournals, type DriveChange } from "@/lib/drive-journal.server";
 import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.server";
 
@@ -269,26 +270,26 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
         const clinica = clinicasA.find((c: any) => String(c.id) === cid);
         const plano = planosA.find((p: any) => (p.codigo === clinica?.plano || p.nome === clinica?.plano) && p.ativo !== false);
         if (!clinica || clinica.status !== "ativa" || !plano) throw new Error("Clínica sem plano ativo.");
-        const excecao = (codigo: string) => excecoesA.find((e: any) =>
-          e.clinica_id === cid && e.funcionalidade_codigo === codigo &&
-          (!e.expira_em || new Date(e.expira_em).getTime() > Date.now()));
-        const permitidoPlano = (codigo: string): boolean => {
-          const e = excecao(codigo);
-          if (e) return Boolean(e.permitido);
-          const linha = matrizA.find((m: any) =>
-            String(m.plano_id) === String(plano.id) && m.funcionalidade_codigo === codigo);
-          if (linha) return Boolean(linha.permitido);
-          return codigo.startsWith("acao.")
-            ? ACOES_LEGADAS.has(codigo.slice(5))
-            : Boolean(FUNCIONALIDADES_POR_PLANO[String(plano.codigo)]?.includes(codigo));
-        };
-        const baseOk = !definicao.funcionalidade_codigo || permitidoPlano(String(definicao.funcionalidade_codigo));
-        const acaoOk = permitidoPlano("acao." + permissaoEscrita);
         const personalizada = usuariosA.find((v: any) => v.clinica_id === cid &&
           v.user_id === ctx.userId && v.permissao_codigo === permissaoEscrita);
-        const papelOk = personalizada ? Boolean(personalizada.permitido)
-          : Boolean(PERMITIDAS_POR_PAPEL[papel]?.includes(permissaoEscrita));
-        if (!(baseOk && acaoOk && papelOk)) {
+        const permitido = permissaoEfetiva({
+          codigo: permissaoEscrita,
+          modulo: definicao.funcionalidade_codigo,
+          contexto: {
+            statusClinica: String(clinica.status),
+            planoAtivo: Boolean(plano.ativo),
+            planoId: String(plano.id),
+            codigoPlano: String(plano.codigo),
+            clinicaId: cid,
+            regras: matrizA,
+            excecoes: excecoesA,
+            legados: FUNCIONALIDADES_POR_PLANO[String(plano.codigo)] || [],
+            acoesLegadas: ACOES_LEGADAS,
+          },
+          permitidoCargo: Boolean(PERMITIDAS_POR_PAPEL[papel]?.includes(permissaoEscrita)),
+          excecaoUsuario: personalizada ? Boolean(personalizada.permitido) : undefined,
+        });
+        if (!permitido) {
           throw new Error("Seu plano ou cargo não autoriza esta operação: " + permissaoEscrita);
         }
       }
