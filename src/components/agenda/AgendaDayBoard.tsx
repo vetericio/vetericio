@@ -267,12 +267,12 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => {
     if (!clinicaId) return;
-    const canal = supabase.channel(`oricse-agenda-${clinicaId}`)
+    const canal = supabase.channel(`oricse-agenda-${mode}-${clinicaId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "oricse_agendas_online", filter: `clinica_id=eq.${clinicaId}` }, () => void carregar())
-      .on("postgres_changes", { event: "*", schema: "public", table: "oricse_agendamentos_online", filter: `clinica_id=eq.${clinicaId}` }, () => void carregar())
+      .on("postgres_changes", { event: "*", schema: "public", table: mode==="banho"?"oricse_banho_tosa_agendamentos":"oricse_agendamentos_online", filter: `clinica_id=eq.${clinicaId}` }, () => void carregar())
       .subscribe();
     return () => { void supabase.removeChannel(canal); };
-  }, [clinicaId, carregar]);
+  }, [clinicaId, carregar,mode]);
 
   const tutoresPorId = useMemo(() => new Map(tutores.map((t) => [t.id, t])), [tutores]);
   const animaisPorId = useMemo(() => new Map(animais.map((a) => [a.id, a])), [animais]);
@@ -293,6 +293,8 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     if (!agendaModal || !clinicaId) return;
     const f = agendaModal.form;
     if (!f.nome.trim()) return void toast.error("Informe o nome da agenda.");
+    if(mode==="banho" && !f.responsavel.trim()) return void toast.error("Informe o profissional do Banho e Tosa.");
+    if(mode==="banho") f.tipo="Banho e Tosa";
     if (minutos(f.inicio) >= minutos(f.fim)) return void toast.error("O início precisa ser anterior ao fim.");
     if (!f.diasSemana.length) return void toast.error("Selecione ao menos um dia da semana.");
     setSalvando(true);
@@ -315,7 +317,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
   }
 
   function abrirHorario(agenda: AgendaDb, hora: string, existente?: AgendamentoDb) {
-    if(mode==="banho") { if(existente){void navigate({to:"/banho-tosa",hash:"fila"});} else {void navigate({to:"/banho-tosa",hash:"novo",search:{profissional:agenda.responsavel,inicio:`${data}T${hora}`} as any});} return; }
+    if(mode==="banho") { if(existente){void navigate({to:"/banho-tosa",hash:"fila"});} else {const query=new URLSearchParams({profissional:agenda.responsavel,inicio:`${data}T${hora}`});window.location.assign(`/banho-tosa?${query.toString()}#novo`);} return; }
     const tipo = existente?.tipo || "Consulta";
     setEventoModal({ agenda, evento: existente, form: { tipo, hora: existente ? horaNoFuso(existente.inicio, agenda.timezone) : hora, duracaoMin: existente ? duracaoEntre(existente.inicio, existente.fim) : duracaoPadrao(tipo), tutorId: existente?.tutor_id || "", animalId: existente?.animal_id || "", pagamento: existente ? pagamentoEvento(existente) : "Pendente", observacoes: existente?.observacoes || "" } });
   }
