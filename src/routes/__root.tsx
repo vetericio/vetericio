@@ -24,6 +24,7 @@ import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
+import { aplicarTema, carregarCor, carregarTema } from "@/lib/tema";
 import {
   TenantContext,
   hostDaPagina,
@@ -419,6 +420,14 @@ function RootComponent() {
       ativo = false;
     };
   }, [autenticado, role]);
+
+  useEffect(() => {
+    // O tema pertence ao app inteiro. Reaplicá-lo após a hidratação do estado
+    // da clínica e nas trocas de rota evita que uma tela ou montagem do rodapé
+    // o substitua pelo tema padrão.
+    if (!autenticado || !dadosDriveProntos || role === "admin") return;
+    aplicarTema(carregarTema(), carregarCor());
+  }, [autenticado, dadosDriveProntos, role, location.pathname]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("visual_editor")) return;
