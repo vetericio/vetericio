@@ -5,7 +5,6 @@ import "./tutores-compact.css";
 import "./agenda-actions.css";
 import "./lib/agenda-livre-option";
 import "./lib/promotional-codes-ui";
-import "./lib/checkout-promo-location";
 
 export const getRouter = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, gcTime: 300_000, retry: 1, refetchOnWindowFocus: false } } });
