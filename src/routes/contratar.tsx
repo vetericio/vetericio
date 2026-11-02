@@ -11,7 +11,7 @@ type Dados = Record<string, string> & { quantidade_usuarios: string };
 
 const VAZIO: Dados = {
   clinica_nome: "", razao_social: "", cnpj: "", clinica_telefone: "", clinica_email: "", clinica_cep: "", clinica_endereco: "", clinica_numero: "", clinica_complemento: "", clinica_bairro: "", clinica_cidade: "", clinica_uf: "",
-  tipo_operacao: "clinica", slug_desejado: "", dominio: "", quantidade_usuarios: "1",
+  tipo_operacao: "clinica", operacoes_ativas: "clinica", slug_desejado: "", dominio: "", quantidade_usuarios: "1",
   responsavel_nome: "", responsavel_cpf: "", responsavel_crmv: "", responsavel_crmv_uf: "", responsavel_email: "", responsavel_telefone: "", responsavel_cep: "", responsavel_endereco: "", responsavel_numero: "", responsavel_complemento: "", responsavel_bairro: "", responsavel_cidade: "", responsavel_uf: "",
   observacoes: "",
 };
@@ -22,8 +22,12 @@ const TIPOS_OPERACAO = [
   { valor: "domicilio", nome: "Veterinário em domicílio" },
   { valor: "hotelzinho", nome: "Hotelzinho" },
   { valor: "petshop", nome: "Pet shop / banho e tosa" },
+  { valor: "misto", nome: "Operação mista (combinar serviços)" },
 ] as const;
-const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica", "misto"]);
+const OPERACOES_BASE = TIPOS_OPERACAO.filter(tipo => tipo.valor !== "misto");
+const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica"]);
+const obterOperacoes = (dados: Dados) => dados.tipo_operacao === "misto" ? (dados.operacoes_ativas || "").split(",").filter(valor => OPERACOES_BASE.some(tipo => tipo.valor === valor)) : [dados.tipo_operacao];
+const exigeCrmv = (dados: Dados) => obterOperacoes(dados).some(tipo => TIPOS_COM_ATENDIMENTO_VETERINARIO.has(tipo));
 
 const TEXTO_PADRAO = {
   voltar_planos: "Voltar aos planos",
@@ -122,7 +126,8 @@ function Contratar() {
     const obrig1 = ["clinica_nome","clinica_telefone","clinica_email","clinica_cep","clinica_endereco","clinica_numero","clinica_bairro","clinica_cidade","clinica_uf"];
     if (ehTesteGratis) obrig1.push("cnpj");
     const obrig2 = ["responsavel_nome","responsavel_cpf","responsavel_email","responsavel_telefone","responsavel_cep","responsavel_endereco","responsavel_numero","responsavel_bairro","responsavel_cidade","responsavel_uf"];
-    if (TIPOS_COM_ATENDIMENTO_VETERINARIO.has(dados.tipo_operacao)) obrig2.push("responsavel_crmv", "responsavel_crmv_uf");
+    if (exigeCrmv(dados)) obrig2.push("responsavel_crmv", "responsavel_crmv_uf");
+    if (etapa === 1 && dados.tipo_operacao === "misto" && obterOperacoes(dados).length < 2) { toast.error("Selecione pelo menos duas áreas para a operação mista."); return false; }
     const faltando = (etapa===1?obrig1:obrig2).some(k=>!String(dados[k]||"").trim());
     if (faltando) { toast.error("Preencha os campos obrigatórios."); return false; }
     if (etapa===1 && ehTesteGratis) {
@@ -135,7 +140,7 @@ function Contratar() {
   async function continuarPagamento() {
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
     setEnviando(true);
-    const payload = { ...dados, plano_codigo: plano, ciclo, quantidade_usuarios: quantidadeUsuarios, perfis_inclusos: perfisIncluidos, perfis_extras: perfisExtras, adicional_perfis_mensal: adicionalMensal, adicional_perfis_ciclo: adicionalCiclo, valor_base: valorBase, valor_total: valorTotal, aceitou_termos: true, aceitou_privacidade: true };
+    const payload = { ...dados, operacoes_selecionadas: obterOperacoes(dados), plano_codigo: plano, ciclo, quantidade_usuarios: quantidadeUsuarios, perfis_inclusos: perfisIncluidos, perfis_extras: perfisExtras, adicional_perfis_mensal: adicionalMensal, adicional_perfis_ciclo: adicionalCiclo, valor_base: valorBase, valor_total: valorTotal, aceitou_termos: true, aceitou_privacidade: true };
     const { data, error } = await (supabase as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
     setEnviando(false);
     if (error) { toast.error(error.message || (ehTesteGratis ? "Não foi possível iniciar o teste gratuito." : "Não foi possível iniciar a contratação.")); return; }
@@ -143,14 +148,14 @@ function Contratar() {
     setEtapa(4);
   }
 
-  const crmvObrigatorio = TIPOS_COM_ATENDIMENTO_VETERINARIO.has(dados.tipo_operacao);
+  const crmvObrigatorio = exigeCrmv(dados);
 
   return <main className="min-h-screen bg-background px-4 py-6 sm:px-6"><div className="mx-auto max-w-4xl">
     <Link to="/planos" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><ArrowLeft size={18}/> {texto.voltar_planos}</Link>
     <header className="mt-6 rounded-3xl border bg-card p-6 shadow-sm"><p className="text-sm font-semibold text-primary">Plano {nomePlano} · {ehTesteGratis ? "7 dias grátis" : ciclo === "anual" ? "Anual" : "Mensal"}</p><h1 className="mt-2 text-3xl font-bold">{ehTesteGratis ? "Comece seu teste gratuito" : texto.titulo_contratacao}</h1><p className="mt-2 text-muted-foreground">{ehTesteGratis ? "Use a Oricse por 7 dias sem cobrança. O teste é único por CPF/CNPJ." : texto.subtitulo_contratacao}</p></header>
     <div className="mt-5 flex gap-2">{[1,2,3,4].map(n=><div key={n} className={`h-2 flex-1 rounded-full ${n<=etapa?"bg-primary":"bg-muted"}`}/>)}</div>
 
-    {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold">Tipo de operação *<select value={dados.tipo_operacao} onChange={e=>salvarLocal({...dados,tipo_operacao:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal">{TIPOS_OPERACAO.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.nome}</option>)}</select></label>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo(ehTesteGratis ? "CPF/CNPJ da empresa" : "CNPJ","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
+    {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold">Tipo de operação *<select value={dados.tipo_operacao} onChange={e=>{const tipo=e.target.value;salvarLocal({...dados,tipo_operacao:tipo,operacoes_ativas:tipo==="misto"?(dados.operacoes_ativas?.includes(",")?dados.operacoes_ativas:"clinica,petshop"):tipo});}} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal">{TIPOS_OPERACAO.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.nome}</option>)}</select>{dados.tipo_operacao==="misto" && <fieldset className="mt-3 space-y-2 rounded-xl border p-3"><legend className="px-1 text-xs font-semibold">Selecione duas ou mais áreas</legend>{OPERACOES_BASE.map(tipo=><label key={tipo.valor} className="flex items-center gap-2 text-sm font-normal"><input type="checkbox" checked={obterOperacoes(dados).includes(tipo.valor)} onChange={e=>{const atuais=obterOperacoes(dados);const proximos=e.target.checked?[...new Set([...atuais,tipo.valor])]:atuais.filter(v=>v!==tipo.valor);salvarLocal({...dados,operacoes_ativas:proximos.join(",")});}}/>{tipo.nome}</label>)}</fieldset>}</label>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo(ehTesteGratis ? "CPF/CNPJ da empresa" : "CNPJ","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
 
     {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. {texto.etapa2_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}{campo("UF do CRMV","responsavel_crmv_uf",dados,salvarLocal,crmvObrigatorio)}{campo("Telefone","responsavel_telefone",dados,salvarLocal)}{campo("E-mail","responsavel_email",dados,salvarLocal,true,"email")}{campo("CEP","responsavel_cep",dados,salvarLocal)}{campo("Endereço","responsavel_endereco",dados,salvarLocal)}{campo("Número","responsavel_numero",dados,salvarLocal)}{campo("Complemento","responsavel_complemento",dados,salvarLocal,false)}{campo("Bairro","responsavel_bairro",dados,salvarLocal)}{campo("Cidade","responsavel_cidade",dados,salvarLocal)}{campo("UF","responsavel_uf",dados,salvarLocal)}</div>{!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para operações sem atendimento clínico veterinário.</p>}</section>}
 
