@@ -58,12 +58,52 @@ function campo(label: string, nome: string, dados: Dados, setDados: (d: Dados)=>
   return <label className="text-sm font-semibold">{label}{obrigatorio && <span className="text-destructive"> *</span>}<input type={tipo} value={dados[nome] || ""} onChange={e=>setDados({...dados,[nome]:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/></label>;
 }
 
-async function consultarCepComFallback(cep: string, signal: AbortSignal) {
-  const resposta = await fetch(`/api/cep/${cep}`, { signal });
-  if (!resposta.ok) throw new Error("Falha na consulta de CEP");
-  const endereco = await resposta.json();
-  if (!endereco.localidade || !endereco.uf) throw new Error("CEP não encontrado");
-  return endereco;
+type EnderecoCep = {
+  logradouro?: string;
+  bairro?: string;
+  localidade?: string;
+  uf?: string;
+};
+
+async function consultarCepComFallback(cep: string, signal: AbortSignal): Promise<EnderecoCep> {
+  const provedores = [
+    async (): Promise<EnderecoCep | null> => {
+      const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal });
+      if (!resposta.ok) return null;
+      const endereco = await resposta.json();
+      if (endereco.erro || !endereco.localidade || !endereco.uf) return null;
+      return {
+        logradouro: endereco.logradouro,
+        bairro: endereco.bairro,
+        localidade: endereco.localidade,
+        uf: endereco.uf,
+      };
+    },
+    async (): Promise<EnderecoCep | null> => {
+      const resposta = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`, { signal });
+      if (!resposta.ok) return null;
+      const endereco = await resposta.json();
+      if (!endereco.city || !endereco.state) return null;
+      return {
+        logradouro: endereco.street,
+        bairro: endereco.neighborhood,
+        localidade: endereco.city,
+        uf: endereco.state,
+      };
+    },
+  ];
+
+  for (const consultar of provedores) {
+    if (signal.aborted) throw new DOMException("Consulta cancelada", "AbortError");
+    try {
+      const endereco = await consultar();
+      if (endereco) return endereco;
+    } catch (erro) {
+      if (signal.aborted) throw erro;
+    }
+  }
+
+  throw new Error("CEP não encontrado");
 }
 
 function parseBRL(valor?: string) {
