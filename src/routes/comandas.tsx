@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { type ItemCatalogo, type RegraComissao, percentualComissaoNaData } from "@/lib/comissoes";
@@ -841,7 +842,7 @@ export function Comandas() {
                       />
                       <input
                         value={valorItem}
-                        onChange={(evento) => setValorItem(evento.target.value)}
+                        onChange={(evento) => setValorItem(digitarCentavos(evento.target.value))}
                         inputMode="decimal"
                         placeholder="Valor unitário"
                         aria-label="Valor unitário"
@@ -931,7 +932,7 @@ export function Comandas() {
                     <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                       <input
                         value={valorPagamento}
-                        onChange={(evento) => setValorPagamento(evento.target.value)}
+                        onChange={(evento) => setValorPagamento(digitarCentavos(evento.target.value))}
                         inputMode="decimal"
                         placeholder={`Até ${dinheiro(saldoComanda(comandaSelecionada))}`}
                         aria-label="Valor do pagamento"
