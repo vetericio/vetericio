@@ -229,7 +229,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     oricse_hotel_cuidados: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
     oricse_hotel_atualizacoes: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
   };
-  const permissaoEscrita = q.operation !== "select" ? permissoesEscrita[q.table]?.[q.operation] : undefined;
+  const permissaoEscrita = permissoesEscrita[q.table]?.[q.operation];
   if (permissaoEscrita && !ctx.admin && ctx.clinicas.length) {
     const candidatos = q.operation === "insert" || q.operation === "upsert"
       ? (Array.isArray(q.payload) ? q.payload : [q.payload]).filter(Boolean)
