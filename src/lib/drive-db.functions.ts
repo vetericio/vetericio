@@ -6,7 +6,8 @@ import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.serve
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const PUBLIC_READ = new Set(["oricse_planos", "oricse_plano_funcionalidades", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
-const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_planos_auditoria", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
+const CATALOG_READ = new Set(["oricse_funcionalidades", "oricse_permissoes"]);
+const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_planos_auditoria", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_clinica_funcionalidade_excecoes", "oricse_clinica_autorizacoes", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
 const PORTAL_CLINIC_READ = new Set(["oricse_agendas_online"]);
 const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);
 
@@ -183,7 +184,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   const visiveis = q.operation === "select" ? await authorizedRows(t, q.table, rows, ctx) : (ctx.admin ? rows : await authorizedRows(t, q.table, rows, ctx));
   const filtros = (lista: any[]) => lista.filter((r) => q.filters.every((f) => passa(r, f)));
   if (q.operation === "select") {
-    let result = filtros(ctx.admin || PUBLIC_READ.has(q.table) ? rows : await authorizedRows(t, q.table, rows, ctx));
+    let result = filtros(ctx.admin || PUBLIC_READ.has(q.table) || (ctx.userId && CATALOG_READ.has(q.table)) ? rows : await authorizedRows(t, q.table, rows, ctx));
     for (const o of q.order.slice().reverse()) result.sort((a, b) => (o.ascending ? 1 : -1) * cmp(a?.[o.column], b?.[o.column]));
     const total = result.length; if (q.range) result = result.slice(q.range[0], q.range[1] + 1); if (q.limit) result = result.slice(0, q.limit); const projected = q.head ? [] : result.map((r) => project(r, q.columns));
     if (q.single === "single") { if (projected.length !== 1) return { data: null, error: { message: projected.length ? "Mais de um registro encontrado." : "Registro não encontrado.", code: "PGRST116" }, count: q.count ? total : null }; return { data: projected[0], error: null, count: q.count ? total : null }; }
