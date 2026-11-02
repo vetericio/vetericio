@@ -1,4 +1,4 @@
-import { BarChart3, BellRing, CheckCircle2, ClipboardList, Megaphone, MessageCircle, Plus, Send, Sparkles, Users } from "lucide-react";
+import { BarChart3, BellRing, CheckCircle2, ClipboardList, Clock3, Megaphone, MessageCircle, PauseCircle, PlayCircle, Plus, Send, Sparkles, Users, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -6,13 +6,20 @@ import { supabaseBanco } from "@/integrations/supabase/client";
 
 type Canal = "whatsapp" | "email" | "manual";
 type Filtro = "todos" | "marketing" | "whatsapp" | "email" | "inativos" | "hotel" | "banho_tosa";
+type Objetivo = "relacionamento" | "retencao" | "reativacao" | "vendas";
 type Tutor = { id: string; nome: string; telefone?: string | null; outro_telefone?: string | null; email?: string | null; autoriza_marketing?: boolean; contato_preferencial?: string | null };
 type Animal = { id: string; tutor_id: string; nome: string; especie?: string | null };
 type Agenda = { tutor_id?: string | null; inicio?: string | null; estado?: string | null };
 type Estadia = { tutor_id?: string | null; status?: string | null };
 type BanhoTosa = { tutor_id?: string | null; status?: string | null };
 type Cobranca = { tutor_id?: string | null; status?: string | null; valor?: number | null };
-type Campanha = { id: string; nome: string; assunto: string; mensagem: string; canal: Canal; status: string; audiencia_estimada: number; enviados: number; created_at: string };
+type Campanha = {
+  id: string; nome: string; assunto: string; mensagem: string; canal: Canal; status: string;
+  objetivo?: Objetivo | string; audiencia_estimada: number; enviados: number; created_at: string;
+  agendada_para?: string | null; metadados?: { filtro?: Filtro; selecionados?: string[]; [key: string]: unknown } | null;
+};
+type EventoCampanha = { campanha_id?: string | null; status: string };
+type CampanhaMetricas = { pendentes: number; enviados: number; ignorados: number; cancelados: number };
 type Tarefa = { id: string; titulo: string; descricao?: string | null; status: string; vencimento_em?: string | null; prioridade: string };
 
 type Base = { tutores: Tutor[]; animais: Animal[]; agenda: Agenda[]; hotel: Estadia[]; banho_tosa: BanhoTosa[]; cobrancas: Cobranca[] };
@@ -27,12 +34,43 @@ const filtros: Array<{ id: Filtro; nome: string; detalhe: string }> = [
   { id: "banho_tosa", nome: "Banho e tosa", detalhe: "Clientes do banho e tosa" },
 ];
 
+const objetivos: Array<{ id: Objetivo; nome: string; detalhe: string }> = [
+  { id: "relacionamento", nome: "Relacionamento", detalhe: "Fortaleça o vínculo" },
+  { id: "retencao", nome: "Retenção", detalhe: "Traga o tutor de volta" },
+  { id: "reativacao", nome: "Reativação", detalhe: "Recupere clientes inativos" },
+  { id: "vendas", nome: "Oportunidade", detalhe: "Divulgue serviços e campanhas" },
+];
+
 function moeda(valor = 0) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor || 0));
 }
 
 function dataCurta(valor?: string | null) {
   return valor ? new Date(valor).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "Sem prazo";
+}
+
+function dataHoraCompleta(valor?: string | null) {
+  return valor ? new Date(valor).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Disponível agora";
+}
+
+function campanhaEstaEmOperacao(status: string) {
+  return status === "pronta" || status === "agendada";
+}
+
+function tituloStatusCampanha(status: string) {
+  if (status === "pronta") return "Ativa";
+  if (status === "agendada") return "Programada";
+  if (status === "pausada") return "Pausada";
+  if (status === "encerrada") return "Encerrada";
+  return "Rascunho";
+}
+
+function tituloObjetivo(objetivo?: string) {
+  return objetivos.find((item) => item.id === objetivo)?.nome || "Relacionamento";
+}
+
+function tituloFiltro(filtro?: string) {
+  return filtros.find((item) => item.id === filtro)?.nome || "Público personalizado";
 }
 
 function primeiroCanal(tutor: Tutor): Canal {
@@ -51,26 +89,32 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   const [assunto, setAssunto] = useState("");
   const [mensagem, setMensagem] = useState("Olá, {{tutor}}! Temos uma novidade especial para você e seu pet. Fale com a nossa equipe para aproveitar.");
   const [canal, setCanal] = useState<Canal>("whatsapp");
+  const [objetivo, setObjetivo] = useState<Objetivo>("relacionamento");
+  const [agendadaPara, setAgendadaPara] = useState("");
   const [novaTarefa, setNovaTarefa] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [publicando, setPublicando] = useState(false);
+  const [alterandoCampanha, setAlterandoCampanha] = useState<string | null>(null);
+  const [eventosCampanhas, setEventosCampanhas] = useState<EventoCampanha[]>([]);
 
   const carregar = useCallback(async () => {
     if (!clinicaId) return;
     setCarregando(true);
-    const [baseResult, campanhasResult, tarefasResult] = await Promise.all([
+    const [baseResult, campanhasResult, tarefasResult, eventosResult] = await Promise.all([
       (supabaseBanco as any).rpc("oricse_crm_360_base", { p_clinica_id: clinicaId }),
-      (supabaseBanco as any).from("oricse_crm_campanhas").select("*").eq("clinica_id", clinicaId).order("created_at", { ascending: false }).limit(6),
-      (supabaseBanco as any).from("oricse_crm_tarefas").select("*").eq("clinica_id", clinicaId).order("vencimento", { ascending: true }).limit(6),
+      (supabaseBanco as any).from("oricse_crm_campanhas").select("*").eq("clinica_id", clinicaId).order("created_at", { ascending: false }).limit(100),
+      (supabaseBanco as any).from("oricse_crm_tarefas").select("*").eq("clinica_id", clinicaId).order("vencimento_em", { ascending: true, nullsFirst: false }).limit(12),
+      (supabaseBanco as any).from("oricse_crm_eventos").select("campanha_id,status").eq("clinica_id", clinicaId).not("campanha_id", "is", null),
     ]);
     setCarregando(false);
-    if (baseResult.error || campanhasResult.error || tarefasResult.error) {
-      toast.error(baseResult.error?.message || campanhasResult.error?.message || tarefasResult.error?.message || "Não foi possível carregar o CRM 360.");
+    if (baseResult.error || campanhasResult.error || tarefasResult.error || eventosResult.error) {
+      toast.error(baseResult.error?.message || campanhasResult.error?.message || tarefasResult.error?.message || eventosResult.error?.message || "Não foi possível carregar o CRM 360.");
       return;
     }
     setBase(baseResult.data || { tutores: [], animais: [], agenda: [], hotel: [], banho_tosa: [], cobrancas: [] });
     setCampanhas(campanhasResult.data || []);
     setTarefas(tarefasResult.data || []);
+    setEventosCampanhas(eventosResult.data || []);
   }, [clinicaId]);
 
   useEffect(() => { void carregar(); }, [carregar]);
@@ -102,7 +146,23 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   useEffect(() => { setSelecionados(alvo.map((tutor) => tutor.id)); }, [filtro, base.tutores.length]);
 
   const receitaEmAberto = useMemo(() => base.cobrancas.filter((item) => !["pago", "cancelado"].includes(String(item.status).toLowerCase())).reduce((soma, item) => soma + Number(item.valor || 0), 0), [base.cobrancas]);
-  const notificacoesPendentes = useMemo(() => campanhas.reduce((soma, item) => soma + Number(item.audiencia_estimada || 0), 0), [campanhas]);
+  const metricasPorCampanha = useMemo(() => {
+    const resultado = new Map<string, CampanhaMetricas>();
+    eventosCampanhas.forEach((evento) => {
+      if (!evento.campanha_id) return;
+      const atual = resultado.get(evento.campanha_id) || { pendentes: 0, enviados: 0, ignorados: 0, cancelados: 0 };
+      if (evento.status === "enviado") atual.enviados += 1;
+      else if (evento.status === "ignorado") atual.ignorados += 1;
+      else if (evento.status === "cancelado") atual.cancelados += 1;
+      else atual.pendentes += 1;
+      resultado.set(evento.campanha_id, atual);
+    });
+    return resultado;
+  }, [eventosCampanhas]);
+  const campanhasAtivasAgora = useMemo(() => campanhas.filter((item) => item.status === "pronta"), [campanhas]);
+  const campanhasProgramadas = useMemo(() => campanhas.filter((item) => item.status === "agendada"), [campanhas]);
+  const campanhasEmOperacao = useMemo(() => campanhas.filter((item) => campanhaEstaEmOperacao(item.status)), [campanhas]);
+  const notificacoesPendentes = useMemo(() => eventosCampanhas.filter((item) => item.status === "pendente").length, [eventosCampanhas]);
 
   function alternarTutor(id: string) {
     setSelecionados((lista) => lista.includes(id) ? lista.filter((item) => item !== id) : [...lista, id]);
@@ -112,6 +172,9 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     if (!podeCampanhas) return;
     if (!nome.trim() || !assunto.trim() || !mensagem.trim()) return void toast.error("Dê um nome, assunto e mensagem para a campanha.");
     if (!selecionados.length) return void toast.error("Selecione ao menos um tutor.");
+    const programacao = agendadaPara ? new Date(agendadaPara) : null;
+    if (programacao && Number.isNaN(programacao.getTime())) return void toast.error("Informe uma data e hora válidas para a campanha.");
+    const programadaNoFuturo = Boolean(programacao && programacao.getTime() > Date.now());
     setPublicando(true);
     const destinatarios = selecionados.map((id) => {
       const tutor = porTutor.get(id);
@@ -125,7 +188,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     });
     const { data: criada, error: erroCriar } = await (supabaseBanco as any)
       .from("oricse_crm_campanhas")
-      .insert({ clinica_id: clinicaId, nome: nome.trim(), assunto: assunto.trim(), mensagem: mensagem.trim(), canal, status: "rascunho", metadados: { filtro, selecionados } })
+      .insert({ clinica_id: clinicaId, nome: nome.trim(), objetivo, assunto: assunto.trim(), mensagem: mensagem.trim(), canal, status: "rascunho", agendada_para: programacao?.toISOString() || null, metadados: { filtro, selecionados, objetivo, origem: "crm_360" } })
       .select("id")
       .single();
     if (erroCriar) {
@@ -135,10 +198,24 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     const { error } = await (supabaseBanco as any).rpc("oricse_crm_campanha_publicar", { p_campanha_id: criada.id, p_destinatarios: destinatarios });
     setPublicando(false);
     if (error) return void toast.error(error.message);
-    toast.success(`Campanha criada para ${destinatarios.length} tutor(es). Os envios estão na fila CRM.`);
-    setNome(""); setAssunto(""); setMensagem("Olá, {{tutor}}! Temos uma novidade especial para você e seu pet. Fale com a nossa equipe para aproveitar.");
+    toast.success(programadaNoFuturo ? "Campanha programada para " + dataHoraCompleta(programacao?.toISOString()) + "." : "Campanha ativada para " + destinatarios.length + " tutor(es). Os envios estão na fila CRM.");
+    setNome(""); setAssunto(""); setObjetivo("relacionamento"); setAgendadaPara(""); setMensagem("Olá, {{tutor}}! Temos uma novidade especial para você e seu pet. Fale com a nossa equipe para aproveitar.");
     await carregar();
-    onAbrirFila();
+    if (!programadaNoFuturo) onAbrirFila();
+  }
+
+  async function alterarStatusCampanha(campanha: Campanha, status: "pronta" | "agendada" | "pausada" | "encerrada") {
+    if (!podeCampanhas) return;
+    setAlterandoCampanha(campanha.id);
+    const { error } = await (supabaseBanco as any)
+      .from("oricse_crm_campanhas")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", campanha.id)
+      .eq("clinica_id", clinicaId);
+    setAlterandoCampanha(null);
+    if (error) return void toast.error(error.message);
+    toast.success(status === "pausada" ? "Campanha pausada. Ela saiu da operação da equipe." : status === "encerrada" ? "Campanha encerrada." : status === "agendada" ? "Campanha programada novamente." : "Campanha retomada e ativa.");
+    await carregar();
   }
 
   async function adicionarTarefa() {
@@ -169,11 +246,26 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={<Users size={18}/>} titulo="Base ativa" valor={base.tutores.length} detalhe="tutores no relacionamento" />
-        <Metric icon={<Megaphone size={18}/>} titulo="Campanhas" valor={campanhas.length} detalhe={`${notificacoesPendentes} destinatários em campanhas`} />
+        <Metric icon={<Megaphone size={18}/>} titulo="Em operação" valor={campanhasEmOperacao.length} detalhe={notificacoesPendentes + " contatos na fila"} />
         <Metric icon={<BellRing size={18}/>} titulo="Portal do Tutor" valor="Links seguros" detalhe="exames e documentos entram na fila" />
         <Metric icon={<BarChart3 size={18}/>} titulo="Em aberto" valor={moeda(receitaEmAberto)} detalhe="sinal para cobrança humanizada" />
       </div>
     </div>
+
+    <section className="rounded-3xl border bg-card p-5 shadow-sm sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-primary"><Megaphone size={20}/><span className="text-xs font-black uppercase tracking-[0.16em]">Operação de campanhas</span></div>
+          <h3 className="mt-1 text-xl font-black">Campanhas separadas e simultâneas</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{campanhasAtivasAgora.length + " ativa(s) agora · " + campanhasProgramadas.length + " programada(s). Cada campanha mantém seu próprio público, fila e resultado."}</p>
+        </div>
+        <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-black text-primary">{campanhasEmOperacao.length + " em operação"}</span>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {campanhas.map((campanha) => <CampaignCard key={campanha.id} campanha={campanha} metricas={metricasPorCampanha.get(campanha.id) || { pendentes: 0, enviados: Number(campanha.enviados || 0), ignorados: 0, cancelados: 0 }} podeCampanhas={podeCampanhas} alterando={alterandoCampanha === campanha.id} onMudarStatus={alterarStatusCampanha} />)}
+        {!campanhas.length && <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center"><Megaphone className="mx-auto text-muted-foreground" size={24}/><p className="mt-3 text-sm font-black">Nenhuma campanha criada</p><p className="mt-1 text-xs text-muted-foreground">Crie a primeira abaixo. Ela ficará separada das próximas e poderá operar ao mesmo tempo.</p></div>}
+      </div>
+    </section>
 
     <div className="grid gap-5 xl:grid-cols-[1.45fr_.85fr]">
       <section className="rounded-3xl border bg-card p-5 shadow-sm">
@@ -182,7 +274,11 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
           <Input label="Nome interno" value={nome} onChange={setNome} placeholder="Ex.: Semana da saúde bucal" />
           <Input label="Assunto / chamada" value={assunto} onChange={setAssunto} placeholder="Condição especial para seu pet" />
         </div>
-        <label className="mt-3 block text-xs font-bold">Canal preferido<select value={canal} onChange={(e) => setCanal(e.target.value as Canal)} className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"><option value="whatsapp">WhatsApp</option><option value="email">E-mail</option><option value="manual">Melhor contato cadastrado</option></select></label>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="block text-xs font-bold">Objetivo comercial<select value={objetivo} onChange={(e) => setObjetivo(e.target.value as Objetivo)} className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal">{objetivos.map((item) => <option key={item.id} value={item.id}>{item.nome + " · " + item.detalhe}</option>)}</select></label>
+          <label className="block text-xs font-bold">Programar para depois <span className="font-normal text-muted-foreground">(opcional)</span><input type="datetime-local" value={agendadaPara} onChange={(e) => setAgendadaPara(e.target.value)} className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"/></label>
+        </div>
+        <label className="mt-3 block text-xs font-bold">Canal preferido<select value={canal} onChange={(e) => setCanal(e.target.value as Canal)} className="mt-1 h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"><option value="whatsapp">WhatsApp Business</option><option value="email">E-mail</option><option value="manual">Melhor contato cadastrado</option></select></label>
         <label className="mt-3 block text-xs font-bold">Mensagem<textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border bg-background p-3 text-sm font-normal"/></label>
         <p className="mt-1 text-[11px] text-muted-foreground">Use {"{{tutor}}"} para personalizar a mensagem. O contato é aberto somente pela equipe, na fila do CRM.</p>
 
@@ -197,7 +293,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
             {!alvo.length && <p className="py-4 text-center text-sm text-muted-foreground">Nenhum tutor atende a este filtro.</p>}
           </div>
         </div>
-        <button type="button" disabled={!podeCampanhas || publicando || carregando} onClick={() => void publicarCampanha()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><Send size={17}/>{publicando ? "Criando campanha..." : `Enviar para ${selecionados.length} tutor(es)`}</button>
+        <button type="button" disabled={!podeCampanhas || publicando || carregando} onClick={() => void publicarCampanha()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><Send size={17}/>{publicando ? "Criando campanha..." : agendadaPara ? "Programar campanha" : "Ativar para " + selecionados.length + " tutor(es)"}</button>
         {!podeCampanhas && <p className="mt-2 text-xs text-amber-700">Seu perfil pode visualizar o CRM, mas não possui permissão para publicar campanhas.</p>}
       </section>
 
@@ -208,12 +304,58 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
           <div className="mt-3 space-y-2">{tarefas.map((tarefa) => <button type="button" key={tarefa.id} onClick={() => void concluirTarefa(tarefa)} className="flex w-full items-start gap-2 rounded-xl border p-3 text-left"><CheckCircle2 size={17} className={tarefa.status === "concluida" ? "mt-0.5 text-emerald-600" : "mt-0.5 text-muted-foreground"}/><span><span className={`block text-sm font-bold ${tarefa.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>{tarefa.titulo}</span><span className="text-xs text-muted-foreground">{dataCurta(tarefa.vencimento_em)} · {tarefa.prioridade}</span></span></button>)}{!tarefas.length && <p className="py-4 text-center text-sm text-muted-foreground">Defina a próxima ação do time.</p>}</div>
         </section>
         <section className="rounded-3xl border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2"><MessageCircle className="text-primary" size={20}/><h3 className="font-black">Últimas campanhas</h3></div>
-          <div className="mt-3 space-y-2">{campanhas.map((item) => <div key={item.id} className="rounded-xl border p-3"><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.audiencia_estimada || 0} destinatários · {dataCurta(item.created_at)} · {item.status}</p></div>)}{!campanhas.length && <p className="py-4 text-center text-sm text-muted-foreground">Sua primeira campanha aparecerá aqui.</p>}</div>
+          <div className="flex items-center gap-2"><Clock3 className="text-primary" size={20}/><h3 className="font-black">Boas práticas de operação</h3></div>
+          <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <p className="rounded-xl border bg-muted/20 p-3"><span className="font-black text-foreground">Várias ativas:</span> campanhas não se substituem; cada uma tem público e fila próprios.</p>
+            <p className="rounded-xl border bg-muted/20 p-3"><span className="font-black text-foreground">Consentimento:</span> use o filtro de marketing para ofertas e comunicações promocionais.</p>
+            <p className="rounded-xl border bg-muted/20 p-3"><span className="font-black text-foreground">Controle:</span> pause ou encerre uma campanha sem tocar nas demais.</p>
+          </div>
         </section>
       </aside>
     </div>
   </section>;
+}
+
+function CampaignCard({ campanha, metricas, podeCampanhas, alterando, onMudarStatus }: {
+  campanha: Campanha;
+  metricas: CampanhaMetricas;
+  podeCampanhas: boolean;
+  alterando: boolean;
+  onMudarStatus: (campanha: Campanha, status: "pronta" | "agendada" | "pausada" | "encerrada") => Promise<void>;
+}) {
+  const status = campanha.status || "rascunho";
+  const programadaNoFuturo = Boolean(campanha.agendada_para && new Date(campanha.agendada_para).getTime() > Date.now());
+  const corStatus = status === "pronta"
+    ? "bg-emerald-100 text-emerald-800"
+    : status === "agendada"
+      ? "bg-sky-100 text-sky-800"
+      : status === "pausada"
+        ? "bg-amber-100 text-amber-800"
+        : "bg-muted text-muted-foreground";
+  const canal = campanha.canal === "whatsapp" ? "WhatsApp" : campanha.canal === "email" ? "E-mail" : "Manual";
+  const retomarComo = programadaNoFuturo ? "agendada" : "pronta";
+
+  return <article className="rounded-2xl border bg-background p-4 shadow-sm">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-primary">{tituloObjetivo(campanha.objetivo)}</span><span className={"rounded-full px-2.5 py-1 text-[10px] font-black " + corStatus}>{tituloStatusCampanha(status)}</span></div>
+        <h4 className="mt-2 truncate text-base font-black">{campanha.nome}</h4>
+        <p className="mt-1 text-xs text-muted-foreground">{campanha.assunto || "Sem chamada definida"}</p>
+      </div>
+      <span className="rounded-lg border px-2 py-1 text-[11px] font-bold text-muted-foreground">{canal}</span>
+    </div>
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="rounded-xl bg-muted/35 p-2.5"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Público</p><p className="mt-1 text-lg font-black">{campanha.audiencia_estimada || 0}</p></div>
+      <div className="rounded-xl bg-muted/35 p-2.5"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Na fila</p><p className="mt-1 text-lg font-black">{metricas.pendentes}</p></div>
+      <div className="rounded-xl bg-muted/35 p-2.5"><p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Enviadas</p><p className="mt-1 text-lg font-black">{metricas.enviados}</p></div>
+    </div>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{tituloFiltro(campanha.metadados?.filtro)}</span><span>{status === "agendada" ? "Programada: " + dataHoraCompleta(campanha.agendada_para) : "Criada: " + dataHoraCompleta(campanha.created_at)}</span></div>
+    {podeCampanhas && status !== "encerrada" && <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
+      {(status === "pronta" || status === "agendada") && <button type="button" disabled={alterando} onClick={() => void onMudarStatus(campanha, "pausada")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold disabled:opacity-50"><PauseCircle size={15}/> Pausar</button>}
+      {status === "pausada" && <button type="button" disabled={alterando} onClick={() => void onMudarStatus(campanha, retomarComo)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground disabled:opacity-50"><PlayCircle size={15}/> {programadaNoFuturo ? "Retomar programação" : "Retomar"}</button>}
+      {(status === "pronta" || status === "agendada" || status === "pausada") && <button type="button" disabled={alterando} onClick={() => void onMudarStatus(campanha, "encerrada")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold text-muted-foreground disabled:opacity-50"><XCircle size={15}/> Encerrar</button>}
+    </div>}
+  </article>;
 }
 
 function Metric({ icon, titulo, valor, detalhe }: { icon: ReactNode; titulo: string; valor: ReactNode; detalhe: string }) {
