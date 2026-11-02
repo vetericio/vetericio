@@ -5,8 +5,8 @@ import { appendJournal, applyJournal, loadJournals, type DriveChange } from "@/l
 import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.server";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
-const PUBLIC_READ = new Set(["oricse_planos", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
-const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
+const PUBLIC_READ = new Set(["oricse_planos", "oricse_plano_funcionalidades", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
+const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_planos_auditoria", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
 const PORTAL_CLINIC_READ = new Set(["oricse_agendas_online"]);
 const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);
 
