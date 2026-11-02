@@ -45,29 +45,8 @@ function salvarPromoAplicado(v: PromoAplicado | null) {
 }
 
 function instalarInterceptadorRpc() {
-  const cliente: any = supabase as any;
-  if (cliente.__oricsePromoRpcPatched) return;
-  const original = cliente.rpc.bind(cliente);
-  cliente.rpc = (nome: string, args?: any, opts?: any) => {
-    if (nome === "oricse_iniciar_contratacao" && args?.p_dados) {
-      const promo = lerPromoAplicado();
-      if (promo && promo.plano === args.p_dados.plano_codigo) {
-        args = {
-          ...args,
-          p_dados: {
-            ...args.p_dados,
-            promo_codigo: promo.codigo,
-            promo_valor_original: promo.valor_original,
-            promo_desconto: promo.desconto_aplicado,
-            promo_valor_final: promo.valor_final,
-            promo_duracao: promo.duracao,
-          },
-        };
-      }
-    }
-    return original(nome, args, opts);
-  };
-  cliente.__oricsePromoRpcPatched = true;
+  // O checkout React envia o código validado diretamente no pedido.
+  // Mantemos o módulo para o gestor de códigos no Admin, sem alterar o payload do pedido no navegador.
 }
 
 function estiloBase() {
