@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, Clock3, PackagePlus, Save, Stethoscope } from "lucide-react";
+import { BadgeCheck, Building2, Clock3, PackagePlus, Save, Stethoscope } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -156,6 +156,21 @@ function PerfilClinica() {
           </div>
         </div>
       </header>
+
+      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <BadgeCheck className="mt-0.5 text-primary" size={21} />
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Meu plano e funcionalidades</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Confira os recursos e os limites contratados pela clínica.</p>
+            </div>
+          </div>
+          <Link to="/plano-clinica" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">
+            Ver meu plano
+          </Link>
+        </div>
+      </section>
 
       <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
