@@ -30,6 +30,7 @@ type MenuRoute =
   | "/recepcao"
   | "/todas-agendas"
   | "/hotelzinho"
+  | "/banho-tosa"
   | "/horarios-medicacoes"
   | "/configurar-agenda-online"
   | "/tutores"
@@ -123,7 +124,14 @@ const areas: AreaMenu[] = [
   {
     titulo: "Banho e tosa",
     icone: Scissors,
-    itens: [{ rotulo: "Módulo em preparação", emBreve: true }],
+    itens: [
+      {to:"/banho-tosa",abaHotel:"painel",rotulo:"Painel do banho e tosa",permissao:"hotelzinho.visualizar"},
+      {to:"/banho-tosa",abaHotel:"agenda",rotulo:"Agenda",permissao:"hotelzinho.visualizar"},
+      {to:"/banho-tosa",abaHotel:"novo",rotulo:"Novo agendamento",permissao:"hotelzinho.visualizar"},
+      {to:"/banho-tosa",abaHotel:"fila",rotulo:"Fila de serviços",permissao:"hotelzinho.visualizar"},
+      {to:"/banho-tosa",abaHotel:"servicos",rotulo:"Serviços e preços",permissao:"hotelzinho.visualizar"},
+      {to:"/banho-tosa",abaHotel:"historico",rotulo:"Histórico",permissao:"hotelzinho.visualizar"},
+    ],
   },
   {
     titulo: "Gestão de clientes",
