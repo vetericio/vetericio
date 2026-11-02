@@ -41,7 +41,8 @@ function BanhoTosa(){
  const [avaliacao,setAvaliacao]=useState(""),[restricoes,setRestricoes]=useState(""),[saida,setSaida]=useState("");
  const [extraNome,setExtraNome]=useState(""),[extraQuantidade,setExtraQuantidade]=useState("1"),[extraPreco,setExtraPreco]=useState("");
  const [data,setData]=useState(hoje);
- const [visaoAgenda,setVisaoAgenda]=useState<"dia"|"semana"|"mes">("semana");
+ const [visaoAgenda,setVisaoAgenda]=useState<"dia"|"semana"|"mes">("dia");
+ const [filtroProfissional,setFiltroProfissional]=useState("todos");
  const [animalId,setAnimalId]=useState(""),[servicoId,setServicoId]=useState(""),[inicio,setInicio]=useState(isoLocal),[profissional,setProfissional]=useState(""),[obs,setObs]=useState("");
  const [nomeServico,setNomeServico]=useState(""),[duracao,setDuracao]=useState("60"),[preco,setPreco]=useState("");
  const db=supabaseBanco as any;
@@ -88,6 +89,7 @@ function BanhoTosa(){
   if(visaoAgenda==="mes"){const proximo=new Date(ano,mes-1+delta,1);const ultimo=new Date(proximo.getFullYear(),proximo.getMonth()+1,0).getDate();proximo.setDate(Math.min(diaMes,ultimo));setData(`${proximo.getFullYear()}-${String(proximo.getMonth()+1).padStart(2,"0")}-${String(proximo.getDate()).padStart(2,"0")}`);}
   else{d.setDate(d.getDate()+delta*(visaoAgenda==="semana"?7:1));setData(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);}
  }
+ const profissionaisAgenda=useMemo(()=>[...new Set(atendimentos.map(a=>a.profissional.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"pt-BR")),[atendimentos]);
  const ativos=atendimentos.filter(a=>!["entregue","cancelado"].includes(a.status));
  const encerrados=atendimentos.filter(a=>["entregue","cancelado"].includes(a.status));
  const detalhe=atendimentos.find(a=>a.id===detalheId);
@@ -209,7 +211,30 @@ function BanhoTosa(){
       </div>
       <p className="text-sm text-muted-foreground">{atendimentos.filter(a=>a.status!=="cancelado"&&datasAgenda.includes(a.inicio.slice(0,10))).length} agendamento(s) no período</p>
     </div>
-    {visaoAgenda==="dia" ? (doDia.length?doDia.map(registro):<p className={card}>Nenhum agendamento para esta data.</p>) :
+    {visaoAgenda==="dia" ? <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+        <label className="text-sm font-semibold">Profissional <select className="ml-2 rounded-lg border bg-background px-3 py-2" value={filtroProfissional} onChange={e=>setFiltroProfissional(e.target.value)}><option value="todos">Todos</option>{profissionaisAgenda.map(p=><option key={p} value={p}>{p}</option>)}</select></label>
+        <span className="text-xs text-muted-foreground">Horários de 30 em 30 minutos · 08h às 19h</span>
+      </div>
+      <div className="overflow-x-auto rounded-2xl border bg-card shadow-sm">
+        <table className="w-full min-w-[720px] border-collapse text-left">
+          <thead><tr className="bg-muted/30"><th className="w-20 border-b p-3 text-xs">Hora</th>{[...profissionaisAgenda.filter(p=>filtroProfissional==="todos"||p===filtroProfissional),"Sem profissional"].map(p=><th key={p} className="border-b border-l p-3 text-sm font-semibold">{p}</th>)}</tr></thead>
+          <tbody>{Array.from({length:22},(_,i)=>480+i*30).map(min=>{
+            const hora=String(Math.floor(min/60)).padStart(2,"0")+":"+String(min%60).padStart(2,"0");
+            const start=new Date(data+"T"+hora+":00").getTime(), end=start+1800000;
+            return <tr key={hora}><th className="border-b p-2 align-top text-xs font-semibold tabular-nums text-muted-foreground">{hora}</th>
+              {[...profissionaisAgenda.filter(p=>filtroProfissional==="todos"||p===filtroProfissional),"Sem profissional"].map(p=>{
+                const ag=doDia.filter(a=>a.status!=="cancelado"&&(a.profissional.trim()||"Sem profissional")===p&&new Date(a.inicio).getTime()<end&&new Date(a.fim).getTime()>start);
+                return <td key={p} className="min-w-40 border-b border-l p-1 align-top">
+                  {ag.length?ag.map(a=><button key={a.id} type="button" onClick={()=>{setDetalheId(a.id);setAvaliacao(a.avaliacao_entrada||"");setRestricoes(a.restricoes||"");setSaida(a.observacoes_saida||"")}} className="mb-1 w-full rounded-lg border border-primary/20 bg-primary/10 p-2 text-left"><strong className="block truncate text-xs">{nomesAnimais.get(a.animal_id)?.nome||"Animal"}</strong><span className="text-[11px]">{a.servico_nome} · {new Date(a.inicio).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span></button>):p!=="Sem profissional"?<button disabled={!podeOperar} type="button" className="w-full rounded-lg border border-dashed border-transparent p-2 text-xs text-muted-foreground hover:border-primary/30 hover:bg-muted/40" onClick={()=>{setProfissional(p);setInicio(data+"T"+hora);window.location.hash="novo"}}>+ Agendar</button>:null}
+                </td>;
+              })}
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>
+      {!profissionaisAgenda.length&&<p className="text-sm text-muted-foreground">Ainda não há profissionais identificados nos agendamentos. Informe um profissional ao cadastrar o primeiro serviço.</p>}
+    </div> :
       <div className="overflow-x-auto rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
         <div className="grid min-w-[770px] grid-cols-7 gap-2">
           {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((nome,i)=><div key={nome} className={`py-2 text-center text-xs font-semibold uppercase tracking-wide ${i===0?"text-rose-600":"text-muted-foreground"}`}>{nome}</div>)}
