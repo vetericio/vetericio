@@ -35,7 +35,7 @@ function feriado(data:string) {
  const sexta=new Date(ano,Math.floor(n/31)-1,n%31+1);sexta.setDate(sexta.getDate()-2);
  return diaLocal(sexta)===data?"Sexta-feira Santa":null;
 }
-function TodasAgendas() {
+export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean } = {}) {
   const { clinicaId } = usePermissoes();
   const [dia, setDia] = useState(() => diaLocal(new Date()));
   const [visao, setVisao] = useState<"dia" | "semana" | "mes">("dia");
@@ -124,9 +124,10 @@ function TodasAgendas() {
 
   return <main className="mx-auto w-full max-w-[1500px] space-y-6 px-4 pb-24 pt-6 sm:px-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><Link to="/recepcao" className="text-sm text-muted-foreground">← Painel da recepção</Link><h1 className="mt-2 text-3xl font-bold">Todas as agendas</h1><p className="text-sm text-muted-foreground">Clínica, banho e tosa e hotelzinho, reunidos em um só lugar.</p></div>
+      <div><Link to={somenteHotel ? "/hotelzinho" : "/recepcao"} className="text-sm text-muted-foreground">← {somenteHotel ? "Hotelzinho" : "Painel da recepção"}</Link><h1 className="mt-2 text-3xl font-bold">{somenteHotel ? "Agenda do hotel" : "Todas as agendas"}</h1><p className="text-sm text-muted-foreground">{somenteHotel ? "Ocupação, entradas e saídas das hospedagens." : "Clínica, banho e tosa e hotelzinho, reunidos em um só lugar."}</p></div>
       <button type="button" onClick={() => setAtualizacao(n => n + 1)} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><RefreshCw size={16}/> Atualizar reservas</button>
     </div>
+    {!somenteHotel && <>
     <section className="space-y-2"><h2 className="flex items-center gap-2 text-xl font-semibold"><CalendarDays size={20}/> Clínica e banho e tosa</h2>
       <p className="text-sm text-muted-foreground">Visualize as agendas existentes e filtre por profissional e tipo diretamente no calendário.</p>
       <AgendaErrorBoundary><AgendaDayBoard mode="recepcao"/></AgendaErrorBoundary>
@@ -135,6 +136,7 @@ function TodasAgendas() {
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Banho e tosa</h2><p className="text-sm text-muted-foreground">Próximos atendimentos, serviços e horários.</p></div><Link to="/banho-tosa" hash="agenda" className="text-sm font-semibold text-primary underline">Abrir agenda</Link></div>
       <div className="mt-4 space-y-2">{banhoAgendamentos.filter(a=>a.status!=="cancelado" && new Date(a.inicio).getTime() >= Date.now()-86400000).sort((a,b)=>a.inicio.localeCompare(b.inicio)).slice(0,15).map(a=><div key={a.id} className="flex flex-wrap justify-between gap-2 rounded-xl border p-3"><div><strong>{animais.find(x=>x.id===a.animal_id)?.nome||"Animal"} · {a.servico_nome}</strong><p className="text-sm text-muted-foreground">{dataHora(a.inicio)} até {dataHora(a.fim)}</p></div><span className="text-sm">{a.status.replaceAll("_"," ")}</span></div>)}{!banhoAgendamentos.some(a=>a.status!=="cancelado" && new Date(a.inicio).getTime()>=Date.now()-86400000)&&<p className="text-sm text-muted-foreground">Sem atendimentos recentes ou futuros.</p>}</div>
     </section>
+    </>}
     <section className="rounded-2xl border bg-card p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-xl font-semibold">Agenda do hotelzinho</h2><p className="mt-1 text-sm text-muted-foreground">Cada barra mostra o período de ocupação no dia, incluindo hospedagens que passam da meia-noite.</p></div>
