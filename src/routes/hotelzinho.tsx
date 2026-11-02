@@ -19,6 +19,7 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/hotelzinho")({ component: Hotelzinho });
+const cacheHotel = new Map<string, {em:number; dados:any[]}>();
 
 type Tutor = { id: string; nome: string; telefone: string | null };
 type Animal = { id: string; nome: string; tutor_id: string; especie: string };
@@ -173,11 +174,17 @@ function Hotelzinho() {
   const podeOperar = adminGlobal || pode("hotelzinho.operar") || pode("hotelzinho.gerenciar");
   const podeGerenciar = adminGlobal || pode("hotelzinho.gerenciar");
 
-  async function carregar() {
+  async function carregar(forcar = false) {
     if (!clinicaId) return;
-    setCarregando(true);
+    const salvo = cacheHotel.get(clinicaId);
+    if (salvo) {
+      const [t,a,ac,e,c,at,x] = salvo.dados;
+      setTutores(t);setAnimais(a);setAcomodacoes(ac);setEstadias(e);setCuidados(c);setAtualizacoes(at);setExtras(x);
+    }
+    setCarregando(!salvo);
+    if (!forcar && salvo && Date.now()-salvo.em<30000) return;
     setErro("");
-    const [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR] =
+    const [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR, extrasR] =
       await Promise.all([
         db.from("tutores").select("id,nome,telefone").eq("clinica_id", clinicaId).order("nome"),
         db
@@ -203,8 +210,9 @@ function Hotelzinho() {
           .eq("clinica_id", clinicaId)
           .order("created_at", { ascending: false })
           .limit(100),
+        db.from("oricse_hotel_extras").select("id,estadia_id,categoria,descricao,quantidade,valor_unitario_centavos,created_at").eq("clinica_id",clinicaId).order("created_at",{ascending:false}),
       ]);
-    const falha = [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR].find(
+    const falha = [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR, extrasR].find(
       (r) => r.error,
     );
     if (falha?.error) {
@@ -218,9 +226,8 @@ function Hotelzinho() {
     setEstadias((estadiasR.data || []) as Estadia[]);
     setCuidados((cuidadosR.data || []) as Cuidado[]);
     setAtualizacoes((atualizacoesR.data || []) as Atualizacao[]);
-    const {data: extrasData,error: extrasErro} = await db.from("oricse_hotel_extras").select("id,estadia_id,categoria,descricao,quantidade,valor_unitario_centavos,created_at").eq("clinica_id",clinicaId).order("created_at",{ascending:false});
-    if(extrasErro) setErro("Não foi possível carregar os extras: " + extrasErro.message);
-    else setExtras(extrasData || []);
+    setExtras(extrasR.data || []);
+    cacheHotel.set(clinicaId,{em:Date.now(),dados:[tutoresR.data||[],animaisR.data||[],acomodacoesR.data||[],estadiasR.data||[],cuidadosR.data||[],atualizacoesR.data||[],extrasR.data||[]]});
     setCarregando(false);
   }
 
@@ -310,7 +317,8 @@ function Hotelzinho() {
     toast.success("Reserva criada.");
     setMostrarReserva(false);
     setFormReserva(novoFormulario());
-    await carregar();
+    cacheHotel.delete(clinicaId!);
+    await carregar(true);
   }
 
   async function adicionarExtra(evento:FormEvent<HTMLFormElement>) {
@@ -541,7 +549,7 @@ function Hotelzinho() {
         </div>
         <button
           type="button"
-          onClick={() => void carregar()}
+          onClick={() => void carregar(true)}
           className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
         >
           <RefreshCw className="h-4 w-4" /> Atualizar
