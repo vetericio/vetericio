@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, LockKeyhole, Save, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, Check, LockKeyhole, Save, ShieldCheck, Users, Search, RotateCcw, GitCompare, Plus, Eye, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,27 @@ type Funcionalidade = {
   nome: string;
   grupo: string;
   ordem: number;
+};
+type PermissaoCatalogada = {
+  codigo: string;
+  nome: string;
+  grupo: string;
+  descricao: string;
+  funcionalidade_codigo: string | null;
+  ordem: number;
+};
+type ItemCatalogo = Funcionalidade & {
+  tipo: "modulo" | "acao";
+  descricao: string;
+  pai: string | null;
+  catalogada: boolean;
+};
+type HistoricoAlteracao = {
+  id: string;
+  usuario_id: string;
+  data: string;
+  tipo: string;
+  alteracoes: Array<{ plano_id: string; codigo: string; permitido: boolean }>;
 };
 
 type Clinica = {
@@ -56,6 +77,18 @@ function AdminPlanos() {
   const [carregando, setCarregando] = useState(true);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [funcionalidades, setFuncionalidades] = useState<Funcionalidade[]>([]);
+  const [permissoesCatalogadas, setPermissoesCatalogadas] = useState<PermissaoCatalogada[]>([]);
+  const [historico, setHistorico] = useState<HistoricoAlteracao[]>([]);
+  const [alteracoesPendentes, setAlteracoesPendentes] = useState<Record<string, boolean>>({});
+  const [busca, setBusca] = useState("");
+  const [grupoFiltro, setGrupoFiltro] = useState("todos");
+  const [apenasDiferencas, setApenasDiferencas] = useState(false);
+  const [apenasPendentes, setApenasPendentes] = useState(false);
+  const [gruposFechados, setGruposFechados] = useState<Record<string, boolean>>({});
+  const [planoSimulado, setPlanoSimulado] = useState("");
+  const [novoPlanoAberto, setNovoPlanoAberto] = useState(false);
+  const [novoPlanoNome, setNovoPlanoNome] = useState("");
+  const [novoPlanoCodigo, setNovoPlanoCodigo] = useState("");
   const [matriz, setMatriz] = useState<Matriz>({});
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [excecoes, setExcecoes] = useState<Excecao[]>([]);
@@ -89,14 +122,16 @@ function AdminPlanos() {
       }
       setAutorizado(true);
 
-      const [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes] = await Promise.all([
+      const [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes] = await Promise.all([
         (supabase as any).from("oricse_planos").select("*").order("ordem"),
         (supabase as any).from("oricse_funcionalidades").select("codigo,nome,grupo,ordem").eq("ativo", true).order("ordem"),
         (supabase as any).from("oricse_plano_funcionalidades").select("plano_id,funcionalidade_codigo,permitido"),
         (supabase as any).from("clinicas").select("id,nome,plano,status,limite_usuarios").order("nome"),
         (supabase as any).from("oricse_clinica_funcionalidade_excecoes").select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em"),
+        (supabase as any).from("oricse_permissoes").select("codigo,nome,grupo,descricao,funcionalidade_codigo,ordem").eq("ativo",true).order("ordem"),
+        (supabase as any).from("oricse_planos_auditoria").select("id,usuario_id,data,tipo,alteracoes").order("data",{ascending:false}).limit(40),
       ]);
-      for (const resposta of [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes]) {
+      for (const resposta of [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes]) {
         if (resposta.error) throw resposta.error;
       }
 
@@ -107,6 +142,9 @@ function AdminPlanos() {
       }
       setPlanos(planosDados);
       setFuncionalidades((funcoesRes.data || []) as Funcionalidade[]);
+      setPermissoesCatalogadas((permissoesRes.data || []) as PermissaoCatalogada[]);
+      setHistorico((auditoriaRes.data || []) as HistoricoAlteracao[]);
+      setAlteracoesPendentes({});
       setMatriz(mapa);
       setClinicas((clinicasRes.data || []) as Clinica[]);
       setExcecoes((excecoesRes.data || []) as Excecao[]);
