@@ -46,6 +46,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as MercadoPagoClinicaRouteImport } from './routes/mercado-pago-clinica'
 import { Route as MinhaAtividadeRouteImport } from './routes/minha-atividade'
+import { Route as BancoHorasRouteImport } from './routes/banco-horas'
 import { Route as NovoAnimalRouteImport } from './routes/novo-animal'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
@@ -250,6 +251,11 @@ const MercadoPagoClinicaRoute = MercadoPagoClinicaRouteImport.update({
   path: '/mercado-pago-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BancoHorasRoute = BancoHorasRouteImport.update({
+  id: '/banco-horas',
+  path: '/banco-horas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MinhaAtividadeRoute = MinhaAtividadeRouteImport.update({
   id: '/minha-atividade',
   path: '/minha-atividade',
@@ -408,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
+  '/banco-horas': typeof BancoHorasRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
+  '/banco-horas': typeof BancoHorasRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
+  '/banco-horas': typeof BancoHorasRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/novo-animal': typeof NovoAnimalRoute
   '/pendencias': typeof PendenciasRoute
@@ -600,6 +609,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
+    | '/banco-horas'
     | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
@@ -662,6 +672,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
+    | '/banco-horas'
     | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
@@ -724,6 +735,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
+    | '/banco-horas'
     | '/minha-atividade'
     | '/novo-animal'
     | '/pendencias'
@@ -1064,6 +1076,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MercadoPagoClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/banco-horas': {
+      id: '/banco-horas'
+      path: '/banco-horas'
+      fullPath: '/banco-horas'
+      preLoaderRoute: typeof BancoHorasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/minha-atividade': {
       id: '/minha-atividade'
       path: '/minha-atividade'
@@ -1272,6 +1291,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
   MercadoPagoClinicaRoute: MercadoPagoClinicaRoute,
+  BancoHorasRoute: BancoHorasRoute,
   MinhaAtividadeRoute: MinhaAtividadeRoute,
   NovoAnimalRoute: NovoAnimalRoute,
   PendenciasRoute: PendenciasRoute,
