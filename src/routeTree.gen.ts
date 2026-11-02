@@ -34,6 +34,7 @@ import { Route as CrmRouteImport } from './routes/crm'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as EncaminharRouteImport } from './routes/encaminhar'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as RhRouteImport } from './routes/rh'
 import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as HorariosMedicacoesRouteImport } from './routes/horarios-medicacoes'
@@ -187,6 +188,11 @@ const CurvaRoute = CurvaRouteImport.update({
 const EncaminharRoute = EncaminharRouteImport.update({
   id: '/encaminhar',
   path: '/encaminhar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RhRoute = RhRouteImport.update({
+  id: '/rh',
+  path: '/rh',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -390,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/encaminhar': typeof EncaminharRoute
+  '/rh': typeof RhRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
@@ -452,6 +459,7 @@ export interface FileRoutesByTo {
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/encaminhar': typeof EncaminharRoute
+  '/rh': typeof RhRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
@@ -515,6 +523,7 @@ export interface FileRoutesById {
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/encaminhar': typeof EncaminharRoute
+  '/rh': typeof RhRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/curva'
     | '/encaminhar'
+    | '/rh'
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
@@ -640,6 +650,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/curva'
     | '/encaminhar'
+    | '/rh'
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
@@ -701,6 +712,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/curva'
     | '/encaminhar'
+    | '/rh'
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
@@ -966,6 +978,13 @@ declare module '@tanstack/react-router' {
       path: '/encaminhar'
       fullPath: '/encaminhar'
       preLoaderRoute: typeof EncaminharRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rh': {
+      id: '/rh'
+      path: '/rh'
+      fullPath: '/rh'
+      preLoaderRoute: typeof RhRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -1241,6 +1260,7 @@ const rootRouteChildren: RootRouteChildren = {
   CrmRoute: CrmRoute,
   CurvaRoute: CurvaRoute,
   EncaminharRoute: EncaminharRoute,
+  RhRoute: RhRoute,
   EstoqueRoute: EstoqueRoute,
   FilaEsperaRoute: FilaEsperaRoute,
   FinanceiroRoute: FinanceiroRoute,
