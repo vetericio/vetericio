@@ -376,13 +376,15 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
         </div>
       </header>
 
-      <nav className="sticky top-0 z-30 mb-5 flex gap-1 overflow-x-auto rounded-xl border bg-card/95 p-1 shadow-sm backdrop-blur-md">
-        {abasPermitidas.map(([id, nome]) => (
-          <button key={id} onClick={() => setAba(id)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${aba === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-            {nome}
-          </button>
-        ))}
-      </nav>
+      {area !== "rh" && (
+        <nav className="sticky top-0 z-30 mb-5 flex gap-1 overflow-x-auto rounded-xl border bg-card/95 p-1 shadow-sm backdrop-blur-md">
+          {abasPermitidas.map(([id, nome]) => (
+            <button key={id} onClick={() => setAba(id)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${aba === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+              {nome}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {abasPermitidas.length === 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Seu usuário não possui permissões para esta área.</div>}
 
