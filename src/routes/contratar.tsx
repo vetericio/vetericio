@@ -29,6 +29,12 @@ const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica"]);
 const obterOperacoes = (dados: Dados) => dados.tipo_operacao === "misto" ? (dados.operacoes_ativas || "").split(",").filter(valor => OPERACOES_BASE.some(tipo => tipo.valor === valor)) : [dados.tipo_operacao];
 const exigeCrmv = (dados: Dados) => obterOperacoes(dados).some(tipo => TIPOS_COM_ATENDIMENTO_VETERINARIO.has(tipo));
 
+const PLANOS_CONTRATACAO = {
+  essencial: { codigo: "essencial", nome: "Essencial", usuarios_inclusos: 1, preco_mensal: "R$ 49,90", preco_anual: "R$ 499,00" },
+  "plus-clinica": { codigo: "plus-clinica", nome: "Plus (Clínica)", usuarios_inclusos: 3, preco_mensal: "R$ 99,90", preco_anual: "R$ 999,00" },
+  "master-equipe": { codigo: "master-equipe", nome: "Master (Equipe)", usuarios_inclusos: 5, preco_mensal: "R$ 199,90", preco_anual: "R$ 1.999,00" },
+} as const;
+
 const TEXTO_PADRAO = {
   voltar_planos: "Voltar aos planos",
   titulo_contratacao: "Contratação da Oricse",
@@ -119,7 +125,8 @@ function brl(valor: number) {
 
 function Contratar() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const plano = params.get("plano") || "essencial";
+  const planoParam = params.get("plano") || "essencial";
+  const plano = planoParam in PLANOS_CONTRATACAO || planoParam === "teste-gratis" ? planoParam : ({ "plus (clínica)": "plus-clinica", "master (equipe)": "master-equipe" } as Record<string,string>)[planoParam.toLowerCase()] || planoParam;
   const ehTesteGratis = plano === "teste-gratis";
   const ciclo = ehTesteGratis ? "teste" : (params.get("ciclo") === "anual" ? "anual" : "mensal");
   const [etapa, setEtapa] = useState(1);
@@ -133,7 +140,7 @@ function Contratar() {
     return () => document.removeEventListener("pointerdown", fecharAoClicarFora);
   }, []);
   const [dados, setDados] = useState<Dados>(() => { try { return {...VAZIO,...JSON.parse(oricseStorage.getItem("oricse-contratacao") || "{}")}; } catch { return VAZIO; } });
-  const [configPlano, setConfigPlano] = useState<any>(null);
+  const [configPlano, setConfigPlano] = useState<any>(() => PLANOS_CONTRATACAO[plano as keyof typeof PLANOS_CONTRATACAO] || null);
   const [texto, setTexto] = useState<any>(TEXTO_PADRAO);
   const [termos, setTermos] = useState(false);
   const [privacidade, setPrivacidade] = useState(false);
@@ -160,6 +167,7 @@ function Contratar() {
     })();
   }, [plano, ehTesteGratis]);
 
+  const planoConhecido = ehTesteGratis || plano in PLANOS_CONTRATACAO;
   const nomePlano = useMemo(() => configPlano?.nome || plano.charAt(0).toUpperCase()+plano.slice(1), [configPlano, plano]);
   const salvarLocal = (novo: Dados) => { setDados(novo); oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo)); };
 
@@ -238,6 +246,7 @@ function Contratar() {
   }
 
   async function continuarPagamento() {
+    if (!planoConhecido || (!ehTesteGratis && (!configPlano || valorBase <= 0))) { toast.error("Não foi possível validar o valor deste plano. Volte à página de planos."); return; }
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
     setEnviando(true);
     const payload = { ...dados, operacoes_selecionadas: obterOperacoes(dados), plano_codigo: plano, ciclo, quantidade_usuarios: quantidadeUsuarios, perfis_inclusos: perfisIncluidos, perfis_extras: perfisExtras, adicional_perfis_mensal: adicionalMensal, adicional_perfis_ciclo: adicionalCiclo, valor_base: valorBase, valor_total: valorTotal, aceitou_termos: true, aceitou_privacidade: true };
