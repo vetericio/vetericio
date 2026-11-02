@@ -16,6 +16,131 @@ const VAZIO: Dados = {
   observacoes: "",
 };
 
+
+const TIPOS_OPERACAO = [
+  {
+    "valor": "clinica",
+    "nome": "Clínica veterinária"
+  },
+  {
+    "valor": "hospital",
+    "nome": "Hospital veterinário (24 horas)"
+  },
+  {
+    "valor": "consultorio",
+    "nome": "Consultório veterinário"
+  },
+  {
+    "valor": "domicilio",
+    "nome": "Veterinário em domicílio"
+  },
+  {
+    "valor": "movel",
+    "nome": "Unidade veterinária móvel"
+  },
+  {
+    "valor": "especialidades",
+    "nome": "Centro de especialidades veterinárias"
+  },
+  {
+    "valor": "diagnostico",
+    "nome": "Centro de diagnóstico veterinário"
+  },
+  {
+    "valor": "laboratorio",
+    "nome": "Laboratório veterinário"
+  },
+  {
+    "valor": "imagem",
+    "nome": "Centro de diagnóstico por imagem"
+  },
+  {
+    "valor": "reabilitacao",
+    "nome": "Fisioterapia e reabilitação animal"
+  },
+  {
+    "valor": "petshop",
+    "nome": "Pet shop"
+  },
+  {
+    "valor": "banho_tosa",
+    "nome": "Banho e tosa"
+  },
+  {
+    "valor": "banho_tosa_movel",
+    "nome": "Banho e tosa móvel"
+  },
+  {
+    "valor": "hotelzinho",
+    "nome": "Hotelzinho para animais"
+  },
+  {
+    "valor": "creche",
+    "nome": "Creche / daycare para animais"
+  },
+  {
+    "valor": "hospedagem_creche",
+    "nome": "Hotelzinho + creche"
+  },
+  {
+    "valor": "adestramento",
+    "nome": "Adestramento e comportamento animal"
+  },
+  {
+    "valor": "passeio",
+    "nome": "Passeador de cães (dog walker)"
+  },
+  {
+    "valor": "petsitter",
+    "nome": "Pet sitter / cuidados em domicílio"
+  },
+  {
+    "valor": "transporte",
+    "nome": "Táxi pet / transporte de animais"
+  },
+  {
+    "valor": "misto",
+    "nome": "Clínica + pet shop"
+  },
+  {
+    "valor": "clinica_banho_tosa",
+    "nome": "Clínica + banho e tosa"
+  },
+  {
+    "valor": "clinica_hotel",
+    "nome": "Clínica + hotelzinho"
+  },
+  {
+    "valor": "petshop_banho_tosa",
+    "nome": "Pet shop + banho e tosa"
+  },
+  {
+    "valor": "petshop_hotel",
+    "nome": "Pet shop + hotelzinho"
+  },
+  {
+    "valor": "petshop_creche",
+    "nome": "Pet shop + creche"
+  },
+  {
+    "valor": "banho_hotel_creche",
+    "nome": "Banho e tosa + hotelzinho + creche"
+  },
+  {
+    "valor": "centro_pet",
+    "nome": "Centro pet completo (clínica, loja, estética e hospedagem)"
+  },
+  {
+    "valor": "multisservicos",
+    "nome": "Vários serviços / operação personalizada"
+  },
+  {
+    "valor": "outros",
+    "nome": "Outro tipo de operação"
+  }
+] as const;
+const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica","hospital","consultorio","domicilio","movel","especialidades","diagnostico","laboratorio","imagem","reabilitacao","misto","clinica_banho_tosa","clinica_hotel","centro_pet"]);
+
 const TEXTO_PADRAO = {
   voltar_planos: "Voltar aos planos",
   titulo_contratacao: "Contratação da Oricse",
@@ -113,7 +238,7 @@ function Contratar() {
     const obrig1 = ["clinica_nome","clinica_telefone","clinica_email","clinica_cep","clinica_endereco","clinica_numero","clinica_bairro","clinica_cidade","clinica_uf"];
     if (ehTesteGratis) obrig1.push("cnpj");
     const obrig2 = ["responsavel_nome","responsavel_cpf","responsavel_email","responsavel_telefone","responsavel_cep","responsavel_endereco","responsavel_numero","responsavel_bairro","responsavel_cidade","responsavel_uf"];
-    if (dados.tipo_operacao === "clinica" || dados.tipo_operacao === "misto") obrig2.push("responsavel_crmv", "responsavel_crmv_uf");
+    if (TIPOS_COM_ATENDIMENTO_VETERINARIO.has(dados.tipo_operacao)) obrig2.push("responsavel_crmv", "responsavel_crmv_uf");
     const faltando = (etapa===1?obrig1:obrig2).some(k=>!String(dados[k]||"").trim());
     if (faltando) { toast.error("Preencha os campos obrigatórios."); return false; }
     if (etapa===1 && ehTesteGratis) {
@@ -134,16 +259,16 @@ function Contratar() {
     setEtapa(4);
   }
 
-  const crmvObrigatorio = dados.tipo_operacao === "clinica" || dados.tipo_operacao === "misto";
+  const crmvObrigatorio = TIPOS_COM_ATENDIMENTO_VETERINARIO.has(dados.tipo_operacao);
 
   return <main className="min-h-screen bg-background px-4 py-6 sm:px-6"><div className="mx-auto max-w-4xl">
     <Link to="/planos" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><ArrowLeft size={18}/> {texto.voltar_planos}</Link>
     <header className="mt-6 rounded-3xl border bg-card p-6 shadow-sm"><p className="text-sm font-semibold text-primary">Plano {nomePlano} · {ehTesteGratis ? "7 dias grátis" : ciclo === "anual" ? "Anual" : "Mensal"}</p><h1 className="mt-2 text-3xl font-bold">{ehTesteGratis ? "Comece seu teste gratuito" : texto.titulo_contratacao}</h1><p className="mt-2 text-muted-foreground">{ehTesteGratis ? "Use a Oricse por 7 dias sem cobrança. O teste é único por CPF/CNPJ." : texto.subtitulo_contratacao}</p></header>
     <div className="mt-5 flex gap-2">{[1,2,3,4].map(n=><div key={n} className={`h-2 flex-1 rounded-full ${n<=etapa?"bg-primary":"bg-muted"}`}/>)}</div>
 
-    {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold">Tipo de operação *<select value={dados.tipo_operacao} onChange={e=>salvarLocal({...dados,tipo_operacao:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="clinica">Clínica veterinária</option><option value="petshop">Pet shop</option><option value="domicilio">Veterinário em domicílio</option><option value="misto">Clínica + pet shop</option></select></label>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo(ehTesteGratis ? "CPF/CNPJ da empresa" : "CNPJ","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
+    {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold">Tipo de operação *<select value={dados.tipo_operacao} onChange={e=>salvarLocal({...dados,tipo_operacao:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal">{TIPOS_OPERACAO.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.nome}</option>)}</select></label>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo(ehTesteGratis ? "CPF/CNPJ da empresa" : "CNPJ","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
 
-    {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. {texto.etapa2_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}{campo("UF do CRMV","responsavel_crmv_uf",dados,salvarLocal,crmvObrigatorio)}{campo("Telefone","responsavel_telefone",dados,salvarLocal)}{campo("E-mail","responsavel_email",dados,salvarLocal,true,"email")}{campo("CEP","responsavel_cep",dados,salvarLocal)}{campo("Endereço","responsavel_endereco",dados,salvarLocal)}{campo("Número","responsavel_numero",dados,salvarLocal)}{campo("Complemento","responsavel_complemento",dados,salvarLocal,false)}{campo("Bairro","responsavel_bairro",dados,salvarLocal)}{campo("Cidade","responsavel_cidade",dados,salvarLocal)}{campo("UF","responsavel_uf",dados,salvarLocal)}</div>{!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para pet shop e atendimento em domicílio.</p>}</section>}
+    {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. {texto.etapa2_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}{campo("UF do CRMV","responsavel_crmv_uf",dados,salvarLocal,crmvObrigatorio)}{campo("Telefone","responsavel_telefone",dados,salvarLocal)}{campo("E-mail","responsavel_email",dados,salvarLocal,true,"email")}{campo("CEP","responsavel_cep",dados,salvarLocal)}{campo("Endereço","responsavel_endereco",dados,salvarLocal)}{campo("Número","responsavel_numero",dados,salvarLocal)}{campo("Complemento","responsavel_complemento",dados,salvarLocal,false)}{campo("Bairro","responsavel_bairro",dados,salvarLocal)}{campo("Cidade","responsavel_cidade",dados,salvarLocal)}{campo("UF","responsavel_uf",dados,salvarLocal)}</div>{!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para operações sem atendimento clínico veterinário.</p>}</section>}
 
     {etapa===3 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">3. {texto.etapa3_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("@ desejado","slug_desejado",dados,salvarLocal,false)}{campo("Domínio próprio","dominio",dados,salvarLocal,false)}
       {!ehTesteGratis && <div className="sm:col-span-2 rounded-2xl border bg-background p-4"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-semibold">{texto.perfis_titulo}</p><p className="mt-1 text-xs text-muted-foreground">{explicacaoPerfis}</p></div><div className="flex items-center gap-3"><button type="button" onClick={()=>mudarQuantidade(-1)} disabled={quantidadeUsuarios<=1} className="flex h-10 w-10 items-center justify-center rounded-xl border disabled:opacity-40"><Minus size={18}/></button><div className="min-w-12 text-center text-2xl font-bold">{quantidadeUsuarios}</div><button type="button" onClick={()=>mudarQuantidade(1)} className="flex h-10 w-10 items-center justify-center rounded-xl border"><Plus size={18}/></button></div></div>
