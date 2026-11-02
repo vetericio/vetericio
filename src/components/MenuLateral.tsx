@@ -28,6 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 type MenuRoute =
   | "/recepcao"
+  | "/todas-agendas"
   | "/hotelzinho"
   | "/horarios-medicacoes"
   | "/configurar-agenda-online"
@@ -72,14 +73,7 @@ const areas: AreaMenu[] = [
     icone: CalendarCheck,
     itens: [
       { to: "/recepcao", rotulo: "Painel da recepção", permissao: "recepcao.agenda" },
-      { to: "/recepcao", rotulo: "Agenda e fila de espera", permissao: "recepcao.agenda" },
-      {
-        to: "/configurar-agenda-online",
-        rotulo: "Configurar agenda online",
-        permissao: "recepcao.agenda",
-      },
-      { to: "/tutores", rotulo: "Tutores", permissao: "recepcao.cadastros.visualizar" },
-      { to: "/animais", rotulo: "Animais", permissao: "recepcao.cadastros.visualizar" },
+      { to: "/todas-agendas", rotulo: "Todas as agendas", permissao: "recepcao.agenda" },
     ],
   },
   {
