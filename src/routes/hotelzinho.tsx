@@ -14,6 +14,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { toast } from "sonner";
+import { digitarCentavos } from "@/lib/moeda-centavos";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
@@ -715,7 +716,7 @@ function Hotelzinho() {
                       inputMode="decimal"
                       placeholder="0,00"
                       value={formReserva.diaria}
-                      onChange={(e) => setFormReserva({ ...formReserva, diaria: e.target.value })}
+                      onChange={(e) => setFormReserva({ ...formReserva, diaria: digitarCentavos(e.target.value) })}
                       className={campo}
                     />
                   </label>
@@ -899,7 +900,7 @@ function Hotelzinho() {
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="space-y-1 text-sm font-medium">Quantidade<input required type="number" step="0.001" min="0.001" className={campo} value={quantidadeExtra} onChange={e=>setQuantidadeExtra(e.target.value)}/></label>
-                  <label className="space-y-1 text-sm font-medium">Valor unitário (R$)<input required inputMode="decimal" className={campo} value={valorExtra} onChange={e=>setValorExtra(e.target.value)} placeholder="0,00"/></label>
+                  <label className="space-y-1 text-sm font-medium">Valor unitário (R$)<input required inputMode="decimal" className={campo} value={valorExtra} onChange={e=>setValorExtra(digitarCentavos(e.target.value))} placeholder="0,00"/></label>
                 </div>
                 <div className="sm:col-span-2 flex items-center justify-between gap-3"><strong>Total: {reais(Math.round(Number(quantidadeExtra||0)*valorEmCentavos(valorExtra||"0")))}</strong><button disabled={!podeOperar||salvando} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">+ Acrescentar item</button></div>
               </form>
