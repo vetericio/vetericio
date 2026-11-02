@@ -118,7 +118,7 @@ function BanhoTosa(){
  async function registrarPagamento(e:FormEvent){
   e.preventDefault();
   if(!detalhe||!clinicaId||salvando)return;
-  const total=detalhe.valor_centavos+extras.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+Math.round(x.quantidade*x.valor_unitario_centavos),0);
+  const total=detalhe.valor_centavos+extras.filter(x=>x.agendamento_id===detalhe.id).reduce((n,x)=>n+Math.round(x.quantidade*x.valor_unitario_centavos),0);
   const pago=pagamentos.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0);
   const valor=centavosDoCampo(valorPagamento);
   if(valor<=0||valor>total-pago)return toast.error("Informe um valor maior que zero e até o saldo em aberto.");
@@ -159,8 +159,8 @@ function BanhoTosa(){
        <input aria-label="Valor em reais" inputMode="numeric" placeholder="0,00" className={campo} value={extraPreco} onChange={e=>setExtraPreco(digitarCentavos(e.target.value))}/>
        <button disabled={!podeOperar} className="rounded-xl border px-3 py-2 sm:col-span-4">+ Adicionar à ficha</button>
       </form>
-      <div className="mt-3 space-y-1">{extras.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).map(x=><div key={x.id} className="flex justify-between gap-3 rounded-lg bg-secondary/40 p-2 text-sm"><span>{x.quantidade} × {x.descricao}</span><strong>{dinheiro(Math.round(x.quantidade*x.valor_unitario_centavos))}</strong></div>)}</div>
-      <p className="mt-2 font-bold">Total do atendimento: {dinheiro(detalhe.valor_centavos+extras.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((t,x)=>t+Math.round(x.quantidade*x.valor_unitario_centavos),0))}</p>
+      <div className="mt-3 space-y-1">{extras.filter(x=>x.agendamento_id===detalhe.id).map(x=><div key={x.id} className="flex justify-between gap-3 rounded-lg bg-secondary/40 p-2 text-sm"><span>{x.quantidade} × {x.descricao}</span><strong>{dinheiro(Math.round(x.quantidade*x.valor_unitario_centavos))}</strong></div>)}</div>
+      <p className="mt-2 font-bold">Total do atendimento: {dinheiro(detalhe.valor_centavos+extras.filter(x=>x.agendamento_id===detalhe.id).reduce((t,x)=>t+Math.round(x.quantidade*x.valor_unitario_centavos),0))}</p>
       <p className="text-xs text-muted-foreground">Cobrança prevista; não equivale a pagamento recebido.</p>
       <p className="mt-2 text-sm font-semibold">Recebido: {dinheiro(pagamentos.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0))}</p>
       <form onSubmit={registrarPagamento} className="mt-2 flex flex-wrap items-end gap-2">
