@@ -35,6 +35,12 @@ const menu = read("src/components/MenuLateral.tsx");
 const generalAdmin = read("src/routes/admin.tsx");
 const driveDb = read("src/lib/drive-db.functions.ts");
 const driveRpc = read("src/lib/drive-rpc.ts");
+const estadoLegado = read("src/lib/oricse-storage.functions.ts");
+const estadoProtegido = estadoLegado.includes("validarAlteracoesPorPlano(data.accessToken") &&
+  estadoLegado.includes("obterPermissoesUsuario(accessToken, contexto)") &&
+  estadoLegado.includes("lerEstado(data.accessToken, true)") &&
+  estadoLegado.includes("filtrarLeitura &&");
+
 const hasTeamPermissionsPath = menu.includes('to: "/permissoes-equipe"') &&
   read("src/hooks/usePermissoes.ts").includes('"/permissoes-equipe"') &&
   read("src/routes/permissoes-equipe.tsx").includes("UserPermissionsPanel");
@@ -70,6 +76,7 @@ const result = {
     novasPermissoesBloqueadas:newPermissionsDefaultDenied && newActionsDefaultDenied,
     adminLocalEquipe:hasTeamPermissionsPath, escritaClinicaProtegida:hasWritePlanGuards,
     nucleoUnificado:hasSharedPolicy,
+    armazenamentoLegadoProtegido:estadoProtegido,
   },
   observacoes:[
     "Contagem de handlers é estática e aproximada; não equivale a funções completas auditadas.",
