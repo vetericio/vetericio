@@ -183,7 +183,7 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   const visiveis = q.operation === "select" ? await authorizedRows(t, q.table, rows, ctx) : (ctx.admin ? rows : await authorizedRows(t, q.table, rows, ctx));
   const filtros = (lista: any[]) => lista.filter((r) => q.filters.every((f) => passa(r, f)));
   if (q.operation === "select") {
-    let result = filtros(ctx.admin || (!ctx.userId && PUBLIC_READ.has(q.table)) ? rows : await authorizedRows(t, q.table, rows, ctx));
+    let result = filtros(ctx.admin || PUBLIC_READ.has(q.table) ? rows : await authorizedRows(t, q.table, rows, ctx));
     for (const o of q.order.slice().reverse()) result.sort((a, b) => (o.ascending ? 1 : -1) * cmp(a?.[o.column], b?.[o.column]));
     const total = result.length; if (q.range) result = result.slice(q.range[0], q.range[1] + 1); if (q.limit) result = result.slice(0, q.limit); const projected = q.head ? [] : result.map((r) => project(r, q.columns));
     if (q.single === "single") { if (projected.length !== 1) return { data: null, error: { message: projected.length ? "Mais de um registro encontrado." : "Registro não encontrado.", code: "PGRST116" }, count: q.count ? total : null }; return { data: projected[0], error: null, count: q.count ? total : null }; }
