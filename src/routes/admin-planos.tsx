@@ -161,15 +161,53 @@ function AdminPlanos() {
     void carregar();
   }, []);
 
+  // Une módulos cadastrados às operações reais utilizadas pelos cargos.
+  const catalogo = useMemo<ItemCatalogo[]>(() => {
+    const codigos = new Set(funcionalidades.map((f) => f.codigo));
+    const modulos: ItemCatalogo[] = funcionalidades
+      .filter((f) => !f.codigo.startsWith("acao."))
+      .map((f) => ({ ...f, tipo: "modulo", descricao: "Acesso geral ao módulo.", pai: null, catalogada: true }));
+    const acoes: ItemCatalogo[] = permissoesCatalogadas.map((p) => ({
+      codigo: "acao." + p.codigo, nome: p.nome, grupo: p.grupo,
+      ordem: p.ordem * 10 + 1, descricao: p.descricao,
+      pai: p.funcionalidade_codigo, tipo: "acao",
+      catalogada: codigos.has("acao." + p.codigo),
+    }));
+    return [...modulos, ...acoes].sort((a, b) => a.grupo.localeCompare(b.grupo, "pt-BR") || a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [funcionalidades, permissoesCatalogadas]);
+
+  function valorPlano(planoId: string, item: ItemCatalogo): boolean {
+    const linha = matriz[planoId];
+    if (Object.prototype.hasOwnProperty.call(linha || {}, item.codigo)) return Boolean(linha?.[item.codigo]);
+    // Regras anteriores continuam valendo até decisão expressa do administrador.
+    return item.tipo === "acao" ? (!item.pai || Boolean(linha?.[item.pai])) : false;
+  }
+
+  const visiveis = useMemo(() => {
+    const texto = busca.trim().toLocaleLowerCase("pt-BR");
+    return catalogo.filter((f) =>
+      (grupoFiltro === "todos" || f.grupo === grupoFiltro)
+      && (!apenasPendentes || !f.catalogada || planos.some((p) => matriz[p.id]?.[f.codigo] === undefined))
+      && (!apenasDiferencas || new Set(planos.map((p) => {
+        const linha = matriz[p.id] || {};
+        return f.codigo in linha ? Boolean(linha[f.codigo]) : f.tipo === "acao" ? (!f.pai || Boolean(linha[f.pai])) : false;
+      })).size > 1)
+      && (!texto || [f.nome, f.descricao, f.codigo, f.grupo].some((v) => v.toLocaleLowerCase("pt-BR").includes(texto)))
+    );
+  }, [catalogo, busca, grupoFiltro, apenasPendentes, apenasDiferencas, planos, matriz]);
   const grupos = useMemo(() => {
-    const mapa = new Map<string, Funcionalidade[]>();
-    for (const item of funcionalidades) {
+    const mapa = new Map<string, ItemCatalogo[]>();
+    for (const item of visiveis) {
       const lista = mapa.get(item.grupo) || [];
       lista.push(item);
       mapa.set(item.grupo, lista);
     }
     return [...mapa.entries()];
-  }, [funcionalidades]);
+  }, [visiveis]);
+
+  const chavesPendentes = Object.keys(alteracoesPendentes);
+  const quantidadePendentes = catalogo.filter((f) => !f.catalogada
+    || planos.some((p) => matriz[p.id]?.[f.codigo] === undefined)).length;
 
   const clinicaAtual = clinicas.find((c) => c.id === clinicaSelecionada) || null;
 
@@ -182,6 +220,66 @@ function AdminPlanos() {
       ...atual,
       [planoId]: { ...(atual[planoId] || {}), [codigo]: permitido },
     }));
+    setAlteracoesPendentes((atual) => ({ ...atual, [planoId + ":" + codigo]: true }));
+  }
+
+  function alterarGrupo(planoId: string, itens: ItemCatalogo[], permitir: boolean) {
+    if (!window.confirm((permitir ? "Liberar" : "Bloquear") + " " + itens.length + " recursos deste grupo no plano selecionado?")) return;
+    for (const item of itens) alterarFuncionalidade(planoId, item.codigo, permitir);
+  }
+
+  async function salvarMatriz() {
+    if (!chavesPendentes.length) return void toast.info("Nenhuma alteração de acesso pendente.");
+    setSalvando("matriz");
+    try {
+      const mudancas = catalogo.flatMap((item) => planos.filter((p) => alteracoesPendentes[p.id + ":" + item.codigo])
+        .map((p) => ({ plano_id: p.id, funcionalidade_codigo: item.codigo, permitido: valorPlano(p.id, item) })));
+      if (mudancas.length !== chavesPendentes.length) throw new Error("O catálogo mudou. Atualize antes de salvar.");
+      const novasAcoes = catalogo.filter((f) => !f.catalogada && mudancas.some((m) => m.funcionalidade_codigo === f.codigo));
+      if (novasAcoes.length) {
+        const { error } = await (supabase as any).from("oricse_funcionalidades")
+          .upsert(novasAcoes.map((f) => ({ codigo: f.codigo, nome: f.nome, grupo: f.grupo, ordem: f.ordem, ativo: true })), { onConflict: "codigo" });
+        if (error) throw error;
+      }
+      const { error } = await (supabase as any).from("oricse_plano_funcionalidades")
+        .upsert(mudancas, { onConflict: "plano_id,funcionalidade_codigo" });
+      if (error) throw error;
+      const { error: auditoriaError } = await (supabase as any).from("oricse_planos_auditoria").insert({
+        id: crypto.randomUUID(), usuario_id: usuarioAtual, data: new Date().toISOString(),
+        tipo: "matriz", alteracoes: mudancas.map(({ plano_id, funcionalidade_codigo, permitido }) => ({
+          plano_id, codigo: funcionalidade_codigo, permitido,
+        })),
+      });
+      if (auditoriaError) toast.warning("Permissões salvas, mas o histórico não pôde ser registrado.");
+      else toast.success(mudancas.length + " alterações de planos salvas.");
+      await carregar();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao salvar os controles de acesso.");
+    } finally { setSalvando(null); }
+  }
+
+  async function criarPlano() {
+    const nome = novoPlanoNome.trim();
+    const codigo = novoPlanoCodigo.trim().toLowerCase();
+    if (nome.length < 3 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(codigo)) {
+      return void toast.error("Informe um nome e um código válido (letras, números e hífens).");
+    }
+    if (planos.some((p) => p.codigo === codigo)) return void toast.error("Já existe um plano com esse código.");
+    setSalvando("novo-plano");
+    try {
+      const { error } = await (supabase as any).from("oricse_planos").insert({
+        id: crypto.randomUUID(), nome, codigo, ativo: false, ordem: planos.length + 1,
+        preco: "", preco_mensal: "", preco_anual: "", publico_alvo: "",
+        descricao: "", itens: [], usuarios_inclusos: 1, dominio_incluso: false,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setNovoPlanoAberto(false); setNovoPlanoNome(""); setNovoPlanoCodigo("");
+      toast.success("Plano criado inativo. Configure os acessos antes de ativá-lo.");
+      await carregar();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar o plano.");
+    } finally { setSalvando(null); }
   }
 
   async function salvarPlano(plano: Plano) {
@@ -205,16 +303,7 @@ function AdminPlanos() {
         .eq("id", plano.id);
       if (error) throw error;
 
-      const dados = funcionalidades.map((f) => ({
-        plano_id: plano.id,
-        funcionalidade_codigo: f.codigo,
-        permitido: Boolean(matriz[plano.id]?.[f.codigo]),
-      }));
-      const { error: erroMatriz } = await (supabase as any)
-        .from("oricse_plano_funcionalidades")
-        .upsert(dados, { onConflict: "plano_id,funcionalidade_codigo" });
-      if (erroMatriz) throw erroMatriz;
-      toast.success(`${plano.nome} salvo com a matriz de acessos.`);
+      toast.success(`${plano.nome} salvo. Permissões são publicadas separadamente na matriz central.`);
       await carregar();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o plano.");
