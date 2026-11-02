@@ -1,15 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-export const Route = createFileRoute("/termos-de-uso")({
-  head: () => ({ meta: [{ title: "Termos de Serviço | Oricse" }] }),
-  component: TermosDeUso,
-});
-
-function TermosDeUso() {
-  return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-10">
-      <h1 className="text-3xl font-bold">Termos de Serviço</h1>
-      <p className="mt-4 text-muted-foreground">Conteúdo em elaboração.</p>
-    </main>
-  );
-}
+import { createFileRoute, Link } from "@tanstack/react-router";
+export const Route = createFileRoute("/termos-de-uso")({ component: TermosDeUso });
+const SECOES = [["Objeto","O ORICSE é uma plataforma de gestão de clínicas e hospitais veterinários, atendimentos domiciliares, hotelzinhos e pet shops com banho e tosa. Estes termos regulam acesso e uso do sistema."],["Cadastro e acesso","O contratante deve fornecer informações verdadeiras, proteger credenciais e administrar permissões dos usuários. Cada estabelecimento responde pelas atividades de sua equipe."],["Responsabilidade profissional","O sistema apoia registros e operações, mas não substitui o julgamento do médico-veterinário, obrigações perante o CRMV, consentimentos profissionais ou legislação aplicável."],["Registros e dados","O estabelecimento responde pela licitude, qualidade, finalidade e acesso dos dados de tutores, funcionários e atendimentos inseridos na plataforma. É proibido acessar registros sem autorização."],["Planos e pagamentos","Preços, período, recursos e limites de usuários são informados durante a contratação. A ativação de planos pagos depende da confirmação de pagamento. Renovações automáticas exigirão informação e autorização específicas."],["Teste, cancelamento e exportação","Testes gratuitos seguem as regras exibidas na contratação. Solicitações de cancelamento e tratamento de dados após encerramento serão avaliadas conforme contrato, legislação e obrigações de retenção."],["Fornecedores externos","O ORICSE pode utilizar serviços de processamento de pagamentos, armazenamento, hospedagem e comunicação, sujeitos à disponibilidade e às respectivas condições."],["Segurança e disponibilidade","Adotamos medidas técnicas e organizacionais de proteção e correção de falhas, sem garantia de funcionamento ininterrupto. Usuários devem reportar incidentes percebidos."],["Uso indevido","É vedada fraude, envio não autorizado de publicidade, invasão, distribuição de malware, manipulação de cobranças ou violação de direitos de terceiros."],["Atualizações e suporte","Mudanças relevantes serão comunicadas. O atendimento ocorre pelos canais oficiais divulgados no ORICSE. Antes do lançamento comercial, este documento deverá ser complementado com a identificação e contato empresarial e revisado juridicamente."]];
+function TermosDeUso() { return <main className="min-h-screen bg-background px-4 py-8"><article className="mx-auto max-w-3xl rounded-3xl border bg-card p-6 shadow-sm sm:p-10"><Link to="/contratar" className="text-primary underline">Voltar à contratação</Link><h1 className="mt-6 text-3xl font-bold">Termos de Uso — ORICSE</h1><p className="mt-2 text-sm text-muted-foreground">Versão preliminar · 02/11/2026 · Revisão jurídica necessária antes do lançamento comercial.</p><div className="mt-8 space-y-7">{SECOES.map(([titulo,descricao])=><section key={titulo}><h2 className="text-lg font-bold">{titulo}</h2><p className="mt-2 leading-7 text-muted-foreground">{descricao}</p></section>)}</div></article></main>; }
