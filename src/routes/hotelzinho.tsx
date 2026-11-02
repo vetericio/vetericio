@@ -521,18 +521,12 @@ function Hotelzinho() {
         </div>
       )}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6">
+      <div className="space-y-5">
         <nav
           aria-label="Seções do Hotelzinho"
-          className="rounded-2xl border border-border bg-card p-3 shadow-sm lg:sticky lg:top-4"
+          className="rounded-2xl border border-border bg-card p-2 shadow-sm"
         >
-          <div className="mb-2 flex items-center justify-between px-2 py-1">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Hotelzinho
-            </h2>
-            <span className="text-xs tabular-nums text-muted-foreground">08</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-1">
+          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Navegação do hotelzinho">
             {ABAS.map((item) => {
               const Icone = item.icone;
               const ativa = aba === item.id;
@@ -542,7 +536,7 @@ function Hotelzinho() {
                   type="button"
                   aria-current={ativa ? "page" : undefined}
                   onClick={() => setAba(item.id)}
-                  className={`flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${ativa ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"}`}
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${ativa ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"}`}
                 >
                   <Icone className="h-4 w-4 shrink-0" />
                   <span className="leading-tight">{item.nome}</span>
