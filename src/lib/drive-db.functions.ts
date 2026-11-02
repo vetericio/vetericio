@@ -7,7 +7,7 @@ import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.serve
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
 const PUBLIC_READ = new Set(["oricse_planos", "oricse_plano_funcionalidades", "oricse_config", "oricse_rotas_personalizadas", "clinicas"]);
 const CATALOG_READ = new Set(["oricse_funcionalidades", "oricse_permissoes"]);
-const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_planos_auditoria", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_clinica_funcionalidade_excecoes", "oricse_clinica_autorizacoes", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
+const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_planos_auditoria", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_permissoes_papel", "oricse_clinica_funcionalidade_excecoes", "oricse_clinica_autorizacoes", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
 const PORTAL_CLINIC_READ = new Set(["oricse_agendas_online"]);
 const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);
 
@@ -125,6 +125,26 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   const ctx = await authContext(q.accessToken);
   if (!ctx.userId && !(q.operation === "select" && PUBLIC_READ.has(q.table))) throw new Error("Autenticação necessária.");
   if (q.operation !== "select" && !ctx.admin && GLOBAL_ADMIN_ONLY.has(q.table)) throw new Error("Apenas a administração da plataforma pode alterar estes dados.");
+  // Atribuir permissões individuais requer gestão de equipe. Um funcionário
+  // comum não pode usar a API do Drive para elevar o próprio nível de acesso.
+  if (q.operation !== "select" && !ctx.admin && q.table === "oricse_permissoes_usuario") {
+    if (!ctx.userId) throw new Error("Sessão obrigatória para gerenciar permissões.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: memberships, error: membershipError } = await supabaseAdmin
+      .from("clinica_usuarios").select("clinica_id,papel,ativo").eq("user_id",ctx.userId).eq("ativo",true);
+    if (membershipError) throw new Error("Não foi possível validar a administração da clínica.");
+    const gestores = new Set((memberships || [])
+      .filter((v: any) => ["rt","responsavel","admin_clinica"].includes(String(v.papel)))
+      .map((v: any) => String(v.clinica_id)));
+    const valores = Array.isArray(q.payload) ? q.payload : q.payload ? [q.payload] : [];
+    const clinicasAlvo = valores.length
+      ? valores.map((v: any) => String(v.clinica_id || ""))
+      : q.filters.filter((f) => f.kind === "eq" && f.column === "clinica_id").map((f) => String(f.value));
+    if (!clinicasAlvo.length || clinicasAlvo.some((cid) => !gestores.has(cid))) {
+      throw new Error("Apenas o RT ou administrador autorizado pode alterar permissões nesta clínica.");
+    }
+  }
+
   if (q.operation !== "select" && !ctx.admin && !ctx.clinicas.length && ctx.portal.length && !PORTAL_DIRECT_WRITE.has(q.table)) throw new Error("O Portal do Tutor não pode alterar esta tabela diretamente.");
   if (q.operation !== "select" && !ctx.admin && !ctx.clinicas.length && ctx.portal.length) {
     if (q.table === "tutores" && q.operation !== "update") throw new Error("O Portal do Tutor pode apenas atualizar o próprio cadastro.");
