@@ -56,6 +56,7 @@ type EventoCrm = {
   status: StatusCrm;
   origem: string;
   enviado_em?: string | null;
+  campanha_id?: string | null;
   fonteDados?: "drive" | "banco";
 };
 
@@ -276,16 +277,29 @@ function Crm() {
 
   async function carregarEventos(id = clinicaId) {
     if (!id) return;
-    const [drive, banco] = await Promise.all([
+    const [drive, banco, campanhasResult] = await Promise.all([
       (supabase as any).from("oricse_crm_eventos").select("*").eq("clinica_id", id).order("agendado_para", { ascending: true }),
       (supabaseBanco as any).from("oricse_crm_eventos").select("*").eq("clinica_id", id).order("agendado_para", { ascending: true }),
+      (supabaseBanco as any).from("oricse_crm_campanhas").select("id,status,agendada_para").eq("clinica_id", id),
     ]);
     if (drive.error) throw drive.error;
     if (banco.error) throw banco.error;
+    if (campanhasResult.error) throw campanhasResult.error;
+    const campanhaPorId = new Map<string, { status?: string; agendada_para?: string | null }>(
+      (campanhasResult.data || []).map((campanha: { id: string; status?: string; agendada_para?: string | null }) => [campanha.id, campanha]),
+    );
     const unificados = new Map<string, EventoCrm>();
     ((drive.data || []) as EventoCrm[]).forEach((evento) => unificados.set(evento.id, { ...evento, fonteDados: "drive" }));
     ((banco.data || []) as EventoCrm[]).forEach((evento) => unificados.set(evento.id, { ...evento, fonteDados: "banco" }));
-    setEventos([...unificados.values()].sort((a, b) => new Date(a.agendado_para).getTime() - new Date(b.agendado_para).getTime()));
+    const agora = Date.now();
+    const visiveis = [...unificados.values()].filter((evento) => {
+      if (!evento.campanha_id) return true;
+      const campanha = campanhaPorId.get(evento.campanha_id);
+      if (!campanha) return true;
+      if (campanha.status === "pausada" || campanha.status === "encerrada") return false;
+      return !(campanha.status === "agendada" && campanha.agendada_para && new Date(campanha.agendada_para).getTime() > agora);
+    });
+    setEventos(visiveis.sort((a, b) => new Date(a.agendado_para).getTime() - new Date(b.agendado_para).getTime()));
   }
 
   function modelo(tipo: TipoCrm, lista = modelos) {
