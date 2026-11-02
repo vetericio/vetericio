@@ -59,26 +59,11 @@ function campo(label: string, nome: string, dados: Dados, setDados: (d: Dados)=>
 }
 
 async function consultarCepComFallback(cep: string, signal: AbortSignal) {
-  const fontes = [
-    { url: `https://brasilapi.com.br/api/cep/v1/${cep}`, brasil: true },
-    { url: `https://viacep.com.br/ws/${cep}/json/`, brasil: false },
-  ];
-  for (const fonte of fontes) {
-    if (signal.aborted) throw new Error("Cancelado");
-    try {
-      const resposta = await fetch(fonte.url, { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) });
-      if (!resposta.ok) continue;
-      const dado = await resposta.json();
-      if (dado.erro) continue;
-      const resultado = fonte.brasil
-        ? { logradouro: dado.street, bairro: dado.neighborhood, localidade: dado.city, uf: dado.state }
-        : dado;
-      if (resultado.localidade && resultado.uf) return resultado;
-    } catch (erro) {
-      if (signal.aborted) throw erro;
-    }
-  }
-  throw new Error("CEP não localizado nas fontes disponíveis");
+  const resposta = await fetch(`/api/cep/${cep}`, { signal });
+  if (!resposta.ok) throw new Error("Falha na consulta de CEP");
+  const endereco = await resposta.json();
+  if (!endereco.localidade || !endereco.uf) throw new Error("CEP não encontrado");
+  return endereco;
 }
 
 function parseBRL(valor?: string) {
