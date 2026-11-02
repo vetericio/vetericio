@@ -159,6 +159,20 @@ function PerfilClinica() {
 
       <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Permissões da equipe</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ajuste os acessos de funcionários sem ultrapassar o plano contratado.
+            </p>
+          </div>
+          <Link to="/permissoes-equipe" className="inline-flex min-h-11 items-center rounded-xl border px-4 text-sm font-bold">
+            Gerenciar acessos
+          </Link>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <BadgeCheck className="mt-0.5 text-primary" size={21} />
             <div>
