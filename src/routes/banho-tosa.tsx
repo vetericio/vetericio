@@ -10,8 +10,10 @@ export const Route = createFileRoute("/banho-tosa")({ component: BanhoTosa });
 type Tutor = {id:string;nome:string};
 type Animal = {id:string;nome:string;tutor_id:string;especie:string};
 type Servico = {id:string;nome:string;duracao_min:number;preco_centavos:number;ativo:boolean};
-type Atendimento = {id:string;animal_id:string;tutor_id:string;servico_id:string|null;servico_nome:string;inicio:string;fim:string;status:string;profissional:string;observacoes:string;valor_centavos:number;pago:boolean};
+type Atendimento = {id:string;animal_id:string;tutor_id:string;servico_id:string|null;servico_nome:string;inicio:string;fim:string;status:string;profissional:string;observacoes:string;valor_centavos:number;pago:boolean;avaliacao_entrada:string;restricoes:string;checklist:Record<string,boolean>;entrada_em:string|null;inicio_real_em:string|null;pronto_em:string|null;entregue_em:string|null;observacoes_saida:string};
+type Extra = {id:string;agendamento_id:string;descricao:string;quantidade:number;valor_unitario_centavos:number};
 const etapas = ["agendado","recebido","em_execucao","pronto","entregue"];
+const verificacoes = ["Conferência da pele e pelagem","Conferência de olhos e ouvidos","Banho realizado","Secagem concluída","Escovação final","Perfume/acessórios autorizados","Tutor avisado","Conferência antes da entrega"];
 const abas = [{id:"painel",nome:"Painel"},{id:"agenda",nome:"Agenda"},{id:"novo",nome:"Novo agendamento"},{id:"fila",nome:"Fila de serviços"},{id:"servicos",nome:"Serviços e preços"},{id:"historico",nome:"Histórico"}] as const;
 type Aba = typeof abas[number]["id"];
 const dinheiro=(c:number)=> (c/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -30,6 +32,10 @@ function BanhoTosa(){
  const [erro,setErro]=useState("");
  const [tutores,setTutores]=useState<Tutor[]>([]),[animais,setAnimais]=useState<Animal[]>([]);
  const [servicos,setServicos]=useState<Servico[]>([]),[atendimentos,setAtendimentos]=useState<Atendimento[]>([]);
+ const [extras,setExtras]=useState<Extra[]>([]);
+ const [detalheId,setDetalheId]=useState("");
+ const [avaliacao,setAvaliacao]=useState(""),[restricoes,setRestricoes]=useState(""),[saida,setSaida]=useState("");
+ const [extraNome,setExtraNome]=useState(""),[extraQuantidade,setExtraQuantidade]=useState("1"),[extraPreco,setExtraPreco]=useState("");
  const [data,setData]=useState(hoje);
  const [animalId,setAnimalId]=useState(""),[servicoId,setServicoId]=useState(""),[inicio,setInicio]=useState(isoLocal),[profissional,setProfissional]=useState(""),[obs,setObs]=useState("");
  const [nomeServico,setNomeServico]=useState(""),[duracao,setDuracao]=useState("60"),[preco,setPreco]=useState("");
@@ -41,15 +47,16 @@ function BanhoTosa(){
   if(!clinicaId)return;
   setCarregando(true);setErro("");
   try{
-   const [ts,as,ss,ag]=await Promise.all([
+   const [ts,as,ss,ag,ex]=await Promise.all([
     db.from("tutores").select("id,nome").eq("clinica_id",clinicaId).order("nome"),
     db.from("oricse_animais").select("id,nome,tutor_id,especie").eq("clinica_id",clinicaId).order("nome"),
     db.from("oricse_banho_tosa_servicos").select("*").eq("clinica_id",clinicaId).order("nome"),
     db.from("oricse_banho_tosa_agendamentos").select("*").eq("clinica_id",clinicaId).order("inicio",{ascending:false}).limit(500),
+    db.from("oricse_banho_tosa_extras").select("*").eq("clinica_id",clinicaId).limit(1000),
    ]);
-   const falha=[ts,as,ss,ag].find(x=>x.error);
+   const falha=[ts,as,ss,ag,ex].find(x=>x.error);
    if(falha)throw falha.error;
-   setTutores(ts.data||[]);setAnimais(as.data||[]);setServicos(ss.data||[]);setAtendimentos(ag.data||[]);
+   setTutores(ts.data||[]);setAnimais(as.data||[]);setServicos(ss.data||[]);setAtendimentos(ag.data||[]);setExtras(ex.data||[]);
   }catch(e){setErro(e instanceof Error?e.message:"Erro ao carregar dados");}
   finally{setCarregando(false);}
  }
@@ -58,6 +65,7 @@ function BanhoTosa(){
  const doDia=atendimentos.filter(a=>a.inicio.slice(0,10)===data||new Date(a.inicio).toLocaleDateString("en-CA")===data).sort((a,b)=>a.inicio.localeCompare(b.inicio));
  const ativos=atendimentos.filter(a=>!["entregue","cancelado"].includes(a.status));
  const encerrados=atendimentos.filter(a=>["entregue","cancelado"].includes(a.status));
+ const detalhe=atendimentos.find(a=>a.id===detalheId);
  async function agendar(e:FormEvent){
   e.preventDefault();if(!clinicaId||!podeOperar||salvando)return;
   const animal=nomesAnimais.get(animalId),servico=selecionado;
@@ -79,16 +87,33 @@ function BanhoTosa(){
   setNomeServico("");setPreco("");toast.success("Serviço cadastrado.");await carregar();
  }
  async function mudarStatus(item:Atendimento,status:string){
+  if(status==="entregue" && verificacoes.some(v=>!item.checklist?.[v]))return toast.error("Conclua o checklist antes da entrega.");
   if(!podeOperar)return;
-  const {error}=await db.from("oricse_banho_tosa_agendamentos").update({status,atualizado_em:new Date().toISOString()}).eq("id",item.id).eq("clinica_id",clinicaId);
+  const {error}=await db.from("oricse_banho_tosa_agendamentos").update({status,atualizado_em:new Date().toISOString(),...(status==="recebido"?{entrada_em:new Date().toISOString()}:{}),...(status==="em_execucao"?{inicio_real_em:new Date().toISOString()}:{}),...(status==="pronto"?{pronto_em:new Date().toISOString()}:{}),...(status==="entregue"?{entregue_em:new Date().toISOString()}:{} )}).eq("id",item.id).eq("clinica_id",clinicaId);
   if(error)return toast.error(error.message);
   toast.success("Status atualizado.");await carregar();
  }
+ async function salvarFicha(item:Atendimento,campos:Record<string,unknown>){
+  if(!podeOperar||!clinicaId)return;
+  const {error}=await db.from("oricse_banho_tosa_agendamentos").update({...campos,atualizado_em:new Date().toISOString()}).eq("clinica_id",clinicaId).eq("id",item.id);
+  if(error)return toast.error(error.message);
+  toast.success("Ficha atualizada.");await carregar();
+ }
+ async function adicionarExtra(e:FormEvent){
+  e.preventDefault();if(!detalhe||!clinicaId||!podeOperar)return;
+  const quantidade=Number(extraQuantidade.replace(",",".")),centavos=centavosDoCampo(extraPreco);
+  if(!extraNome.trim()||!Number.isFinite(quantidade)||quantidade<=0)return toast.error("Informe produto ou serviço e quantidade válida.");
+  const {error}=await db.from("oricse_banho_tosa_extras").insert({clinica_id:clinicaId,agendamento_id:detalhe.id,descricao:extraNome.trim(),quantidade,valor_unitario_centavos:centavos});
+  if(error)return toast.error(error.message);
+  setExtraNome("");setExtraPreco("");setExtraQuantidade("1");toast.success("Extra registrado na ficha.");await carregar();
+ }
  function registro(a:Atendimento){
   const pet=nomesAnimais.get(a.animal_id);
+  const totalExtras=extras.filter(x=>x.agendamento_id===a.id).reduce((t,x)=>t+Math.round(x.quantidade*x.valor_unitario_centavos),0);
   return <article key={a.id} className={card}>
-   <div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-semibold">{pet?.nome||"Animal"} · {a.servico_nome}</h3><p className="text-sm text-muted-foreground">{nomesTutores.get(a.tutor_id)||"Tutor"} · {dataLocal(a.inicio)} · {a.profissional||"Sem profissional definido"}</p></div><div className="text-right"><strong>{dinheiro(a.valor_centavos)}</strong><p className="text-sm">{a.status.replaceAll("_"," ")}</p></div></div>
+   <div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-semibold">{pet?.nome||"Animal"} · {a.servico_nome}</h3><p className="text-sm text-muted-foreground">{nomesTutores.get(a.tutor_id)||"Tutor"} · {dataLocal(a.inicio)} · {a.profissional||"Sem profissional definido"}</p></div><div className="text-right"><strong>{dinheiro(a.valor_centavos+totalExtras)}</strong><p className="text-sm">{a.status.replaceAll("_"," ")}</p></div></div>
    {a.observacoes&&<p className="mt-2 text-sm">{a.observacoes}</p>}
+   <button type="button" className="mt-2 rounded-lg border px-3 py-2 text-sm font-semibold" onClick={()=>{setDetalheId(a.id);setAvaliacao(a.avaliacao_entrada||"");setRestricoes(a.restricoes||"");setSaida(a.observacoes_saida||"");}}>Abrir ficha completa</button>
    {podeOperar&& !["entregue","cancelado"].includes(a.status)&&<div className="mt-3 flex flex-wrap gap-2">
     {etapas.filter(x=>etapas.indexOf(x)>etapas.indexOf(a.status)).slice(0,1).map(x=><button key={x} className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground" onClick={()=>void mudarStatus(a,x)}>Avançar para {x.replaceAll("_"," ")}</button>)}
     <button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>void mudarStatus(a,"cancelado")}>Cancelar</button>
@@ -98,6 +123,28 @@ function BanhoTosa(){
  if(carregandoPermissoes)return <main className="p-6">Carregando permissões…</main>;
  return <main className="mx-auto max-w-7xl space-y-5 p-4 pb-20 sm:p-6">
   <header className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold text-primary">ORICSE · Petshop</p><h1 className="text-3xl font-bold">Banho e tosa</h1><p className="text-muted-foreground">Agendamentos, atendimento, equipe e serviços</p></div><button onClick={()=>void carregar()} className="rounded-xl border px-4 py-2">Atualizar</button></header>
+  {detalhe&&<section className={card+" space-y-4"} aria-label="Ficha completa do atendimento">
+    <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-bold">Ficha de atendimento · {nomesAnimais.get(detalhe.animal_id)?.nome||"Animal"}</h2><p className="text-sm text-muted-foreground">{detalhe.servico_nome} · {nomesTutores.get(detalhe.tutor_id)} · {dataLocal(detalhe.inicio)}</p></div><button type="button" onClick={()=>setDetalheId("")} className="rounded-lg border px-3 py-2">Fechar ficha</button></div>
+    <div className="grid gap-3 sm:grid-cols-2">
+     <label className="text-sm font-semibold">Avaliação na entrada<textarea className={campo} rows={3} value={avaliacao} onChange={e=>setAvaliacao(e.target.value)} placeholder="Pele, pelagem, comportamento, feridas, nós, parasitas…"/></label>
+     <label className="text-sm font-semibold">Restrições e cuidados especiais<textarea className={campo} rows={3} value={restricoes} onChange={e=>setRestricoes(e.target.value)} placeholder="Sensibilidades, produtos proibidos, sinais de atenção…"/></label>
+    </div>
+    <button type="button" disabled={!podeOperar} onClick={()=>void salvarFicha(detalhe,{avaliacao_entrada:avaliacao,restricoes})} className="rounded-xl bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50">Salvar avaliação</button>
+    <div><h3 className="font-bold">Checklist operacional</h3><div className="mt-2 grid gap-2 sm:grid-cols-2">{verificacoes.map(texto=><label key={texto} className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={Boolean(detalhe.checklist?.[texto])} disabled={!podeOperar} onChange={e=>void salvarFicha(detalhe,{checklist:{...(detalhe.checklist||{}),[texto]:e.target.checked}})}/>{texto}</label>)}</div></div>
+    <div><h3 className="font-bold">Produtos e serviços adicionais</h3>
+      <form onSubmit={adicionarExtra} className="mt-2 grid gap-2 sm:grid-cols-4">
+       <input aria-label="Produto ou serviço extra" required placeholder="Produto ou serviço" className={campo+" sm:col-span-2"} value={extraNome} onChange={e=>setExtraNome(e.target.value)}/>
+       <input aria-label="Quantidade" type="number" step="0.001" min="0.001" required className={campo} value={extraQuantidade} onChange={e=>setExtraQuantidade(e.target.value)}/>
+       <input aria-label="Valor em reais" inputMode="numeric" placeholder="0,00" className={campo} value={extraPreco} onChange={e=>setExtraPreco(digitarCentavos(e.target.value))}/>
+       <button disabled={!podeOperar} className="rounded-xl border px-3 py-2 sm:col-span-4">+ Adicionar à ficha</button>
+      </form>
+      <div className="mt-3 space-y-1">{extras.filter(x=>x.agendamento_id===detalhe.id).map(x=><div key={x.id} className="flex justify-between gap-3 rounded-lg bg-secondary/40 p-2 text-sm"><span>{x.quantidade} × {x.descricao}</span><strong>{dinheiro(Math.round(x.quantidade*x.valor_unitario_centavos))}</strong></div>)}</div>
+      <p className="mt-2 font-bold">Total do atendimento: {dinheiro(detalhe.valor_centavos+extras.filter(x=>x.agendamento_id===detalhe.id).reduce((t,x)=>t+Math.round(x.quantidade*x.valor_unitario_centavos),0))}</p>
+      <p className="text-xs text-muted-foreground">Cobrança prevista; não equivale a pagamento recebido.</p>
+    </div>
+    <label className="block text-sm font-semibold">Observações da entrega<textarea className={campo} value={saida} onChange={e=>setSaida(e.target.value)} placeholder="Orientações ao tutor e observações finais…"/></label>
+    <button type="button" disabled={!podeOperar} onClick={()=>void salvarFicha(detalhe,{observacoes_saida:saida})} className="rounded-xl border px-4 py-2">Salvar observações de saída</button>
+  </section>}
   {erro&&<div role="alert" className="rounded-xl border border-destructive p-4 text-destructive">{erro}</div>}
   {carregando?<p>Carregando registros…</p>:<>
    {aba==="painel"&&<section className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Agendados hoje",doDia.length],["Em atendimento",ativos.filter(x=>x.status==="em_execucao").length],["Prontos",ativos.filter(x=>x.status==="pronto").length],["Serviços cadastrados",servicos.filter(x=>x.ativo).length]].map(([nome,valor])=><div key={String(nome)} className={card}><p className="text-sm text-muted-foreground">{nome}</p><p className="text-3xl font-bold">{valor}</p></div>)}</div><h2 className="font-bold text-xl">Próximos serviços</h2>{ativos.slice(0,10).map(registro)}</section>}
