@@ -182,7 +182,7 @@ function AdminPlanos() {
     if (item.tipo === "acao" && item.pai && !linha?.[item.pai]) return false;
     if (Object.prototype.hasOwnProperty.call(linha || {}, item.codigo)) return Boolean(linha?.[item.codigo]);
     // Permissões preexistentes não são alteradas antes de decisão do administrador.
-    return item.tipo === "acao";
+    return item.tipo === "acao" && item.catalogada;
   }
 
   const visiveis = useMemo(() => {
