@@ -51,8 +51,6 @@ type Tutor = {
 type Animal = { id: string; nome: string; tutorId: string; especie?: string };
 type Responsavel = { id: string; nome: string };
 
-const TUTORES_KEY = "oricse-tutores-v1";
-const ANIMAIS_KEY = "oricse-animais-v1";
 const ORIGENS: OrigemComanda[] = ["Recepção", "Consultório", "Internação"];
 const FORMAS_PAGAMENTO = [
   "Pix",
@@ -63,16 +61,6 @@ const FORMAS_PAGAMENTO = [
   "Boleto",
   "Outro",
 ];
-
-function lerLista<T>(chave: string): T[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const dados: unknown = JSON.parse(oricseStorage.getItem(chave) || "[]");
-    return Array.isArray(dados) ? (dados as T[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 function dinheiro(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -682,7 +670,7 @@ export function Comandas() {
               <select
                 value={animalIdNovo}
                 onChange={(evento) => setAnimalIdNovo(evento.target.value)}
-                disabled={!tutorIdNovo}
+                disabled={!tutorIdNovo || carregandoCadastros}
                 className={`${inputClass} mt-1 disabled:bg-muted/40`}
               >
                 <option value="">
@@ -698,17 +686,13 @@ export function Comandas() {
             </label>
             <button
               type="submit"
-              disabled={carregandoResponsavel || !responsavel.id}
+              disabled={carregandoResponsavel || carregandoCadastros || !!erroCadastros || !responsavel.id}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ReceiptText size={17} /> Criar comanda
             </button>
           </form>
-          {tutores.length === 0 && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Cadastre o tutor e o animal antes de abrir uma comanda.
-            </p>
-          )}
+          {carregandoCadastros ? <p className="mt-3 text-xs text-muted-foreground">Carregando tutores e animais…</p> : erroCadastros ? <p role="alert" className="mt-3 text-xs text-destructive">{erroCadastros}</p> : tutores.length === 0 ? <p className="mt-3 text-xs text-muted-foreground">Nenhum tutor cadastrado nesta clínica.</p> : null}
         </section>
 
         <section className="min-w-0">
