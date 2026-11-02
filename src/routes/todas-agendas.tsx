@@ -86,14 +86,14 @@ function TodasAgendas() {
     if (visao === "dia") return [dia];
     const inicio = new Date(atual);
     if (visao === "semana") {
-      inicio.setDate(atual.getDate() - ((atual.getDay() + 6) % 7));
+      inicio.setDate(atual.getDate() - atual.getDay());
       return Array.from({ length: 7 }, (_, i) => diaLocal(new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i)));
     }
     inicio.setDate(1);
-    inicio.setDate(1 - ((inicio.getDay() + 6) % 7));
+    inicio.setDate(1 - inicio.getDay());
     const ultimo = new Date(atual.getFullYear(), atual.getMonth() + 1, 0);
     const fim = new Date(ultimo);
-    fim.setDate(ultimo.getDate() + (7 - (ultimo.getDay() + 6) % 7) % 7);
+    fim.setDate(ultimo.getDate() + 6 - ultimo.getDay());
     const quantidade = Math.round((Date.UTC(fim.getFullYear(), fim.getMonth(), fim.getDate()) - Date.UTC(inicio.getFullYear(), inicio.getMonth(), inicio.getDate())) / 86400000) + 1;
     return Array.from({ length: quantidade }, (_, i) => diaLocal(new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i)));
   }, [dia, visao]);
@@ -154,8 +154,8 @@ function TodasAgendas() {
       {visao !== "dia" ? <div className="mt-5">
         {carregando ? <p className="py-8 text-sm">Carregando agenda…</p> : erro ? <p role="alert" className="py-8 text-sm text-destructive">{erro}</p> :
           <div className="overflow-x-auto">
-            <div className="grid min-w-[700px] grid-cols-7 gap-2">
-              {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(nome => <div key={nome} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{nome}</div>)}
+            <div className="grid min-w-[840px] grid-cols-7 gap-2.5">
+              {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(nome => <div key={nome} className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">{nome}</div>)}
               {diasVisiveis.map(data => {
                 const lista = estadiasPorDia.get(data) || [];
                 const dt = diaDeIso(data), nomeDia = DIAS[dt.getDay()], nomeFeriado = feriado(data);
@@ -164,19 +164,19 @@ function TodasAgendas() {
                 const limite = visao === "mes" ? 3 : 6;
                 return <button key={data} type="button" onClick={() => {setDia(data);setVisao("dia");}}
                   aria-label={`${dt.getDate()} - ${nomeDia}; ${nomeFeriado || ""}; ${lista.length} hóspedes`}
-                  className={`flex min-h-40 flex-col rounded-2xl border p-2.5 text-left transition hover:border-primary hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${destaque ? "border-rose-200 bg-rose-50/70 dark:bg-rose-950/20" : "bg-card"} ${foraMes ? "opacity-45" : ""} ${data === diaLocal(new Date()) ? "ring-2 ring-primary/40" : ""}`}>
-                  <div className={`w-full border-b pb-2 ${destaque ? "border-rose-200" : "border-border/60"}`}>
-                    <div className={`text-base font-extrabold ${destaque ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{dt.getDate()} <span className="text-[10px] font-bold">{nomeDia}</span></div>
+                  className={`group flex min-h-44 flex-col rounded-xl border p-3 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${destaque ? "border-rose-200/60 bg-rose-50/30 dark:bg-rose-950/10" : "border-border/70 bg-card"} ${foraMes ? "opacity-50" : ""} ${data === diaLocal(new Date()) ? "ring-2 ring-primary/40" : ""}`}>
+                  <div className="w-full border-b border-border/60 pb-2.5">
+                    <div className={`text-lg font-semibold ${destaque ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{dt.getDate()} <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{nomeDia}</span></div>
                     {nomeFeriado && <div className="mt-1 break-words text-[10px] font-semibold text-rose-700 dark:text-rose-300">{nomeFeriado}</div>}
                   </div>
-                  <div className="mt-2 flex w-full items-center justify-between gap-1"><span className="text-[11px] font-medium text-muted-foreground">{lista.length === 1 ? "1 hóspede" : `${lista.length} hóspedes`}</span><span className={`h-2 w-2 shrink-0 rounded-full ${lista.length ? "bg-emerald-500" : "bg-border"}`}/></div>
+                  <div className="mt-3 flex w-full items-center justify-between gap-1"><span className="text-[11px] font-medium text-muted-foreground">{lista.length === 0 ? "Sem hóspedes" : lista.length === 1 ? "1 hóspede" : `${lista.length} hóspedes`}</span>{lista.length > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />}</div>
                   <div className="mt-2 w-full space-y-1.5">{lista.slice(0,limite).map(e => {
                     const animal=animais.find(a=>a.id===e.animal_id);
                     const inicio=new Date(e.chegada_prevista).getTime(), fim=new Date(e.saida_prevista).getTime();
                     const diaInicio=dt.getTime(), diaFim=diaDeIso(mudarDia(data,1)).getTime();
-                    return <div key={e.id} title={`${animal?.nome || "Animal"}: ${dataHora(e.chegada_prevista)} até ${dataHora(e.saida_prevista)}`} className={`overflow-hidden rounded-lg px-2 py-1.5 text-white ${e.status==="hospedado"?"bg-emerald-600":"bg-amber-600"}`}>
-                      <div className="truncate text-[11px] font-semibold">{animal?.nome || "Animal"}</div>
-                      <div className="truncate text-[10px] opacity-90">{inicio>=diaInicio&&inicio<diaFim?`Entrada ${hora(e.chegada_prevista)}`:fim>diaInicio&&fim<=diaFim?`Saída ${hora(e.saida_prevista)}`:"Em hospedagem"}</div>
+                    return <div key={e.id} title={`${animal?.nome || "Animal"}: ${dataHora(e.chegada_prevista)} até ${dataHora(e.saida_prevista)}`} className={`overflow-hidden rounded-lg border px-2.5 py-2 ${e.status==="hospedado"?"border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100":"border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"}`}>
+                      <div className="truncate text-xs font-semibold">{animal?.nome || "Animal"}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]"><span className="rounded border border-current/20 px-1 font-medium">{inicio>=diaInicio&&inicio<diaFim?"Entrada":fim>diaInicio&&fim<=diaFim?"Saída":e.status==="hospedado"?"Hospedado":"Reservado"}</span><span>{inicio>=diaInicio&&inicio<diaFim?hora(e.chegada_prevista):fim>diaInicio&&fim<=diaFim?hora(e.saida_prevista):"No período"}</span></div>
                     </div>;
                   })}{lista.length>limite&&<div className="px-1 text-[10px] font-semibold text-muted-foreground">+{lista.length-limite} hóspedes</div>}</div>
                 </button>;
