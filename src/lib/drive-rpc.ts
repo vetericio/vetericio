@@ -170,23 +170,46 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
     if (!c) return null;
     return { membership: m, clinic: c };
   }
-  async function planCode(c: any) {
-    const plano = PLANOS_PADRAO.find((p) => p.codigo === c?.plano || p.nome === c?.plano);
-    return plano?.codigo || String(c?.plano || "");
+
+  // A matriz salva pelo Admin é a fonte de verdade: listas fixas servem só de
+  // compatibilidade para regras antigas que ainda não foram classificadas.
+  async function matrizEfetiva(clinicaId: string) {
+    const c = await clinic(clinicaId);
+    if (!c || c.status !== "ativa") return (_codigo: string) => false;
+    const [planosRes, regrasRes, excecoesRes] = await Promise.all([
+      fromDrive("oricse_planos").select("id,codigo,nome,ativo"),
+      fromDrive("oricse_plano_funcionalidades").select("plano_id,funcionalidade_codigo,permitido"),
+      fromDrive("oricse_clinica_funcionalidade_excecoes")
+        .select("funcionalidade_codigo,permitido,expira_em").eq("clinica_id",clinicaId),
+    ]);
+    if (planosRes.error || regrasRes.error || excecoesRes.error)
+      throw new Error("Não foi possível verificar o plano desta clínica.");
+    const plano = (planosRes.data || []).find((p: any) =>
+      p.codigo === c.plano || p.nome === c.plano);
+    if (!plano || !plano.ativo) return (_codigo: string) => false;
+    const matriz = new Map<string, boolean>(
+      (regrasRes.data || []).filter((r: any) => r.plano_id === plano.id)
+        .map((r: any) => [String(r.funcionalidade_codigo), Boolean(r.permitido)]),
+    );
+    const excecoes = new Map<string, boolean>(
+      (excecoesRes.data || [])
+        .filter((r: any) => !r.expira_em || new Date(r.expira_em).getTime() > Date.now())
+        .map((r: any) => [String(r.funcionalidade_codigo), Boolean(r.permitido)]),
+    );
+    const regrasAntigas = FUNCIONALIDADES_POR_PLANO[String(plano.codigo)] || [];
+    return (codigo: string) => {
+      if (excecoes.has(codigo)) return excecoes.get(codigo)!;
+      if (matriz.has(codigo)) return matriz.get(codigo)!;
+      // Ações antigas sem regra granular seguem o teto de seu módulo;
+      // qualquer nova ação não classificada permanece bloqueada.
+      if (codigo.startsWith("acao."))
+        return PERMISSOES_PADRAO.some((p) => p.codigo === codigo.slice(5));
+      return regrasAntigas.includes(codigo);
+    };
   }
   async function featureAllowed(clinicaId: string, codigo: string) {
     if (await isPlatformAdmin()) return true;
-    const c = await clinic(clinicaId);
-    if (!c || c.status !== "ativa") return false;
-    const { data: ex } = await fromDrive("oricse_clinica_funcionalidade_excecoes")
-      .select("permitido,expira_em")
-      .eq("clinica_id", clinicaId)
-      .eq("funcionalidade_codigo", codigo)
-      .maybeSingle();
-    if (ex && (!ex.expira_em || new Date(ex.expira_em).getTime() > Date.now()))
-      return Boolean(ex.permitido);
-    const pc = await planCode(c);
-    return Boolean(FUNCIONALIDADES_POR_PLANO[pc]?.includes(codigo));
+    return (await matrizEfetiva(clinicaId))(codigo);
   }
   async function canManagePermissions(clinicaId: string) {
     if (await isPlatformAdmin()) return true;
@@ -223,6 +246,7 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
     const mapa = new Map(
       (overrides || []).map((x: any) => [String(x.permissao_codigo), Boolean(x.permitido)]),
     );
+    const planoPermite = await matrizEfetiva(clinicaId);
     const lista: Array<{
       codigo: string;
       nome: string;
@@ -234,8 +258,8 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
     }> = [];
     for (const p of PERMISSOES_PADRAO) {
       const planoOk = Boolean(
-        !p.funcionalidade_codigo ||
-        (await featureAllowed(clinicaId, String(p.funcionalidade_codigo))),
+        (!p.funcionalidade_codigo || planoPermite(String(p.funcionalidade_codigo)))
+        && planoPermite(`acao.${p.codigo}`)
       );
       const personalizado = mapa.has(p.codigo);
       const permitido = Boolean(
