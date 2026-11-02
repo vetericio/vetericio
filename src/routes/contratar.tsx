@@ -106,6 +106,55 @@ function Contratar() {
   const nomePlano = useMemo(() => configPlano?.nome || plano.charAt(0).toUpperCase()+plano.slice(1), [configPlano, plano]);
   const salvarLocal = (novo: Dados) => { setDados(novo); oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo)); };
 
+  // Consulta automática do CEP para os dois endereços do cadastro.
+  // Atualiza somente se o CEP ainda corresponder à consulta realizada.
+  useEffect(() => {
+    const cep = (dados.clinica_cep || "").replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal });
+        if (!response.ok) throw new Error("CEP indisponível");
+        const endereco = await response.json();
+        if (endereco.erro) { toast.error("CEP não encontrado. Preencha o endereço manualmente."); return; }
+        setDados(atual => {
+          if ((atual.clinica_cep || "").replace(/\D/g, "") !== cep) return atual;
+          const novo = { ...atual, clinica_endereco: endereco.logradouro || atual.clinica_endereco, clinica_bairro: endereco.bairro || atual.clinica_bairro, clinica_cidade: endereco.localidade || atual.clinica_cidade, clinica_uf: endereco.uf || atual.clinica_uf };
+          oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo));
+          return novo;
+        });
+      } catch (erro) {
+        if (!controller.signal.aborted) toast.error("Não foi possível consultar o CEP. Você pode preencher o endereço manualmente.");
+      }
+    }, 400);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [dados.clinica_cep]);
+
+  useEffect(() => {
+    const cep = (dados.responsavel_cep || "").replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal });
+        if (!response.ok) throw new Error("CEP indisponível");
+        const endereco = await response.json();
+        if (endereco.erro) { toast.error("CEP não encontrado. Preencha o endereço manualmente."); return; }
+        setDados(atual => {
+          if ((atual.responsavel_cep || "").replace(/\D/g, "") !== cep) return atual;
+          const novo = { ...atual, responsavel_endereco: endereco.logradouro || atual.responsavel_endereco, responsavel_bairro: endereco.bairro || atual.responsavel_bairro, responsavel_cidade: endereco.localidade || atual.responsavel_cidade, responsavel_uf: endereco.uf || atual.responsavel_uf };
+          oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo));
+          return novo;
+        });
+      } catch (erro) {
+        if (!controller.signal.aborted) toast.error("Não foi possível consultar o CEP. Você pode preencher o endereço manualmente.");
+      }
+    }, 400);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [dados.responsavel_cep]);
+
+
   const perfisIncluidos = Math.max(1, Number(configPlano?.usuarios_inclusos) || 1);
   const quantidadeUsuarios = ehTesteGratis ? 1 : Math.max(1, Number(dados.quantidade_usuarios) || 1);
   const perfisExtras = ehTesteGratis ? 0 : Math.max(0, quantidadeUsuarios - perfisIncluidos);
