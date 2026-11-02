@@ -52,6 +52,7 @@ type MenuRoute =
   | "/estoque"
   | "/rh"
   | "/minha-atividade"
+  | "/banco-horas"
   | "/perfil-clinica"
   | "/plano-clinica"
   | "/permissoes-equipe"
@@ -167,7 +168,7 @@ const areas: AreaMenu[] = [
     icone: Clock3,
     itens: [
       { to: "/minha-atividade", rotulo: "Check-in / check-out", permissao: "atividade.ponto" },
-      { to: "/minha-atividade", rotulo: "Minhas horas e diárias", permissao: "atividade.ponto" },
+      { to: "/banco-horas", rotulo: "Minhas horas e diárias", permissao: "atividade.ponto" },
       { to: "/rh", abaHotel: "comissoes", rotulo: "Comissões", permissao: "equipe.pagamentos.visualizar" },
       { to: "/rh", abaHotel: "equipe", rotulo: "Remuneração da equipe", permissao: "equipe.pagamentos.visualizar" },
       { to: "/rh", abaHotel: "pagamentos", rotulo: "Pagamento da equipe", permissao: "equipe.pagamentos.visualizar" },
