@@ -46,6 +46,10 @@ const PERMISSOES = [
   ["portal_tutor.gerenciar","Gerenciar portal do tutor","Portal do tutor","Ativar acessos, emitir convites e administrar o portal dos tutores da clínica.","portal_tutor.acesso",89],
 ] as const;
 export const PERMISSOES_PADRAO=PERMISSOES.map(([codigo,nome,grupo,descricao,funcionalidade_codigo,ordem])=>({codigo,nome,grupo,descricao,funcionalidade_codigo,ordem,ativo:true}));
+// Apenas estas 33 permissões anteriores à central preservam herança histórica.
+// Novas permissões devem nascer pendentes (não liberadas).
+export const ACOES_LEGADAS = new Set(["atividade.ponto","recepcao.agenda","recepcao.cadastros.visualizar","recepcao.cadastros.criar","recepcao.cadastros.editar","recepcao.cadastros.excluir","consultorio.atendimentos","consultorio.medicacoes","consultorio.receituario","internacao.painel","internacao.registrar","internacao.medicacoes","internacao.plantoes","caixa.financeiro.visualizar","caixa.financeiro.gerenciar","caixa.comandas","estoque.catalogo.visualizar","estoque.catalogo.gerenciar","estoque.movimentar","equipe.pagamentos.visualizar","equipe.pagamentos.gerenciar","crm.visualizar","crm.enviar","crm.gerenciar","administracao.configuracoes","administracao.site","administracao.temas","administracao.usuarios","administracao.permissoes","hotelzinho.visualizar","hotelzinho.operar","hotelzinho.gerenciar","portal_tutor.gerenciar"]);
+
 export const ACOES_PADRAO = PERMISSOES_PADRAO.map((p) => ({
   codigo: "acao." + String(p.codigo),
   nome: String(p.nome),
@@ -73,7 +77,7 @@ export const FUNCIONALIDADES_POR_PLANO:Record<string,string[]>={
 export const PLANO_FUNCIONALIDADES_PADRAO=PLANOS_PADRAO.flatMap(plano=>[
   ...FUNCIONALIDADES_PADRAO.map(f=>({plano_id:plano.id,funcionalidade_codigo:String(f.codigo),permitido:FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(f.codigo))||false})),
   ...PERMISSOES_PADRAO.map(p=>({plano_id:plano.id,funcionalidade_codigo:"acao."+String(p.codigo),
-    permitido:!p.funcionalidade_codigo || Boolean(FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(p.funcionalidade_codigo)))})),
+    permitido:ACOES_LEGADAS.has(String(p.codigo)) && (!p.funcionalidade_codigo || Boolean(FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(p.funcionalidade_codigo))))})),
 ]);
 
 export const CLINICAS_PADRAO=[
