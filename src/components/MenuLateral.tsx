@@ -219,6 +219,7 @@ export function MenuLateral({
     pode,
     podeAlguma,
     bloqueadaPeloPlano,
+    adminGlobal,
   } = usePermissoes();
   const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
   const navigate = useNavigate();
@@ -265,7 +266,7 @@ export function MenuLateral({
       ? area.itens
       : area.itens.filter(
           (item) => item.emBreve ||
-            (!!item.permissao && (pode(item.permissao) || bloqueadaPeloPlano(item.permissao))),
+            (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
     // Separadores só aparecem quando existem links visíveis no respectivo bloco.
     if (area.titulo !== "Clínica veterinária") return visiveis;
