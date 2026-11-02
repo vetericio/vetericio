@@ -229,7 +229,17 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     oricse_hotel_cuidados: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
     oricse_hotel_atualizacoes: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
   };
-  const permissaoEscrita = permissoesEscrita[q.table]?.[q.operation];
+  let permissaoEscrita = permissoesEscrita[q.table]?.[q.operation];
+  // Movimento de estoque e edição do cadastro são permissões diferentes.
+  // A RPC de movimentação atualiza apenas o saldo do produto.
+  if (q.table === "oricse_catalogo_itens" && q.operation === "update" &&
+      q.payload && typeof q.payload === "object" && !Array.isArray(q.payload)) {
+    const campos = Object.keys(q.payload as Record<string, unknown>)
+      .filter((campo) => campo !== "updated_at");
+    if (campos.length === 1 && campos[0] === "estoque_atual") {
+      permissaoEscrita = "estoque.movimentar";
+    }
+  }
   if (permissaoEscrita && !ctx.admin && ctx.clinicas.length) {
     const candidatos = q.operation === "insert" || q.operation === "upsert"
       ? (Array.isArray(q.payload) ? q.payload : [q.payload]).filter(Boolean)
