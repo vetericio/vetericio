@@ -54,6 +54,7 @@ import { Route as PrecosPortalRouteImport } from './routes/precos-portal'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
+import { Route as TodasAgendasRouteImport } from './routes/todas-agendas'
 import { Route as RegistroClinicoRouteImport } from './routes/registro-clinico'
 import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
@@ -287,6 +288,11 @@ const ReceituarioRoute = ReceituarioRouteImport.update({
   path: '/receituario',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TodasAgendasRoute = TodasAgendasRouteImport.update({
+  id: '/todas-agendas',
+  path: '/todas-agendas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecepcaoRoute = RecepcaoRouteImport.update({
   id: '/recepcao',
   path: '/recepcao',
@@ -398,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
@@ -457,6 +464,7 @@ export interface FileRoutesByTo {
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
@@ -1081,6 +1090,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReceituarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/todas-agendas': {
+      id: '/todas-agendas'
+      path: '/todas-agendas'
+      fullPath: '/todas-agendas'
+      preLoaderRoute: typeof TodasAgendasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recepcao': {
       id: '/recepcao'
       path: '/recepcao'
@@ -1220,6 +1236,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrecosPortalRoute: PrecosPortalRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ReceituarioRoute: ReceituarioRoute,
+  TodasAgendasRoute: TodasAgendasRoute,
   RecepcaoRoute: RecepcaoRoute,
   RegistroClinicoRoute: RegistroClinicoRoute,
   RegistrosRoute: RegistrosRoute,
