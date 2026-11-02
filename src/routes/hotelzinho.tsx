@@ -55,6 +55,7 @@ type Cuidado = {
   descricao: string;
   ocorrido_em: string;
 };
+type Extra = {id:string;estadia_id:string;categoria:string;descricao:string;quantidade:number;valor_unitario_centavos:number;created_at:string};
 type Atualizacao = { id: string; estadia_id: string; mensagem: string; created_at: string };
 type Aba =
   | "painel"
@@ -62,6 +63,7 @@ type Aba =
   | "checkin"
   | "hospedes"
   | "cuidados"
+  | "extras"
   | "tutores"
   | "checkout"
   | "acomodacoes";
@@ -72,6 +74,7 @@ const ABAS: { id: Aba; nome: string; icone: typeof BedDouble }[] = [
   { id: "checkin", nome: "Check-in", icone: Check },
   { id: "hospedes", nome: "Hóspedes ativos", icone: Dog },
   { id: "cuidados", nome: "Rotina e cuidados", icone: Utensils },
+  { id: "extras", nome: "Acrescentar item à estadia", icone: Plus },
   { id: "tutores", nome: "Atualizações para tutores", icone: MessageCircle },
   { id: "checkout", nome: "Check-out", icone: Clock3 },
   { id: "acomodacoes", nome: "Acomodações", icone: BedDouble },
@@ -142,6 +145,12 @@ function Hotelzinho() {
   const [acomodacoes, setAcomodacoes] = useState<Acomodacao[]>([]);
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [cuidados, setCuidados] = useState<Cuidado[]>([]);
+  const [extras, setExtras] = useState<Extra[]>([]);
+  const [estadiaExtraId, setEstadiaExtraId] = useState("");
+  const [categoriaExtra, setCategoriaExtra] = useState("Ração");
+  const [descricaoExtra, setDescricaoExtra] = useState("");
+  const [quantidadeExtra, setQuantidadeExtra] = useState("1");
+  const [valorExtra, setValorExtra] = useState("");
   const [atualizacoes, setAtualizacoes] = useState<Atualizacao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -208,6 +217,9 @@ function Hotelzinho() {
     setEstadias((estadiasR.data || []) as Estadia[]);
     setCuidados((cuidadosR.data || []) as Cuidado[]);
     setAtualizacoes((atualizacoesR.data || []) as Atualizacao[]);
+    const {data: extrasData,error: extrasErro} = await db.from("oricse_hotel_extras").select("id,estadia_id,categoria,descricao,quantidade,valor_unitario_centavos,created_at").eq("clinica_id",clinicaId).order("created_at",{ascending:false});
+    if(extrasErro) setErro("Não foi possível carregar os extras: " + extrasErro.message);
+    else setExtras(extrasData || []);
     setCarregando(false);
   }
 
@@ -300,6 +312,22 @@ function Hotelzinho() {
     await carregar();
   }
 
+  async function adicionarExtra(evento:FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    if(!clinicaId || !podeOperar || salvando) return;
+    const estadia=estadias.find(e=>e.id===estadiaExtraId && ["reservada","hospedado"].includes(e.status));
+    const quantidade=Number(quantidadeExtra.replace(",","."));
+    const unitario=valorEmCentavos(valorExtra);
+    if(!estadia) return toast.error("Selecione uma estadia aberta.");
+    if(!descricaoExtra.trim() || !Number.isFinite(quantidade) || quantidade<=0 || !Number.isFinite(unitario) || unitario<0) return toast.error("Informe item, quantidade e valor válidos.");
+    setSalvando(true);
+    const {error}=await db.from("oricse_hotel_extras").insert({clinica_id:clinicaId,estadia_id:estadia.id,categoria:categoriaExtra,descricao:descricaoExtra.trim(),quantidade,valor_unitario_centavos:unitario});
+    setSalvando(false);
+    if(error) return toast.error("Não foi possível lançar o item: "+error.message);
+    setDescricaoExtra("");setValorExtra("");setQuantidadeExtra("1");toast.success("Item acrescentado à estadia.");
+    await carregar();
+  }
+
   async function fazerCheckin(estadia: Estadia) {
     if (!clinicaId || !podeOperar) return;
     const { data: usuario } = await supabase.auth.getUser();
@@ -328,7 +356,8 @@ function Hotelzinho() {
       1,
       Math.ceil((saidaReal.getTime() - entradaReal.getTime()) / 86400000),
     );
-    const total = diarias * (estadia.valor_diaria_centavos || 0);
+    const adicionais = extras.filter(e=>e.estadia_id===estadia.id).reduce((total,e)=>total+Math.round(e.quantidade*e.valor_unitario_centavos),0);
+    const total = diarias * (estadia.valor_diaria_centavos || 0) + adicionais;
     const { error } = await db
       .from("oricse_hotel_estadias")
       .update({
@@ -848,6 +877,36 @@ function Hotelzinho() {
                   Nenhum pet está hospedado agora.
                 </p>
               )}
+            </section>
+          )}
+
+          {aba === "extras" && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold">Acrescentar item à estadia do animal</h2>
+              <p className="text-sm text-muted-foreground">Ração, alimento, brinquedos e serviços extras. Os itens ficam vinculados à estadia e compõem o valor final no check-out, sem registrar automaticamente um pagamento.</p>
+              <form onSubmit={adicionarExtra} className={`${painel} grid gap-3 sm:grid-cols-2`}>
+                <label className="space-y-1 text-sm font-medium">Estadia
+                  <select required className={campo} value={estadiaExtraId} onChange={e=>setEstadiaExtraId(e.target.value)}>
+                    <option value="">Selecione a estadia</option>
+                    {estadias.filter(e=>["reservada","hospedado"].includes(e.status)).map(e=><option key={e.id} value={e.id}>{petNome(e)} — {tutorNome(e)} ({e.status})</option>)}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm font-medium">Categoria
+                  <select className={campo} value={categoriaExtra} onChange={e=>setCategoriaExtra(e.target.value)}>{["Ração","Alimentação","Brinquedo","Serviço","Outro"].map(x=><option key={x}>{x}</option>)}</select>
+                </label>
+                <label className="space-y-1 text-sm font-medium">Produto ou serviço
+                  <input required maxLength={200} className={campo} value={descricaoExtra} onChange={e=>setDescricaoExtra(e.target.value)} placeholder="Ex.: Ração premium 500g, passeio extra"/>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="space-y-1 text-sm font-medium">Quantidade<input required type="number" step="0.001" min="0.001" className={campo} value={quantidadeExtra} onChange={e=>setQuantidadeExtra(e.target.value)}/></label>
+                  <label className="space-y-1 text-sm font-medium">Valor unitário (R$)<input required inputMode="decimal" className={campo} value={valorExtra} onChange={e=>setValorExtra(e.target.value)} placeholder="0,00"/></label>
+                </div>
+                <div className="sm:col-span-2 flex items-center justify-between gap-3"><strong>Total: {reais(Math.round(Number(quantidadeExtra||0)*valorEmCentavos(valorExtra||"0")))}</strong><button disabled={!podeOperar||salvando} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">+ Acrescentar item</button></div>
+              </form>
+              <div className="space-y-2">
+                <h3 className="font-semibold">Itens lançados {estadiaExtraId ? "nesta estadia" : "nas estadias"}</h3>
+                {extras.filter(e=>!estadiaExtraId||e.estadia_id===estadiaExtraId).map(e=><article key={e.id} className={`${painel} flex flex-wrap justify-between gap-2`}><div><strong>{e.descricao}</strong><p className="text-xs text-muted-foreground">{e.categoria} · {e.quantidade} un. · {estadias.find(x=>x.id===e.estadia_id)?petNome(estadias.find(x=>x.id===e.estadia_id)!):"Estadia"}</p></div><strong>{reais(Math.round(e.quantidade*e.valor_unitario_centavos))}</strong></article>)}
+              </div>
             </section>
           )}
 
