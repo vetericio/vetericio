@@ -14,6 +14,7 @@ export type PermissaoEfetiva = {
 export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/minha-atividade": ["atividade.ponto"],
   "/recepcao": ["recepcao.agenda"],
+  "/todas-agendas": ["recepcao.agenda"],
   "/hotelzinho": ["hotelzinho.visualizar"],
   "/fila-espera": ["recepcao.agenda", "consultorio.atendimentos"],
   "/configurar-agenda-online": ["recepcao.agenda", "administracao.configuracoes"],
