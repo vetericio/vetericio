@@ -45,7 +45,7 @@ function PermissoesEquipe() {
         ? await supabase.from("app_users").select("user_id,username").in("user_id",ids)
         : {data:[], error:null};
       if (perfisError) throw perfisError;
-      const nomes = new Map((perfis || []).map((p: any) => [String(p.user_id),String(p.username || "")]));
+      const nomes = new Map<string, string>((perfis || []).map((p: any): [string, string] => [String(p.user_id), String(p.username || "")]));
       setClinica({ id: cid, nome: String(contexto?.[0]?.clinica_nome || "Clínica atual") });
       setFuncionarios((links || []).map((p: any) => ({
         user_id: String(p.user_id), papel: String(p.papel), ativo: Boolean(p.ativo),
