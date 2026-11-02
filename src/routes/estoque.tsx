@@ -51,8 +51,8 @@ function dinheiro(valor: number) {
   return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function Estoque() {
-  const [aba, setAba] = useState<Aba>("catalogo");
+export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "rh";abaInicial?: "comissoes" | "equipe" | "pagamentos"}) {
+  const [aba, setAba] = useState<Aba>(area === "rh" ? (abaInicial || "comissoes") : "catalogo");
   const [clinicaId, setClinicaId] = useState("");
   const [usuarioId, setUsuarioId] = useState("");
   const [adminGeral, setAdminGeral] = useState(false);
@@ -84,16 +84,18 @@ export function Estoque() {
 
   const abasPermitidas = useMemo(() => {
     const lista: Array<[Aba, string]> = [];
-    if (podeVerCatalogo) lista.push(["catalogo", "Serviços e produtos"]);
-    if (podeGerenciarCatalogo) lista.push(["cadastro", "Adicionar valores"]);
-    if (podeVerCatalogo || podeMovimentarEstoque) lista.push(["estoque", "Estoque"]);
-    if (podeVerPagamentos) {
+    if (area === "estoque" && podeVerCatalogo) lista.push(["catalogo", "Serviços e produtos"]);
+    if (area === "estoque" && podeGerenciarCatalogo) lista.push(["cadastro", "Adicionar valores"]);
+    if (area === "estoque" && (podeVerCatalogo || podeMovimentarEstoque)) lista.push(["estoque", "Estoque"]);
+    if (area === "rh" && podeVerPagamentos) {
       lista.push(["comissoes", "Comissões"]);
       lista.push(["equipe", "Remuneração da equipe"]);
       lista.push(["pagamentos", "Pagamento da equipe"]);
     }
     return lista;
-  }, [podeGerenciarCatalogo, podeMovimentarEstoque, podeVerCatalogo, podeVerPagamentos]);
+  }, [area, podeGerenciarCatalogo, podeMovimentarEstoque, podeVerCatalogo, podeVerPagamentos]);
+
+  useEffect(() => {if(area === "rh" && abaInicial && abasPermitidas.some(([id]) => id === abaInicial)) setAba(abaInicial);},[area,abaInicial,abasPermitidas]);
 
   useEffect(() => {
     if (carregandoPermissoes || abasPermitidas.length === 0) return;
