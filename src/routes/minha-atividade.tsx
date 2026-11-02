@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/minha-atividade")({ component: MinhaAtividade });
 
 type Registro = {id:string;modalidade:"hora"|"diaria";data:string;estado:string;segundos_trabalhados:number;ultimo_inicio_em:string|null;valor_unitario:number};
-export function MinhaAtividade() {
+export function MinhaAtividade({somenteHistorico=false}:{somenteHistorico?:boolean}) {
   const [clinica,setClinica]=useState("");
   const [config,setConfig]=useState<{modalidade:"hora"|"diaria";valor_unitario:number}|null>(null);
   const [registros,setRegistros]=useState<Registro[]>([]);
@@ -42,9 +42,9 @@ export function MinhaAtividade() {
   }
   return <main className="mx-auto max-w-4xl space-y-5 p-5">
     <Link to="/" className="text-sm font-semibold">← Voltar</Link>
-    <header><h1 className="text-2xl font-bold">Minha atividade</h1><p className="text-sm text-muted-foreground">Registre suas horas ou diárias de trabalho. Os horários são registrados pelo servidor.</p></header>
+    <header><h1 className="text-2xl font-bold">{somenteHistorico?"Banco de horas e diárias":"Check-in / check-out"}</h1><p className="text-sm text-muted-foreground">{somenteHistorico?"Consulte suas horas, diárias e valores calculados a partir dos registros.":"Registre o início, as pausas e o fim de sua atividade. Os horários são registrados pelo servidor."}</p></header>
     {carregando?<p>Carregando...</p>:!config?<p className="rounded-xl border p-5">Seu RT ainda não configurou sua modalidade de pagamento.</p>:<>
-      <section className="rounded-2xl border bg-card p-5 space-y-4">
+      {!somenteHistorico && <section className="rounded-2xl border bg-card p-5 space-y-4">
         <div><p className="text-sm text-muted-foreground">Modalidade</p><h2 className="text-xl font-bold">{config.modalidade==="hora"?"Pagamento por hora":"Pagamento por diária"}</h2><p className="text-sm">R$ {Number(config.valor_unitario).toFixed(2).replace(".",",")} por {config.modalidade==="hora"?"hora":"diária"}</p></div>
         {config.modalidade==="hora"?<>
           <div className="text-2xl font-bold">{atual?duracao(segundos(atual)):"00h 00min"}</div>
@@ -56,13 +56,13 @@ export function MinhaAtividade() {
             {atual&&<button disabled={ocupado} onClick={()=>acao("finalizar")} className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground">Finalizar atividade</button>}
           </div>
         </>:<button disabled={ocupado||jaFezCheckin} onClick={()=>acao("checkin")} className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground disabled:opacity-50">{jaFezCheckin?"Check-in realizado hoje":"Fazer check-in de hoje"}</button>}
-      </section>
-      <section className="rounded-xl border bg-card p-4"><h2 className="mb-3 font-bold">Histórico de atividades</h2>
+      </section>}
+      {somenteHistorico && <section className="rounded-xl border bg-card p-4"><h2 className="mb-3 font-bold">Banco de horas e diárias</h2><div className="mb-4 grid grid-cols-2 gap-3"><div className="rounded-xl border p-3"><p className="text-sm text-muted-foreground">Horas registradas</p><p className="text-xl font-bold">{duracao(registros.filter(r=>r.modalidade==="hora").reduce((total,r)=>total+segundos(r),0))}</p></div><div className="rounded-xl border p-3"><p className="text-sm text-muted-foreground">Total estimado</p><p className="text-xl font-bold">{registros.reduce((total,r)=>total+(r.modalidade==="diaria"?Number(r.valor_unitario):segundos(r)/3600*Number(r.valor_unitario)),0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</p></div></div>
         <div className="divide-y">{registros.map(r=><div key={r.id} className="flex justify-between gap-3 py-3 text-sm">
           <span>{r.data.split("-").reverse().join("/")} · {r.modalidade==="diaria"?"Diária":duracao(segundos(r))} · {r.estado}</span>
           <strong>{(r.modalidade==="diaria"?Number(r.valor_unitario):segundos(r)/3600*Number(r.valor_unitario)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong>
         </div>)}</div>
-      </section>
+      </section>}
     </>}
   </main>;
 }
