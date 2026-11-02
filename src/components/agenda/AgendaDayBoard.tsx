@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, Fragment, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -192,13 +192,16 @@ function normalizarAgendamento(evento: Partial<AgendamentoDb>): AgendamentoDb {
   };
 }
 
-export class AgendaErrorBoundary extends Component<{ children: ReactNode }, { falhou: boolean }> {
-  override state = { falhou: false };
+export class AgendaErrorBoundary extends Component<{ children: ReactNode }, { falhou: boolean; tentativa: number }> {
+  override state = { falhou: false, tentativa: 0 };
   static getDerivedStateFromError() { return { falhou: true }; }
   override componentDidCatch(error: Error, info: ErrorInfo) { console.error("Falha isolada no painel de agenda:", error, info); }
+  override componentDidUpdate(prevProps: Readonly<{ children: ReactNode }>) {
+    if (this.state.falhou && prevProps.children !== this.props.children) this.setState({ falhou: false });
+  }
   override render() {
-    if (this.state.falhou) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center"><strong>A agenda não pôde ser exibida agora.</strong><p className="mt-1 text-sm text-muted-foreground">A Recepção continua disponível. Atualize para tentar abrir a agenda novamente.</p><button type="button" onClick={() => this.setState({ falhou: false })} className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Tentar abrir agenda</button></section>;
-    return this.props.children;
+    if (this.state.falhou) return <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center"><strong>A agenda não pôde ser exibida agora.</strong><p className="mt-1 text-sm text-muted-foreground">Atualize a agenda para recarregar este painel.</p><button type="button" onClick={() => this.setState((estado) => ({ falhou: false, tentativa: estado.tentativa + 1 }))} className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Tentar abrir agenda</button></section>;
+    return <Fragment key={this.state.tentativa}>{this.props.children}</Fragment>;
   }
 }
 
@@ -353,9 +356,9 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
 
   if (carregando && !agendas.length) return <section className="rounded-2xl border bg-white p-6 text-sm text-muted-foreground">Carregando agenda única da clínica...</section>;
 
-  return <section className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+  return <section className="min-w-0 w-full rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
     {erroCarregamento && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><strong>Não foi possível atualizar a agenda.</strong><p className="mt-1">{erroCarregamento}</p><button type="button" onClick={() => void carregar()} className="mt-2 rounded-lg border border-amber-400 px-3 py-2 font-bold">Tentar novamente</button></div>}
-    <div className="flex flex-wrap items-start justify-between gap-4"><div>{mode === "veterinario" && <div className="flex items-center gap-2"><CalendarDays size={22} className="text-primary"/><h2 className="text-2xl font-bold">Minha agenda</h2></div>}</div><div className="flex flex-wrap gap-2"><select value={filtro} onChange={e=>setFiltro(e.target.value)} className="min-h-10 rounded-xl border bg-white px-3 text-sm font-semibold"><option value="todas">Todas as agendas</option>{agendas.map(a=><option key={a.id} value={a.id}>{a.nome} · {a.responsavel||"Sem responsável"}</option>)}</select><button data-oricse-criar-agenda="true" onClick={abrirNovaAgenda} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold"><Plus size={15}/> Criar agenda</button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-2"><CalendarDays size={22} className="shrink-0 text-primary"/><div><h2 className="font-sans text-2xl font-bold tracking-tight text-foreground">{mode === "banho" ? "Agenda do Banho e Tosa" : mode === "recepcao" ? "Agenda da Clínica Veterinária" : "Minha agenda"}</h2><p className="text-sm text-muted-foreground">{mode === "banho" ? "Serviços, profissionais e horários disponíveis" : mode === "recepcao" ? "Consultas e procedimentos por profissional e horário" : "Sua programação de atendimentos"}</p></div></div><div className="flex flex-wrap gap-2"><select value={filtro} onChange={e=>setFiltro(e.target.value)} className="min-h-10 rounded-xl border bg-white px-3 text-sm font-semibold"><option value="todas">Todas as agendas</option>{agendas.map(a=><option key={a.id} value={a.id}>{a.nome} · {a.responsavel||"Sem responsável"}</option>)}</select><button data-oricse-criar-agenda="true" onClick={abrirNovaAgenda} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold"><Plus size={15}/> Criar agenda</button></div></div>
     <div className="mt-4 flex items-center gap-3 rounded-2xl border bg-[#f8faf8] p-3"><button onClick={()=>{const d=dataPorIso(data);d.setDate(d.getDate()-1);setData(dataIso(d));}} className="rounded-xl border bg-white p-2.5"><ChevronLeft size={19}/></button><button onClick={()=>setData(dataIso(new Date()))} className="min-w-0 flex-1 rounded-lg text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166e61]"><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#126b5e]">DATA DA AGENDA</div><div className="mt-0.5 text-xl font-black text-[#172b3c] sm:text-2xl">{formatarData(data)}</div><div className="text-[10px] font-medium text-[#586678]">Clique para voltar para hoje</div></button><button onClick={()=>{const d=dataPorIso(data);d.setDate(d.getDate()+1);setData(dataIso(d));}} className="rounded-xl border bg-white p-2.5"><ChevronRight size={19}/></button></div>
 
     {!agendas.length ? <div className="mt-5 rounded-2xl border border-dashed p-8 text-center"><CalendarDays className="mx-auto text-muted-foreground"/><h3 className="mt-3 text-lg font-bold">Nenhuma agenda criada</h3><p className="mt-1 text-sm text-muted-foreground">Crie a primeira agenda. Ela poderá ser publicada no Portal do Tutor no mesmo cadastro.</p><button onClick={abrirNovaAgenda} className="mt-4 rounded-xl bg-primary px-4 py-2 font-bold text-primary-foreground">Criar primeira agenda</button></div> :
