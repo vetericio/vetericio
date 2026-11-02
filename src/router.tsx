@@ -8,13 +8,15 @@ import "./lib/promotional-codes-ui";
 import "./lib/checkout-promo-location";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, gcTime: 300_000, retry: 1, refetchOnWindowFocus: false } } });
 
   const router = createRouter({
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreload: "intent",
+    defaultPreloadDelay: 80,
+    defaultPreloadStaleTime: 30_000,
   });
 
   return router;
