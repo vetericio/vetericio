@@ -72,44 +72,12 @@ type EnderecoCep = {
 };
 
 async function consultarCepComFallback(cep: string, signal: AbortSignal): Promise<EnderecoCep> {
-  const provedores = [
-    async (): Promise<EnderecoCep | null> => {
-      const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal });
-      if (!resposta.ok) return null;
-      const endereco = await resposta.json();
-      if (endereco.erro || !endereco.localidade || !endereco.uf) return null;
-      return {
-        logradouro: endereco.logradouro,
-        bairro: endereco.bairro,
-        localidade: endereco.localidade,
-        uf: endereco.uf,
-      };
-    },
-    async (): Promise<EnderecoCep | null> => {
-      const resposta = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`, { signal });
-      if (!resposta.ok) return null;
-      const endereco = await resposta.json();
-      if (!endereco.city || !endereco.state) return null;
-      return {
-        logradouro: endereco.street,
-        bairro: endereco.neighborhood,
-        localidade: endereco.city,
-        uf: endereco.state,
-      };
-    },
-  ];
-
-  for (const consultar of provedores) {
-    if (signal.aborted) throw new DOMException("Consulta cancelada", "AbortError");
-    try {
-      const endereco = await consultar();
-      if (endereco) return endereco;
-    } catch (erro) {
-      if (signal.aborted) throw erro;
-    }
+  const resposta = await fetch(`/api/cep/${cep}`, { signal });
+  const endereco = await resposta.json().catch(() => null);
+  if (!resposta.ok || !endereco?.localidade || !endereco?.uf) {
+    throw new Error(endereco?.erro || "CEP não encontrado");
   }
-
-  throw new Error("CEP não encontrado");
+  return endereco;
 }
 
 function parseBRL(valor?: string) {
