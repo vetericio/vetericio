@@ -1,6 +1,7 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { AgendaBanhoTosaBoard } from "@/components/agenda/AgendaBanhoTosaBoard";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
 import { usePermissoes } from "@/hooks/usePermissoes";
@@ -30,6 +31,7 @@ function BanhoTosa(){
  const abaDaUrl=(hash:string):Aba=>abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
  const [aba,setAba]=useState<Aba>(()=>typeof window!=="undefined"?abaDaUrl(window.location.hash):"painel");
  useEffect(()=>setAba(abaDaUrl(location.hash)),[location.hash]);
+ useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=qs.get("inicio");if(prof)setProfissional(prof);if(hora&&/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(hora))setInicio(hora);}},[location.hash,location.search]);
  const [carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
  const [erro,setErro]=useState("");
  const [tutores,setTutores]=useState<Tutor[]>([]),[animais,setAnimais]=useState<Animal[]>([]);
@@ -197,60 +199,7 @@ function BanhoTosa(){
   {erro&&<div role="alert" className="rounded-xl border border-destructive p-4 text-destructive">{erro}</div>}
   {carregando?<p>Carregando registros…</p>:<>
    {aba==="painel"&&<section className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Agendados hoje",doDia.length],["Em atendimento",ativos.filter(x=>x.status==="em_execucao").length],["Prontos",ativos.filter(x=>x.status==="pronto").length],["Serviços cadastrados",servicos.filter(x=>x.ativo).length]].map(([nome,valor])=><div key={String(nome)} className={card}><p className="text-sm text-muted-foreground">{nome}</p><p className="text-3xl font-bold">{valor}</p></div>)}</div><h2 className="font-bold text-xl">Próximos serviços</h2>{ativos.slice(0,10).map(registro)}</section>}
-   {aba==="agenda"&&<section className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <CalendarDays className="h-5 w-5 text-primary"/>
-        <button type="button" aria-label="Período anterior" className="rounded-xl border p-2.5 hover:bg-muted" onClick={()=>navegarAgenda(-1)}><ChevronLeft size={18}/></button>
-        <input aria-label="Data da agenda" type="date" className="min-h-10 rounded-xl border bg-background px-3" value={data} onChange={e=>e.target.value&&setData(e.target.value)}/>
-        <button type="button" aria-label="Próximo período" className="rounded-xl border p-2.5 hover:bg-muted" onClick={()=>navegarAgenda(1)}><ChevronRight size={18}/></button>
-        <button type="button" className="rounded-xl border px-3 py-2 text-sm hover:bg-muted" onClick={()=>setData(hoje())}>Hoje</button>
-      </div>
-      <div className="flex rounded-xl border bg-muted/30 p-1" role="group" aria-label="Visualização da agenda">
-        {([["dia","Dia"],["semana","Semana"],["mes","Mês"]] as const).map(([id,nome])=><button key={id} type="button" aria-pressed={visaoAgenda===id} onClick={()=>setVisaoAgenda(id)} className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${visaoAgenda===id?"bg-primary text-primary-foreground shadow-sm":"hover:bg-muted"}`}>{nome}</button>)}
-      </div>
-      <p className="text-sm text-muted-foreground">{atendimentos.filter(a=>a.status!=="cancelado"&&datasAgenda.includes(a.inicio.slice(0,10))).length} agendamento(s) no período</p>
-    </div>
-    {visaoAgenda==="dia" ? <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
-        <label className="text-sm font-semibold">Profissional <select className="ml-2 rounded-lg border bg-background px-3 py-2" value={filtroProfissional} onChange={e=>setFiltroProfissional(e.target.value)}><option value="todos">Todos</option>{profissionaisAgenda.map(p=><option key={p} value={p}>{p}</option>)}</select></label>
-        <span className="text-xs text-muted-foreground">Horários de 30 em 30 minutos · 08h às 19h</span>
-      </div>
-      <div className="overflow-x-auto rounded-2xl border bg-card shadow-sm">
-        <table className="w-full min-w-[720px] border-collapse text-left">
-          <thead><tr className="bg-muted/30"><th className="w-20 border-b p-3 text-xs">Hora</th>{[...profissionaisAgenda.filter(p=>filtroProfissional==="todos"||p===filtroProfissional),"Sem profissional"].map(p=><th key={p} className="border-b border-l p-3 text-sm font-semibold">{p}</th>)}</tr></thead>
-          <tbody>{Array.from({length:22},(_,i)=>480+i*30).map(min=>{
-            const hora=String(Math.floor(min/60)).padStart(2,"0")+":"+String(min%60).padStart(2,"0");
-            const start=new Date(data+"T"+hora+":00").getTime(), end=start+1800000;
-            return <tr key={hora}><th className="border-b p-2 align-top text-xs font-semibold tabular-nums text-muted-foreground">{hora}</th>
-              {[...profissionaisAgenda.filter(p=>filtroProfissional==="todos"||p===filtroProfissional),"Sem profissional"].map(p=>{
-                const ag=doDia.filter(a=>a.status!=="cancelado"&&(a.profissional.trim()||"Sem profissional")===p&&new Date(a.inicio).getTime()<end&&new Date(a.fim).getTime()>start);
-                return <td key={p} className="min-w-40 border-b border-l p-1 align-top">
-                  {ag.length?ag.map(a=><button key={a.id} type="button" onClick={()=>{setDetalheId(a.id);setAvaliacao(a.avaliacao_entrada||"");setRestricoes(a.restricoes||"");setSaida(a.observacoes_saida||"")}} className="mb-1 w-full rounded-lg border border-primary/20 bg-primary/10 p-2 text-left"><strong className="block truncate text-xs">{nomesAnimais.get(a.animal_id)?.nome||"Animal"}</strong><span className="text-[11px]">{a.servico_nome} · {new Date(a.inicio).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span></button>):p!=="Sem profissional"?<button disabled={!podeOperar} type="button" className="w-full rounded-lg border border-dashed border-transparent p-2 text-xs text-muted-foreground hover:border-primary/30 hover:bg-muted/40" onClick={()=>{setProfissional(p);setInicio(data+"T"+hora);window.location.hash="novo"}}>+ Agendar</button>:null}
-                </td>;
-              })}
-            </tr>;
-          })}</tbody>
-        </table>
-      </div>
-      {!profissionaisAgenda.length&&<p className="text-sm text-muted-foreground">Ainda não há profissionais identificados nos agendamentos. Informe um profissional ao cadastrar o primeiro serviço.</p>}
-    </div> :
-      <div className="overflow-x-auto rounded-2xl border bg-card p-3 shadow-sm sm:p-4">
-        <div className="grid min-w-[770px] grid-cols-7 gap-2">
-          {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((nome,i)=><div key={nome} className={`py-2 text-center text-xs font-semibold uppercase tracking-wide ${i===0?"text-rose-600":"text-muted-foreground"}`}>{nome}</div>)}
-          {datasAgenda.map(d=>{
-            const diaData=new Date(d+"T12:00:00");
-            const lista=atendimentos.filter(a=>a.status!=="cancelado"&&a.inicio.slice(0,10)===d).sort((a,b)=>a.inicio.localeCompare(b.inicio));
-            const mesAtual=d.slice(0,7)===data.slice(0,7);
-            return <button key={d} type="button" onClick={()=>{setData(d);setVisaoAgenda("dia")}} className={`flex min-h-40 flex-col rounded-xl border p-2.5 text-left transition-colors hover:border-primary/50 hover:bg-muted/20 ${d===hoje()?"ring-2 ring-primary/30":""} ${diaData.getDay()===0?"bg-rose-50/30 dark:bg-rose-950/10":"bg-background"} ${visaoAgenda==="mes"&&!mesAtual?"opacity-45":""}`}>
-              <div className="w-full border-b border-border/60 pb-2"><span className="text-lg font-semibold">{diaData.getDate()}</span><span className="ml-2 text-[10px] uppercase text-muted-foreground">{["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][diaData.getDay()]}</span></div>
-              <p className="mt-2 text-xs text-muted-foreground">{lista.length?lista.length+" agendamento(s)":"Sem agendamentos"}</p>
-              <div className="mt-2 w-full space-y-1.5">{lista.slice(0,3).map(a=><div key={a.id} className="rounded-lg border border-primary/15 bg-primary/5 p-2"><p className="truncate text-xs font-semibold">{nomesAnimais.get(a.animal_id)?.nome||"Animal"}</p><p className="truncate text-[11px] text-muted-foreground">{new Date(a.inicio).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})} · {a.servico_nome}</p></div>)}{lista.length>3&&<span className="text-xs text-muted-foreground">+{lista.length-3} outros</span>}</div>
-            </button>;
-          })}
-        </div>
-      </div>}
-  </section>}
+   {aba==="agenda"&&<AgendaBanhoTosaBoard/>}
    {aba==="novo"&&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
     <label>Animal<select required className={campo} value={animalId} onChange={e=>setAnimalId(e.target.value)}><option value="">Selecione</option>{animais.map(a=><option key={a.id} value={a.id}>{a.nome} — {nomesTutores.get(a.tutor_id)||"Tutor"}</option>)}</select></label>
     <label>Serviço<select required className={campo} value={servicoId} onChange={e=>setServicoId(e.target.value)}><option value="">Selecione</option>{servicos.filter(x=>x.ativo).map(x=><option key={x.id} value={x.id}>{x.nome} · {dinheiro(x.preco_centavos)}</option>)}</select></label>
