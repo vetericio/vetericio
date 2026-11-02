@@ -114,6 +114,28 @@ function Contratar() {
   const [privacidade, setPrivacidade] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [pedido, setPedido] = useState<any>(null);
+  const [abrindoCheckout, setAbrindoCheckout] = useState(false);
+  const retornoPagamento = params.get("retorno");
+  const pedidoRetorno = params.get("pedido");
+  async function abrirCheckout(id: string) {
+    if (!id || abrindoCheckout) return;
+    setAbrindoCheckout(true);
+    try {
+      const res = await fetch("https://mwrmfcyrdxfxssebgknz.supabase.co/functions/v1/oricse-planos-checkout?action=checkout", {
+        method:"POST", headers:{"content-type":"application/json"},
+        body:JSON.stringify({pedido_id:id}),
+      });
+      const data = await res.json();
+      if (!res.ok || typeof data.checkout_url !== "string" || !data.checkout_url.startsWith("https://www.mercadopago.com")) {
+        throw new Error(data.error || "Checkout indisponível");
+      }
+      window.location.assign(data.checkout_url);
+    } catch(e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao abrir o pagamento");
+      setAbrindoCheckout(false);
+    }
+  }
+
 
   useEffect(() => {
     void (async () => {
@@ -221,8 +243,10 @@ function Contratar() {
     const { data, error } = await (supabase as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
     setEnviando(false);
     if (error) { toast.error(error.message || (ehTesteGratis ? "Não foi possível iniciar o teste gratuito." : "Não foi possível iniciar a contratação.")); return; }
-    setPedido(Array.isArray(data) ? data[0] : data);
+    const novoPedido = Array.isArray(data) ? data[0] : data;
+    setPedido(novoPedido);
     setEtapa(4);
+    if (!ehTesteGratis && novoPedido?.id) await abrirCheckout(String(novoPedido.id));
   }
 
   const crmvObrigatorio = exigeCrmv(dados);
@@ -230,6 +254,7 @@ function Contratar() {
   return <main className="min-h-screen bg-background px-4 py-6 sm:px-6"><div className="mx-auto max-w-4xl">
     <Link to="/planos" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><ArrowLeft size={18}/> {texto.voltar_planos}</Link>
     <header className="mt-6 rounded-3xl border bg-card p-6 shadow-sm"><p className="text-sm font-semibold text-primary">Plano {nomePlano} · {ehTesteGratis ? "7 dias grátis" : ciclo === "anual" ? "Anual" : "Mensal"}</p><h1 className="mt-2 text-3xl font-bold">{ehTesteGratis ? "Comece seu teste gratuito" : texto.titulo_contratacao}</h1><p className="mt-2 text-muted-foreground">{ehTesteGratis ? "Use a Oricse por 7 dias sem cobrança. O teste é único por CPF/CNPJ." : texto.subtitulo_contratacao}</p></header>
+    {retornoPagamento && <div className="mt-4 rounded-xl border p-4 text-sm font-semibold">{retornoPagamento === "sucesso" ? "Pagamento enviado. A confirmação está sendo processada." : retornoPagamento === "pendente" ? "Pagamento pendente de confirmação." : "Pagamento não concluído."}{pedidoRetorno && <span className="block text-xs font-normal">Pedido {pedidoRetorno.slice(0,8)}</span>}</div>}
     <div className="mt-5 flex gap-2">{[1,2,3,4].map(n=><div key={n} className={`h-2 flex-1 rounded-full ${n<=etapa?"bg-primary":"bg-muted"}`}/>)}</div>
 
     {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><div className="text-sm font-semibold">Tipo de operação *<details ref={operacaoMenuRef} className="group relative mt-1"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border bg-background px-3 font-normal [&::-webkit-details-marker]:hidden"><span className="truncate">{obterOperacoes(dados).map(v=>OPERACOES_BASE.find(t=>t.valor===v)?.nome).filter(Boolean).join(" + ") || "Selecione os serviços"}</span><ChevronDown size={18} className="shrink-0"/></summary><div className="absolute z-30 mt-1 w-full rounded-xl border bg-background p-2 shadow-lg">{OPERACOES_BASE.map(tipo=><label key={tipo.valor} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 font-normal hover:bg-muted"><input type="checkbox" className="h-4 w-4" checked={obterOperacoes(dados).includes(tipo.valor)} onChange={e=>{const atuais=obterOperacoes(dados);const proximos=e.target.checked?[...new Set([...atuais,tipo.valor])]:atuais.filter(v=>v!==tipo.valor);salvarLocal({...dados,tipo_operacao:proximos.length>1?"misto":proximos[0]||"misto",operacoes_ativas:proximos.join(",")});}}/>{tipo.nome}</label>)}</div></details></div>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo("CNPJ/CPF","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
@@ -244,7 +269,7 @@ function Contratar() {
     <div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Cobrança:</b> {ehTesteGratis ? "Grátis por 7 dias" : ciclo === "anual" ? "Anual" : "Mensal"}</p><p><b>Clínica:</b> {dados.clinica_nome}</p><p><b>Responsável:</b> {dados.responsavel_nome}</p>{!ehTesteGratis && <><p><b>Perfis:</b> {quantidadeUsuarios} ({perfisExtras > 0 ? `${perfisExtras} extra${perfisExtras > 1 ? "s" : ""}` : "sem adicionais"})</p><p className="mt-2"><b>Plano:</b> {brl(valorBase)}</p>{perfisExtras > 0 && <p><b>Perfis extras:</b> {brl(adicionalCiclo)}</p>}<p className="mt-1 text-base"><b>Total:</b> {brl(valorTotal)} {ciclo === "anual" ? "/ ano" : "/ mês"}</p></>}</div>
     <label className="mt-5 flex gap-3 text-sm"><input type="checkbox" checked={termos} onChange={e=>setTermos(e.target.checked)}/> <span>{texto.texto_termos}</span></label><label className="mt-3 flex gap-3 text-sm"><input type="checkbox" checked={privacidade} onChange={e=>setPrivacidade(e.target.checked)}/> <span>{texto.texto_privacidade}</span></label></section>}
 
-    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : ciclo}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis && <p><b>Total:</b> {brl(valorTotal)} {ciclo === "anual" ? "/ ano" : "/ mês"}</p>}<p><b>Status:</b> {ehTesteGratis ? "aguardando ativação" : "aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}</div>{!ehTesteGratis && <p className="mt-5 text-sm font-semibold text-amber-700">{texto.checkout_pendente}</p>}</section>}
+    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : ciclo}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis && <p><b>Total:</b> {brl(valorTotal)} {ciclo === "anual" ? "/ ano" : "/ mês"}</p>}<p><b>Status:</b> {ehTesteGratis ? "aguardando ativação" : "aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis && <button type="button" disabled={abrindoCheckout || !pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout ? "Abrindo Mercado Pago…" : "Pagar com Mercado Pago"}</button>}</div>{!ehTesteGratis && <p className="mt-5 text-sm text-muted-foreground">O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação.</p>}</section>}
 
     {etapa<4 && <div className="mt-5 flex justify-between gap-3">{etapa>1?<button onClick={()=>setEtapa(etapa-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> {texto.botao_voltar}</button>:<span/>}{etapa<3?<button onClick={()=>{if(validarAtual())setEtapa(etapa+1)}} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">{texto.botao_continuar} <ChevronRight size={18}/></button>:<button disabled={enviando} onClick={continuarPagamento} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?texto.preparando_pagamento:(ehTesteGratis ? "Iniciar teste grátis" : texto.botao_pagamento)}</button>}</div>}
   </div></main>;
