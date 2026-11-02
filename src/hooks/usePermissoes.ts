@@ -18,6 +18,10 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/hotelzinho": ["hotelzinho.visualizar"],
   "/fila-espera": ["recepcao.agenda", "consultorio.atendimentos"],
   "/configurar-agenda-online": ["recepcao.agenda", "administracao.configuracoes"],
+  "/horarios-medicacoes": ["internacao.medicacoes"],
+  "/configurar-portal-tutor": ["administracao.site", "portal_tutor.gerenciar"],
+  "/configurar-pagamentos": ["administracao.configuracoes"],
+  "/mercado-pago-clinica": ["administracao.configuracoes"],
   "/tutores": ["recepcao.cadastros.visualizar"],
   "/portal-tutores": ["portal_tutor.gerenciar"],
   "/animais": ["recepcao.cadastros.visualizar", "consultorio.atendimentos"],
@@ -117,7 +121,17 @@ export function usePermissoes() {
     const { data } = supabase.auth.onAuthStateChange(() => {
       setTimeout(() => void carregar(), 0);
     });
-    return () => data.subscription.unsubscribe();
+    // Trocar de clínica na mesma sessão exige buscar as regras do novo plano.
+    const quandoAlterarClinica = () => { void carregar(); };
+    if (typeof window !== "undefined") {
+      window.addEventListener("oricse:clinica-alterada", quandoAlterarClinica);
+    }
+    return () => {
+      data.subscription.unsubscribe();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("oricse:clinica-alterada", quandoAlterarClinica);
+      }
+    };
   }, [carregar]);
 
   const permitidas = useMemo(
