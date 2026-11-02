@@ -402,7 +402,7 @@ export function Financeiro() {
   // Caixa unificado: operações da clínica no PostgreSQL, lançamentos anteriores
   // preservados durante a transição. Identificadores de origem impedem sobreposição.
   const lancamentosUnificados = useMemo<Lancamento[]>(() => {
-    const vindosBanco: Lancamento[] = caixaGeral.map(p => ({
+    const vindosBanco: Lancamento[] = caixaGeral.filter(p => p.status !== "cancelado").map(p => ({
       id: "caixa:" + p.id, tipo: p.tipo === "saida" ? "Saída" : "Entrada",
       descricao: p.descricao, categoria: p.setor,
       valor: p.valor_centavos / 100, data: dataLocalISO(new Date(p.registrado_em)),
@@ -443,7 +443,7 @@ export function Financeiro() {
 
   const comandasDia = useMemo(() => comandas.filter(c => dataLocalISO(new Date(c.abertaEm)) === dataAtual).sort((a,b) => b.abertaEm.localeCompare(a.abertaEm)), [comandas, dataAtual]);
   const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && dataLocalISO(new Date(c.abertaEm)) < dataAtual).sort((a,b) => a.abertaEm.localeCompare(b.abertaEm)), [comandas, dataAtual]);
-  const lancamentosPeriodo = useMemo(() => lancamentosUnificados.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentos, periodoInicio, periodoFim]);
+  const lancamentosPeriodo = useMemo(() => lancamentosUnificados.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentosUnificados, periodoInicio, periodoFim]);
   const recebidoPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Entrada" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
   const despesasPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Saída" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
 
