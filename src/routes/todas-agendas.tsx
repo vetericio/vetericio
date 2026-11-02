@@ -45,6 +45,7 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [atualizacao, setAtualizacao] = useState(0);
+  const [chaveAgendas, setChaveAgendas] = useState(0);
   useEffect(() => {
     if (!clinicaId) { setEstadias([]); setAnimais([]); return; }
     let ativo = true;
@@ -125,7 +126,7 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
   return <main className="mx-auto w-full max-w-[1500px] space-y-6 px-4 pb-24 pt-6 sm:px-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><Link to={somenteHotel ? "/hotelzinho" : "/recepcao"} className="text-sm text-muted-foreground">← {somenteHotel ? "Hotelzinho" : "Painel da recepção"}</Link><h1 className="mt-2 text-3xl font-bold">{somenteHotel ? "Agenda do hotel" : "Todas as agendas"}</h1><p className="text-sm text-muted-foreground">{somenteHotel ? "Ocupação, entradas e saídas das hospedagens." : "Clínica, banho e tosa e hotelzinho, reunidos em um só lugar."}</p></div>
-      <button type="button" onClick={() => setAtualizacao(n => n + 1)} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><RefreshCw size={16}/> Atualizar reservas</button>
+      <button type="button" onClick={() => {setAtualizacao(n => n + 1);setChaveAgendas(n => n + 1);}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><RefreshCw size={16}/> Atualizar agendas</button>
     </div>
     {!somenteHotel && <nav aria-label="Ir para uma agenda" className="grid gap-3 sm:grid-cols-3">
       <a href="#agenda-clinica" className="group flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50/70 p-4 text-left transition hover:border-sky-400 hover:shadow-sm dark:border-sky-900 dark:bg-sky-950/20"><span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 font-bold text-sky-800 dark:bg-sky-900 dark:text-sky-100">01</span><span><strong className="block text-sm text-foreground">Clínica veterinária</strong><span className="text-xs text-muted-foreground">Consultas e procedimentos</span></span></a>
@@ -135,11 +136,11 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
     {!somenteHotel && <>
     <section id="agenda-clinica" aria-labelledby="titulo-agenda-clinica" className="scroll-mt-5 space-y-4 rounded-3xl border border-sky-200/80 bg-sky-50/30 p-3 shadow-sm sm:p-5 dark:border-sky-900 dark:bg-sky-950/10">
       <header className="flex items-center gap-3 border-b border-sky-200/70 pb-4 dark:border-sky-900"><span className="rounded-xl bg-sky-100 px-3 py-2 text-sm font-bold text-sky-800 dark:bg-sky-900 dark:text-sky-100">01</span><div><h2 id="titulo-agenda-clinica" className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-2xl">Clínica veterinária</h2><p className="text-sm text-muted-foreground">Consultas e procedimentos por profissional e horário</p></div></header>
-      <AgendaErrorBoundary><AgendaDayBoard mode="recepcao"/></AgendaErrorBoundary>
+      <AgendaErrorBoundary><AgendaDayBoard key={`clinica-${chaveAgendas}`} mode="recepcao"/></AgendaErrorBoundary>
     </section>
     <section id="agenda-banho" aria-labelledby="titulo-agenda-banho" className="scroll-mt-5 space-y-4 rounded-3xl border border-violet-200/80 bg-violet-50/30 p-3 shadow-sm sm:p-5 dark:border-violet-900 dark:bg-violet-950/10">
       <header className="flex items-center gap-3 border-b border-violet-200/70 pb-4 dark:border-violet-900"><span className="rounded-xl bg-violet-100 px-3 py-2 text-sm font-bold text-violet-800 dark:bg-violet-900 dark:text-violet-100">02</span><div><h2 id="titulo-agenda-banho" className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-2xl">Banho e tosa</h2><p className="text-sm text-muted-foreground">Serviços, profissionais e horários disponíveis</p></div></header>
-      <AgendaErrorBoundary><AgendaDayBoard mode="banho"/></AgendaErrorBoundary>
+      <AgendaErrorBoundary><AgendaDayBoard key={`banho-${chaveAgendas}`} mode="banho"/></AgendaErrorBoundary>
     </section>
     </>}
     <section id="agenda-hotel" aria-labelledby="titulo-agenda-hotel" className="scroll-mt-5 rounded-3xl border border-emerald-200/80 bg-emerald-50/30 p-4 shadow-sm sm:p-6 dark:border-emerald-900 dark:bg-emerald-950/10">
