@@ -20,6 +20,7 @@ export const Route = createFileRoute("/planos")({
 
 export const PLANOS_PADRAO = [
   {
+    codigo: "essencial",
     nome: "Essencial",
     descricao: "Para veterinário autônomo ou em domicílio",
     preco: "R$ 49,90",
@@ -33,6 +34,7 @@ export const PLANOS_PADRAO = [
     ],
   },
   {
+    codigo: "plus-clinica",
     nome: "Plus (Clínica)",
     descricao: "Bom para petshops e clínicas",
     preco: "R$ 99,90",
@@ -48,6 +50,7 @@ export const PLANOS_PADRAO = [
     ],
   },
   {
+    codigo: "master-equipe",
     nome: "Master (Equipe)",
     descricao: "Para equipes e clínicas que precisam de um sistema sob medida",
     preco: "R$ 199,90",
