@@ -4,7 +4,6 @@ import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { AgendaDayBoard, AgendaErrorBoundary } from "@/components/agenda/AgendaDayBoard";
-import { AgendaBanhoTosaBoard } from "@/components/agenda/AgendaBanhoTosaBoard";
 import "@/components/agenda/agenda-color-overrides.css";
 
 export const Route = createFileRoute("/todas-agendas")({ component: TodasAgendas });
@@ -133,7 +132,7 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
       <p className="text-sm text-muted-foreground">Visualize as agendas clínicas por profissional e horário.</p>
       <AgendaErrorBoundary><AgendaDayBoard mode="recepcao"/></AgendaErrorBoundary>
     </section>
-    <AgendaErrorBoundary><AgendaBanhoTosaBoard/></AgendaErrorBoundary>
+    <AgendaErrorBoundary><AgendaDayBoard mode="banho"/></AgendaErrorBoundary>
     </>}
     <section className="rounded-2xl border bg-card p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
