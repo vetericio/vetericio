@@ -184,6 +184,21 @@ export function Financeiro() {
   const [periodoInicio, setPeriodoInicio] = useState(() => `${mesAtualISO()}-01`);
   const [periodoFim, setPeriodoFim] = useState(hojeISO);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>(lerLancamentos);
+  useEffect(() => {
+    const atualizarLancamentos = () => setLancamentos(lerLancamentos());
+    window.addEventListener("storage", atualizarLancamentos);
+    window.addEventListener("oricse-financeiro-atualizado", atualizarLancamentos);
+    window.addEventListener("oricse-comandas-atualizadas", atualizarLancamentos);
+    window.addEventListener("focus", atualizarLancamentos);
+    document.addEventListener("visibilitychange", atualizarLancamentos);
+    return () => {
+      window.removeEventListener("storage", atualizarLancamentos);
+      window.removeEventListener("oricse-financeiro-atualizado", atualizarLancamentos);
+      window.removeEventListener("oricse-comandas-atualizadas", atualizarLancamentos);
+      window.removeEventListener("focus", atualizarLancamentos);
+      document.removeEventListener("visibilitychange", atualizarLancamentos);
+    };
+  }, []);
   const [tutoresCadastrados, setTutoresCadastrados] = useState<TutorFinanceiro[]>([]);
   const [podeAlterarComanda, setPodeAlterarComanda] = useState(false);
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
@@ -249,6 +264,7 @@ export function Financeiro() {
   function persistir(lista: Lancamento[]) {
     setLancamentos(lista);
     oricseStorage.setItem(LANCAMENTOS_KEY, JSON.stringify(lista));
+    window.dispatchEvent(new Event("oricse-financeiro-atualizado"));
   }
 
   function salvarLancamento(evento: FormEvent) {
@@ -348,10 +364,10 @@ export function Financeiro() {
     }
   }
 
-  const doDia = useMemo(() => lancamentos.filter((l) => l.data === hojeISO()), [lancamentos]);
+  const doDia = useMemo(() => lancamentos.filter((l) => l.data === dataAtual), [lancamentos, dataAtual]);
   const doMes = useMemo(
-    () => lancamentos.filter((l) => l.data.startsWith(mesAtualISO())),
-    [lancamentos],
+    () => lancamentos.filter((l) => l.data.startsWith(dataAtual.slice(0, 7))),
+    [lancamentos, dataAtual],
   );
   const entradasDia = doDia
     .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
