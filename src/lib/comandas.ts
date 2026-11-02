@@ -180,4 +180,5 @@ export function registrarLancamentoComanda(lancamento: LancamentoFinanceiro): vo
     LANCAMENTOS_FINANCEIROS_KEY,
     JSON.stringify([lancamento, ...atualizados]),
   );
+  window.dispatchEvent(new Event("oricse-financeiro-atualizado"));
 }
