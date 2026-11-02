@@ -31,7 +31,7 @@ function BanhoTosa(){
  const abaDaUrl=(hash:string):Aba=>abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
  const [aba,setAba]=useState<Aba>(()=>typeof window!=="undefined"?abaDaUrl(window.location.hash):"painel");
  useEffect(()=>setAba(abaDaUrl(location.hash)),[location.hash]);
- useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=qs.get("inicio");if(prof)setProfissional(prof);if(hora&&/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(hora))setInicio(hora);}},[location.hash,location.search]);
+ useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=qs.get("inicio");if(prof)setProfissional(prof);if(hora&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(hora))setInicio(hora);}},[location.hash,location.search]);
  const [carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
  const [erro,setErro]=useState("");
  const [tutores,setTutores]=useState<Tutor[]>([]),[animais,setAnimais]=useState<Animal[]>([]);
