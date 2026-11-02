@@ -9,6 +9,7 @@ import "@/components/agenda/agenda-color-overrides.css";
 export const Route = createFileRoute("/todas-agendas")({ component: TodasAgendas });
 type Estadia = { id: string; chegada_prevista: string; saida_prevista: string; status: string; animal_id: string };
 type Animal = { id: string; nome: string; especie?: string };
+type BanhoAgendamento = {id:string;animal_id:string;servico_nome:string;inicio:string;fim:string;status:string};
 const pad = (n: number) => String(n).padStart(2, "0");
 function diaLocal(date: Date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
 function diaDeIso(iso: string) {
@@ -40,6 +41,7 @@ function TodasAgendas() {
   const [visao, setVisao] = useState<"dia" | "semana" | "mes">("dia");
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]);
+  const [banhoAgendamentos, setBanhoAgendamentos] = useState<BanhoAgendamento[]>([]);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [atualizacao, setAtualizacao] = useState(0);
@@ -48,11 +50,13 @@ function TodasAgendas() {
     let ativo = true;
     setCarregando(true);
     Promise.all([
+      (supabaseBanco as any).from("oricse_banho_tosa_agendamentos").select("id,animal_id,servico_nome,inicio,fim,status").eq("clinica_id",clinicaId).order("inicio", {ascending:false}).limit(500),
       (supabaseBanco as any).from("oricse_hotel_estadias").select("id,chegada_prevista,saida_prevista,status,animal_id").eq("clinica_id", clinicaId).in("status", ["reservada", "hospedado"]).order("chegada_prevista"),
       (supabaseBanco as any).from("oricse_animais").select("id,nome,especie").eq("clinica_id", clinicaId),
-    ]).then(([res, pets]) => {
+    ]).then(([banho, res, pets]) => {
       if (!ativo) return;
-      if (res.error || pets.error) { setErro("Não foi possível carregar a agenda do hotelzinho."); return; }
+      if (banho.error || res.error || pets.error) { setErro("Não foi possível carregar a agenda do hotelzinho."); return; }
+      setBanhoAgendamentos(banho.data || []);
       setEstadias(res.data || []);
       setAnimais(pets.data || []);
       setErro("");
@@ -126,6 +130,10 @@ function TodasAgendas() {
     <section className="space-y-2"><h2 className="flex items-center gap-2 text-xl font-semibold"><CalendarDays size={20}/> Clínica e banho e tosa</h2>
       <p className="text-sm text-muted-foreground">Visualize as agendas existentes e filtre por profissional e tipo diretamente no calendário.</p>
       <AgendaErrorBoundary><AgendaDayBoard mode="recepcao"/></AgendaErrorBoundary>
+    </section>
+    <section className="rounded-2xl border bg-card p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold">Banho e tosa</h2><p className="text-sm text-muted-foreground">Próximos atendimentos, serviços e horários.</p></div><Link to="/banho-tosa" hash="agenda" className="text-sm font-semibold text-primary underline">Abrir agenda</Link></div>
+      <div className="mt-4 space-y-2">{banhoAgendamentos.filter(a=>a.status!=="cancelado" && new Date(a.inicio).getTime() >= Date.now()-86400000).sort((a,b)=>a.inicio.localeCompare(b.inicio)).slice(0,15).map(a=><div key={a.id} className="flex flex-wrap justify-between gap-2 rounded-xl border p-3"><div><strong>{animais.find(x=>x.id===a.animal_id)?.nome||"Animal"} · {a.servico_nome}</strong><p className="text-sm text-muted-foreground">{dataHora(a.inicio)} até {dataHora(a.fim)}</p></div><span className="text-sm">{a.status.replaceAll("_"," ")}</span></div>)}{!banhoAgendamentos.some(a=>a.status!=="cancelado" && new Date(a.inicio).getTime()>=Date.now()-86400000)&&<p className="text-sm text-muted-foreground">Sem atendimentos recentes ou futuros.</p>}</div>
     </section>
     <section className="rounded-2xl border bg-card p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
