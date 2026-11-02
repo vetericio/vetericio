@@ -190,8 +190,7 @@ function TodasAgendas() {
               </article>;
             })}
         </div>
-      </div>
-      </div>
+      </div>}
       <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground"><span>🟢 Hospedado</span><span>🟠 Reservado</span></div>
     </section>
   </main>;
