@@ -5,11 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { usePermissoes } from "@/hooks/usePermissoes";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { Crm360Panel } from "@/components/Crm360Panel";
 
 export const Route = createFileRoute("/crm")({ component: Crm });
 
-type TipoCrm = "aniversario" | "vacina" | "lembrete_consulta" | "retorno" | "pos_cirurgico" | "inativo";
+type TipoCrm = "aniversario" | "vacina" | "lembrete_consulta" | "retorno" | "pos_cirurgico" | "inativo" | "campanha" | "resultado_exame" | "documento_portal" | "receita_portal" | "cobranca" | "hotelzinho" | "banho_tosa" | "pesquisa_satisfacao";
 type CanalCrm = "whatsapp" | "email" | "manual";
 type StatusCrm = "pendente" | "enviado" | "ignorado" | "cancelado";
 type Aba = "fila" | "historico" | "modelos" | "config";
@@ -55,6 +56,7 @@ type EventoCrm = {
   status: StatusCrm;
   origem: string;
   enviado_em?: string | null;
+  fonteDados?: "drive" | "banco";
 };
 
 type TutorLocal = {
@@ -118,6 +120,14 @@ const ROTULOS: Record<TipoCrm, string> = {
   retorno: "Retorno",
   pos_cirurgico: "Pós-cirúrgico",
   inativo: "Cliente inativo",
+  campanha: "Campanha",
+  resultado_exame: "Resultado de exame",
+  documento_portal: "Documento no Portal",
+  receita_portal: "Receita no Portal",
+  cobranca: "Cobrança",
+  hotelzinho: "Hotelzinho",
+  banho_tosa: "Banho e tosa",
+  pesquisa_satisfacao: "Pesquisa de satisfação",
 };
 
 function lerLista<T>(chave: string): T[] {
@@ -266,13 +276,16 @@ function Crm() {
 
   async function carregarEventos(id = clinicaId) {
     if (!id) return;
-    const { data, error } = await (supabase as any)
-      .from("oricse_crm_eventos")
-      .select("*")
-      .eq("clinica_id", id)
-      .order("agendado_para", { ascending: true });
-    if (error) throw error;
-    setEventos((data || []) as EventoCrm[]);
+    const [drive, banco] = await Promise.all([
+      (supabase as any).from("oricse_crm_eventos").select("*").eq("clinica_id", id).order("agendado_para", { ascending: true }),
+      (supabaseBanco as any).from("oricse_crm_eventos").select("*").eq("clinica_id", id).order("agendado_para", { ascending: true }),
+    ]);
+    if (drive.error) throw drive.error;
+    if (banco.error) throw banco.error;
+    const unificados = new Map<string, EventoCrm>();
+    ((drive.data || []) as EventoCrm[]).forEach((evento) => unificados.set(evento.id, { ...evento, fonteDados: "drive" }));
+    ((banco.data || []) as EventoCrm[]).forEach((evento) => unificados.set(evento.id, { ...evento, fonteDados: "banco" }));
+    setEventos([...unificados.values()].sort((a, b) => new Date(a.agendado_para).getTime() - new Date(b.agendado_para).getTime()));
   }
 
   function modelo(tipo: TipoCrm, lista = modelos) {
@@ -486,7 +499,8 @@ function Crm() {
     setSalvando(evento.id);
     const payload: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
     if (status === "enviado") payload.enviado_em = new Date().toISOString();
-    const { error } = await (supabase as any).from("oricse_crm_eventos").update(payload).eq("id", evento.id).eq("clinica_id", clinicaId);
+    const cliente = evento.fonteDados === "banco" ? supabaseBanco : supabase;
+    const { error } = await (cliente as any).from("oricse_crm_eventos").update(payload).eq("id", evento.id).eq("clinica_id", clinicaId);
     setSalvando(null);
     if (error) return void toast.error(error.message);
     setEventos((lista) => lista.map((item) => item.id === evento.id ? { ...item, status, enviado_em: status === "enviado" ? new Date().toISOString() : item.enviado_em } : item));
@@ -545,11 +559,18 @@ function Crm() {
     <header className="mt-4 flex flex-wrap items-end justify-between gap-4">
       <div>
         <div className="flex items-center gap-2 text-primary"><Sparkles size={20}/><span className="text-xs font-black uppercase tracking-[0.16em]">CRM inteligente</span></div>
-        <h1 className="mt-1 text-3xl font-black tracking-tight">Relacionamento com tutores</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Aniversários, vacinas, consultas, retornos e pós-cirúrgico em uma única fila, com mensagens editáveis pela clínica.</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">Relacionamento que move a clínica</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Campanhas segmentadas, jornada do tutor, Portal do Tutor e tarefas comerciais em uma única operação.</p>
       </div>
       {podeOperar && <button type="button" disabled={sincronizando} onClick={() => void sincronizarComDados()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><RefreshCw size={17} className={sincronizando ? "animate-spin" : ""}/>{sincronizando ? "Sincronizando..." : "Sincronizar agora"}</button>}
     </header>
+
+    <Crm360Panel
+      clinicaId={clinicaId}
+      podeCampanhas={adminGlobal || pode("crm.campanhas") || pode("crm.gerenciar")}
+      podeOperar={podeOperar}
+      onAbrirFila={() => { setAba("fila"); window.setTimeout(() => document.getElementById("crm-fila")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); }}
+    />
 
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
       <Resumo titulo="Pendentes" valor={pendentes.length} detalhe="contatos na fila" />
@@ -561,7 +582,7 @@ function Crm() {
       {([['fila','Fila'],['historico','Histórico'],['modelos','Mensagens'],['config','Configurações']] as Array<[Aba,string]>).filter(([id]) => id !== 'config' || podeGerenciar).map(([id, rotulo]) => <button key={id} type="button" onClick={() => setAba(id)} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold ${aba === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{rotulo}</button>)}
     </nav>
 
-    {aba === "fila" && <section className="mt-5 space-y-3">
+    {aba === "fila" && <section id="crm-fila" className="mt-5 space-y-3">
       {pendentes.length ? pendentes.map((evento) => <EventoCard key={evento.id} evento={evento} podeOperar={podeOperar} salvando={salvando === evento.id} onContato={abrirContato} onStatus={alterarStatus}/>) : <Vazio texto="Nenhum contato pendente. Use “Sincronizar agora” para verificar aniversários, reforços e agenda."/>}
     </section>}
 
