@@ -29,6 +29,7 @@ function hora(iso: string) {
 function TodasAgendas() {
   const { clinicaId } = usePermissoes();
   const [dia, setDia] = useState(() => diaLocal(new Date()));
+  const [visao, setVisao] = useState<"dia" | "semana" | "mes">("dia");
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]);
   const [erro, setErro] = useState("");
@@ -68,6 +69,47 @@ function TodasAgendas() {
     }).sort((a, b) => a.esquerda - b.esquerda);
   }, [estadias, dia]);
 
+  const diasVisiveis = useMemo(() => {
+    const atual = diaDeIso(dia);
+    if (visao === "dia") return [dia];
+    const inicio = new Date(atual);
+    if (visao === "semana") {
+      inicio.setDate(atual.getDate() - ((atual.getDay() + 6) % 7));
+      return Array.from({ length: 7 }, (_, i) => diaLocal(new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i)));
+    }
+    inicio.setDate(1);
+    inicio.setDate(1 - ((inicio.getDay() + 6) % 7));
+    const ultimo = new Date(atual.getFullYear(), atual.getMonth() + 1, 0);
+    const fim = new Date(ultimo);
+    fim.setDate(ultimo.getDate() + (7 - (ultimo.getDay() + 6) % 7) % 7);
+    const quantidade = Math.round((Date.UTC(fim.getFullYear(), fim.getMonth(), fim.getDate()) - Date.UTC(inicio.getFullYear(), inicio.getMonth(), inicio.getDate())) / 86400000) + 1;
+    return Array.from({ length: quantidade }, (_, i) => diaLocal(new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i)));
+  }, [dia, visao]);
+  const estadiasPorDia = useMemo(() => {
+    const mapa = new Map<string, Estadia[]>();
+    for (const data of diasVisiveis) {
+      const inicio = diaDeIso(data).getTime();
+      const fim = diaDeIso(mudarDia(data, 1)).getTime();
+      mapa.set(data, estadias.filter(e => {
+        const de = new Date(e.chegada_prevista).getTime();
+        const ate = new Date(e.saida_prevista).getTime();
+        return Number.isFinite(de) && Number.isFinite(ate) && de < fim && ate > inicio && ate > de;
+      }));
+    }
+    return mapa;
+  }, [estadias, diasVisiveis]);
+  function navegar(direcao: number) {
+    if (visao === "dia") setDia(d => mudarDia(d, direcao));
+    else if (visao === "semana") setDia(d => mudarDia(d, direcao * 7));
+    else setDia(d => {
+      const atual = diaDeIso(d);
+      const alvo = new Date(atual.getFullYear(), atual.getMonth() + direcao, 1);
+      const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+      alvo.setDate(Math.min(atual.getDate(), ultimoDia));
+      return diaLocal(alvo);
+    });
+  }
+
   return <main className="mx-auto w-full max-w-[1500px] space-y-6 px-4 pb-24 pt-6 sm:px-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><Link to="/recepcao" className="text-sm text-muted-foreground">← Painel da recepção</Link><h1 className="mt-2 text-3xl font-bold">Todas as agendas</h1><p className="text-sm text-muted-foreground">Clínica, banho e tosa e hotelzinho, reunidos em um só lugar.</p></div>
@@ -83,13 +125,47 @@ function TodasAgendas() {
         <Link to="/hotelzinho" className="text-sm font-semibold text-primary underline">Gerenciar hotelzinho</Link>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <button type="button" aria-label="Dia anterior" onClick={() => setDia(d => mudarDia(d, -1))} className="rounded-lg border p-2"><ChevronLeft size={18}/></button>
+        <button type="button" aria-label="Período anterior" onClick={() => navegar(-1)} className="rounded-lg border p-2"><ChevronLeft size={18}/></button>
         <input type="date" aria-label="Data da agenda do hotelzinho" value={dia} onChange={e => e.target.value && setDia(e.target.value)} className="min-h-10 rounded-lg border bg-background px-3 text-sm"/>
-        <button type="button" aria-label="Próximo dia" onClick={() => setDia(d => mudarDia(d, 1))} className="rounded-lg border p-2"><ChevronRight size={18}/></button>
+        <button type="button" aria-label="Próximo período" onClick={() => navegar(1)} className="rounded-lg border p-2"><ChevronRight size={18}/></button>
         <button type="button" onClick={() => setDia(diaLocal(new Date()))} className="rounded-lg border px-3 py-2 text-sm">Hoje</button>
-        <span className="text-sm text-muted-foreground">{eventos.length} hospedagem(ns) neste dia</span>
+        <div className="flex rounded-xl border bg-secondary/30 p-1" role="group" aria-label="Visualização da agenda">
+          {([["dia","Dia"],["semana","Semana"],["mes","Mês"]] as const).map(([id,nome]) =>
+            <button key={id} type="button" aria-pressed={visao === id} onClick={() => setVisao(id)} className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${visao === id ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-secondary"}`}>{nome}</button>)}
+        </div>
+        <span className="text-sm text-muted-foreground">{visao === "dia" ? `${eventos.length} hospedagem(ns) neste dia` : `${new Set(diasVisiveis.flatMap(d => (estadiasPorDia.get(d) || []).map(e => e.id))).size} hospedagem(ns) no período`}</span>
       </div>
-      <div className="mt-5 overflow-x-auto">
+      {visao !== "dia" ? <div className="mt-5">
+        {carregando ? <p className="py-8 text-sm">Carregando agenda…</p> : erro ? <p role="alert" className="py-8 text-sm text-destructive">{erro}</p> :
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[700px] grid-cols-7 gap-2">
+              {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(nome => <div key={nome} className="px-2 py-2 text-center text-xs font-semibold text-muted-foreground">{nome}</div>)}
+              {diasVisiveis.map(data => {
+                const lista = estadiasPorDia.get(data) || [];
+                const foraMes = visao === "mes" && diaDeIso(data).getMonth() !== diaDeIso(dia).getMonth();
+                return <button type="button" key={data} onClick={() => {setDia(data);setVisao("dia");}} className={`min-h-32 rounded-xl border p-2 text-left align-top hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${foraMes ? "opacity-45" : "bg-background"} ${data === diaLocal(new Date()) ? "border-primary/70" : ""}`}>
+                  <span className="text-sm font-bold">{diaDeIso(data).getDate()}</span>
+                  <span className="ml-1 text-[10px] text-muted-foreground">{lista.length ? `· ${lista.length}` : ""}</span>
+                  <div className="mt-2 space-y-1">{lista.slice(0,visao === "mes" ? 3 : 6).map(e => {
+                    const animal = animais.find(a => a.id === e.animal_id);
+                    const inicio = new Date(e.chegada_prevista).getTime();
+                    const fim = new Date(e.saida_prevista).getTime();
+                    const diaInicio = diaDeIso(data).getTime();
+                    const diaFim = diaDeIso(mudarDia(data,1)).getTime();
+                    const parte = Math.max(0, Math.min(fim,diaFim) - Math.max(inicio,diaInicio));
+                    const duracao = Math.round(parte / 3600000);
+                    return <div key={e.id} title={`${animal?.nome || "Animal"}: ${dataHora(e.chegada_prevista)} até ${dataHora(e.saida_prevista)}`} className={`rounded-md px-1.5 py-1 text-[11px] font-medium text-white ${e.status === "hospedado" ? "bg-emerald-600" : "bg-amber-600"}`}>
+                      <div className="truncate">{animal?.nome || "Animal"}</div>
+                      <div className="truncate text-[10px] opacity-90">{duracao}h neste dia · {inicio >= diaInicio && inicio < diaFim ? hora(e.chegada_prevista) : "continua"} → {fim <= diaFim ? hora(e.saida_prevista) : "continua"}</div>
+                    </div>;
+                  })}{lista.length > (visao === "mes" ? 3 : 6) && <div className="text-xs text-muted-foreground">+{lista.length - (visao === "mes" ? 3 : 6)} hospedagens</div>}</div>
+                </button>;
+              })}
+            </div>
+          </div>}
+        <p className="mt-3 text-xs text-muted-foreground">Selecione um dia para abrir a linha do tempo com horários de entrada e saída.</p>
+      </div> : null}
+      {visao === "dia" && <div className="mt-5 overflow-x-auto">
         <div className="min-w-[520px] space-y-3">
           <div className="ml-0 grid grid-cols-9 text-[11px] font-medium text-muted-foreground">
             {["00h","03h","06h","09h","12h","15h","18h","21h","24h"].map(h => <span key={h} className="first:text-left last:text-right text-center">{h}</span>)}
@@ -114,6 +190,7 @@ function TodasAgendas() {
               </article>;
             })}
         </div>
+      </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground"><span>🟢 Hospedado</span><span>🟠 Reservado</span></div>
     </section>
