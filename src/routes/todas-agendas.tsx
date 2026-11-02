@@ -134,17 +134,17 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
     </nav>}
     {!somenteHotel && <>
     <section id="agenda-clinica" aria-labelledby="titulo-agenda-clinica" className="scroll-mt-5 space-y-4 rounded-3xl border border-sky-200/80 bg-sky-50/30 p-3 shadow-sm sm:p-5 dark:border-sky-900 dark:bg-sky-950/10">
-      <header className="flex items-center gap-3 border-b border-sky-200/70 pb-4 dark:border-sky-900"><span className="rounded-xl bg-sky-100 px-3 py-2 text-sm font-bold text-sky-800 dark:bg-sky-900 dark:text-sky-100">01</span><div><h2 id="titulo-agenda-clinica" className="text-xl font-bold">Clínica veterinária</h2><p className="text-sm text-muted-foreground">Consultas e procedimentos por profissional e horário</p></div></header>
+      <header className="flex items-center gap-3 border-b border-sky-200/70 pb-4 dark:border-sky-900"><span className="rounded-xl bg-sky-100 px-3 py-2 text-sm font-bold text-sky-800 dark:bg-sky-900 dark:text-sky-100">01</span><div><h2 id="titulo-agenda-clinica" className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-2xl">Clínica veterinária</h2><p className="text-sm text-muted-foreground">Consultas e procedimentos por profissional e horário</p></div></header>
       <AgendaErrorBoundary><AgendaDayBoard mode="recepcao"/></AgendaErrorBoundary>
     </section>
     <section id="agenda-banho" aria-labelledby="titulo-agenda-banho" className="scroll-mt-5 space-y-4 rounded-3xl border border-violet-200/80 bg-violet-50/30 p-3 shadow-sm sm:p-5 dark:border-violet-900 dark:bg-violet-950/10">
-      <header className="flex items-center gap-3 border-b border-violet-200/70 pb-4 dark:border-violet-900"><span className="rounded-xl bg-violet-100 px-3 py-2 text-sm font-bold text-violet-800 dark:bg-violet-900 dark:text-violet-100">02</span><div><h2 id="titulo-agenda-banho" className="text-xl font-bold">Banho e tosa</h2><p className="text-sm text-muted-foreground">Serviços, profissionais e horários disponíveis</p></div></header>
+      <header className="flex items-center gap-3 border-b border-violet-200/70 pb-4 dark:border-violet-900"><span className="rounded-xl bg-violet-100 px-3 py-2 text-sm font-bold text-violet-800 dark:bg-violet-900 dark:text-violet-100">02</span><div><h2 id="titulo-agenda-banho" className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-2xl">Banho e tosa</h2><p className="text-sm text-muted-foreground">Serviços, profissionais e horários disponíveis</p></div></header>
       <AgendaErrorBoundary><AgendaDayBoard mode="banho"/></AgendaErrorBoundary>
     </section>
     </>}
     <section id="agenda-hotel" aria-labelledby="titulo-agenda-hotel" className="scroll-mt-5 rounded-3xl border border-emerald-200/80 bg-emerald-50/30 p-4 shadow-sm sm:p-6 dark:border-emerald-900 dark:bg-emerald-950/10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100">03</span><div><h2 id="titulo-agenda-hotel" className="text-xl font-bold">Hotelzinho</h2><p className="mt-1 text-sm text-muted-foreground">Entradas, saídas e ocupação das hospedagens, inclusive após a meia-noite</p></div></div>
+        <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100">03</span><div><h2 id="titulo-agenda-hotel" className="font-sans text-2xl font-bold tracking-tight text-foreground sm:text-2xl">Hotelzinho</h2><p className="mt-1 text-sm text-muted-foreground">Entradas, saídas e ocupação das hospedagens, inclusive após a meia-noite</p></div></div>
         <Link to="/hotelzinho" className="text-sm font-semibold text-primary underline">Gerenciar hotelzinho</Link>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2">
