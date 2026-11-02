@@ -51,6 +51,7 @@ type MenuRoute =
   | "/estoque"
   | "/minha-atividade"
   | "/perfil-clinica"
+  | "/plano-clinica"
   | "/configurar-portal-tutor"
   | "/temas";
 
@@ -152,6 +153,11 @@ const areas: AreaMenu[] = [
       {
         to: "/perfil-clinica",
         rotulo: "Configurações da clínica",
+        permissao: "administracao.configuracoes",
+      },
+      {
+        to: "/plano-clinica",
+        rotulo: "Meu plano e funcionalidades",
         permissao: "administracao.configuracoes",
       },
       {
