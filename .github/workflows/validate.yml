@@ -44,6 +44,8 @@ jobs:
         run: node scripts/test-drive-serial-queue.mjs
       - name: Drive state compare-and-swap regression
         run: node scripts/test-drive-state-cas.mjs
+      - name: Plan and role policy regression
+        run: node scripts/test-plan-policy.mjs
       - name: Plan catalog inventory
         run: node scripts/audit-planos.mjs
       - name: UI audit
