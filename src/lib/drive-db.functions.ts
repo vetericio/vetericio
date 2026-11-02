@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { seedTabela } from "@/lib/drive-seed";
+import { ACOES_LEGADAS, FUNCIONALIDADES_POR_PLANO, PERMISSOES_PADRAO, PERMITIDAS_POR_PAPEL, seedTabela } from "@/lib/drive-seed";
 import { appendJournal, applyJournal, loadJournals, type DriveChange } from "@/lib/drive-journal.server";
 import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.server";
 
@@ -210,6 +210,79 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     if (q.single === "single") { if (projected.length !== 1) return { data: null, error: { message: projected.length ? "Mais de um registro encontrado." : "Registro não encontrado.", code: "PGRST116" }, count: q.count ? total : null }; return { data: projected[0], error: null, count: q.count ? total : null }; }
     if (q.single === "maybeSingle") { if (projected.length > 1) return { data: null, error: { message: "Mais de um registro encontrado.", code: "PGRST116" }, count: q.count ? total : null }; return { data: projected[0] ?? null, error: null, count: q.count ? total : null }; }
     return { data: projected, error: null, count: q.count ? total : null };
+  }
+  // Proteção de escrita: as decisões do plano devem alcançar o servidor,
+  // mesmo se alguém tentar chamar diretamente a API sem usar os botões da UI.
+  const permissoesEscrita: Record<string, Partial<Record<"insert"|"upsert"|"update"|"delete",string>>> = {
+    tutores: { insert:"recepcao.cadastros.criar",upsert:"recepcao.cadastros.editar",update:"recepcao.cadastros.editar",delete:"recepcao.cadastros.excluir" },
+    oricse_animais: { insert:"recepcao.cadastros.criar",upsert:"recepcao.cadastros.editar",update:"recepcao.cadastros.editar",delete:"recepcao.cadastros.excluir" },
+    oricse_agendas_online: { insert:"recepcao.agenda",upsert:"recepcao.agenda",update:"recepcao.agenda",delete:"recepcao.agenda" },
+    oricse_agendamentos_online: { insert:"recepcao.agenda",upsert:"recepcao.agenda",update:"recepcao.agenda",delete:"recepcao.agenda" },
+    oricse_catalogo_itens: { insert:"estoque.catalogo.gerenciar",upsert:"estoque.catalogo.gerenciar",update:"estoque.catalogo.gerenciar",delete:"estoque.catalogo.gerenciar" },
+    clinica_catalogo_itens: { insert:"estoque.catalogo.gerenciar",upsert:"estoque.catalogo.gerenciar",update:"estoque.catalogo.gerenciar",delete:"estoque.catalogo.gerenciar" },
+    oricse_regras_comissao: { insert:"equipe.pagamentos.gerenciar",upsert:"equipe.pagamentos.gerenciar",update:"equipe.pagamentos.gerenciar",delete:"equipe.pagamentos.gerenciar" },
+    oricse_remuneracao_funcionario: { insert:"equipe.pagamentos.gerenciar",upsert:"equipe.pagamentos.gerenciar",update:"equipe.pagamentos.gerenciar",delete:"equipe.pagamentos.gerenciar" },
+    oricse_jornada_config: { insert:"equipe.pagamentos.gerenciar",upsert:"equipe.pagamentos.gerenciar",update:"equipe.pagamentos.gerenciar",delete:"equipe.pagamentos.gerenciar" },
+    oricse_pagamento_lancamentos: { insert:"equipe.pagamentos.gerenciar",upsert:"equipe.pagamentos.gerenciar",update:"equipe.pagamentos.gerenciar",delete:"equipe.pagamentos.gerenciar" },
+    oricse_hotel_acomodacoes: { insert:"hotelzinho.gerenciar",upsert:"hotelzinho.gerenciar",update:"hotelzinho.gerenciar",delete:"hotelzinho.gerenciar" },
+    oricse_hotel_estadias: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
+    oricse_hotel_cuidados: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
+    oricse_hotel_atualizacoes: { insert:"hotelzinho.operar",upsert:"hotelzinho.operar",update:"hotelzinho.operar",delete:"hotelzinho.operar" },
+  };
+  const permissaoEscrita = q.operation !== "select" ? permissoesEscrita[q.table]?.[q.operation] : undefined;
+  if (permissaoEscrita && !ctx.admin && ctx.clinicas.length) {
+    const candidatos = q.operation === "insert" || q.operation === "upsert"
+      ? (Array.isArray(q.payload) ? q.payload : [q.payload]).filter(Boolean)
+      : filtros(visiveis);
+    const clinicasAlvo = [...new Set((candidatos as any[]).map((item) => String(item?.clinica_id || "")).filter(Boolean))];
+    if (clinicasAlvo.length) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const {data: vinculos, error: vinculosError} = await supabaseAdmin
+        .from("clinica_usuarios").select("clinica_id,papel").eq("user_id",ctx.userId).eq("ativo",true);
+      if (vinculosError) throw new Error("Não foi possível confirmar suas permissões.");
+      const papeis = new Map<string,string>((vinculos || []).map((v: any) => [String(v.clinica_id),String(v.papel)]));
+      async function linhasAtuais(nome: string) {
+        const base = await readTable(t,nome);
+        return applyJournal(base.rows, await loadJournals(journalRequest,base.folderId,nome));
+      }
+      const [planosA,matrizA,excecoesA,usuariosA,clinicasA] = await Promise.all([
+        linhasAtuais("oricse_planos"),linhasAtuais("oricse_plano_funcionalidades"),
+        linhasAtuais("oricse_clinica_funcionalidade_excecoes"),
+        linhasAtuais("oricse_permissoes_usuario"),linhasAtuais("clinicas"),
+      ]);
+      const definicao = PERMISSOES_PADRAO.find((p) => String(p.codigo) === permissaoEscrita);
+      if (!definicao) throw new Error("Ação não classificada na matriz de permissões.");
+      for (const cid of clinicasAlvo) {
+        if (!ctx.clinicas.includes(cid)) throw new Error("Ação fora da clínica autorizada.");
+        const papel = papeis.get(cid);
+        if (!papel) throw new Error("Sem vínculo ativo com a clínica.");
+        const clinica = clinicasA.find((c: any) => String(c.id) === cid);
+        const plano = planosA.find((p: any) => (p.codigo === clinica?.plano || p.nome === clinica?.plano) && p.ativo !== false);
+        if (!clinica || clinica.status !== "ativa" || !plano) throw new Error("Clínica sem plano ativo.");
+        const excecao = (codigo: string) => excecoesA.find((e: any) =>
+          e.clinica_id === cid && e.funcionalidade_codigo === codigo &&
+          (!e.expira_em || new Date(e.expira_em).getTime() > Date.now()));
+        const permitidoPlano = (codigo: string): boolean => {
+          const e = excecao(codigo);
+          if (e) return Boolean(e.permitido);
+          const linha = matrizA.find((m: any) =>
+            String(m.plano_id) === String(plano.id) && m.funcionalidade_codigo === codigo);
+          if (linha) return Boolean(linha.permitido);
+          return codigo.startsWith("acao.")
+            ? ACOES_LEGADAS.has(codigo.slice(5))
+            : Boolean(FUNCIONALIDADES_POR_PLANO[String(plano.codigo)]?.includes(codigo));
+        };
+        const baseOk = !definicao.funcionalidade_codigo || permitidoPlano(String(definicao.funcionalidade_codigo));
+        const acaoOk = permitidoPlano("acao." + permissaoEscrita);
+        const personalizada = usuariosA.find((v: any) => v.clinica_id === cid &&
+          v.user_id === ctx.userId && v.permissao_codigo === permissaoEscrita);
+        const papelOk = personalizada ? Boolean(personalizada.permitido)
+          : Boolean(PERMITIDAS_POR_PAPEL[papel]?.includes(permissaoEscrita));
+        if (!(baseOk && acaoOk && papelOk)) {
+          throw new Error("Seu plano ou cargo não autoriza esta operação: " + permissaoEscrita);
+        }
+      }
+    }
   }
   const payload = Array.isArray(q.payload) ? q.payload : [q.payload]; let afetados: any[] = [];
   // Never allow tenant/owner identity to be reassigned by normal update requests.
