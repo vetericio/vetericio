@@ -98,7 +98,7 @@ async function validarAlteracoesPorPlano(
       getSession: async () => ({ data: { session: { access_token: accessToken } }, error: null }),
     },
     fromDrive: createDriveFrom(async () => accessToken),
-    fromIdentity: (tabela: string) => admin.from(tabela),
+    fromIdentity: (tabela: string) => (admin as any).from(tabela),
     getSelectedClinicId: async () => contexto.clinicaId,
   });
   const { data, error } = await rpc("oricse_permissoes_efetivas", {
