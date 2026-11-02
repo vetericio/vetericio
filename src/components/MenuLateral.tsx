@@ -61,6 +61,7 @@ type ItemMenu = {
   rotulo: string;
   permissao?: string;
   emBreve?: boolean;
+  separador?: "consultorio" | "internacao";
 };
 
 type AreaMenu = {
@@ -82,6 +83,7 @@ const areas: AreaMenu[] = [
     titulo: "Clínica veterinária",
     icone: Stethoscope,
     itens: [
+      { rotulo: "Consultório", separador: "consultorio" },
       {
         to: "/consultorio",
         rotulo: "Consultas e prontuários",
@@ -91,6 +93,7 @@ const areas: AreaMenu[] = [
       { to: "/assinar", rotulo: "Assinar documento", permissao: "consultorio.receituario" },
       { to: "/receituario", rotulo: "Receituário", permissao: "consultorio.receituario" },
       { to: "/medicacoes", rotulo: "Medicações", permissao: "consultorio.medicacoes" },
+      { rotulo: "Internação", separador: "internacao" },
       { to: "/internacao", rotulo: "Painel de internação", permissao: "internacao.painel" },
       { to: "/registros", rotulo: "Animais internados", permissao: "internacao.painel" },
       { to: "/anamnese", rotulo: "Anamnese", permissao: "internacao.registrar" },
@@ -234,14 +237,22 @@ export function MenuLateral({
     setAberto(true);
   };
 
-  const itensVisiveis = (area: AreaMenu) =>
-    carregandoPermissoes
+  const itensVisiveis = (area: AreaMenu) => {
+    const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) =>
-            item.emBreve ||
+          (item) => item.emBreve ||
             (!!item.permissao && (pode(item.permissao) || bloqueadaPeloPlano(item.permissao))),
         );
+    // Separadores só aparecem quando existem links visíveis no respectivo bloco.
+    if (area.titulo !== "Clínica veterinária") return visiveis;
+    const rotasConsultorio = new Set(["/consultorio", "/animais", "/assinar", "/receituario", "/medicacoes"]);
+    const existeConsultorio = visiveis.some(item => item.to && rotasConsultorio.has(item.to));
+    const existeInternacao = visiveis.some(item => item.to && !rotasConsultorio.has(item.to));
+    return area.itens.filter(item => item.separador
+      ? (item.separador === "consultorio" ? existeConsultorio : existeInternacao)
+      : visiveis.includes(item));
+  };
 
   const navegacao = (menuFixo = false) => (
     <>
@@ -272,6 +283,12 @@ export function MenuLateral({
                 <div className="space-y-1 bg-background p-2">
                   {itens.map((item, i) => {
                     const chave = (item.to || item.rotulo) + i;
+                    if (item.separador) return (
+                      <div key={chave} role="presentation" className={`flex items-center gap-2 px-2 pb-1 pt-3 ${item.separador === "internacao" ? "mt-3 border-t border-border/80" : ""}`}>
+                        {item.separador === "consultorio" ? <Stethoscope className="h-4 w-4 text-primary" /> : <BedDouble className="h-4 w-4 text-primary" />}
+                        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{item.rotulo}</span>
+                      </div>
+                    );
                     if (item.emBreve)
                       return (
                         <div
