@@ -58,6 +58,29 @@ function campo(label: string, nome: string, dados: Dados, setDados: (d: Dados)=>
   return <label className="text-sm font-semibold">{label}{obrigatorio && <span className="text-destructive"> *</span>}<input type={tipo} value={dados[nome] || ""} onChange={e=>setDados({...dados,[nome]:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/></label>;
 }
 
+async function consultarCepComFallback(cep: string, signal: AbortSignal) {
+  const fontes = [
+    { url: `https://brasilapi.com.br/api/cep/v1/${cep}`, brasil: true },
+    { url: `https://viacep.com.br/ws/${cep}/json/`, brasil: false },
+  ];
+  for (const fonte of fontes) {
+    if (signal.aborted) throw new Error("Cancelado");
+    try {
+      const resposta = await fetch(fonte.url, { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) });
+      if (!resposta.ok) continue;
+      const dado = await resposta.json();
+      if (dado.erro) continue;
+      const resultado = fonte.brasil
+        ? { logradouro: dado.street, bairro: dado.neighborhood, localidade: dado.city, uf: dado.state }
+        : dado;
+      if (resultado.localidade && resultado.uf) return resultado;
+    } catch (erro) {
+      if (signal.aborted) throw erro;
+    }
+  }
+  throw new Error("CEP não localizado nas fontes disponíveis");
+}
+
 function parseBRL(valor?: string) {
   if (!valor) return 0;
   const limpo = valor.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
@@ -123,10 +146,7 @@ function Contratar() {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal });
-        if (!response.ok) throw new Error("CEP indisponível");
-        const endereco = await response.json();
-        if (endereco.erro) { toast.error("CEP não encontrado. Preencha o endereço manualmente."); return; }
+        const endereco = await consultarCepComFallback(cep, controller.signal);
         setDados(atual => {
           if ((atual.clinica_cep || "").replace(/\D/g, "") !== cep) return atual;
           const novo = { ...atual, clinica_endereco: endereco.logradouro || atual.clinica_endereco, clinica_bairro: endereco.bairro || atual.clinica_bairro, clinica_cidade: endereco.localidade || atual.clinica_cidade, clinica_uf: endereco.uf || atual.clinica_uf };
@@ -146,10 +166,7 @@ function Contratar() {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal });
-        if (!response.ok) throw new Error("CEP indisponível");
-        const endereco = await response.json();
-        if (endereco.erro) { toast.error("CEP não encontrado. Preencha o endereço manualmente."); return; }
+        const endereco = await consultarCepComFallback(cep, controller.signal);
         setDados(atual => {
           if ((atual.responsavel_cep || "").replace(/\D/g, "") !== cep) return atual;
           const novo = { ...atual, responsavel_endereco: endereco.logradouro || atual.responsavel_endereco, responsavel_bairro: endereco.bairro || atual.responsavel_bairro, responsavel_cidade: endereco.localidade || atual.responsavel_cidade, responsavel_uf: endereco.uf || atual.responsavel_uf };
