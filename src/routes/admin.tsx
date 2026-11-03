@@ -196,8 +196,7 @@ function Admin() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [salvandoLogo, setSalvandoLogo] = useState(false);
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
-  const [taxasGerais, setTaxasGerais] = useState({ taxa_mercado_pago_percentual: 0, taxa_mercado_pago_fixa: 0, taxa_oricse_percentual: 10 });
-  const [taxasPorClinica, setTaxasPorClinica] = useState<Record<string, { id?: string; taxa_mercado_pago_percentual: number; taxa_mercado_pago_fixa: number; taxa_oricse_percentual: number }>>({});
+  const [gradeTaxas, setGradeTaxas] = useState<{ modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[] }>({ modalidades: [], segmentos: [] });
   const [salvandoTaxas, setSalvandoTaxas] = useState(false);
 
   const clinicasFiltradas = useMemo(() => {
@@ -231,7 +230,7 @@ function Admin() {
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
       (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
-      (supabaseBanco as any).from("oricse_taxas_pagamento").select("id,clinica_id,taxa_mercado_pago_percentual,taxa_mercado_pago_fixa,taxa_oricse_percentual"),
+      (supabaseBanco as any).rpc("oricse_listar_grade_taxas_pagamento"),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
@@ -247,10 +246,23 @@ function Admin() {
     })));
     setSite({ ...SITE_PADRAO, ...(cfg.data?.valor || {}) });
     setArquivosDrive(arqs.count || 0);
-    if (!taxas.error) {
-      const geral = (taxas.data || []).find((item: any) => !item.clinica_id);
-      if (geral) setTaxasGerais({ taxa_mercado_pago_percentual: Number(geral.taxa_mercado_pago_percentual), taxa_mercado_pago_fixa: Number(geral.taxa_mercado_pago_fixa), taxa_oricse_percentual: Number(geral.taxa_oricse_percentual) });
-      setTaxasPorClinica(Object.fromEntries((taxas.data || []).filter((item: any) => item.clinica_id).map((item: any) => [item.clinica_id, { id: item.id, taxa_mercado_pago_percentual: Number(item.taxa_mercado_pago_percentual), taxa_mercado_pago_fixa: Number(item.taxa_mercado_pago_fixa), taxa_oricse_percentual: Number(item.taxa_oricse_percentual) }])));
+    if (taxas.error) {
+      toast.error("Não foi possível carregar a grade de pagamentos.");
+    } else {
+      const dados = taxas.data || {};
+      setGradeTaxas({
+        modalidades: Array.isArray(dados.modalidades) ? dados.modalidades.map((item: any) => ({
+          ...item,
+          mp_percentual: Number(item.mp_percentual || 0),
+          mp_fixo_centavos: Number(item.mp_fixo_centavos || 0),
+          prazo_recebimento_dias: Number(item.prazo_recebimento_dias || 0),
+          parcelas: Number(item.parcelas || 1),
+        })) : [],
+        segmentos: Array.isArray(dados.segmentos) ? dados.segmentos.map((item: any) => ({
+          ...item,
+          oricse_percentual: Number(item.oricse_percentual || 0),
+        })) : [],
+      });
     }
     if (selecionada) {
       const atual = (c.data || []).find((x: Clinica) => x.id === selecionada.id);
@@ -258,23 +270,43 @@ function Admin() {
     }
   }
 
-  async function salvarTaxas(clinicaId?: string) {
-    const valores = clinicaId ? taxasPorClinica[clinicaId] : taxasGerais;
-    if (!valores) return;
-    const numeros = [valores.taxa_mercado_pago_percentual, valores.taxa_mercado_pago_fixa, valores.taxa_oricse_percentual].map(Number);
-    if (numeros.some((valor) => !Number.isFinite(valor) || valor < 0) || numeros[0] > 100 || numeros[2] > 100) return void toast.error("Informe taxas válidas.");
+  async function salvarGradeTaxas(clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) {
+    if (!modalidades.length || !segmentos.length) return void toast.error("A grade ainda não foi carregada.");
+    const linhasInvalidas = modalidades.some((linha) =>
+      !linha.descricao?.trim()
+      || !Number.isFinite(Number(linha.mp_percentual))
+      || Number(linha.mp_percentual) < 0 || Number(linha.mp_percentual) >= 100
+      || !Number.isSafeInteger(Number(linha.mp_fixo_centavos)) || Number(linha.mp_fixo_centavos) < 0
+    ) || segmentos.some((linha) =>
+      !Number.isFinite(Number(linha.oricse_percentual))
+      || Number(linha.oricse_percentual) < 0 || Number(linha.oricse_percentual) >= 100
+    );
+    if (linhasInvalidas) return void toast.error("Revise as taxas antes de salvar.");
+
     setSalvandoTaxas(true);
-    const payload = {
-      ...(clinicaId ? { clinica_id: clinicaId } : {}),
-      taxa_mercado_pago_percentual: numeros[0], taxa_mercado_pago_fixa: numeros[1], taxa_oricse_percentual: numeros[2],
-    };
-    const operacao = clinicaId
-      ? (supabaseBanco as any).from("oricse_taxas_pagamento").upsert(payload, { onConflict: "clinica_id" })
-      : (supabaseBanco as any).from("oricse_taxas_pagamento").update(payload).is("clinica_id", null);
-    const { error } = await operacao;
+    const { error } = await (supabaseBanco as any).rpc("oricse_salvar_grade_taxas_pagamento", {
+      p_clinica_id: clinicaId,
+      p_modalidades: modalidades.map((linha) => ({
+        modalidade: linha.modalidade,
+        prazo_recebimento_dias: Number(linha.prazo_recebimento_dias),
+        parcelas: Number(linha.parcelas),
+        descricao: linha.descricao.trim(),
+        mp_percentual: Number(linha.mp_percentual),
+        mp_fixo_centavos: Number(linha.mp_fixo_centavos),
+        ativo: Boolean(linha.ativo),
+        fonte: linha.fonte || "manual",
+        fonte_url: linha.fonte_url || null,
+        referencia_verificada_em: linha.referencia_verificada_em || null,
+      })),
+      p_segmentos: segmentos.map((linha) => ({
+        segmento: linha.segmento,
+        oricse_percentual: Number(linha.oricse_percentual),
+        ativo: Boolean(linha.ativo),
+      })),
+    });
     setSalvandoTaxas(false);
     if (error) return toast.error(error.message);
-    toast.success(clinicaId ? "Taxas da clínica salvas." : "Taxas gerais salvas.");
+    toast.success(clinicaId ? "Condições exclusivas da clínica salvas." : "Tabela geral de pagamentos salva.");
     await carregarTudo();
   }
 
@@ -970,9 +1002,120 @@ function Admin() {
 
   const renderSistema = () => <Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div></Card>;
 
-  const renderPagamentos = () => <div className="space-y-6"><div><h2 className="text-2xl font-black">Pagamentos e repasses</h2><p className="mt-1 text-sm text-muted-foreground">O Mercado Pago desconta primeiro; a comissão ORICSE é aplicada sobre o restante. As taxas são usadas no cálculo exibido antes da cobrança.</p></div><Card><h3 className="font-black">Taxas gerais da ORICSE</h3><TaxasForm valores={taxasGerais} onChange={setTaxasGerais} onSave={()=>void salvarTaxas()} salvando={salvandoTaxas}/></Card><Card><h3 className="font-black">Exceção por clínica</h3><p className="mt-1 text-sm text-muted-foreground">Sem exceção, a clínica usa as taxas gerais.</p><div className="mt-4 space-y-4">{clinicas.map(clinica=>{const valores=taxasPorClinica[clinica.id]||taxasGerais;const proprio=Boolean(taxasPorClinica[clinica.id]);return <div key={clinica.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><strong>{clinica.nome}</strong><p className="text-xs text-muted-foreground">{proprio?"Taxas próprias":"Usando taxas gerais"}</p></div><button className="rounded-lg border px-3 py-2 text-xs font-bold" onClick={()=>setTaxasPorClinica(atual=>({...atual,[clinica.id]:atual[clinica.id]||{...taxasGerais}}))}>{proprio?"Editar":"Criar exceção"}</button></div>{proprio&&<TaxasForm valores={valores} onChange={(novo)=>setTaxasPorClinica(atual=>({...atual,[clinica.id]:{...atual[clinica.id],...novo}}))} onSave={()=>void salvarTaxas(clinica.id)} salvando={salvandoTaxas}/>}</div>})}</div></Card></div>;
+  const renderPagamentos = () => (
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Financeiro da plataforma</p>
+        <h2 className="mt-1 text-2xl font-black">Pagamentos, taxas e repasses</h2>
+        <p className="mt-1 max-w-4xl text-sm text-muted-foreground">A taxa do Mercado Pago é descontada primeiro. A comissão ORICSE incide apenas sobre o saldo restante, por segmento, e o simulador mostra o líquido antes da cobrança.</p>
+      </div>
+      <PainelTaxasPagamento clinicas={clinicas} grade={gradeTaxas} salvando={salvandoTaxas} onSalvar={(clinicaId, modalidades, segmentos) => void salvarGradeTaxas(clinicaId, modalidades, segmentos)} />
+    </div>
+  );
 
   return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo.png"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><div className="flex flex-wrap items-center gap-2"><label className="min-w-[230px] rounded-xl border bg-white px-3 py-1.5 text-left"><span className="block text-[10px] font-black uppercase tracking-wide text-muted-foreground">Clínica selecionada</span><select value={selecionada?.id || ""} onChange={e=>{const clinica=clinicas.find(item=>item.id===e.target.value)||null;setSelecionada(clinica);if(clinica)setAba("clinicas");}} className="w-full bg-transparent text-sm font-bold outline-none"><option value="">Todas as clínicas ORICSE</option>{clinicas.map(clinica=><option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}</select></label><a href="/inicio" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"><PanelsTopLeft size={18}/> Página inicial do sistema</a><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></div></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if(id==="paginas") void carregarRotas();  if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}{aba === "paginas" && renderPaginas()}{aba === "pagamentos" && renderPagamentos()}</section></div></div>{renderNovaClinica()}</main>;
 }
 
-function TaxasForm({valores,onChange,onSave,salvando}:{valores:{taxa_mercado_pago_percentual:number;taxa_mercado_pago_fixa:number;taxa_oricse_percentual:number};onChange:(v:any)=>void;onSave:()=>void;salvando:boolean}){return <div className="mt-4 grid gap-3 sm:grid-cols-4"><label className="text-sm font-bold">Mercado Pago (%)<input type="number" min="0" max="100" step="0.01" value={valores.taxa_mercado_pago_percentual} onChange={e=>onChange({...valores,taxa_mercado_pago_percentual:Number(e.target.value)})} className="mt-1 min-h-10 w-full rounded-lg border px-3 font-normal"/></label><label className="text-sm font-bold">Mercado Pago (R$)<input type="number" min="0" step="0.01" value={valores.taxa_mercado_pago_fixa} onChange={e=>onChange({...valores,taxa_mercado_pago_fixa:Number(e.target.value)})} className="mt-1 min-h-10 w-full rounded-lg border px-3 font-normal"/></label><label className="text-sm font-bold">ORICSE (%)<input type="number" min="0" max="100" step="0.01" value={valores.taxa_oricse_percentual} onChange={e=>onChange({...valores,taxa_oricse_percentual:Number(e.target.value)})} className="mt-1 min-h-10 w-full rounded-lg border px-3 font-normal"/></label><button disabled={salvando} onClick={onSave} className="self-end rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">{salvando?"Salvando...":"Salvar taxas"}</button></div>}
+type TaxaModalidade = {
+  id?: string; clinica_id?: string | null;
+  modalidade: "pix" | "cartao_debito" | "cartao_credito" | "saldo_mercado_pago" | "boleto";
+  prazo_recebimento_dias: number; parcelas: number; descricao: string; mp_percentual: number;
+  mp_fixo_centavos: number; ativo: boolean; fonte: string; fonte_url?: string | null;
+  referencia_verificada_em?: string | null; updated_at?: string;
+};
+type TaxaSegmento = {
+  id?: string; clinica_id?: string | null;
+  segmento: "clinica" | "banho_tosa" | "hotelzinho" | "pet_shop" | "portal_tutor";
+  oricse_percentual: number; ativo: boolean; updated_at?: string;
+};
+const SEGMENTOS_TAXAS: Record<TaxaSegmento["segmento"], string> = {
+  clinica: "Clínica veterinária", banho_tosa: "Banho e tosa", hotelzinho: "Hotelzinho", pet_shop: "Pet shop", portal_tutor: "Portal do Tutor",
+};
+const PRAZOS_TAXAS: Record<number, string> = { 0: "Na hora", 3: "Até 3 dias", 7: "Em 7 dias", 14: "Em 14 dias", 30: "Em 30 dias" };
+function moedaCentavos(valor: number) { return (Math.max(0, valor) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+function percentual(valor: number) { return "${Number(valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%"; }
+function dataReferencia(valor?: string | null) {
+  if (!valor) return "sem data";
+  const data = new Date("${valor.slice(0, 10)}T12:00:00");
+  return Number.isNaN(data.getTime()) ? valor : data.toLocaleDateString("pt-BR");
+}
+function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento_dias" | "parcelas">) { return "${linha.modalidade}:${linha.prazo_recebimento_dias}:${linha.parcelas}"; }
+
+function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvar }: {
+  clinicas: Clinica[]; grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[] }; salvando: boolean;
+  onSalvar: (clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) => void;
+}) {
+  const [clinicaId, setClinicaId] = useState<string>("");
+  const [prazo, setPrazo] = useState(0);
+  const [linhas, setLinhas] = useState<TaxaModalidade[]>([]);
+  const [segmentos, setSegmentos] = useState<TaxaSegmento[]>([]);
+  const [valorSimulacao, setValorSimulacao] = useState("100,00");
+  const [chaveSimulacao, setChaveSimulacao] = useState("pix:0:1");
+  const [segmentoSimulacao, setSegmentoSimulacao] = useState<TaxaSegmento["segmento"]>("clinica");
+  const globais = useMemo(() => grade.modalidades.filter((linha) => !linha.clinica_id), [grade.modalidades]);
+  const segmentosGlobais = useMemo(() => grade.segmentos.filter((linha) => !linha.clinica_id), [grade.segmentos]);
+  const temExcecao = useMemo(() => Boolean(clinicaId) && (grade.modalidades.some((linha) => linha.clinica_id === clinicaId) || grade.segmentos.some((linha) => linha.clinica_id === clinicaId)), [clinicaId, grade]);
+
+  useEffect(() => {
+    const excecoes = clinicaId ? grade.modalidades.filter((linha) => linha.clinica_id === clinicaId) : [];
+    const excecoesSegmentos = clinicaId ? grade.segmentos.filter((linha) => linha.clinica_id === clinicaId) : [];
+    setLinhas(globais.map((global) => ({ ...(excecoes.find((linha) => chaveTaxa(linha) === chaveTaxa(global)) || global), clinica_id: clinicaId || null })));
+    setSegmentos(segmentosGlobais.map((global) => ({ ...(excecoesSegmentos.find((linha) => linha.segmento === global.segmento) || global), clinica_id: clinicaId || null })));
+  }, [clinicaId, globais, segmentosGlobais, grade.modalidades, grade.segmentos]);
+
+  const linhasVisiveis = useMemo(() => linhas.filter((linha) => linha.modalidade !== "cartao_credito" || linha.prazo_recebimento_dias === prazo).sort((a, b) => {
+    const ordem: Record<string, number> = { pix: 1, cartao_debito: 2, cartao_credito: 3, saldo_mercado_pago: 4, boleto: 5 };
+    if (ordem[a.modalidade] !== ordem[b.modalidade]) return ordem[a.modalidade] - ordem[b.modalidade];
+    return a.parcelas - b.parcelas;
+  }), [linhas, prazo]);
+
+  useEffect(() => {
+    if (!linhasVisiveis.some((linha) => chaveTaxa(linha) === chaveSimulacao)) setChaveSimulacao(chaveTaxa(linhasVisiveis[0] || { modalidade: "pix", prazo_recebimento_dias: 0, parcelas: 1 }));
+  }, [linhasVisiveis, chaveSimulacao]);
+
+  const linhaSimulada = linhas.find((linha) => chaveTaxa(linha) === chaveSimulacao) || linhasVisiveis[0];
+  const segmentoSelecionado = segmentos.find((linha) => linha.segmento === segmentoSimulacao) || segmentos[0];
+  const centavos = Math.round(Number(valorSimulacao.replace(/\./g, "").replace(",", ".")) * 100) || 0;
+  const descontoMp = linhaSimulada ? Math.min(centavos, Math.round(centavos * Number(linhaSimulada.mp_percentual) / 100) + Number(linhaSimulada.mp_fixo_centavos || 0)) : 0;
+  const comissaoOricse = segmentoSelecionado ? Math.round((centavos - descontoMp) * Number(segmentoSelecionado.oricse_percentual) / 100) : 0;
+  const liquido = Math.max(0, centavos - descontoMp - comissaoOricse);
+  const taxaFinal = centavos > 0 ? ((descontoMp + comissaoOricse) / centavos) * 100 : 0;
+  const referencia = globais.find((linha) => linha.fonte_url)?.referencia_verificada_em;
+  function atualizarLinha(chave: string, campos: Partial<TaxaModalidade>) { setLinhas((atuais) => atuais.map((linha) => chaveTaxa(linha) === chave ? { ...linha, ...campos } : linha)); }
+  function atualizarSegmento(segmento: TaxaSegmento["segmento"], campos: Partial<TaxaSegmento>) { setSegmentos((atuais) => atuais.map((linha) => linha.segmento === segmento ? { ...linha, ...campos } : linha)); }
+  const clinicaSelecionada = clinicas.find((clinica) => clinica.id === clinicaId);
+
+  return <div className="space-y-5">
+    <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      <div className="grid gap-4 border-b bg-gradient-to-r from-[#fff8f3] to-white p-5 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Tabela de cobrança</p><h3 className="mt-1 text-xl font-black">Taxas claras antes de vender</h3><p className="mt-1 max-w-3xl text-sm text-muted-foreground">PIX, débito, saldo Mercado Pago, boleto e crédito de 1x a 12x. O valor final considera a taxa do Mercado Pago e a comissão ORICSE do segmento.</p></div>
+        <div className="rounded-xl border border-primary/15 bg-white px-4 py-3 text-sm shadow-sm"><p className="font-bold">Referência pública Mercado Pago</p><p className="mt-0.5 text-xs text-muted-foreground">Conferida em {dataReferencia(referencia)} · Link / Checkout online</p><a className="mt-2 inline-flex font-semibold text-primary underline underline-offset-2" href="https://www.mercadopago.com.br/ferramentas-para-vender/link-de-pagamento" target="_blank" rel="noreferrer">Ver fonte oficial</a></div>
+      </div>
+      <div className="grid gap-4 p-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm font-bold">Aplicar para<select value={clinicaId} onChange={(event) => setClinicaId(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal"><option value="">Todas as clínicas — tabela geral</option>{clinicas.map((clinica) => <option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}</select></label>
+          <label className="text-sm font-bold">Prazo do crédito<select value={prazo} onChange={(event) => setPrazo(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal"><option value={0}>Receber na hora</option><option value={14}>Receber em 14 dias</option><option value={30}>Receber em 30 dias</option></select></label>
+        </div>
+        <div className="rounded-xl border bg-slate-50 px-4 py-3"><p className="text-xs font-black uppercase tracking-wide text-muted-foreground">Condição aplicada</p><p className="mt-1 font-bold">{clinicaSelecionada ? clinicaSelecionada.nome : "Tabela geral ORICSE"}</p><p className="mt-0.5 text-xs text-muted-foreground">{clinicaSelecionada ? (temExcecao ? "Condições próprias desta clínica" : "Sem exceção: herda a tabela geral") : "Base para todas as clínicas"}</p></div>
+      </div>
+    </section>
+
+    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="font-black">Condições por meio de pagamento</h3><p className="mt-1 text-sm text-muted-foreground">Prazo de crédito selecionado: <strong>{PRAZOS_TAXAS[prazo]}</strong>. “Sem acréscimo” significa que a clínica absorve a taxa das parcelas.</p></div><button type="button" onClick={() => { setLinhas(globais.map((linha) => ({ ...linha, clinica_id: clinicaId || null }))); setSegmentos(segmentosGlobais.map((linha) => ({ ...linha, clinica_id: clinicaId || null }))); }} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar referência salva</button></div>
+      <div className="mt-4 overflow-x-auto rounded-xl border"><table className="min-w-[900px] w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Meio / condição</th><th className="px-4 py-3">Recebimento</th><th className="px-4 py-3">Mercado Pago</th><th className="px-4 py-3">Fixo</th><th className="px-4 py-3">Referência</th><th className="px-4 py-3">Ativo</th></tr></thead>
+        <tbody className="divide-y">{linhasVisiveis.map((linha) => { const chave = chaveTaxa(linha); return <tr key={chave} className={!linha.ativo ? "bg-slate-50 text-slate-400" : ""}><td className="px-4 py-3 font-semibold">{linha.descricao}</td><td className="px-4 py-3 text-muted-foreground">{PRAZOS_TAXAS[linha.prazo_recebimento_dias]}</td><td className="px-4 py-3"><div className="relative max-w-28"><input aria-label="Taxa Mercado Pago" type="number" min="0" max="99.99" step="0.01" value={linha.mp_percentual} onChange={(event) => atualizarLinha(chave, { mp_percentual: Number(event.target.value) })} className="min-h-10 w-full rounded-lg border px-3 pr-7 text-right font-bold"/><span className="absolute right-2 top-2.5 text-muted-foreground">%</span></div></td><td className="px-4 py-3"><div className="relative max-w-32"><span className="absolute left-2 top-2.5 text-xs text-muted-foreground">R$</span><input aria-label="Taxa fixa" type="number" min="0" step="0.01" value={(Number(linha.mp_fixo_centavos || 0) / 100).toFixed(2)} onChange={(event) => atualizarLinha(chave, { mp_fixo_centavos: Math.round(Number(event.target.value || 0) * 100) })} className="min-h-10 w-full rounded-lg border px-3 pl-8 text-right font-bold"/></div></td><td className="px-4 py-3"><span className="rounded-full bg-[#f9eee8] px-2.5 py-1 text-xs font-bold text-primary">{linha.fonte === "referencia_publica_mercado_pago" ? "Oficial MP" : "Condição própria"}</span></td><td className="px-4 py-3"><input aria-label="Ativo" type="checkbox" checked={linha.ativo} onChange={(event) => atualizarLinha(chave, { ativo: event.target.checked })} className="h-4 w-4 accent-primary"/></td></tr>; })}</tbody>
+      </table></div>
+      <p className="mt-3 text-xs text-muted-foreground">As tarifas variam conforme produto, prazo, volume e contrato da conta Mercado Pago. Ao confirmar uma venda, o sistema deve manter o snapshot da taxa real retornada pelo provedor para conciliação.</p>
+    </section>
+
+    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
+      <div className="rounded-2xl border bg-white p-5 shadow-sm"><div><h3 className="font-black">Comissão ORICSE por segmento</h3><p className="mt-1 text-sm text-muted-foreground">A comissão incide depois da taxa do Mercado Pago — por isso a taxa final não é apenas a soma dos dois percentuais.</p></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{segmentos.map((linha) => <label key={linha.segmento} className="rounded-xl border bg-slate-50 p-3 text-sm font-bold"><span className="block">{SEGMENTOS_TAXAS[linha.segmento]}</span><span className="relative mt-2 block max-w-[150px]"><input type="number" min="0" max="99.99" step="0.01" value={linha.oricse_percentual} onChange={(event) => atualizarSegmento(linha.segmento, { oricse_percentual: Number(event.target.value) })} className="min-h-10 w-full rounded-lg border bg-white px-3 pr-7 text-right font-black"/><span className="absolute right-2 top-2.5 text-muted-foreground">%</span></span><span className="mt-2 flex items-center gap-2 text-xs font-normal text-muted-foreground"><input type="checkbox" checked={linha.ativo} onChange={(event) => atualizarSegmento(linha.segmento, { ativo: event.target.checked })} className="accent-primary"/> Cobrar comissão neste segmento</span></label>)}</div></div>
+      <aside className="rounded-2xl border-2 border-primary/15 bg-[#fffaf7] p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Simulador de repasse</p><h3 className="mt-1 text-lg font-black">Veja a taxa final</h3><div className="mt-4 grid gap-3"><label className="text-sm font-bold">Valor da venda<input inputMode="decimal" value={valorSimulacao} onChange={(event) => setValorSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-bold"/></label><label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label><label className="text-sm font-bold">Segmento<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{segmentos.filter((linha) => linha.ativo).map((linha) => <option key={linha.segmento} value={linha.segmento}>{SEGMENTOS_TAXAS[linha.segmento]}</option>)}</select></label></div>
+        <dl className="mt-5 space-y-2 rounded-xl bg-white p-4 text-sm"><div className="flex justify-between gap-3"><dt>Venda bruta</dt><dd className="font-bold">{moedaCentavos(centavos)}</dd></div><div className="flex justify-between gap-3"><dt>Mercado Pago ({percentual(linhaSimulada?.mp_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(descontoMp)}</dd></div><div className="flex justify-between gap-3"><dt>ORICSE ({percentual(segmentoSelecionado?.oricse_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(comissaoOricse)}</dd></div><div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-black">Líquido da clínica</dt><dd className="font-black text-emerald-700">{moedaCentavos(liquido)}</dd></div><div className="flex justify-between gap-3 text-xs text-muted-foreground"><dt>Taxa efetiva final</dt><dd className="font-bold">{percentual(taxaFinal)}</dd></div></dl>
+      </aside>
+    </section>
+
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4 shadow-sm"><p className="text-sm text-muted-foreground">{clinicaSelecionada ? (temExcecao ? "Você está editando uma condição exclusiva desta clínica." : "Ao salvar, será criada uma condição exclusiva para esta clínica.") : "Esta é a tabela padrão aplicada quando uma clínica não possui exceção."}</p><button type="button" disabled={salvando || !linhas.length || !segmentos.length} onClick={() => onSalvar(clinicaId || null, linhas, segmentos)} className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground disabled:opacity-50">{salvando ? "Salvando tabela..." : clinicaSelecionada ? "Salvar condição da clínica" : "Salvar tabela geral"}</button></div>
+  </div>;
+}
+
