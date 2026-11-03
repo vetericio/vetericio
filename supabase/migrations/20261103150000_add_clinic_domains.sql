@@ -76,30 +76,60 @@ select
 from public.clinicas c
 where coalesce(btrim(c.slug), '') <> '';
 
--- A resolução pública é segura: só devolve dados mínimos quando o domínio está ativo e publicado.
-create function public.oricse_resolver_site_publico(p_hostname text)
-returns jsonb
+-- O portal e o site só resolvem o hostname depois de ativo e publicado.
+-- A consulta mantém compatibilidade com domínios legados, mas nunca expõe um domínio pendente.
+create or replace function public.oricse_clinica_publica_portal(
+  p_host text default null,
+  p_slug text default null
+)
+returns table(clinica_id uuid, clinica_nome text, clinica_slug text, clinica_logo_url text)
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select jsonb_build_object(
-    'clinica_id', c.id,
-    'nome', c.nome,
-    'slug', c.slug,
-    'tipo_publico', c.tipo_publico,
-    'logo_url', c.logo_url,
-    'hostname', d.hostname
+  with entrada as (
+    select
+      lower(regexp_replace(split_part(coalesce(p_host, ''), ':', 1), '^www\\.', '')) as host,
+      lower(trim(both '/' from coalesce(p_slug, ''))) as slug
   )
-  from public.oricse_dominios_clinica d
-  join public.clinicas c on c.id = d.clinica_id
-  where d.hostname = lower(btrim(p_hostname))
-    and d.status = 'ativo'
-    and d.publicar_site = true
-    and c.status = 'ativa'
-  limit 1;
+  select c.id, c.nome, c.slug, c.logo_url
+  from public.clinicas c, entrada e
+  where c.status = 'ativa'
+    and (
+      exists (
+        select 1
+        from public.oricse_dominios_clinica d
+        where d.clinica_id = c.id
+          and d.status = 'ativo'
+          and d.publicar_site = true
+          and lower(regexp_replace(d.hostname, '^www\\.', '')) = e.host
+      )
+      or (
+        e.host <> ''
+        and not exists (
+          select 1 from public.oricse_dominios_clinica d
+          where d.clinica_id = c.id and d.tipo = 'proprio'
+        )
+        and lower(regexp_replace(coalesce(c.dominio, ''), '^www\\.', '')) = e.host
+      )
+      or (e.slug <> '' and lower(coalesce(c.slug, '')) = e.slug)
+    )
+  order by
+    case
+      when exists (
+        select 1
+        from public.oricse_dominios_clinica d
+        where d.clinica_id = c.id
+          and d.status = 'ativo'
+          and d.publicar_site = true
+          and lower(regexp_replace(d.hostname, '^www\\.', '')) = e.host
+      ) then 0
+      when e.host <> '' and lower(regexp_replace(coalesce(c.dominio, ''), '^www\\.', '')) = e.host then 1
+      else 2
+    end
+  limit 1
 $$;
 
-revoke all on function public.oricse_resolver_site_publico(text) from public;
-grant execute on function public.oricse_resolver_site_publico(text) to anon, authenticated;
+revoke all on function public.oricse_clinica_publica_portal(text, text) from public;
+grant execute on function public.oricse_clinica_publica_portal(text, text) to anon, authenticated;
