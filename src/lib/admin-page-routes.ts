@@ -11,7 +11,7 @@ export type PaginaOricse = {
   dinamica: boolean;
 };
 
-export const ROTAS_CATALOGO: readonly PaginaOricse[] = [
+const ROTAS_CADASTRADAS: readonly PaginaOricse[] = [
   {
     "original": "/",
     "nome": "Página inicial do site",
@@ -461,6 +461,61 @@ export const ROTAS_CATALOGO: readonly PaginaOricse[] = [
     "dinamica": true
   }
 ];
+
+/**
+ * Descoberta automática no build: Vite encontra os arquivos de rotas sem
+ * precisar importar seus componentes nem executar código de páginas.
+ * Uma página .tsx nova aparecerá no editor e em Páginas e URLs no mesmo deploy.
+ * Metadados humanos são preservados para as páginas já conhecidas.
+ */
+const arquivosDeRotas = import.meta.glob("../routes/**/*.{ts,tsx}");
+
+function caminhoDoArquivo(arquivo: string): string | null {
+  let relativo = arquivo.replace(/^\.\.\/routes\//, "").replace(/\.(tsx|ts)$/, "");
+  if (relativo === "__root" || relativo === "$alias" ||
+      relativo.startsWith("api/") || relativo.startsWith("-")) return null;
+  relativo = relativo.replace(/\/index$/, "").replace(/\./g, "/");
+  if (relativo === "index") return "/";
+  return "/" + relativo.split("/").map(parte =>
+    parte.startsWith("$") ? ":" + parte.slice(1) : parte
+  ).join("/");
+}
+
+function textoLegivel(caminho: string): string {
+  if (caminho === "/") return "Página inicial";
+  const parte = caminho.split("/").filter(Boolean).filter(x => !x.startsWith(":")).at(-1) || caminho;
+  return parte.split("-").map(p => p ? p[0].toLocaleUpperCase("pt-BR") + p.slice(1) : "").join(" ");
+}
+
+function metadadosNovos(original: string): PaginaOricse {
+  const dinamica = original.includes(":");
+  const administrativa = /^\/admin(?:-|\/|$)/.test(original);
+  const portal = /^\/(?:pet|vet)\//.test(original);
+  const publica = ["/", "/login", "/planos", "/contratar", "/contratacao-recebida",
+    "/termos-de-uso", "/politica-de-privacidade", "/assinar", "/termos", "/privacidade"].includes(original);
+  return {
+    original,
+    nome: textoLegivel(original),
+    grupo: dinamica || portal ? "Links por estabelecimento" :
+      administrativa ? "Administração ORICSE" :
+      publica ? "Site público" : "Novas páginas",
+    editavel: !dinamica && !administrativa && !publica,
+    dinamica
+  };
+}
+
+const cadastroPorRota = new Map(ROTAS_CADASTRADAS.map(p => [p.original, p]));
+const rotasDescobertas = Array.from(new Set(
+  Object.keys(arquivosDeRotas).map(caminhoDoArquivo).filter((p): p is string => Boolean(p))
+));
+export const ROTAS_CATALOGO: readonly PaginaOricse[] = rotasDescobertas
+  .map(original => cadastroPorRota.get(original) || metadadosNovos(original))
+  .sort((a,b) => {
+    const ia = ROTAS_CADASTRADAS.findIndex(r => r.original === a.original);
+    const ib = ROTAS_CADASTRADAS.findIndex(r => r.original === b.original);
+    return ia !== -1 && ib !== -1 ? ia - ib :
+      ia !== -1 ? -1 : ib !== -1 ? 1 : a.original.localeCompare(b.original,"pt-BR");
+  });
 
 export const ROTAS_EDITAVEIS = ROTAS_CATALOGO.filter((r) => r.editavel);
 export const ORIGINAIS_EDITAVEIS = new Set(ROTAS_EDITAVEIS.map((r) => r.original));
