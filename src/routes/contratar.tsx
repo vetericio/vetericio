@@ -121,6 +121,7 @@ function Contratar() {
   const [texto, setTexto] = useState<any>(TEXTO_PADRAO);
   const [termos, setTermos] = useState(false);
   const [privacidade, setPrivacidade] = useState(false);
+  const [aceitouFidelidadeMaster, setAceitouFidelidadeMaster] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [pedido, setPedido] = useState<any>(null);
   const [abrindoCheckout, setAbrindoCheckout] = useState(false);
@@ -309,6 +310,7 @@ function Contratar() {
   async function continuarPagamento() {
     if (!planoConhecido || (!ehTesteGratis && (!configPlano || valorBase <= 0))) { toast.error("Não foi possível validar o valor deste plano. Volte à página de planos."); return; }
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
+    if (plano === "master-equipe" && !aceitouFidelidadeMaster) { toast.error("Confirme ciência da fidelidade de 12 meses do plano Master."); return; }
     setEnviando(true);
     const payload = {
       ...dados,
@@ -325,6 +327,9 @@ function Contratar() {
       promo_codigo: promoAplicado?.codigo || null,
       aceitou_termos: true,
       aceitou_privacidade: true,
+      fidelidade_meses: plano === "master-equipe" ? 12 : 0,
+      aceitou_fidelidade_master: plano === "master-equipe" ? aceitouFidelidadeMaster : null,
+      fidelidade_aceita_em: plano === "master-equipe" ? new Date().toISOString() : null,
     };
     const { data, error } = await (supabaseBanco as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
     setEnviando(false);
@@ -398,6 +403,14 @@ function Contratar() {
         </label>
       </div>
       <label className="mt-5 block text-sm font-semibold">{texto.observacoes_rotulo}<textarea value={dados.observacoes} onChange={e=>salvarLocal({...dados,observacoes:e.target.value})} rows={3} className="mt-1 w-full rounded-xl border bg-background px-3 py-2 font-normal"/></label>
+      {plano === "master-equipe" && <div className="mt-5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="text-base font-extrabold">Importante: plano Master com fidelidade de 12 meses</p>
+        <p className="mt-2 leading-6">A permanência mínima é de 1 ano a partir da ativação. Mesmo ao escolher a cobrança mensal, o compromisso contratual permanece de 12 meses. Leia as condições de cancelamento nos <Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-700 underline decoration-2 underline-offset-4">Termos de Uso <ExternalLink size={14} className="inline"/></Link>.</p>
+        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white p-3 font-semibold">
+          <input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={aceitouFidelidadeMaster} onChange={e=>setAceitouFidelidadeMaster(e.target.checked)}/>
+          <span>Estou ciente e concordo com a fidelidade mínima de 12 meses do plano Master.</span>
+        </label>
+      </div>}
       <div className="mt-5 space-y-4 border-t pt-5 text-sm"><div className="flex items-start gap-3"><input id="aceitar-termos" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={termos} onChange={e=>setTermos(e.target.checked)}/><div><label htmlFor="aceitar-termos" className="cursor-pointer">Li e concordo com os </label><Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Termos de Uso <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div><div className="flex items-start gap-3"><input id="aceitar-privacidade" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={privacidade} onChange={e=>setPrivacidade(e.target.checked)}/><div><label htmlFor="aceitar-privacidade" className="cursor-pointer">Li e concordo com a </label><Link to="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Política de Privacidade <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1"> e tratamento de dados.</span><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div></div>
     </section>}
 
