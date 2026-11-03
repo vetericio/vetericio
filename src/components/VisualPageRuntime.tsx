@@ -12,6 +12,37 @@ const EMPTY_PUBLISHED: VisualDocument = { version: 1, updatedAt: "", pages: {} }
 const SYNC_STORAGE_KEY = "oricse:visual-published-at";
 const SYNC_CHANNEL = "oricse-visual-editor";
 
+// Cache em memória: uma navegação interna não deve buscar o mesmo layout
+// visual dezenas de vezes. Nunca gravar o documento no armazenamento do navegador.
+let paginaVisualCache: VisualDocument | null = null;
+let paginaVisualCarregadoEm = 0;
+let paginaVisualRequisicao: Promise<VisualDocument> | null = null;
+const DURACAO_CACHE_MS = 60_000;
+
+async function buscarLayoutPublicado(): Promise<VisualDocument> {
+  if (paginaVisualCache && Date.now() - paginaVisualCarregadoEm < DURACAO_CACHE_MS)
+    return paginaVisualCache;
+  if (paginaVisualRequisicao) return paginaVisualRequisicao;
+  paginaVisualRequisicao = (async () => {
+    const { data, error } = await (supabase as any)
+      .from("oricse_config")
+      .select("valor")
+      .eq("chave", VISUAL_PUBLISHED_KEY)
+      .maybeSingle();
+    if (error) throw error;
+    paginaVisualCache = data?.valor || EMPTY_PUBLISHED;
+    paginaVisualCarregadoEm = Date.now();
+    return paginaVisualCache!;
+  })().finally(() => { paginaVisualRequisicao = null; });
+  return paginaVisualRequisicao;
+}
+
+function invalidarLayoutPublicado() {
+  paginaVisualCache = null;
+  paginaVisualCarregadoEm = 0;
+}
+
+
 function hasContent(layout?: VisualLayout) {
   return Boolean(layout && (layout.patches.length || layout.added.length));
 }
@@ -22,6 +53,7 @@ export function VisualPageRuntime() {
   const [revision, setRevision] = useState(0);
 
   const requestRefresh = useCallback(() => {
+    invalidarLayoutPublicado();
     setRevision((value) => value + 1);
   }, []);
 
@@ -83,21 +115,15 @@ export function VisualPageRuntime() {
     };
 
     const loadPublished = async () => {
-      const { data, error } = await (supabase as any)
-        .from("oricse_config")
-        .select("valor,updated_at")
-        .eq("chave", VISUAL_PUBLISHED_KEY)
-        .maybeSingle();
-
-      if (!active) return;
-      if (error) {
-        console.error("Não foi possível carregar o layout publicado:", error);
-        return;
+      try {
+        const resultado = await buscarLayoutPublicado();
+        if (!active) return;
+        published = resultado;
+        observer = new MutationObserver(scheduleApply);
+        scheduleApply();
+      } catch (error) {
+        console.error("Não foi possível carregar o layout visual publicado:", error);
       }
-
-      published = data?.valor || EMPTY_PUBLISHED;
-      observer = new MutationObserver(scheduleApply);
-      scheduleApply();
     };
 
     const onResize = () => scheduleApply();
