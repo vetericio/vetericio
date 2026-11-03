@@ -170,6 +170,17 @@ function PortalTutores(){
   return <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><Link to="/tutores" className="text-sm font-semibold text-muted-foreground hover:text-primary">← Tutores</Link><h1 className="mt-3 text-3xl font-black tracking-tight">Portal do Tutor</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Ative acessos reais para os tutores desta clínica. Cada login só enxerga os próprios animais e dados liberados.</p></div>{slug&&<a href={`/pet/${slug}/portal`} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-bold"><ExternalLink size={16}/> Abrir portal</a>}</div>
 
+    <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Conteúdos do Portal do Tutor</p>
+          <h2 className="mt-2 text-xl font-black">Documentos e cuidados de cada animal</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Receitas, exames, laudos, atestados, cartões de vacinação, vermífugos e outros documentos são vinculados ao animal na ficha da clínica. Cada registro possui controle individual de liberação para o tutor, e os PDFs ficam disponíveis quando anexados.</p>
+        </div>
+        <Link to="/animais" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Gerenciar por animal <ExternalLink size={16}/></Link>
+      </div>
+      <p className="mt-4 rounded-xl bg-secondary/40 px-4 py-3 text-xs text-muted-foreground">Cada clínica administra exclusivamente seus registros. Conteúdos internos não são exibidos ao tutor sem liberação.</p>
+    </section>
     {temDadosLocais&&<section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><Upload className="mt-0.5 text-amber-800"/><div className="flex-1"><h2 className="font-black text-amber-950">Sincronização dos dados deste navegador</h2><p className="mt-1 text-sm text-amber-900">Localizei {locais.length} tutor(es), {animaisLocais.length} animal(is) e {comandasLocais.length} comanda(s). A sincronização só ocorre após sua confirmação e sempre para a clínica atual.</p><p className="mt-1 text-xs text-amber-800">Compatíveis agora: {locaisValidos.length} tutor(es), {animaisImportaveis.length} animal(is) e {comandasImportaveis.length} comanda(s).</p><button disabled={sincronizando||!locaisValidos.length} onClick={sincronizarDadosLocais} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber-900 px-4 text-sm font-bold text-white disabled:opacity-40">{sincronizando?<RefreshCw size={16} className="animate-spin"/>:<Upload size={16}/>} Sincronizar para esta clínica</button></div></div></section>}
 
     <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
