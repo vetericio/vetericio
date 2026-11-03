@@ -174,6 +174,7 @@ function Planos() {
                   </span>
                 )}
                 <h2 className="text-2xl font-bold">{nome}</h2>
+                {(codigo === "master-equipe" || nomeMin.includes("master")) && <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-950">Fidelidade de 12 meses — inclusive com cobrança mensal</div>}
                 <p className="mt-2 min-h-[120px] text-sm text-muted-foreground">
                   {plano.descricao}
                 </p>
@@ -238,7 +239,7 @@ function Planos() {
             {[
               [
                 "Existe fidelidade?",
-                "Consulte as condições de contratação apresentadas antes do pagamento.",
+                "Sim. O plano Master possui fidelidade de 12 meses, mesmo na modalidade de cobrança mensal. Leia os Termos de Uso antes de contratar.",
               ],
               [
                 "Posso trocar de plano?",
