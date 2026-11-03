@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, BadgeCheck, Check, ChevronLeft, ChevronRight, CreditCard, ChevronDown, ExternalLink, Minus, Plus, TicketPercent } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/contratar")({ component: Contratar });
 
@@ -319,7 +319,7 @@ function Contratar() {
       aceitou_termos: true,
       aceitou_privacidade: true,
     };
-    const { data, error } = await (supabase as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
+    const { data, error } = await (supabaseBanco as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
     setEnviando(false);
     if (error) { toast.error(error.message || (ehTesteGratis ? "Não foi possível iniciar o teste gratuito." : "Não foi possível iniciar a contratação.")); return; }
     const novoPedido = Array.isArray(data) ? data[0] : data;
