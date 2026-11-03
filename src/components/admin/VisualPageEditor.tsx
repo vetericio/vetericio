@@ -8,26 +8,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ROTAS_CATALOGO } from "@/lib/admin-page-routes";
 import {
   applyVisualLayout, cloneVisual, editableTarget, EMPTY_DOCUMENT, ensurePage, validImageSource,
   visualLabel, visualSelector, type VisualAdded, type VisualDevice, type VisualDocument,
   type VisualLayout, type VisualPatch, type VisualStyle, VISUAL_DRAFT_KEY, VISUAL_NODE_ATTR,
   VISUAL_PUBLISHED_KEY, VISUAL_VERSIONS_KEY,
 } from "@/lib/visual-editor";
-
-const PAGES = [
-  ["/", "Página inicial"], ["/login", "Login"], ["/planos", "Planos"], ["/contratar", "Contratação"],
-  ["/inicio", "Bem-vindo / áreas"], ["/internacao", "Internação"], ["/consultorio", "Consultório"],
-  ["/recepcao", "Recepção"], ["/financeiro", "Financeiro"], ["/estoque", "Serviços e estoque"],
-  ["/anamnese", "Anamnese"], ["/animais", "Animais"], ["/animal", "Ficha do animal"],
-  ["/novo-animal", "Cadastro do animal"], ["/tutores", "Tutores"], ["/consulta", "Consulta"],
-  ["/registro-clinico", "Registro clínico"], ["/fila-espera", "Fila de espera"], ["/medicacoes", "Medicações"],
-  ["/curva", "Curva"], ["/alarmes", "Alarmes"], ["/pendencias", "Pendências"], ["/plantoes", "Histórico de plantões"],
-  ["/registros", "Registros"], ["/termos", "Termos e documentos"], ["/assinar", "Assinar documento"],
-  ["/receituario", "Receituário"], ["/encaminhar", "Encaminhamento"], ["/perfil-clinica", "Perfil da clínica"],
-  ["/sincronizacao", "Sincronização"], ["/temas", "Temas"], ["/admin", "Admin da plataforma"],
-  ["/admin-conteudo", "Admin · Conteúdo"], ["/admin-planos", "Admin · Planos"], ["/admin-solicitacoes", "Admin · Solicitações"],
-] as const;
 
 type Version = { id: string; publishedAt: string; pages: VisualDocument["pages"] };
 type SelectedItem = { id: string; kind: "patch" | "added" };
@@ -42,7 +29,18 @@ function number(value: string, fallback = 0) {
 
 export function VisualPageEditor() {
   const [device, setDevice] = useState<VisualDevice>("desktop");
-  const [route, setRoute] = useState("/");
+  const [route, setRoute] = useState(() => {
+    if (typeof window === "undefined") return "/";
+    const pagina = new URLSearchParams(window.location.search).get("pagina") || "/";
+    return ROTAS_CATALOGO.some(r => r.original === pagina && !r.dinamica) ? pagina : "/";
+  });
+  const [buscaPagina, setBuscaPagina] = useState("");
+  const gruposPaginas = Array.from(new Set(ROTAS_CATALOGO.map(r => r.grupo)));
+  const paginasFiltradas = ROTAS_CATALOGO.filter(r =>
+    !buscaPagina.trim() ||
+    (r.nome + " " + r.original + " " + r.grupo).toLocaleLowerCase("pt-BR")
+      .includes(buscaPagina.trim().toLocaleLowerCase("pt-BR"))
+  );
   const [zoom, setZoom] = useState(70);
   const [documento, setDocumento] = useState<VisualDocument>(EMPTY_DOCUMENT());
   const [selected, setSelected] = useState<SelectedItem[]>([]);
@@ -377,7 +375,24 @@ export function VisualPageEditor() {
 
     <div className={`grid min-h-[calc(100vh-64px)] ${leftOpen&&rightOpen?"lg:grid-cols-[260px_minmax(0,1fr)_290px]":leftOpen?"lg:grid-cols-[260px_minmax(0,1fr)]":rightOpen?"lg:grid-cols-[minmax(0,1fr)_290px]":"grid-cols-1"}`}>
       {leftOpen&&<aside className="border-r bg-white p-3">
-        <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Página<select value={route} onChange={e=>{setRoute(e.target.value);setSelected([])}} className="mt-2 w-full rounded-xl border p-2 text-sm font-semibold normal-case tracking-normal">{PAGES.map(([path,name])=><option key={path} value={path}>{name}</option>)}</select></label>
+        <div className="space-y-2">
+          <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">Páginas do ORICSE
+            <input value={buscaPagina} onChange={e=>setBuscaPagina(e.target.value)}
+              aria-label="Buscar página do editor" placeholder="Pesquisar página..." className="mt-2 w-full rounded-xl border px-3 py-2 text-sm font-normal normal-case tracking-normal"/>
+          </label>
+          <select value={route} onChange={e=>{
+              setRoute(e.target.value);setSelected([]);
+              window.history.replaceState(window.history.state,"","/admin-canvas?pagina="+encodeURIComponent(e.target.value));
+            }} aria-label="Selecionar página para editar"
+            className="w-full rounded-xl border p-2 text-sm font-semibold">
+            {!paginasFiltradas.some(r=>r.original===route)&&<option value={route}>{ROTAS_CATALOGO.find(r=>r.original===route)?.nome||route} — selecionada</option>}
+            {gruposPaginas.map(grupo=><optgroup key={grupo} label={grupo}>
+              {paginasFiltradas.filter(r=>r.grupo===grupo).map(r=><option key={r.original} value={r.original} disabled={r.dinamica}>{r.nome} ({r.original}){r.dinamica?" · por clínica":""}</option>)}
+            </optgroup>)}
+          </select>
+          <p className="text-xs leading-5 text-muted-foreground">{paginasFiltradas.length} páginas encontradas. Endereços que dependem da clínica são listados para consulta e exigem um link real para prévia.</p>
+          <a href={route} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-semibold text-primary underline underline-offset-4"><Eye size={14}/> Abrir página selecionada</a>
+        </div>
         <div className="mt-5 flex items-center justify-between"><h2 className="font-bold">Camadas</h2><button onClick={()=>setSelected([])} className="text-xs font-semibold text-primary">Desmarcar</button></div>
         <div className="mt-2 max-h-[48vh] space-y-1 overflow-auto">
           {[...layout.added.map(x=>({item:{id:x.id,kind:"added" as const},label:x.text||x.kind,hidden:x.style.opacity===0})),...layout.patches.map(x=>({item:{id:x.id,kind:"patch" as const},label:x.label,hidden:x.hidden}))].reverse().map(({item,label,hidden})=><div key={`${item.kind}-${item.id}`} className={`flex items-center gap-1 rounded-lg border p-1 ${selected.some(x=>x.id===item.id&&x.kind===item.kind)?"border-primary bg-primary/5":""}`}><button onClick={()=>setSelected([item])} className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs font-semibold">{label}</button><button onClick={()=>toggleVisibility(item)} className="p-1 text-muted-foreground">{hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button></div>)}
