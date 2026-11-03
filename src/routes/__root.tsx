@@ -404,7 +404,7 @@ function RootComponent() {
   }, [autenticado, dadosDriveProntos, role, location.pathname]);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("visual_editor")) return;
+    if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
       ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade"].includes(location.pathname) ||
