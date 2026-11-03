@@ -25,7 +25,10 @@ export const PLANOS_PADRAO = [
     descricao: "Para veterinário autônomo ou em domicílio",
     preco: "R$ 49,90",
     preco_mensal: "R$ 49,90",
+    preco_trimestral: "R$ 149,70",
+    preco_semestral: "R$ 299,40",
     preco_anual: "R$ 499,00",
+    preco_bienal: "R$ 1.197,60",
     itens: [
       "1 usuário incluso",
       "Cadastro de animais e tutores",
@@ -39,7 +42,10 @@ export const PLANOS_PADRAO = [
     descricao: "Bom para petshops e clínicas",
     preco: "R$ 99,90",
     preco_mensal: "R$ 99,90",
+    preco_trimestral: "R$ 299,70",
+    preco_semestral: "R$ 599,40",
     preco_anual: "R$ 999,00",
+    preco_bienal: "R$ 2.397,60",
     destaque: true,
     itens: [
       "Logo da sua clínica",
@@ -55,7 +61,10 @@ export const PLANOS_PADRAO = [
     descricao: "Para equipes e clínicas que precisam de um sistema sob medida",
     preco: "R$ 199,90",
     preco_mensal: "R$ 199,90",
+    preco_trimestral: "R$ 599,70",
+    preco_semestral: "R$ 1.199,40",
     preco_anual: "R$ 1.999,00",
+    preco_bienal: "R$ 4.797,60",
     itens: [
       "Tudo que o sistema oferece",
       "Personalização: ajustamos o sistema à sua necessidade",
@@ -71,7 +80,10 @@ type Plano = {
   descricao?: string;
   preco?: string;
   preco_mensal?: string;
+  preco_trimestral?: string;
+  preco_semestral?: string;
   preco_anual?: string;
+  preco_bienal?: string;
   itens?: readonly string[];
 };
 
@@ -106,7 +118,7 @@ function Planos() {
         const api = supabase as unknown as ClientePlanos;
         const { data } = await api
           .from("oricse_planos")
-          .select("codigo,nome,descricao,preco,preco_mensal,preco_anual,itens,ativo,ordem")
+          .select("codigo,nome,descricao,preco,preco_mensal,preco_trimestral,preco_semestral,preco_anual,preco_bienal,itens,ativo,ordem")
           .eq("ativo", true)
           .order("ordem");
         if (ativo && Array.isArray(data) && data.length) setPlanos(data);
@@ -180,39 +192,10 @@ function Planos() {
                 </p>
 
                 <div className="mt-6 min-h-32">
-                  {testeGratis ? (
-                    <p className="text-2xl font-bold sm:text-3xl">
-                      {plano.preco || mensal || "Grátis por 7 dias"}
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="min-w-0">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Mensal
-                        </span>
-                        <p className="mt-1 whitespace-nowrap text-lg font-bold leading-tight sm:text-xl">
-                          {mensal ? (condicaoGratis(mensal) ? "Grátis" : mensal) : "—"}
-                        </p>
-                        {mensal && !condicaoGratis(mensal) && (
-                          <span className="mt-1 block text-xs text-muted-foreground">por mês</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Anual
-                        </span>
-                        <p className="mt-1 whitespace-nowrap text-lg font-bold leading-tight sm:text-xl">
-                          {anual ? (condicaoGratis(anual) ? "Grátis" : anual) : "—"}
-                        </p>
-                        {anual && !condicaoGratis(anual) && (
-                          <span className="mt-1 block text-xs text-muted-foreground">
-                            por ano · 2 meses grátis
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  {testeGratis ? <p className="text-2xl font-bold sm:text-3xl">{plano.preco || mensal || "Grátis por 7 dias"}</p> : <div className="grid grid-cols-2 gap-2 text-sm">
+                    {[["Mensal",plano.preco_mensal||plano.preco],["Trimestral",plano.preco_trimestral],["Semestral",plano.preco_semestral],["Anual · 365 dias",plano.preco_anual],["Dois anos",plano.preco_bienal]].map(([periodo,valor])=><div key={String(periodo)} className="rounded-xl border bg-background/60 px-3 py-2"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{periodo}</span><strong className="mt-0.5 block whitespace-nowrap text-base">{valor?String(valor):"—"}</strong></div>)}
+                  </div>}
+                </div></div>
 
                 <a
                   href={"/contratar?plano=" + encodeURIComponent(codigo) + "&ciclo=mensal"}
