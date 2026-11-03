@@ -433,7 +433,7 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor")) return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
-      ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
+      ["/", "/login", "/planos", "/contratar", "/termos-de-uso", "/politica-de-privacidade"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin");
@@ -724,7 +724,7 @@ function RootComponent() {
 
   const rotaAdmin = location.pathname.startsWith("/admin");
   const rotaPublica =
-    ["/", "/login", "/planos", "/contratar"].includes(location.pathname) ||
+    ["/", "/login", "/planos", "/contratar", "/termos-de-uso", "/politica-de-privacidade"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
