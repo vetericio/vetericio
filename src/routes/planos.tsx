@@ -256,6 +256,7 @@ function Planos() {
             ))}
           </div>
         </section>
+        <footer className="mt-12 flex flex-wrap justify-center gap-5 border-t py-7 text-sm"><Link to="/termos-de-uso" className="underline">Termos de Uso</Link><Link to="/politica-de-privacidade" className="underline">Política de Privacidade</Link></footer>
       </div>
     </main>
   );
