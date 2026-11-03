@@ -18,9 +18,8 @@ function ContratacaoRecebida() {
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#F8F5F2] px-4 py-10 text-[#341421] sm:py-14"><div aria-hidden="true" className="pointer-events-none absolute -left-36 -top-44 h-80 w-[34rem] rotate-[-20deg] rounded-[100%] bg-gradient-to-r from-[#703047] via-[#B37787] to-transparent opacity-20"/><div aria-hidden="true" className="pointer-events-none absolute -bottom-44 -right-32 h-80 w-[34rem] rotate-[-20deg] rounded-[100%] bg-gradient-to-r from-transparent via-[#B37787] to-[#703047] opacity-20"/>
       <div className="relative mx-auto max-w-4xl">
         <header className="mb-9 flex flex-col items-center justify-center gap-3 text-center">
-          <Link to="/" aria-label="ORICSE — página inicial" className="flex items-center justify-center gap-4">
-            <img src="/oricse-logo-oryx.svg" alt="Logo oficial da ORICSE" width="96" height="96" className="h-20 w-20 object-contain sm:h-24 sm:w-24"/>
-            <span className="border-l border-[#BC9AA5] pl-4 font-display text-4xl font-semibold tracking-[.035em] text-[#703047] sm:text-5xl">ORICSE</span>
+          <Link to="/" aria-label="ORICSE — página inicial" className="flex items-center justify-center">
+            <img src="/oricse-logo-oryx.svg" alt="Logo oficial da ORICSE" width="110" height="110" className="h-[92px] w-[92px] object-contain sm:h-[110px] sm:w-[110px]"/>
           </Link>
         </header>
         <article className="overflow-hidden rounded-[2rem] border border-[#E8DBDD] bg-white shadow-[0_24px_80px_-45px_rgba(67,22,38,.35)]">
