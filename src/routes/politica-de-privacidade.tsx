@@ -10,6 +10,8 @@ export const Route = createFileRoute("/politica-de-privacidade")({
 });
 
 const EMPRESA = "Oricse - Vetericio Serviços Veterinários LTDA";
+const CNPJ_EMPRESA = "67.099.538/0001-76";
+const ENDERECO_EMPRESA = "Rua Tenente Marino Freire, bairro Maria Helena, Belo Horizonte/MG, CEP 31680-120";
 const SECOES = [
   {
     "id": "apresentacao",
@@ -186,7 +188,7 @@ const SECOES = [
       "Para facilitar a análise, descreva sua relação com o ORICSE, o estabelecimento envolvido (se houver) e o direito que deseja exercer. Não envie senhas ou documentos desnecessários no primeiro contato.",
       "A identidade do solicitante poderá ser verificada de forma proporcional para evitar acesso indevido a dados de terceiros.",
       "Quando a solicitação for relativa a dados de tutores e pacientes administrados por um estabelecimento, orientaremos, quando possível, o encaminhamento ao controlador responsável.",
-      "As informações de identificação empresarial complementares, como CNPJ e endereço formal, devem ser preenchidas e validadas antes da publicação definitiva do documento."
+      "A Oricse - Vetericio Serviços Veterinários LTDA está identificada pelo CNPJ 67.099.538/0001-76, com cadastro localizado em Belo Horizonte/MG, bairro Maria Helena, Rua Tenente Marino Freire, CEP 31680-120. O número do imóvel ainda depende de conferência com o comprovante cadastral oficial."
     ]
   },
   {
@@ -227,7 +229,7 @@ function PoliticaDePrivacidade() {
         <section className="mb-10 grid gap-4 rounded-3xl border border-[#E8D9DE] bg-white p-5 shadow-sm sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-[#8B5E6D]">Responsável pela plataforma</p>
-            <h2 className="mt-2 text-lg font-bold">{EMPRESA}</h2>
+            <h2 className="mt-2 text-lg font-bold">{EMPRESA}</h2><p className="mt-1 text-sm font-semibold text-[#703047]">CNPJ: {CNPJ_EMPRESA}</p><p className="mt-1 text-sm text-[#78666C]">Endereço cadastral identificado: {ENDERECO_EMPRESA} (número sujeito à conferência).</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[#78666C]">Este documento diferencia os tratamentos realizados pela Oricse e aqueles realizados pelos estabelecimentos que utilizam seus serviços.</p>
           </div>
           <a href="mailto:vetericio@gmail.com?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#DCC7D0] px-5 py-3 text-sm font-bold text-[#703047] hover:bg-[#FBF4F7]"><Mail size={17}/> Falar sobre privacidade <ArrowUpRight size={15}/></a>
@@ -259,7 +261,7 @@ function PoliticaDePrivacidade() {
               <p className="mt-2 text-sm leading-7 text-white/80">Dúvidas, solicitações e pedidos relacionados à privacidade e ao tratamento de dados pessoais podem ser encaminhados pelo canal abaixo.</p>
               <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:vetericio@gmail.com?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse"><Mail size={18}/> vetericio@gmail.com <ArrowUpRight size={16}/></a>
             </div>
-            <p className="mt-6 text-xs leading-6 text-[#8A747D]">Nota de transparência: este documento deve ser validado com os dados cadastrais oficiais da empresa, os contratos com fornecedores e uma revisão jurídica antes de ser considerado versão comercial definitiva.</p>
+            <p className="mt-6 text-xs leading-6 text-[#8A747D]">Nota de transparência: o CNPJ e a localização foram conferidos em bases cadastrais públicas; o número do endereço e os contratos com fornecedores ainda devem ser confirmados no comprovante oficial. Recomenda-se revisão jurídica antes de considerar esta versão definitiva.</p>
           </article>
         </div>
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[#E1D4D9] pt-6 text-xs text-[#856F78]"><span>© {new Date().getFullYear()} {EMPRESA}</span><div className="flex gap-5"><Link to="/termos-de-uso" className="underline underline-offset-4">Termos de Uso</Link><Link to="/" className="underline underline-offset-4">Início</Link></div></footer>
