@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { extrairDriveFolderId } from "@/lib/drive-storage";
+import { ROTAS_CATALOGO, ROTAS_EDITAVEIS, CAMINHOS_RESERVADOS } from "@/lib/admin-page-routes";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
@@ -180,6 +181,11 @@ function Admin() {
   const [site, setSite] = useState<SiteConfig>(SITE_PADRAO);
   const [rotasEditadas, setRotasEditadas] = useState<Record<string,string>>({});
   const [salvandoRotas, setSalvandoRotas] = useState(false);
+  const [rotasSalvas, setRotasSalvas] = useState<Record<string,string>>({});
+  const [buscaRotas, setBuscaRotas] = useState("");
+  const [grupoRotas, setGrupoRotas] = useState("todas");
+  const [somenteEditaveis, setSomenteEditaveis] = useState(false);
+  const [carregandoRotas, setCarregandoRotas] = useState(false);
   const [drive, setDrive] = useState<DriveConfig | null>(null);
   const [arquivosDrive, setArquivosDrive] = useState(0);
   const [pasta, setPasta] = useState("");
@@ -820,40 +826,147 @@ function Admin() {
 
   const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card></div>;
 
-  const ROTAS_EDITAVEIS = [
-    {original:"/recepcao",nome:"Recepção"},
-    {original:"/estoque",nome:"Serviços, produtos e estoque"},
-    {original:"/financeiro",nome:"Financeiro"},
-    {original:"/comandas",nome:"Comandas"},
-    {original:"/minha-atividade",nome:"Minha atividade"}
-  ];
+  // O catálogo é compartilhado com o resolvedor de URLs personalizadas:
+  // páginas administrativas e endereços com parâmetro são somente leitura.
   async function carregarRotas() {
-    const {data,error}=await (supabase as any).from("oricse_rotas_personalizadas").select("rota_original,rota_publica");
-    if(error)return toast.error(error.message);
-    setRotasEditadas(Object.fromEntries(ROTAS_EDITAVEIS.map(r=>[r.original,data?.find((d:any)=>d.rota_original===r.original)?.rota_publica||r.original])));
+    setCarregandoRotas(true);
+    try {
+      const {data,error}=await (supabase as any)
+        .from("oricse_rotas_personalizadas")
+        .select("rota_original,rota_publica");
+      if(error)throw error;
+      const atuais=Object.fromEntries(ROTAS_EDITAVEIS.map(r=>[
+        r.original,
+        String(data?.find((d:any)=>d.rota_original===r.original)?.rota_publica||r.original)
+      ]));
+      setRotasEditadas(atuais);
+      setRotasSalvas(atuais);
+    } catch(error) {
+      toast.error(error instanceof Error?error.message:"Não foi possível carregar as URLs.");
+    } finally {
+      setCarregandoRotas(false);
+    }
   }
-  async function salvarRota(original:string) {
-    const nova=(rotasEditadas[original]||original).trim().toLowerCase();
-    if(!/^\/[a-z0-9-]+$/.test(nova))return toast.error("Use / seguido de letras minúsculas, números ou hífens.");
-    const reservadas=["/admin","/login","/","/cadastro","/configuracoes"];
-    if((reservadas.includes(nova)&&nova!==original)||ROTAS_EDITAVEIS.some(r=>r.original===nova&&r.original!==original))return toast.error("Este endereço já está reservado.");
-    if(ROTAS_EDITAVEIS.some(r=>r.original!==original&&rotasEditadas[r.original]===nova))return toast.error("Endereço repetido em outra página.");
+
+  async function salvarRota(original:string,valorForcado?:string) {
+    const editavel=ROTAS_EDITAVEIS.some(r=>r.original===original);
+    if(!editavel)return toast.error("Esta página tem endereço protegido e não pode ser alterada.");
+    const nova=String(valorForcado??rotasEditadas[original]??original).trim().toLowerCase();
+    if(!/^\/[a-z0-9-]{1,64}$/.test(nova))
+      return toast.error("Use / seguido de 1 a 64 letras minúsculas, números ou hífens.");
+    if(nova!==original&&CAMINHOS_RESERVADOS.has(nova))
+      return toast.error("Esse endereço já pertence a uma página existente no sistema.");
+    if(ROTAS_EDITAVEIS.some(r=>r.original!==original&&
+       String(rotasEditadas[r.original]??rotasSalvas[r.original]??r.original).trim().toLowerCase()===nova))
+      return toast.error("Esse endereço foi usado em outra página.");
     setSalvandoRotas(true);
-    const {data:user}=await supabase.auth.getUser();
-    const {error}=await (supabase as any).from("oricse_rotas_personalizadas").upsert({rota_original:original,rota_publica:nova,atualizado_por:user.user?.id},{onConflict:"rota_original"});
-    setSalvandoRotas(false);
-    if(error)return toast.error(error.message);
-    toast.success("Endereço salvo para toda a plataforma.");
+    try {
+      const {data:user,error:erroUser}=await supabase.auth.getUser();
+      if(erroUser||!user.user?.id)throw new Error("Sua sessão expirou. Entre novamente no sistema.");
+      const {error}=await (supabase as any).from("oricse_rotas_personalizadas")
+        .upsert({rota_original:original,rota_publica:nova,atualizado_por:user.user.id},{onConflict:"rota_original"});
+      if(error)throw error;
+      setRotasEditadas(prev=>({...prev,[original]:nova}));
+      setRotasSalvas(prev=>({...prev,[original]:nova}));
+      toast.success(nova===original?"Endereço original restaurado.":"Novo endereço salvo para toda a plataforma.");
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"Não foi possível salvar este endereço.");
+    }finally{
+      setSalvandoRotas(false);
+    }
   }
-  const renderPaginas = () => <Card>
-    <div className="flex items-center gap-2"><Globe2 size={20}/><h2 className="text-xl font-bold">Páginas e URLs</h2></div>
-    <p className="mt-2 text-sm text-muted-foreground">Configure um endereço público para cada página. Os endereços originais permanecem funcionando. O novo endereço encaminha para a página correspondente.</p>
-    <div className="mt-5 space-y-3">{ROTAS_EDITAVEIS.map(r=><div key={r.original} className="grid gap-2 rounded-xl border p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-      <div><p className="font-semibold">{r.nome}</p><p className="text-xs text-muted-foreground">Original: {r.original}</p></div>
-      <label className="text-xs font-semibold">Endereço personalizado<input value={rotasEditadas[r.original]??r.original} onChange={e=>setRotasEditadas(prev=>({...prev,[r.original]:e.target.value}))} className="mt-1 h-10 w-full rounded-lg border px-3 text-sm"/></label>
-      <button disabled={salvandoRotas} onClick={()=>salvarRota(r.original)} className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">Salvar</button>
-    </div>)}</div>
-  </Card>;
+
+  const gruposDisponiveis=Array.from(new Set(ROTAS_CATALOGO.map(r=>r.grupo)));
+  const buscaNormalizada=buscaRotas.trim().toLocaleLowerCase("pt-BR");
+  const rotasVisiveis=ROTAS_CATALOGO.filter(r=>
+    (grupoRotas==="todas"||r.grupo===grupoRotas)&&
+    (!somenteEditaveis||r.editavel)&&
+    (!buscaNormalizada||([r.nome,r.original,r.grupo].join(" ").toLocaleLowerCase("pt-BR")).includes(buscaNormalizada))
+  );
+  const gruposVisiveis=gruposDisponiveis.filter(grupo=>rotasVisiveis.some(r=>r.grupo===grupo));
+
+  const renderPaginas = () => <div className="space-y-5">
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2"><Globe2 size={22}/><h2 className="text-2xl font-bold tracking-tight">Páginas e URLs</h2></div>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Consulte todas as páginas do ORICSE e crie atalhos para as telas internas. O endereço original continua funcionando.
+            A personalização é global, mas os dados e as permissões permanecem separados por clínica.
+          </p>
+        </div>
+        <button type="button" onClick={()=>void carregarRotas()} disabled={carregandoRotas||salvandoRotas}
+          className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-4 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50">
+          <RefreshCcw size={16} className={carregandoRotas?"animate-spin":""}/> Atualizar URLs
+        </button>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border bg-[#FBF8F6] p-4"><p className="text-xs text-muted-foreground">Páginas catalogadas</p><p className="mt-1 text-2xl font-black">{ROTAS_CATALOGO.length}</p></div>
+        <div className="rounded-xl border bg-[#FBF8F6] p-4"><p className="text-xs text-muted-foreground">Com atalho editável</p><p className="mt-1 text-2xl font-black">{ROTAS_EDITAVEIS.length}</p></div>
+        <div className="col-span-2 rounded-xl border bg-[#FBF8F6] p-4 sm:col-span-1"><p className="text-xs text-muted-foreground">Endereços personalizados</p><p className="mt-1 text-2xl font-black">{ROTAS_EDITAVEIS.filter(r=>(rotasSalvas[r.original]||r.original)!==r.original).length}</p></div>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center">
+        <label className="relative block">
+          <Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/>
+          <input value={buscaRotas} onChange={e=>setBuscaRotas(e.target.value)}
+            aria-label="Pesquisar páginas e URLs" placeholder="Buscar página, módulo ou endereço…"
+            className="min-h-11 w-full rounded-xl border bg-white pl-10 pr-4 text-sm"/>
+        </label>
+        <select value={grupoRotas} onChange={e=>setGrupoRotas(e.target.value)}
+          aria-label="Filtrar área do sistema" className="min-h-11 rounded-xl border bg-white px-3 text-sm">
+          <option value="todas">Todas as áreas</option>
+          {gruposDisponiveis.map(g=><option key={g} value={g}>{g}</option>)}
+        </select>
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" checked={somenteEditaveis} onChange={e=>setSomenteEditaveis(e.target.checked)}
+            className="h-4 w-4 accent-[#703047]"/> Apenas editáveis
+        </label>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Mostrando {rotasVisiveis.length} página(s). URLs administrativas, públicas e com parâmetros específicos são exibidas para consulta, sem alteração de endereço.</p>
+    </Card>
+    {gruposVisiveis.map(grupo=><section key={grupo} className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      <header className="flex items-center justify-between gap-4 border-b bg-[#FBF8F6] px-5 py-4">
+        <h3 className="font-bold text-[#381724]">{grupo}</h3>
+        <span className="rounded-lg bg-white px-2 py-1 text-xs font-bold text-muted-foreground">{rotasVisiveis.filter(r=>r.grupo===grupo).length} página(s)</span>
+      </header>
+      <div className="divide-y">
+        {rotasVisiveis.filter(r=>r.grupo===grupo).map(r=>{
+          const valor=rotasEditadas[r.original]??r.original;
+          const salvo=rotasSalvas[r.original]??r.original;
+          const mudou=valor.trim().toLowerCase()!==salvo;
+          return <div key={r.original} className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
+            <div className="min-w-0">
+              <p className="break-words font-bold">{r.nome}</p>
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{r.original}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                {r.editavel?<span className="font-semibold text-emerald-700">Atalho personalizável</span>:<span className="font-semibold text-slate-500">{r.dinamica?"URL com identificador da clínica":"Endereço fixo"}</span>}
+                {!r.dinamica&&<a href={r.editavel?salvo:r.original} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-[#703047] hover:underline"><ExternalLink size={13}/> Abrir página</a>}
+              </div>
+            </div>
+            {r.editavel?<div className="flex flex-wrap items-end gap-2">
+              <label className="min-w-0 flex-1 text-xs font-semibold">
+                Endereço personalizado
+                <input value={valor} onChange={e=>setRotasEditadas(prev=>({...prev,[r.original]:e.target.value}))}
+                  aria-label={"Endereço personalizado de "+r.nome}
+                  spellCheck={false} maxLength={65} className="mt-1.5 min-h-11 w-full rounded-xl border bg-white px-3 font-mono text-sm"/>
+              </label>
+              <button type="button" disabled={salvandoRotas||carregandoRotas||!mudou} onClick={()=>void salvarRota(r.original)}
+                className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40">
+                {salvandoRotas?"Salvando…":mudou?"Salvar":"Salvo"}
+              </button>
+              {salvo!==r.original&&<button type="button" disabled={salvandoRotas||carregandoRotas}
+                onClick={()=>void salvarRota(r.original,r.original)}
+                className="min-h-11 rounded-xl border px-3 text-xs font-semibold hover:bg-slate-50">Restaurar</button>}
+            </div>:<div className="rounded-xl border border-dashed bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+              {r.dinamica?"O endereço é gerado para cada clínica ou profissional e não pode ser alterado globalmente.":"Endereço preservado para segurança, links públicos e integrações."}
+            </div>}
+          </div>
+        })}
+      </div>
+    </section>)}
+    {!rotasVisiveis.length&&<Card><p className="py-6 text-center text-sm text-muted-foreground">Nenhuma página corresponde aos filtros. Experimente outra busca.</p></Card>}
+  </div>;
 
   const renderSistema = () => <Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div></Card>;
 
