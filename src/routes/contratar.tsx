@@ -19,7 +19,7 @@ type PromoAplicado = {
 
 const VAZIO: Dados = {
   clinica_nome: "", razao_social: "", cnpj: "", clinica_telefone: "", clinica_email: "", clinica_cep: "", clinica_endereco: "", clinica_numero: "", clinica_complemento: "", clinica_bairro: "", clinica_cidade: "", clinica_uf: "",
-  tipo_operacao: "clinica", operacoes_ativas: "clinica", slug_desejado: "", dominio: "", quantidade_usuarios: "1",
+  tipo_operacao: "clinica", operacoes_ativas: "clinica", slug_desejado: "", nome_publico: "", dominio: "", quantidade_usuarios: "1",
   responsavel_nome: "", responsavel_cpf: "", responsavel_crmv: "", responsavel_crmv_uf: "", responsavel_email: "", responsavel_telefone: "", responsavel_cep: "", responsavel_endereco: "", responsavel_numero: "", responsavel_complemento: "", responsavel_bairro: "", responsavel_cidade: "", responsavel_uf: "",
   observacoes: "",
 };
@@ -380,7 +380,16 @@ function Contratar() {
 
       </> : <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5 text-sm"><p className="font-bold text-primary">Como funciona o teste de 7 dias</p><p className="mt-2 text-muted-foreground">O teste é único por CPF/CNPJ. Ao final dos 7 dias, o acesso à área clínica fica pausado até a contratação de um plano. Seus dados permanecem armazenados, mas enquanto a conta estiver pausada não será possível editar, exportar, gerar downloads ou fazer backup pelo sistema.</p></div>}
 
-      <div className="mt-5 max-w-xl">{campo("@ desejado","slug_desejado",dados,salvarLocal,false)}</div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-semibold">Identificador público (@)
+          <div className="mt-1 flex min-h-11 items-center rounded-xl border bg-background px-3 font-normal"><span className="mr-1 font-bold text-primary">@</span><input aria-label="Identificador público" autoComplete="off" value={dados.slug_desejado || ""} onChange={e=>salvarLocal({...dados,slug_desejado:e.target.value.toLowerCase().replace(/^@+/,"").replace(/[^a-z0-9_.]/g,"").slice(0,30)})} placeholder="minhaclinica" className="min-w-0 flex-1 bg-transparent py-3 outline-none"/></div>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">Seu identificador único na ORICSE.</span>
+        </label>
+        <label className="text-sm font-semibold">Nome público
+          <input value={dados.nome_publico || ""} onChange={e=>salvarLocal({...dados,nome_publico:e.target.value})} placeholder="Nome exibido aos tutores" maxLength={100} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">Nome apresentado no Portal do Tutor.</span>
+        </label>
+      </div>
       <label className="mt-5 block text-sm font-semibold">{texto.observacoes_rotulo}<textarea value={dados.observacoes} onChange={e=>salvarLocal({...dados,observacoes:e.target.value})} rows={3} className="mt-1 w-full rounded-xl border bg-background px-3 py-2 font-normal"/></label>
       <div className="mt-5 space-y-4 border-t pt-5 text-sm"><div className="flex items-start gap-3"><input id="aceitar-termos" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={termos} onChange={e=>setTermos(e.target.checked)}/><div><label htmlFor="aceitar-termos" className="cursor-pointer">Li e concordo com os </label><Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Termos de Uso <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div><div className="flex items-start gap-3"><input id="aceitar-privacidade" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={privacidade} onChange={e=>setPrivacidade(e.target.checked)}/><div><label htmlFor="aceitar-privacidade" className="cursor-pointer">Li e concordo com a </label><Link to="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Política de Privacidade <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1"> e tratamento de dados.</span><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div></div>
     </section>}
