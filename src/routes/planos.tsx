@@ -195,7 +195,7 @@ function Planos() {
                   {testeGratis ? <p className="text-2xl font-bold sm:text-3xl">{plano.preco || mensal || "Grátis por 7 dias"}</p> : <div className="grid grid-cols-2 gap-2 text-sm">
                     {[["Mensal",plano.preco_mensal||plano.preco],["Trimestral",plano.preco_trimestral],["Semestral",plano.preco_semestral],["Anual · 365 dias",plano.preco_anual],["Dois anos",plano.preco_bienal]].map(([periodo,valor])=><div key={String(periodo)} className="rounded-xl border bg-background/60 px-3 py-2"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{periodo}</span><strong className="mt-0.5 block whitespace-nowrap text-base">{valor?String(valor):"—"}</strong></div>)}
                   </div>}
-                </div></div>
+                </div>
 
                 <a
                   href={"/contratar?plano=" + encodeURIComponent(codigo) + "&ciclo=mensal"}
