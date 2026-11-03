@@ -898,7 +898,7 @@ function Admin() {
               <p className="mt-1 text-xs text-muted-foreground">{r.grupo}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {r.dinamica?<span className="rounded-lg border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted-foreground">Link específico por clínica</span>:<>
+              {r.dinamica?<span className="rounded-lg border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted-foreground">Link específico por clínica</span>:r.original==="/admin-canvas"?<span className="rounded-lg border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted-foreground">Você já está no editor visual desta área</span>:<>
                 <a href={r.original} target="_blank" rel="noopener noreferrer"
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-semibold hover:bg-slate-50"><ExternalLink size={15}/> Abrir</a>
                 <a href={"/admin-canvas?pagina="+encodeURIComponent(r.original)}
