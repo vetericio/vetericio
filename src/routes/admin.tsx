@@ -1033,13 +1033,13 @@ const SEGMENTOS_TAXAS: Record<TaxaSegmento["segmento"], string> = {
 };
 const PRAZOS_TAXAS: Record<number, string> = { 0: "Na hora", 3: "Até 3 dias", 7: "Em 7 dias", 14: "Em 14 dias", 30: "Em 30 dias" };
 function moedaCentavos(valor: number) { return (Math.max(0, valor) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
-function percentual(valor: number) { return "${Number(valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%"; }
+function percentual(valor: number) { return `${Number(valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`; }
 function dataReferencia(valor?: string | null) {
   if (!valor) return "sem data";
-  const data = new Date("${valor.slice(0, 10)}T12:00:00");
+  const data = new Date(`${valor.slice(0, 10)}T12:00:00`);
   return Number.isNaN(data.getTime()) ? valor : data.toLocaleDateString("pt-BR");
 }
-function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento_dias" | "parcelas">) { return "${linha.modalidade}:${linha.prazo_recebimento_dias}:${linha.parcelas}"; }
+function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento_dias" | "parcelas">) { return `${linha.modalidade}:${linha.prazo_recebimento_dias}:${linha.parcelas}`; }
 
 function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvar }: {
   clinicas: Clinica[]; grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[] }; salvando: boolean;
