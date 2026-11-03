@@ -10,6 +10,8 @@ import {
   FileUp,
   FlaskConical,
   Image,
+  ExternalLink,
+  ShieldCheck,
   Pencil,
   Plus,
   ReceiptText,
@@ -991,6 +993,9 @@ function AnimalFicha() {
                     horário.
                   </div>
                 </Painel>
+                <Painel titulo="Acesso do Portal do Tutor">
+                  <PortalTutorAcessoFicha animalId={animal.id} />
+                </Painel>
               </aside>
               <section className="space-y-3">
                 {(
@@ -1300,6 +1305,82 @@ function Painel({
     </section>
   );
 }
+type PortalTutorFicha = {
+  clinica_id: string;
+  clinica_slug: string;
+  tutor_id: string;
+  usuario: string | null;
+  acesso_ativo: boolean;
+  senha_definida: boolean;
+  senha_atualizada_em: string | null;
+};
+
+function PortalTutorAcessoFicha({ animalId }: { animalId: string }) {
+  const [acesso, setAcesso] = useState<PortalTutorFicha | null>(null);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      setCarregando(true);
+      const { data, error } = await (supabaseBanco as any).rpc(
+        "oricse_portal_acesso_tutor_ficha",
+        { p_animal_id: animalId },
+      );
+      if (!vivo) return;
+      if (error) {
+        setAcesso(null);
+      } else {
+        setAcesso((data?.[0] as PortalTutorFicha | undefined) ?? null);
+      }
+      setCarregando(false);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [animalId]);
+
+  if (carregando) {
+    return <p className="text-sm text-muted-foreground">Consultando acesso protegido…</p>;
+  }
+
+  if (!acesso) {
+    return <p className="text-sm text-muted-foreground">Não foi possível consultar o acesso do Portal.</p>;
+  }
+
+  const portalUrl = "/pet/" + acesso.clinica_slug + "/portal";
+  if (!acesso.senha_definida) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+          Este tutor ainda não concluiu o primeiro acesso ao Portal.
+        </div>
+        <a href="/portal-tutores" className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-bold">
+          Gerenciar ativação <ExternalLink size={15} />
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border bg-muted/20 p-3">
+        <div className="flex items-center gap-2 text-sm font-black"><ShieldCheck size={16} className="text-primary" /> Portal ativo</div>
+        <div className="mt-2 text-sm"><span className="text-muted-foreground">Login: </span><strong>{acesso.usuario || "Não informado"}</strong></div>
+        <div className="mt-1 text-xs text-muted-foreground">A senha é protegida e não pode ser visualizada.</div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <a href={portalUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold">
+          Abrir Portal <ExternalLink size={15} />
+        </a>
+        <a href={portalUrl + "?recuperar=1"} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground">
+          Redefinir senha
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function Info({ rotulo, valor }: { rotulo: string; valor?: string }) {
   return (
     <div className="mb-3 last:mb-0">
