@@ -32,7 +32,7 @@ export function VisualPageEditor() {
   const [route, setRoute] = useState("/");
   useEffect(() => {
     const pagina = new URLSearchParams(window.location.search).get("pagina") || "/";
-    if (ROTAS_CATALOGO.some(r => r.original === pagina && !r.dinamica))
+    if (ROTAS_CATALOGO.some(r => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas"))
       setRoute(pagina);
   }, []);
   const [buscaPagina, setBuscaPagina] = useState("");
@@ -388,7 +388,7 @@ export function VisualPageEditor() {
             className="w-full rounded-xl border p-2 text-sm font-semibold">
             {!paginasFiltradas.some(r=>r.original===route)&&<option value={route}>{ROTAS_CATALOGO.find(r=>r.original===route)?.nome||route} — selecionada</option>}
             {gruposPaginas.map(grupo=><optgroup key={grupo} label={grupo}>
-              {paginasFiltradas.filter(r=>r.grupo===grupo).map(r=><option key={r.original} value={r.original} disabled={r.dinamica}>{r.nome} ({r.original}){r.dinamica?" · por clínica":""}</option>)}
+              {paginasFiltradas.filter(r=>r.grupo===grupo).map(r=><option key={r.original} value={r.original} disabled={r.dinamica || r.original === "/admin-canvas"}>{r.nome} ({r.original}){r.dinamica?" · por clínica":r.original === "/admin-canvas"?" · editor (não editável)":""]</option>)}
             </optgroup>)}
           </select>
           <p className="text-xs leading-5 text-muted-foreground">{paginasFiltradas.length} páginas encontradas. Endereços que dependem da clínica são listados para consulta e exigem um link real para prévia.</p>
