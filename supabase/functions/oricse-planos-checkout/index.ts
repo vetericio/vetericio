@@ -32,8 +32,9 @@ async function verifySignature(req:Request, paymentId:string) {
  const requestId=req.headers.get("x-request-id")||"";
  const ts=signature.match(/(?:^|,)ts=([^,]+)/)?.[1];
  const v1=signature.match(/(?:^|,)v1=([^,]+)/)?.[1];
+ if(!ts||!v1||!requestId)return false;
  const sentAt=Number(ts); const sentAtMs=ts.length>=13?sentAt:sentAt*1000;
- if(!ts||!v1||!requestId||!Number.isFinite(sentAtMs)||Math.abs(Date.now()-sentAtMs)>600000)return false;
+ if(!Number.isFinite(sentAtMs)||Math.abs(Date.now()-sentAtMs)>600000)return false;
  const manifest=`id:${paymentId.toLowerCase()};request-id:${requestId};ts:${ts};`;
  const hmac=await crypto.subtle.sign("HMAC",await crypto.subtle.importKey("raw",new TextEncoder().encode(key),{name:"HMAC",hash:"SHA-256"},false,["sign"]),new TextEncoder().encode(manifest));
  const actual=Array.from(new Uint8Array(hmac),v=>v.toString(16).padStart(2,"0")).join("");
