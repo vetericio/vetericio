@@ -742,6 +742,16 @@ function RootComponent() {
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
   const mostrarRuntimeVisual = rotaPublica && !rotaAdmin;
 
+  // Documentos legais são páginas públicas isoladas, inclusive para usuários logados.
+  // Não montar cabeçalho, menu lateral, contexto da clínica ou runtime visual.
+  if (location.pathname === "/termos-de-uso" || location.pathname === "/politica-de-privacidade") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <TenantContext.Provider value={contextoPortal}>
