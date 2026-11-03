@@ -75,6 +75,7 @@ type Animal = {
 type RegistroTipo =
   | "Registros clínicos"
   | "Vacinas"
+  | "Vermífugos"
   | "Receitas"
   | "Exames"
   | "Agendamentos"
@@ -83,7 +84,7 @@ type RegistroTipo =
   | "Observações"
   | "Documentos"
   | "Galeria";
-type FontePortal = "vacina" | "exame" | "documento" | "receita";
+type FontePortal = "vacina" | "vermifugo" | "exame" | "documento" | "receita";
 type Registro = {
   id: string;
   animalId: string;
@@ -109,6 +110,17 @@ type VacinaPortal = {
   nome: string;
   aplicada_em: string | null;
   reforco_em: string | null;
+  lote: string | null;
+  observacoes: string | null;
+  visivel_tutor: boolean;
+  created_at: string;
+};
+type VermifugoPortal = {
+  id: string;
+  animal_id: string;
+  nome: string;
+  administrado_em: string | null;
+  proxima_dose_em: string | null;
   lote: string | null;
   observacoes: string | null;
   visivel_tutor: boolean;
@@ -158,6 +170,7 @@ const ABAS = [
   "Visão geral",
   "Registros clínicos",
   "Vacinas",
+  "Vermífugos",
   "Receitas",
   "Exames",
   "Agendamentos",
@@ -220,7 +233,7 @@ function pesoParaCampo(valor: string) {
   return Number.isFinite(n) ? n.toFixed(3).replace(".", ",") : "";
 }
 function iconFor(tipo: Aba) {
-  if (tipo === "Vacinas") return Syringe;
+  if (tipo === "Vacinas" || tipo === "Vermífugos") return Syringe;
   if (tipo === "Receitas") return ReceiptText;
   if (tipo === "Exames") return FlaskConical;
   if (tipo === "Agendamentos") return CalendarDays;
@@ -334,7 +347,7 @@ function AnimalFicha() {
       );
       if (erroClinica || !cid) throw Error(erroClinica?.message || "Clínica não identificada.");
       setClinicaId(cid);
-      const [vacinasResult, examesResult, docsResult, receitasResult] = await Promise.all([
+      const [vacinasResult, vermifugosResult, examesResult, docsResult, receitasResult] = await Promise.all([
         (supabaseBanco as any)
           .from("oricse_portal_vacinas")
           .select(
@@ -343,6 +356,12 @@ function AnimalFicha() {
           .eq("clinica_id", cid)
           .eq("animal_id", animalId)
           .order("aplicada_em", { ascending: false, nullsFirst: false }),
+        (supabaseBanco as any)
+          .from("oricse_portal_vermifugos")
+          .select("id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes,visivel_tutor,created_at")
+          .eq("clinica_id", cid)
+          .eq("animal_id", animalId)
+          .order("administrado_em", { ascending: false, nullsFirst: false }),
         (supabaseBanco as any)
           .from("oricse_portal_exames")
           .select(
@@ -368,9 +387,10 @@ function AnimalFicha() {
           .eq("animal_id", animalId)
           .order("emitida_em", { ascending: false }),
       ]);
-      for (const r of [vacinasResult, examesResult, docsResult, receitasResult])
+      for (const r of [vacinasResult, vermifugosResult, examesResult, docsResult, receitasResult])
         if (r.error) throw r.error;
       const vacinas = (vacinasResult.data || []) as VacinaPortal[];
+      const vermifugos = (vermifugosResult.data || []) as VermifugoPortal[];
       const exames = (examesResult.data || []) as ExamePortal[];
       const docs = (docsResult.data || []) as DocumentoPortal[];
       const receitas = (receitasResult.data || []) as ReceitaPortal[];
@@ -391,6 +411,21 @@ function AnimalFicha() {
           criadoEm: v.created_at,
           visivelTutor: v.visivel_tutor,
           fontePortal: "vacina" as const,
+        })),
+        ...vermifugos.map((v) => ({
+          id: v.id,
+          animalId: v.animal_id,
+          tipo: "Vermífugos" as const,
+          titulo: v.nome,
+          detalhe: [
+            v.observacoes,
+            v.proxima_dose_em ? `Próxima dose: ${formatarData(v.proxima_dose_em)}` : "",
+            v.lote ? `Lote: ${v.lote}` : "",
+          ].filter(Boolean).join("\n"),
+          data: v.administrado_em || v.created_at.slice(0, 10),
+          criadoEm: v.created_at,
+          visivelTutor: v.visivel_tutor,
+          fontePortal: "vermifugo" as const,
         })),
         ...exames.map((e) => ({
           id: e.id,
@@ -449,7 +484,7 @@ function AnimalFicha() {
       setRegistrosPortal(convertidos);
     } catch (error) {
       console.error(error);
-      toast.error("Não foi possível carregar vacinas, exames, receitas e documentos do banco.");
+      toast.error("Não foi possível carregar vacinas, vermífugos, exames, receitas e documentos do banco.");
     }
   }
   useEffect(() => {
@@ -491,7 +526,7 @@ function AnimalFicha() {
 
   const registrosLocaisSemPortal = useMemo(
     () =>
-      registros.filter((r) => !["Vacinas", "Exames", "Documentos", "Receitas"].includes(r.tipo)),
+      registros.filter((r) => !["Vacinas", "Vermífugos", "Exames", "Documentos", "Receitas"].includes(r.tipo)),
     [registros],
   );
   const registrosAnimal = useMemo(
@@ -549,14 +584,14 @@ function AnimalFicha() {
   async function salvarRegistro() {
     if (!animal || !modalTipo) return;
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
-    if (["Vacinas", "Exames", "Documentos"].includes(modalTipo)) {
+    if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
       if (
-        modalTipo === "Exames" &&
+        (modalTipo === "Exames" || modalTipo === "Documentos") &&
         arquivoPdf &&
         (arquivoPdf.type !== "application/pdf" || arquivoPdf.size > 20 * 1024 * 1024)
       )
-        return void toast.error("O exame deve ser um PDF de até 20 MB.");
+        return void toast.error("Envie um PDF de até 20 MB.");
       setSalvandoPortal(true);
       try {
         if (modalTipo === "Vacinas") {
@@ -566,6 +601,18 @@ function AnimalFicha() {
             nome: titulo.trim(),
             aplicada_em: data || null,
             reforco_em: reforcoEm || null,
+            lote: lote.trim() || null,
+            observacoes: detalhe.trim() || null,
+            visivel_tutor: visivelTutor,
+          });
+          if (error) throw error;
+        } else if (modalTipo === "Vermífugos") {
+          const { error } = await (supabaseBanco as any).from("oricse_portal_vermifugos").insert({
+            clinica_id: clinicaId,
+            animal_id: animal.id,
+            nome: titulo.trim(),
+            administrado_em: data || null,
+            proxima_dose_em: reforcoEm || null,
             lote: lote.trim() || null,
             observacoes: detalhe.trim() || null,
             visivel_tutor: visivelTutor,
@@ -613,13 +660,42 @@ function AnimalFicha() {
           });
           if (error) throw error;
         } else {
+          const documentoId = crypto.randomUUID();
+          let driveArquivoId: string | null = null;
+          if (arquivoPdf) {
+            const { data: sessao } = await supabase.auth.getSession();
+            const accessToken = sessao.session?.access_token;
+            if (!accessToken) throw new Error("Sessão não encontrada para enviar o documento.");
+            const upload = await enviarArquivoDrive({
+              data: {
+                accessToken,
+                clinicaId,
+                categoria: "documentos",
+                nome: arquivoPdf.name,
+                mimeType: "application/pdf",
+                base64: await arquivoParaDataUrl(arquivoPdf),
+                visibilidade: visivelTutor ? "tutor" : "interno",
+                entidadeTipo: "documento",
+                entidadeId: documentoId,
+                metadata: {
+                  animalId: animal.id,
+                  animalNome: animal.nome,
+                  titulo: titulo.trim(),
+                  tipo: tipoDetalhe.trim() || "Documento",
+                },
+              },
+            });
+            driveArquivoId = upload.arquivo.id;
+          }
           const { error } = await (supabaseBanco as any).from("oricse_portal_documentos").insert({
+            id: documentoId,
             clinica_id: clinicaId,
             animal_id: animal.id,
             titulo: titulo.trim(),
             tipo: tipoDetalhe.trim() || "Documento",
             data_documento: data || null,
             observacoes: detalhe.trim() || null,
+            drive_arquivo_id: driveArquivoId,
             visivel_tutor: visivelTutor,
           });
           if (error) throw error;
@@ -661,6 +737,8 @@ function AnimalFicha() {
     const tabela =
       registro.fontePortal === "vacina"
         ? "oricse_portal_vacinas"
+        : registro.fontePortal === "vermifugo"
+          ? "oricse_portal_vermifugos"
         : registro.fontePortal === "exame"
           ? "oricse_portal_exames"
           : "oricse_portal_documentos";
@@ -919,6 +997,7 @@ function AnimalFicha() {
                   [
                     "Registros clínicos",
                     "Vacinas",
+                    "Vermífugos",
                     "Exames",
                     "Receitas",
                     "Observações",
@@ -1007,6 +1086,8 @@ function AnimalFicha() {
                       placeholder={
                         modalTipo === "Vacinas"
                           ? "Ex.: V10"
+                          : modalTipo === "Vermífugos"
+                            ? "Ex.: Drontal Plus"
                           : modalTipo === "Exames"
                             ? "Ex.: Hemograma"
                             : "Título do registro"
@@ -1014,10 +1095,10 @@ function AnimalFicha() {
                       className="mt-1 min-h-11 w-full rounded-xl border px-3"
                     />
                   </label>
-                  {modalTipo === "Vacinas" && (
+                  {(modalTipo === "Vacinas" || modalTipo === "Vermífugos") && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block text-sm font-bold">
-                        Próximo reforço
+                        {modalTipo === "Vermífugos" ? "Próxima dose" : "Próximo reforço"}
                         <input
                           type="date"
                           value={reforcoEm}
@@ -1042,16 +1123,18 @@ function AnimalFicha() {
                         value={tipoDetalhe}
                         onChange={(e) => setTipoDetalhe(e.target.value)}
                         placeholder={
-                          modalTipo === "Exames" ? "Ex.: Hemograma" : "Ex.: Laudo, Termo"
+                          modalTipo === "Exames" ? "Ex.: Hemograma" : "Ex.: Laudo, Atestado, Cartão de vacinação"
                         }
                         className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"
+                        list={modalTipo === "Documentos" ? "tipos-documento-portal" : undefined}
                       />
+                      {modalTipo === "Documentos" && <datalist id="tipos-documento-portal">{["Laudo", "Atestado", "Cartão de vacinação", "Carteira de saúde", "Resultado de exame", "Termo", "Relatório", "Orientações", "Outros"].map(t=><option key={t} value={t}/>)}</datalist>}
                     </label>
                   )}
-                  {modalTipo === "Exames" && (
+                  {(modalTipo === "Exames" || modalTipo === "Documentos") && (
                     <label className="block rounded-xl border border-dashed p-3 text-sm font-bold">
                       <span className="flex items-center gap-2">
-                        <FileUp size={17} /> PDF do exame (opcional)
+                        <FileUp size={17} /> {modalTipo === "Exames" ? "PDF do exame" : "PDF do documento ou laudo"} (opcional)
                       </span>
                       <input
                         type="file"
@@ -1087,7 +1170,7 @@ function AnimalFicha() {
                       className="mt-1 w-full rounded-xl border p-3"
                     />
                   </label>
-                  {["Vacinas", "Exames", "Documentos"].includes(modalTipo) && (
+                  {["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo) && (
                     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
                       <div>
                         <div className="text-sm font-black">Visível no Portal do Tutor</div>
