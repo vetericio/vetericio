@@ -104,5 +104,7 @@ end $$;
 
 revoke all on function public.oricse_listar_grade_taxas_pagamento() from public;
 revoke all on function public.oricse_salvar_grade_taxas_pagamento(uuid,jsonb,jsonb) from public;
+revoke execute on function public.oricse_listar_grade_taxas_pagamento() from anon;
+revoke execute on function public.oricse_salvar_grade_taxas_pagamento(uuid,jsonb,jsonb) from anon;
 grant execute on function public.oricse_listar_grade_taxas_pagamento() to authenticated;
 grant execute on function public.oricse_salvar_grade_taxas_pagamento(uuid,jsonb,jsonb) to authenticated;
