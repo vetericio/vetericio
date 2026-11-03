@@ -29,11 +29,12 @@ function number(value: string, fallback = 0) {
 
 export function VisualPageEditor() {
   const [device, setDevice] = useState<VisualDevice>("desktop");
-  const [route, setRoute] = useState(() => {
-    if (typeof window === "undefined") return "/";
+  const [route, setRoute] = useState("/");
+  useEffect(() => {
     const pagina = new URLSearchParams(window.location.search).get("pagina") || "/";
-    return ROTAS_CATALOGO.some(r => r.original === pagina && !r.dinamica) ? pagina : "/";
-  });
+    if (ROTAS_CATALOGO.some(r => r.original === pagina && !r.dinamica))
+      setRoute(pagina);
+  }, []);
   const [buscaPagina, setBuscaPagina] = useState("");
   const gruposPaginas = Array.from(new Set(ROTAS_CATALOGO.map(r => r.grupo)));
   const paginasFiltradas = ROTAS_CATALOGO.filter(r =>
