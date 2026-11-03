@@ -13,7 +13,10 @@ type Plano = {
   publico_alvo: string;
   preco: string;
   preco_mensal: string;
+  preco_trimestral: string;
+  preco_semestral: string;
   preco_anual: string;
+  preco_bienal: string;
   descricao: string;
   itens: string[];
   usuarios_inclusos: number;
@@ -268,7 +271,7 @@ function AdminPlanos() {
     try {
       const { error } = await (supabase as any).from("oricse_planos").insert({
         id: crypto.randomUUID(), nome, codigo, ativo: false, ordem: planos.length + 1,
-        preco: "", preco_mensal: "", preco_anual: "", publico_alvo: "",
+        preco: "", preco_mensal: "", preco_trimestral: "", preco_semestral: "", preco_anual: "", preco_bienal: "", publico_alvo: "",
         descricao: "", itens: [], usuarios_inclusos: 1, dominio_incluso: false,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       });
@@ -291,7 +294,10 @@ function AdminPlanos() {
           publico_alvo: plano.publico_alvo,
           preco: plano.preco,
           preco_mensal: plano.preco_mensal,
+          preco_trimestral: plano.preco_trimestral,
+          preco_semestral: plano.preco_semestral,
           preco_anual: plano.preco_anual,
+          preco_bienal: plano.preco_bienal,
           descricao: plano.descricao,
           itens: plano.itens,
           usuarios_inclusos: Math.max(1, Number(plano.usuarios_inclusos) || 1),
@@ -520,8 +526,11 @@ function AdminPlanos() {
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <Campo rotulo="Nome" valor={plano.nome} onChange={(v) => alterarPlano(plano.id,"nome",v)}/>
               <Campo rotulo="Público-alvo" valor={plano.publico_alvo} onChange={(v) => alterarPlano(plano.id,"publico_alvo",v)}/>
-              <Campo rotulo="Valor mensal" valor={plano.preco_mensal} onChange={(v) => alterarPlano(plano.id,"preco_mensal",v)}/>
-              <Campo rotulo="Valor anual" valor={plano.preco_anual} onChange={(v) => alterarPlano(plano.id,"preco_anual",v)}/>
+              <Campo rotulo="Mensal" valor={plano.preco_mensal} onChange={(v) => alterarPlano(plano.id,"preco_mensal",v)}/>
+              <Campo rotulo="Trimestral" valor={plano.preco_trimestral} onChange={(v) => alterarPlano(plano.id,"preco_trimestral",v)}/>
+              <Campo rotulo="Semestral" valor={plano.preco_semestral} onChange={(v) => alterarPlano(plano.id,"preco_semestral",v)}/>
+              <Campo rotulo="Anual · 365 dias" valor={plano.preco_anual} onChange={(v) => alterarPlano(plano.id,"preco_anual",v)}/>
+              <Campo rotulo="Dois anos" valor={plano.preco_bienal} onChange={(v) => alterarPlano(plano.id,"preco_bienal",v)}/>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-[1fr_180px_180px]">
               <label className="text-xs font-bold">Descrição<textarea rows={3} value={plano.descricao} onChange={(e) => alterarPlano(plano.id,"descricao",e.target.value)} className="mt-1 w-full rounded-xl border bg-background p-3 text-sm font-normal"/></label>
