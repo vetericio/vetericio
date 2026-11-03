@@ -1,43 +1,63 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Recepcao } from "./recepcao";
-import { Estoque } from "./estoque";
-import { Financeiro } from "./financeiro";
-import { Comandas } from "./comandas";
-import { MinhaAtividade } from "./minha-atividade";
+import { ORIGINAIS_EDITAVEIS } from "@/lib/admin-page-routes";
 
 export const Route = createFileRoute("/$alias")({ component: AliasPagina });
-const paginas: Record<string, React.ComponentType> = {
-  "/recepcao": Recepcao,
-  "/estoque": Estoque,
-  "/financeiro": Financeiro,
-  "/comandas": Comandas,
-  "/minha-atividade": MinhaAtividade,
-};
 
+/**
+ * Um alias é apenas um atalho para a rota original.
+ * Ele nunca concede acesso: todas as checagens de autenticação e permissão
+ * continuam sendo executadas na rota real, inclusive quando o link é compartilhado.
+ * A validação em lista fechada impede que uma entrada indevida no banco
+ * transforme URLs personalizadas em redirecionamentos externos ou administrativos.
+ */
 function AliasPagina() {
   const { alias } = Route.useParams();
-  const [pagina, setPagina] = useState<string | null>(null);
   const [erro, setErro] = useState("");
+
   useEffect(() => {
     let ativo = true;
-    setPagina(null);
     setErro("");
-    (async () => {
-      const { data, error } = await (supabase as any).from("oricse_rotas_personalizadas")
-        .select("rota_original").eq("rota_publica", "/" + alias).maybeSingle();
+
+    if (!/^[a-z0-9-]{1,65}$/.test(alias)) {
+      setErro("Endereço inválido.");
+      return;
+    }
+
+    void (async () => {
+      const { data, error } = await (supabase as any)
+        .from("oricse_rotas_personalizadas")
+        .select("rota_original")
+        .eq("rota_publica", "/" + alias)
+        .maybeSingle();
+
       if (!ativo) return;
-      if (error) { setErro("Não foi possível consultar este endereço."); return; }
-      if (data?.rota_original && paginas[data.rota_original]) setPagina(data.rota_original);
-      else setErro("Página não encontrada.");
+      if (error) {
+        setErro("Não foi possível consultar este endereço.");
+        return;
+      }
+
+      const destino = String(data?.rota_original || "");
+      if (!ORIGINAIS_EDITAVEIS.has(destino)) {
+        setErro("Página não encontrada.");
+        return;
+      }
+
+      // O caminho original permanece acessível, e não se cria um ciclo
+      // de redirecionamento entre a página e o alias personalizado.
+      window.location.replace(destino + window.location.search + window.location.hash);
     })();
+
     return () => { ativo = false; };
   }, [alias]);
-  const Pagina = pagina ? paginas[pagina] : null;
-  if (Pagina) return <Pagina />;
-  return <main className="flex min-h-screen items-center justify-center p-6 text-center">
-    <div><h1 className="text-xl font-bold">{erro || "Abrindo página..."}</h1>
-      {erro && <a href="/" className="mt-3 inline-block underline">Voltar ao início</a>}</div>
-  </main>;
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#F8F5F2] p-6 text-center text-[#381724]">
+      <div className="max-w-sm rounded-2xl border bg-white p-8 shadow-sm">
+        <h1 className="text-xl font-bold">{erro || "Abrindo a página…"}</h1>
+        {erro && <a href="/" className="mt-4 inline-block text-sm font-semibold underline">Voltar ao início</a>}
+      </div>
+    </main>
+  );
 }
