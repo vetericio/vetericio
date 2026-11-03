@@ -1108,8 +1108,10 @@ function Admin() {
         clinicas={clinicas}
         grade={gradeTaxas}
         salvando={salvandoTaxas}
-        onSalvarReferencia={(clinicaId, modalidades, segmentos) => void salvarGradeTaxas(clinicaId, modalidades, segmentos)}
-        onSalvarComissoes={(clinicaId, comissoes) => void salvarComissoesOricse(clinicaId, comissoes)}
+        onSalvarTudo={async (clinicaId, modalidades, segmentos, comissoes) => {
+          await salvarGradeTaxas(clinicaId, modalidades, segmentos);
+          await salvarComissoesOricse(clinicaId, comissoes);
+        }}
       />
     </div>
   );
@@ -1152,14 +1154,12 @@ function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento
   return [linha.modalidade, linha.prazo_recebimento_dias, linha.parcelas].join(":");
 }
 
-function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarReferencia, onSalvarComissoes }: {
+function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
   clinicas: Clinica[];
   grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] };
   salvando: boolean;
-  onSalvarReferencia: (clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) => void;
-  onSalvarComissoes: (clinicaId: string | null, comissoes: TaxaComissao[]) => void;
+  onSalvarTudo: (clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[], comissoes: TaxaComissao[]) => Promise<void>;
 }) {
-  const [aba, setAba] = useState<"referencia" | "comissao">("referencia");
   const [clinicaId, setClinicaId] = useState<string>("");
   const [prazo, setPrazo] = useState(0);
   const [linhas, setLinhas] = useState<TaxaModalidade[]>([]);
@@ -1230,7 +1230,6 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarReferencia, o
     setLinhas((atuais) => atuais.map((linha) => chaveTaxa(linha) === chave ? { ...linha, ...campos } : linha));
   }
   function atualizarComissaoEmLote(chave: string, campos: Partial<TaxaComissao>) {
-    if (!segmentosSelecionados.length) return;
     setComissoes((atuais) => atuais.map((linha) => (
       segmentosSelecionados.includes(linha.segmento) && chaveTaxa(linha) === chave
         ? { ...linha, ...campos }
@@ -1243,23 +1242,31 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarReferencia, o
       return [...atuais, segmento];
     });
   }
-  function restaurarReferencia() {
+  function restaurarTudo() {
     setLinhas(globais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
-  }
-  function restaurarComissoes() {
     setComissoes(comissoesGlobais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
   }
-  function valoresComissao(chave: string) {
+  function regrasSelecionadas(chave: string) {
     return comissoes.filter((linha) => segmentosSelecionados.includes(linha.segmento) && chaveTaxa(linha) === chave);
+  }
+  function gruposAplicacao(chave: string) {
+    const grupos = new Map<string, { percentual: number; ativo: boolean; segmentos: TaxaSegmento["segmento"][] }>();
+    comissoes.filter((linha) => chaveTaxa(linha) === chave).forEach((linha) => {
+      const id = [Number(linha.oricse_percentual).toFixed(4), linha.ativo ? "ativo" : "inativo"].join(":");
+      const grupo = grupos.get(id) || { percentual: Number(linha.oricse_percentual), ativo: linha.ativo, segmentos: [] };
+      grupo.segmentos.push(linha.segmento);
+      grupos.set(id, grupo);
+    });
+    return Array.from(grupos.values()).sort((a, b) => b.segmentos.length - a.segmentos.length);
   }
 
   return <div className="space-y-5">
     <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="grid gap-4 border-b bg-gradient-to-r from-[#fff8f3] to-white p-5 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Tabela de cobrança</p>
-          <h3 className="mt-1 text-xl font-black">Taxas claras antes de vender</h3>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">A referência do Mercado Pago e a comissão ORICSE ficam separadas. O sistema aplica primeiro a taxa do provedor e depois a comissão da ORICSE, por forma de pagamento.</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Pagamentos e repasses</p>
+          <h3 className="mt-1 text-xl font-black">Uma configuração por forma de pagamento</h3>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Em cada linha você vê a taxa de referência do Mercado Pago e define a comissão ORICSE. Escolha as áreas no topo antes de editar o percentual: o valor será aplicado somente nelas.</p>
         </div>
         <div className="rounded-xl border border-primary/15 bg-white px-4 py-3 text-sm shadow-sm">
           <p className="font-bold">Referência pública Mercado Pago</p>
@@ -1287,94 +1294,68 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarReferencia, o
           <p className="mt-0.5 text-xs text-muted-foreground">{clinicaSelecionada ? (temExcecao ? "Condições próprias desta clínica" : "Sem exceção: herda a tabela geral") : "Base para todas as clínicas"}</p>
         </div>
       </div>
-      <div className="flex gap-1 border-t bg-slate-50 px-5 pt-3">
-        <button type="button" onClick={() => setAba("referencia")} className={aba === "referencia" ? "rounded-t-xl bg-white px-4 py-3 text-sm font-black text-primary shadow-sm" : "rounded-t-xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white"}>
-          Referência Mercado Pago
-        </button>
-        <button type="button" onClick={() => setAba("comissao")} className={aba === "comissao" ? "rounded-t-xl bg-white px-4 py-3 text-sm font-black text-primary shadow-sm" : "rounded-t-xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white"}>
-          Comissão ORICSE
-        </button>
+    </section>
+
+    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Áreas aplicáveis</p>
+          <h3 className="mt-1 text-lg font-black">Onde você quer mudar a comissão agora?</h3>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Exemplo: marque <strong>Clínica veterinária</strong> e <strong>Hotelzinho</strong>; no PIX, preencha 8%. Depois marque as demais áreas e defina outro percentual no mesmo PIX.</p>
+        </div>
+        <button type="button" onClick={() => setSegmentosSelecionados(todosSelecionados ? [SEGMENTOS_DISPONIVEIS[0]] : SEGMENTOS_DISPONIVEIS)} className="rounded-lg border px-3 py-2 text-sm font-bold text-primary hover:bg-slate-50">{todosSelecionados ? "Deixar só Clínica" : "Selecionar todas"}</button>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {SEGMENTOS_DISPONIVEIS.map((segmento) => {
+          const ativo = segmentosSelecionados.includes(segmento);
+          return <button key={segmento} type="button" onClick={() => alternarSegmento(segmento)} className={ativo ? "rounded-full bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow-sm" : "rounded-full border bg-white px-3 py-2 text-sm font-bold text-slate-600 hover:border-primary/40"}>{ativo ? "✓ " : ""}{SEGMENTOS_TAXAS[segmento]}</button>;
+        })}
       </div>
     </section>
 
-    {aba === "referencia" ? <section className="rounded-2xl border bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h3 className="font-black">Condições por meio de pagamento</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Prazo de crédito selecionado: <strong>{PRAZOS_TAXAS[prazo]}</strong>. “Sem acréscimo” significa que a clínica absorve a taxa das parcelas.</p>
-        </div>
-        <button type="button" onClick={restaurarReferencia} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar referência salva</button>
+        <div><h3 className="font-black">Taxas e comissão por condição</h3><p className="mt-1 text-sm text-muted-foreground">A edição de Comissão ORICSE afeta apenas as áreas marcadas acima. A coluna ao lado mostra, com clareza, como cada regra ficará distribuída.</p></div>
+        <button type="button" onClick={restaurarTudo} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar valores salvos</button>
       </div>
       <div className="mt-4 overflow-x-auto rounded-xl border">
-        <table className="min-w-[900px] w-full text-sm">
+        <table className="min-w-[1120px] w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr>
-            <th className="px-4 py-3">Meio / condição</th><th className="px-4 py-3">Recebimento</th><th className="px-4 py-3">Mercado Pago</th><th className="px-4 py-3">Fixo</th><th className="px-4 py-3">Referência</th><th className="px-4 py-3">Ativo</th>
+            <th className="px-4 py-3">Meio / condição</th><th className="px-4 py-3">Recebimento</th><th className="px-4 py-3">Mercado Pago</th><th className="px-4 py-3">Comissão ORICSE</th><th className="px-4 py-3">Áreas aplicáveis</th><th className="px-4 py-3">Ativa</th>
           </tr></thead>
           <tbody className="divide-y">{linhasVisiveis.map((linha) => {
             const chave = chaveTaxa(linha);
+            const selecionadas = regrasSelecionadas(chave);
+            const valores = selecionadas.map((regra) => Number(regra.oricse_percentual));
+            const valorUnico = valores.length > 0 && valores.every((valor) => valor === valores[0]) ? valores[0] : null;
+            const todasAtivas = selecionadas.length > 0 && selecionadas.every((regra) => regra.ativo);
+            const ativas = selecionadas.filter((regra) => regra.ativo).length;
+            const grupos = gruposAplicacao(chave);
             return <tr key={chave} className={!linha.ativo ? "bg-slate-50 text-slate-400" : ""}>
-              <td className="px-4 py-3 font-semibold">{linha.descricao}</td>
-              <td className="px-4 py-3 text-muted-foreground">{PRAZOS_TAXAS[linha.prazo_recebimento_dias]}</td>
-              <td className="px-4 py-3"><div className="relative max-w-28"><input aria-label="Taxa Mercado Pago" type="number" min="0" max="99.99" step="0.01" value={linha.mp_percentual} onChange={(event) => atualizarLinha(chave, { mp_percentual: Number(event.target.value) })} className="min-h-10 w-full rounded-lg border px-3 pr-7 text-right font-bold"/><span className="absolute right-2 top-2.5 text-muted-foreground">%</span></div></td>
-              <td className="px-4 py-3"><div className="relative max-w-32"><span className="absolute left-2 top-2.5 text-xs text-muted-foreground">R$</span><input aria-label="Taxa fixa" type="number" min="0" step="0.01" value={(Number(linha.mp_fixo_centavos || 0) / 100).toFixed(2)} onChange={(event) => atualizarLinha(chave, { mp_fixo_centavos: Math.round(Number(event.target.value || 0) * 100) })} className="min-h-10 w-full rounded-lg border px-3 pl-8 text-right font-bold"/></div></td>
-              <td className="px-4 py-3"><span className="rounded-full bg-[#f9eee8] px-2.5 py-1 text-xs font-bold text-primary">{linha.fonte === "referencia_publica_mercado_pago" ? "Oficial MP" : "Condição própria"}</span></td>
-              <td className="px-4 py-3"><input aria-label="Ativo" type="checkbox" checked={linha.ativo} onChange={(event) => atualizarLinha(chave, { ativo: event.target.checked })} className="h-4 w-4 accent-primary"/></td>
-            </tr>;
-          })}</tbody>
-        </table>
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">As tarifas variam conforme produto, prazo, volume e contrato da conta Mercado Pago. Ao confirmar uma venda, o sistema deve manter o snapshot da taxa real retornada pelo provedor para conciliação.</p>
-      <div className="mt-5 flex justify-end border-t pt-4">
-        <button type="button" disabled={salvando || !linhas.length || !segmentosLegado.length} onClick={() => onSalvarReferencia(clinicaId || null, linhas, segmentosLegado)} className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground disabled:opacity-50">{salvando ? "Salvando referência..." : clinicaSelecionada ? "Salvar referência da clínica" : "Salvar referência geral"}</button>
-      </div>
-    </section> : <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Comissão ORICSE</p>
-          <h3 className="mt-1 text-xl font-black">Comissão por forma de pagamento</h3>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Escolha os segmentos que receberão a mesma regra e defina a comissão para cada meio de pagamento. Uma alteração é aplicada a todos os segmentos marcados.</p>
-        </div>
-        <button type="button" onClick={restaurarComissoes} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar comissão salva</button>
-      </div>
-      <div className="mt-5 rounded-2xl border bg-[#fffaf7] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="font-black">Segmentos da regra</p><p className="mt-0.5 text-xs text-muted-foreground">Marque um, vários ou todos. A tabela abaixo só altera os segmentos marcados.</p></div>
-          <button type="button" onClick={() => setSegmentosSelecionados(todosSelecionados ? [SEGMENTOS_DISPONIVEIS[0]] : SEGMENTOS_DISPONIVEIS)} className="rounded-lg border bg-white px-3 py-2 text-sm font-bold text-primary">{todosSelecionados ? "Deixar só Clínica" : "Selecionar todos"}</button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {SEGMENTOS_DISPONIVEIS.map((segmento) => {
-            const ativo = segmentosSelecionados.includes(segmento);
-            return <button key={segmento} type="button" onClick={() => alternarSegmento(segmento)} className={ativo ? "rounded-full bg-primary px-3 py-2 text-sm font-bold text-primary-foreground shadow-sm" : "rounded-full border bg-white px-3 py-2 text-sm font-bold text-slate-600 hover:border-primary/40"}>{ativo ? "✓ " : ""}{SEGMENTOS_TAXAS[segmento]}</button>;
-          })}
-        </div>
-      </div>
-      <div className="mt-4 overflow-x-auto rounded-xl border">
-        <table className="min-w-[850px] w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr>
-            <th className="px-4 py-3">Meio / condição</th><th className="px-4 py-3">Recebimento</th><th className="px-4 py-3">Comissão ORICSE</th><th className="px-4 py-3">Aplicação</th><th className="px-4 py-3">Ativa</th>
-          </tr></thead>
-          <tbody className="divide-y">{linhasVisiveis.map((linha) => {
-            const chave = chaveTaxa(linha);
-            const regras = valoresComissao(chave);
-            const percentuais = regras.map((regra) => Number(regra.oricse_percentual));
-            const valorUnico = percentuais.length > 0 && percentuais.every((valor) => valor === percentuais[0]) ? percentuais[0] : null;
-            const todosAtivos = regras.length > 0 && regras.every((regra) => regra.ativo);
-            const ativos = regras.filter((regra) => regra.ativo).length;
-            return <tr key={chave} className={!linha.ativo ? "bg-slate-50 text-slate-400" : ""}>
-              <td className="px-4 py-3 font-semibold">{linha.descricao}</td>
-              <td className="px-4 py-3 text-muted-foreground">{PRAZOS_TAXAS[linha.prazo_recebimento_dias]}</td>
-              <td className="px-4 py-3"><div className="relative max-w-36"><input aria-label="Comissão ORICSE" type="number" min="0" max="99.99" step="0.01" value={valorUnico ?? ""} placeholder={valorUnico === null ? "Misto" : ""} onChange={(event) => atualizarComissaoEmLote(chave, { oricse_percentual: Number(event.target.value || 0) })} className="min-h-10 w-full rounded-lg border px-3 pr-7 text-right font-black"/><span className="absolute right-2 top-2.5 text-muted-foreground">%</span></div></td>
-              <td className="px-4 py-3"><span className="font-semibold">{segmentosSelecionados.length} segmento{segmentosSelecionados.length === 1 ? "" : "s"}</span><span className="block text-xs text-muted-foreground">Aplicar aos marcados</span></td>
-              <td className="px-4 py-3"><label className="flex items-center gap-2"><input aria-label="Comissão ativa" type="checkbox" checked={todosAtivos} onChange={(event) => atualizarComissaoEmLote(chave, { ativo: event.target.checked })} className="h-4 w-4 accent-primary"/><span className="text-xs text-muted-foreground">{ativos}/{regras.length}</span></label></td>
+              <td className="px-4 py-3 align-top font-semibold">{linha.descricao}</td>
+              <td className="px-4 py-3 align-top text-muted-foreground">{PRAZOS_TAXAS[linha.prazo_recebimento_dias]}</td>
+              <td className="px-4 py-3 align-top">
+                <div className="relative max-w-28"><input aria-label="Taxa Mercado Pago" type="number" min="0" max="99.99" step="0.01" value={linha.mp_percentual} onChange={(event) => atualizarLinha(chave, { mp_percentual: Number(event.target.value) })} className="min-h-10 w-full rounded-lg border px-3 pr-7 text-right font-bold"/><span className="absolute right-2 top-2.5 text-muted-foreground">%</span></div>
+                <div className="relative mt-2 max-w-28"><span className="absolute left-2 top-2.5 text-xs text-muted-foreground">R$</span><input aria-label="Taxa fixa Mercado Pago" type="number" min="0" step="0.01" value={(Number(linha.mp_fixo_centavos || 0) / 100).toFixed(2)} onChange={(event) => atualizarLinha(chave, { mp_fixo_centavos: Math.round(Number(event.target.value || 0) * 100) })} className="min-h-10 w-full rounded-lg border px-3 pl-8 text-right font-bold"/></div>
+                <span className="mt-2 inline-flex rounded-full bg-[#f9eee8] px-2 py-1 text-[11px] font-bold text-primary">{linha.fonte === "referencia_publica_mercado_pago" ? "Oficial MP" : "Condição própria"}</span>
+              </td>
+              <td className="px-4 py-3 align-top">
+                <div className="relative max-w-36"><input aria-label="Comissão ORICSE" type="number" min="0" max="99.99" step="0.01" value={valorUnico ?? ""} placeholder={valorUnico === null ? "Valores diferentes" : ""} onChange={(event) => atualizarComissaoEmLote(chave, { oricse_percentual: Number(event.target.value || 0) })} className="min-h-10 w-full rounded-lg border px-3 pr-7 text-right font-black"/><span className="absolute right-2 top-2.5 text-muted-foreground">%</span></div>
+                <p className="mt-2 max-w-40 text-xs leading-4 text-muted-foreground">Aplicar em: <strong>{segmentosSelecionados.map((segmento) => SEGMENTOS_TAXAS[segmento]).join(", ")}</strong></p>
+              </td>
+              <td className="px-4 py-3 align-top">
+                <div className="flex max-w-md flex-wrap gap-1.5">{grupos.map((grupo) => <div key={[grupo.percentual,grupo.ativo,grupo.segmentos.join("-")].join(":")} className={grupo.ativo ? "rounded-lg border border-primary/15 bg-[#fff8f3] px-2 py-1.5" : "rounded-lg border bg-slate-50 px-2 py-1.5 opacity-60"}><span className="mr-1 text-xs font-black text-primary">{percentual(grupo.percentual)}</span>{grupo.segmentos.map((segmento) => <span key={segmento} className="mr-1 inline-block rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{SEGMENTOS_TAXAS[segmento]}</span>)}</div>)}</div>
+              </td>
+              <td className="px-4 py-3 align-top"><label className="flex items-center gap-2"><input aria-label="Comissão ativa" type="checkbox" checked={todasAtivas} onChange={(event) => atualizarComissaoEmLote(chave, { ativo: event.target.checked })} className="mt-1 h-4 w-4 accent-primary"/><span className="text-xs text-muted-foreground">{ativas}/{selecionadas.length} selecionadas</span></label></td>
             </tr>;
           })}</tbody>
         </table>
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <p className="text-sm text-muted-foreground">{clinicaSelecionada ? (temExcecao ? "Você está editando uma condição exclusiva desta clínica." : "Ao salvar, será criada uma condição exclusiva para esta clínica.") : "Esta é a comissão padrão aplicada quando a clínica não possui exceção."}</p>
-        <button type="button" disabled={salvando || !comissoes.length || !segmentosSelecionados.length} onClick={() => onSalvarComissoes(clinicaId || null, comissoes)} className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground disabled:opacity-50">{salvando ? "Salvando comissões..." : "Salvar comissão ORICSE"}</button>
+        <p className="text-sm text-muted-foreground">{clinicaSelecionada ? (temExcecao ? "Você está editando uma condição exclusiva desta clínica." : "Ao salvar, será criada uma condição exclusiva para esta clínica.") : "Esta é a tabela padrão aplicada quando a clínica não possui exceção."}</p>
+        <button type="button" disabled={salvando || !linhas.length || !comissoes.length} onClick={() => void onSalvarTudo(clinicaId || null, linhas, segmentosLegado, comissoes)} className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground disabled:opacity-50">{salvando ? "Salvando configuração..." : "Salvar configuração de pagamentos"}</button>
       </div>
-    </section>}
+    </section>
 
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
       <div className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -1383,7 +1364,7 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarReferencia, o
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold text-muted-foreground">1. Venda</span><p className="mt-1 font-black">Valor bruto</p></div>
           <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold text-muted-foreground">2. Mercado Pago</span><p className="mt-1 font-black">Taxa do meio</p></div>
-          <div className="rounded-xl bg-[#fff4ef] p-3"><span className="text-xs font-bold text-primary">3. ORICSE</span><p className="mt-1 font-black">Comissão sobre saldo</p></div>
+          <div className="rounded-xl bg-[#fff4ef] p-3"><span className="text-xs font-bold text-primary">3. ORICSE</span><p className="mt-1 font-black">Comissão por área</p></div>
         </div>
       </div>
       <aside className="rounded-2xl border-2 border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
@@ -1392,7 +1373,7 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarReferencia, o
         <div className="mt-4 grid gap-3">
           <label className="text-sm font-bold">Valor da venda<input inputMode="decimal" value={valorSimulacao} onChange={(event) => setValorSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-bold"/></label>
           <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
-          <label className="text-sm font-bold">Segmento<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
+          <label className="text-sm font-bold">Área<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
         </div>
         <dl className="mt-5 space-y-2 rounded-xl bg-white p-4 text-sm">
           <div className="flex justify-between gap-3"><dt>Venda bruta</dt><dd className="font-bold">{moedaCentavos(centavos)}</dd></div>
