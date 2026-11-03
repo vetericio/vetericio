@@ -130,6 +130,13 @@ function Contratar() {
   const [erroPromo, setErroPromo] = useState("");
   const retornoPagamento = params.get("retorno");
   const pedidoRetorno = params.get("pedido");
+  useEffect(() => {
+    if (!retornoPagamento || !["sucesso","pendente","falha"].includes(retornoPagamento)) return;
+    const url = new URL("/contratacao-recebida", window.location.origin);
+    url.searchParams.set("retorno", retornoPagamento);
+    window.location.replace(url.toString());
+  }, [retornoPagamento]);
+
   async function abrirCheckout(id: string) {
     if (!id || abrindoCheckout) return;
     setAbrindoCheckout(true);
