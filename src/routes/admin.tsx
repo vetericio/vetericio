@@ -183,6 +183,8 @@ function Admin() {
   const [salvandoRotas, setSalvandoRotas] = useState(false);
   const [rotasSalvas, setRotasSalvas] = useState<Record<string,string>>({});
   const [buscaRotas, setBuscaRotas] = useState("");
+  const [buscaPaginasSite, setBuscaPaginasSite] = useState("");
+  const [grupoPaginasSite, setGrupoPaginasSite] = useState("todas");
   const [grupoRotas, setGrupoRotas] = useState("todas");
   const [somenteEditaveis, setSomenteEditaveis] = useState(false);
   const [carregandoRotas, setCarregandoRotas] = useState(false);
@@ -856,7 +858,64 @@ function Admin() {
     </div>
   </Card>;
 
-  const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card></div>;
+  const renderSite = () => <div className="space-y-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo.png"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card>
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2"><PanelsTopLeft size={20}/><h3 className="text-xl font-bold">Páginas do sistema · Editor visual</h3></div>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Todas as páginas reais do ORICSE ficam aqui e em Páginas e URLs, usando o mesmo catálogo automático. Novas páginas criadas no código aparecem nas duas áreas assim que a atualização do sistema é publicada.</p>
+        </div>
+        <a href="/admin-canvas" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">
+          <PanelsTopLeft size={17}/> Abrir editor visual
+        </a>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-3 rounded-xl border bg-[#FBF8F6] p-4 text-sm">
+        <div><strong className="text-lg">{ROTAS_CATALOGO.length}</strong><span className="ml-2 text-muted-foreground">páginas identificadas</span></div>
+        <span className="hidden text-muted-foreground sm:inline">·</span>
+        <span className="text-muted-foreground">Lista sincronizada com Páginas e URLs</span>
+        <button type="button" onClick={()=>window.location.reload()} className="ml-auto inline-flex items-center gap-1 font-semibold text-[#703047] hover:underline"><RefreshCcw size={15}/> Atualizar lista</button>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+        <label className="relative block">
+          <Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/>
+          <input value={buscaPaginasSite} onChange={e=>setBuscaPaginasSite(e.target.value)}
+            aria-label="Pesquisar páginas do site e sistema" placeholder="Pesquisar por página, módulo ou endereço…"
+            className="min-h-11 w-full rounded-xl border bg-white pl-10 pr-3 text-sm"/>
+        </label>
+        <select value={grupoPaginasSite} onChange={e=>setGrupoPaginasSite(e.target.value)}
+          aria-label="Filtrar grupo de páginas" className="min-h-11 rounded-xl border bg-white px-3 text-sm">
+          <option value="todas">Todas as áreas</option>
+          {Array.from(new Set(ROTAS_CATALOGO.map(r=>r.grupo))).map(g=><option key={g} value={g}>{g}</option>)}
+        </select>
+      </div>
+      <div className="mt-5 max-h-[640px] space-y-2 overflow-y-auto pr-1">
+        {ROTAS_CATALOGO.filter(r=>(grupoPaginasSite==="todas"||r.grupo===grupoPaginasSite) &&
+          (!buscaPaginasSite.trim()||([r.nome,r.original,r.grupo].join(" ").toLocaleLowerCase("pt-BR")).includes(buscaPaginasSite.trim().toLocaleLowerCase("pt-BR"))))
+          .map(r=><div key={r.original} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 hover:border-[#D6AEBE]">
+            <div className="min-w-0">
+              <p className="font-bold text-[#381724]">{r.nome}</p>
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{r.original}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{r.grupo}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {r.dinamica?<span className="rounded-lg border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted-foreground">Link específico por clínica</span>:<>
+                <a href={r.original} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-semibold hover:bg-slate-50"><ExternalLink size={15}/> Abrir</a>
+                <a href={"/admin-canvas?pagina="+encodeURIComponent(r.original)}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#703047] px-3 text-xs font-bold text-white hover:bg-[#552037]">
+                  <PanelsTopLeft size={15}/> Editar visualmente
+                </a>
+              </>}
+            </div>
+          </div>)}
+        {!ROTAS_CATALOGO.some(r=>(grupoPaginasSite==="todas"||r.grupo===grupoPaginasSite) &&
+          (!buscaPaginasSite.trim()||([r.nome,r.original,r.grupo].join(" ").toLocaleLowerCase("pt-BR")).includes(buscaPaginasSite.trim().toLocaleLowerCase("pt-BR"))))&&
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhuma página encontrada. Altere a pesquisa.</div>}
+      </div>
+      <div className="mt-5 border-t pt-4">
+        <button type="button" onClick={()=>{setAba("paginas");void carregarRotas();}} className="inline-flex items-center gap-2 text-sm font-semibold text-[#703047] hover:underline"><Globe2 size={16}/> Gerenciar endereços em Páginas e URLs</button>
+      </div>
+    </Card></div>;
 
   // O catálogo é compartilhado com o resolvedor de URLs personalizadas:
   // páginas administrativas e endereços com parâmetro são somente leitura.
