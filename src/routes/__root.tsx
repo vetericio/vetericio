@@ -171,6 +171,7 @@ function RootComponent() {
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [acessoTeste, setAcessoTeste] = useState<any>(null);
+  const [acessoAssinatura, setAcessoAssinatura] = useState<any>(null);
   const [portal, setPortal] = useState<ClinicPortalInfo | null>(null);
   const [portalLoading, setPortalLoading] = useState(true);
   const [portalError, setPortalError] = useState<string | null>(null);
@@ -348,10 +349,15 @@ function RootComponent() {
         setSlugClinicaAtual("");
         return;
       }
-      const { data: acesso } = await (supabase as any).rpc("oricse_meu_acesso");
+      const [acessoResp, assinaturaResp] = await Promise.all([
+        (supabase as any).rpc("oricse_meu_acesso"),
+        (supabase as any).rpc("oricse_meu_status_assinatura"),
+      ]);
       if (!ativo) return;
-      const item = Array.isArray(acesso) ? acesso[0] : acesso;
+      const item = Array.isArray(acessoResp.data) ? acessoResp.data[0] : acessoResp.data;
+      const assinatura = Array.isArray(assinaturaResp.data) ? assinaturaResp.data[0] : assinaturaResp.data;
       setAcessoTeste(item || null);
+      setAcessoAssinatura(assinatura || null);
     }
     supabase.auth.getSession().then(({ data }) => void validarSessao(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -595,9 +601,11 @@ function RootComponent() {
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
-  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado;
-  const mostrarBloqueioTeste =
-    autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
+  const assinaturaBloqueada = role !== "admin" && acessoAssinatura?.situacao === "bloqueada";
+  const assinaturaEmAviso = role !== "admin" && acessoAssinatura?.situacao === "aviso";
+  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado && !assinaturaBloqueada;
+  const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
+  const mostrarBloqueioAssinatura = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && assinaturaBloqueada;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
   const telaPortalRestrita = Boolean(
     !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) &&
@@ -641,6 +649,7 @@ function RootComponent() {
             <AlarmeAtivo />
           </div>
         )}
+        {assinaturaEmAviso && mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-950">{acessoAssinatura?.mensagem || "Sua assinatura venceu. Regularize para evitar o bloqueio."}</div></div>}
         {testeAtivo && mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
             <div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm font-semibold text-primary">
@@ -692,6 +701,8 @@ function RootComponent() {
           </div>
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
           <div className="min-h-screen" />
+        ) : mostrarBloqueioAssinatura ? (
+          <main className="flex min-h-[75vh] items-center justify-center bg-background px-4 py-10"><section className="w-full max-w-xl rounded-3xl border bg-card p-7 text-center shadow-lg"><div className="text-4xl">🔒</div><p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-primary">Assinatura ORICSE</p><h1 className="mt-2 text-3xl font-bold">{acessoAssinatura?.titulo || "Acesso administrativo bloqueado"}</h1><p className="mt-3 text-muted-foreground">{acessoAssinatura?.mensagem || "Regularize a assinatura para continuar usando o sistema."}</p><div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">O Portal do Tutor continua ativo, incluindo documentos, agenda e pagamentos online.</div><Link to="/plano-clinica" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">Ver assinatura e regularizar</Link></section></main>
         ) : mostrarBloqueioTeste ? (
           <main className="flex min-h-[75vh] items-center justify-center bg-background px-4 py-10">
             <section className="w-full max-w-xl rounded-3xl border bg-card p-7 text-center shadow-lg">
