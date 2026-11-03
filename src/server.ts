@@ -28,9 +28,10 @@ function securityHeaders(response: Response, pathname?: string): Response {
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   headers.set(
     "content-security-policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://drive.google.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://drive.google.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
   );
-  headers.set("x-frame-options", "DENY");
+  // Prévias do editor são sempre no mesmo domínio; sites externos continuam bloqueados.
+  headers.set("x-frame-options", "SAMEORIGIN");
   headers.set("x-content-type-options", "nosniff");
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
   headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
