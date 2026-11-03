@@ -606,13 +606,14 @@ function RootComponent() {
     (acessoPortalNegado || (!portal && Boolean(portalError))),
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
-  const mostrarRuntimeVisual = rotaPublica && !rotaAdmin;
+  const mostrarRuntimeVisual = location.pathname !== "/admin-canvas";
 
-  // Documentos legais são páginas públicas isoladas, inclusive para usuários logados.
-  // Não montar cabeçalho, menu lateral, contexto da clínica ou runtime visual.
+  // Documentos legais permanecem isolados do shell; somente os ajustes visuais
+  // publicados pelo administrador podem ser aplicados a essas páginas.
   if (location.pathname === "/termos-de-uso" || location.pathname === "/politica-de-privacidade" || location.pathname === "/contratacao-recebida") {
     return (
       <QueryClientProvider client={queryClient}>
+        <Suspense fallback={null}><VisualPageRuntime /></Suspense>
         <Outlet />
       </QueryClientProvider>
     );
