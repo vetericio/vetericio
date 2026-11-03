@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.oricse-portal-login]
 verify_jwt = false
+
+[functions.oricse-planos-checkout]
+verify_jwt = false
