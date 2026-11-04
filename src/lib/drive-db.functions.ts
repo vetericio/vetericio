@@ -41,7 +41,31 @@ async function folder(t: string, parent: string, nome: string) { const esc = nom
 async function dbFolder(t: string) { const o = await folder(t, root(), ".oricse"); return folder(t, o, "database"); }
 async function findFile(t: string, parent: string, nome: string) { const esc = nome.replace(/'/g, "\\'"); const q = encodeURIComponent(`'${parent}' in parents and name='${esc}' and trashed=false`); const r = await gf(t, `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime,version)&pageSize=5`); const j = await r.json() as { files?: Array<{ id: string; name: string; modifiedTime?: string; version?: string }> }; return j.files?.[0] || null; }
 async function writeTable(t: string, table: string, folderId: string, fileId: string | null, rows: any[]) { const corpo = JSON.stringify(rows); if (fileId) { await gf(t, `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media`, { method: "PATCH", headers: { "content-type": "application/json;charset=utf-8" }, body: corpo }); return; } const form = new FormData(); form.append("metadata", new Blob([JSON.stringify({ name: `${table}.json`, parents: [folderId], appProperties: { oricseDatabase: "true", tabela: table } })], { type: "application/json" })); form.append("file", new Blob([corpo], { type: "application/json" }), `${table}.json`); await gf(t, "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", { method: "POST", body: form }); }
-async function readTable(t: string, table: string) { const f = await dbFolder(t), a = await findFile(t, f, `${table}.json`); if (!a) { return { folderId: f, fileId: null as string | null, rows: seedTabela(table) }; } const r = await gf(t, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(a.id)}?alt=media`); let rows: any[] = []; try { const x = JSON.parse(await r.text()); rows = Array.isArray(x) ? x : []; } catch { rows = []; } return { folderId: f, fileId: a.id, rows }; }
+function integrarNovosRecursos(table: string, antigos: any[]) {
+  // Migração aditiva: não altera os planos nem permissões de clínicas antigas.
+  if (!["oricse_planos","oricse_funcionalidades","oricse_plano_funcionalidades"].includes(table)) return antigos;
+  const seeds = seedTabela(table);
+  const chave = (item: any) => table === "oricse_plano_funcionalidades"
+    ? String(item.plano_id) + ":" + String(item.funcionalidade_codigo)
+    : String(item.codigo || "");
+  const presentes = new Set(antigos.map(chave));
+  const novos = seeds.filter((item) => {
+    if (presentes.has(chave(item))) return false;
+    if (table === "oricse_planos") return String(item.codigo).endsWith("-2026");
+    if (table === "oricse_funcionalidades") return String(item.codigo).startsWith("beneficio.");
+    return String(item.funcionalidade_codigo).startsWith("beneficio.") ||
+      ["3c2a0001-2026-4000-8000-000000000001","3c2a0002-2026-4000-8000-000000000002","3c2a0003-2026-4000-8000-000000000003","3c2a0004-2026-4000-8000-000000000004"].includes(String(item.plano_id));
+  });
+  return [...antigos, ...novos];
+}
+async function readTable(t: string, table: string) {
+  const f = await dbFolder(t), a = await findFile(t, f, `${table}.json`);
+  if (!a) return { folderId: f, fileId: null as string | null, rows: seedTabela(table) };
+  const r = await gf(t, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(a.id)}?alt=media`);
+  let rows: any[] = [];
+  try { const x = JSON.parse(await r.text()); rows = Array.isArray(x) ? x : []; } catch { rows = []; }
+  return { folderId: f, fileId: a.id, rows: integrarNovosRecursos(table, rows) };
+}
 
 async function authContext(accessToken?: string | null): Promise<AuthContext> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
