@@ -88,6 +88,10 @@ function AdminPlanos() {
   const [busca, setBusca] = useState("");
   const [areaCatalogo, setAreaCatalogo] = useState<"beneficios" | "tecnico">("beneficios");
   const [buscaClinica, setBuscaClinica] = useState("");
+  const [grupoFiltroClinica, setGrupoFiltroClinica] = useState("todos");
+  const [apenasExcecoesClinica, setApenasExcecoesClinica] = useState(false);
+  const [gruposClinicaFechados, setGruposClinicaFechados] = useState<Record<string, boolean>>({});
+  const [excecoesPendentes, setExcecoesPendentes] = useState<Record<string, ModoExcecao>>({});
   const [grupoFiltro, setGrupoFiltro] = useState("todos");
   const [apenasDiferencas, setApenasDiferencas] = useState(false);
   const [apenasPendentes, setApenasPendentes] = useState(false);
@@ -167,6 +171,7 @@ function AdminPlanos() {
       setMatriz(mapa);
       setClinicas((clinicasRes.data || []) as Clinica[]);
       setExcecoes((excecoesRes.data || []) as Excecao[]);
+      setExcecoesPendentes({});
       const primeira = clinicasRes.data?.[0]?.id || "";
       setClinicaSelecionada((atual) => atual || primeira);
     } catch (error) {
@@ -235,6 +240,28 @@ function AdminPlanos() {
     || planos.some((p) => matriz[p.id]?.[f.codigo] === undefined)).length;
 
   const clinicaAtual = clinicas.find((c) => c.id === clinicaSelecionada) || null;
+  const todosBeneficiosClinica = catalogo.filter((item) => item.tipo === "beneficio");
+  const beneficiosClinicaVisiveis = todosBeneficiosClinica.filter((item) => {
+    const texto = buscaClinica.trim().toLocaleLowerCase("pt-BR");
+    return (grupoFiltroClinica === "todos" || item.grupo === grupoFiltroClinica)
+      && (!apenasExcecoesClinica || modoExcecao(item.codigo) !== "plano")
+      && (!texto || [item.nome, item.descricao, item.codigo, item.grupo]
+        .some((valor) => valor.toLocaleLowerCase("pt-BR").includes(texto)));
+  });
+  const gruposClinica = (() => {
+    const mapa = new Map<string, ItemCatalogo[]>();
+    for (const item of beneficiosClinicaVisiveis) {
+      const lista = mapa.get(item.grupo) || [];
+      lista.push(item);
+      mapa.set(item.grupo, lista);
+    }
+    return [...mapa.entries()];
+  })();
+  const prefixoExcecaoClinica = clinicaSelecionada + ":";
+  const pendentesClinica = (Object.entries(excecoesPendentes) as Array<[string, ModoExcecao]>)
+    .filter(([chave]) => chave.startsWith(prefixoExcecaoClinica));
+  const excecoesAtivasClinica = todosBeneficiosClinica
+    .filter((item) => modoExcecao(item.codigo) !== "plano").length;
 
   function alterarPlano(id: string, campo: keyof Plano, valor: unknown) {
     setPlanos((lista) => lista.map((p) => p.id === id ? { ...p, [campo]: valor } as Plano : p));
@@ -434,57 +461,91 @@ function AdminPlanos() {
     return item.permitido ? "liberar" : "bloquear";
   }
 
-  async function mudarExcecao(codigo: string, modo: ModoExcecao) {
+  function modoExcecao(codigo: string): ModoExcecao {
+    const chave = clinicaSelecionada + ":" + codigo;
+    if (Object.prototype.hasOwnProperty.call(excecoesPendentes, chave)) {
+      return excecoesPendentes[chave];
+    }
+    const item = excecoes.find((e) => e.clinica_id === clinicaSelecionada && e.funcionalidade_codigo === codigo);
+    if (!item) return "plano";
+    return item.permitido ? "liberar" : "bloquear";
+  }
+
+  function mudarExcecao(codigo: string, modo: ModoExcecao) {
     if (!clinicaSelecionada) return;
-    setSalvando(`excecao:${codigo}`);
+    const chave = clinicaSelecionada + ":" + codigo;
+    setExcecoesPendentes((atual) => ({ ...atual, [chave]: modo }));
+  }
+
+  function mudarGrupoExcecao(itens: ItemCatalogo[], modo: ModoExcecao) {
+    if (!clinicaSelecionada || !itens.length) return;
+    const acao = modo === "plano" ? "fazer seguir o plano" : modo === "liberar" ? "liberar" : "bloquear";
+    if (!window.confirm(acao + " os " + itens.length + " benefícios do grupo " + itens[0].grupo +
+      " somente para " + (clinicaAtual?.nome || "esta clínica") + "?")) return;
+    setExcecoesPendentes((atual) => ({
+      ...atual,
+      ...Object.fromEntries(itens.map((item) => [clinicaSelecionada + ":" + item.codigo, modo])),
+    }));
+  }
+
+  function descartarExcecoesClinica() {
+    const prefixo = clinicaSelecionada + ":";
+    setExcecoesPendentes((atual) => Object.fromEntries(
+      Object.entries(atual).filter(([chave]) => !chave.startsWith(prefixo)),
+    ) as Record<string, ModoExcecao>);
+  }
+
+  async function salvarExcecoesClinica() {
+    if (!clinicaSelecionada) return;
+    const prefixo = clinicaSelecionada + ":";
+    const mudancas = (Object.entries(excecoesPendentes) as Array<[string, ModoExcecao]>)
+      .filter(([chave]) => chave.startsWith(prefixo))
+      .map(([chave, modo]) => ({ codigo: chave.slice(prefixo.length), modo }));
+    if (!mudancas.length) return void toast.info("Nenhuma autorização específica pendente para esta clínica.");
+
+    setSalvando("excecoes-clinica");
     try {
-      if (modo === "plano") {
-        const { error } = await (supabase as any)
-          .from("oricse_clinica_funcionalidade_excecoes")
-          .delete()
-          .eq("clinica_id", clinicaSelecionada)
-          .eq("funcionalidade_codigo", codigo);
+      const seguirPlano = mudancas.filter((mudanca) => mudanca.modo === "plano").map((mudanca) => mudanca.codigo);
+      const sobrescritas = mudancas.filter((mudanca) => mudanca.modo !== "plano");
+
+      if (seguirPlano.length) {
+        const { error } = await (supabase as any).from("oricse_clinica_funcionalidade_excecoes")
+          .delete().eq("clinica_id", clinicaSelecionada).in("funcionalidade_codigo", seguirPlano);
         if (error) throw error;
-      } else {
-        const { error } = await (supabase as any)
-          .from("oricse_clinica_funcionalidade_excecoes")
-          .upsert({
-            clinica_id: clinicaSelecionada,
-            funcionalidade_codigo: codigo,
-            permitido: modo === "liberar",
-            motivo: "Exceção configurada pelo Admin ORICSE",
-            criado_por: usuarioAtual || null,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "clinica_id,funcionalidade_codigo" });
-        if (error) throw error;
-      }
-      // Exceções precisam ter o mesmo efeito nos módulos protegidos pelo SQL.
-      if (modo === "plano") {
-        const { error: erroBanco } = await (supabaseBanco as any)
-          .from("oricse_clinica_funcionalidade_excecoes")
-          .delete().eq("clinica_id", clinicaSelecionada).eq("funcionalidade_codigo", codigo);
-        if (erroBanco) throw new Error(erroBanco.message);
-      } else {
-        const { error: erroBanco } = await (supabaseBanco as any)
-          .from("oricse_clinica_funcionalidade_excecoes")
-          .upsert({
-            clinica_id: clinicaSelecionada,
-            funcionalidade_codigo: codigo,
-            permitido: modo === "liberar",
-            motivo: "Exceção configurada pelo Admin ORICSE",
-            criado_por: usuarioAtual || null,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "clinica_id,funcionalidade_codigo" });
+        const { error: erroBanco } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
+          .delete().eq("clinica_id", clinicaSelecionada).in("funcionalidade_codigo", seguirPlano);
         if (erroBanco) throw new Error(erroBanco.message);
       }
-      const { data, error } = await (supabase as any)
-        .from("oricse_clinica_funcionalidade_excecoes")
-        .select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em");
+
+      if (sobrescritas.length) {
+        const dados = sobrescritas.map((mudanca) => ({
+          clinica_id: clinicaSelecionada,
+          funcionalidade_codigo: mudanca.codigo,
+          permitido: mudanca.modo === "liberar",
+          motivo: "Exceção configurada pelo Admin ORICSE",
+          criado_por: usuarioAtual || null,
+          updated_at: new Date().toISOString(),
+        }));
+        const { error } = await (supabase as any).from("oricse_clinica_funcionalidade_excecoes")
+          .upsert(dados, { onConflict: "clinica_id,funcionalidade_codigo" });
+        if (error) throw error;
+        const { error: erroBanco } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
+          .upsert(dados, { onConflict: "clinica_id,funcionalidade_codigo" });
+        if (erroBanco) throw new Error(erroBanco.message);
+      }
+
+      const { data, error } = await (supabase as any).from("oricse_clinica_funcionalidade_excecoes")
+        .select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em")
+        .eq("clinica_id", clinicaSelecionada);
       if (error) throw error;
-      setExcecoes((data || []) as Excecao[]);
-      toast.success(modo === "plano" ? "A clínica voltou a seguir o plano." : "Exceção salva para esta clínica.");
+      setExcecoes((atual) => [
+        ...atual.filter((item) => item.clinica_id !== clinicaSelecionada),
+        ...((data || []) as Excecao[]),
+      ]);
+      descartarExcecoesClinica();
+      toast.success(mudancas.length + " autorizações específicas salvas para a clínica.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível alterar a exceção.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar as autorizações da clínica.");
     } finally {
       setSalvando(null);
     }
@@ -725,22 +786,89 @@ function AdminPlanos() {
       </section>
 
       <section className="mt-7 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-center gap-2"><LockKeyhole size={20} className="text-primary"/><h2 className="text-xl font-black">Exceções por clínica</h2></div>
-        <p className="mt-1 text-sm text-muted-foreground">Use somente quando uma clínica precisar de uma liberação ou bloqueio específico sem alterar o plano de todas as outras.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <LockKeyhole size={20} className="mt-0.5 text-primary"/>
+            <div>
+              <h2 className="text-xl font-black">Autorizações por clínica</h2>
+              <p className="mt-1 text-sm text-muted-foreground">A mesma matriz dos planos, aplicada exclusivamente à clínica escolhida. Cada uma das 98 opções pode seguir o plano, ser liberada ou bloqueada sem afetar nenhuma outra clínica.</p>
+            </div>
+          </div>
+          {clinicaAtual && <span className="rounded-full border bg-secondary/40 px-3 py-1.5 text-xs font-bold">{clinicaAtual.nome}</span>}
+        </div>
+
         <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(260px,1fr)_220px_auto] lg:items-end">
-          <label className="text-xs font-bold">Clínica<select value={clinicaSelecionada} onChange={(e)=>setClinicaSelecionada(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal">{clinicas.map((c)=><option key={c.id} value={c.id}>{c.nome} · {c.plano}</option>)}</select></label>
-          <label className="text-xs font-bold">Limite de usuários desta clínica<input type="number" min={1} value={clinicaAtual?.limite_usuarios ?? 1} onChange={(e)=>setClinicas((lista)=>lista.map((c)=>c.id===clinicaSelecionada?{...c,limite_usuarios:Math.max(1,Number(e.target.value)||1)}:c))} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"/></label>
+          <label className="text-xs font-bold">Clínica
+            <select value={clinicaSelecionada} onChange={(e)=>setClinicaSelecionada(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal">
+              {clinicas.map((c)=><option key={c.id} value={c.id}>{c.nome} · {c.plano}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold">Limite de usuários desta clínica
+            <input type="number" min={1} value={clinicaAtual?.limite_usuarios ?? 1} onChange={(e)=>setClinicas((lista)=>lista.map((c)=>c.id===clinicaSelecionada?{...c,limite_usuarios:Math.max(1,Number(e.target.value)||1)}:c))} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"/>
+          </label>
           <button type="button" disabled={!clinicaAtual || salvando==="limite-clinica"} onClick={() => void salvarLimiteClinica()} className="min-h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">Salvar limite</button>
         </div>
 
         {clinicaAtual && <div className="mt-5">
-          <input aria-label="Pesquisar recursos por clínica" value={buscaClinica} onChange={(e)=>setBuscaClinica(e.target.value)}
-            placeholder="Pesquisar entre os 98 benefícios da clínica..." className="mb-3 min-h-11 w-full rounded-xl border bg-background px-4 text-sm"/>
-          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-          {funcionalidades.filter((f)=>f.codigo.startsWith("beneficio.") && (f.nome+" "+f.grupo).toLocaleLowerCase("pt-BR").includes(buscaClinica.toLocaleLowerCase("pt-BR"))).map((f) => {
-            const modo = modoExcecao(f.codigo);
-            return <article key={f.codigo} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{f.grupo}</p><p className="mt-1 text-sm font-bold">{f.nome}</p></div>{modo!=="plano" && <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${modo==="liberar"?"bg-emerald-100 text-emerald-800":"bg-destructive/10 text-destructive"}`}>{modo==="liberar"?"Liberado":"Bloqueado"}</span>}</div><div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-secondary/50 p-1">{(["plano","liberar","bloquear"] as ModoExcecao[]).map((opcao)=><button key={opcao} type="button" disabled={salvando===`excecao:${f.codigo}`} onClick={()=>void mudarExcecao(f.codigo,opcao)} className={`rounded-md px-2 py-2 text-[11px] font-bold capitalize ${modo===opcao?"bg-background shadow-sm":"text-muted-foreground"}`}>{opcao}</button>)}</div></article>;
-          })}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border p-3"><strong className="text-2xl">{todosBeneficiosClinica.length}</strong><p className="text-xs text-muted-foreground">Opções da clínica</p></div>
+            <div className="rounded-xl border p-3"><strong className="text-2xl">{excecoesAtivasClinica}</strong><p className="text-xs text-muted-foreground">Autorizações específicas ativas</p></div>
+            <div className="rounded-xl border p-3"><strong className="text-2xl">{pendentesClinica.length}</strong><p className="text-xs text-muted-foreground">Alterações não salvas</p></div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[210px] flex-[2_1_280px]">
+              <Search size={16} className="absolute left-3 top-3 text-muted-foreground"/>
+              <input aria-label="Pesquisar autorizações da clínica" value={buscaClinica} onChange={(e)=>setBuscaClinica(e.target.value)}
+                placeholder="Pesquisar entre as 98 opções da clínica" className="min-h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm"/>
+            </div>
+            <select aria-label="Filtrar grupo da clínica" value={grupoFiltroClinica} onChange={(e)=>setGrupoFiltroClinica(e.target.value)}
+              className="min-h-11 max-w-full rounded-xl border bg-background px-3 text-sm">
+              <option value="todos">Todos os grupos</option>
+              {[...new Set(todosBeneficiosClinica.map((item) => item.grupo))].map((grupo) => <option key={grupo} value={grupo}>{grupo}</option>)}
+            </select>
+            <label className="inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold">
+              <input type="checkbox" checked={apenasExcecoesClinica} onChange={(e)=>setApenasExcecoesClinica(e.target.checked)}/>
+              <GitCompare size={15}/> Somente exceções
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Plano base: <strong>{clinicaAtual.plano}</strong>. “Seguir plano” remove a regra específica; liberar e bloquear valem apenas para esta clínica.
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { if (pendentesClinica.length && !window.confirm("Descartar as alterações de autorização ainda não salvas desta clínica?")) return; descartarExcecoesClinica(); }}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold">
+                <RotateCcw size={15}/> Descartar
+              </button>
+              <button type="button" disabled={!pendentesClinica.length || salvando==="excecoes-clinica"} onClick={() => void salvarExcecoesClinica()}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50">
+                <Save size={16}/> {salvando==="excecoes-clinica" ? "Salvando..." : "Salvar autorizações"}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 max-w-full overflow-x-auto rounded-xl border">
+            <table className="w-full min-w-[670px] border-collapse text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-secondary">
+                <tr>
+                  <th className="sticky left-0 z-20 min-w-[300px] border-b bg-secondary px-3 py-3">Funcionalidade / benefício</th>
+                  <th className="min-w-[340px] border-b px-3 py-3 text-center">
+                    <span className="block font-black">{clinicaAtual.nome}</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">{clinicaAtual.plano} · {excecoesAtivasClinica} regra(s) específica(s)</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {gruposClinica.map(([grupo, itens]) => <FragmentoGrupoClinica key={grupo} grupo={grupo} itens={itens}
+                  fechado={Boolean(gruposClinicaFechados[grupo])}
+                  onToggle={()=>setGruposClinicaFechados((atual)=>({...atual,[grupo]:!atual[grupo]}))}
+                  modoExcecao={modoExcecao} mudarExcecao={mudarExcecao} mudarGrupoExcecao={mudarGrupoExcecao}
+                  desabilitado={salvando==="excecoes-clinica"}/>)}
+                {beneficiosClinicaVisiveis.length===0 && <tr><td colSpan={2} className="p-6 text-center text-muted-foreground">Nenhuma das 98 opções foi encontrada com estes filtros.</td></tr>}
+              </tbody>
+            </table>
           </div>
         </div>}
       </section>
@@ -809,6 +937,63 @@ function FragmentoGrupo({
         </td>;
       })}
     </tr>)}
+  </>;
+}
+
+
+function FragmentoGrupoClinica({
+  grupo, itens, fechado, onToggle, modoExcecao, mudarExcecao, mudarGrupoExcecao, desabilitado,
+}: {
+  grupo: string;
+  itens: ItemCatalogo[];
+  fechado: boolean;
+  onToggle: () => void;
+  modoExcecao: (codigo: string) => ModoExcecao;
+  mudarExcecao: (codigo: string, modo: ModoExcecao) => void;
+  mudarGrupoExcecao: (itens: ItemCatalogo[], modo: ModoExcecao) => void;
+  desabilitado: boolean;
+}) {
+  return <>
+    <tr className="bg-secondary/50">
+      <th className="sticky left-0 bg-secondary/90 px-3 py-2">
+        <button type="button" onClick={onToggle} className="w-full text-left font-black">
+          {fechado ? "▸" : "▾"} {grupo} <span className="text-xs font-normal">({itens.length})</span>
+        </button>
+      </th>
+      <td className="px-2 py-1.5 text-center">
+        <div className="flex flex-wrap items-center justify-center gap-1">
+          <button type="button" disabled={desabilitado} onClick={()=>mudarGrupoExcecao(itens,"plano")}
+            title="Fazer o grupo seguir o plano da clínica" className="rounded border px-2 py-1 text-[10px] font-bold disabled:opacity-50">Plano</button>
+          <button type="button" disabled={desabilitado} onClick={()=>mudarGrupoExcecao(itens,"liberar")}
+            title="Liberar todo o grupo somente nesta clínica" className="rounded border px-2 py-1 text-[10px] font-bold disabled:opacity-50">Todos ✓</button>
+          <button type="button" disabled={desabilitado} onClick={()=>mudarGrupoExcecao(itens,"bloquear")}
+            title="Bloquear todo o grupo somente nesta clínica" className="rounded border px-2 py-1 text-[10px] font-bold disabled:opacity-50">Todos ✕</button>
+        </div>
+      </td>
+    </tr>
+    {!fechado && itens.map((item) => {
+      const modo = modoExcecao(item.codigo);
+      return <tr key={item.codigo} className="border-t">
+        <th scope="row" className="sticky left-0 bg-card px-3 py-2 font-normal">
+          <div className="font-semibold">{item.nome}</div>
+          <div className="mt-0.5 text-[10px] text-muted-foreground">{item.codigo}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">{item.descricao}</div>
+          <div className="mt-1 text-[10px] font-semibold text-primary">BENEFÍCIO</div>
+        </th>
+        <td className="px-3 py-2 text-center">
+          <div className="inline-grid grid-cols-3 gap-1 rounded-lg bg-secondary/50 p-1">
+            {(["plano","liberar","bloquear"] as ModoExcecao[]).map((opcao) => <button key={opcao} type="button"
+              aria-pressed={modo===opcao} disabled={desabilitado} onClick={()=>mudarExcecao(item.codigo,opcao)}
+              className={`rounded-md px-3 py-2 text-[11px] font-bold disabled:opacity-50 ${modo===opcao ? "bg-background shadow-sm" : "text-muted-foreground"}`}>
+              {opcao==="plano" ? "Plano" : opcao==="liberar" ? "Liberar" : "Bloquear"}
+            </button>)}
+          </div>
+          <div className="mt-1 text-[10px] text-muted-foreground">
+            {modo==="plano" ? "Seguindo o plano" : modo==="liberar" ? "Liberado só nesta clínica" : "Bloqueado só nesta clínica"}
+          </div>
+        </td>
+      </tr>;
+    })}
   </>;
 }
 
