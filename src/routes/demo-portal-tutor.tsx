@@ -10,33 +10,30 @@ const menu: Array<{id:Aba,label:string,icon:typeof Home}> = [
  {id:"saude",label:"Saúde e vacinas",icon:Heart},{id:"documentos",label:"Documentos",icon:FileText},{id:"financeiro",label:"Financeiro",icon:Wallet},
  {id:"banho",label:"Banho e tosa",icon:Scissors},{id:"hotel",label:"Hotelzinho",icon:Hotel},{id:"mensagens",label:"Mensagens",icon:MessageCircle},{id:"perfil",label:"Meu perfil",icon:UserRound}
 ];
-const compromissos:CompromissoDemo[]=[{data:"12 NOV",dataISO:"2026-11-12",hora:"09:30",pet:"Luna",tipo:"Consulta de rotina",status:"Confirmado"},{data:"18 NOV",dataISO:"2026-11-18",hora:"14:00",pet:"Thor",tipo:"Banho e tosa",status:"Aguardando confirmação"}];
+const compromissos:CompromissoDemo[]=[{data:"12 DEZ",dataISO:"2026-12-12",hora:"09:30",pet:"Lua",tipo:"Consulta",status:"Confirmado"},{data:"13 DEZ",dataISO:"2026-12-13",hora:"14:00",pet:"Lua",tipo:"Banho e Tosa",status:"Confirmado"}];
 type CompromissoDemo={data:string;dataISO:string;hora:string;pet:string;tipo:string;status:string};
 function CalendarioTutor({compromissos,abrirDetalhes}:{compromissos:CompromissoDemo[];abrirDetalhes:(c:CompromissoDemo)=>void}){
- const [mes,setMes]=useState(new Date(2026,10,1));
- const [selecionado,setSelecionado]=useState("2026-11-12");
- const primeiro=new Date(mes.getFullYear(),mes.getMonth(),1);
- const inicio=(primeiro.getDay()+6)%7;
+ const [mes,setMes]=useState(new Date(2026,11,1));
+ const [selecionado,setSelecionado]=useState<string|null>(null);
+ const inicio=(new Date(mes.getFullYear(),mes.getMonth(),1).getDay()+6)%7;
  const total=new Date(mes.getFullYear(),mes.getMonth()+1,0).getDate();
- const celulas=[...Array(inicio).fill(null),...Array.from({length:total},(_,i)=>i+1)];
+ const dias=[...Array(inicio).fill(null),...Array.from({length:total},(_,i)=>i+1)];
  const mesTexto=mes.toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
- const diaTexto=new Date(selecionado+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
- const eventos=compromissos.filter(a=>a.dataISO===selecionado).sort((a,b)=>a.hora.localeCompare(b.hora));
- return <section className="rounded-3xl border border-[#eee8e4] bg-white p-4 shadow-sm sm:p-6">
-  <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-   <div><h2 className="text-xl font-extrabold">Minha agenda</h2><p className="mt-1 text-sm text-[#82777a]">Selecione um dia para ver todos os compromissos.</p></div>
-   <div className="flex items-center gap-2"><button type="button" aria-label="Mês anterior" className="rounded-xl border px-3 py-2 font-bold" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button><span className="min-w-36 text-center text-sm font-extrabold capitalize">{mesTexto}</span><button type="button" aria-label="Próximo mês" className="rounded-xl border px-3 py-2 font-bold" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()+1,1))}>›</button></div>
+ const proximos=[...compromissos].sort((a,b)=>a.dataISO.localeCompare(b.dataISO)||a.hora.localeCompare(b.hora));
+ const formatar=(iso:string)=>iso.split("-").reverse().join("/");
+ const selecionados=selecionado?proximos.filter(a=>a.dataISO===selecionado):[];
+ return <section className="max-w-xl rounded-3xl border border-[#eee8e4] bg-white p-4 shadow-sm sm:p-5">
+  <h2 className="mb-3 text-lg font-extrabold">Minha agenda</h2>
+  <div className="space-y-1.5" aria-label="Próximos compromissos">
+   {proximos.length===0?<p className="text-sm text-[#81767b]">Nenhum compromisso agendado.</p>:proximos.slice(0,5).map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="flex w-full items-center gap-2 rounded-lg border border-[#efe8e5] px-3 py-2 text-left text-sm hover:bg-[#faf4f6]"><span className="shrink-0 font-bold text-[#702a43]">DIA {formatar(a.dataISO)}</span><span className="min-w-0 flex-1 truncate">– {a.pet.toUpperCase()} – {a.tipo}</span><ChevronRight className="shrink-0 text-[#9b7a86]" size={15}/></button>)}
   </div>
-  <div className="grid grid-cols-7 gap-1 sm:gap-2">{["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d=><span key={d} className="py-2 text-center text-[11px] font-bold text-[#91868b] sm:text-xs">{d}</span>)}
-  {celulas.map((dia,i)=>dia===null?<span key={"v"+i}/>:(
-    <button key={i} type="button" onClick={()=>setSelecionado(`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)}
-      className={`flex min-h-14 flex-col items-center justify-start gap-1 rounded-xl border px-1 py-2 transition sm:min-h-20 sm:p-2 ${selecionado===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`?"border-[#8f5269] bg-[#f7e9ee] text-[#702a43]":"border-[#eee8e4] hover:bg-[#fbf4f7]"}`}>
-      <span className="text-sm font-bold">{dia}</span>
-      {compromissos.filter(a=>a.dataISO===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`).slice(0,1).map((a,j)=><span key={j} className="hidden max-w-full truncate text-[10px] text-[#702a43] sm:block">{a.hora} {a.pet}</span>)}
-      {compromissos.some(a=>a.dataISO===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)&&<span className="h-1.5 w-1.5 rounded-full bg-[#702a43] sm:hidden"/>}
-    </button>
-  ))}</div>
-  <div className="mt-5 rounded-2xl bg-[#faf7f5] p-4"><h3 className="mb-3 font-bold capitalize">{diaTexto}</h3>{eventos.length===0?<p className="text-sm text-[#81767b]">Nenhum compromisso neste dia.</p>:<div className="space-y-2">{eventos.map((a,i)=><button type="button" key={i} className="flex w-full flex-wrap items-center gap-3 rounded-xl border border-[#eee8e4] bg-white p-3 text-left hover:border-[#b88a9a]" onClick={()=>abrirDetalhes(a)}><span className="rounded-lg bg-[#f7e9ee] px-3 py-2 text-sm font-extrabold text-[#702a43]">{a.hora}</span><span className="min-w-0 flex-1"><span className="block font-bold">{a.tipo}</span><span className="block text-xs text-[#81767b]">{a.pet} • {a.status}</span></span><ChevronRight size={17} className="text-[#702a43]"/></button>)}</div>}</div>
+  <div className="mt-4 max-w-sm rounded-xl border border-[#efe8e5] p-3">
+   <div className="mb-2 flex items-center justify-between gap-2"><button aria-label="Mês anterior" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button><span className="text-sm font-bold capitalize">{mesTexto}</span><button aria-label="Próximo mês" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()+1,1))}>›</button></div>
+   <div className="grid grid-cols-7 gap-0.5">{["S","T","Q","Q","S","S","D"].map((d,i)=><span key={i} className="py-1 text-center text-[10px] font-bold text-[#958a8f]">{d}</span>)}
+    {dias.map((dia,i)=>dia===null?<span key={"v"+i}/>:<button key={i} aria-label={`Dia ${dia}`} onClick={()=>setSelecionado(`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)} className={`relative flex h-9 flex-col items-center justify-center rounded-md text-xs font-semibold ${selecionado===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`?"bg-[#702a43] text-white":"hover:bg-[#f7e9ee]"}`}><span>{dia}</span>{proximos.some(a=>a.dataISO===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)&&<span className={`absolute bottom-0.5 h-1 w-1 rounded-full ${selecionado===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`?"bg-white":"bg-[#702a43]"}`}/>}</button>)}
+   </div>
+  </div>
+  {selecionado&&<div className="mt-3 text-xs text-[#71666a]"><b>{formatar(selecionado)}:</b> {selecionados.length?selecionados.map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="ml-2 font-semibold text-[#702a43] underline">{a.hora} · {a.pet} · {a.tipo}</button>):"Nenhum compromisso."}</div>}
  </section>;
 }
 
