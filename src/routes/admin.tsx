@@ -65,6 +65,7 @@ type Clinica = {
 type NovaClinica = Pick<Clinica, "nome" | "slug" | "tipo_publico" | "plano" | "limite_usuarios">;
 
 const CAMPOS_CLINICA = "id,nome,slug,tipo_publico,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro";
+const valorPlanoClinica = (p: Plano) => p.codigo?.endsWith("-2026") ? p.codigo : p.nome;
 
 type AppUser = { user_id: string; username: string; role: string; email?: string | null; created_at: string };
 type Vinculo = { clinica_id: string; user_id: string; papel: PapelClinica; ativo: boolean };
@@ -427,9 +428,9 @@ function Admin() {
   useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
   function abrirNovaClinica() {
-    const plano = planos.find((p) => p.ativo);
+    const plano = planos.find((p) => p.ativo && p.codigo.endsWith("-2026")) || planos.find((p) => p.ativo);
     setErroNovaClinica("");
-    setNovaClinica({ nome: "", slug: "", tipo_publico: "vet", plano: plano?.nome || "", limite_usuarios: plano?.usuarios_inclusos || 1 });
+    setNovaClinica({ nome: "", slug: "", tipo_publico: "vet", plano: plano ? valorPlanoClinica(plano) : "", limite_usuarios: plano?.usuarios_inclusos || 1 });
   }
 
   async function cadastrarClinica(event: React.FormEvent<HTMLFormElement>) {
@@ -443,7 +444,7 @@ function Admin() {
     if (!nome) return setErroNovaClinica("Informe o nome da clínica.");
     if (!slug || !/[a-z0-9]/.test(slug)) return setErroNovaClinica("Informe um nome válido para o link público.");
     if (clinicas.some((c) => c.slug?.toLowerCase() === slug)) return setErroNovaClinica("Este nome de link já está em uso. Escolha outro para esta clínica.");
-    if (!planos.some((p) => p.ativo && p.nome === novaClinica.plano)) return setErroNovaClinica("Selecione um plano ativo para a clínica.");
+    if (!planos.some((p) => p.ativo && valorPlanoClinica(p) === novaClinica.plano)) return setErroNovaClinica("Selecione um plano ativo para a clínica.");
     if (!Number.isSafeInteger(limiteUsuarios) || limiteUsuarios < 1) return setErroNovaClinica("O limite de usuários deve ser um número inteiro maior que zero.");
 
     setCriandoClinica(true);
@@ -521,9 +522,9 @@ function Admin() {
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-semibold">Plano
-                <select required value={novaClinica.plano} onChange={(e) => { const plano = planos.find((p) => p.nome === e.target.value); setNovaClinica({ ...novaClinica, plano: e.target.value, limite_usuarios: plano?.usuarios_inclusos || 1 }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
+                <select required value={novaClinica.plano} onChange={(e) => { const plano = planos.find((p) => valorPlanoClinica(p) === e.target.value); setNovaClinica({ ...novaClinica, plano: e.target.value, limite_usuarios: plano?.usuarios_inclusos || 1 }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
                   <option value="" disabled>Selecione um plano</option>
-                  {planos.filter((p) => p.ativo).map((p) => <option key={p.codigo} value={p.nome}>{p.nome}</option>)}
+                  {planos.filter((p) => p.ativo).map((p) => <option key={p.codigo} value={valorPlanoClinica(p)}>{p.nome}{p.codigo.endsWith("-2026") ? " · Atual" : " · Legado"}</option>)}
                 </select>
               </label>
               <label className="text-sm font-semibold">Limite de usuários
@@ -796,7 +797,7 @@ function Admin() {
     <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <label className="text-sm font-semibold">Tipo de parceiro<select value={selecionada.tipo_publico || "vet"} onChange={(e) => setSelecionada({ ...selecionada, tipo_publico: e.target.value as Clinica["tipo_publico"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="vet">Veterinário / clínica veterinária</option><option value="pet">Pet shop</option></select></label>
     <label className="text-sm font-semibold md:col-span-2">Nome do endereço ORICSE<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="whitespace-nowrap text-muted-foreground">https://</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none" placeholder="nomedaclinica"/><span className="whitespace-nowrap text-muted-foreground">.oricse.com.br</span></div><p className="mt-1 text-xs font-normal text-muted-foreground">Nome único, sem espaços. Salve e acesse “Site e domínios” para publicar o endereço ou conectar o domínio próprio.</p></label>
-    <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => x.nome === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo}>{p.nome}</option>)}</select></label>
+    <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => valorPlanoClinica(x) === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo} value={valorPlanoClinica(p)}>{p.nome}{p.codigo.endsWith("-2026") ? " · Atual" : " · Legado"}</option>)}</select></label>
     <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <div className="rounded-xl border bg-slate-50 p-3 text-sm md:self-end"><p className="font-semibold">Domínios e site público</p><p className="mt-1 text-xs text-muted-foreground">Gerenciados exclusivamente por você em “Site e domínios”.</p></div>
