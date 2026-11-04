@@ -66,7 +66,8 @@ type ItemMenu = {
   permissao?: string;
   emBreve?: boolean;
   abaHotel?: string;
-  separador?: "consultorio" | "internacao";
+  separador?: "consultorio" | "internacao" | "trabalho" | "comissoes";
+  grupoRh?: "trabalho" | "comissoes";
 };
 
 type AreaMenu = {
@@ -169,11 +170,13 @@ const areas: AreaMenu[] = [
     titulo: "RH",
     icone: Clock3,
     itens: [
-      { to: "/minha-atividade", rotulo: "Check-in / check-out", permissao: "atividade.ponto" },
-      { to: "/banco-horas", rotulo: "Minhas horas e diárias", permissao: "atividade.ponto" },
-      { to: "/rh", abaHotel: "comissoes", rotulo: "Comissões", permissao: "equipe.pagamentos.visualizar" },
-      { to: "/rh", abaHotel: "equipe", rotulo: "Remuneração da equipe", permissao: "equipe.pagamentos.visualizar" },
-      { to: "/rh", abaHotel: "pagamentos", rotulo: "Pagamento da equipe", permissao: "equipe.pagamentos.visualizar" },
+      { rotulo: "Trabalho", separador: "trabalho" },
+      { to: "/minha-atividade", rotulo: "Check-in / check-out", permissao: "atividade.ponto", grupoRh: "trabalho" },
+      { to: "/banco-horas", rotulo: "Minhas horas e diárias", permissao: "atividade.ponto", grupoRh: "trabalho" },
+      { to: "/rh", abaHotel: "pagamentos", rotulo: "Jornada", permissao: "equipe.pagamentos.visualizar", grupoRh: "trabalho" },
+      { rotulo: "Comissões", separador: "comissoes" },
+      { to: "/rh", abaHotel: "comissoes", rotulo: "Comissões da equipe", permissao: "equipe.pagamentos.visualizar", grupoRh: "comissoes" },
+      { to: "/rh", abaHotel: "equipe", rotulo: "Comissões por colaborador", permissao: "equipe.pagamentos.visualizar", grupoRh: "comissoes" },
     ],
   },
   {
@@ -271,7 +274,13 @@ export function MenuLateral({
           (item) => item.emBreve ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
-    // Separadores só aparecem quando existem links visíveis no respectivo bloco.
+    // Mostrar títulos de bloco somente quando o usuário pode acessar ao menos um item.
+    if (area.titulo === "RH") {
+      const gruposVisiveis = new Set(visiveis.map((item) => item.grupoRh).filter(Boolean));
+      return area.itens.filter((item) => item.separador
+        ? gruposVisiveis.has(item.separador as "trabalho" | "comissoes")
+        : visiveis.includes(item));
+    }
     if (area.titulo !== "Clínica veterinária") return visiveis;
     const rotasConsultorio = new Set(["/consultorio", "/animais", "/assinar", "/receituario", "/medicacoes"]);
     const existeConsultorio = visiveis.some(item => item.to && rotasConsultorio.has(item.to));
@@ -310,12 +319,19 @@ export function MenuLateral({
                 <div className={area.titulo === "Gestão de clientes" ? "bg-background py-1" : "space-y-1 bg-background p-2"}>
                   {itens.map((item, i) => {
                     const chave = (item.to || item.rotulo) + i;
-                    if (item.separador) return (
-                      <div key={chave} role="presentation" className={`flex items-center gap-2 px-2 pb-1 pt-3 ${item.separador === "internacao" ? "mt-3 border-t border-border/80" : ""}`}>
-                        {item.separador === "consultorio" ? <Stethoscope className="h-4 w-4 text-primary" /> : <BedDouble className="h-4 w-4 text-primary" />}
-                        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{item.rotulo}</span>
-                      </div>
-                    );
+                    if (item.separador) {
+                      const SeparadorIcone = item.separador === "consultorio" ? Stethoscope
+                        : item.separador === "internacao" ? BedDouble
+                        : item.separador === "trabalho" ? Clock3 : Wallet;
+                      const comDivisor = item.separador === "internacao" || item.separador === "comissoes";
+                      return (
+                        <div key={chave} role="presentation"
+                          className={`flex items-center gap-2 px-2 pb-2 pt-3 ${comDivisor ? "mt-3 border-t border-border/80" : ""}`}>
+                          <SeparadorIcone className="h-4 w-4 text-primary" />
+                          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{item.rotulo}</span>
+                        </div>
+                      );
+                    }
                     if (item.emBreve)
                       return (
                         <div
