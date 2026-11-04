@@ -447,7 +447,7 @@ export function MenuLateral({
               <ChevronDown className={`h-4 w-4 transition-transform ${maisOpcoesAberto ? "rotate-180" : ""}`} />
             </button>
             {maisOpcoesAberto && (
-              <div id="oricse-menu-mais-opcoes" className="space-y-1.5 bg-background p-2">
+              <div id="oricse-menu-mais-opcoes" className="ml-5 space-y-2 border-l-[3px] border-primary/40 bg-secondary/20 py-3 pl-3 pr-2">
                 {areasOpcionais.map(renderArea)}
               </div>
             )}
