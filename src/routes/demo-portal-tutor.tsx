@@ -27,20 +27,24 @@ function CalendarioTutor({compromissos,abrirDetalhes}:{compromissos:CompromissoD
   <div className="space-y-1.5" aria-label="Próximos compromissos">
    {proximos.length===0?<p className="text-sm text-[#81767b]">Nenhum compromisso agendado.</p>:proximos.slice(0,5).map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="flex w-full items-center gap-2 rounded-lg border border-[#efe8e5] px-3 py-2 text-left text-sm hover:bg-[#faf4f6]"><span className="shrink-0 font-bold text-[#702a43]">DIA {formatar(a.dataISO)}</span><span className="min-w-0 flex-1 truncate">– {a.pet.toUpperCase()} – {a.tipo}</span><ChevronRight className="shrink-0 text-[#9b7a86]" size={15}/></button>)}
   </div>
-  <div className="mt-4 w-full rounded-xl border border-[#efe8e5] p-3 sm:p-4">
-   <div className="mb-2 flex items-center justify-between gap-2"><button aria-label="Mês anterior" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button><span className="text-sm font-bold capitalize">{mesTexto}</span><button aria-label="Próximo mês" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()+1,1))}>›</button></div>
-   <div className="grid grid-cols-7 gap-0.5">{["D","S","T","Q","Q","S","S"].map((d,i)=><span key={i} className="py-1 text-center text-[10px] font-bold text-[#958a8f]">{d}</span>)}
+  <div className="mt-4 w-full overflow-hidden rounded-xl border border-[#eadfe2]">
+   <div className="flex items-center justify-between gap-2 border-b border-[#eadfe2] bg-[#faf6f7] px-3 py-3">
+    <button aria-label="Mês anterior" className="rounded-lg px-3 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button>
+    <span className="text-sm font-bold">{mesTexto.charAt(0).toUpperCase()+mesTexto.slice(1)}</span>
+    <button aria-label="Próximo mês" className="rounded-lg px-3 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()+1,1))}>›</button>
+   </div>
+   <div className="grid grid-cols-7 bg-[#eadfe2] gap-px" role="grid" aria-label="Calendário mensal, iniciando no domingo">
+    {["DOMINGO","SEGUNDA","TERÇA","QUARTA","QUINTA","SEXTA","SÁBADO"].map((nome,i)=><div key={i} className="flex min-w-0 items-center justify-center bg-[#f8eef2] px-0.5 py-3 text-center text-[9px] font-extrabold text-[#702a43] sm:text-xs">{nome}</div>)}
     {dias.map((dia,i)=>{
-      if(dia===null)return <span key={"v"+i}/>;
+      if(dia===null)return <span key={"v"+i} className="min-h-16 bg-[#faf8f8] sm:min-h-24"/>;
       const iso=`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
       const marcados=proximos.filter(a=>a.dataISO===iso);
-      return <button key={i} aria-label={`Dia ${dia}${marcados.length?": "+marcados.map(a=>a.pet+" "+a.tipo).join(", "):""}`}
-        onClick={()=>{setSelecionado(iso);if(marcados.length===1)abrirDetalhes(marcados[0]);}}
-        className={`flex min-h-12 min-w-0 items-center gap-1 rounded-md px-1 text-left text-xs font-semibold sm:min-h-16 sm:gap-2 sm:px-2 ${selecionado===iso?"bg-[#702a43] text-white":marcados.length?"bg-[#f9edf1] hover:bg-[#f2dfe6]":"hover:bg-[#f7e9ee]"}`}>
-        <span className="w-4 shrink-0 text-center sm:w-5">{dia}</span>
-        {marcados.length>0&&<span className={`min-w-0 flex-1 space-y-0.5 border-l pl-1 text-[10px] leading-tight sm:pl-2 sm:text-xs ${selecionado===iso?"border-white/40":"border-[#d6a8b8]"}`}>
-          {marcados.slice(0,2).map((a,j)=><span key={j} className="block break-words font-medium">{a.pet} · {a.tipo}</span>)}
-          {marcados.length>2&&<span className="block text-[9px]">+{marcados.length-2}</span>}
+      return <button key={i} type="button" aria-label={`Dia ${dia}${marcados.length?": "+marcados.map(a=>a.pet+" "+a.tipo).join(", "):""}`} onClick={()=>setSelecionado(iso)}
+        className={`flex min-h-16 min-w-0 flex-col items-start gap-1 bg-white p-1.5 text-left text-xs transition sm:min-h-24 sm:p-2.5 ${selecionado===iso?"bg-[#f4e0e8] ring-2 ring-inset ring-[#702a43]":marcados.length?"bg-[#fff8fa] hover:bg-[#f9e8ef]":"hover:bg-[#faf4f6]"}`}>
+        <span className={`flex h-6 w-6 items-center justify-center rounded-full font-bold ${selecionado===iso?"bg-[#702a43] text-white":"text-[#30232b]"}`}>{dia}</span>
+        {marcados.length>0&&<span className="w-full space-y-1">
+         {marcados.slice(0,2).map((a,j)=><span key={j} className="block break-words rounded bg-[#f3dce5] px-1 py-0.5 text-[9px] font-semibold leading-tight text-[#702a43] sm:text-xs">{a.pet} · {a.tipo}</span>)}
+         {marcados.length>2&&<span className="block text-[10px] font-bold text-[#702a43]">+{marcados.length-2}</span>}
         </span>}
       </button>;
     })}
