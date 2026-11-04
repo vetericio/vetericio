@@ -208,6 +208,14 @@ const areas: AreaMenu[] = [
   },
 ];
 
+// As quatro áreas principais ficam visíveis. As demais mantêm todos os
+// mesmos links e permissões, mas são agrupadas em "Mais opções".
+const ordemPrincipal = ["Recepção", "Clínica veterinária", "Banho e tosa", "Hotelzinho"];
+const titulosPrincipais = new Set(ordemPrincipal);
+const areasPrincipais = ordemPrincipal.map((titulo) => areas.find((area) => area.titulo === titulo)!)
+  .filter(Boolean);
+const areasOpcionais = areas.filter((area) => !titulosPrincipais.has(area.titulo));
+
 export function MenuLateral({
   fixo,
   aoMudarFixo,
@@ -217,6 +225,7 @@ export function MenuLateral({
 }) {
   const [aberto, setAberto] = useState(false);
   const [expandido, setExpandido] = useState<string | null>("Recepção");
+  const [maisOpcoesAberto, setMaisOpcoesAberto] = useState(false);
   const [turnoAberto, setTurnoAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const { plantao } = usePlantaoAtual();
@@ -230,6 +239,12 @@ export function MenuLateral({
   const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (areasOpcionais.some((area) => area.itens.some((item) => item.to === location.pathname))) {
+      setMaisOpcoesAberto(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (carregandoPermissoes) return;
@@ -290,10 +305,8 @@ export function MenuLateral({
       : visiveis.includes(item));
   };
 
-  const navegacao = (menuFixo = false) => (
-    <>
-      <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
-        {areas.map((area) => {
+  // Desenho original de cada seção, sem modificar seus botões ou links.
+  const renderArea = (area: AreaMenu) => {
           const itens = itensVisiveis(area);
           if (itens.length === 0) return null;
           const Icone = area.icone;
@@ -414,7 +427,32 @@ export function MenuLateral({
               )}
             </div>
           );
-        })}
+  };
+
+  const navegacao = (menuFixo = false) => (
+    <>
+      <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
+        {areasPrincipais.map(renderArea)}
+        {areasOpcionais.some((area) => itensVisiveis(area).length > 0) && (
+          <div className="overflow-hidden rounded-xl border border-border/70">
+            <button
+              type="button"
+              aria-expanded={maisOpcoesAberto}
+              aria-controls="oricse-menu-mais-opcoes"
+              onClick={() => setMaisOpcoesAberto((atual) => !atual)}
+              className="flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors bg-secondary/40 hover:bg-secondary"
+            >
+              <Settings className="h-5 w-5 shrink-0" />
+              <span className="flex-1">Mais opções</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${maisOpcoesAberto ? "rotate-180" : ""}`} />
+            </button>
+            {maisOpcoesAberto && (
+              <div id="oricse-menu-mais-opcoes" className="space-y-1.5 bg-background p-2">
+                {areasOpcionais.map(renderArea)}
+              </div>
+            )}
+          </div>
+        )}
         <button
           type="button"
           disabled={saindo}
@@ -452,7 +490,7 @@ export function MenuLateral({
             <span className="flex h-11 w-11 items-center justify-center rounded-xl text-primary">
               <Menu className="h-5 w-5" />
             </span>
-            {areas.map((area) => {
+            {areasPrincipais.map((area) => {
               const itens = itensVisiveis(area);
               if (itens.length === 0) return null;
               const Icone = area.icone;
@@ -472,6 +510,17 @@ export function MenuLateral({
                 </button>
               );
             })}
+            {areasOpcionais.some((area) => itensVisiveis(area).length > 0) && (
+              <button
+                type="button"
+                aria-label="Abrir Mais opções"
+                title="Mais opções"
+                onClick={() => { setMaisOpcoesAberto(true); setExpandido(null); setAberto(true); }}
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 hover:bg-secondary"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+            )}
             <button
               type="button"
               aria-label="Usar menu por três riscos"
