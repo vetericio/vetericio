@@ -1398,6 +1398,7 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
   const [valorSimulacao, setValorSimulacao] = useState("100,00");
   const [chaveSimulacao, setChaveSimulacao] = useState("pix:0:1");
   const [segmentoSimulacao, setSegmentoSimulacao] = useState<TaxaSegmento["segmento"]>("clinica");
+  const [modoTaxasSimulacao, setModoTaxasSimulacao] = useState<"reter" | "repassar">("reter");
 
   const globais = useMemo(() => grade.modalidades.filter((linha) => !linha.clinica_id), [grade.modalidades]);
   const segmentosGlobais = useMemo(() => grade.segmentos.filter((linha) => !linha.clinica_id), [grade.segmentos]);
@@ -1442,15 +1443,28 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
 
   const clinicaSelecionada = clinicas.find((clinica) => clinica.id === clinicaId);
   const linhaSimulada = linhas.find((linha) => chaveTaxa(linha) === chaveSimulacao) || linhasVisiveis[0];
-  const comissaoSimulada = comissoes.find((linha) => linha.segmento === segmentoSimulacao && chaveTaxa(linha) === chaveSimulacao);
-  const centavos = Math.round(Number(valorSimulacao.replace(/\./g, "").replace(",", ".")) * 100) || 0;
-  const descontoMp = linhaSimulada
-    ? Math.min(centavos, Math.round(centavos * Number(linhaSimulada.mp_percentual) / 100) + Number(linhaSimulada.mp_fixo_centavos || 0))
-    : 0;
-  const comissaoOricse = comissaoSimulada?.ativo
-    ? Math.round((centavos - descontoMp) * Number(comissaoSimulada.oricse_percentual) / 100)
-    : 0;
-  const liquido = Math.max(0, centavos - descontoMp - comissaoOricse);
+  const comissaoSimulada = comissoes  const valorInformado = Math.round(Number(valorSimulacao.replace(/\./g, "").replace(",", ".")) * 100) || 0;
+  const percentualMp = Number(linhaSimulada?.mp_percentual || 0) / 100;
+  const fixoMp = Number(linhaSimulada?.mp_fixo_centavos || 0);
+  const percentualOricse = comissaoSimulada?.ativo ? Number(comissaoSimulada.oricse_percentual || 0) / 100 : 0;
+  const calcularTaxas = (valorCobrado: number) => {
+    const mercadoPago = Math.min(valorCobrado, Math.round(valorCobrado * percentualMp) + fixoMp);
+    const saldoAposMercadoPago = Math.max(0, valorCobrado - mercadoPago);
+    const oricse = Math.round(saldoAposMercadoPago * percentualOricse);
+    return { mercadoPago, oricse, liquido: Math.max(0, valorCobrado - mercadoPago - oricse) };
+  };
+  let valorCobradoTutor = valorInformado;
+  if (modoTaxasSimulacao === "repassar" && valorInformado > 0) {
+    valorCobradoTutor = Math.max(valorInformado, Math.ceil((valorInformado / Math.max(0.01, 1 - percentualOricse) + fixoMp) / Math.max(0.01, 1 - percentualMp)));
+    while (calcularTaxas(valorCobradoTutor).liquido < valorInformado) valorCobradoTutor += 1;
+  }
+  const taxasCalculadas = calcularTaxas(valorCobradoTutor);
+  const descontoMp = taxasCalculadas.mercadoPago;
+  const comissaoOricse = taxasCalculadas.oricse;
+  const liquido = taxasCalculadas.liquido;
+  const taxaRepassada = Math.max(0, valorCobradoTutor - valorInformado);
+  const taxaFinal = valorCobradoTutor > 0 ? ((descontoMp + comissaoOricse) / valorCobradoTutor) * 100 : 0;
+cse);
   const taxaFinal = centavos > 0 ? ((descontoMp + comissaoOricse) / centavos) * 100 : 0;
   const referencia = globais.find((linha) => linha.fonte_url)?.referencia_verificada_em;
   const todosSelecionados = segmentosSelecionados.length === SEGMENTOS_DISPONIVEIS.length;
@@ -1586,32 +1600,53 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
       </div>
     </section>
 
-    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
-      <div className="rounded-2xl border bg-white p-5 shadow-sm">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Como o cálculo funciona</p>
-        <h3 className="mt-1 text-lg font-black">O provedor recebe primeiro; a ORICSE recebe sobre o saldo</h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold text-muted-foreground">1. Venda</span><p className="mt-1 font-black">Valor bruto</p></div>
-          <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold text-muted-foreground">2. Mercado Pago</span><p className="mt-1 font-black">Taxa do meio</p></div>
-          <div className="rounded-xl bg-[#fff4ef] p-3"><span className="text-xs font-bold text-primary">3. ORICSE</span><p className="mt-1 font-black">Comissão por área</p></div>
-        </div>
+    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Como o cálculo funciona</p>
+      <h3 className="mt-1 text-lg font-black">O provedor recebe primeiro; a ORICSE recebe sobre o saldo</h3>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold text-muted-foreground">1. Venda</span><p className="mt-1 font-black">Valor bruto</p></div>
+        <div className="rounded-xl bg-slate-50 p-3"><span className="text-xs font-bold text-muted-foreground">2. Mercado Pago</span><p className="mt-1 font-black">Taxa do meio</p></div>
+        <div className="rounded-xl bg-[#fff4ef] p-3"><span className="text-xs font-bold text-primary">3. ORICSE</span><p className="mt-1 font-black">Comissão por área</p></div>
       </div>
-      <aside className="rounded-2xl border-2 border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Simulador de repasse</p>
-        <h3 className="mt-1 text-lg font-black">Veja a taxa final</h3>
-        <div className="mt-4 grid gap-3">
-          <label className="text-sm font-bold">Valor da venda<input inputMode="decimal" value={valorSimulacao} onChange={(event) => setValorSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-bold"/></label>
-          <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
-          <label className="text-sm font-bold">Área<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
+    </section>
+
+    <section className="rounded-2xl border-2 border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Simulador de repasse</p>
+          <h3 className="mt-1 text-xl font-black">Defina quem absorve as taxas</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Simule a cobrança final e o líquido da clínica antes de salvar a regra.</p>
         </div>
-        <dl className="mt-5 space-y-2 rounded-xl bg-white p-4 text-sm">
-          <div className="flex justify-between gap-3"><dt>Venda bruta</dt><dd className="font-bold">{moedaCentavos(centavos)}</dd></div>
+        <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-black text-primary">{modoTaxasSimulacao === "reter" ? "Clínica absorve taxas" : "Tutor paga o repasse"}</span>
+      </div>
+
+      <div className="mt-5 grid gap-3 lg:grid-cols-2" role="radiogroup" aria-label="Responsável pelas taxas">
+        <button type="button" role="radio" aria-checked={modoTaxasSimulacao === "reter"} onClick={() => setModoTaxasSimulacao("reter")} className={`rounded-2xl border p-4 text-left transition ${modoTaxasSimulacao === "reter" ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-white hover:border-primary/40"}`}>
+          <span className="block text-sm font-black">Reter as taxas</span>
+          <span className={`mt-1 block text-sm ${modoTaxasSimulacao === "reter" ? "text-primary-foreground/85" : "text-muted-foreground"}`}>O tutor paga o valor informado. Mercado Pago e ORICSE são descontados do repasse da clínica.</span>
+        </button>
+        <button type="button" role="radio" aria-checked={modoTaxasSimulacao === "repassar"} onClick={() => setModoTaxasSimulacao("repassar")} className={`rounded-2xl border p-4 text-left transition ${modoTaxasSimulacao === "repassar" ? "border-primary bg-primary text-primary-foreground shadow-sm" : "bg-white hover:border-primary/40"}`}>
+          <span className="block text-sm font-black">Repassar as taxas</span>
+          <span className={`mt-1 block text-sm ${modoTaxasSimulacao === "repassar" ? "text-primary-foreground/85" : "text-muted-foreground"}`}>A clínica define quanto quer receber; o sistema calcula o total que o tutor pagará.</span>
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)]">
+        <div className="grid content-start gap-3">
+          <label className="text-sm font-bold">{modoTaxasSimulacao === "reter" ? "Valor final do serviço" : "Valor líquido desejado pela clínica"}<input inputMode="decimal" value={valorSimulacao} onChange={(event) => setValorSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-bold"/></label>
+          <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
+          <label className="text-sm font-bold">Área da venda<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
+        </div>
+        <dl className="space-y-2 rounded-2xl bg-white p-5 text-sm shadow-sm">
+          <div className="flex justify-between gap-3"><dt>{modoTaxasSimulacao === "reter" ? "Valor final para o tutor" : "Líquido desejado pela clínica"}</dt><dd className="font-bold">{moedaCentavos(valorInformado)}</dd></div>
+          <div className="flex justify-between gap-3"><dt>Tutor pagará</dt><dd className="font-black">{moedaCentavos(valorCobradoTutor)}</dd></div>
+          {modoTaxasSimulacao === "repassar" && <div className="flex justify-between gap-3 rounded-lg bg-amber-50 px-2 py-1 text-amber-900"><dt>Repasse das taxas</dt><dd className="font-black">+ {moedaCentavos(taxaRepassada)}</dd></div>}
           <div className="flex justify-between gap-3"><dt>Mercado Pago ({percentual(linhaSimulada?.mp_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(descontoMp)}</dd></div>
           <div className="flex justify-between gap-3"><dt>ORICSE ({percentual(comissaoSimulada?.oricse_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(comissaoOricse)}</dd></div>
           <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-black">Líquido da clínica</dt><dd className="font-black text-emerald-700">{moedaCentavos(liquido)}</dd></div>
           <div className="flex justify-between gap-3 text-xs text-muted-foreground"><dt>Taxa efetiva final</dt><dd className="font-bold">{percentual(taxaFinal)}</dd></div>
         </dl>
-      </aside>
+      </div>
     </section>
   </div>;
 }
