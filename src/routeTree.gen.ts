@@ -14,6 +14,7 @@ import { Route as AliasRouteImport } from './routes/$alias'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminCanvasRouteImport } from './routes/admin-canvas'
 import { Route as AdminConteudoRouteImport } from './routes/admin-conteudo'
+import { Route as AdminCuponsRouteImport } from './routes/admin-cupons'
 import { Route as AdminPlanosRouteImport } from './routes/admin-planos'
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin-solicitacoes'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
@@ -95,6 +96,11 @@ const AdminCanvasRoute = AdminCanvasRouteImport.update({
 const AdminConteudoRoute = AdminConteudoRouteImport.update({
   id: '/admin-conteudo',
   path: '/admin-conteudo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCuponsRoute = AdminCuponsRouteImport.update({
+  id: '/admin-cupons',
+  path: '/admin-cupons',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPlanosRoute = AdminPlanosRouteImport.update({
@@ -389,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
+  '/admin-cupons': typeof AdminCuponsRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
   '/alarmes': typeof AlarmesRoute
@@ -454,6 +461,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
+  '/admin-cupons': typeof AdminCuponsRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
   '/alarmes': typeof AlarmesRoute
@@ -520,6 +528,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
+  '/admin-cupons': typeof AdminCuponsRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
   '/alarmes': typeof AlarmesRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
+    | '/admin-cupons'
     | '/admin-planos'
     | '/admin-solicitacoes'
     | '/alarmes'
@@ -651,6 +661,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
+    | '/admin-cupons'
     | '/admin-planos'
     | '/admin-solicitacoes'
     | '/alarmes'
@@ -715,6 +726,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
+    | '/admin-cupons'
     | '/admin-planos'
     | '/admin-solicitacoes'
     | '/alarmes'
@@ -780,6 +792,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdminCanvasRoute: typeof AdminCanvasRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
+  AdminCuponsRoute: typeof AdminCuponsRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
   AlarmesRoute: typeof AlarmesRoute
@@ -869,6 +882,13 @@ declare module '@tanstack/react-router' {
       path: '/admin-conteudo'
       fullPath: '/admin-conteudo'
       preLoaderRoute: typeof AdminConteudoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-cupons': {
+      id: '/admin-cupons'
+      path: '/admin-cupons'
+      fullPath: '/admin-cupons'
+      preLoaderRoute: typeof AdminCuponsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin-planos': {
@@ -1279,6 +1299,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdminCanvasRoute: AdminCanvasRoute,
   AdminConteudoRoute: AdminConteudoRoute,
+  AdminCuponsRoute: AdminCuponsRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminSolicitacoesRoute: AdminSolicitacoesRoute,
   AlarmesRoute: AlarmesRoute,
