@@ -86,6 +86,9 @@ const inicial: Config = {
   exibir_documentos: true,
 };
 function ConfigurarPortalTutor() {
+  const [marcaAdmin, setMarcaAdmin] = useState(false);
+  const [salvandoMarca, setSalvandoMarca] = useState(false);
+  const [marca, setMarca] = useState({nome_exibicao:"",logo_clinica_url:"",logo_cabecalho_url:"",titulo_cabecalho:"PORTAL DO TUTOR",subtitulo_cabecalho:"Acompanhe seus pets, agende serviços e acesse documentos em um só lugar."});
   const [extras, setExtras] = useState<Extra>(extrasIniciais),
     [agendas, setAgendas] = useState<AgendaPortal[]>([]),
     [promos, setPromos] = useState<Promo[]>([]),
@@ -110,6 +113,10 @@ function ConfigurarPortalTutor() {
         const clinicaAtiva = contexto?.[0];
         if (contextoError || !clinicaAtiva?.clinica_id) throw Error("Clínica ativa não encontrada.");
         setClinica(clinicaAtiva.clinica_id);
+        // A RPC valida permissões no servidor. Apenas admins recebem acesso.
+        const marcaResposta=await (supabaseBanco as any).rpc("oricse_portal_marca_admin",{p_clinica_id:clinicaAtiva.clinica_id});
+        if(!marcaResposta.error){setMarcaAdmin(true);setMarca(m=>({...m,...marcaResposta.data}));}
+
         const [c, r] = await Promise.all([
           supabaseBanco
             .from("clinicas")
@@ -138,6 +145,20 @@ function ConfigurarPortalTutor() {
     })();
   }, []);
   const change = (k: keyof Config, v: string | boolean) => setConfig((s) => ({ ...s, [k]: v }));
+  async function salvarMarca() {
+    if(!marcaAdmin || !clinica)return;
+    setSalvandoMarca(true);
+    try {
+      const {data,error}=await (supabaseBanco as any).rpc("oricse_portal_marca_admin",{
+        p_clinica_id:clinica,p_nome:marca.nome_exibicao,
+        p_logo_clinica:marca.logo_clinica_url,p_logo_cabecalho:marca.logo_cabecalho_url,
+        p_titulo:marca.titulo_cabecalho,p_subtitulo:marca.subtitulo_cabecalho
+      });
+      if(error)throw error;
+      setMarca(m=>({...m,...data}));toast.success("Identidade do Portal do Tutor salva.");
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar a identidade.");}
+    finally{setSalvandoMarca(false);}
+  }
   async function salvar() {
     setSaving(true);
     const { error } = await (supabaseBanco as any).rpc("oricse_portal_config_gerenciar", {
@@ -250,9 +271,16 @@ function ConfigurarPortalTutor() {
         <h1 className="mt-3 text-2xl font-bold">Configurar Portal do Tutor</h1>
         <Link to="/demo-portal-tutor" className="mt-4 inline-flex items-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">👁 Visualizar protótipo navegável do tutor</Link>
         <p className="text-sm text-muted-foreground">
-          Personalização da clínica {nome}. Disponível ao RT, responsável e Admin geral.
+          Configurações gerais da clínica {nome}. A identidade visual só pode ser alterada por administradores.
         </p>
       </div>
+      {!busy&&!erro&&marcaAdmin&&<section className="space-y-4 rounded-2xl border bg-card p-5">
+        <h2 className="text-lg font-bold">Identidade do Portal do Tutor</h2>
+        <p className="text-sm text-muted-foreground">Somente administradores podem alterar o nome e a logo da clínica e a identidade visual do cabeçalho.</p>
+        {([["nome_exibicao","Nome exibido da clínica"],["logo_clinica_url","URL HTTPS da logo da clínica"],["logo_cabecalho_url","URL HTTPS da logo do topo (deixe vazio para usar ORICSE)"],["titulo_cabecalho","Título do topo"],["subtitulo_cabecalho","Frase abaixo do título"]] as const).map(([key,label])=><label key={key} className="block text-sm font-semibold">{label}<input className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" value={marca[key]||""} onChange={e=>setMarca(m=>({...m,[key]:e.target.value}))} maxLength={key.includes("url")?1000:key==="subtitulo_cabecalho"?300:160}/></label>)}
+        <div className="flex items-center gap-3 rounded-xl bg-secondary/30 p-3">{marca.logo_clinica_url&&<img src={marca.logo_clinica_url} alt="Prévia da logo" className="h-14 w-14 rounded-lg object-contain"/>}<strong>{marca.nome_exibicao||nome}</strong></div>
+        <button disabled={salvandoMarca} onClick={()=>void salvarMarca()} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{salvandoMarca?"Salvando…":"Salvar identidade do portal"}</button>
+      </section>}
       {busy ? (
         <p>Carregando configurações…</p>
       ) : erro ? (
