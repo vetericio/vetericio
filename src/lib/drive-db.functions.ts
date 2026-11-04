@@ -41,9 +41,25 @@ async function folder(t: string, parent: string, nome: string) { const esc = nom
 async function dbFolder(t: string) { const o = await folder(t, root(), ".oricse"); return folder(t, o, "database"); }
 async function findFile(t: string, parent: string, nome: string) { const esc = nome.replace(/'/g, "\\'"); const q = encodeURIComponent(`'${parent}' in parents and name='${esc}' and trashed=false`); const r = await gf(t, `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime,version)&pageSize=5`); const j = await r.json() as { files?: Array<{ id: string; name: string; modifiedTime?: string; version?: string }> }; return j.files?.[0] || null; }
 async function writeTable(t: string, table: string, folderId: string, fileId: string | null, rows: any[]) { const corpo = JSON.stringify(rows); if (fileId) { await gf(t, `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media`, { method: "PATCH", headers: { "content-type": "application/json;charset=utf-8" }, body: corpo }); return; } const form = new FormData(); form.append("metadata", new Blob([JSON.stringify({ name: `${table}.json`, parents: [folderId], appProperties: { oricseDatabase: "true", tabela: table } })], { type: "application/json" })); form.append("file", new Blob([corpo], { type: "application/json" }), `${table}.json`); await gf(t, "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", { method: "POST", body: form }); }
+const PLANOS_ATUAIS = new Set(["solo-2026","essencial-2026","profissional-2026","master-2026"]);
+const PLANOS_LEGADOS = new Set(["essencial","plus-clinica","master-equipe","Essencial","Plus (Clínica)","Master (Equipe)"]);
+const PLANO_IDS_ATUAIS = new Set([
+  "3c2a0001-2026-4000-8000-000000000001",
+  "3c2a0002-2026-4000-8000-000000000002",
+  "3c2a0003-2026-4000-8000-000000000003",
+  "3c2a0004-2026-4000-8000-000000000004",
+]);
+function normalizarPlanosAntigos(table: string, rows: any[]): any[] {
+  // Dados clínicos permanecem íntegros; somente as clínicas de teste mudam de plano.
+  if (table === "clinicas") return rows.map((r) =>
+    PLANOS_LEGADOS.has(String(r.plano)) ? { ...r, plano: "master-2026", limite_usuarios: Math.max(5,Number(r.limite_usuarios)||1) } : r);
+  if (table === "oricse_planos") return rows.filter((r) => PLANOS_ATUAIS.has(String(r.codigo)));
+  if (table === "oricse_plano_funcionalidades") return rows.filter((r) => PLANO_IDS_ATUAIS.has(String(r.plano_id)));
+  return rows;
+}
 function integrarNovosRecursos(table: string, antigos: any[]) {
-  // Migração aditiva: não altera os planos nem permissões de clínicas antigas.
-  if (!["oricse_planos","oricse_funcionalidades","oricse_plano_funcionalidades"].includes(table)) return antigos;
+  // Catálogo novo é cumulativo; planos antigos não aparecem nem são ofertados.
+  if (!["oricse_planos","oricse_funcionalidades","oricse_plano_funcionalidades"].includes(table)) return normalizarPlanosAntigos(table, antigos);
   const seeds = seedTabela(table);
   const chave = (item: any) => table === "oricse_plano_funcionalidades"
     ? String(item.plano_id) + ":" + String(item.funcionalidade_codigo)
@@ -56,7 +72,7 @@ function integrarNovosRecursos(table: string, antigos: any[]) {
     return String(item.funcionalidade_codigo).startsWith("beneficio.") ||
       ["3c2a0001-2026-4000-8000-000000000001","3c2a0002-2026-4000-8000-000000000002","3c2a0003-2026-4000-8000-000000000003","3c2a0004-2026-4000-8000-000000000004"].includes(String(item.plano_id));
   });
-  return [...antigos, ...novos];
+  return normalizarPlanosAntigos(table, [...antigos, ...novos]);
 }
 async function readTable(t: string, table: string) {
   const f = await dbFolder(t), a = await findFile(t, f, `${table}.json`);
@@ -191,7 +207,8 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   const t = await driveToken(), base = await readTable(t, q.table);
   const journalRequest = (url: string, init?: RequestInit) => gf(t, url, init);
   const journals = await loadJournals(journalRequest, base.folderId, q.table);
-  let rows = applyJournal(base.rows, journals);
+  // A última etapa elimina qualquer evento legado ainda presente no journal.
+  let rows = normalizarPlanosAntigos(q.table, applyJournal(base.rows, journals));
   // Repeating a request whose response was lost must not apply the same
   // movement twice, especially for payment/stock ledger records.
   if (q.operation !== "select" && q.requestId) {
