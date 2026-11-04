@@ -456,12 +456,6 @@ function AdminPlanos() {
   }
 
   function modoExcecao(codigo: string): ModoExcecao {
-    const item = excecoes.find((e) => e.clinica_id === clinicaSelecionada && e.funcionalidade_codigo === codigo);
-    if (!item) return "plano";
-    return item.permitido ? "liberar" : "bloquear";
-  }
-
-  function modoExcecao(codigo: string): ModoExcecao {
     const chave = clinicaSelecionada + ":" + codigo;
     if (Object.prototype.hasOwnProperty.call(excecoesPendentes, chave)) {
       return excecoesPendentes[chave];
