@@ -8,9 +8,6 @@ export const PLANOS_PADRAO = [
   { id:"3c2a0003-2026-4000-8000-000000000003", codigo:"profissional-2026", nome:"Profissional", ativo:true, publicado:true, ordem:3, preco:"R$ 119,90", preco_mensal:"R$ 119,90", preco_trimestral:"R$ 339,90", preco_semestral:"R$ 649,90", preco_anual:"R$ 1.199,00", preco_bienal:"R$ 2.159,00", publico_alvo:"Clínicas veterinárias, pet shops, Banho e Tosa e Hotelzinho", descricao:"Operação completa para equipes, internação, estoque, RH e todos os serviços pet.", dominio_incluso:false, usuarios_inclusos:3, destaque:true, itens:["Até 1.000 animais","3 usuários","Tudo do Essencial","Internação, Banho e Tosa e Hotelzinho","Estoque, Financeiro, RH, ponto e comissões"], created_at:AGORA, updated_at:AGORA },
   { id:"3c2a0004-2026-4000-8000-000000000004", codigo:"master-2026", nome:"Master", ativo:true, publicado:true, ordem:4, preco:"R$ 199,90", preco_mensal:"R$ 199,90", preco_trimestral:"R$ 569,90", preco_semestral:"R$ 1.079,90", preco_anual:"R$ 1.999,00", preco_bienal:"R$ 3.599,00", publico_alvo:"Negócios que precisam de todos os recursos e personalização", descricao:"Tudo do Profissional com CRM avançado, campanhas, relatórios e personalização.", dominio_incluso:true, usuarios_inclusos:5, itens:["Animais ilimitados","5 usuários","Tudo do Profissional","CRM avançado, campanhas e automações","Domínio personalizado e personalização sob medida","Fidelidade mínima de 12 meses"], created_at:AGORA, updated_at:AGORA },
 
-  { id:"f54385a7-954e-4c8f-977d-8aecc17115b2", codigo:"essencial", nome:"Essencial", ativo:true, ordem:1, preco:"R$ 49,90", preco_mensal:"R$ 49,90", preco_anual:"R$ 499,00", publico_alvo:"Veterinários que atendem em domicílio", descricao:"Bom para veterinários que atendem em domicílio", dominio_incluso:false, usuarios_inclusos:1, itens:["Cadastro de animais e tutores","Anamnese e prontuários","Receituário e PDFs clínicos"], created_at:AGORA, updated_at:AGORA },
-  { id:"5dc9dc2c-00d0-448a-9354-43f3bc692413", codigo:"plus-clinica", nome:"Plus (Clínica)", ativo:true, ordem:2, preco:"R$ 99,90", preco_mensal:"R$ 99,90", preco_anual:"R$ 999,00", publico_alvo:"Pet shops e clínicas", descricao:"Bom para petshops e clínicas", dominio_incluso:false, usuarios_inclusos:3, itens:["Logo da sua clínica","3 usuários inclusos","Consultório e recepção","Financeiro e caixa","Serviços e estoque","Portal do tutor"], created_at:AGORA, updated_at:AGORA },
-  { id:"7f20fd38-2353-4886-941d-c29d5cd74fc3", codigo:"master-equipe", nome:"Master (Equipe)", ativo:true, ordem:3, preco:"R$ 199,90", preco_mensal:"R$ 199,90", preco_anual:"R$ 1.999,00", publico_alvo:"Equipes e clínicas", descricao:"Para equipes e clínicas que precisam de um sistema sob medida", dominio_incluso:true, usuarios_inclusos:5, itens:["Tudo que o sistema oferece","Personalização: ajustamos o sistema à sua necessidade","www.suaclinica.com.br","5 usuários inclusos","Portal do tutor"], created_at:AGORA, updated_at:AGORA },
 ];
 
 export const FUNCIONALIDADES_PADRAO = [
@@ -87,9 +84,6 @@ export const FUNCIONALIDADES_POR_PLANO:Record<string,string[]>={
   "profissional-2026":PROFISSIONAL_2026,
   "master-2026":FUNCIONALIDADES_PADRAO.map(f=>String(f.codigo)),
 
-  essencial:["administracao.temas","consultorio.atendimentos","consultorio.receituario","recepcao.cadastros"],
-  "plus-clinica":["administracao.temas","atividade.ponto","caixa.comandas","caixa.financeiro","consultorio.atendimentos","consultorio.medicacoes","consultorio.receituario","estoque.catalogo","estoque.movimentar","portal_tutor.acesso","portal_tutor.agendamento_online","recepcao.agenda","recepcao.cadastros"],
-  "master-equipe":FUNCIONALIDADES_PADRAO.map(f=>String(f.codigo)),
 };
 export const PLANO_FUNCIONALIDADES_PADRAO=PLANOS_PADRAO.flatMap(plano=>[
   ...FUNCIONALIDADES_PADRAO.map(f=>({plano_id:plano.id,funcionalidade_codigo:String(f.codigo),permitido:FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(f.codigo))||false})),
