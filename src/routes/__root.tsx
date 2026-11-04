@@ -413,7 +413,7 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
-      ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade"].includes(location.pathname) ||
+      ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin");
@@ -596,7 +596,7 @@ function RootComponent() {
 
   const rotaAdmin = location.pathname.startsWith("/admin");
   const rotaPublica =
-    ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade"].includes(location.pathname) ||
+    ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
@@ -615,6 +615,16 @@ function RootComponent() {
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
   const mostrarRuntimeVisual = location.pathname !== "/admin-canvas";
+
+  // Protótipos públicos são isolados do layout clínico e de suas barras de navegação.
+  if (location.pathname === "/demo-portal-tutor") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Toaster position="top-center" />
+      </QueryClientProvider>
+    );
+  }
 
   // Documentos legais permanecem isolados do shell; somente os ajustes visuais
   // publicados pelo administrador podem ser aplicados a essas páginas.
