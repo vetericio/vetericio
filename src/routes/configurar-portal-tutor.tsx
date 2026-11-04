@@ -94,6 +94,7 @@ function ConfigurarPortalTutor() {
     [promos, setPromos] = useState<Promo[]>([]),
     [promo, setPromo] = useState<Promo>(promoVazia),
     [salvandoExtra, setSalvandoExtra] = useState(false);
+  const [slug, setSlug] = useState(""),
   const [clinica, setClinica] = useState(""),
     [nome, setNome] = useState(""),
     [config, setConfig] = useState<Config>(inicial),
@@ -120,7 +121,7 @@ function ConfigurarPortalTutor() {
         const [c, r] = await Promise.all([
           supabaseBanco
             .from("clinicas")
-            .select("nome")
+            .select("nome,slug")
             .eq("id", clinicaAtiva.clinica_id)
             .maybeSingle(),
           (supabaseBanco as any).rpc("oricse_portal_config_gerenciar", {
@@ -137,6 +138,7 @@ function ConfigurarPortalTutor() {
         setAgendas(painel.data.agendas || []);
         setPromos(painel.data.promocoes || []);
         setNome(c.data?.nome || "Clínica");
+        setSlug(c.data?.slug || "");
       } catch (e) {
         setErro(e instanceof Error ? e.message : "Erro ao carregar");
       } finally {
@@ -263,18 +265,34 @@ function ConfigurarPortalTutor() {
     ["instrucoes_agendamento", "Orientações para agendamento", 1000],
   ];
   return (
-    <main className="mx-auto max-w-3xl space-y-5 p-5 text-foreground">
-      <div>
-        <Link to="/configuracao-site" className="text-sm underline text-primary">
-          ← Portal do Tutor
-        </Link>
-        <h1 className="mt-3 text-2xl font-bold">Configurar Portal do Tutor</h1>
-        <Link to="/demo-portal-tutor" className="mt-4 inline-flex items-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">👁 Visualizar protótipo navegável do tutor</Link>
-        <p className="text-sm text-muted-foreground">
-          Configurações gerais da clínica {nome}. A identidade visual só pode ser alterada por administradores.
-        </p>
-      </div>
-      {!busy&&!erro&&marcaAdmin&&<section className="space-y-4 rounded-2xl border bg-card p-5">
+    <main className="mx-auto max-w-5xl space-y-5 p-5 text-foreground">
+      <header className="space-y-3">
+        <Link to="/perfil-clinica" className="text-sm font-semibold text-primary">← Administração da clínica</Link>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Administração / Clínica</p>
+        <h1 className="text-3xl font-extrabold">Portal do Tutor</h1>
+        <p className="text-sm text-muted-foreground">Central de configuração do portal oficial de <strong>{nome||"sua clínica"}</strong>. Todas as personalizações ficam vinculadas à clínica selecionada. Apenas administradores alteram nome e logos.</p>
+        <div className="flex flex-wrap gap-2">
+          {slug&&<Link to="/pet/$slug/portal" params={{slug}} target="_blank" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial da clínica ↗</Link>}
+          <Link to="/demo-portal-tutor" target="_blank" className="inline-flex min-h-11 items-center rounded-xl border bg-card px-4 text-sm font-semibold">Visualizar demonstração ORICSE ↗</Link>
+        </div>
+        <p className="text-xs text-muted-foreground">A demonstração mantém dados fictícios e não recebe as personalizações das clínicas.</p>
+      </header>
+      <section className="rounded-2xl border bg-card p-4">
+        <h2 className="font-bold">O que você pode configurar</h2>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <a href="#identidade-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Identidade, logo e cabeçalho</a>
+          <a href="#conteudo-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Contatos, boas-vindas e seções</a>
+          <a href="#agendas-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Agendas e horários publicados</a>
+          <a href="#marketing-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Marketing, banners e promoções</a>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <Link to="/configurar-agenda-online" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Profissionais, disponibilidade e regras de pagamento ↗</Link>
+          <Link to="/precos-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Serviços, preços e cobranças ↗</Link>
+          <Link to="/portal-tutores" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Tutores, convites e acessos ↗</Link>
+          <Link to="/configuracao-site" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Outras configurações do portal ↗</Link>
+        </div>
+      </section>
+      {!busy&&!erro&&marcaAdmin&&<section id="identidade-portal" className="space-y-4 rounded-2xl border bg-card p-5">
         <h2 className="text-lg font-bold">Identidade do Portal do Tutor</h2>
         <p className="text-sm text-muted-foreground">Somente administradores podem alterar o nome e a logo da clínica e a identidade visual do cabeçalho.</p>
         {([["nome_exibicao","Nome exibido da clínica"],["logo_clinica_url","URL HTTPS da logo da clínica"],["logo_cabecalho_url","URL HTTPS da logo do topo (deixe vazio para usar ORICSE)"],["titulo_cabecalho","Título do topo"],["subtitulo_cabecalho","Frase abaixo do título"]] as const).map(([key,label])=><label key={key} className="block text-sm font-semibold">{label}<input className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" value={marca[key]||""} onChange={e=>setMarca(m=>({...m,[key]:e.target.value}))} maxLength={key.includes("url")?1000:key==="subtitulo_cabecalho"?300:160}/></label>)}
@@ -288,7 +306,8 @@ function ConfigurarPortalTutor() {
           {erro}
         </p>
       ) : (
-        <section className="space-y-4 rounded-2xl border bg-card p-5">
+        <section id="conteudo-portal" className="space-y-4 rounded-2xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Informações e recursos do tutor</h2>
           {fields.map(([key, label, max]) => (
             <label key={key} className="block text-sm font-semibold">
               {label}
@@ -339,7 +358,7 @@ function ConfigurarPortalTutor() {
           </button>
         </section>
       )}
-      <section className="rounded-2xl border bg-card p-5 space-y-4">
+      <section id="agendas-portal" className="rounded-2xl border bg-card p-5 space-y-4">
         <h2 className="text-lg font-bold">Agendas publicadas para o tutor</h2>
         <p className="text-sm text-muted-foreground">
           Escolha individualmente quais agendas estão disponíveis no portal. Desligar não exclui
@@ -365,7 +384,7 @@ function ConfigurarPortalTutor() {
           <p className="text-sm text-muted-foreground">Nenhuma agenda cadastrada.</p>
         )}
       </section>
-      <section className="rounded-2xl border bg-card p-5 space-y-4">
+      <section id="marketing-portal" className="rounded-2xl border bg-card p-5 space-y-4">
         <h2 className="text-lg font-bold">Marketing e apresentação do Portal do Tutor</h2>
         <p className="text-sm text-muted-foreground">
           Textos de destaque, redes sociais, avisos e comunicação da clínica.
