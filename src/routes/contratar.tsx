@@ -46,6 +46,10 @@ const CICLOS: Array<{codigo: Exclude<CicloContratacao,"teste">; nome: string; me
   { codigo: "bienal", nome: "Dois anos", meses: 24, descricao: "Uma cobrança a cada 24 meses." },
 ];
 const PLANOS_CONTRATACAO = {
+  "solo-2026": { codigo: "solo-2026", nome: "Solo", usuarios_inclusos: 1, preco_mensal: "R$ 49,90", preco_trimestral: "R$ 139,90", preco_semestral: "R$ 269,90", preco_anual: "R$ 499,00", preco_bienal: "R$ 899,00" },
+  "essencial-2026": { codigo: "essencial-2026", nome: "Essencial", usuarios_inclusos: 1, preco_mensal: "R$ 79,90", preco_trimestral: "R$ 229,90", preco_semestral: "R$ 429,90", preco_anual: "R$ 799,00", preco_bienal: "R$ 1.439,00" },
+  "profissional-2026": { codigo: "profissional-2026", nome: "Profissional", usuarios_inclusos: 3, preco_mensal: "R$ 119,90", preco_trimestral: "R$ 339,90", preco_semestral: "R$ 649,90", preco_anual: "R$ 1.199,00", preco_bienal: "R$ 2.159,00" },
+  "master-2026": { codigo: "master-2026", nome: "Master", usuarios_inclusos: 5, preco_mensal: "R$ 199,90", preco_trimestral: "R$ 569,90", preco_semestral: "R$ 1.079,90", preco_anual: "R$ 1.999,00", preco_bienal: "R$ 3.599,00" },
   essencial: { codigo: "essencial", nome: "Essencial", usuarios_inclusos: 1, preco_mensal: "R$ 49,90", preco_trimestral: "R$ 149,70", preco_semestral: "R$ 299,40", preco_anual: "R$ 499,00", preco_bienal: "R$ 1.197,60" },
   "plus-clinica": { codigo: "plus-clinica", nome: "Plus (Clínica)", usuarios_inclusos: 3, preco_mensal: "R$ 99,90", preco_trimestral: "R$ 299,70", preco_semestral: "R$ 599,40", preco_anual: "R$ 999,00", preco_bienal: "R$ 2.397,60" },
   "master-equipe": { codigo: "master-equipe", nome: "Master (Equipe)", usuarios_inclusos: 5, preco_mensal: "R$ 199,90", preco_trimestral: "R$ 599,70", preco_semestral: "R$ 1.199,40", preco_anual: "R$ 1.999,00", preco_bienal: "R$ 4.797,60" },
@@ -112,7 +116,7 @@ function brl(valor: number) {
 
 function Contratar() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const planoParam = params.get("plano") || "essencial";
+  const planoParam = params.get("plano") || "solo-2026";
   const plano = planoParam in PLANOS_CONTRATACAO || planoParam === "teste-gratis" ? planoParam : ({ "plus (clínica)": "plus-clinica", "master (equipe)": "master-equipe" } as Record<string,string>)[planoParam.toLowerCase()] || planoParam;
   const ehTesteGratis = plano === "teste-gratis";
   const cicloParam=params.get("ciclo");
@@ -321,7 +325,7 @@ function Contratar() {
   async function continuarPagamento() {
     if (!planoConhecido || (!ehTesteGratis && (!configPlano || valorBase <= 0))) { toast.error("Não foi possível validar o valor deste plano. Volte à página de planos."); return; }
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
-    if (plano === "master-equipe" && !aceitouFidelidadeMaster) { toast.error("Confirme ciência da fidelidade de 12 meses do plano Master."); return; }
+    if ((plano === "master-equipe" || plano === "master-2026") && !aceitouFidelidadeMaster) { toast.error("Confirme ciência da fidelidade de 12 meses do plano Master."); return; }
     setEnviando(true);
     const payload = {
       ...dados,
@@ -339,9 +343,9 @@ function Contratar() {
       promo_codigo: promoAplicado?.codigo || null,
       aceitou_termos: true,
       aceitou_privacidade: true,
-      fidelidade_meses: plano === "master-equipe" ? 12 : 0,
-      aceitou_fidelidade_master: plano === "master-equipe" ? aceitouFidelidadeMaster : null,
-      fidelidade_aceita_em: plano === "master-equipe" ? new Date().toISOString() : null,
+      fidelidade_meses: ["master-equipe","master-2026"].includes(plano) ? 12 : 0,
+      aceitou_fidelidade_master: ["master-equipe","master-2026"].includes(plano) ? aceitouFidelidadeMaster : null,
+      fidelidade_aceita_em: ["master-equipe","master-2026"].includes(plano) ? new Date().toISOString() : null,
     };
     const { data, error } = await (supabaseBanco as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
     setEnviando(false);
@@ -411,7 +415,7 @@ function Contratar() {
         </label>
       </div>
       <label className="mt-5 block text-sm font-semibold">{texto.observacoes_rotulo}<textarea value={dados.observacoes} onChange={e=>salvarLocal({...dados,observacoes:e.target.value})} rows={3} className="mt-1 w-full rounded-xl border bg-background px-3 py-2 font-normal"/></label>
-      {plano === "master-equipe" && <div className="mt-5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+      {["master-equipe","master-2026"].includes(plano) && <div className="mt-5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
         <p className="text-base font-extrabold">Importante: plano Master com fidelidade de 12 meses</p>
         <p className="mt-2 leading-6">A permanência mínima é de 1 ano a partir da ativação. Mesmo ao escolher a cobrança mensal, o compromisso contratual permanece de 12 meses. Leia as condições de cancelamento nos <Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-700 underline decoration-2 underline-offset-4">Termos de Uso <ExternalLink size={14} className="inline"/></Link>.</p>
         <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white p-3 font-semibold">
