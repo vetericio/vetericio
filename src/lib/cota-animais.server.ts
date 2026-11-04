@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { avaliarLimiteAnimais } from "@/lib/cota-animais";
 
 /**
  * Verifica a cota coletiva considerando os IDs já registrados no PostgreSQL
@@ -34,13 +35,11 @@ export async function validarCotaAnimaisClinica(args: {
     if (!data || data.length < 1000) break;
   }
 
-  const anteriores = new Set([...idsSql, ...args.existentes.filter(Boolean)]);
-  const posteriores = new Set([...anteriores, ...args.propostos.filter(Boolean)]);
-  const novos = posteriores.size - anteriores.size;
+  const resultado = avaliarLimiteAnimais(limite, [...idsSql, ...args.existentes], args.propostos);
   // A edição e a redução de plano nunca apagam ou bloqueiam registros antigos.
-  if (novos > 0 && posteriores.size > limite) {
+  if (!resultado.permitido) {
     throw new Error(
-      `Limite de ${limite} animais do plano atingido para esta clínica (${anteriores.size} já cadastrados). ` +
+      `Limite de ${limite} animais do plano atingido para esta clínica (${resultado.ocupados} já cadastrados). ` +
       "O limite é compartilhado por todos os funcionários. Solicite a ampliação do plano.",
     );
   }
