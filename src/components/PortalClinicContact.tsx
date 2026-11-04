@@ -28,7 +28,7 @@ function BotaoCanal({url,rotulo,principal=false,demonstracao}:BotaoCanalProps){
 
 type CardCanalProps={icone:ReactNode;nome:string;detalhe:string;url:string;acao:string;demonstracao:boolean};
 function CardCanal({icone,nome,detalhe,url,acao,demonstracao}:CardCanalProps){
- return <div className="flex min-w-0 flex-col justify-between gap-5 rounded-2xl border border-[#e9dce0] bg-white p-5 shadow-sm transition hover:border-[#d6b8c3] sm:p-6">
+ return <div className="flex min-w-0 flex-col justify-between gap-5 rounded-xl bg-[#faf7f8] p-5 transition hover:bg-[#f8e9ee] sm:p-6">
   <div className="flex min-w-0 items-start gap-4">
    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#f6eaf0] text-[#702a43]">{icone}</div>
    <div className="min-w-0 pt-0.5"><h3 className="text-lg font-extrabold text-[#312530]">{nome}</h3><p className="mt-1 break-words text-sm text-[#7b6b73]">{detalhe}</p></div>
@@ -51,10 +51,10 @@ export function PortalClinicContact({canais,demonstracao=false}:{canais:CanaisCl
  const redes=sociais.flatMap(s=>{const url=linkHttps(canais[s.chave]);return url?[{...s,url}]:[];});
  const email=emailUrl(canais.email), telefone=telefoneUrl(canais.telefone), mapa=mapaUrl(canais.endereco);
  const possuiCanal=Boolean(whats||redes.length||email||telefone||mapa||limpar(canais.horario));
- return <section className="space-y-7 rounded-3xl border border-[#eadfe2] bg-white p-5 sm:p-8">
+ return <section className="space-y-7 rounded-2xl bg-white p-5 sm:p-8">
   <header><h2 className="text-2xl font-black tracking-tight text-[#312530] sm:text-3xl">Fale com a Clínica</h2><p className="mt-2 text-sm text-[#786b73] sm:text-base">Escolha como deseja entrar em contato. Estamos aqui para ajudar você e seu pet.</p></header>
   {!possuiCanal&&<p className="rounded-xl bg-[#faf7f8] p-5 text-sm text-[#786b73]">A clínica ainda não disponibilizou canais de contato neste portal.</p>}
-  {whats&&<section aria-label="Contato principal" className="rounded-3xl border border-[#e8cdd8] bg-[#fbf5f7] p-5 sm:p-7">
+  {whats&&<section aria-label="Contato principal" className="rounded-2xl bg-[#fbf5f7] p-5 sm:p-7">
     <div className="flex flex-wrap items-center justify-between gap-5">
       <div className="flex min-w-0 items-center gap-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#702a43] text-white"><MessageCircle size={30}/></div><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-wider text-[#8b5b6d]">Contato principal</p><h3 className="mt-1 text-xl font-black text-[#312530] sm:text-2xl">WhatsApp da clínica</h3><p className="mt-1 text-sm text-[#786b73]">{limpar(canais.whatsapp)}</p></div></div>
       <BotaoCanal url={whats} rotulo="Chamar no WhatsApp" principal demonstracao={demonstracao}/>
@@ -65,7 +65,7 @@ export function PortalClinicContact({canais,demonstracao=false}:{canais:CanaisCl
     {telefone&&<CardCanal icone={<Phone size={27}/>} nome="Telefone" detalhe={limpar(canais.telefone)} url={telefone} acao="Ligar agora" demonstracao={demonstracao}/>}
     {email&&<CardCanal icone={<Mail size={27}/>} nome="E-mail" detalhe={limpar(canais.email)} url={email} acao="Enviar e-mail" demonstracao={demonstracao}/>}
     {mapa&&<CardCanal icone={<MapPin size={27}/>} nome="Endereço" detalhe={limpar(canais.endereco)} url={mapa} acao="Abrir no mapa" demonstracao={demonstracao}/>}
-    {limpar(canais.horario)&&<div className="flex min-w-0 items-start gap-4 rounded-2xl border border-[#e9dce0] bg-[#faf7f8] p-5 sm:p-6"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#f6eaf0] text-[#702a43]"><Clock3 size={27}/></div><div className="min-w-0"><h4 className="text-lg font-extrabold text-[#312530]">Horário de atendimento</h4><p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#786b73]">{limpar(canais.horario)}</p></div></div>}
+    {limpar(canais.horario)&&<div className="flex min-w-0 items-start gap-4 rounded-xl bg-[#faf7f8] p-5 sm:p-6"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#f6eaf0] text-[#702a43]"><Clock3 size={27}/></div><div className="min-w-0"><h4 className="text-lg font-extrabold text-[#312530]">Horário de atendimento</h4><p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#786b73]">{limpar(canais.horario)}</p></div></div>}
   </div></section>}
   {demonstracao&&<p className="border-t pt-4 text-xs text-[#786b73]">Prévia ilustrativa: os botões não abrem contatos reais nesta demonstração.</p>}
  </section>;
