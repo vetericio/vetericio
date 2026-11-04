@@ -312,6 +312,9 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
       }
     }
   }
+  // Snapshot dos animais anteriores, para distinguir cadastro novo de edição.
+  const animaisAntes = q.table === "oricse_animais"
+    ? rows.map((r: any) => ({ id: String(r.id), clinica_id: String(r.clinica_id) })) : [];
   const changes: DriveChange[] = [];
   if (q.operation === "insert") {
     const novos = payload.filter(Boolean).map(ensureId); for (const r of novos) { const cid = rowClinic(r); if (!ctx.admin && (!cid || (!ctx.clinicas.includes(cid) && !(q.table === "oricse_agendamentos_online" && ctx.portal.some((x) => x.clinicaId === cid && x.tutorId === String(r.tutor_id)))))) throw new Error("Registro pertence a outra clínica."); } rows = [...rows, ...novos]; afetados = novos; for (const row of novos) changes.push({ kind: "put", id: String(row.id), data: row });
@@ -350,6 +353,23 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
     const alvo = new Set(filtros(visiveis)); rows = rows.map((r) => { if (!alvo.has(r)) return r; const patch = { ...(q.payload as any), updated_at: new Date().toISOString() }; const novo = { ...r, ...patch }; afetados.push(novo); changes.push({ kind: "patch", id: String(r.id), data: patch, expected: Object.fromEntries(Object.keys(patch).filter((key) => key !== "updated_at").map((key) => [key, r[key]])) }); return novo; });
   } else if (q.operation === "delete") {
     const alvo = new Set(filtros(visiveis)); afetados = rows.filter((r) => alvo.has(r)); rows = rows.filter((r) => !alvo.has(r)); for (const row of afetados) changes.push({ kind: "remove", id: String(row.id) });
+  }
+  if (q.table === "oricse_animais" && changes.some((change) => change.kind === "put")) {
+    const { validarCotaAnimaisClinica } = await import("@/lib/cota-animais.server");
+    const clinicasComNovos = new Set(
+      changes.filter((change) => change.kind === "put")
+        .map((change) => String((change.data as any)?.clinica_id || "")),
+    );
+    for (const clinicaId of clinicasComNovos) {
+      if (!clinicaId) throw new Error("Novo animal sem clínica identificada.");
+      const candidatos = changes.filter((change) => change.kind === "put" &&
+        String((change.data as any)?.clinica_id) === clinicaId).map((change) => String(change.id));
+      await validarCotaAnimaisClinica({
+        clinicaId,
+        existentes: animaisAntes.filter((animal) => animal.clinica_id === clinicaId).map((animal) => animal.id),
+        propostos: candidatos,
+      });
+    }
   }
   // Persist only immutable per-operation events; never PATCH the shared table snapshot.
   await appendJournal(journalRequest, base.folderId, q.table, changes, q.requestId, commitTimestamp); let out = afetados.map((r) => project(r, q.columns)); if (q.head) out = [];
