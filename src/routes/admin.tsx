@@ -922,7 +922,7 @@ function Admin() {
     if (!selecionada) return null;
     const enderecoOricse = dominiosDaClinica.find((dominio) => dominio.tipo === "oricse");
     const dominiosProprios = dominiosDaClinica.filter((dominio) => dominio.tipo === "proprio");
-    const plano = planos.find((item) => item.nome === selecionada.plano);
+    const plano = planos.find((item) => valorPlanoClinica(item) === selecionada.plano);
     const enderecoSugerido = selecionada.slug ? limparSlug(selecionada.slug) + ".oricse.com.br" : "defina-o-no-cadastro.oricse.com.br";
 
     return <div className="space-y-5">
@@ -1101,7 +1101,7 @@ function Admin() {
       <div>
         <h2 className="text-2xl font-bold">Central de planos e funcionalidades</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Gerencie os planos Essencial, Plus e Master e aprove individualmente
+          Gerencie os planos Solo, Essencial, Profissional e Master e aprove individualmente
           o acesso de cada clínica e de cada operação. As regras são salvas
           no catálogo oficial, com comparação e histórico.
         </p>
