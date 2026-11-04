@@ -3,6 +3,7 @@ import { ArrowLeft, Check, LockKeyhole, Save, ShieldCheck, Users, Search, Rotate
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { BENEFICIOS_ORICSE, NIVEIS_PLANOS, permitidoNoNivel } from "@/lib/beneficios-oricse";
 
 export const Route = createFileRoute("/admin-planos")({ component: AdminPlanos });
 
@@ -156,7 +157,11 @@ function AdminPlanos() {
         (mapa[item.plano_id] ??= {})[item.funcionalidade_codigo] = Boolean(item.permitido);
       }
       setPlanos(planosDados);
-      setFuncionalidades((funcoesRes.data || []) as Funcionalidade[]);
+      const recebidas = (funcoesRes.data || []) as Funcionalidade[];
+      const codigosRecebidos = new Set(recebidas.map((f) => f.codigo));
+      // Fonte canônica de fallback para snapshots antigos no Drive.
+      const todosRecursos = [...recebidas, ...BENEFICIOS_ORICSE.filter((b) => !codigosRecebidos.has(b.codigo))];
+      setFuncionalidades(todosRecursos as Funcionalidade[]);
       setPermissoesCatalogadas((permissoesRes.data || []) as PermissaoCatalogada[]);
       setHistorico((auditoriaRes.data || []) as HistoricoAlteracao[]);
       setAlteracoesPendentes({});
@@ -197,6 +202,11 @@ function AdminPlanos() {
     // A ação nunca supera o bloqueio do módulo-pai.
     if (item.tipo === "acao" && item.pai && !linha?.[item.pai]) return false;
     if (Object.prototype.hasOwnProperty.call(linha || {}, item.codigo)) return Boolean(linha?.[item.codigo]);
+    // A configuração persistida prevalece; sem ela, mostrar a proposta aprovada.
+    if (item.tipo === "beneficio") {
+      const plano = planos.find((p) => p.id === planoId);
+      return plano ? permitidoNoNivel(item.codigo, NIVEIS_PLANOS.indexOf(plano.codigo as any)) : false;
+    }
     // Permissões preexistentes não são alteradas antes de decisão do administrador.
     return item.tipo === "acao" && item.catalogada;
   }
