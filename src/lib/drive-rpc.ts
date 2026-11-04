@@ -769,7 +769,7 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           if (error) throw error;
           if (!agenda) throw new Error("Agenda indisponível.");
           const data = String(args.p_data);
-          if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(data)) throw new Error("Data inválida.");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error("Data inválida.");
           const dow = new Date(data+"T12:00:00Z").getUTCDay();
           const regra = String(agenda.portal_regra_dias || "semanal");
           if (regra === "semanal" &&
@@ -787,7 +787,7 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           const grade: string[] = [];
           if (regra === "datas") {
             const definidas = (agenda.portal_datas_horarios || {})[data];
-            if (Array.isArray(definidas)) grade.push(...definidas.filter((h: unknown) => typeof h==="string" && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(h)));
+            if (Array.isArray(definidas)) grade.push(...definidas.filter((h: unknown) => typeof h==="string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(h)));
           } else {
             for (let m=minutosHora(agenda.inicio);
                  m+duracao<=minutosHora(agenda.fim);m+=duracao) grade.push(hhmm(m));
