@@ -306,6 +306,16 @@ function AdminPlanos() {
       const { error } = await (supabase as any).from("oricse_plano_funcionalidades")
         .upsert(mudancas, { onConflict: "plano_id,funcionalidade_codigo" });
       if (error) throw error;
+      // As regras de acesso também são aplicadas pelo PostgreSQL: mantenha
+      // as duas fontes sincronizadas para os recursos comercialmente classificados.
+      const codigosBanco = new Set(funcionalidades.map((f) => f.codigo));
+      const mudancasBanco = mudancas.filter((m) => codigosBanco.has(m.funcionalidade_codigo));
+      if (mudancasBanco.length) {
+        const { error: erroBanco } = await (supabaseBanco as any)
+          .from("oricse_plano_funcionalidades")
+          .upsert(mudancasBanco, { onConflict: "plano_id,funcionalidade_codigo" });
+        if (erroBanco) throw new Error("Controle salvo na gestão, mas falhou a aplicação no servidor: " + erroBanco.message);
+      }
       const { error: auditoriaError } = await (supabase as any).from("oricse_planos_auditoria").insert({
         id: crypto.randomUUID(), usuario_id: usuarioAtual, data: new Date().toISOString(),
         tipo: "matriz", alteracoes: mudancas.map(({ plano_id, funcionalidade_codigo, permitido }) => ({
@@ -447,6 +457,25 @@ function AdminPlanos() {
             updated_at: new Date().toISOString(),
           }, { onConflict: "clinica_id,funcionalidade_codigo" });
         if (error) throw error;
+      }
+      // Exceções precisam ter o mesmo efeito nos módulos protegidos pelo SQL.
+      if (modo === "plano") {
+        const { error: erroBanco } = await (supabaseBanco as any)
+          .from("oricse_clinica_funcionalidade_excecoes")
+          .delete().eq("clinica_id", clinicaSelecionada).eq("funcionalidade_codigo", codigo);
+        if (erroBanco) throw new Error(erroBanco.message);
+      } else {
+        const { error: erroBanco } = await (supabaseBanco as any)
+          .from("oricse_clinica_funcionalidade_excecoes")
+          .upsert({
+            clinica_id: clinicaSelecionada,
+            funcionalidade_codigo: codigo,
+            permitido: modo === "liberar",
+            motivo: "Exceção configurada pelo Admin ORICSE",
+            criado_por: usuarioAtual || null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "clinica_id,funcionalidade_codigo" });
+        if (erroBanco) throw new Error(erroBanco.message);
       }
       const { data, error } = await (supabase as any)
         .from("oricse_clinica_funcionalidade_excecoes")
