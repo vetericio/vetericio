@@ -87,7 +87,6 @@ function AdminPlanos() {
   const [alteracoesPendentes, setAlteracoesPendentes] = useState<Record<string, boolean>>({});
   const [busca, setBusca] = useState("");
   const [areaCatalogo, setAreaCatalogo] = useState<"beneficios" | "tecnico">("beneficios");
-  const [mostrarLegados, setMostrarLegados] = useState(false);
   const [buscaClinica, setBuscaClinica] = useState("");
   const [grupoFiltro, setGrupoFiltro] = useState("todos");
   const [apenasDiferencas, setApenasDiferencas] = useState(false);
@@ -182,7 +181,7 @@ function AdminPlanos() {
   }, []);
 
   // Une módulos cadastrados às operações reais utilizadas pelos cargos.
-  const planosVisiveis = mostrarLegados ? planos : planos.filter((p) => p.codigo.endsWith("-2026"));
+  const planosVisiveis = planos.filter((p) => p.codigo.endsWith("-2026"));
   const catalogo = useMemo<ItemCatalogo[]>(() => {
     const codigos = new Set(funcionalidades.map((f) => f.codigo));
     const modulos: ItemCatalogo[] = funcionalidades
@@ -533,7 +532,6 @@ function AdminPlanos() {
             className={`rounded-xl px-4 py-2.5 text-sm font-bold ${areaCatalogo==="tecnico"?"bg-primary text-primary-foreground":"border bg-background"}`}>
             Permissões técnicas dos módulos
           </button>
-          <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={mostrarLegados} onChange={(e)=>setMostrarLegados(e.target.checked)}/> Exibir planos antigos</label>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[210px] flex-[2_1_280px]">
