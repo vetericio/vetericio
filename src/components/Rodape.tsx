@@ -11,7 +11,13 @@ export function Rodape() {
         Oricse - Soluções para o mercado pet
       </p>
       <p className="mt-1 text-[9px] leading-relaxed text-muted-foreground/80">
-        Desenvolvido por DIRCE Tecnologia — Desenvolvimento, Inovação, Resultados, Conectividade e Evolução — e Veterício Serviços Veterinários LTDA.
+        Desenvolvido por:
+      </p>
+      <p className="text-[9px] leading-relaxed text-muted-foreground/80">
+        DIRCE Tecnologia — Desenvolvimento, Inovação, Resultados, Conectividade e Evolução Tecnologia LTDA.
+      </p>
+      <p className="text-[9px] leading-relaxed text-muted-foreground/80">
+        Veterício Serviços Veterinários LTDA.
       </p>
       <p className="mt-1 text-center text-[9px] text-muted-foreground/70">
         © {anoAtual} · Versão {VERSAO}
