@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BadgeCheck, Building2, Clock3, PackagePlus, Save, Stethoscope } from "lucide-react";
+import { BadgeCheck, Building2, Clock3, PackagePlus, Save, Stethoscope, ExternalLink, PawPrint } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -263,6 +263,15 @@ function PerfilClinica() {
         </div>
       </section>
 
+      {(adminGeral || perfil?.papel === "admin_clinica") && <section className="mt-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <PawPrint className="mt-1 text-primary" size={22}/>
+            <div><h2 className="text-lg font-bold">Portal do Tutor</h2><p className="mt-1 max-w-xl text-sm text-muted-foreground">Personalize a identidade visual da sua clínica, os serviços, horários, documentos, comunicações e pagamentos disponíveis aos tutores. A demonstração do ORICSE permanece independente.</p></div>
+          </div>
+          <Link to="/configurar-portal-tutor" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Administrar portal <ExternalLink size={16}/></Link>
+        </div>
+      </section>}
       <section className="mt-4 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <Stethoscope className="mt-0.5 text-primary" size={21} />
