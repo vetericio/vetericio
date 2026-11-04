@@ -186,6 +186,7 @@ function PerfilClinica() {
         </div>
       </section>
 
+      {adminGeral && (
       <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -198,6 +199,7 @@ function PerfilClinica() {
           <Link to="/mercado-pago-clinica" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Configurar Mercado Pago</Link>
         </div>
       </section>
+      )}
 
       <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
