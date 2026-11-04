@@ -3,4 +3,4 @@
  * O segundo número é a quantidade acumulada de rodadas de alterações.
  * Ao concluir uma nova rodada, some 1 ao segundo número.
  */
-export const VERSAO = "2.59";
+export const VERSAO = "3.60";
