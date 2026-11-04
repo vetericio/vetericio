@@ -197,7 +197,6 @@ exception when exclusion_violation then
 end;
 $$;
 
-
     ) s order by slot
   loop
     v_inicio:=v_slot at time zone a.timezone;
@@ -314,4 +313,3 @@ exception when exclusion_violation then
   raise exception 'Este horário acabou de ser ocupado. Escolha outro.' using errcode='23P01';
 end;
 $$;
-
