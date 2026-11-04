@@ -1106,13 +1106,19 @@ function Admin() {
           no catálogo oficial, com comparação e histórico.
         </p>
       </div>
-      <Link to="/admin-planos"
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">
-        <BadgeDollarSign size={19}/> Abrir gerenciador geral de planos
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link to="/admin-planos"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">
+          <BadgeDollarSign size={19}/> Abrir gerenciador geral de planos
+        </Link>
+        <Link to="/admin-cupons"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-background px-5 py-3 text-sm font-bold">
+          <BadgeDollarSign size={19}/> Abrir gerenciador de cupons
+        </Link>
+      </div>
       <p className="text-xs text-muted-foreground">
-        Caminho: Admin Geral → Planos → Gerenciador geral. As clínicas
-        visualizam seu próprio plano em Configurações → Meu plano.
+        Caminho: Admin Geral → Planos → Gerenciador geral ou Gerenciador de cupons.
+        As clínicas visualizam seu próprio plano em Configurações → Meu plano.
       </p>
     </div>
   </Card>;
