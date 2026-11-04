@@ -4,5 +4,5 @@ export const Route = createFileRoute("/rh")({ component: RecursosHumanos });
 function RecursosHumanos(){
  const {hash}=useLocation();
  const aba=hash.replace(/^#/,"");
- return <Estoque area="rh" abaInicial={aba==="equipe"||aba==="pagamentos"?aba:"comissoes"}/>;
+ return <Estoque area="rh" abaInicial={aba==="equipe"||aba==="comissoes"||aba==="pagamentos"?aba:"pagamentos"}/>;
 }
