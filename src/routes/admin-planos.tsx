@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Check, LockKeyhole, Save, ShieldCheck, Users, Search, RotateCcw, GitCompare, Plus, Eye, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin-planos")({ component: AdminPlanos });
 
@@ -20,6 +20,7 @@ type Plano = {
   descricao: string;
   itens: string[];
   usuarios_inclusos: number;
+  limite_animais: number | null;
   dominio_incluso: boolean;
   ativo: boolean;
   ordem: number;
@@ -125,7 +126,7 @@ function AdminPlanos() {
       }
       setAutorizado(true);
 
-      const [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes] = await Promise.all([
+      const [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes, cotasRes] = await Promise.all([
         (supabase as any).from("oricse_planos").select("*").order("ordem"),
         (supabase as any).from("oricse_funcionalidades").select("codigo,nome,grupo,ordem").eq("ativo", true).order("ordem"),
         (supabase as any).from("oricse_plano_funcionalidades").select("plano_id,funcionalidade_codigo,permitido"),
@@ -133,12 +134,20 @@ function AdminPlanos() {
         (supabase as any).from("oricse_clinica_funcionalidade_excecoes").select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em"),
         (supabase as any).from("oricse_permissoes").select("codigo,nome,grupo,descricao,funcionalidade_codigo,ordem").eq("ativo",true).order("ordem"),
         (supabase as any).from("oricse_planos_auditoria").select("id,usuario_id,data,tipo,alteracoes").order("data",{ascending:false}).limit(40),
+        (supabaseBanco as any).from("oricse_planos_limites").select("plano_codigo,limite_animais"),
       ]);
-      for (const resposta of [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes]) {
+      for (const resposta of [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes, cotasRes]) {
         if (resposta.error) throw resposta.error;
       }
 
-      const planosDados = (planosRes.data || []).map((p: any) => ({ ...p, itens: Array.isArray(p.itens) ? p.itens : [] })) as Plano[];
+      const cotas = new Map<string, number | null>(
+        (cotasRes.data || []).map((c: any) => [String(c.plano_codigo), c.limite_animais == null ? null : Number(c.limite_animais)]),
+      );
+      const planosDados = (planosRes.data || []).map((p: any) => ({
+        ...p,
+        itens: Array.isArray(p.itens) ? p.itens : [],
+        limite_animais: cotas.get(String(p.codigo)) ?? null,
+      })) as Plano[];
       const mapa: Matriz = {};
       for (const item of matrizRes.data || []) {
         (mapa[item.plano_id] ??= {})[item.funcionalidade_codigo] = Boolean(item.permitido);
@@ -287,6 +296,10 @@ function AdminPlanos() {
   async function salvarPlano(plano: Plano) {
     setSalvando(`plano:${plano.id}`);
     try {
+      const limite = plano.limite_animais;
+      if (limite !== null && (!Number.isInteger(limite) || limite < 1 || limite > 1000000)) {
+        throw new Error("Informe uma quantidade de 1 a 1.000.000 de animais ou escolha Ilimitado.");
+      }
       const { error } = await (supabase as any)
         .from("oricse_planos")
         .update({
@@ -308,7 +321,18 @@ function AdminPlanos() {
         .eq("id", plano.id);
       if (error) throw error;
 
-      toast.success(`${plano.nome} salvo. Permissões são publicadas separadamente na matriz central.`);
+      // Cotas têm uma única fonte de verdade no PostgreSQL. A regra do banco
+      // bloqueia criação acima do limite para todos os funcionários da clínica.
+      const { error: erroCota } = await (supabaseBanco as any)
+        .from("oricse_planos_limites")
+        .upsert({
+          plano_codigo: plano.codigo,
+          plano_nome: plano.nome.trim(),
+          limite_animais: limite,
+          atualizado_em: new Date().toISOString(),
+        }, { onConflict: "plano_codigo" });
+      if (erroCota) throw new Error("Dados comerciais salvos, mas o limite de animais não foi atualizado: " + erroCota.message);
+      toast.success(`${plano.nome} e seu limite coletivo de animais foram salvos.`);
       await carregar();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o plano.");
@@ -537,6 +561,43 @@ function AdminPlanos() {
               <label className="text-xs font-bold">Usuários incluídos<div className="mt-1 flex h-[74px] items-center rounded-xl border bg-background px-3"><Users size={17} className="mr-2 text-muted-foreground"/><input type="number" min={1} value={plano.usuarios_inclusos} onChange={(e) => alterarPlano(plano.id,"usuarios_inclusos",Math.max(1,Number(e.target.value)||1))} className="w-full bg-transparent text-sm outline-none"/></div></label>
               <div className="text-xs font-bold">Opções<div className="mt-1 flex h-[74px] flex-col justify-center gap-2 rounded-xl border bg-background px-3 text-sm font-normal"><label className="flex items-center gap-2"><input type="checkbox" checked={plano.dominio_incluso} onChange={(e)=>alterarPlano(plano.id,"dominio_incluso",e.target.checked)}/> Domínio incluído</label><label className="flex items-center gap-2"><input type="checkbox" checked={plano.ativo} onChange={(e)=>alterarPlano(plano.id,"ativo",e.target.checked)}/> Plano ativo</label></div></div>
             </div>
+            <section className="mt-4 rounded-xl border bg-secondary/20 p-4">
+              <h3 className="text-sm font-bold">Limite de animais do plano</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                É um limite único por clínica: todos os funcionários compartilham a mesma quantidade.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className={`min-w-0 rounded-xl border-2 p-3 transition-colors ${plano.limite_animais !== null ? "border-primary bg-background" : "border-border bg-card"}`}>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-bold">
+                    <input type="radio" name={`cota-animal-${plano.id}`}
+                      checked={plano.limite_animais !== null}
+                      onChange={() => alterarPlano(plano.id, "limite_animais", 50)}
+                      className="accent-primary"/>
+                    Quantidade definida
+                  </label>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input type="number" aria-label={`Quantidade de animais do plano ${plano.nome}`}
+                      min={1} max={1000000} step={1}
+                      disabled={plano.limite_animais === null}
+                      value={plano.limite_animais ?? 50}
+                      onChange={(e) => alterarPlano(plano.id, "limite_animais", e.target.value === "" ? 0 : Number(e.target.value))}
+                      className="min-w-0 w-full rounded-lg border bg-background px-3 py-2 text-base font-bold disabled:opacity-50"/>
+                    <span className="text-xs font-semibold">animais</span>
+                  </div>
+                </div>
+                <label className={`flex min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-3 text-sm font-bold transition-colors ${plano.limite_animais === null ? "border-primary bg-background" : "border-border bg-card"}`}>
+                  <input type="radio" name={`cota-animal-${plano.id}`}
+                    checked={plano.limite_animais === null}
+                    onChange={() => alterarPlano(plano.id, "limite_animais", null)}
+                    className="accent-primary"/>
+                  Ilimitado
+                </label>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ao atingir o limite, novos animais não poderão ser cadastrados. Os animais existentes
+                permanecem acessíveis e editáveis; a regra vale para todos os usuários desta clínica.
+              </p>
+            </section>
             <label className="mt-3 block text-xs font-bold">Itens comerciais exibidos na página pública<textarea rows={4} value={plano.itens.join("\n")} onChange={(e)=>alterarPlano(plano.id,"itens",e.target.value.split("\n").map((x)=>x.trim()).filter(Boolean))} className="mt-1 w-full rounded-xl border bg-background p-3 text-sm font-normal"/></label>
 
             <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
