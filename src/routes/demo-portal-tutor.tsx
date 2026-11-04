@@ -113,7 +113,7 @@ function DemoPortalTutor(){
   </div>
   <div className="mx-auto flex max-w-[1550px]">
    <aside className={`${menuAberto?"fixed inset-y-14 left-0 z-40 w-72 shadow-2xl":"hidden"} w-64 shrink-0 border-r border-[#eee5e0] bg-white p-4 lg:sticky lg:top-14 lg:block lg:h-[calc(100vh-3.5rem)] lg:overflow-auto`}>
-    <div className="mb-5 rounded-2xl bg-[#f9f2ee] p-4"><div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#956274]">Minha clínica</div><div className="font-bold">Clínica Bem-Estar Pet</div><div className="text-xs text-[#86777c]">Portal personalizado da clínica</div></div>
+    <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#f9f2ee] p-4"><img src="/clinica-bem-estar-demo.svg" alt="Logo da Clínica Bem-Estar Pet" className="h-14 w-14 shrink-0 rounded-xl object-contain"/><div className="min-w-0 font-bold leading-snug">Clínica Bem-Estar Pet</div></div>
     <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-[#a09095]">Navegação</div>
     <nav className="space-y-1">{menu.slice(0,5).map(m=><button key={m.id} onClick={()=>navegar(m.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold ${aba===m.id?"bg-[#f4e5e9] text-[#69283d]":"text-[#685a61] hover:bg-[#faf5f2]"}`}><m.icon size={19}/>{m.label}{aba===m.id&&<ChevronRight size={14} className="ml-auto"/>}</button>)}
     <button onClick={()=>setMaisAberto(v=>!v)} aria-expanded={maisAberto} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#685a61] hover:bg-[#faf5f2]"><Menu size={19}/>Mais serviços<ChevronRight size={15} className={`ml-auto transition-transform ${maisAberto?"rotate-90":""}`}/></button>
