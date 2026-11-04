@@ -90,6 +90,13 @@ const ROTAS_CADASTRADAS: readonly PaginaOricse[] = [
     "dinamica": false
   },
   {
+    "original": "/admin-cupons",
+    "nome": "Gerenciador de cupons",
+    "grupo": "Administração ORICSE",
+    "editavel": false,
+    "dinamica": false
+  },
+  {
     "original": "/admin-planos",
     "nome": "Administração de planos",
     "grupo": "Administração ORICSE",
@@ -521,6 +528,6 @@ export const ROTAS_EDITAVEIS = ROTAS_CATALOGO.filter((r) => r.editavel);
 export const ORIGINAIS_EDITAVEIS = new Set(ROTAS_EDITAVEIS.map((r) => r.original));
 export const CAMINHOS_RESERVADOS = new Set([
   ...ROTAS_CATALOGO.map((r) => r.original),
-  "/api", "/pet", "/vet", "/admin", "/admin-canvas", "/admin-planos",
+  "/api", "/pet", "/vet", "/admin", "/admin-canvas", "/admin-cupons", "/admin-planos",
   "/admin-conteudo", "/admin-solicitacoes", "/configuracoes"
 ]);
