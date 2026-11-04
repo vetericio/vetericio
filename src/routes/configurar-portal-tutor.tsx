@@ -248,6 +248,7 @@ function ConfigurarPortalTutor() {
           ← Portal do Tutor
         </Link>
         <h1 className="mt-3 text-2xl font-bold">Configurar Portal do Tutor</h1>
+        <Link to="/demo-portal-tutor" className="mt-4 inline-flex items-center rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">👁 Visualizar protótipo navegável do tutor</Link>
         <p className="text-sm text-muted-foreground">
           Personalização da clínica {nome}. Disponível ao RT, responsável e Admin geral.
         </p>
