@@ -22,12 +22,12 @@ function CalendarioTutor({compromissos,abrirDetalhes}:{compromissos:CompromissoD
  const proximos=[...compromissos].sort((a,b)=>a.dataISO.localeCompare(b.dataISO)||a.hora.localeCompare(b.hora));
  const formatar=(iso:string)=>iso.split("-").reverse().join("/");
  const selecionados=selecionado?proximos.filter(a=>a.dataISO===selecionado):[];
- return <section className="max-w-xl rounded-3xl border border-[#eee8e4] bg-white p-4 shadow-sm sm:p-5">
+ return <section className="w-full rounded-3xl border border-[#eee8e4] bg-white p-4 shadow-sm sm:p-5">
   <h2 className="mb-3 text-lg font-extrabold">Minha agenda</h2>
   <div className="space-y-1.5" aria-label="Próximos compromissos">
    {proximos.length===0?<p className="text-sm text-[#81767b]">Nenhum compromisso agendado.</p>:proximos.slice(0,5).map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="flex w-full items-center gap-2 rounded-lg border border-[#efe8e5] px-3 py-2 text-left text-sm hover:bg-[#faf4f6]"><span className="shrink-0 font-bold text-[#702a43]">DIA {formatar(a.dataISO)}</span><span className="min-w-0 flex-1 truncate">– {a.pet.toUpperCase()} – {a.tipo}</span><ChevronRight className="shrink-0 text-[#9b7a86]" size={15}/></button>)}
   </div>
-  <div className="mt-4 max-w-sm rounded-xl border border-[#efe8e5] p-3">
+  <div className="mt-4 w-full rounded-xl border border-[#efe8e5] p-3 sm:p-4">
    <div className="mb-2 flex items-center justify-between gap-2"><button aria-label="Mês anterior" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button><span className="text-sm font-bold capitalize">{mesTexto}</span><button aria-label="Próximo mês" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()+1,1))}>›</button></div>
    <div className="grid grid-cols-7 gap-0.5">{["S","T","Q","Q","S","S","D"].map((d,i)=><span key={i} className="py-1 text-center text-[10px] font-bold text-[#958a8f]">{d}</span>)}
     {dias.map((dia,i)=>dia===null?<span key={"v"+i}/>:<button key={i} aria-label={`Dia ${dia}`} onClick={()=>setSelecionado(`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)} className={`relative flex h-9 flex-col items-center justify-center rounded-md text-xs font-semibold ${selecionado===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`?"bg-[#702a43] text-white":"hover:bg-[#f7e9ee]"}`}><span>{dia}</span>{proximos.some(a=>a.dataISO===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)&&<span className={`absolute bottom-0.5 h-1 w-1 rounded-full ${selecionado===`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`?"bg-white":"bg-[#702a43]"}`}/>}</button>)}
