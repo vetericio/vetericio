@@ -104,7 +104,7 @@ function DemoPortalTutor(){
  const [perfilDados,setPerfilDados]=useState({nome:"Mariana Oliveira",email:"mariana@exemplo.com",telefone:"(31) 99999-0000",notificacoes:true});
  const [perfilEdicao,setPerfilEdicao]=useState(perfilDados);
  const [filtro,setFiltro]=useState("");const [servico,setServico]=useState("Consulta veterinária");const [data,setData]=useState("2026-11-12");const [hora,setHora]=useState("09:30");const [petAgendar,setPetAgendar]=useState("Lua");const [agendados,setAgendados]=useState(compromissos);
- const [avisos,setAvisos]=useState(["O reforço da vacina da Lua está próximo.","Seu exame de sangue já está disponível."]);const [mensagem,setMensagem]=useState("");const [conversa,setConversa]=useState([{autor:"Clínica",texto:"Olá! Seja bem-vindo ao nosso portal. Como podemos ajudar?"}]);const [favorito,setFavorito]=useState(false);
+ const [avisos,setAvisos]=useState(["O reforço da vacina da Lua está próximo.","Seu exame de sangue já está disponível."]);const [favorito,setFavorito]=useState(false);
  const selecionado=useMemo(()=>pets.find(p=>p.id===pet)||pets[0],[pet]);
  const servicosDoDia=(agendaPublicadaDemo[data]||[]).filter(a=>a.horarios.some(h=>!agendados.some(x=>x.dataISO===data&&x.hora===h)));
  const agendaSelecionada=servicosDoDia.find(a=>a.servico===servico);
