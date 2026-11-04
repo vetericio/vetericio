@@ -23,7 +23,7 @@ const agendaPublicadaDemo:Record<string,Array<{servico:string;profissional:strin
  "2026-12-21":[{servico:"Banho",profissional:"Equipe de Banho e Tosa",horarios:["08:30","10:30"],pagamento:false}]
 };
 
-function CalendarioTutor({compromissos,abrirDetalhes,agendarDia}:{compromissos:CompromissoDemo[];abrirDetalhes:(c:CompromissoDemo)=>void;agendarDia:(data:string)=>void}){
+function CalendarioTutor({compromissos,abrirDetalhes,agendarDia,mostrarCalendario=true}:{compromissos:CompromissoDemo[];abrirDetalhes:(c:CompromissoDemo)=>void;agendarDia:(data:string)=>void;mostrarCalendario?:boolean}){
  const [mes,setMes]=useState(new Date(2026,11,1));
  const [selecionado,setSelecionado]=useState<string|null>(null);
  const inicio=new Date(mes.getFullYear(),mes.getMonth(),1).getDay();
@@ -35,10 +35,25 @@ function CalendarioTutor({compromissos,abrirDetalhes,agendarDia}:{compromissos:C
  const selecionados=selecionado?proximos.filter(a=>a.dataISO===selecionado):[];
  return <section className="w-full rounded-3xl border border-[#eee8e4] bg-white p-4 shadow-sm sm:p-5">
   <h2 className="mb-3 text-lg font-extrabold">Minha agenda</h2>
-  <div className="space-y-1.5" aria-label="Próximos compromissos">
-   {proximos.length===0?<p className="text-sm text-[#81767b]">Nenhum compromisso agendado.</p>:proximos.slice(0,5).map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="flex w-full items-center gap-2 rounded-lg border border-[#efe8e5] px-3 py-2 text-left text-sm hover:bg-[#faf4f6]"><span className="shrink-0 font-bold text-[#702a43]">DIA {formatar(a.dataISO)}</span><span className="min-w-0 flex-1 truncate">– {a.pet.toUpperCase()} – {a.tipo} – {a.profissional}</span><ChevronRight className="shrink-0 text-[#9b7a86]" size={15}/></button>)}
+  <div className="space-y-2" aria-label="Próximos compromissos">
+   {proximos.length===0?<p className="rounded-xl bg-[#faf7f4] p-4 text-sm text-[#81767b]">Nenhum compromisso agendado.</p>:proximos.slice(0,mostrarCalendario?5:8).map((a,i)=>{
+    const diaSemana=new Date(a.dataISO+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long"});
+    return <button key={i} type="button" onClick={()=>abrirDetalhes(a)} className="flex w-full min-w-0 items-center gap-3 rounded-2xl border border-[#efe8e5] bg-white p-3 text-left transition hover:border-[#d5b1bf] hover:bg-[#faf4f6] sm:gap-4 sm:p-4">
+      <div className="flex w-[110px] shrink-0 flex-col gap-1 border-r border-[#eadfe2] pr-2 sm:w-[150px] sm:pr-4">
+       <span className="text-xs font-extrabold capitalize leading-tight text-[#702a43] sm:text-sm">{diaSemana}</span>
+       <span className="text-sm font-bold tabular-nums text-[#352730]">{formatar(a.dataISO)}</span>
+       <span className="inline-flex w-fit items-center gap-1 rounded-md bg-[#f3e1e8] px-2 py-1 text-xs font-bold tabular-nums text-[#702a43]"><Clock3 size={12}/>{a.hora}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+       <span className="block text-sm font-extrabold text-[#30252b]">{a.pet} · {a.tipo}</span>
+       <span className="mt-1 block text-xs text-[#786e73]">{a.profissional}</span>
+       <span className="mt-1 block text-xs font-semibold text-[#702a43]">{a.status}</span>
+      </div>
+      <ChevronRight className="shrink-0 text-[#9b7a86]" size={18}/>
+     </button>;
+   })}
   </div>
-  <div className="mt-4 w-full overflow-hidden rounded-xl border border-[#eadfe2]">
+  {mostrarCalendario&&<div className="mt-4 w-full overflow-hidden rounded-xl border border-[#eadfe2]">
    <div className="flex items-center justify-between gap-2 border-b border-[#eadfe2] bg-[#faf6f7] px-3 py-3">
     <button aria-label="Mês anterior" className="rounded-lg px-3 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button>
     <span className="text-sm font-bold">{mesTexto.charAt(0).toUpperCase()+mesTexto.slice(1)}</span>
@@ -66,8 +81,8 @@ function CalendarioTutor({compromissos,abrirDetalhes,agendarDia}:{compromissos:C
       </div>;
     })}
    </div>
-  </div>
-  {selecionado&&<div className="mt-3 text-xs text-[#71666a]"><b>{formatar(selecionado)}:</b> {selecionados.length?selecionados.map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="ml-2 font-semibold text-[#702a43] underline">{a.hora} · {a.pet} · {a.tipo}<span className="block text-[9px] font-normal sm:text-[11px]">{a.profissional}</span></button>):"Nenhum compromisso."}</div>}
+  </div>}
+  {mostrarCalendario&&selecionado&&<div className="mt-3 text-xs text-[#71666a]"><b>{formatar(selecionado)}:</b> {selecionados.length?selecionados.map((a,i)=><button key={i} onClick={()=>abrirDetalhes(a)} className="ml-2 font-semibold text-[#702a43] underline">{a.hora} · {a.pet} · {a.tipo}<span className="block text-[9px] font-normal sm:text-[11px]">{a.profissional}</span></button>):"Nenhum compromisso."}</div>}
  </section>;
 }
 
@@ -132,7 +147,7 @@ function DemoPortalTutor(){
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><div className="mb-1 text-xs font-bold uppercase tracking-widest text-[#a16b7b]">Portal do Tutor / {titulo}</div><h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{aba==="inicio"?"Olá, Mariana! 👋":titulo}</h1>{aba==="inicio"&&<p className="mt-1 text-sm text-[#83757a]">Tudo o que seus pets precisam, em um só lugar.</p>}</div></div>
     {aba==="inicio"&&<>
       <section className="mb-5 rounded-3xl bg-[#702a43] px-5 py-6 text-white sm:px-7"><p className="text-xs font-semibold text-[#efced9]">Clínica Bem-Estar Pet</p><h2 className="mt-1 text-xl font-extrabold sm:text-2xl">Como podemos cuidar dos seus pets hoje?</h2><p className="mt-2 text-sm text-[#f0d9df]">Agende um serviço ou acompanhe os próximos cuidados.</p></section>
-      <div className="mb-5"><CalendarioTutor compromissos={agendados} abrirDetalhes={a=>aviso(a.tipo+" — "+a.pet+" — "+a.profissional+" às "+a.hora+". Status: "+a.status+".")} agendarDia={iso=>{const primeira=(agendaPublicadaDemo[iso]||[]).find(a=>a.horarios.some(h=>!agendados.some(x=>x.dataISO===iso&&x.hora===h)));if(!primeira)return;setData(iso);setServico(primeira.servico);setHora(primeira.horarios.find(h=>!agendados.some(x=>x.dataISO===iso&&x.hora===h))||"");setModal("agendar")}}/></div>
+      <div className="mb-5"><CalendarioTutor mostrarCalendario={false} compromissos={agendados} abrirDetalhes={a=>aviso(a.tipo+" — "+a.pet+" — "+a.profissional+" às "+a.hora+". Status: "+a.status+".")} agendarDia={iso=>{const primeira=(agendaPublicadaDemo[iso]||[]).find(a=>a.horarios.some(h=>!agendados.some(x=>x.dataISO===iso&&x.hora===h)));if(!primeira)return;setData(iso);setServico(primeira.servico);setHora(primeira.horarios.find(h=>!agendados.some(x=>x.dataISO===iso&&x.hora===h))||"");setModal("agendar")}}/></div>
       <section className={card+" mb-5 p-5"}><div className="mb-4 flex items-center justify-between"><h2 className="text-base font-extrabold">Meus pets</h2><button className="text-sm font-semibold text-[#702a43]" onClick={()=>navegar("pets")}>Ver fichas →</button></div><div className="flex flex-wrap gap-3">{pets.map(p=><button key={p.id} onClick={()=>{setPet(p.id);navegar("pets")}} className="flex min-w-[120px] flex-1 items-center gap-3 rounded-2xl border border-[#f0e6e3] p-3 text-left hover:bg-[#faf5f2]"><span className="flex h-12 w-12 items-center justify-center rounded-xl text-3xl" style={{background:p.cor}}>{p.emoji}</span><span><b className="block text-sm">{p.nome}</b><span className="text-xs text-[#81777b]">{p.idade}</span></span></button>)}</div></section>
       {avisos.length>0&&<section className={card+" mb-5 p-5"}><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Bell size={19} className="text-[#702a43]"/><h2 className="font-extrabold">Atenção aos cuidados</h2><span className="rounded-full bg-[#f8e9ee] px-2 py-0.5 text-xs font-bold">{avisos.length}</span></div><button className="text-sm font-semibold text-[#702a43]" onClick={()=>navegar("saude")}>Saúde e vacinas →</button></div><div className="mt-3 space-y-2">{avisos.slice(0,2).map((a,i)=><div key={i} className="flex items-start gap-3 rounded-xl bg-[#fbf7f1] p-3 text-sm"><span className="min-w-0 flex-1">{a}</span><button aria-label="Dispensar aviso" onClick={()=>setAvisos(avisos.filter((_,j)=>j!==i))}><X size={16}/></button></div>)}</div></section>}
       <section className={card+" p-5"}><div className="mb-4"><h2 className="text-base font-extrabold">O que você procura?</h2><p className="mt-1 text-xs text-[#81777b]">As demais informações ficam organizadas por assunto.</p></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[{t:"Vacinas e saúde",i:Heart,a:"saude"},{t:"Exames e receitas",i:FileText,a:"documentos"},{t:"Banho e tosa",i:Scissors,a:"banho"},{t:"Pagamentos",i:Wallet,a:"financeiro"}].map(x=><button key={x.t} onClick={()=>navegar(x.a as Aba)} className="flex min-h-28 flex-col items-start justify-between gap-3 rounded-2xl border border-[#eee8e4] p-4 text-left text-sm font-semibold hover:bg-[#f9f1ee]"><x.i size={22} className="text-[#702a43]"/>{x.t}</button>)}</div><button className="mt-4 text-sm font-semibold text-[#702a43]" onClick={()=>setMaisAberto(v=>!v)}>{maisAberto?"Ocultar outros serviços":"Ver todos os serviços"} →</button>{maisAberto&&<div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{[{t:"Hotelzinho",a:"hotel"},{t:"Mensagens",a:"mensagens"},{t:"Meu perfil",a:"perfil"},{t:"Meus pets",a:"pets"}].map(x=><button key={x.t} onClick={()=>navegar(x.a as Aba)} className="rounded-xl bg-[#faf7f4] p-3 text-left text-sm font-semibold">{x.t} →</button>)}</div>}</section>
