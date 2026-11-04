@@ -1465,8 +1465,6 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
   const liquido = taxasCalculadas.liquido;
   const taxaRepassada = Math.max(0, valorCobradoTutor - valorInformado);
   const taxaFinal = valorCobradoTutor > 0 ? ((descontoMp + comissaoOricse) / valorCobradoTutor) * 100 : 0;
-cse);
-  const taxaFinal = centavos > 0 ? ((descontoMp + comissaoOricse) / centavos) * 100 : 0;
   const referencia = globais.find((linha) => linha.fonte_url)?.referencia_verificada_em;
   const todosSelecionados = segmentosSelecionados.length === SEGMENTOS_DISPONIVEIS.length;
 
