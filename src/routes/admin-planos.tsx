@@ -336,6 +336,32 @@ function AdminPlanos() {
         .eq("id", plano.id);
       if (error) throw error;
 
+      // O checkout do Mercado Pago consulta o catálogo no PostgreSQL.
+      // Mantém preço, descrição, ativação e usuários sincronizados com o Admin,
+      // mas somente para os novos planos — contratos antigos ficam intactos.
+      if (plano.codigo.endsWith("-2026")) {
+        const { error: erroCheckout } = await (supabaseBanco as any)
+          .from("oricse_planos")
+          .update({
+            nome: plano.nome.trim(),
+            publico_alvo: plano.publico_alvo,
+            descricao: plano.descricao,
+            preco: plano.preco_mensal,
+            preco_mensal: plano.preco_mensal,
+            preco_trimestral: plano.preco_trimestral,
+            preco_semestral: plano.preco_semestral,
+            preco_anual: plano.preco_anual,
+            preco_bienal: plano.preco_bienal,
+            itens: plano.itens,
+            usuarios_inclusos: Math.max(1, Number(plano.usuarios_inclusos) || 1),
+            dominio_incluso: plano.dominio_incluso,
+            ativo: plano.ativo,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("codigo", plano.codigo);
+        if (erroCheckout) throw new Error("Plano salvo, mas o checkout não foi sincronizado: "+erroCheckout.message);
+      }
+
       // Cotas têm uma única fonte de verdade no PostgreSQL. A regra do banco
       // bloqueia criação acima do limite para todos os funcionários da clínica.
       const { error: erroCota } = await (supabaseBanco as any)
