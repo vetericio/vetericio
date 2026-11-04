@@ -1443,7 +1443,8 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
 
   const clinicaSelecionada = clinicas.find((clinica) => clinica.id === clinicaId);
   const linhaSimulada = linhas.find((linha) => chaveTaxa(linha) === chaveSimulacao) || linhasVisiveis[0];
-  const comissaoSimulada = comissoes  const valorInformado = Math.round(Number(valorSimulacao.replace(/\./g, "").replace(",", ".")) * 100) || 0;
+  const comissaoSimulada = comissoes.find((linha) => linha.segmento === segmentoSimulacao && chaveTaxa(linha) === chaveSimulacao);
+  const valorInformado = Math.round(Number(valorSimulacao.replace(/\./g, "").replace(",", ".")) * 100) || 0;
   const percentualMp = Number(linhaSimulada?.mp_percentual || 0) / 100;
   const fixoMp = Number(linhaSimulada?.mp_fixo_centavos || 0);
   const percentualOricse = comissaoSimulada?.ativo ? Number(comissaoSimulada.oricse_percentual || 0) / 100 : 0;
