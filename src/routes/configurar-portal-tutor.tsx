@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 export const Route = createFileRoute("/configurar-portal-tutor")({
   component: ConfigurarPortalTutor,
 });
@@ -87,6 +88,8 @@ const inicial: Config = {
 };
 function ConfigurarPortalTutor() {
   const [marcaAdmin, setMarcaAdmin] = useState(false);
+  const [canais, setCanais] = useState<CanaisClinica>({});
+  const [salvandoCanais, setSalvandoCanais] = useState(false);
   const [salvandoMarca, setSalvandoMarca] = useState(false);
   const [marca, setMarca] = useState({nome_exibicao:"",logo_clinica_url:"",logo_cabecalho_url:"",titulo_cabecalho:"PORTAL DO TUTOR",subtitulo_cabecalho:"Acompanhe seus pets, agende serviços e acesse documentos em um só lugar."});
   const [extras, setExtras] = useState<Extra>(extrasIniciais),
@@ -117,6 +120,7 @@ function ConfigurarPortalTutor() {
         // A RPC valida permissões no servidor. Apenas admins recebem acesso.
         const marcaResposta=await (supabaseBanco as any).rpc("oricse_portal_marca_admin",{p_clinica_id:clinicaAtiva.clinica_id});
         if(!marcaResposta.error){setMarcaAdmin(true);setMarca(m=>({...m,...marcaResposta.data}));}
+        if(!marcaResposta.error){const contatos=await (supabaseBanco as any).rpc("oricse_portal_contatos_admin",{p_clinica_id:clinicaAtiva.clinica_id});if(!contatos.error)setCanais(contatos.data||{});}
 
         const [c, r] = await Promise.all([
           supabaseBanco
@@ -184,6 +188,17 @@ function ConfigurarPortalTutor() {
     if (error) throw error;
     setAgendas(data.agendas || []);
     setPromos(data.promocoes || []);
+  }
+  async function salvarCanais(){
+    if(!marcaAdmin||!clinica)return;
+    setSalvandoCanais(true);
+    try{
+      const sanitizado=Object.fromEntries(Object.entries(canais).map(([k,v])=>[k,String(v||"").trim()]));
+      const {data,error}=await (supabaseBanco as any).rpc("oricse_portal_contatos_admin",{p_clinica_id:clinica,p_canais:sanitizado});
+      if(error)throw error;
+      setCanais(data||{});toast.success("Contatos e redes sociais atualizados no portal da clínica.");
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar os canais.");}
+    finally{setSalvandoCanais(false);}
   }
   async function salvarExtras() {
     setSalvandoExtra(true);
@@ -284,6 +299,7 @@ function ConfigurarPortalTutor() {
           <a href="#conteudo-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Contatos, boas-vindas e seções</a>
           <a href="#agendas-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Agendas e horários publicados</a>
           <a href="#marketing-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Marketing, banners e promoções</a>
+          <a href="#contatos-portal" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Fale com a Clínica · redes sociais</a>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Link to="/configurar-agenda-online" className="rounded-xl border p-3 text-sm font-semibold hover:bg-secondary">Profissionais, disponibilidade e regras de pagamento ↗</Link>
@@ -298,6 +314,19 @@ function ConfigurarPortalTutor() {
         {([["nome_exibicao","Nome exibido da clínica"],["logo_clinica_url","URL HTTPS da logo da clínica"],["logo_cabecalho_url","URL HTTPS da logo do topo (deixe vazio para usar ORICSE)"],["titulo_cabecalho","Título do topo"],["subtitulo_cabecalho","Frase abaixo do título"]] as const).map(([key,label])=><label key={key} className="block text-sm font-semibold">{label}<input className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" value={marca[key]||""} onChange={e=>setMarca(m=>({...m,[key]:e.target.value}))} maxLength={key.includes("url")?1000:key==="subtitulo_cabecalho"?300:160}/></label>)}
         <div className="flex items-center gap-3 rounded-xl bg-secondary/30 p-3">{marca.logo_clinica_url&&<img src={marca.logo_clinica_url} alt="Prévia da logo" className="h-14 w-14 rounded-lg object-contain"/>}<strong>{marca.nome_exibicao||nome}</strong></div>
         <button disabled={salvandoMarca} onClick={()=>void salvarMarca()} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{salvandoMarca?"Salvando…":"Salvar identidade do portal"}</button>
+      </section>}
+      {!busy&&!erro&&marcaAdmin&&<section id="contatos-portal" className="space-y-4 rounded-2xl border bg-card p-5">
+        <div><h2 className="text-lg font-bold">Fale com a Clínica</h2><p className="text-sm text-muted-foreground">Somente o administrador altera os canais publicados no Portal do Tutor. O WhatsApp fica em destaque; campos vazios ficam ocultos para o tutor.</p></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+         {([
+          ["whatsapp","WhatsApp (com DDD)"],["instagram","Instagram — URL HTTPS"],["facebook","Facebook — URL HTTPS"],
+          ["x","X / Twitter — URL HTTPS"],["tiktok","TikTok — URL HTTPS"],["youtube","YouTube — URL HTTPS"],
+          ["linkedin","LinkedIn — URL HTTPS"],["site","Site oficial — URL HTTPS"],["email","E-mail"],
+          ["telefone","Telefone"],["endereco","Endereço"],["horario","Horário de atendimento"]
+         ] as Array<[keyof CanaisClinica,string]>).map(([k,rotulo])=><label key={k} className="text-sm font-semibold">{rotulo}<input className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" maxLength={400} value={canais[k]||""} onChange={e=>setCanais(v=>({...v,[k]:e.target.value}))} placeholder={["instagram","facebook","x","tiktok","youtube","linkedin","site"].includes(k)?"https://":undefined}/></label>)}
+        </div>
+        <button disabled={salvandoCanais} type="button" onClick={()=>void salvarCanais()} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{salvandoCanais?"Salvando…":"Salvar canais de contato"}</button>
+        <div><h3 className="mb-3 font-bold">Prévia do tutor</h3><PortalClinicContact canais={canais} demonstracao/></div>
       </section>}
       {busy ? (
         <p>Carregando configurações…</p>
