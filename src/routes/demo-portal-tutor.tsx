@@ -15,7 +15,7 @@ type CompromissoDemo={data:string;dataISO:string;hora:string;pet:string;tipo:str
 function CalendarioTutor({compromissos,abrirDetalhes}:{compromissos:CompromissoDemo[];abrirDetalhes:(c:CompromissoDemo)=>void}){
  const [mes,setMes]=useState(new Date(2026,11,1));
  const [selecionado,setSelecionado]=useState<string|null>(null);
- const inicio=(new Date(mes.getFullYear(),mes.getMonth(),1).getDay()+6)%7;
+ const inicio=new Date(mes.getFullYear(),mes.getMonth(),1).getDay();
  const total=new Date(mes.getFullYear(),mes.getMonth()+1,0).getDate();
  const dias=[...Array(inicio).fill(null),...Array.from({length:total},(_,i)=>i+1)];
  const mesTexto=mes.toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
@@ -29,7 +29,7 @@ function CalendarioTutor({compromissos,abrirDetalhes}:{compromissos:CompromissoD
   </div>
   <div className="mt-4 w-full rounded-xl border border-[#efe8e5] p-3 sm:p-4">
    <div className="mb-2 flex items-center justify-between gap-2"><button aria-label="Mês anterior" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()-1,1))}>‹</button><span className="text-sm font-bold capitalize">{mesTexto}</span><button aria-label="Próximo mês" className="rounded-lg px-2 py-1 font-bold text-[#702a43] hover:bg-[#f7e9ee]" onClick={()=>setMes(new Date(mes.getFullYear(),mes.getMonth()+1,1))}>›</button></div>
-   <div className="grid grid-cols-7 gap-0.5">{["S","T","Q","Q","S","S","D"].map((d,i)=><span key={i} className="py-1 text-center text-[10px] font-bold text-[#958a8f]">{d}</span>)}
+   <div className="grid grid-cols-7 gap-0.5">{["D","S","T","Q","Q","S","S"].map((d,i)=><span key={i} className="py-1 text-center text-[10px] font-bold text-[#958a8f]">{d}</span>)}
     {dias.map((dia,i)=>{
       if(dia===null)return <span key={"v"+i}/>;
       const iso=`${mes.getFullYear()}-${String(mes.getMonth()+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
