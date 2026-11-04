@@ -78,6 +78,7 @@ function DemoPortalTutor(){
  const [demoSenha,setDemoSenha]=useState("");
  const [maisAberto,setMaisAberto]=useState(false);
  const [mostrarSenha,setMostrarSenha]=useState(false);
+ const [recuperarDemo,setRecuperarDemo]=useState(false);
  const [aba,setAba]=useState<Aba>("inicio");const [pet,setPet]=useState<number|null>(null);const [modal,setModal]=useState("");const [menuAberto,setMenuAberto]=useState(false);
  const [perfilDados,setPerfilDados]=useState({nome:"Mariana Oliveira",email:"mariana@exemplo.com",telefone:"(31) 99999-0000",notificacoes:true});
  const [perfilEdicao,setPerfilEdicao]=useState(perfilDados);
@@ -97,13 +98,19 @@ function DemoPortalTutor(){
  if(!demoAutorizada) return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4] px-4 py-10 text-[#342732]" style={{fontFamily:"Inter, ui-sans-serif, system-ui"}}>
   <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-[#eadfda] bg-white shadow-[0_15px_60px_rgba(60,25,40,.09)]">
    <div className="bg-[#702a43] px-7 py-8 text-white"><img src="/oricse-logo-oryx.svg" alt="Símbolo ORICSE" className="mb-4 h-16 w-16 rounded-xl bg-white p-1.5 object-contain"/><h1 className="text-2xl font-extrabold tracking-wide">PORTAL DO TUTOR</h1><p className="mt-2 text-sm leading-relaxed text-[#f4dce4]">Acompanhe seus pets, agende serviços e acesse documentos em um só lugar.</p></div>
-   <form className="space-y-5 p-7" onSubmit={e=>{e.preventDefault();if(demoUsuario.trim()&&demoSenha.trim()){setDemoAutorizada(true);setDemoSenha("");}}}>
+   {recuperarDemo?<div className="space-y-4 p-7">
+      <h2 className="text-xl font-extrabold text-[#702a43]">Esqueci minha senha</h2>
+      <p className="text-sm leading-relaxed text-[#6b5d62]">No portal real, a recuperação de senha é feita com validação dos dados do tutor e do animal vinculado à clínica.</p>
+      <div className="rounded-2xl border border-[#ead7b4] bg-[#fff8ea] p-4 text-sm text-[#765528]">Esta é uma demonstração. Não informe CPF, data de nascimento ou senhas verdadeiras. Aqui, qualquer usuário e senha permitem entrar.</div>
+      <button type="button" className="w-full rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white" onClick={()=>setRecuperarDemo(false)}>Voltar ao login</button>
+    </div>:<form className="space-y-5 p-7" onSubmit={e=>{e.preventDefault();if(demoUsuario.trim()&&demoSenha.trim()){setDemoAutorizada(true);setDemoSenha("");}}}>
     <div className="rounded-2xl border border-[#ead7b4] bg-[#fff8ea] p-4 text-sm leading-relaxed text-[#765528]"><b>Ambiente de demonstração.</b> Digite qualquer usuário e qualquer senha para entrar. Não use suas senhas verdadeiras: nada é validado, salvo ou enviado.</div>
     <label className="block text-sm font-bold">Usuário ou e-mail<input required autoComplete="off" value={demoUsuario} onChange={e=>setDemoUsuario(e.target.value)} placeholder="Digite qualquer usuário" className="mt-2 w-full rounded-xl border border-[#e6d9d7] bg-white px-4 py-3 font-normal outline-none focus:border-[#702a43]"/></label>
     <label className="block text-sm font-bold">Senha<div className="mt-2 flex overflow-hidden rounded-xl border border-[#e6d9d7] focus-within:border-[#702a43]"><input required autoComplete="off" type={mostrarSenha?"text":"password"} value={demoSenha} onChange={e=>setDemoSenha(e.target.value)} placeholder="Digite qualquer senha" className="min-w-0 flex-1 px-4 py-3 font-normal outline-none"/><button type="button" className="px-4 text-xs font-semibold text-[#702a43]" onClick={()=>setMostrarSenha(!mostrarSenha)}>{mostrarSenha?"Ocultar":"Mostrar"}</button></div></label>
+    <div className="flex justify-end"><button type="button" onClick={()=>setRecuperarDemo(true)} className="text-sm font-semibold text-[#702a43] underline underline-offset-4 hover:text-[#572038]">Esqueci minha senha</button></div>
     <button type="submit" className="w-full rounded-xl bg-[#702a43] px-5 py-3.5 font-bold text-white hover:bg-[#572038]">Entrar no portal <ArrowRight size={17} className="ml-1 inline"/></button>
     <p className="text-center text-xs text-[#8d7d83]">Acesso fictício • Sem cadastro • Sem dados reais</p>
-   </form>
+   </form>}
   </div>
  </main>;
  return <div className="min-h-screen bg-[#faf7f4] text-[#312830]" style={{fontFamily:"Inter, ui-sans-serif, system-ui"}}>
