@@ -88,9 +88,9 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     if (area === "estoque" && podeGerenciarCatalogo) lista.push(["cadastro", "Adicionar valores"]);
     if (area === "estoque" && (podeVerCatalogo || podeMovimentarEstoque)) lista.push(["estoque", "Estoque"]);
     if (area === "rh" && podeVerPagamentos) {
-      lista.push(["comissoes", "Comissões"]);
-      lista.push(["equipe", "Remuneração da equipe"]);
-      lista.push(["pagamentos", "Pagamento da equipe"]);
+      lista.push(["comissoes", "Comissões da equipe"]);
+      lista.push(["equipe", "Comissões por colaborador"]);
+      lista.push(["pagamentos", "Jornada"]);
     }
     return lista;
   }, [area, podeGerenciarCatalogo, podeMovimentarEstoque, podeVerCatalogo, podeVerPagamentos]);
@@ -371,8 +371,10 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Perfil da clínica</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">Serviços, produtos e comissões</h1>
-          <p className="mt-1 text-sm text-muted-foreground">A tela mostra e libera somente as ações autorizadas para este usuário.</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">{area === "rh" ? "Recursos humanos" : "Serviços, produtos e estoque"}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{area === "rh"
+            ? "Jornada, comissões e pagamentos da equipe, separados por atividade."
+            : "Serviços e produtos com as ações permitidas para este usuário."}</p>
         </div>
       </header>
 
@@ -476,7 +478,8 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       {aba === "comissoes" && podeVerPagamentos && (
         <section className="space-y-4">
           <div className="rounded-xl border bg-card p-4">
-            <h2 className="font-bold">Regras de comissão</h2>
+            <h2 className="font-bold">Comissões da equipe</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Defina as comissões gerais por serviço, produto e dia da semana.</p>
             {podeGerenciarPagamentos ? (
               <form onSubmit={salvarRegra} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_120px_auto]">
                 <select value={regraItemId} onChange={(event) => setRegraItemId(event.target.value)} className="h-10 min-w-0 rounded-lg border bg-background px-2 text-sm">
@@ -521,7 +524,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       {aba === "equipe" && podeVerPagamentos && (
         <section className="space-y-4">
           <div className="rounded-xl border bg-card p-4">
-            <h2 className="font-bold">Percentual por funcionário e serviço</h2>
+            <h2 className="font-bold">Comissões por colaborador</h2>
             <p className="mt-1 text-xs text-muted-foreground">Remuneração percentual por atendimento e funcionário.</p>
             {podeGerenciarPagamentos ? (
               <form onSubmit={salvarRemuneracao} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_110px_auto]">
@@ -756,7 +759,7 @@ function PagamentoEquipe({ clinicaId, profissionais, itens, podeGerenciar }: {cl
 
   return <section className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><h2 className="text-xl font-bold">Pagamento da equipe</h2><p className="text-sm text-muted-foreground">{podeGerenciar ? "Visualização e gestão liberadas para este usuário." : "Acesso somente para visualização."}</p></div>
+      <div><h2 className="text-xl font-bold">Jornada e pagamentos da equipe</h2><p className="text-sm text-muted-foreground">{podeGerenciar ? "Visualização e gestão liberadas para este usuário." : "Acesso somente para visualização."}</p></div>
       <label className="text-xs font-semibold">Competência<input type="month" value={mes} max={mesAtualPagamento()} onChange={e=>setMes(e.target.value)} className="mt-1 block h-10 rounded-lg border bg-background px-3 text-sm" /></label>
     </div>
     <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
