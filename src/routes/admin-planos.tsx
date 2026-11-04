@@ -241,17 +241,54 @@ function AdminPlanos() {
     setPlanos((lista) => lista.map((p) => p.id === id ? { ...p, [campo]: valor } as Plano : p));
   }
 
-  function alterarFuncionalidade(planoId: string, codigo: string, permitido: boolean) {
+  // A matriz do Admin Geral nunca desabilita controles comerciais.
+  function aplicarMudancas(planoId: string, codigos: string[], permitido: boolean) {
+    const unicos = [...new Set(codigos)];
     setMatriz((atual) => ({
       ...atual,
-      [planoId]: { ...(atual[planoId] || {}), [codigo]: permitido },
+      [planoId]: {
+        ...(atual[planoId] || {}),
+        ...Object.fromEntries(unicos.map((codigo) => [codigo, permitido])),
+      },
     }));
-    setAlteracoesPendentes((atual) => ({ ...atual, [planoId + ":" + codigo]: true }));
+    setAlteracoesPendentes((atual) => ({
+      ...atual,
+      ...Object.fromEntries(unicos.map((codigo) => [planoId + ":" + codigo, true])),
+    }));
+  }
+
+  function alterarFuncionalidade(planoId: string, codigo: string, permitido: boolean) {
+    const item = catalogo.find((f) => f.codigo === codigo);
+    const pai = permitido && item?.tipo === "acao" && item.pai && !matriz[planoId]?.[item.pai]
+      ? item.pai : null;
+    if (pai) {
+      const plano = planos.find((p) => p.id === planoId)?.nome || "selecionado";
+      if (!window.confirm(
+        "Este módulo está bloqueado na venda. Deseja desbloquear?\n\n" +
+        "Plano: " + plano + "\nMódulo: " +
+        (catalogo.find((f) => f.codigo === pai)?.nome || pai) +
+        "\n\nIsso liberará o módulo e a ação selecionada para todas as clínicas deste plano. " +
+        "A alteração só será aplicada depois de clicar em Salvar alterações.",
+      )) return;
+    }
+    aplicarMudancas(planoId, pai ? [pai, codigo] : [codigo], permitido);
   }
 
   function alterarGrupo(planoId: string, itens: ItemCatalogo[], permitir: boolean) {
-    if (!window.confirm((permitir ? "Liberar" : "Bloquear") + " " + itens.length + " recursos deste grupo no plano selecionado?")) return;
-    for (const item of itens) alterarFuncionalidade(planoId, item.codigo, permitir);
+    const plano = planos.find((p) => p.id === planoId)?.nome || "selecionado";
+    if (!window.confirm((permitir ? "Liberar" : "Bloquear") + " " + itens.length +
+      " recursos deste grupo no plano " + plano + "?")) return;
+    const paisBloqueados = permitir
+      ? [...new Set(itens.filter((item) => item.tipo === "acao" && item.pai &&
+        !matriz[planoId]?.[item.pai]).map((item) => item.pai as string))]
+      : [];
+    if (paisBloqueados.length && !window.confirm(
+      "Estes módulos estão bloqueados na venda. Deseja desbloquear?\n\n" +
+      paisBloqueados.map((codigo) => "• " + (catalogo.find((f) => f.codigo === codigo)?.nome || codigo)).join("\n") +
+      "\n\nA alteração valerá para todas as clínicas do plano " + plano +
+      " após salvar. Você pode cancelar sem modificar nada.",
+    )) return;
+    aplicarMudancas(planoId, [...itens.map((item) => item.codigo), ...paisBloqueados], permitir);
   }
 
   async function salvarMatriz() {
@@ -522,7 +559,7 @@ function AdminPlanos() {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            Os benefícios controlam a oferta comercial; as permissões técnicas determinam acesso efetivo aos módulos. Para uma funcionalidade específica ficar realmente bloqueada, confira também a permissão técnica correspondente.
+            Todos os controles estão disponíveis para o Admin. Ao tentar liberar uma ação de módulo bloqueado na venda, você decide se deseja desbloquear a oferta comercial para o plano.
           </p>
           <div className="flex gap-2">
             <button type="button" onClick={() => { if (chavesPendentes.length && !window.confirm("Descartar mudanças ainda não salvas?")) return; void carregar(); }}
@@ -734,12 +771,11 @@ function FragmentoGrupo({
         return <td key={plano.id} className="px-3 py-2 text-center">
           <label className="inline-flex cursor-pointer flex-col items-center gap-1">
             <input type="checkbox" aria-label={item.nome+" — "+plano.nome}
-              disabled={item.tipo==="acao" && !paiLiberado}
               checked={checked}
               onChange={(e)=>alterarFuncionalidade(plano.id,item.codigo,e.target.checked)}
               className="h-5 w-5 accent-primary"/>
             <span className="text-[10px] text-muted-foreground">
-              {item.tipo==="acao" && !paiLiberado ? "Módulo bloqueado" :
+              {item.tipo==="acao" && !paiLiberado ? "Bloqueado na venda · pode liberar" :
                 !explicita ? "Herdado / pendente" : checked ? "Liberado" : "Bloqueado"}
             </span>
           </label>
