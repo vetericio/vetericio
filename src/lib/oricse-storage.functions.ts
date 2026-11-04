@@ -161,6 +161,30 @@ export async function salvarEstadoOricseInterno(data: z.infer<typeof salvarSchem
   const { contexto, estado } = await lerEstado(data.accessToken);
   if (!contexto.clinicaId) return { ok: true, quantidade: 0 };
   await validarAlteracoesPorPlano(data.accessToken, contexto, data.alteracoes);
+  // A lista JSON legada também não pode adicionar animais acima da cota.
+  // Compara IDs anteriores e novos; editar pacientes existentes continua permitido.
+  for (const alteracao of data.alteracoes) {
+    if (alteracao.chave !== "oricse-animais-v1" || alteracao.valor === null) continue;
+    const lerIds = (json: string | undefined): string[] => {
+      if (!json) return [];
+      let dados: unknown;
+      try { dados = JSON.parse(json); } catch { throw new Error("Lista de animais inválida."); }
+      if (!Array.isArray(dados)) throw new Error("Lista de animais inválida.");
+      return dados.map((animal: any) => String(animal?.id || "")).filter(Boolean);
+    };
+    const anteriores = lerIds(estado[alteracao.chave]);
+    const atuais = lerIds(alteracao.valor);
+    const anterioresSet = new Set(anteriores);
+    const novos = atuais.filter((id) => !anterioresSet.has(id));
+    if (novos.length && contexto.clinicaId) {
+      const { validarCotaAnimaisClinica } = await import("@/lib/cota-animais.server");
+      await validarCotaAnimaisClinica({
+        clinicaId: contexto.clinicaId,
+        existentes: anteriores,
+        propostos: novos,
+      });
+    }
+  }
   validarVersaoEstado(estado, data.alteracoes);
   for (const alteracao of data.alteracoes) {
     if (alteracao.valor === null) delete estado[alteracao.chave];
