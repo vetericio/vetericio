@@ -764,46 +764,48 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           if (!pt || !(await featureAllowed(pt.clinica_id, "portal_tutor.agendamento_online")))
             throw new Error("Agendamento online indisponível no plano atual.");
           const { data: agenda, error } = await fromDrive("oricse_agendas_online")
-            .select("*")
-            .eq("id", args.p_agenda_id)
-            .eq("clinica_id", pt.clinica_id)
-            .eq("portal_ativo", true)
-            .maybeSingle();
+            .select("*").eq("id", args.p_agenda_id).eq("clinica_id", pt.clinica_id)
+            .eq("portal_ativo", true).maybeSingle();
           if (error) throw error;
           if (!agenda) throw new Error("Agenda indisponível.");
           const data = String(args.p_data);
-          const dow = new Date(`${data}T12:00:00Z`).getUTCDay();
-          if (!Array.isArray(agenda.dias_semana) || !agenda.dias_semana.map(Number).includes(dow))
+          if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(data)) throw new Error("Data inválida.");
+          const dow = new Date(data+"T12:00:00Z").getUTCDay();
+          const regra = String(agenda.portal_regra_dias || "semanal");
+          if (regra === "semanal" &&
+              (!Array.isArray(agenda.dias_semana) || !agenda.dias_semana.map(Number).includes(dow)))
             return { data: [], error: null };
-          const { data: ocupados } = await fromDrive("oricse_agendamentos_online")
-            .select("inicio,fim,estado")
-            .eq("clinica_id", pt.clinica_id)
-            .eq("agenda_id", agenda.id);
-          const lista: Array<{ inicio: string; fim: string; rotulo: string }> = [];
-          for (
-            let m = minutosHora(agenda.inicio);
-            m + Number(agenda.intervalo_min) <= minutosHora(agenda.fim);
-            m += Number(agenda.intervalo_min)
-          ) {
-            const rotulo = hhmm(m),
-              inicio = localParaIso(data, rotulo, agenda.timezone || "America/Sao_Paulo"),
-              fim = new Date(
-                new Date(inicio).getTime() + Number(agenda.intervalo_min) * 60000,
-              ).toISOString();
-            if (
-              new Date(inicio).getTime() <
-              Date.now() + Number(agenda.antecedencia_horas || 0) * 3600000
-            )
-              continue;
-            const conflita = (ocupados || []).some(
-              (o: any) =>
-                ["solicitado", "reservado", "confirmado"].includes(o.estado) &&
-                new Date(o.inicio).getTime() < new Date(fim).getTime() &&
-                new Date(o.fim).getTime() > new Date(inicio).getTime(),
-            );
-            if (!conflita) lista.push({ inicio, fim, rotulo });
+          if (regra === "pares" && Number(data.slice(-2)) % 2 !== 0)
+            return { data: [], error: null };
+          if (!["semanal","pares","datas"].includes(regra)) return { data: [], error: null };
+          const { data: ocupados, error: erroOcupados } = await fromDrive("oricse_agendamentos_online")
+            .select("inicio,fim,estado,pagamento_expira_em")
+            .eq("clinica_id", pt.clinica_id).eq("agenda_id", agenda.id);
+          if (erroOcupados) throw erroOcupados;
+          const duracao = Number(agenda.intervalo_min);
+          if (!Number.isInteger(duracao) || duracao<5) return { data: [], error: null };
+          const grade: string[] = [];
+          if (regra === "datas") {
+            const definidas = (agenda.portal_datas_horarios || {})[data];
+            if (Array.isArray(definidas)) grade.push(...definidas.filter((h: unknown) => typeof h==="string" && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(h)));
+          } else {
+            for (let m=minutosHora(agenda.inicio);
+                 m+duracao<=minutosHora(agenda.fim);m+=duracao) grade.push(hhmm(m));
           }
-          return { data: lista, error: null };
+          const lista: Array<{ inicio: string; fim: string; rotulo: string }> = [];
+          for (const rotulo of [...new Set(grade)].sort()) {
+            const inicio = localParaIso(data,rotulo,agenda.timezone || "America/Sao_Paulo");
+            const fim = new Date(new Date(inicio).getTime()+duracao*60000).toISOString();
+            if (new Date(inicio).getTime()<Date.now()+Number(agenda.antecedencia_horas||0)*3600000) continue;
+            const conflita = (ocupados||[]).some((o:any)=>
+              (["solicitado","reservado","confirmado"].includes(o.estado) ||
+               (o.estado==="aguardando_pagamento" && o.pagamento_expira_em &&
+                new Date(o.pagamento_expira_em).getTime()>Date.now())) &&
+              new Date(o.inicio).getTime()<new Date(fim).getTime() &&
+              new Date(o.fim).getTime()>new Date(inicio).getTime());
+            if (!conflita) lista.push({inicio,fim,rotulo});
+          }
+          return {data:lista,error:null};
         }
         case "oricse_portal_criar_agendamento": {
           const pt = await portalIdentity();
