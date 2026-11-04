@@ -41,7 +41,7 @@ type PermissaoCatalogada = {
   ordem: number;
 };
 type ItemCatalogo = Funcionalidade & {
-  tipo: "modulo" | "acao";
+  tipo: "modulo" | "acao" | "beneficio";
   descricao: string;
   pai: string | null;
   catalogada: boolean;
@@ -85,6 +85,9 @@ function AdminPlanos() {
   const [historico, setHistorico] = useState<HistoricoAlteracao[]>([]);
   const [alteracoesPendentes, setAlteracoesPendentes] = useState<Record<string, boolean>>({});
   const [busca, setBusca] = useState("");
+  const [areaCatalogo, setAreaCatalogo] = useState<"beneficios" | "tecnico">("beneficios");
+  const [mostrarLegados, setMostrarLegados] = useState(false);
+  const [buscaClinica, setBuscaClinica] = useState("");
   const [grupoFiltro, setGrupoFiltro] = useState("todos");
   const [apenasDiferencas, setApenasDiferencas] = useState(false);
   const [apenasPendentes, setApenasPendentes] = useState(false);
@@ -174,11 +177,12 @@ function AdminPlanos() {
   }, []);
 
   // Une módulos cadastrados às operações reais utilizadas pelos cargos.
+  const planosVisiveis = mostrarLegados ? planos : planos.filter((p) => p.codigo.endsWith("-2026"));
   const catalogo = useMemo<ItemCatalogo[]>(() => {
     const codigos = new Set(funcionalidades.map((f) => f.codigo));
     const modulos: ItemCatalogo[] = funcionalidades
       .filter((f) => !f.codigo.startsWith("acao."))
-      .map((f) => ({ ...f, tipo: "modulo", descricao: "Acesso geral ao módulo.", pai: null, catalogada: true }));
+      .map((f) => ({ ...f, tipo: f.codigo.startsWith("beneficio.") ? "beneficio" : "modulo", descricao: f.codigo.startsWith("beneficio.") ? "Benefício comercial específico do plano; sua funcionalidade também depende das permissões técnicas." : "Acesso geral ao módulo.", pai: null, catalogada: true } as ItemCatalogo));
     const acoes: ItemCatalogo[] = permissoesCatalogadas.map((p) => ({
       codigo: "acao." + p.codigo, nome: p.nome, grupo: p.grupo,
       ordem: p.ordem * 10 + 1, descricao: p.descricao,
@@ -200,12 +204,13 @@ function AdminPlanos() {
   const visiveis = useMemo(() => {
     const texto = busca.trim().toLocaleLowerCase("pt-BR");
     return catalogo.filter((f) =>
-      (grupoFiltro === "todos" || f.grupo === grupoFiltro)
+      (f.tipo === "beneficio") === (areaCatalogo === "beneficios")
+      && (grupoFiltro === "todos" || f.grupo === grupoFiltro)
       && (!apenasPendentes || !f.catalogada || planos.some((p) => matriz[p.id]?.[f.codigo] === undefined))
       && (!apenasDiferencas || new Set(planos.map((p) => valorPlano(p.id, f))).size > 1)
       && (!texto || [f.nome, f.descricao, f.codigo, f.grupo].some((v) => v.toLocaleLowerCase("pt-BR").includes(texto)))
     );
-  }, [catalogo, busca, grupoFiltro, apenasPendentes, apenasDiferencas, planos, matriz]);
+  }, [catalogo, busca, grupoFiltro, areaCatalogo, apenasPendentes, apenasDiferencas, planos, matriz]);
   const grupos = useMemo(() => {
     const mapa = new Map<string, ItemCatalogo[]>();
     for (const item of visiveis) {
@@ -416,13 +421,14 @@ function AdminPlanos() {
       </div>
 
       <h1 className="mt-6 text-3xl font-black tracking-tight">Planos e funcionalidades</h1>
+      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border bg-secondary/30 p-3 text-xs"><span className="font-bold">98 benefícios comerciais configuráveis</span><span className="text-muted-foreground">Quatro planos vigentes com regras individuais por clínica.</span></div>
       <p className="mt-1 max-w-3xl text-sm text-muted-foreground">O plano define o teto de acesso da clínica. O cargo e a permissão individual só funcionam dentro do que o plano libera. Exceções por clínica são controladas exclusivamente pelo Admin ORICSE.</p>
 
       <section className="mt-6 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-black">Catálogo mestre de funcionalidades</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Controle por módulo e por ação. Ações não aprovadas permanecem identificadas como pendentes.</p>
+            <h2 className="text-xl font-black">Catálogo de benefícios e permissões</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Cada um dos 98 benefícios pode ser liberado ou bloqueado por plano. A aba técnica mantém os acessos reais dos módulos e ações.</p>
           </div>
           <button type="button" onClick={() => setNovoPlanoAberto((v) => !v)}
             className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold">
@@ -440,11 +446,22 @@ function AdminPlanos() {
         </div>}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border p-3"><strong className="text-2xl">{catalogo.length}</strong><p className="text-xs text-muted-foreground">Recursos classificados (módulos e ações)</p></div>
+          <div className="rounded-xl border p-3"><strong className="text-2xl">{catalogo.filter((f)=>f.tipo==="beneficio").length}</strong><p className="text-xs text-muted-foreground">Benefícios comerciais configuráveis</p></div>
           <div className="rounded-xl border p-3"><strong className="text-2xl">{quantidadePendentes}</strong><p className="text-xs text-muted-foreground">Aguardando classificação completa</p></div>
           <div className="rounded-xl border p-3"><strong className="text-2xl">{chavesPendentes.length}</strong><p className="text-xs text-muted-foreground">Alterações não salvas</p></div>
         </div>
 
+        <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Tipo de controle de acesso">
+          <button type="button" onClick={()=>{setAreaCatalogo("beneficios");setGrupoFiltro("todos")}}
+            className={`rounded-xl px-4 py-2.5 text-sm font-bold ${areaCatalogo==="beneficios"?"bg-primary text-primary-foreground":"border bg-background"}`}>
+            98 benefícios
+          </button>
+          <button type="button" onClick={()=>{setAreaCatalogo("tecnico");setGrupoFiltro("todos")}}
+            className={`rounded-xl px-4 py-2.5 text-sm font-bold ${areaCatalogo==="tecnico"?"bg-primary text-primary-foreground":"border bg-background"}`}>
+            Permissões técnicas dos módulos
+          </button>
+          <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={mostrarLegados} onChange={(e)=>setMostrarLegados(e.target.checked)}/> Exibir planos antigos</label>
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[210px] flex-[2_1_280px]">
             <Search size={16} className="absolute left-3 top-3 text-muted-foreground"/>
@@ -455,7 +472,7 @@ function AdminPlanos() {
           <select aria-label="Filtrar grupo" value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value)}
             className="min-h-11 max-w-full rounded-xl border bg-background px-3 text-sm">
             <option value="todos">Todos os grupos</option>
-            {[...new Set(catalogo.map((f) => f.grupo))].map((grupo) => <option key={grupo} value={grupo}>{grupo}</option>)}
+            {[...new Set(catalogo.filter((f)=>(f.tipo==="beneficio")===(areaCatalogo==="beneficios")).map((f) => f.grupo))].map((grupo) => <option key={grupo} value={grupo}>{grupo}</option>)}
           </select>
           <label className="inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold">
             <input type="checkbox" checked={apenasDiferencas} onChange={(e)=>setApenasDiferencas(e.target.checked)}/>
@@ -469,7 +486,7 @@ function AdminPlanos() {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            Um controle desligado no módulo limita suas ações. Para registrar uma decisão individual, ative ou desative o controle correspondente.
+            Os benefícios controlam a oferta comercial; as permissões técnicas determinam acesso efetivo aos módulos. Para uma funcionalidade específica ficar realmente bloqueada, confira também a permissão técnica correspondente.
           </p>
           <div className="flex gap-2">
             <button type="button" onClick={() => { if (chavesPendentes.length && !window.confirm("Descartar mudanças ainda não salvas?")) return; void carregar(); }}
@@ -489,7 +506,7 @@ function AdminPlanos() {
             <thead className="sticky top-0 z-10 bg-secondary">
               <tr>
                 <th className="sticky left-0 z-20 min-w-[240px] border-b bg-secondary px-3 py-3">Funcionalidade / ação</th>
-                {planos.map((p) => <th key={p.id} className="min-w-[125px] border-b px-3 py-3 text-center">
+                {planosVisiveis.map((p) => <th key={p.id} className="min-w-[125px] border-b px-3 py-3 text-center">
                   <span className="block font-black">{p.nome}</span>
                   <span className="text-[10px] font-normal text-muted-foreground">
                     {catalogo.filter((f)=>valorPlano(p.id,f)).length} liberadas
@@ -501,9 +518,9 @@ function AdminPlanos() {
               {grupos.map(([grupo,itens]) => <FragmentoGrupo key={grupo} grupo={grupo} itens={itens}
                 fechado={Boolean(gruposFechados[grupo])}
                 onToggle={()=>setGruposFechados((atual)=>({...atual,[grupo]:!atual[grupo]}))}
-                planos={planos} matriz={matriz} valorPlano={valorPlano}
+                planos={planosVisiveis} matriz={matriz} valorPlano={valorPlano}
                 alterarFuncionalidade={alterarFuncionalidade} alterarGrupo={alterarGrupo}/>)}
-              {visiveis.length===0 && <tr><td colSpan={planos.length+1} className="p-6 text-center text-muted-foreground">Nenhum recurso encontrado com estes filtros.</td></tr>}
+              {visiveis.length===0 && <tr><td colSpan={planosVisiveis.length+1} className="p-6 text-center text-muted-foreground">Nenhum recurso encontrado com estes filtros.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -514,7 +531,7 @@ function AdminPlanos() {
             <p className="mt-1 text-xs text-muted-foreground">Prévia somente de leitura; não altera acessos de usuários.</p>
             <select value={planoSimulado} onChange={(e)=>setPlanoSimulado(e.target.value)} className="mt-3 min-h-10 w-full rounded-lg border bg-background px-3 text-sm">
               <option value="">Selecionar plano</option>
-              {planos.map((p)=><option key={p.id} value={p.id}>{p.nome}</option>)}
+              {planosVisiveis.map((p)=><option key={p.id} value={p.id}>{p.nome}</option>)}
             </select>
             {planoSimulado && <div className="mt-3 max-h-36 overflow-y-auto text-xs">
               {catalogo.filter((f)=>valorPlano(planoSimulado,f)).map((f)=><div key={f.codigo} className="py-1">✓ {f.grupo} · {f.nome}</div>)}
@@ -536,7 +553,7 @@ function AdminPlanos() {
       </section>
 
       <section className="mt-7 space-y-5">
-        {planos.map((plano) => {
+        {planosVisiveis.map((plano) => {
           const liberadas = funcionalidades.filter((f) => matriz[plano.id]?.[f.codigo]).length;
           return <article key={plano.id} className="rounded-2xl border bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -616,11 +633,15 @@ function AdminPlanos() {
           <button type="button" disabled={!clinicaAtual || salvando==="limite-clinica"} onClick={() => void salvarLimiteClinica()} className="min-h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">Salvar limite</button>
         </div>
 
-        {clinicaAtual && <div className="mt-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-          {funcionalidades.map((f) => {
+        {clinicaAtual && <div className="mt-5">
+          <input aria-label="Pesquisar recursos por clínica" value={buscaClinica} onChange={(e)=>setBuscaClinica(e.target.value)}
+            placeholder="Pesquisar entre os 98 benefícios da clínica..." className="mb-3 min-h-11 w-full rounded-xl border bg-background px-4 text-sm"/>
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+          {funcionalidades.filter((f)=>f.codigo.startsWith("beneficio.") && (f.nome+" "+f.grupo).toLocaleLowerCase("pt-BR").includes(buscaClinica.toLocaleLowerCase("pt-BR"))).map((f) => {
             const modo = modoExcecao(f.codigo);
             return <article key={f.codigo} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{f.grupo}</p><p className="mt-1 text-sm font-bold">{f.nome}</p></div>{modo!=="plano" && <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${modo==="liberar"?"bg-emerald-100 text-emerald-800":"bg-destructive/10 text-destructive"}`}>{modo==="liberar"?"Liberado":"Bloqueado"}</span>}</div><div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-secondary/50 p-1">{(["plano","liberar","bloquear"] as ModoExcecao[]).map((opcao)=><button key={opcao} type="button" disabled={salvando===`excecao:${f.codigo}`} onClick={()=>void mudarExcecao(f.codigo,opcao)} className={`rounded-md px-2 py-2 text-[11px] font-bold capitalize ${modo===opcao?"bg-background shadow-sm":"text-muted-foreground"}`}>{opcao}</button>)}</div></article>;
           })}
+          </div>
         </div>}
       </section>
 
@@ -666,7 +687,7 @@ function FragmentoGrupo({
         <div className="mt-0.5 text-[10px] text-muted-foreground">{item.codigo}</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">{item.descricao}</div>
         <div className="mt-1 text-[10px] font-semibold text-primary">
-          {item.tipo==="acao" ? "AÇÃO INDIVIDUAL" : "MÓDULO"}
+          {item.tipo==="acao" ? "AÇÃO INDIVIDUAL" : item.tipo==="beneficio" ? "BENEFÍCIO" : "MÓDULO"}
           {!item.catalogada ? " · PENDENTE DE CLASSIFICAÇÃO" : ""}
         </div>
       </th>
