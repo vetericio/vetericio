@@ -1,6 +1,13 @@
+import { BENEFICIOS_ORICSE, NIVEIS_PLANOS, permitidoNoNivel } from "@/lib/beneficios-oricse";
+
 const AGORA = "2026-10-16T00:00:00.000Z";
 
 export const PLANOS_PADRAO = [
+  { id:"3c2a0001-2026-4000-8000-000000000001", codigo:"solo-2026", nome:"Solo", ativo:true, publicado:true, ordem:1, preco:"R$ 49,90", preco_mensal:"R$ 49,90", preco_trimestral:"R$ 139,90", preco_semestral:"R$ 269,90", preco_anual:"R$ 499,00", preco_bienal:"R$ 899,00", publico_alvo:"Veterinários autônomos", descricao:"Para quem atende sozinho e precisa registrar pacientes e emitir documentos clínicos.", dominio_incluso:false, usuarios_inclusos:1, itens:["Até 25 animais","1 usuário","Consultas e prontuários básicos","Receitas, exames e documentos clínicos","Painel e resumo do dia"], created_at:AGORA, updated_at:AGORA },
+  { id:"3c2a0002-2026-4000-8000-000000000002", codigo:"essencial-2026", nome:"Essencial", ativo:true, publicado:true, ordem:2, preco:"R$ 79,90", preco_mensal:"R$ 79,90", preco_trimestral:"R$ 229,90", preco_semestral:"R$ 429,90", preco_anual:"R$ 799,00", preco_bienal:"R$ 1.439,00", publico_alvo:"Consultórios e pequenos negócios", descricao:"Para profissionais que precisam de agenda, prontuário completo e financeiro básico.", dominio_incluso:false, usuarios_inclusos:1, itens:["Até 200 animais","1 usuário","Tudo do Solo","Agenda básica e prontuário completo","Calculadora de medicações e Portal do Tutor"], created_at:AGORA, updated_at:AGORA },
+  { id:"3c2a0003-2026-4000-8000-000000000003", codigo:"profissional-2026", nome:"Profissional", ativo:true, publicado:true, ordem:3, preco:"R$ 119,90", preco_mensal:"R$ 119,90", preco_trimestral:"R$ 339,90", preco_semestral:"R$ 649,90", preco_anual:"R$ 1.199,00", preco_bienal:"R$ 2.159,00", publico_alvo:"Clínicas veterinárias, pet shops, Banho e Tosa e Hotelzinho", descricao:"Operação completa para equipes, internação, estoque, RH e todos os serviços pet.", dominio_incluso:false, usuarios_inclusos:3, destaque:true, itens:["Até 1.000 animais","3 usuários","Tudo do Essencial","Internação, Banho e Tosa e Hotelzinho","Estoque, Financeiro, RH, ponto e comissões"], created_at:AGORA, updated_at:AGORA },
+  { id:"3c2a0004-2026-4000-8000-000000000004", codigo:"master-2026", nome:"Master", ativo:true, publicado:true, ordem:4, preco:"R$ 199,90", preco_mensal:"R$ 199,90", preco_trimestral:"R$ 569,90", preco_semestral:"R$ 1.079,90", preco_anual:"R$ 1.999,00", preco_bienal:"R$ 3.599,00", publico_alvo:"Negócios que precisam de todos os recursos e personalização", descricao:"Tudo do Profissional com CRM avançado, campanhas, relatórios e personalização.", dominio_incluso:true, usuarios_inclusos:5, itens:["Animais ilimitados","5 usuários","Tudo do Profissional","CRM avançado, campanhas e automações","Domínio personalizado e personalização sob medida","Fidelidade mínima de 12 meses"], created_at:AGORA, updated_at:AGORA },
+
   { id:"f54385a7-954e-4c8f-977d-8aecc17115b2", codigo:"essencial", nome:"Essencial", ativo:true, ordem:1, preco:"R$ 49,90", preco_mensal:"R$ 49,90", preco_anual:"R$ 499,00", publico_alvo:"Veterinários que atendem em domicílio", descricao:"Bom para veterinários que atendem em domicílio", dominio_incluso:false, usuarios_inclusos:1, itens:["Cadastro de animais e tutores","Anamnese e prontuários","Receituário e PDFs clínicos"], created_at:AGORA, updated_at:AGORA },
   { id:"5dc9dc2c-00d0-448a-9354-43f3bc692413", codigo:"plus-clinica", nome:"Plus (Clínica)", ativo:true, ordem:2, preco:"R$ 99,90", preco_mensal:"R$ 99,90", preco_anual:"R$ 999,00", publico_alvo:"Pet shops e clínicas", descricao:"Bom para petshops e clínicas", dominio_incluso:false, usuarios_inclusos:3, itens:["Logo da sua clínica","3 usuários inclusos","Consultório e recepção","Financeiro e caixa","Serviços e estoque","Portal do tutor"], created_at:AGORA, updated_at:AGORA },
   { id:"7f20fd38-2353-4886-941d-c29d5cd74fc3", codigo:"master-equipe", nome:"Master (Equipe)", ativo:true, ordem:3, preco:"R$ 199,90", preco_mensal:"R$ 199,90", preco_anual:"R$ 1.999,00", publico_alvo:"Equipes e clínicas", descricao:"Para equipes e clínicas que precisam de um sistema sob medida", dominio_incluso:true, usuarios_inclusos:5, itens:["Tudo que o sistema oferece","Personalização: ajustamos o sistema à sua necessidade","www.suaclinica.com.br","5 usuários inclusos","Portal do tutor"], created_at:AGORA, updated_at:AGORA },
@@ -9,6 +16,8 @@ export const PLANOS_PADRAO = [
 export const FUNCIONALIDADES_PADRAO = [
   ["atividade.ponto","Registro de atividade e ponto","Atividade",10],["recepcao.agenda","Agenda e fila de espera","Recepção",20],["recepcao.cadastros","Cadastro de tutores e animais","Recepção",21],["consultorio.atendimentos","Consultas e prontuários","Consultório",30],["consultorio.medicacoes","Calculadora de medicações","Consultório",31],["consultorio.receituario","Receituário","Consultório",32],["internacao.painel","Painel de internação","Internação",40],["internacao.medicacoes","Medicações na internação","Internação",41],["internacao.plantoes","Plantões e histórico","Internação",42],["caixa.financeiro","Financeiro e caixa","Caixa",50],["caixa.comandas","Comandas","Caixa",51],["estoque.catalogo","Catálogo de produtos e serviços","Estoque",60],["estoque.movimentar","Movimentações de estoque","Estoque",61],["equipe.pagamentos","Pagamento da equipe","Equipe",70],["crm.inteligente","CRM inteligente","CRM",75],["administracao.site","Site da clínica","Administração",80],["administracao.temas","Temas","Administração",81],["hotelzinho.modulo","Hotelzinho","Hotelzinho",85],["portal_tutor.acesso","Portal do tutor","Portal do tutor",89],["portal_tutor.agendamento_online","Agendamento online do tutor","Portal do tutor",90],
 ].map(([codigo,nome,grupo,ordem])=>({codigo,nome,grupo,ordem,ativo:true}));
+
+export const BENEFICIOS_CATALOGO = BENEFICIOS_ORICSE.map(b => ({ codigo:b.codigo, nome:b.nome, grupo:b.grupo, ordem:b.ordem, ativo:true }));
 
 const PERMISSOES = [
   ["atividade.ponto","Ponto e atividade","Atividade","Registrar e consultar a própria jornada.","atividade.ponto",10],
@@ -69,7 +78,15 @@ export const PERMITIDAS_POR_PAPEL:Record<string,string[]>={
 };
 export const PERMISSOES_PAPEL_PADRAO=Object.entries(PERMITIDAS_POR_PAPEL).flatMap(([papel,permitidas])=>PERMISSOES_PADRAO.map(p=>({papel,permissao_codigo:p.codigo,permitido:permitidas.includes(p.codigo)})));
 
+const BASE_2026 = ["administracao.temas","consultorio.atendimentos","consultorio.receituario","recepcao.cadastros"];
+const ESSENCIAL_2026 = [...BASE_2026,"recepcao.agenda","consultorio.medicacoes","caixa.financeiro","portal_tutor.acesso"];
+const PROFISSIONAL_2026 = [...ESSENCIAL_2026,"internacao.painel","internacao.medicacoes","internacao.plantoes","caixa.comandas","estoque.catalogo","estoque.movimentar","atividade.ponto","equipe.pagamentos","crm.inteligente","administracao.site","hotelzinho.modulo","portal_tutor.agendamento_online"];
 export const FUNCIONALIDADES_POR_PLANO:Record<string,string[]>={
+  "solo-2026":BASE_2026,
+  "essencial-2026":ESSENCIAL_2026,
+  "profissional-2026":PROFISSIONAL_2026,
+  "master-2026":FUNCIONALIDADES_PADRAO.map(f=>String(f.codigo)),
+
   essencial:["administracao.temas","consultorio.atendimentos","consultorio.receituario","recepcao.cadastros"],
   "plus-clinica":["administracao.temas","atividade.ponto","caixa.comandas","caixa.financeiro","consultorio.atendimentos","consultorio.medicacoes","consultorio.receituario","estoque.catalogo","estoque.movimentar","portal_tutor.acesso","portal_tutor.agendamento_online","recepcao.agenda","recepcao.cadastros"],
   "master-equipe":FUNCIONALIDADES_PADRAO.map(f=>String(f.codigo)),
@@ -77,7 +94,14 @@ export const FUNCIONALIDADES_POR_PLANO:Record<string,string[]>={
 export const PLANO_FUNCIONALIDADES_PADRAO=PLANOS_PADRAO.flatMap(plano=>[
   ...FUNCIONALIDADES_PADRAO.map(f=>({plano_id:plano.id,funcionalidade_codigo:String(f.codigo),permitido:FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(f.codigo))||false})),
   ...PERMISSOES_PADRAO.map(p=>({plano_id:plano.id,funcionalidade_codigo:"acao."+String(p.codigo),
-    permitido:ACOES_LEGADAS.has(String(p.codigo)) && (!p.funcionalidade_codigo || Boolean(FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(p.funcionalidade_codigo))))})),
+    permitido:ACOES_LEGADAS.has(String(p.codigo)) &&
+      (!NIVEIS_PLANOS.includes(plano.codigo as any) || !["administracao.usuarios","administracao.permissoes"].includes(String(p.codigo)) || NIVEIS_PLANOS.indexOf(plano.codigo as any) >= 2) &&
+      (!p.funcionalidade_codigo || Boolean(FUNCIONALIDADES_POR_PLANO[plano.codigo]?.includes(String(p.funcionalidade_codigo))))})),
+  ...BENEFICIOS_CATALOGO.map(b=>({plano_id:plano.id,funcionalidade_codigo:b.codigo,
+    permitido: NIVEIS_PLANOS.includes(plano.codigo as any)
+      ? permitidoNoNivel(b.codigo,NIVEIS_PLANOS.indexOf(plano.codigo as any))
+      : true})),
+
 ]);
 
 export const CLINICAS_PADRAO=[
@@ -109,7 +133,7 @@ function comIds(nome: string, lista: any[]): any[] {
 export function seedTabela(nome:string):any[]{
   switch(nome){
     case "oricse_planos": return structuredClone(PLANOS_PADRAO);
-    case "oricse_funcionalidades": return comIds(nome,structuredClone([...FUNCIONALIDADES_PADRAO,...ACOES_PADRAO]));
+    case "oricse_funcionalidades": return comIds(nome,structuredClone([...FUNCIONALIDADES_PADRAO,...ACOES_PADRAO,...BENEFICIOS_CATALOGO]));
     case "oricse_permissoes": return comIds(nome,structuredClone(PERMISSOES_PADRAO));
     case "oricse_permissoes_papel": return comIds(nome,structuredClone(PERMISSOES_PAPEL_PADRAO));
     case "oricse_plano_funcionalidades": return comIds(nome,structuredClone(PLANO_FUNCIONALIDADES_PADRAO));
