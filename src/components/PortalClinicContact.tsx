@@ -1,4 +1,4 @@
-import { ArrowUpRight, Clock3, ExternalLink, Globe2, Instagram, Linkedin, Mail, MapPin, MessageCircle, Phone, Youtube } from "lucide-react";
+import { ArrowUpRight, Clock3, Globe2, Instagram, Linkedin, Mail, MapPin, MessageCircle, Phone, Youtube } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type CanaisClinica = {
@@ -48,7 +48,7 @@ export function PortalClinicContact({canais,demonstracao=false}:{canais:CanaisCl
   {chave:"linkedin",nome:"LinkedIn",icone:<Linkedin size={27}/>,acao:"Abrir LinkedIn"},
   {chave:"site",nome:"Site oficial",icone:<Globe2 size={27}/>,acao:"Acessar site"}
  ] as const;
- const redes=sociais.map(s=>({...s,url:linkHttps(canais[s.chave])})).filter((s):s is typeof s & {url:string}=>Boolean(s.url));
+ const redes=sociais.map(s=>({...s,url:linkHttps(canais[s.chave])})).filter((s):s is (typeof sociais)[number] & {url:string}=>Boolean(s.url));
  const email=emailUrl(canais.email), telefone=telefoneUrl(canais.telefone), mapa=mapaUrl(canais.endereco);
  const possuiCanal=Boolean(whats||redes.length||email||telefone||mapa||limpar(canais.horario));
  return <section className="space-y-7 rounded-3xl border border-[#eadfe2] bg-white p-5 sm:p-8">
