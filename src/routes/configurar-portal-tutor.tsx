@@ -95,7 +95,7 @@ function ConfigurarPortalTutor() {
     [promo, setPromo] = useState<Promo>(promoVazia),
     [salvandoExtra, setSalvandoExtra] = useState(false);
   const [slug, setSlug] = useState(""),
-  const [clinica, setClinica] = useState(""),
+    [clinica, setClinica] = useState(""),
     [nome, setNome] = useState(""),
     [config, setConfig] = useState<Config>(inicial),
     [busy, setBusy] = useState(true),
