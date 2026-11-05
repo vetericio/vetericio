@@ -73,6 +73,11 @@ function OricStudio() {
   const [quantidadeContratacao,setQuantidadeContratacao] = useState(1);
   const [solicitando,setSolicitando] = useState(false);
   const [pedidoAberto,setPedidoAberto] = useState<{id:string;status:string;quantidade_contas:number;valor_mensal_centavos:number}|null>(null);
+  const [assinatura,setAssinatura] = useState<{
+    id:string;status:string;quantidade_contas:number;valor_mensal_centavos:number;
+    mp_assinatura_status:string|null;cancelamento_em:string|null;ultima_conciliacao_em:string|null;
+  }|null>(null);
+  const [cancelandoAssinatura,setCancelandoAssinatura]=useState(false);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
@@ -100,7 +105,7 @@ function OricStudio() {
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setPedidoAberto(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setPedidoAberto(null); setAssinatura(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
@@ -123,6 +128,15 @@ function OricStudio() {
         if(solicitacao.error) throw solicitacao.error;
         if(seq!==requisicao.current)return;
         setPedidoAberto(solicitacao.data||null);
+        if(c.pode_editar){
+          const contrato=await (supabaseBanco as any).from("oricstudio_solicitacoes")
+            .select("id,status,quantidade_contas,valor_mensal_centavos,mp_assinatura_status,cancelamento_em,ultima_conciliacao_em")
+            .eq("clinica_id",c.clinica_id).eq("status","pago")
+            .order("criado_em",{ascending:false}).limit(1).maybeSingle();
+          if(contrato.error)throw contrato.error;
+          if(seq!==requisicao.current)return;
+          setAssinatura(contrato.data||null);
+        }
       }
       if (!c?.tem_acesso) return;
       const [posts, arquivos, pref] = await Promise.all([
@@ -345,6 +359,26 @@ function OricStudio() {
     finally{setSolicitando(false);}
   }
 
+  async function cancelarRenovacaoOricstudio(){
+    if(!assinatura || !contexto?.pode_editar || cancelandoAssinatura)return;
+    if(!window.confirm("Cancelar as próximas cobranças do OricStúdio nesta clínica? O acesso já pago permanece até o vencimento e a assinatura deixará de renovar automaticamente."))return;
+    setCancelandoAssinatura(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Entre novamente no ORICSE.");
+      const {data,error}=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{acao:"cancelar",solicitacao_id:assinatura.id},
+        headers:{"Authorization":"Bearer "+token},
+      });
+      if(error)throw new Error("Não foi possível confirmar o cancelamento no Mercado Pago.");
+      if(!data?.ok)throw new Error(String(data?.error||"Cancelamento não confirmado."));
+      toast.success("Renovação cancelada. O acesso já pago continua até a data de vencimento.");
+      await carregar();
+    }catch(e){toast.error(e instanceof Error?e.message:"Falha ao cancelar renovação.");}
+    finally{setCancelandoAssinatura(false);}
+  }
+
   async function conectarMeta() {
     if (!contexto?.pode_editar || metaOcupada) return;
     setMetaOcupada(true);
@@ -523,6 +557,17 @@ function OricStudio() {
     </section>}
     {!carregando && !erro && contexto?.tem_acesso && <>
       <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">Licença ativa · Ambiente exclusivo da clínica</span></div>
+      {assinatura && contexto.pode_editar && <section className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+        <h2 className="font-semibold">Sua assinatura OricStúdio</h2>
+        <p>{assinatura.quantidade_contas} conta(s) · {precoBRL(assinatura.valor_mensal_centavos)}/mês</p>
+        <p>Renovação: {assinatura.cancelamento_em?"Cancelada — sem futuras cobranças":assinatura.mp_assinatura_status==="authorized"?"Automática":assinatura.mp_assinatura_status||"Aguardando conciliação"}</p>
+        <p className="text-muted-foreground">Acesso já pago até: {textoData(contexto.licenca_expira_em)}</p>
+        {!assinatura.cancelamento_em && <button type="button" onClick={()=>void cancelarRenovacaoOricstudio()}
+          disabled={cancelandoAssinatura}
+          className="rounded-lg border px-3 py-2 text-sm text-destructive disabled:opacity-50">
+          {cancelandoAssinatura?"Cancelando...":"Cancelar renovação"}
+        </button>}
+      </section>}
       <div className="grid items-start gap-5 lg:grid-cols-[210px_minmax(0,1fr)]">
         <nav aria-label="Navegação do OricStúdio" className="flex gap-2 overflow-x-auto pb-2 lg:sticky lg:top-4 lg:block lg:space-y-4 lg:overflow-visible lg:rounded-xl lg:border lg:bg-card lg:p-3">
           {[
