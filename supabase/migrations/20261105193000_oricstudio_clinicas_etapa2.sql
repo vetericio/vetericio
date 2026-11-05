@@ -159,5 +159,26 @@ for select to authenticated using (public.oricstudio_pode_acessar(clinica_id));
 create policy oricstudio_midias_ler on public.oricstudio_midias
 for select to authenticated using (public.oricstudio_pode_acessar(clinica_id));
 
+
+create table if not exists public.oricstudio_preferencias (
+  clinica_id uuid primary key references public.clinicas(id) on delete cascade,
+  nome_publico text not null default '',
+  tom_de_voz text not null default 'Profissional e acolhedor',
+  hashtags_padrao text not null default '',
+  fuso_horario text not null default 'America/Sao_Paulo',
+  atualizado_em timestamptz not null default now(),
+  atualizado_por uuid references auth.users(id) on delete set null
+);
+alter table public.oricstudio_preferencias enable row level security;
+revoke all on public.oricstudio_preferencias from anon;
+grant select,insert,update on public.oricstudio_preferencias to authenticated;
+create policy oricstudio_preferencias_ler on public.oricstudio_preferencias
+for select to authenticated using (public.oricstudio_pode_acessar(clinica_id));
+create policy oricstudio_preferencias_criar on public.oricstudio_preferencias
+for insert to authenticated with check (public.oricstudio_pode_acessar(clinica_id) and atualizado_por=(select auth.uid()));
+create policy oricstudio_preferencias_editar on public.oricstudio_preferencias
+for update to authenticated using (public.oricstudio_pode_acessar(clinica_id))
+with check (public.oricstudio_pode_acessar(clinica_id) and atualizado_por=(select auth.uid()));
+
 comment on table public.oricstudio_publicacoes is
   'Rascunhos locais do OricStudio; nenhuma publicacao e enviada a Meta nesta etapa.';
