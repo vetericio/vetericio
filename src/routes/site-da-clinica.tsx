@@ -6,6 +6,9 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import {
   clinicSiteTemplates,
   clinicSiteTemplateLabels,
+  clinicSiteTemplateClasses,
+  clinicSiteTemplateDescriptions,
+  clinicSiteTones,
   normalizeClinicSiteConfig,
   prestigeDefault,
   type ClinicSiteConfig,
@@ -124,9 +127,17 @@ function SiteDaClinica() {
                     onClick={() => setTemplate(item)}
                     className={`rounded-xl border px-3 py-2 text-left text-sm font-bold capitalize ${template === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}
                   >
-                    {clinicSiteTemplateLabels[item]}
+                    <span className="block">{clinicSiteTemplateLabels[item]} <span className="text-xs opacity-75">· classe {clinicSiteTemplateClasses[item]}</span></span>
+                    <span className="mt-1 block text-xs font-normal opacity-80">{clinicSiteTemplateDescriptions[item]}</span>
                   </button>
                 ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className="mb-2 text-sm font-semibold">Tom principal</legend>
+              <p className="mb-2 text-xs text-muted-foreground">Até 10 tons prontos para cada página.</p>
+              <div className="flex flex-wrap gap-2">
+                {clinicSiteTones.map((tone) => <button key={tone} type="button" aria-label={`Usar tom ${tone}`} onClick={() => change("primaryColor", tone)} className={`h-9 w-9 rounded-full border-2 ${config.primaryColor === tone ? "border-foreground" : "border-transparent"}`} style={{ backgroundColor: tone }} />)}
               </div>
             </fieldset>
             {(
@@ -162,7 +173,7 @@ function SiteDaClinica() {
           </section>
           <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
             <div className="border-b px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Prévia · {clinicSiteTemplateLabels[template]}
+              Prévia · {clinicSiteTemplateLabels[template]} · classe {clinicSiteTemplateClasses[template]}
             </div>
             <div className="max-h-[calc(100vh-150px)] overflow-auto">
               <ClinicSiteRenderer template={template} config={config} />

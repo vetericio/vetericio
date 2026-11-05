@@ -3,12 +3,17 @@ import { z } from 'zod';
 export const clinicSiteTemplates = ['prestige', 'atelier', 'cuidado', 'popular', 'essencial'] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
 export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
-  prestige: 'Classe AAA',
-  atelier: 'Classe A',
-  cuidado: 'Classe B',
-  popular: 'Classe C',
-  essencial: 'Classe D',
+  prestige: 'Signature',
+  atelier: 'Prime',
+  cuidado: 'Class',
+  popular: 'King',
+  essencial: 'Essencial',
 };
+export const clinicSiteTemplateClasses: Record<ClinicSiteTemplate, string> = { prestige: 'AAA', atelier: 'A', cuidado: 'B', popular: 'C', essencial: 'D' };
+export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
+  prestige: 'Editorial, exclusivo e sofisticado.', atelier: 'Moderno, claro e alto padrão.', cuidado: 'Acolhedor e confiável.', popular: 'Direto, comercial e urgente.', essencial: 'Leve, objetivo e mobile-first.',
+};
+export const clinicSiteTones = ['#6F293B','#0F766E','#1D4ED8','#7C3AED','#BE123C','#C2410C','#A16207','#15803D','#0F172A','#374151'] as const;
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const clinicSiteSchema = z.object({
