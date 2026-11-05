@@ -2,12 +2,12 @@
 -- Não apagar registros existentes; apenas controlar novas operações por plano.
 update public.oricse_planos
 set descricao='Operação completa para equipes, internação, estoque e todos os serviços pet.',
-    itens=ARRAY['Até 1.000 animais','3 usuários','Tudo do Essencial','Internação, Banho e Tosa e Hotelzinho','Estoque, Financeiro e gestão de serviços']::text[],
+    itens=to_jsonb(ARRAY['Até 1.000 animais','3 usuários','Tudo do Essencial','Internação, Banho e Tosa e Hotelzinho','Estoque, Financeiro e gestão de serviços']::text[]),
     updated_at=now()
 where codigo='profissional-2026';
 
 update public.oricse_planos
-set itens=ARRAY['Animais ilimitados','5 usuários','Tudo do Profissional','RH, controle de ponto, banco de horas e comissões','CRM avançado, campanhas e automações','Domínio personalizado e personalização sob medida','Fidelidade mínima de 12 meses']::text[],
+set itens=to_jsonb(ARRAY['Animais ilimitados','5 usuários','Tudo do Profissional','RH, controle de ponto, banco de horas e comissões','CRM avançado, campanhas e automações','Domínio personalizado e personalização sob medida','Fidelidade mínima de 12 meses']::text[]),
     updated_at=now()
 where codigo='master-2026';
 
