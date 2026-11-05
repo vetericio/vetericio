@@ -19,7 +19,7 @@ function ContratacaoRecebida() {
       <div className="relative mx-auto max-w-4xl">
         <header className="mb-9 flex flex-col items-center justify-center gap-3 text-center">
           <Link to="/" aria-label="ORICSE — página inicial" className="flex items-center justify-center">
-            <img src="/oricse-logo-oryx.svg" alt="Logo oficial da ORICSE" width="110" height="110" className="h-[92px] w-[92px] object-contain sm:h-[110px] sm:w-[110px]"/>
+            <img src="/oricse-logo-oryx.svg?v=14" alt="Logo oficial da ORICSE" width="110" height="110" className="h-[92px] w-[92px] object-contain sm:h-[110px] sm:w-[110px]"/>
           </Link>
         </header>
         <article className="overflow-hidden rounded-[2rem] border border-[#E8DBDD] bg-white shadow-[0_24px_80px_-45px_rgba(67,22,38,.35)]">
