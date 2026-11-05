@@ -17,10 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Validar habilitação da conciliação
+      - name: Conciliar contratos no Mercado Pago
         env:
           RECON_TOKEN: ${{ secrets.ORICSTUDIO_RECONCILIATION_SECRET }}
         run: |
+          set -euo pipefail
           if [ -z "$RECON_TOKEN" ]; then
             echo "Conciliação OricStúdio ainda não configurada; nenhuma cobrança foi alterada."
             exit 0
@@ -29,12 +30,6 @@ jobs:
             echo "::error::Segredo de conciliação com comprimento insuficiente."
             exit 1
           fi
-      - name: Verificar contratos no Mercado Pago
-        env:
-          RECON_TOKEN: ${{ secrets.ORICSTUDIO_RECONCILIATION_SECRET }}
-        if: env.RECON_TOKEN != ''
-        run: |
-          set -euo pipefail
           curl --fail-with-body --retry 2 --retry-delay 10 --max-time 150 \
             --request POST \
             --header "Authorization: Bearer $RECON_TOKEN" \
