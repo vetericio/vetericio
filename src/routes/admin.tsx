@@ -264,6 +264,7 @@ function Admin() {
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
   const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
+  const [erroSolicitacoes, setErroSolicitacoes] = useState("");
   const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
   const [ativandoSolicitacao, setAtivandoSolicitacao] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
@@ -494,17 +495,31 @@ function Admin() {
 
   async function carregarSolicitacoes() {
     setCarregandoSolicitacoes(true);
-    const { data, error } = await (supabase as any)
-      .from("oricse_contratacoes")
-      .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
-      .in("status", ["pagamento_aprovado", "teste_aguardando_ativacao", "isento_aguardando_aprovacao", "em_analise", "em_configuracao", "ativada"])
-      .order("created_at", { ascending: false });
-    setCarregandoSolicitacoes(false);
-    if (error) {
-      toast.error("Não foi possível carregar as clínicas novas.");
-      return;
+    setErroSolicitacoes("");
+    const todas: SolicitacaoClinica[] = [];
+    try {
+      // Auditoria: nenhum status pode ser excluído (inclui pendentes, cancelados e isentos).
+      // Paginação evita ocultar registros quando ultrapassam o limite padrão da API.
+      const lote = 500;
+      for(let inicio=0;inicio<100000;inicio+=lote) {
+        const { data, error } = await (supabase as any)
+          .from("oricse_contratacoes")
+          .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
+          .order("created_at",{ascending:false})
+          .order("id",{ascending:false})
+          .range(inicio,inicio+lote-1);
+        if(error) throw error;
+        todas.push(...(data||[]));
+        if((data||[]).length<lote) break;
+      }
+      setSolicitacoes(todas);
+    } catch(error) {
+      const mensagem=error instanceof Error?error.message:String(error);
+      setErroSolicitacoes("Não foi possível consultar todas as solicitações. "+mensagem);
+      toast.error("Falha ao carregar solicitações. Não confunda erro de consulta com lista vazia.");
+    } finally {
+      setCarregandoSolicitacoes(false);
     }
-    setSolicitacoes((data || []) as SolicitacaoClinica[]);
   }
 
   async function iniciarAnaliseSolicitacao(item: SolicitacaoClinica) {
@@ -975,6 +990,7 @@ function Admin() {
     ];
 
     return <div className="space-y-5">
+      {erroSolicitacoes && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm font-semibold text-red-900">{erroSolicitacoes}</div>}
       <section className="rounded-2xl border border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -1237,7 +1253,7 @@ function Admin() {
 
   const renderClinicasNovas = () => {
     const indicadores = [
-      { rotulo: "Aguardando revisão", valor: solicitacoesEmAberto.length, Icone: ClipboardCheck, cor: "text-primary" },
+      { rotulo: "Total de solicitações", valor: solicitacoes.length, Icone: ClipboardCheck, cor: "text-primary" },
       { rotulo: "Planos pagos", valor: solicitacoesPagas.length, Icone: CheckCircle2, cor: "text-emerald-700" },
       { rotulo: "Prontas para liberação", valor: solicitacoesProntas.length, Icone: Building2, cor: "text-amber-700" },
     ];
@@ -1264,7 +1280,8 @@ function Admin() {
 
       <section className="space-y-3">
         {carregandoSolicitacoes ? <Card><p className="py-6 text-center text-sm text-muted-foreground">Carregando solicitações...</p></Card>
-          : solicitacoes.length === 0 ? <Card><div className="py-8 text-center"><Clock3 className="mx-auto text-muted-foreground"/><h3 className="mt-3 font-bold">Nenhuma clínica nova aguardando</h3><p className="mt-1 text-sm text-muted-foreground">Quando uma contratação for confirmada, ela aparecerá aqui.</p></div></Card>
+          : erroSolicitacoes ? <Card><p role="alert" className="p-5 font-semibold text-red-800">Não foi possível carregar o histórico. Verifique sua sessão administrativa e tente novamente.</p></Card>
+          : solicitacoes.length === 0 ? <Card><div className="py-8 text-center"><Clock3 className="mx-auto text-muted-foreground"/><h3 className="mt-3 font-bold">Nenhuma solicitação registrada</h3><p className="mt-1 text-sm text-muted-foreground">A consulta retornou zero registros, sem filtro de status.</p></div></Card>
           : solicitacoes.map((item) => {
             const criada = clinicas.find((clinica) => clinica.id === item.clinica_criada_id);
             const podePreparar = (item.status === "pagamento_aprovado" || item.status === "em_analise" || item.status === "isento_aguardando_aprovacao") && (Boolean(item.pagamento_id && item.pagamento_aprovado_em) || pedidoIsentoValido(item)) && !item.clinica_criada_id;
