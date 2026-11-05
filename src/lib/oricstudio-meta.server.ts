@@ -49,6 +49,81 @@ export async function encryptMetaToken(token: string) {
   };
 }
 
+async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
+  const iv=Buffer.from(ivBase64,"base64");
+  if(iv.length!==12)throw new Error("Credencial Meta inválida.");
+  const bytes=Buffer.from(ciphertext,"base64");
+  const decrypted=await crypto.subtle.decrypt({name:"AES-GCM",iv},await aesKey(),bytes);
+  return new TextDecoder().decode(decrypted);
+}
+
+async function metaRefreshToken(token:string) {
+  const u=new URL("https://graph.instagram.com/refresh_access_token");
+  u.searchParams.set("grant_type","ig_refresh_token");
+  u.searchParams.set("access_token",token);
+  const response=await graphGet(u);
+  if(typeof response.access_token!=="string" || !Number.isFinite(Number(response.expires_in))
+    || Number(response.expires_in)<=0)throw new Error("A Meta não forneceu token renovado.");
+  return {token:response.access_token,expiresAt:new Date(Date.now()+Number(response.expires_in)*1000).toISOString()};
+}
+
+export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clinicaId:string,contaId:string) {
+  const {userId}=await requireMetaEditor(db,accessToken,clinicaId,true);
+  const {data:account,error:accountErr}=await db.from("oricstudio_meta_contas")
+    .select("id,username,status,token_expira_em,conectado_em")
+    .eq("id",contaId).eq("clinica_id",clinicaId).maybeSingle();
+  if(accountErr||!account || account.status==="desconectada")
+    throw new Error("Conta não encontrada nesta clínica.");
+  const {data:secret,error:secretErr}=await db.from("oricstudio_meta_tokens")
+    .select("token_cifrado_base64,iv_base64").eq("conta_id",contaId).maybeSingle();
+  if(secretErr||!secret)throw new Error("Conta sem credencial Meta ativa.");
+  let plain="";
+  try {
+    plain=await decryptMetaToken(secret.token_cifrado_base64,secret.iv_base64);
+    const url=new URL("https://graph.instagram.com/me");
+    url.searchParams.set("fields","user_id,username,account_type");
+    url.searchParams.set("access_token",plain);
+    const profile=await graphGet(url);
+    if(!profile.user_id || !profile.username)
+      throw new Error("A conta profissional não foi confirmada pela Meta.");
+    // Evita renovar tokens recém-emitidos: exige ao menos 24 horas desde a conexão/renovação.
+    const {data:stored}=await db.from("oricstudio_meta_tokens")
+      .select("atualizado_em").eq("conta_id",contaId).maybeSingle();
+    const age=Date.now()-Date.parse(stored?.atualizado_em||account.conectado_em);
+    const expiryMs=account.token_expira_em?Date.parse(account.token_expira_em)-Date.now():Infinity;
+    let renew=null;
+    if(age >= 24*3600_000 && expiryMs <= 30*24*3600_000) {
+      renew=await metaRefreshToken(plain);
+      const secured=await encryptMetaToken(renew.token);
+      const {error:saveErr}=await db.from("oricstudio_meta_tokens").update({
+        ...secured,token_expira_em:renew.expiresAt,atualizado_em:new Date().toISOString(),
+      }).eq("conta_id",contaId);
+      if(saveErr)throw new Error("Falha ao salvar renovação da conexão.");
+    }
+    const {error:updateErr}=await db.from("oricstudio_meta_contas").update({
+      username:String(profile.username),
+      account_type:profile.account_type?String(profile.account_type):null,
+      status:"ativa",ultimo_erro:null,
+      ...(renew?{token_expira_em:renew.expiresAt}:{}),
+      atualizado_em:new Date().toISOString(),
+    }).eq("id",contaId).eq("clinica_id",clinicaId);
+    if(updateErr)throw new Error("Falha ao atualizar estado da conta.");
+    await db.from("oricstudio_meta_auditoria").insert({
+      clinica_id:clinicaId,conta_id:contaId,usuario_id:userId,
+      acao:renew?"renovar":"verificar",detalhes:{resultado:"sucesso"},
+    });
+    return {ok:true,renovada:Boolean(renew),username:String(profile.username)};
+  } catch(e) {
+    // Não revelar token, URLs ou detalhes internos em histórico de auditoria.
+    await db.from("oricstudio_meta_contas").update({
+      status:"reautenticar",ultimo_erro:"Falha na validação da credencial Meta",
+      atualizado_em:new Date().toISOString(),
+    }).eq("id",contaId).eq("clinica_id",clinicaId);
+    throw new Error("Não foi possível verificar a conexão Meta. Conecte a conta novamente.");
+  }
+}
+
+
 export async function requireMetaEditor(db: Db, token: string, clinicaId: string, exigirAtiva = true) {
   const {data:result,error}=await db.auth.getUser(token);
   if(error||!result?.user?.id)throw new Error("Sessão ORICSE inválida ou expirada.");
@@ -115,8 +190,12 @@ async function postForToken(url: string, fields: Record<string,string>) {
     headers:{"Content-Type":"application/x-www-form-urlencoded"},
     body:new URLSearchParams(fields),
   });
-  const data=await r.json().catch(()=>null) as any;
-  if(!r.ok||!data?.access_token) throw new Error("Não foi possível trocar a autorização com a Meta.");
+  const body=await r.json().catch(()=>null) as any;
+  // A Meta pode retornar o token diretamente ou em data[0].
+  const data=body?.access_token ? body :
+    (Array.isArray(body?.data) && body.data.length===1 ? body.data[0] : null);
+  if(!r.ok||typeof data?.access_token!=="string"||!data.access_token)
+    throw new Error("Não foi possível trocar a autorização com a Meta.");
   return data;
 }
 
@@ -168,7 +247,8 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
     clinica_id:flow.clinica_id,instagram_user_id:igUserId,username,
     account_type:profile.account_type?String(profile.account_type):null,
     status:"incompleta",
-    escopos:SCOPES.split(","),
+    // Escopos solicitados não são equivalentes a escopos efetivamente concedidos.
+    escopos:[],
     conectado_por:flow.iniciado_por,
     token_expira_em:expiry,atualizado_em:new Date().toISOString(),
     ultimo_erro:null,
