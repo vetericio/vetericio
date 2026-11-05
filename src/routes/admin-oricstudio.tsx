@@ -108,7 +108,7 @@ function OricStudioAdmin() {
   }
   function emCentavos(raw:string) {
     const normalized=raw.trim().replaceAll(".","").replace(",",".");
-    if(!/^\\d+(?:\\.\\d{1,2})?$/.test(normalized))return null;
+    if(!/^\d+(?:\.\d{1,2})?$/.test(normalized))return null;
     const result=Math.round(Number(normalized)*100);
     return Number.isSafeInteger(result)&&result>=0?result:null;
   }
