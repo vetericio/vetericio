@@ -120,10 +120,10 @@ function DemoPortalTutor(){
  if(!demoAutorizada) return <main className="portal-tutor-demo flex min-h-screen items-center justify-center bg-[#faf7f4] px-4 py-6 text-[#342732] sm:py-10">
   <div className="grid w-full max-w-4xl overflow-hidden bg-white sm:grid-cols-2 sm:rounded-2xl sm:border sm:border-[#eadfda]">
    <section className="hidden min-h-[540px] flex-col justify-between bg-[#faf7f4] p-9 text-[#312530] sm:flex">
-    <div><img src="/oricse-logo-oryx.svg?v=14" alt="Oricse" className="h-28 w-28 object-contain sm:h-36 sm:w-36"/><h1 className="mt-8 text-3xl font-extrabold">Portal do tutor</h1><p className="mt-3 max-w-sm leading-relaxed text-[#786b73]">Acompanhe os cuidados dos seus pets em um só lugar.</p></div>
+    <div><img src="/oricse-logo-oryx.svg?v=15" alt="Oricse" className="h-28 w-28 object-contain sm:h-36 sm:w-36"/><h1 className="mt-8 text-3xl font-extrabold">Portal do tutor</h1><p className="mt-3 max-w-sm leading-relaxed text-[#786b73]">Acompanhe os cuidados dos seus pets em um só lugar.</p></div>
    </section>
    <div className="p-5 sm:p-9">
-    <div className="mb-7 flex items-center gap-3 sm:hidden"><img src="/oricse-logo-oryx.svg?v=14" alt="Oricse" className="h-24 w-24 shrink-0 object-contain"/><div><h1 className="text-xl font-extrabold">Portal do tutor</h1><p className="text-sm text-[#786b73]">Acesso aos seus pets</p></div></div>
+    <div className="mb-7 flex items-center gap-3 sm:hidden"><img src="/oricse-logo-oryx.svg?v=15" alt="Oricse" className="h-24 w-24 shrink-0 object-contain"/><div><h1 className="text-xl font-extrabold">Portal do tutor</h1><p className="text-sm text-[#786b73]">Acesso aos seus pets</p></div></div>
     {recuperarDemo?<div className="space-y-5">
       <h2 className="text-2xl font-extrabold text-[#312530]">Esqueci minha senha</h2>
       <p className="leading-relaxed text-[#6b5d62]">No portal real, a recuperação valida os dados do tutor e do animal vinculado à clínica.</p>
@@ -141,7 +141,7 @@ function DemoPortalTutor(){
  </main>;
  return <div className="min-h-screen bg-[#faf7f4] text-[#312830]" style={{fontFamily:"Inter, ui-sans-serif, system-ui"}}>
   <div className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 border-b border-[#e9dce0] bg-[#faf7f4] px-3 py-2 text-[#312530] sm:px-4 sm:py-3 lg:px-8">
-   <div className="flex min-w-0 items-center gap-2 sm:gap-3"><img src="/oricse-logo-oryx.svg?v=14" alt="Símbolo ORICSE" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20"/><div className="min-w-0"><div className="text-sm font-extrabold tracking-wide sm:text-base">PORTAL DO TUTOR</div><div className="max-h-14 overflow-hidden text-[10px] leading-snug text-[#786b73] sm:max-h-none sm:text-xs">Acompanhe seus pets, agende serviços e acesse documentos em um só lugar.</div></div></div>
+   <div className="flex min-w-0 items-center gap-2 sm:gap-3"><img src="/oricse-logo-oryx.svg?v=15" alt="Símbolo ORICSE" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20"/><div className="min-w-0"><div className="text-sm font-extrabold tracking-wide sm:text-base">PORTAL DO TUTOR</div><div className="max-h-14 overflow-hidden text-[10px] leading-snug text-[#786b73] sm:max-h-none sm:text-xs">Acompanhe seus pets, agende serviços e acesse documentos em um só lugar.</div></div></div>
    <div className="flex items-center gap-2 sm:gap-3"><button onClick={()=>aviso("Central de notificações: esta é uma demonstração. Nenhum aviso real será enviado.")} aria-label="Notificações" className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-black/5"><Bell size={20}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#f5bd90]"/></button><button onClick={()=>navegar("perfil")} aria-label="Abrir meu perfil" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#dcb8bd] font-semibold text-[#351e2b] sm:h-10 sm:w-10">M</button></div>
   </div>
   <div className="mx-auto flex max-w-[1550px]">
