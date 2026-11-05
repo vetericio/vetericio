@@ -1100,6 +1100,95 @@ function Admin() {
     </div>;
   };
 
+
+  function statusSolicitacao(item: SolicitacaoClinica) {
+    const nomes: Record<string, string> = {
+      pagamento_aprovado: "Pagamento confirmado",
+      teste_aguardando_ativacao: "Teste aguardando revisão",
+      em_analise: "Em análise",
+      em_configuracao: "Em configuração",
+      ativada: "Funcionamento autorizado",
+    };
+    return nomes[item.status] || item.status.replaceAll("_", " ");
+  }
+
+  function classeSolicitacao(status: string) {
+    if (status === "ativada") return "bg-emerald-50 text-emerald-700";
+    if (status === "pagamento_aprovado") return "bg-sky-50 text-sky-700";
+    if (status === "em_analise" || status === "em_configuracao") return "bg-amber-50 text-amber-800";
+    return "bg-slate-100 text-slate-700";
+  }
+
+  const renderClinicasNovas = () => {
+    const indicadores = [
+      { rotulo: "Aguardando revisão", valor: solicitacoesEmAberto.length, Icone: ClipboardCheck, cor: "text-primary" },
+      { rotulo: "Planos pagos", valor: solicitacoesPagas.length, Icone: CheckCircle2, cor: "text-emerald-700" },
+      { rotulo: "Prontas para liberação", valor: solicitacoesProntas.length, Icone: Building2, cor: "text-amber-700" },
+    ];
+
+    return <div className="space-y-5">
+      <section className="rounded-2xl border border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Central de entrada</p>
+            <h2 className="mt-1 text-2xl font-black">Clínicas novas</h2>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Acompanhe cada contratação do pagamento à liberação. A clínica só passa a funcionar depois da sua autorização final.</p>
+          </div>
+          <button type="button" onClick={() => void carregarSolicitacoes()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50">
+            <RefreshCcw size={16}/> Atualizar solicitações
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {indicadores.map(({ rotulo, valor, Icone, cor }) => <div key={rotulo} className="rounded-xl border bg-white p-4">
+            <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-muted-foreground">{rotulo}</p><Icone size={19} className={cor}/></div>
+            <p className="mt-2 text-3xl font-black">{valor}</p>
+          </div>)}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        {carregandoSolicitacoes ? <Card><p className="py-6 text-center text-sm text-muted-foreground">Carregando solicitações...</p></Card>
+          : solicitacoes.length === 0 ? <Card><div className="py-8 text-center"><Clock3 className="mx-auto text-muted-foreground"/><h3 className="mt-3 font-bold">Nenhuma clínica nova aguardando</h3><p className="mt-1 text-sm text-muted-foreground">Quando uma contratação for confirmada, ela aparecerá aqui.</p></div></Card>
+          : solicitacoes.map((item) => {
+            const criada = clinicas.find((clinica) => clinica.id === item.clinica_criada_id);
+            const podePreparar = (item.status === "pagamento_aprovado" || item.status === "em_analise") && Boolean(item.pagamento_id && item.pagamento_aprovado_em) && !item.clinica_criada_id;
+            const podeAutorizar = Boolean(criada) && item.status !== "ativada";
+
+            return <article key={item.id} className="rounded-2xl border bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + classeSolicitacao(item.status)}>{statusSolicitacao(item)}</span>
+                    <span className="text-xs text-muted-foreground">Solicitada em {dataBR(item.created_at)}</span>
+                  </div>
+                  <h3 className="mt-3 text-xl font-black">{item.clinica_nome}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.plano_nome} · {item.ciclo} · {item.valor_exibido || "Valor não informado"}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 px-4 py-3 text-right">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Etapa atual</p>
+                  <p className="mt-1 text-sm font-black">{item.clinica_criada_id ? "Configuração e liberação" : item.status === "em_analise" ? "Revisar pagamento e dados" : "Triagem inicial"}</p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Clínica</p><p className="mt-2">{item.clinica_email || "E-mail não informado"}</p><p>{item.clinica_telefone || "Telefone não informado"}</p><p>{[item.clinica_cidade, item.clinica_uf].filter(Boolean).join("/") || "Local não informado"}</p></div>
+                <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Responsável</p><p className="mt-2">{item.responsavel_nome || "Não informado"}</p><p>{item.responsavel_email || "E-mail não informado"}</p><p>{item.responsavel_crmv ? "CRMV " + item.responsavel_crmv + (item.responsavel_crmv_uf ? "/" + item.responsavel_crmv_uf : "") : "CRMV não informado"}</p></div>
+                <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Pagamento</p><p className="mt-2">{item.pagamento_aprovado_em ? "Confirmado em " + dataBR(item.pagamento_aprovado_em) : item.status === "teste_aguardando_ativacao" ? "Período de teste" : "Aguardando confirmação"}</p><p className="text-xs text-muted-foreground">{item.pagamento_id ? (item.pagamento_provedor || "Pagamento") + " · " + item.pagamento_id : "Sem identificador de pagamento"}</p></div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2 border-t pt-4">
+                {(item.status === "pagamento_aprovado" || item.status === "teste_aguardando_ativacao") && <button type="button" onClick={() => void iniciarAnaliseSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Search size={16}/> Iniciar análise</button>}
+                {podePreparar && <button type="button" disabled={preparandoSolicitacao === item.id} onClick={() => void prepararClinicaSolicitada(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50"><Building2 size={16}/>{preparandoSolicitacao === item.id ? "Preparando..." : "Preparar espaço da clínica"}</button>}
+                {criada && <button type="button" onClick={() => abrirConfiguracaoDaSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Settings size={16}/> Revisar plano e acesso</button>}
+                {podeAutorizar && <button type="button" disabled={ativandoSolicitacao === item.id} onClick={() => void autorizarFuncionamento(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><ShieldCheck size={16}/>{ativandoSolicitacao === item.id ? "Autorizando..." : "Autorizar funcionamento"}</button>}
+                {item.status === "ativada" && <span className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700"><CheckCircle2 size={16}/> Funcionamento autorizado</span>}
+              </div>
+            </article>;
+          })}
+      </section>
+    </div>;
+  };
+
   const renderClinicas = () => {
     if (selecionada) return <div className="space-y-5"><button onClick={() => setSelecionada(null)} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ArrowLeft size={17}/> Voltar para clínicas</button><Card><div className="flex flex-wrap items-center gap-4"><div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={30} className="text-muted-foreground"/>}</div><div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-bold">{selecionada.nome}</h2><p className="mt-1 text-sm text-muted-foreground">@{selecionada.slug || "sem-usuario"} · {selecionada.plano} · {selecionada.status}</p></div></div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{[
       ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database], ["site", "Site e domínios", Globe2], ["autorizacoes", "Autorizações", Settings],
@@ -1469,7 +1558,78 @@ function Admin() {
     </div>
   );
 
-  return <main className="min-h-screen bg-[#f6f4ef] text-slate-900"><div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6"><header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5"><div className="flex items-center gap-3"><img src={site.logo_url || "/oricse-logo-oryx.svg?v=14"} alt="Oricse" className="h-14 w-14 object-contain"/><div><p className="text-sm font-semibold text-primary">ORICSE ADMIN</p><h1 className="text-2xl font-bold sm:text-3xl">Gestão da plataforma</h1></div></div><div className="flex flex-wrap items-center gap-2"><label className="min-w-[230px] rounded-xl border bg-white px-3 py-1.5 text-left"><span className="block text-[10px] font-black uppercase tracking-wide text-muted-foreground">Clínica selecionada</span><select value={selecionada?.id || ""} onChange={e=>{const clinica=clinicas.find(item=>item.id===e.target.value)||null;setSelecionada(clinica);if(clinica)setAba("clinicas");}} className="w-full bg-transparent text-sm font-bold outline-none"><option value="">Todas as clínicas ORICSE</option>{clinicas.map(clinica=><option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}</select></label><a href="/inicio" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground"><PanelsTopLeft size={18}/> Página inicial do sistema</a><button onClick={sair} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 font-semibold"><LogOut size={18}/> Sair</button></div></header><div className="mt-5 grid gap-5 lg:grid-cols-[230px_1fr]"><aside><nav className="sticky top-4 grid gap-1 rounded-2xl border bg-white p-2 shadow-sm">{ABAS.map(({ id, nome, icone: Icone }) => <button key={id} onClick={() => { setAba(id); if(id==="paginas") void carregarRotas();  if (id === "clinicas" && aba !== "clinicas") setFiltroClinica("todas"); }} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${aba === id ? "bg-primary text-primary-foreground" : "hover:bg-slate-100"}`}><Icone size={18}/>{nome}</button>)}</nav></aside><section>{aba === "dashboard" && renderDashboard()}{aba === "clinicas" && renderClinicas()}{aba === "planos" && renderPlanos()}{aba === "site" && renderSite()}{aba === "sistema" && renderSistema()}{aba === "paginas" && renderPaginas()}{aba === "pagamentos" && renderPagamentos()}</section></div></div>{renderNovaClinica()}</main>;
+  return (
+    <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
+      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
+          <div className="flex items-center gap-3">
+            <img src={site.logo_url || "/oricse-logo-oryx.svg?v=14"} alt="Oricse" className="h-14 w-14 object-contain"/>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">ORICSE ADMIN</p>
+              <h1 className="text-2xl font-black sm:text-3xl">Central de gestão</h1>
+              <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">Operação, aprovações e configuração da plataforma.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="min-w-[220px] rounded-xl border bg-white px-3 py-1.5 text-left">
+              <span className="block text-[10px] font-black uppercase tracking-wide text-muted-foreground">Abrir uma clínica</span>
+              <select value={selecionada?.id || ""} onChange={(event) => { const clinica = clinicas.find((item) => item.id === event.target.value) || null; setSelecionada(clinica); if (clinica) setAba("clinicas"); }} className="w-full bg-transparent text-sm font-bold outline-none">
+                <option value="">Todas as clínicas ORICSE</option>
+                {clinicas.map((clinica) => <option key={clinica.id} value={clinica.id}>{clinica.nome}</option>)}
+              </select>
+            </label>
+            <a href="/inicio" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><PanelsTopLeft size={17}/> Sistema</a>
+            <button type="button" onClick={sair} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><LogOut size={17}/> Sair</button>
+          </div>
+        </header>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[270px_minmax(0,1fr)]">
+          <aside className="xl:sticky xl:top-4 xl:self-start">
+            <nav aria-label="Navegação administrativa" className="rounded-2xl border bg-white p-3 shadow-sm">
+              <div className="border-b px-2 pb-4 pt-1">
+                <p className="text-sm font-black">Administração ORICSE</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Comece pelas clínicas novas e siga o fluxo de aprovação.</p>
+              </div>
+
+              {(["Operação", "Configuração"] as GrupoAba[]).map((grupo) => (
+                <div key={grupo} className="mt-4">
+                  <p className="px-2 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">{grupo}</p>
+                  <div className="mt-1 grid gap-1">
+                    {ABAS.filter((item) => item.grupo === grupo).map(({ id, nome, icone: Icone }) => (
+                      <button key={id} type="button" onClick={() => { setAba(id); if (id === "paginas") void carregarRotas(); if (id === "clinicas") setFiltroClinica("todas"); }} aria-current={aba === id ? "page" : undefined} className={"flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition " + (aba === id ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-700 hover:bg-slate-100")}>
+                        <Icone size={18}/>
+                        <span className="min-w-0 flex-1">{nome}</span>
+                        {id === "novas" && solicitacoesEmAberto.length > 0 && <span className={"rounded-full px-2 py-0.5 text-xs " + (aba === id ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>{solicitacoesEmAberto.length}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <button type="button" onClick={() => setAba("novas")} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-primary/20 bg-[#fff8f4] p-3 text-left hover:bg-[#fff3eb]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"><ClipboardCheck size={18}/></span>
+                <span className="min-w-0 flex-1"><span className="block text-xs font-bold text-primary">Próxima ação</span><span className="block text-xs text-slate-600">Liberar clínicas prontas</span></span>
+                <span className="rounded-full bg-white px-2 py-1 text-sm font-black text-primary">{solicitacoesProntas.length}</span>
+              </button>
+            </nav>
+          </aside>
+
+          <section className="min-w-0">
+            {aba === "dashboard" && renderDashboard()}
+            {aba === "novas" && renderClinicasNovas()}
+            {aba === "clinicas" && renderClinicas()}
+            {aba === "planos" && renderPlanos()}
+            {aba === "site" && renderSite()}
+            {aba === "sistema" && renderSistema()}
+            {aba === "paginas" && renderPaginas()}
+            {aba === "pagamentos" && renderPagamentos()}
+          </section>
+        </div>
+      </div>
+      {renderNovaClinica()}
+    </main>
+  );
 }
 
 type TaxaModalidade = {
