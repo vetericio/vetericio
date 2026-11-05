@@ -68,7 +68,7 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
                 className="mx-auto mb-4 max-h-16 max-w-[190px] object-contain"
               />
             ) : (
-              <img src="/oricse-logo-oryx.svg" alt="Oricse" className="mx-auto mb-4 h-24 w-24 object-contain sm:h-28 sm:w-28" />
+              <img src="/oricse-logo-oryx.svg?v=14" alt="Oricse" className="mx-auto mb-4 h-24 w-24 object-contain sm:h-28 sm:w-28" />
             )}
             <p className={`text-xs font-bold uppercase tracking-[0.2em] ${clinic.clinica_logo_url?"text-emerald-200":"text-[#702a43]"}` }>
               Acesso exclusivo
