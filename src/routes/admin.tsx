@@ -361,7 +361,7 @@ function Admin() {
 
   async function carregarTudo() {
     const [c, u, v, p, cfg, arqs, taxas, dom] = await Promise.all([
-      (supabase as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
+      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
@@ -611,12 +611,34 @@ function Admin() {
     }
   }
 
-  function abrirConfiguracaoDaSolicitacao(item: SolicitacaoClinica) {
-    const clinica = clinicas.find((atual) => atual.id === item.clinica_criada_id);
-    if (!clinica) return toast.error("O espaço da clínica ainda não foi localizado.");
+  async function abrirConfiguracaoDaSolicitacao(item: SolicitacaoClinica) {
+    if (!item.clinica_criada_id) return toast.error("A clínica ainda não foi criada.");
+    let clinica = clinicas.find((atual) => atual.id === item.clinica_criada_id);
+    if (!clinica) {
+      const {data,error}=await (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).eq("id",item.clinica_criada_id).maybeSingle();
+      if(error||!data) return toast.error("Não foi possível carregar a clínica criada: "+(error?.message||"Registro não encontrado."));
+      clinica=data as Clinica;
+      setClinicas(anteriores=>anteriores.some(x=>x.id===clinica!.id)?anteriores:[...anteriores,clinica!]);
+    }
     setSelecionada(clinica);
     setAbaClinica("situacao");
     setAba("clinicas");
+  }
+
+  async function excluirSolicitacaoDaFila(item: SolicitacaoClinica) {
+    if(item.clinica_criada_id) {
+      toast.info("A clínica já existe. Use o controle de exclusão da clínica cadastrada, com auditoria.");
+      setSolicitacaoSelecionada(null);
+      await abrirConfiguracaoDaSolicitacao(item);
+      return;
+    }
+    if(item.status==="cancelada") return toast.info("Solicitação já cancelada e preservada no histórico.");
+    if(!window.confirm(`Cancelar a solicitação de ${item.clinica_nome}? O registro será mantido no histórico de auditoria e nenhuma clínica será apagada.`)) return;
+    const {error}=await (supabaseBanco as any).from("oricse_contratacoes").update({status:"cancelada",updated_at:new Date().toISOString()}).eq("id",item.id).is("clinica_criada_id",null);
+    if(error) return toast.error("Não foi possível cancelar: "+error.message);
+    toast.success("Solicitação cancelada, preservada no histórico.");
+    setSolicitacaoSelecionada(null);
+    await carregarSolicitacoes();
   }
 
   async function autorizarFuncionamento(item: SolicitacaoClinica) {
@@ -626,7 +648,7 @@ function Admin() {
     setAtivandoSolicitacao(item.id);
     try {
       const financeira = pedidoIsentoValido(item) ? "isento" : item.pagamento_aprovado_em ? "em_dia" : "teste";
-      const { error: clinicaError } = await (supabase as any)
+      const { error: clinicaError } = await (supabaseBanco as any)
         .from("clinicas")
         .update({ status: "ativa", status_financeiro: financeira, updated_at: new Date().toISOString() })
         .eq("id", clinica.id);
@@ -671,7 +693,7 @@ function Admin() {
 
     setCriandoClinica(true);
     try {
-      const { data, error } = await (supabase as any).from("clinicas").insert({
+      const { data, error } = await (supabaseBanco as any).from("clinicas").insert({
         nome,
         slug,
         tipo_publico: novaClinica.tipo_publico,
@@ -769,7 +791,7 @@ function Admin() {
     if (!selecionada) return;
     setOcupado(true);
     try {
-      const { error } = await (supabase as any).from("clinicas").update({
+      const { error } = await (supabaseBanco as any).from("clinicas").update({
         nome: selecionada.nome.trim(),
         slug: limparSlug(selecionada.slug || ""),
         tipo_publico: selecionada.tipo_publico || "vet",
@@ -836,7 +858,7 @@ function Admin() {
           base64: await arquivoEmBase64(file),
         },
       });
-      const { error: logoPersistError } = await (supabase as any).from("clinicas").update({ logo_url: resultado.logoUrl, updated_at: new Date().toISOString() }).eq("id", selecionada.id);
+      const { error: logoPersistError } = await (supabaseBanco as any).from("clinicas").update({ logo_url: resultado.logoUrl, updated_at: new Date().toISOString() }).eq("id", selecionada.id);
       if (logoPersistError) throw logoPersistError;
       setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
       await carregarTudo();
@@ -1191,7 +1213,7 @@ function Admin() {
         verificacao_tipo: "cname",
       })));
       if (error) throw error;
-      const { error: clinicaError } = await (supabase as any).from("clinicas").update({
+      const { error: clinicaError } = await (supabaseBanco as any).from("clinicas").update({
         dominio: hostname,
         updated_at: new Date().toISOString(),
       }).eq("id", selecionada.id);
@@ -1355,6 +1377,7 @@ function Admin() {
           </label>
           {!elegivel&&<p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{criada?"O espaço já foi criado. Revise a clínica existente antes da liberação.":"A criação ainda não está autorizada: é necessário concluir a contratação, confirmar o pagamento ou validar uma isenção integral."}</p>}
           <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+            <button type="button" onClick={()=>void excluirSolicitacaoDaFila(item)} className="min-h-11 rounded-xl border border-red-200 px-4 text-sm font-bold text-red-700 hover:bg-red-50"><Trash2 className="mr-1 inline-block h-4 w-4"/> Excluir</button>
             <button type="button" onClick={()=>setSolicitacaoSelecionada(null)} className="min-h-11 rounded-xl border px-4 text-sm font-bold">Fechar</button>
             {!criada&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void salvarRevisaoSolicitacao(item)} className="min-h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">{salvandoSolicitacao?"Salvando...":"Salvar revisão"}</button>}
             {elegivel&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void (async()=>{if(!window.confirm("Confirmar auditoria e autorizar a CRIAÇÃO do espaço bloqueado? Isso NÃO libera o funcionamento."))return;const ok=await salvarRevisaoSolicitacao(item);if(!ok)return;await prepararClinicaSolicitada(item,false);setSolicitacaoSelecionada(null);})()} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">{preparandoSolicitacao?"Criando...":"Autorizar criação da clínica"}</button>}
