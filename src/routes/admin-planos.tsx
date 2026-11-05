@@ -134,13 +134,13 @@ function AdminPlanos() {
       setAutorizado(true);
 
       const [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes, cotasRes] = await Promise.all([
-        (supabase as any).from("oricse_planos").select("*").order("ordem"),
-        (supabase as any).from("oricse_funcionalidades").select("codigo,nome,grupo,ordem").eq("ativo", true).order("ordem"),
-        (supabase as any).from("oricse_plano_funcionalidades").select("plano_id,funcionalidade_codigo,permitido"),
-        (supabase as any).from("clinicas").select("id,nome,plano,status,limite_usuarios").order("nome"),
-        (supabase as any).from("oricse_clinica_funcionalidade_excecoes").select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em"),
-        (supabase as any).from("oricse_permissoes").select("codigo,nome,grupo,descricao,funcionalidade_codigo,ordem").eq("ativo",true).order("ordem"),
-        (supabase as any).from("oricse_planos_auditoria").select("id,usuario_id,data,tipo,alteracoes").order("data",{ascending:false}).limit(40),
+        (supabaseBanco as any).from("oricse_planos").select("*").order("ordem"),
+        (supabaseBanco as any).from("oricse_funcionalidades").select("codigo,nome,grupo,ordem").eq("ativo", true).order("ordem"),
+        (supabaseBanco as any).from("oricse_plano_funcionalidades").select("plano_id,funcionalidade_codigo,permitido"),
+        (supabaseBanco as any).from("clinicas").select("id,nome,plano,status,limite_usuarios").order("nome"),
+        (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes").select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em"),
+        (supabaseBanco as any).from("oricse_permissoes").select("codigo,nome,grupo,descricao,funcionalidade_codigo,ordem").eq("ativo",true).order("ordem"),
+        (supabaseBanco as any).from("oricse_planos_auditoria").select("id,usuario_id,data,tipo,alteracoes").order("data",{ascending:false}).limit(40),
         (supabaseBanco as any).from("oricse_planos_limites").select("plano_codigo,limite_animais"),
       ]);
       for (const resposta of [planosRes, funcoesRes, matrizRes, clinicasRes, excecoesRes, permissoesRes, auditoriaRes, cotasRes]) {
@@ -173,7 +173,8 @@ function AdminPlanos() {
       setExcecoes((excecoesRes.data || []) as Excecao[]);
       setExcecoesPendentes({});
       const primeira = clinicasRes.data?.[0]?.id || "";
-      setClinicaSelecionada((atual) => atual || primeira);
+      const desejada = typeof window!=="undefined" ? new URLSearchParams(window.location.search).get("clinica") : null;
+      setClinicaSelecionada((atual) => atual || ((clinicasRes.data || []).some((x:any)=>x.id===desejada) ? desejada! : primeira));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível carregar os planos.");
     } finally {
@@ -326,11 +327,11 @@ function AdminPlanos() {
       if (mudancas.length !== chavesPendentes.length) throw new Error("O catálogo mudou. Atualize antes de salvar.");
       const novasAcoes = catalogo.filter((f) => !f.catalogada && mudancas.some((m) => m.funcionalidade_codigo === f.codigo));
       if (novasAcoes.length) {
-        const { error } = await (supabase as any).from("oricse_funcionalidades")
+        const { error } = await (supabaseBanco as any).from("oricse_funcionalidades")
           .upsert(novasAcoes.map((f) => ({ codigo: f.codigo, nome: f.nome, grupo: f.grupo, ordem: f.ordem, ativo: true })), { onConflict: "codigo" });
         if (error) throw error;
       }
-      const { error } = await (supabase as any).from("oricse_plano_funcionalidades")
+      const { error } = await (supabaseBanco as any).from("oricse_plano_funcionalidades")
         .upsert(mudancas, { onConflict: "plano_id,funcionalidade_codigo" });
       if (error) throw error;
       // As regras de acesso também são aplicadas pelo PostgreSQL: mantenha
@@ -343,7 +344,7 @@ function AdminPlanos() {
           .upsert(mudancasBanco, { onConflict: "plano_id,funcionalidade_codigo" });
         if (erroBanco) throw new Error("Controle salvo na gestão, mas falhou a aplicação no servidor: " + erroBanco.message);
       }
-      const { error: auditoriaError } = await (supabase as any).from("oricse_planos_auditoria").insert({
+      const { error: auditoriaError } = await (supabaseBanco as any).from("oricse_planos_auditoria").insert({
         id: crypto.randomUUID(), usuario_id: usuarioAtual, data: new Date().toISOString(),
         tipo: "matriz", alteracoes: mudancas.map(({ plano_id, funcionalidade_codigo, permitido }) => ({
           plano_id, codigo: funcionalidade_codigo, permitido,
@@ -366,7 +367,7 @@ function AdminPlanos() {
     if (planos.some((p) => p.codigo === codigo)) return void toast.error("Já existe um plano com esse código.");
     setSalvando("novo-plano");
     try {
-      const { error } = await (supabase as any).from("oricse_planos").insert({
+      const { error } = await (supabaseBanco as any).from("oricse_planos").insert({
         id: crypto.randomUUID(), nome, codigo, ativo: false, ordem: planos.length + 1,
         preco: "", preco_mensal: "", preco_trimestral: "", preco_semestral: "", preco_anual: "", preco_bienal: "", publico_alvo: "",
         descricao: "", itens: [], usuarios_inclusos: 1, dominio_incluso: false,
@@ -503,7 +504,7 @@ function AdminPlanos() {
       const sobrescritas = mudancas.filter((mudanca) => mudanca.modo !== "plano");
 
       if (seguirPlano.length) {
-        const { error } = await (supabase as any).from("oricse_clinica_funcionalidade_excecoes")
+        const { error } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
           .delete().eq("clinica_id", clinicaSelecionada).in("funcionalidade_codigo", seguirPlano);
         if (error) throw error;
         const { error: erroBanco } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
@@ -520,7 +521,7 @@ function AdminPlanos() {
           criado_por: usuarioAtual || null,
           updated_at: new Date().toISOString(),
         }));
-        const { error } = await (supabase as any).from("oricse_clinica_funcionalidade_excecoes")
+        const { error } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
           .upsert(dados, { onConflict: "clinica_id,funcionalidade_codigo" });
         if (error) throw error;
         const { error: erroBanco } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
@@ -528,7 +529,7 @@ function AdminPlanos() {
         if (erroBanco) throw new Error(erroBanco.message);
       }
 
-      const { data, error } = await (supabase as any).from("oricse_clinica_funcionalidade_excecoes")
+      const { data, error } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
         .select("id,clinica_id,funcionalidade_codigo,permitido,motivo,expira_em")
         .eq("clinica_id", clinicaSelecionada);
       if (error) throw error;
