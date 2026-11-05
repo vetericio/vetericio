@@ -69,6 +69,9 @@ function OricStudio() {
   const [modoCalendario, setModoCalendario] = useState<"mes"|"semana"|"dia">("mes");
   const [referenciaCalendario, setReferenciaCalendario] = useState(() => new Date());
   const [contexto, setContexto] = useState<Contexto | null>(null);
+  const [comercial, setComercial] = useState<{preco_base_centavos:number|null;preco_adicional_centavos:number|null;comercializacao_ativa:boolean}|null>(null);
+  const [quantidadeContratacao,setQuantidadeContratacao] = useState(1);
+  const [solicitando,setSolicitando] = useState(false);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
@@ -106,6 +109,12 @@ function OricStudio() {
       const c = data as Contexto | null;
       if (seq !== requisicao.current) return;
       setContexto(c);
+      if (c) {
+        const catalogo=await (supabaseBanco as any).rpc("oricstudio_catalogo_comercial");
+        if (catalogo.error) throw catalogo.error;
+        if (seq!==requisicao.current) return;
+        setComercial(catalogo.data || null);
+      }
       if (!c?.tem_acesso) return;
       const [posts, arquivos, pref] = await Promise.all([
         (supabaseBanco as any).from("oricstudio_publicacoes")
@@ -280,6 +289,28 @@ function OricStudio() {
     finally{setSalvando(false);}
   }
 
+  const mensalidadeOricstudio = comercial?.preco_base_centavos != null &&
+    comercial.preco_adicional_centavos != null
+      ? comercial.preco_base_centavos + Math.max(0,quantidadeContratacao-1)*comercial.preco_adicional_centavos
+      : null;
+  function precoBRL(centavos:number) {
+    return (centavos/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+  async function solicitarOricstudio() {
+    if (!contexto || !comercial?.comercializacao_ativa || mensalidadeOricstudio===null) return;
+    if(!window.confirm(`Solicitar OricStúdio para ${contexto.clinica_nome}, com ${quantidadeContratacao} conta(s), por ${precoBRL(mensalidadeOricstudio)}/mês? Este pedido não efetua pagamento nem ativa o módulo.`))return;
+    setSolicitando(true);
+    try {
+      const {data,error}=await (supabaseBanco as any).rpc("oricstudio_solicitar_contratacao",{
+        p_quantidade:quantidadeContratacao,
+      });
+      if(error)throw error;
+      toast.success("Solicitação registrada, aguardando disponibilidade do checkout.");
+      await carregar();
+    } catch(e) {toast.error(e instanceof Error?e.message:"Não foi possível registrar a solicitação.");}
+    finally {setSolicitando(false);}
+  }
+
   async function conectarMeta() {
     if (!contexto?.pode_editar || metaOcupada) return;
     setMetaOcupada(true);
@@ -429,6 +460,24 @@ function OricStudio() {
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">O OricStúdio reúne criação de rascunhos, planejamento, calendário editorial e, futuramente, gestão de publicações, comentários e métricas do Instagram.</p>
       <p className="mt-4 text-sm"><strong>Licença:</strong> {contexto.licenca_status.replaceAll("_"," ")}. A contratação ainda não está disponível; a liberação é administrada pela plataforma ORICSE.</p>
       <p className="mt-3 text-sm text-muted-foreground">Nenhum acesso foi concedido automaticamente pelo plano da clínica.</p>
+      <div className="mt-6 space-y-3 rounded-xl border bg-background p-4">
+        <h3 className="font-semibold">Contratar OricStúdio</h3>
+        <p className="text-sm text-muted-foreground">Uma conta Instagram incluída. Contas adicionais têm cobrança mensal por unidade.</p>
+        <label className="block text-sm">Total de contas
+          <input type="number" min={1} max={100} value={quantidadeContratacao}
+            onChange={e=>setQuantidadeContratacao(Math.max(1,Math.min(100,Number(e.target.value)||1)))}
+            className="ml-3 w-20 rounded-lg border bg-background p-2"/>
+        </label>
+        <p className="text-sm">1 conta inclusa + {quantidadeContratacao-1} adicionais</p>
+        <p className="text-xl font-bold">Mensalidade: {mensalidadeOricstudio===null?"A definir":precoBRL(mensalidadeOricstudio)}</p>
+        <button type="button" onClick={()=>void solicitarOricstudio()}
+          disabled={!comercial?.comercializacao_ativa || mensalidadeOricstudio===null || solicitando}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
+          {solicitando?"Registrando...":"Solicitar contratação"}
+        </button>
+        {(!comercial?.comercializacao_ativa || mensalidadeOricstudio===null) &&
+          <p className="text-xs text-muted-foreground">Contratações ainda indisponíveis. O OricStúdio não gera cobranças nem libera contas sem confirmação.</p>}
+      </div>
     </section>}
     {!carregando && !erro && contexto?.tem_acesso && <>
       <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">Licença ativa · Ambiente exclusivo da clínica</span></div>
