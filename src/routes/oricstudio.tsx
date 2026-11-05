@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
-import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio } from "@/lib/oricstudio-meta.functions";
+import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
@@ -298,6 +298,26 @@ function OricStudio() {
     }
   }
 
+  async function verificarMeta(conta:ContaMeta) {
+    if (!contexto?.pode_editar || metaOcupada) return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const resposta=await verificarContaMetaOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,contaId:conta.id,
+      }});
+      toast.success(resposta.renovada?"Conexão verificada e token renovado.":"Conexão verificada com a Meta.");
+      await carregar();
+      setAba("contas");
+    } catch(e) {
+      toast.error(e instanceof Error?e.message:"Falha na verificação da conexão Meta.");
+      await carregar();
+      setAba("contas");
+    } finally {setMetaOcupada(false);}
+  }
+
   async function desconectarMeta(conta: ContaMeta) {
     if (!contexto?.pode_editar || metaOcupada ||
         !window.confirm(`Desconectar @${conta.username} desta clínica? O histórico editorial permanecerá intacto.`)) return;
@@ -569,8 +589,12 @@ function OricStudio() {
             <p className="mt-1 text-xs text-muted-foreground">Token: {conta.token_expira_em? `vence ${textoData(conta.token_expira_em)}` : "validade não informada"}</p>
           </div>
           {contexto.pode_editar && conta.status!=="desconectada" &&
-            <button type="button" disabled={metaOcupada} onClick={()=>void desconectarMeta(conta)}
-              className="rounded-lg border px-3 py-2 text-xs text-destructive disabled:opacity-50">Desconectar</button>}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={metaOcupada} onClick={()=>void verificarMeta(conta)}
+                className="rounded-lg border px-3 py-2 text-xs disabled:opacity-50">Verificar conexão</button>
+              <button type="button" disabled={metaOcupada} onClick={()=>void desconectarMeta(conta)}
+                className="rounded-lg border px-3 py-2 text-xs text-destructive disabled:opacity-50">Desconectar</button>
+            </div>}
         </article>)}
         <p className="text-xs text-muted-foreground">A conexão não autoriza publicações automáticas por si só. A fila de publicação e as permissões aprovadas pela Meta serão validadas separadamente.</p>
       </section>}
