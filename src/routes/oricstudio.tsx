@@ -230,12 +230,23 @@ function OricStudio() {
     </section>}
     {!carregando && !erro && contexto?.tem_acesso && <>
       <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">Licença ativa · Ambiente exclusivo da clínica</span></div>
-      <nav aria-label="Navegação do OricStúdio" className="flex gap-2 overflow-x-auto pb-2">
-        {ABAS.map(({id,rotulo,Icone})=><button key={id} type="button" onClick={()=>{setAba(id);setEditorAberto(false);}}
-          aria-current={aba===id?"page":undefined}
-          className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${aba===id?"bg-primary text-primary-foreground":"bg-card hover:bg-secondary"}`}>
-          <Icone className="h-4 w-4"/>{rotulo}</button>)}
-      </nav>
+      <div className="grid items-start gap-5 lg:grid-cols-[210px_minmax(0,1fr)]">
+        <nav aria-label="Navegação do OricStúdio" className="flex gap-2 overflow-x-auto pb-2 lg:sticky lg:top-4 lg:block lg:space-y-4 lg:overflow-visible lg:rounded-xl lg:border lg:bg-card lg:p-3">
+          {[
+            { grupo: "Gestão", itens: ["inicio", "contas", "calendario"] },
+            { grupo: "Conteúdo", itens: ["publicacoes", "biblioteca", "aprovacoes"] },
+            { grupo: "Análise", itens: ["metricas", "comentarios"] },
+            { grupo: "Operação", itens: ["alertas", "configuracoes"] },
+          ].map(({grupo,itens})=><div key={grupo} className="contents lg:block">
+            <p className="mb-1 hidden px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground lg:block">{grupo}</p>
+            {ABAS.filter(x=>itens.includes(x.id)).map(({id,rotulo,Icone})=><button key={id} type="button"
+              onClick={()=>{setAba(id);setEditorAberto(false);}}
+              aria-current={aba===id?"page":undefined}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-left text-sm font-medium lg:mt-1 lg:w-full lg:border-0 ${aba===id?"bg-primary text-primary-foreground":"bg-card hover:bg-secondary"}`}>
+              <Icone className="h-4 w-4 shrink-0"/>{rotulo}</button>)}
+          </div>)}
+        </nav>
+        <div className="min-w-0 space-y-4">
       {aba==="inicio" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Visão geral</h2><button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Novo rascunho</button></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -299,6 +310,8 @@ function OricStudio() {
            "Não há alertas de publicação porque a integração com Instagram ainda não está ativa. Erros de conexão e envio serão acompanhados na etapa 3/5."}
         </p>
       </section>}
+        </div>
+      </div>
     </>}
   </main>;
 }
