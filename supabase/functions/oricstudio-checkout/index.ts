@@ -295,6 +295,27 @@ async function conciliarFatura(invoiceId:string){
 
 // Chamada programada pelo GitHub Actions. Não usar service_role ou webhooks como
 // credencial de agendamento: cada segredo tem um escopo distinto.
+async function statusIntegracaoPagamento(req:Request){
+  const userToken=(req.headers.get("authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1];
+  if(!userToken)return json({error:"Sessão necessária."},401);
+  const {data:user,error}=await db.auth.getUser(userToken);
+  if(error||!user.user?.id)return json({error:"Sessão inválida."},401);
+  const {data:profile}=await db.from("app_users")
+    .select("role").eq("user_id",user.user.id).maybeSingle();
+  if(profile?.role!=="admin")return json({error:"Apenas Administração Geral."},403);
+  const {data:product}=await db.from("oricstudio_produto")
+    .select("comercializacao_ativa,preco_centavos,preco_conta_adicional_centavos")
+    .eq("codigo","oricstudio").maybeSingle();
+  return json({
+    mercado_pago_configurado:Boolean(token()),
+    webhook_exclusivo_configurado:Boolean(secret()),
+    conciliacao_programada_configurada:
+      (Deno.env.get("ORICSTUDIO_RECONCILIATION_SECRET")||"").length>=32,
+    precos_configurados:product?.preco_centavos!=null&&product?.preco_conta_adicional_centavos!=null,
+    comercializacao_ativa:product?.comercializacao_ativa===true,
+  });
+}
+
 async function reconciliarLote(req:Request){
   const configured=(Deno.env.get("ORICSTUDIO_RECONCILIATION_SECRET")||"").trim();
   const provided=(req.headers.get("authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1]||"";
@@ -366,6 +387,7 @@ Deno.serve(async(req:Request)=>{
     if(action==="cancelar")return await cancelarAssinatura(req);
     if(action==="verificar_assinatura")return await verificarAssinatura(req);
     if(action==="reconciliar_lote")return await reconciliarLote(req);
+    if(action==="status_configuracao")return await statusIntegracaoPagamento(req);
     if(action==="webhook")return await webhook(req);
     return json({error:"Ação não encontrada."},404);
   }catch(e){
