@@ -546,8 +546,8 @@ function Admin() {
     const campos = {
       clinica_nome:item.clinica_nome.trim(),slug_desejado:slug,
       razao_social:item.razao_social?.trim()||null,
-      clinica_telefone:item.clinica_telefone?.trim()||null,
-      clinica_email:item.clinica_email?.trim()||null,
+      clinica_telefone:item.clinica_telefone?.trim()||"",
+      clinica_email:item.clinica_email?.trim()||"",
       clinica_cep:item.clinica_cep?.trim()||null,
       clinica_endereco:item.clinica_endereco?.trim()||null,
       clinica_numero:item.clinica_numero?.trim()||null,
