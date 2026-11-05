@@ -27,7 +27,7 @@ begin
     when 'mensal' then (inicio + interval '1 month')::date
     when 'trimestral' then (inicio + interval '3 months')::date
     when 'semestral' then (inicio + interval '6 months')::date
-    when 'anual' then (inicio + interval '1 year')::date
+    when 'anual' then inicio + 365
     when 'bienal' then (inicio + interval '2 years')::date
     when 'teste' then inicio + 7
     else null end;
