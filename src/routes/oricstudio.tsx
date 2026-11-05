@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 
 export const Route = createFileRoute("/oricstudio")({
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
@@ -249,7 +250,7 @@ function OricStudio() {
   return <main className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-16 pt-6 text-foreground sm:px-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> Voltar ao ORICSE</Link>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-extrabold sm:text-3xl"><Instagram className="h-8 w-8 text-primary"/> OricStúdio</h1>
+        <h1 className="mt-2 flex items-center gap-2 text-2xl font-extrabold sm:text-3xl"><img src={ORICSTUDIO_LOGO} alt="Logo oficial OricStúdio" className="h-14 w-14 rounded-xl object-contain" /> OricStúdio</h1>
         <p className="mt-1 text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet</p>
       </div>
       <button type="button" disabled={carregando} onClick={()=>void carregar()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
