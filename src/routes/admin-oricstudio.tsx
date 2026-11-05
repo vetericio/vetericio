@@ -38,6 +38,10 @@ function OricStudioAdmin() {
   }>>([]);
   const [cobrancas,setCobrancas] = useState<Array<{id:number;clinica_id:string;tipo:string;criado_em:string;referencia:string|null}>>([]);
   const [pagamentos,setPagamentos] = useState<Array<{id:number;clinica_id:string;valor_centavos:number;status_mp:string;aprovado_em:string}>>([]);
+  const [statusPagamento,setStatusPagamento] = useState<{
+    mercado_pago_configurado:boolean;webhook_exclusivo_configurado:boolean;
+    conciliacao_programada_configurada:boolean;precos_configurados:boolean;comercializacao_ativa:boolean
+  }|null>(null);
   const [busca,setBusca] = useState("");
   const [alterando,setAlterando] = useState<string|null>(null);
   const [precoBase,setPrecoBase] = useState("");
@@ -77,6 +81,11 @@ function OricStudioAdmin() {
       ]);
       if (ps.error)throw ps.error;
       setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);setSolicitacoes(sol);setCobrancas(ce);setPagamentos(pg);
+      const status=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{acao:"status_configuracao"},
+        headers:{"Authorization":"Bearer "+session.access_token},
+      });
+      setStatusPagamento(status.error?null:(status.data||null));
       setPrecoBase(ps.data.preco_centavos==null?"":(ps.data.preco_centavos/100).toFixed(2).replace(".",","));
       setPrecoAdicional(ps.data.preco_conta_adicional_centavos==null?"":(ps.data.preco_conta_adicional_centavos/100).toFixed(2).replace(".",","));
     } catch(e) {
@@ -211,6 +220,22 @@ function OricStudioAdmin() {
       {aba==="auditoria" && <section className="space-y-3"><h2 className="text-lg font-semibold">Auditoria ({historico.length})</h2>{historico.length===0?<p className="rounded-lg border p-4 text-sm">Ainda não há alterações de licenças.</p>:<div className="space-y-2">{historico.slice(0,100).map(h=><div key={h.id} className="rounded-lg border bg-card p-3 text-sm"><strong>{h.acao}</strong> · {new Date(h.criado_em).toLocaleString("pt-BR")}<div className="text-xs text-muted-foreground">Clínica: {clinicas.find(c=>c.id===h.clinica_id)?.nome||h.clinica_id||"Excluída"} · Usuário: {h.usuario_id||"Sistema"}</div></div>)}</div>}</section>}
       {aba==="monitoramento" && <section className="space-y-4">
         <h2 className="text-lg font-semibold">Monitoramento financeiro OricStúdio</h2>
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="font-semibold">Preparação para comercialização</h3>
+          {statusPagamento? <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            {([
+              ["Credencial Mercado Pago",statusPagamento.mercado_pago_configurado],
+              ["Webhook exclusivo OricStúdio",statusPagamento.webhook_exclusivo_configurado],
+              ["Segredo da conciliação automática",statusPagamento.conciliacao_programada_configurada],
+              ["Tabela de preços",statusPagamento.precos_configurados],
+              ["Vendas ativadas",statusPagamento.comercializacao_ativa],
+            ] as const).map(([nome,ok])=><p key={nome} className="flex items-center gap-2">
+              <span aria-hidden="true" className={ok?"text-emerald-600":"text-amber-600"}>{ok?"●":"○"}</span>
+              {nome}: <strong>{ok?"Configurado":"Pendente"}</strong>
+            </p>)}
+          </div>:<p className="mt-2 text-sm text-muted-foreground">Não foi possível consultar a configuração do servidor. Não interprete como integração liberada.</p>}
+          <p className="mt-3 text-xs text-muted-foreground">Esta verificação confirma a presença das configurações, não a aprovação dos webhooks ou o sucesso de uma cobrança de teste. A rotina agendada também precisa da mesma chave no GitHub Actions.</p>
+        </div>
         <p className="text-xs text-muted-foreground">Dados de cobranças conciliadas, separados dos planos principais ORICSE.</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Pagamentos registrados</p><p className="mt-2 text-2xl font-bold">{pagamentos.length}</p></div>
