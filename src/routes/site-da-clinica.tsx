@@ -4,17 +4,20 @@ import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import {
+  clinicSiteTemplates,
   normalizeClinicSiteConfig,
   prestigeDefault,
   type ClinicSiteConfig,
+  type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
-import { PrestigeSite } from "@/components/clinic-site/PrestigeSite";
+import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 
 export const Route = createFileRoute("/site-da-clinica")({ component: SiteDaClinica });
 
 function SiteDaClinica() {
   const { clinicaId, carregando, pode } = usePermissoes();
   const [config, setConfig] = useState<ClinicSiteConfig>(prestigeDefault);
+  const [template, setTemplate] = useState<ClinicSiteTemplate>("prestige");
   const [slug, setSlug] = useState("");
   const [status, setStatus] = useState<"rascunho" | "publicado">("rascunho");
   const [saving, setSaving] = useState(false);
@@ -23,13 +26,14 @@ function SiteDaClinica() {
     void (async () => {
       const { data, error } = await (supabaseBanco as any)
         .from("clinic_sites")
-        .select("slug,status,config")
+        .select("slug,status,template,config")
         .eq("clinica_id", clinicaId)
         .maybeSingle();
       if (error) return toast.error(error.message);
       if (data) {
         setSlug(data.slug);
         setStatus(data.status);
+        if (clinicSiteTemplates.includes(data.template)) setTemplate(data.template);
         setConfig(normalizeClinicSiteConfig(data.config));
       }
     })();
@@ -47,7 +51,7 @@ function SiteDaClinica() {
           clinica_id: clinicaId,
           slug: slug.trim().toLowerCase(),
           status: nextStatus,
-          template: "prestige",
+          template,
           config,
           publicado_em: nextStatus === "publicado" ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
@@ -77,7 +81,7 @@ function SiteDaClinica() {
             </Link>
             <h1 className="mt-2 text-3xl font-bold">Site da clínica</h1>
             <p className="text-sm text-muted-foreground">
-              Modelo PRESTIGE · edição simples com prévia ao vivo.
+              Escolha um dos cinco modelos e acompanhe a prévia ao vivo.
             </p>
           </div>
           <div className="flex gap-2">
@@ -109,6 +113,21 @@ function SiteDaClinica() {
               />
             </label>
             <p className="text-xs text-muted-foreground">Status: {status}</p>
+            <fieldset>
+              <legend className="mb-2 text-sm font-semibold">Modelo do site</legend>
+              <div className="grid grid-cols-1 gap-2">
+                {clinicSiteTemplates.map((item) => (
+                  <button
+                    type="button"
+                    key={item}
+                    onClick={() => setTemplate(item)}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm font-bold capitalize ${template === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             {(
               [
                 ["name", "Nome da clínica"],
@@ -142,10 +161,10 @@ function SiteDaClinica() {
           </section>
           <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
             <div className="border-b px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Prévia · PRESTIGE
+              Prévia · {template}
             </div>
             <div className="max-h-[calc(100vh-150px)] overflow-auto">
-              <PrestigeSite config={config} />
+              <ClinicSiteRenderer template={template} config={config} />
             </div>
           </section>
         </div>
