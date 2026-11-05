@@ -47,7 +47,7 @@ create table if not exists public.oricstudio_auditoria (
 create index if not exists oricstudio_auditoria_criado_idx on public.oricstudio_auditoria(criado_em desc);
 
 create or replace function public.oricstudio_registrar_licenca()
-returns trigger language plpgsql security invoker set search_path = ''
+returns trigger language plpgsql security definer set search_path = ''
 as $$
 begin
   if tg_op = 'UPDATE' then
@@ -65,6 +65,7 @@ begin
   return new;
 end;
 $$;
+revoke all on function public.oricstudio_registrar_licenca() from public, anon, authenticated;
 drop trigger if exists oricstudio_auditar_licenca on public.oricstudio_licencas;
 create trigger oricstudio_auditar_licenca before insert or update on public.oricstudio_licencas
 for each row execute function public.oricstudio_registrar_licenca();
