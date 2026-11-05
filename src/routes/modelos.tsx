@@ -1,0 +1,12 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
+import { clinicSiteTemplateClasses, clinicSiteTemplateDescriptions, clinicSiteTemplateLabels, clinicSiteTemplates, prestigeDefault, type ClinicSiteTemplate } from "@/lib/clinic-site";
+
+export const Route = createFileRoute("/modelos")({ component: ModelosDeSite });
+
+function ModelosDeSite() {
+  const [template, setTemplate] = useState<ClinicSiteTemplate>("prestige");
+  const config = { ...prestigeDefault, name: "Aurora Pet", slogan: "Cuidado veterinário que acompanha cada história.", description: "Uma clínica fictícia para demonstrar os cinco estilos disponíveis no Oricse.", phone: "(31) 3333-2222", whatsapp: "5531999999999", address: "Av. das Palmeiras, 180 · Belo Horizonte", hours: "Segunda a sábado · 8h às 20h", emergency24h: template === "popular", services: ["Consulta veterinária", "Exames e diagnósticos", "Prevenção e vacinas"] };
+  return <main className="min-h-screen bg-muted/30 p-4 sm:p-6"><div className="mx-auto max-w-[1600px]"><header className="mb-5"><p className="text-sm font-bold uppercase tracking-wider text-primary">Vitrine de modelos</p><h1 className="mt-1 text-3xl font-black">Escolha a página da sua clínica</h1><p className="mt-1 text-sm text-muted-foreground">Clique em uma opção e veja a página pronta ao lado.</p></header><div className="grid gap-5 xl:grid-cols-[330px_minmax(0,1fr)]"><aside className="space-y-2 rounded-2xl border bg-card p-4">{clinicSiteTemplates.map((item)=><button key={item} type="button" onClick={()=>setTemplate(item)} className={`w-full rounded-xl border p-4 text-left ${template===item?"border-primary bg-primary text-primary-foreground":"bg-background hover:border-primary/50"}`}><span className="block text-lg font-black">{clinicSiteTemplateLabels[item]}</span><span className="text-xs font-semibold">Classe {clinicSiteTemplateClasses[item]}</span><span className="mt-2 block text-sm opacity-80">{clinicSiteTemplateDescriptions[item]}</span></button>)}</aside><section className="overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-4 py-3 text-sm font-bold">Prévia: {clinicSiteTemplateLabels[template]} · classe {clinicSiteTemplateClasses[template]}</div><div className="max-h-[calc(100vh-170px)] overflow-auto"><ClinicSiteRenderer template={template} config={config}/></div></section></div></div></main>;
+}
