@@ -15,13 +15,17 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminCanvasRouteImport } from './routes/admin-canvas'
 import { Route as AdminConteudoRouteImport } from './routes/admin-conteudo'
 import { Route as AdminCuponsRouteImport } from './routes/admin-cupons'
+import { Route as AdminOricstudioRouteImport } from './routes/admin-oricstudio'
 import { Route as AdminPlanosRouteImport } from './routes/admin-planos'
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin-solicitacoes'
+import { Route as AgendaHotelRouteImport } from './routes/agenda-hotel'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AnimaisRouteImport } from './routes/animais'
 import { Route as AnimalRouteImport } from './routes/animal'
 import { Route as AssinarRouteImport } from './routes/assinar'
+import { Route as BancoHorasRouteImport } from './routes/banco-horas'
+import { Route as BanhoTosaRouteImport } from './routes/banho-tosa'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as ComandasRouteImport } from './routes/comandas'
 import { Route as ConfiguracaoSiteRouteImport } from './routes/configuracao-site'
@@ -30,48 +34,55 @@ import { Route as ConfigurarPagamentosRouteImport } from './routes/configurar-pa
 import { Route as ConfigurarPortalTutorRouteImport } from './routes/configurar-portal-tutor'
 import { Route as ConsultaRouteImport } from './routes/consulta'
 import { Route as ConsultorioRouteImport } from './routes/consultorio'
+import { Route as ContratacaoRecebidaRouteImport } from './routes/contratacao-recebida'
 import { Route as ContratarRouteImport } from './routes/contratar'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as CurvaRouteImport } from './routes/curva'
+import { Route as DemoPortalTutorRouteImport } from './routes/demo-portal-tutor'
 import { Route as EncaminharRouteImport } from './routes/encaminhar'
 import { Route as EstoqueRouteImport } from './routes/estoque'
-import { Route as RhRouteImport } from './routes/rh'
 import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as HorariosMedicacoesRouteImport } from './routes/horarios-medicacoes'
 import { Route as HotelzinhoRouteImport } from './routes/hotelzinho'
-import { Route as AgendaHotelRouteImport } from './routes/agenda-hotel'
-import { Route as BanhoTosaRouteImport } from './routes/banho-tosa'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as MercadoPagoClinicaRouteImport } from './routes/mercado-pago-clinica'
 import { Route as MinhaAtividadeRouteImport } from './routes/minha-atividade'
-import { Route as BancoHorasRouteImport } from './routes/banco-horas'
+import { Route as ModelosRouteImport } from './routes/modelos'
 import { Route as NovoAnimalRouteImport } from './routes/novo-animal'
+import { Route as OricstudioRouteImport } from './routes/oricstudio'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
+import { Route as PermissoesEquipeRouteImport } from './routes/permissoes-equipe'
+import { Route as PlanoClinicaRouteImport } from './routes/plano-clinica'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PlantoesRouteImport } from './routes/plantoes'
+import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as PortalTutoresRouteImport } from './routes/portal-tutores'
 import { Route as PrecosPortalRouteImport } from './routes/precos-portal'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
-import { Route as TodasAgendasRouteImport } from './routes/todas-agendas'
 import { Route as RegistroClinicoRouteImport } from './routes/registro-clinico'
 import { Route as RegistrosRouteImport } from './routes/registros'
+import { Route as RhRouteImport } from './routes/rh'
 import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
+import { Route as SiteDaClinicaRouteImport } from './routes/site-da-clinica'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
+import { Route as TodasAgendasRouteImport } from './routes/todas-agendas'
 import { Route as TutoresRouteImport } from './routes/tutores'
 import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
+import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as VetSlugRouteImport } from './routes/vet.$slug'
 import { Route as ApiMercadopagoCallbackRouteImport } from './routes/api/mercadopago/callback'
 import { Route as PetSlugPortalRouteImport } from './routes/pet/$slug/portal'
+import { Route as ApiOricstudioMetaCallbackRouteImport } from './routes/api/oricstudio/meta/callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -103,6 +114,11 @@ const AdminCuponsRoute = AdminCuponsRouteImport.update({
   path: '/admin-cupons',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminOricstudioRoute = AdminOricstudioRouteImport.update({
+  id: '/admin-oricstudio',
+  path: '/admin-oricstudio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPlanosRoute = AdminPlanosRouteImport.update({
   id: '/admin-planos',
   path: '/admin-planos',
@@ -111,6 +127,11 @@ const AdminPlanosRoute = AdminPlanosRouteImport.update({
 const AdminSolicitacoesRoute = AdminSolicitacoesRouteImport.update({
   id: '/admin-solicitacoes',
   path: '/admin-solicitacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaHotelRoute = AgendaHotelRouteImport.update({
+  id: '/agenda-hotel',
+  path: '/agenda-hotel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlarmesRoute = AlarmesRouteImport.update({
@@ -136,6 +157,16 @@ const AnimalRoute = AnimalRouteImport.update({
 const AssinarRoute = AssinarRouteImport.update({
   id: '/assinar',
   path: '/assinar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BancoHorasRoute = BancoHorasRouteImport.update({
+  id: '/banco-horas',
+  path: '/banco-horas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BanhoTosaRoute = BanhoTosaRouteImport.update({
+  id: '/banho-tosa',
+  path: '/banho-tosa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogoRoute = CatalogoRouteImport.update({
@@ -178,6 +209,11 @@ const ConsultorioRoute = ConsultorioRouteImport.update({
   path: '/consultorio',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContratacaoRecebidaRoute = ContratacaoRecebidaRouteImport.update({
+  id: '/contratacao-recebida',
+  path: '/contratacao-recebida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContratarRoute = ContratarRouteImport.update({
   id: '/contratar',
   path: '/contratar',
@@ -193,14 +229,14 @@ const CurvaRoute = CurvaRouteImport.update({
   path: '/curva',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemoPortalTutorRoute = DemoPortalTutorRouteImport.update({
+  id: '/demo-portal-tutor',
+  path: '/demo-portal-tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EncaminharRoute = EncaminharRouteImport.update({
   id: '/encaminhar',
   path: '/encaminhar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RhRoute = RhRouteImport.update({
-  id: '/rh',
-  path: '/rh',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -221,16 +257,6 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
 const HorariosMedicacoesRoute = HorariosMedicacoesRouteImport.update({
   id: '/horarios-medicacoes',
   path: '/horarios-medicacoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BanhoTosaRoute = BanhoTosaRouteImport.update({
-  id: '/banho-tosa',
-  path: '/banho-tosa',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgendaHotelRoute = AgendaHotelRouteImport.update({
-  id: '/agenda-hotel',
-  path: '/agenda-hotel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HotelzinhoRoute = HotelzinhoRouteImport.update({
@@ -263,19 +289,24 @@ const MercadoPagoClinicaRoute = MercadoPagoClinicaRouteImport.update({
   path: '/mercado-pago-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BancoHorasRoute = BancoHorasRouteImport.update({
-  id: '/banco-horas',
-  path: '/banco-horas',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MinhaAtividadeRoute = MinhaAtividadeRouteImport.update({
   id: '/minha-atividade',
   path: '/minha-atividade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModelosRoute = ModelosRouteImport.update({
+  id: '/modelos',
+  path: '/modelos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NovoAnimalRoute = NovoAnimalRouteImport.update({
   id: '/novo-animal',
   path: '/novo-animal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OricstudioRoute = OricstudioRouteImport.update({
+  id: '/oricstudio',
+  path: '/oricstudio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PendenciasRoute = PendenciasRouteImport.update({
@@ -288,6 +319,16 @@ const PerfilClinicaRoute = PerfilClinicaRouteImport.update({
   path: '/perfil-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PermissoesEquipeRoute = PermissoesEquipeRouteImport.update({
+  id: '/permissoes-equipe',
+  path: '/permissoes-equipe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanoClinicaRoute = PlanoClinicaRouteImport.update({
+  id: '/plano-clinica',
+  path: '/plano-clinica',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanosRoute = PlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
@@ -296,6 +337,11 @@ const PlanosRoute = PlanosRouteImport.update({
 const PlantoesRoute = PlantoesRouteImport.update({
   id: '/plantoes',
   path: '/plantoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
+  id: '/politica-de-privacidade',
+  path: '/politica-de-privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalTutoresRoute = PortalTutoresRouteImport.update({
@@ -318,11 +364,6 @@ const ReceituarioRoute = ReceituarioRouteImport.update({
   path: '/receituario',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TodasAgendasRoute = TodasAgendasRouteImport.update({
-  id: '/todas-agendas',
-  path: '/todas-agendas',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RecepcaoRoute = RecepcaoRouteImport.update({
   id: '/recepcao',
   path: '/recepcao',
@@ -338,6 +379,11 @@ const RegistrosRoute = RegistrosRouteImport.update({
   path: '/registros',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RhRoute = RhRouteImport.update({
+  id: '/rh',
+  path: '/rh',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SimuladorPagamentosRoute = SimuladorPagamentosRouteImport.update({
   id: '/simulador-pagamentos',
   path: '/simulador-pagamentos',
@@ -346,6 +392,11 @@ const SimuladorPagamentosRoute = SimuladorPagamentosRouteImport.update({
 const SincronizacaoRoute = SincronizacaoRouteImport.update({
   id: '/sincronizacao',
   path: '/sincronizacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SiteDaClinicaRoute = SiteDaClinicaRouteImport.update({
+  id: '/site-da-clinica',
+  path: '/site-da-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TemasRoute = TemasRouteImport.update({
@@ -363,6 +414,11 @@ const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
   path: '/termos-de-uso',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TodasAgendasRoute = TodasAgendasRouteImport.update({
+  id: '/todas-agendas',
+  path: '/todas-agendas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TutoresRoute = TutoresRouteImport.update({
   id: '/tutores',
   path: '/tutores',
@@ -371,6 +427,11 @@ const TutoresRoute = TutoresRouteImport.update({
 const TipoSlugRoute = TipoSlugRouteImport.update({
   id: '/$tipo/$slug',
   path: '/$tipo/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CSlugRoute = CSlugRouteImport.update({
+  id: '/c/$slug',
+  path: '/c/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VetSlugRoute = VetSlugRouteImport.update({
@@ -388,6 +449,12 @@ const PetSlugPortalRoute = PetSlugPortalRouteImport.update({
   path: '/pet/$slug/portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOricstudioMetaCallbackRoute =
+  ApiOricstudioMetaCallbackRouteImport.update({
+    id: '/api/oricstudio/meta/callback',
+    path: '/api/oricstudio/meta/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -396,13 +463,17 @@ export interface FileRoutesByFullPath {
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-cupons': typeof AdminCuponsRoute
+  '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
+  '/agenda-hotel': typeof AgendaHotelRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/banco-horas': typeof BancoHorasRoute
+  '/banho-tosa': typeof BanhoTosaRoute
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
@@ -411,49 +482,55 @@ export interface FileRoutesByFullPath {
   '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
+  '/contratacao-recebida': typeof ContratacaoRecebidaRoute
   '/contratar': typeof ContratarRoute
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
+  '/demo-portal-tutor': typeof DemoPortalTutorRoute
   '/encaminhar': typeof EncaminharRoute
-  '/rh': typeof RhRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
-  '/banho-tosa': typeof BanhoTosaRoute
-  '/agenda-hotel': typeof AgendaHotelRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
-  '/banco-horas': typeof BancoHorasRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
+  '/modelos': typeof ModelosRoute
   '/novo-animal': typeof NovoAnimalRoute
+  '/oricstudio': typeof OricstudioRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
+  '/permissoes-equipe': typeof PermissoesEquipeRoute
+  '/plano-clinica': typeof PlanoClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/portal-tutores': typeof PortalTutoresRoute
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
-  '/todas-agendas': typeof TodasAgendasRoute
-  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/rh': typeof RhRoute
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
+  '/site-da-clinica': typeof SiteDaClinicaRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
+  '/c/$slug': typeof CSlugRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
+  '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -462,13 +539,17 @@ export interface FileRoutesByTo {
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-cupons': typeof AdminCuponsRoute
+  '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
+  '/agenda-hotel': typeof AgendaHotelRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/banco-horas': typeof BancoHorasRoute
+  '/banho-tosa': typeof BanhoTosaRoute
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
@@ -477,49 +558,55 @@ export interface FileRoutesByTo {
   '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
+  '/contratacao-recebida': typeof ContratacaoRecebidaRoute
   '/contratar': typeof ContratarRoute
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
+  '/demo-portal-tutor': typeof DemoPortalTutorRoute
   '/encaminhar': typeof EncaminharRoute
-  '/rh': typeof RhRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
-  '/banho-tosa': typeof BanhoTosaRoute
-  '/agenda-hotel': typeof AgendaHotelRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
-  '/banco-horas': typeof BancoHorasRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
+  '/modelos': typeof ModelosRoute
   '/novo-animal': typeof NovoAnimalRoute
+  '/oricstudio': typeof OricstudioRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
+  '/permissoes-equipe': typeof PermissoesEquipeRoute
+  '/plano-clinica': typeof PlanoClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/portal-tutores': typeof PortalTutoresRoute
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
-  '/todas-agendas': typeof TodasAgendasRoute
-  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/rh': typeof RhRoute
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
+  '/site-da-clinica': typeof SiteDaClinicaRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
+  '/c/$slug': typeof CSlugRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
+  '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -529,13 +616,17 @@ export interface FileRoutesById {
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-cupons': typeof AdminCuponsRoute
+  '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
+  '/agenda-hotel': typeof AgendaHotelRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/banco-horas': typeof BancoHorasRoute
+  '/banho-tosa': typeof BanhoTosaRoute
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
@@ -544,49 +635,55 @@ export interface FileRoutesById {
   '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
   '/consultorio': typeof ConsultorioRoute
+  '/contratacao-recebida': typeof ContratacaoRecebidaRoute
   '/contratar': typeof ContratarRoute
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
+  '/demo-portal-tutor': typeof DemoPortalTutorRoute
   '/encaminhar': typeof EncaminharRoute
-  '/rh': typeof RhRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
   '/financeiro': typeof FinanceiroRoute
   '/horarios-medicacoes': typeof HorariosMedicacoesRoute
-  '/banho-tosa': typeof BanhoTosaRoute
-  '/agenda-hotel': typeof AgendaHotelRoute
   '/hotelzinho': typeof HotelzinhoRoute
   '/inicio': typeof InicioRoute
   '/internacao': typeof InternacaoRoute
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
-  '/banco-horas': typeof BancoHorasRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
+  '/modelos': typeof ModelosRoute
   '/novo-animal': typeof NovoAnimalRoute
+  '/oricstudio': typeof OricstudioRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
+  '/permissoes-equipe': typeof PermissoesEquipeRoute
+  '/plano-clinica': typeof PlanoClinicaRoute
   '/planos': typeof PlanosRoute
   '/plantoes': typeof PlantoesRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/portal-tutores': typeof PortalTutoresRoute
   '/precos-portal': typeof PrecosPortalRoute
   '/privacidade': typeof PrivacidadeRoute
   '/receituario': typeof ReceituarioRoute
-  '/todas-agendas': typeof TodasAgendasRoute
-  '/todas-agendas': typeof TodasAgendasRoute
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/rh': typeof RhRoute
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
+  '/site-da-clinica': typeof SiteDaClinicaRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
+  '/todas-agendas': typeof TodasAgendasRoute
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
+  '/c/$slug': typeof CSlugRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
+  '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -597,13 +694,17 @@ export interface FileRouteTypes {
     | '/admin-canvas'
     | '/admin-conteudo'
     | '/admin-cupons'
+    | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
+    | '/agenda-hotel'
     | '/alarmes'
     | '/anamnese'
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/banco-horas'
+    | '/banho-tosa'
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
@@ -612,48 +713,55 @@ export interface FileRouteTypes {
     | '/configurar-portal-tutor'
     | '/consulta'
     | '/consultorio'
+    | '/contratacao-recebida'
     | '/contratar'
     | '/crm'
     | '/curva'
+    | '/demo-portal-tutor'
     | '/encaminhar'
-    | '/rh'
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
     | '/horarios-medicacoes'
-    | '/banho-tosa'
-    | '/agenda-hotel'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
-    | '/banco-horas'
     | '/minha-atividade'
+    | '/modelos'
     | '/novo-animal'
+    | '/oricstudio'
     | '/pendencias'
     | '/perfil-clinica'
+    | '/permissoes-equipe'
+    | '/plano-clinica'
     | '/planos'
     | '/plantoes'
+    | '/politica-de-privacidade'
     | '/portal-tutores'
     | '/precos-portal'
     | '/privacidade'
     | '/receituario'
-    | '/todas-agendas'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/rh'
     | '/simulador-pagamentos'
     | '/sincronizacao'
+    | '/site-da-clinica'
     | '/temas'
     | '/termos'
     | '/termos-de-uso'
+    | '/todas-agendas'
     | '/tutores'
     | '/$tipo/$slug'
+    | '/c/$slug'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
+    | '/api/oricstudio/meta/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -662,13 +770,17 @@ export interface FileRouteTypes {
     | '/admin-canvas'
     | '/admin-conteudo'
     | '/admin-cupons'
+    | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
+    | '/agenda-hotel'
     | '/alarmes'
     | '/anamnese'
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/banco-horas'
+    | '/banho-tosa'
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
@@ -677,48 +789,55 @@ export interface FileRouteTypes {
     | '/configurar-portal-tutor'
     | '/consulta'
     | '/consultorio'
+    | '/contratacao-recebida'
     | '/contratar'
     | '/crm'
     | '/curva'
+    | '/demo-portal-tutor'
     | '/encaminhar'
-    | '/rh'
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
     | '/horarios-medicacoes'
-    | '/banho-tosa'
-    | '/agenda-hotel'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
-    | '/banco-horas'
     | '/minha-atividade'
+    | '/modelos'
     | '/novo-animal'
+    | '/oricstudio'
     | '/pendencias'
     | '/perfil-clinica'
+    | '/permissoes-equipe'
+    | '/plano-clinica'
     | '/planos'
     | '/plantoes'
+    | '/politica-de-privacidade'
     | '/portal-tutores'
     | '/precos-portal'
     | '/privacidade'
     | '/receituario'
-    | '/todas-agendas'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/rh'
     | '/simulador-pagamentos'
     | '/sincronizacao'
+    | '/site-da-clinica'
     | '/temas'
     | '/termos'
     | '/termos-de-uso'
+    | '/todas-agendas'
     | '/tutores'
     | '/$tipo/$slug'
+    | '/c/$slug'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
+    | '/api/oricstudio/meta/callback'
   id:
     | '__root__'
     | '/'
@@ -727,13 +846,17 @@ export interface FileRouteTypes {
     | '/admin-canvas'
     | '/admin-conteudo'
     | '/admin-cupons'
+    | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
+    | '/agenda-hotel'
     | '/alarmes'
     | '/anamnese'
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/banco-horas'
+    | '/banho-tosa'
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
@@ -742,48 +865,55 @@ export interface FileRouteTypes {
     | '/configurar-portal-tutor'
     | '/consulta'
     | '/consultorio'
+    | '/contratacao-recebida'
     | '/contratar'
     | '/crm'
     | '/curva'
+    | '/demo-portal-tutor'
     | '/encaminhar'
-    | '/rh'
     | '/estoque'
     | '/fila-espera'
     | '/financeiro'
     | '/horarios-medicacoes'
-    | '/banho-tosa'
-    | '/agenda-hotel'
     | '/hotelzinho'
     | '/inicio'
     | '/internacao'
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
-    | '/banco-horas'
     | '/minha-atividade'
+    | '/modelos'
     | '/novo-animal'
+    | '/oricstudio'
     | '/pendencias'
     | '/perfil-clinica'
+    | '/permissoes-equipe'
+    | '/plano-clinica'
     | '/planos'
     | '/plantoes'
+    | '/politica-de-privacidade'
     | '/portal-tutores'
     | '/precos-portal'
     | '/privacidade'
     | '/receituario'
-    | '/todas-agendas'
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/rh'
     | '/simulador-pagamentos'
     | '/sincronizacao'
+    | '/site-da-clinica'
     | '/temas'
     | '/termos'
     | '/termos-de-uso'
+    | '/todas-agendas'
     | '/tutores'
     | '/$tipo/$slug'
+    | '/c/$slug'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
+    | '/api/oricstudio/meta/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -793,13 +923,17 @@ export interface RootRouteChildren {
   AdminCanvasRoute: typeof AdminCanvasRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
   AdminCuponsRoute: typeof AdminCuponsRoute
+  AdminOricstudioRoute: typeof AdminOricstudioRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
+  AgendaHotelRoute: typeof AgendaHotelRoute
   AlarmesRoute: typeof AlarmesRoute
   AnamneseRoute: typeof AnamneseRoute
   AnimaisRoute: typeof AnimaisRoute
   AnimalRoute: typeof AnimalRoute
   AssinarRoute: typeof AssinarRoute
+  BancoHorasRoute: typeof BancoHorasRoute
+  BanhoTosaRoute: typeof BanhoTosaRoute
   CatalogoRoute: typeof CatalogoRoute
   ComandasRoute: typeof ComandasRoute
   ConfiguracaoSiteRoute: typeof ConfiguracaoSiteRoute
@@ -808,9 +942,11 @@ export interface RootRouteChildren {
   ConfigurarPortalTutorRoute: typeof ConfigurarPortalTutorRoute
   ConsultaRoute: typeof ConsultaRoute
   ConsultorioRoute: typeof ConsultorioRoute
+  ContratacaoRecebidaRoute: typeof ContratacaoRecebidaRoute
   ContratarRoute: typeof ContratarRoute
   CrmRoute: typeof CrmRoute
   CurvaRoute: typeof CurvaRoute
+  DemoPortalTutorRoute: typeof DemoPortalTutorRoute
   EncaminharRoute: typeof EncaminharRoute
   EstoqueRoute: typeof EstoqueRoute
   FilaEsperaRoute: typeof FilaEsperaRoute
@@ -823,11 +959,16 @@ export interface RootRouteChildren {
   MedicacoesRoute: typeof MedicacoesRoute
   MercadoPagoClinicaRoute: typeof MercadoPagoClinicaRoute
   MinhaAtividadeRoute: typeof MinhaAtividadeRoute
+  ModelosRoute: typeof ModelosRoute
   NovoAnimalRoute: typeof NovoAnimalRoute
+  OricstudioRoute: typeof OricstudioRoute
   PendenciasRoute: typeof PendenciasRoute
   PerfilClinicaRoute: typeof PerfilClinicaRoute
+  PermissoesEquipeRoute: typeof PermissoesEquipeRoute
+  PlanoClinicaRoute: typeof PlanoClinicaRoute
   PlanosRoute: typeof PlanosRoute
   PlantoesRoute: typeof PlantoesRoute
+  PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   PortalTutoresRoute: typeof PortalTutoresRoute
   PrecosPortalRoute: typeof PrecosPortalRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
@@ -835,16 +976,21 @@ export interface RootRouteChildren {
   RecepcaoRoute: typeof RecepcaoRoute
   RegistroClinicoRoute: typeof RegistroClinicoRoute
   RegistrosRoute: typeof RegistrosRoute
+  RhRoute: typeof RhRoute
   SimuladorPagamentosRoute: typeof SimuladorPagamentosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
+  SiteDaClinicaRoute: typeof SiteDaClinicaRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
+  TodasAgendasRoute: typeof TodasAgendasRoute
   TutoresRoute: typeof TutoresRoute
   TipoSlugRoute: typeof TipoSlugRoute
+  CSlugRoute: typeof CSlugRoute
   VetSlugRoute: typeof VetSlugRoute
   ApiMercadopagoCallbackRoute: typeof ApiMercadopagoCallbackRoute
   PetSlugPortalRoute: typeof PetSlugPortalRoute
+  ApiOricstudioMetaCallbackRoute: typeof ApiOricstudioMetaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -891,6 +1037,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCuponsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin-oricstudio': {
+      id: '/admin-oricstudio'
+      path: '/admin-oricstudio'
+      fullPath: '/admin-oricstudio'
+      preLoaderRoute: typeof AdminOricstudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin-planos': {
       id: '/admin-planos'
       path: '/admin-planos'
@@ -903,6 +1056,13 @@ declare module '@tanstack/react-router' {
       path: '/admin-solicitacoes'
       fullPath: '/admin-solicitacoes'
       preLoaderRoute: typeof AdminSolicitacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda-hotel': {
+      id: '/agenda-hotel'
+      path: '/agenda-hotel'
+      fullPath: '/agenda-hotel'
+      preLoaderRoute: typeof AgendaHotelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alarmes': {
@@ -938,6 +1098,20 @@ declare module '@tanstack/react-router' {
       path: '/assinar'
       fullPath: '/assinar'
       preLoaderRoute: typeof AssinarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banco-horas': {
+      id: '/banco-horas'
+      path: '/banco-horas'
+      fullPath: '/banco-horas'
+      preLoaderRoute: typeof BancoHorasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banho-tosa': {
+      id: '/banho-tosa'
+      path: '/banho-tosa'
+      fullPath: '/banho-tosa'
+      preLoaderRoute: typeof BanhoTosaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalogo': {
@@ -996,6 +1170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsultorioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contratacao-recebida': {
+      id: '/contratacao-recebida'
+      path: '/contratacao-recebida'
+      fullPath: '/contratacao-recebida'
+      preLoaderRoute: typeof ContratacaoRecebidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contratar': {
       id: '/contratar'
       path: '/contratar'
@@ -1017,18 +1198,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CurvaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demo-portal-tutor': {
+      id: '/demo-portal-tutor'
+      path: '/demo-portal-tutor'
+      fullPath: '/demo-portal-tutor'
+      preLoaderRoute: typeof DemoPortalTutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/encaminhar': {
       id: '/encaminhar'
       path: '/encaminhar'
       fullPath: '/encaminhar'
       preLoaderRoute: typeof EncaminharRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rh': {
-      id: '/rh'
-      path: '/rh'
-      fullPath: '/rh'
-      preLoaderRoute: typeof RhRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -1059,21 +1240,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HorariosMedicacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/banho-tosa': {
-      id: '/banho-tosa'
-      path: '/banho-tosa'
-      fullPath: '/banho-tosa'
-      preLoaderRoute: typeof BanhoTosaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agenda-hotel': {
-      id: '/agenda-hotel'
-      path: '/agenda-hotel'
-      fullPath: '/agenda-hotel'
-      preLoaderRoute: typeof AgendaHotelRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-  '/hotelzinho': {
+    '/hotelzinho': {
       id: '/hotelzinho'
       path: '/hotelzinho'
       fullPath: '/hotelzinho'
@@ -1115,13 +1282,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MercadoPagoClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/banco-horas': {
-      id: '/banco-horas'
-      path: '/banco-horas'
-      fullPath: '/banco-horas'
-      preLoaderRoute: typeof BancoHorasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/minha-atividade': {
       id: '/minha-atividade'
       path: '/minha-atividade'
@@ -1129,11 +1289,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MinhaAtividadeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modelos': {
+      id: '/modelos'
+      path: '/modelos'
+      fullPath: '/modelos'
+      preLoaderRoute: typeof ModelosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/novo-animal': {
       id: '/novo-animal'
       path: '/novo-animal'
       fullPath: '/novo-animal'
       preLoaderRoute: typeof NovoAnimalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oricstudio': {
+      id: '/oricstudio'
+      path: '/oricstudio'
+      fullPath: '/oricstudio'
+      preLoaderRoute: typeof OricstudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pendencias': {
@@ -1150,6 +1324,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PerfilClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/permissoes-equipe': {
+      id: '/permissoes-equipe'
+      path: '/permissoes-equipe'
+      fullPath: '/permissoes-equipe'
+      preLoaderRoute: typeof PermissoesEquipeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plano-clinica': {
+      id: '/plano-clinica'
+      path: '/plano-clinica'
+      fullPath: '/plano-clinica'
+      preLoaderRoute: typeof PlanoClinicaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/planos': {
       id: '/planos'
       path: '/planos'
@@ -1162,6 +1350,13 @@ declare module '@tanstack/react-router' {
       path: '/plantoes'
       fullPath: '/plantoes'
       preLoaderRoute: typeof PlantoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica-de-privacidade': {
+      id: '/politica-de-privacidade'
+      path: '/politica-de-privacidade'
+      fullPath: '/politica-de-privacidade'
+      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal-tutores': {
@@ -1192,13 +1387,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReceituarioRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/todas-agendas': {
-      id: '/todas-agendas'
-      path: '/todas-agendas'
-      fullPath: '/todas-agendas'
-      preLoaderRoute: typeof TodasAgendasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/recepcao': {
       id: '/recepcao'
       path: '/recepcao'
@@ -1220,6 +1408,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegistrosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rh': {
+      id: '/rh'
+      path: '/rh'
+      fullPath: '/rh'
+      preLoaderRoute: typeof RhRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/simulador-pagamentos': {
       id: '/simulador-pagamentos'
       path: '/simulador-pagamentos'
@@ -1232,6 +1427,13 @@ declare module '@tanstack/react-router' {
       path: '/sincronizacao'
       fullPath: '/sincronizacao'
       preLoaderRoute: typeof SincronizacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/site-da-clinica': {
+      id: '/site-da-clinica'
+      path: '/site-da-clinica'
+      fullPath: '/site-da-clinica'
+      preLoaderRoute: typeof SiteDaClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/temas': {
@@ -1255,6 +1457,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosDeUsoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/todas-agendas': {
+      id: '/todas-agendas'
+      path: '/todas-agendas'
+      fullPath: '/todas-agendas'
+      preLoaderRoute: typeof TodasAgendasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tutores': {
       id: '/tutores'
       path: '/tutores'
@@ -1267,6 +1476,13 @@ declare module '@tanstack/react-router' {
       path: '/$tipo/$slug'
       fullPath: '/$tipo/$slug'
       preLoaderRoute: typeof TipoSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$slug': {
+      id: '/c/$slug'
+      path: '/c/$slug'
+      fullPath: '/c/$slug'
+      preLoaderRoute: typeof CSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vet/$slug': {
@@ -1290,6 +1506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PetSlugPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oricstudio/meta/callback': {
+      id: '/api/oricstudio/meta/callback'
+      path: '/api/oricstudio/meta/callback'
+      fullPath: '/api/oricstudio/meta/callback'
+      preLoaderRoute: typeof ApiOricstudioMetaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1300,13 +1523,17 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCanvasRoute: AdminCanvasRoute,
   AdminConteudoRoute: AdminConteudoRoute,
   AdminCuponsRoute: AdminCuponsRoute,
+  AdminOricstudioRoute: AdminOricstudioRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminSolicitacoesRoute: AdminSolicitacoesRoute,
+  AgendaHotelRoute: AgendaHotelRoute,
   AlarmesRoute: AlarmesRoute,
   AnamneseRoute: AnamneseRoute,
   AnimaisRoute: AnimaisRoute,
   AnimalRoute: AnimalRoute,
   AssinarRoute: AssinarRoute,
+  BancoHorasRoute: BancoHorasRoute,
+  BanhoTosaRoute: BanhoTosaRoute,
   CatalogoRoute: CatalogoRoute,
   ComandasRoute: ComandasRoute,
   ConfiguracaoSiteRoute: ConfiguracaoSiteRoute,
@@ -1315,48 +1542,55 @@ const rootRouteChildren: RootRouteChildren = {
   ConfigurarPortalTutorRoute: ConfigurarPortalTutorRoute,
   ConsultaRoute: ConsultaRoute,
   ConsultorioRoute: ConsultorioRoute,
+  ContratacaoRecebidaRoute: ContratacaoRecebidaRoute,
   ContratarRoute: ContratarRoute,
   CrmRoute: CrmRoute,
   CurvaRoute: CurvaRoute,
+  DemoPortalTutorRoute: DemoPortalTutorRoute,
   EncaminharRoute: EncaminharRoute,
-  RhRoute: RhRoute,
   EstoqueRoute: EstoqueRoute,
   FilaEsperaRoute: FilaEsperaRoute,
   FinanceiroRoute: FinanceiroRoute,
   HorariosMedicacoesRoute: HorariosMedicacoesRoute,
-  BanhoTosaRoute: BanhoTosaRoute,
-  AgendaHotelRoute: AgendaHotelRoute,
   HotelzinhoRoute: HotelzinhoRoute,
   InicioRoute: InicioRoute,
   InternacaoRoute: InternacaoRoute,
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
   MercadoPagoClinicaRoute: MercadoPagoClinicaRoute,
-  BancoHorasRoute: BancoHorasRoute,
   MinhaAtividadeRoute: MinhaAtividadeRoute,
+  ModelosRoute: ModelosRoute,
   NovoAnimalRoute: NovoAnimalRoute,
+  OricstudioRoute: OricstudioRoute,
   PendenciasRoute: PendenciasRoute,
   PerfilClinicaRoute: PerfilClinicaRoute,
+  PermissoesEquipeRoute: PermissoesEquipeRoute,
+  PlanoClinicaRoute: PlanoClinicaRoute,
   PlanosRoute: PlanosRoute,
   PlantoesRoute: PlantoesRoute,
+  PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   PortalTutoresRoute: PortalTutoresRoute,
   PrecosPortalRoute: PrecosPortalRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ReceituarioRoute: ReceituarioRoute,
-  TodasAgendasRoute: TodasAgendasRoute,
   RecepcaoRoute: RecepcaoRoute,
   RegistroClinicoRoute: RegistroClinicoRoute,
   RegistrosRoute: RegistrosRoute,
+  RhRoute: RhRoute,
   SimuladorPagamentosRoute: SimuladorPagamentosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
+  SiteDaClinicaRoute: SiteDaClinicaRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
+  TodasAgendasRoute: TodasAgendasRoute,
   TutoresRoute: TutoresRoute,
   TipoSlugRoute: TipoSlugRoute,
+  CSlugRoute: CSlugRoute,
   VetSlugRoute: VetSlugRoute,
   ApiMercadopagoCallbackRoute: ApiMercadopagoCallbackRoute,
   PetSlugPortalRoute: PetSlugPortalRoute,
+  ApiOricstudioMetaCallbackRoute: ApiOricstudioMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
