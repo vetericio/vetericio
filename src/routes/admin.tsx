@@ -35,7 +35,6 @@ import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
-import { excluirClinica } from "@/lib/admin-users.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -1529,13 +1528,11 @@ function Admin() {
   const renderAutorizacoesClinica=()=> <Card>
     <h3 className="text-xl font-bold">Autorizações de {selecionada?.nome || "clínica"}</h3>
     <p className="mt-2 text-sm text-muted-foreground">
-      Liberações e bloqueios especiais desta clínica devem ser configurados no
-      Gerenciador Geral de Planos, na seção Exceções por clínica.
-      A matriz é compartilhada por todos os administradores e aplicada na operação.
+      O Administrador pode visualizar todos os módulos, recursos e permissões da clínica, inclusive os bloqueados por plano. Para liberar ou bloquear excepcionalmente, use o Gerenciador Geral de Planos. Nenhum recurso é liberado sem sua autorização.
     </p>
-    <Link to="/admin-planos" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
-      <ShieldCheck size={17}/> Gerenciar autorizações no plano
-    </Link>
+    <a href={`/admin-planos?clinica=${encodeURIComponent(selecionada?.id||"")}`} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+      <ShieldCheck size={17}/> Ver todos os acessos da clínica
+    </a>
   </Card>;
 
   async function carregarFuncionalidades() {
