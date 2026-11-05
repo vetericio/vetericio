@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.oricse-planos-checkout]
 verify_jwt = false
+
+[functions.oricstudio-checkout]
+verify_jwt = false
