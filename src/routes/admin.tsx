@@ -154,7 +154,7 @@ const ABAS: ItemMenuAdmin[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
   { id: "novas", nome: "Clínicas novas", icone: ClipboardCheck, grupo: "Operação" },
   { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
-  { id: "planos", nome: "Planos, limites e acessos", icone: BadgeDollarSign, grupo: "Operação" },
+  { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
   { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
   { id: "cupons", nome: "Cupons e condições", icone: TicketPercent, grupo: "Operação", rota: "/admin-cupons" },
   { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
