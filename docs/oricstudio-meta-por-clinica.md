@@ -45,7 +45,7 @@ Solicitar os escopos profissionais adequados aos recursos efetivamente utilizado
 - Registrar aplicativo Meta e configurar secrets reais do OricStúdio no Cloudflare.
 - Aplicar a migração após revisão e testar conexão real em uma conta profissional de teste.
 - Exercitar OAuth negado, `state` vencido/repetido, conta vinculada a outra clínica, licença suspensa e dois tenants concorrentes.
-- Criar serviço periódico seguro para renovação/verificação de tokens e reautenticação.
+- Criar serviço periódico seguro para renovação/verificação de tokens e reautenticação. Já existe verificação manual individual, sem publicação automática.
 - Criar agendador e publicador com idempotência, políticas de mídia e tratamento de falhas, **antes de anunciar publicação automática**.
 - Validar os escopos que forem concedidos efetivamente e obter as permissões de produção da Meta.
 - Não publicar essa PR apenas porque passou no build: **não existe conexão Meta operacional sem segredos e testes reais**.
