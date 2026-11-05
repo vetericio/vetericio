@@ -86,7 +86,7 @@ function Login() {
           <ArrowLeft size={16} /> Voltar ao site
         </Link>
         <div className="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_30px_100px_-45px_rgba(111,41,59,0.28)] md:grid-cols-[0.92fr_1.08fr]">
-          <section className="relative hidden flex-col justify-between overflow-hidden bg-[#4A1826] p-9 text-white md:flex lg:p-12">
+          <section className="relative hidden flex-col justify-between overflow-hidden bg-[#faf7f4] p-9 text-[#2B0F18] md:flex lg:p-12">
             <div
               aria-hidden="true"
               className="absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/10"
@@ -99,16 +99,16 @@ function Login() {
               <img
                 src={logo_url}
                 alt={`${marca}`}
-                className="h-36 w-auto max-w-[320px] object-contain object-left brightness-0 invert lg:h-40 lg:max-w-[360px]"
+                className="h-36 w-auto max-w-[320px] object-contain object-left lg:h-40 lg:max-w-[360px]"
               />
               <h1 className="mt-20 max-w-[13ch] font-display text-4xl font-semibold leading-tight lg:text-[2.7rem]">
                 A rotina da sua clínica, em boas mãos.
               </h1>
-              <p className="mt-4 max-w-sm text-base leading-6 text-[#FBF7F2]/80">
+              <p className="mt-4 max-w-sm text-base leading-6 text-[#786b73]">
                 Acesse seus atendimentos, pacientes e ferramentas clínicas em um só lugar.
               </p>
             </div>
-            <p className="relative text-sm text-[#FBF7F2]/70">
+            <p className="relative text-sm text-[#786b73]">
               Acesso seguro e exclusivo para sua equipe.
             </p>
           </section>
