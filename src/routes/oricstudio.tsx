@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
+import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
 
 export const Route = createFileRoute("/oricstudio")({
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
@@ -19,13 +20,13 @@ type Tipo = "imagem" | "carrossel" | "reels" | "story";
 type Aba = "inicio" | "contas" | "publicacoes" | "calendario" | "biblioteca" | "aprovacoes" | "comentarios" | "metricas" | "alertas" | "configuracoes";
 type Contexto = {
   clinica_id: string; clinica_nome: string; clinica_status: string;
-  licenca_status: string; licenca_expira_em: string | null; tem_acesso: boolean;
+  licenca_status: string; licenca_expira_em: string | null; tem_acesso: boolean; pode_editar: boolean;
 };
 type Publicacao = {
   id: string; clinica_id: string; titulo: string; legenda: string; tipo: Tipo; status: Status;
   planejado_para: string | null; criado_em: string; atualizado_em: string;
 };
-type Midia = { id: string; nome: string; tipo: string; criado_em: string };
+type Midia = { id: string; nome: string; tipo: string; criado_em: string; caminho_privado: string };
 type Versao = { id: number; evento: string; criado_em: string; autor_id: string | null };
 type Preferencias = {
   clinica_id: string; nome_publico: string; tom_de_voz: string;
@@ -68,6 +69,8 @@ function OricStudio() {
   const [contexto, setContexto] = useState<Contexto | null>(null);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
+  const [enviandoMidia, setEnviandoMidia] = useState(false);
+  const [previas, setPrevias] = useState<Record<string,string>>({});
   const [preferencias, setPreferencias] = useState<Preferencias | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -102,7 +105,7 @@ function OricStudio() {
           .select("id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em")
           .eq("clinica_id", c.clinica_id).order("criado_em", { ascending: false }),
         (supabaseBanco as any).from("oricstudio_midias")
-          .select("id,nome,tipo,criado_em").eq("clinica_id", c.clinica_id)
+          .select("id,nome,tipo,criado_em,caminho_privado").eq("clinica_id", c.clinica_id)
           .order("criado_em", { ascending: false }),
         (supabaseBanco as any).from("oricstudio_preferencias")
           .select("clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario")
@@ -171,11 +174,13 @@ function OricStudio() {
       : new Date(d.getFullYear(),d.getMonth(),d.getDate()+passo*(modoCalendario==="semana"?7:1)));
   }
   function novo() {
+    if (!contexto?.pode_editar) return;
     setEditandoId(null); setTitulo(""); setLegenda(""); setTipo("imagem");
     setPlanejado(""); setStatus("rascunho"); setEditorAberto(true); setVersoesId(null);
     setAba("publicacoes");
   }
   function editar(p: Publicacao) {
+    if (!contexto?.pode_editar) return;
     setEditandoId(p.id); setTitulo(p.titulo); setLegenda(p.legenda);
     setTipo(p.tipo); setPlanejado(paraCampo(p.planejado_para));
     setStatus(p.status === "aguardando_aprovacao" ? "aguardando_aprovacao" : "rascunho");
@@ -183,7 +188,7 @@ function OricStudio() {
   }
   async function salvar(e: FormEvent) {
     e.preventDefault();
-    if (!contexto?.tem_acesso || !titulo.trim()) return;
+    if (!contexto?.pode_editar || !titulo.trim()) return;
     if (planejado && !Number.isFinite(new Date(planejado).getTime())) return toast.error("Confira a data planejada.");
     setSalvando(true);
     try {
@@ -206,7 +211,7 @@ function OricStudio() {
     finally { setSalvando(false); }
   }
   async function alterarStatus(p: Publicacao, proximo: Status) {
-    if (!contexto?.tem_acesso || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
+    if (!contexto?.pode_editar || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
     const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
       .update({ status: proximo }).eq("id", p.id).eq("clinica_id", contexto.clinica_id);
     if (error) return toast.error(error.message);
@@ -214,7 +219,7 @@ function OricStudio() {
     void carregar();
   }
   async function excluir(p: Publicacao) {
-    if (!contexto?.tem_acesso || !window.confirm(`Excluir definitivamente o rascunho "${p.titulo}"?`)) return;
+    if (!contexto?.pode_editar || !window.confirm(`Excluir definitivamente o rascunho "${p.titulo}"?`)) return;
     const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
       .delete().eq("id", p.id).eq("clinica_id", contexto.clinica_id);
     if (error) return toast.error(error.message);
@@ -233,7 +238,7 @@ function OricStudio() {
   }
   async function salvarPreferencias(e: FormEvent) {
     e.preventDefault();
-    if (!contexto?.tem_acesso || !preferencias) return;
+    if (!contexto?.pode_editar || !preferencias) return;
     const {data:auth} = await supabase.auth.getUser();
     if (!auth.user?.id) return toast.error("Faça login novamente.");
     setSalvando(true);
@@ -247,6 +252,82 @@ function OricStudio() {
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setSalvando(false);}
   }
+
+  async function enviarMidia(file: File | undefined) {
+    if (!file || !contexto?.pode_editar) return;
+    const permitidos = new Set(["image/png","image/jpeg","image/webp","video/mp4","video/quicktime"]);
+    if (!permitidos.has(file.type)) return toast.error("Escolha PNG, JPG, WebP, MP4 ou MOV.");
+    if (file.size <= 0 || file.size > 12 * 1024 * 1024) {
+      return toast.error("Arquivo inválido ou acima do limite de 12 MB desta versão.");
+    }
+    setEnviandoMidia(true);
+    try {
+      const {data:auth} = await supabase.auth.getSession();
+      const token = auth.session?.access_token;
+      if (!token) throw new Error("Faça login novamente.");
+      const b64 = await new Promise<string>((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+        reader.readAsDataURL(file);
+      });
+      const arquivo = await enviarArquivoDrive({data:{
+        accessToken:token, clinicaId:contexto.clinica_id, categoria:"imagens",
+        nome:file.name, mimeType:file.type, base64:b64,
+        visibilidade:"interno", entidadeTipo:"oricstudio",
+        metadata:{modulo:"oricstudio",uso:"biblioteca_privada"},
+      }});
+      if (!arquivo?.registroId) throw new Error("Upload não retornou identificação.");
+      const {error} = await (supabaseBanco as any).from("oricstudio_midias").insert({
+        clinica_id:contexto.clinica_id,nome:file.name,
+        tipo:file.type.startsWith("video/")?"video":"imagem",
+        caminho_privado:arquivo.registroId,
+      });
+      if(error) {
+        try { await excluirArquivoDrive({data:{
+          accessToken:token,clinicaId:contexto.clinica_id,registroId:arquivo.registroId,
+        }}); } catch {}
+        throw error;
+      }
+      toast.success("Arquivo salvo na biblioteca privada da clínica.");
+      await carregar();
+      setAba("biblioteca");
+    } catch(e) {
+      toast.error(e instanceof Error?e.message:"Falha ao enviar arquivo.");
+    } finally {setEnviandoMidia(false);}
+  }
+
+  async function visualizarMidia(m: Midia) {
+    if (!contexto?.tem_acesso || m.tipo !== "imagem") return;
+    try {
+      const {data:auth} = await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Faça login novamente.");
+      const arquivo=await visualizarImagemPrivadaDrive({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
+      }});
+      setPrevias(atual=>({...atual,[m.id]:arquivo.dataUrl}));
+    } catch(e) {toast.error(e instanceof Error?e.message:"Não foi possível abrir a imagem.");}
+  }
+
+  async function excluirMidia(m: Midia) {
+    if (!contexto?.pode_editar || !window.confirm(`Excluir "${m.nome}" da biblioteca privada?`)) return;
+    try {
+      const {data:auth} = await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Faça login novamente.");
+      await excluirArquivoDrive({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
+      }});
+      const {error}=await (supabaseBanco as any).from("oricstudio_midias")
+        .delete().eq("id",m.id).eq("clinica_id",contexto.clinica_id);
+      if(error)throw error;
+      toast.success("Mídia excluída.");
+      setPrevias(atual=>{const n={...atual};delete n[m.id];return n;});
+      await carregar();
+    } catch(e) {toast.error(e instanceof Error?e.message:"Falha ao excluir mídia.");}
+  }
+
   return <main className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-16 pt-6 text-foreground sm:px-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> Voltar ao ORICSE</Link>
