@@ -87,6 +87,12 @@ type SolicitacaoClinica = {
   pagamento_provedor: string | null;
   pagamento_id: string | null;
   pagamento_aprovado_em: string | null;
+  valor_total: number | null;
+  promo_codigo: string | null;
+  promo_valor_original: number | null;
+  promo_desconto: number | null;
+  promo_valor_final: number | null;
+  slug_desejado: string | null;
   clinica_criada_id: string | null;
   created_at: string;
 };
@@ -490,8 +496,8 @@ function Admin() {
     setCarregandoSolicitacoes(true);
     const { data, error } = await (supabase as any)
       .from("oricse_contratacoes")
-      .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,clinica_criada_id,created_at")
-      .in("status", ["pagamento_aprovado", "teste_aguardando_ativacao", "em_analise", "em_configuracao", "ativada"])
+      .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
+      .in("status", ["pagamento_aprovado", "teste_aguardando_ativacao", "isento_aguardando_aprovacao", "em_analise", "em_configuracao", "ativada"])
       .order("created_at", { ascending: false });
     setCarregandoSolicitacoes(false);
     if (error) {
@@ -511,9 +517,16 @@ function Admin() {
     await carregarSolicitacoes();
   }
 
+  function pedidoIsentoValido(item: SolicitacaoClinica) {
+    return Number(item.valor_total)===0 && Boolean(item.promo_codigo) &&
+      Number(item.promo_valor_original)>0 &&
+      Number(item.promo_desconto)>=Number(item.promo_valor_original) &&
+      Number(item.promo_valor_final)===0;
+  }
+
   async function prepararClinicaSolicitada(item: SolicitacaoClinica) {
-    if (!item.pagamento_id || !item.pagamento_aprovado_em) {
-      toast.error("A preparação exige confirmação do pagamento.");
+    if (!pedidoIsentoValido(item) && (!item.pagamento_id || !item.pagamento_aprovado_em)) {
+      toast.error("É necessário confirmar o pagamento ou a isenção integral.");
       return;
     }
     if (!window.confirm(`Criar o espaço de ${item.clinica_nome} bloqueado até sua autorização final?`)) return;
@@ -544,7 +557,7 @@ function Admin() {
     if (!window.confirm(`Autorizar o funcionamento de ${clinica.nome}? A clínica passará a ter acesso ao sistema.`)) return;
     setAtivandoSolicitacao(item.id);
     try {
-      const financeira = item.pagamento_aprovado_em ? "em_dia" : "teste";
+      const financeira = pedidoIsentoValido(item) ? "isento" : item.pagamento_aprovado_em ? "em_dia" : "teste";
       const { error: clinicaError } = await (supabase as any)
         .from("clinicas")
         .update({ status: "ativa", status_financeiro: financeira, updated_at: new Date().toISOString() })
@@ -1206,6 +1219,7 @@ function Admin() {
   function statusSolicitacao(item: SolicitacaoClinica) {
     const nomes: Record<string, string> = {
       pagamento_aprovado: "Pagamento confirmado",
+      isento_aguardando_aprovacao: "Cupom 100% · Aguardando auditoria",
       teste_aguardando_ativacao: "Teste aguardando revisão",
       em_analise: "Em análise",
       em_configuracao: "Em configuração",
@@ -1217,7 +1231,7 @@ function Admin() {
   function classeSolicitacao(status: string) {
     if (status === "ativada") return "bg-emerald-50 text-emerald-700";
     if (status === "pagamento_aprovado") return "bg-sky-50 text-sky-700";
-    if (status === "em_analise" || status === "em_configuracao") return "bg-amber-50 text-amber-800";
+    if (status === "em_analise" || status === "em_configuracao" || status === "isento_aguardando_aprovacao") return "bg-amber-50 text-amber-800";
     return "bg-slate-100 text-slate-700";
   }
 
@@ -1253,7 +1267,7 @@ function Admin() {
           : solicitacoes.length === 0 ? <Card><div className="py-8 text-center"><Clock3 className="mx-auto text-muted-foreground"/><h3 className="mt-3 font-bold">Nenhuma clínica nova aguardando</h3><p className="mt-1 text-sm text-muted-foreground">Quando uma contratação for confirmada, ela aparecerá aqui.</p></div></Card>
           : solicitacoes.map((item) => {
             const criada = clinicas.find((clinica) => clinica.id === item.clinica_criada_id);
-            const podePreparar = (item.status === "pagamento_aprovado" || item.status === "em_analise") && Boolean(item.pagamento_id && item.pagamento_aprovado_em) && !item.clinica_criada_id;
+            const podePreparar = (item.status === "pagamento_aprovado" || item.status === "em_analise" || item.status === "isento_aguardando_aprovacao") && (Boolean(item.pagamento_id && item.pagamento_aprovado_em) || pedidoIsentoValido(item)) && !item.clinica_criada_id;
             const podeAutorizar = Boolean(criada) && item.status !== "ativada";
 
             return <article key={item.id} className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -1263,7 +1277,7 @@ function Admin() {
                     <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + classeSolicitacao(item.status)}>{statusSolicitacao(item)}</span>
                     <span className="text-xs text-muted-foreground">Solicitada em {dataBR(item.created_at)}</span>
                   </div>
-                  <h3 className="mt-3 text-xl font-black">{item.clinica_nome}</h3>
+                  <h3 className="mt-3 text-xl font-black">{item.clinica_nome}</h3>{item.slug_desejado && <p className="text-sm font-semibold text-primary">@{item.slug_desejado}</p>}
                   <p className="mt-1 text-sm text-muted-foreground">{item.plano_nome} · {item.ciclo} · {item.valor_exibido || "Valor não informado"}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 px-4 py-3 text-right">
@@ -1275,11 +1289,11 @@ function Admin() {
               <div className="mt-5 grid gap-3 lg:grid-cols-3">
                 <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Clínica</p><p className="mt-2">{item.clinica_email || "E-mail não informado"}</p><p>{item.clinica_telefone || "Telefone não informado"}</p><p>{[item.clinica_cidade, item.clinica_uf].filter(Boolean).join("/") || "Local não informado"}</p></div>
                 <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Responsável</p><p className="mt-2">{item.responsavel_nome || "Não informado"}</p><p>{item.responsavel_email || "E-mail não informado"}</p><p>{item.responsavel_crmv ? "CRMV " + item.responsavel_crmv + (item.responsavel_crmv_uf ? "/" + item.responsavel_crmv_uf : "") : "CRMV não informado"}</p></div>
-                <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Pagamento</p><p className="mt-2">{item.pagamento_aprovado_em ? "Confirmado em " + dataBR(item.pagamento_aprovado_em) : item.status === "teste_aguardando_ativacao" ? "Período de teste" : "Aguardando confirmação"}</p><p className="text-xs text-muted-foreground">{item.pagamento_id ? (item.pagamento_provedor || "Pagamento") + " · " + item.pagamento_id : "Sem identificador de pagamento"}</p></div>
+                <div className="rounded-xl border bg-slate-50 p-4 text-sm"><p className="font-bold">Pagamento</p><p className="mt-2">{item.pagamento_aprovado_em ? "Confirmado em " + dataBR(item.pagamento_aprovado_em) : pedidoIsentoValido(item) ? "Cupom integral: R$ 0,00 — sem cobrança" : item.status === "teste_aguardando_ativacao" ? "Período de teste" : "Aguardando confirmação"}</p><p className="text-xs text-muted-foreground">{item.pagamento_id ? (item.pagamento_provedor || "Pagamento") + " · " + item.pagamento_id : "Sem identificador de pagamento"}</p></div>
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2 border-t pt-4">
-                {(item.status === "pagamento_aprovado" || item.status === "teste_aguardando_ativacao") && <button type="button" onClick={() => void iniciarAnaliseSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Search size={16}/> Iniciar análise</button>}
+                {(item.status === "pagamento_aprovado" || item.status === "teste_aguardando_ativacao" || item.status === "isento_aguardando_aprovacao") && <button type="button" onClick={() => void iniciarAnaliseSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Search size={16}/> Iniciar análise</button>}
                 {podePreparar && <button type="button" disabled={preparandoSolicitacao === item.id} onClick={() => void prepararClinicaSolicitada(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50"><Building2 size={16}/>{preparandoSolicitacao === item.id ? "Preparando..." : "Preparar espaço da clínica"}</button>}
                 {criada && <button type="button" onClick={() => abrirConfiguracaoDaSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Settings size={16}/> Revisar plano e acesso</button>}
                 {podeAutorizar && <button type="button" disabled={ativandoSolicitacao === item.id} onClick={() => void autorizarFuncionamento(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><ShieldCheck size={16}/>{ativandoSolicitacao === item.id ? "Autorizando..." : "Autorizar funcionamento"}</button>}
