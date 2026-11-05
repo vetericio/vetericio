@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle, ArrowLeft, BarChart3, Bell, CalendarDays, CheckCircle2,
   Clock3, FileImage, FolderOpen, Instagram, LayoutDashboard, LockKeyhole,
@@ -144,7 +144,7 @@ function OricStudio() {
     setStatus(p.status === "aguardando_aprovacao" ? "aguardando_aprovacao" : "rascunho");
     setEditorAberto(true); setVersoesId(null); setAba("publicacoes");
   }
-  async function salvar(e: React.FormEvent) {
+  async function salvar(e: FormEvent) {
     e.preventDefault();
     if (!contexto?.tem_acesso || !titulo.trim()) return;
     if (planejado && !Number.isFinite(new Date(planejado).getTime())) return toast.error("Confira a data planejada.");
@@ -194,7 +194,7 @@ function OricStudio() {
     setVersoes((data||[]) as Versao[]);
     setVersoesId(p.id);
   }
-  async function salvarPreferencias(e: React.FormEvent) {
+  async function salvarPreferencias(e: FormEvent) {
     e.preventDefault();
     if (!contexto?.tem_acesso || !preferencias) return;
     const {data:auth} = await supabase.auth.getUser();
