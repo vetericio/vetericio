@@ -1,7 +1,7 @@
 -- Não permitir contratar menos contas que as já conectadas à clínica.
 create or replace function public.oricstudio_validar_cota_solicitacao()
 returns trigger language plpgsql security definer set search_path=''
-as $
+as $oricstudio_guard$
 declare conectadas integer;
 begin
   select count(*) into conectadas from public.oricstudio_meta_contas
@@ -11,7 +11,7 @@ begin
   end if;
   return new;
 end;
-$;
+$oricstudio_guard$;
 revoke all on function public.oricstudio_validar_cota_solicitacao() from public,anon,authenticated;
 drop trigger if exists oricstudio_cota_solicitacao_trigger on public.oricstudio_solicitacoes;
 create trigger oricstudio_cota_solicitacao_trigger
