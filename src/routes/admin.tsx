@@ -78,6 +78,14 @@ type SolicitacaoClinica = {
   clinica_email: string;
   clinica_cidade: string;
   clinica_uf: string;
+  clinica_endereco: string | null;
+  clinica_numero: string | null;
+  clinica_bairro: string | null;
+  clinica_cep: string | null;
+  razao_social: string | null;
+  observacoes: string | null;
+  plano_codigo: string;
+  quantidade_usuarios: number;
   responsavel_nome: string;
   responsavel_cpf: string;
   responsavel_crmv: string;
@@ -266,6 +274,8 @@ function Admin() {
   const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
   const [erroSolicitacoes, setErroSolicitacoes] = useState("");
   const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
+  const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState<SolicitacaoClinica | null>(null);
+  const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
   const [ativandoSolicitacao, setAtivandoSolicitacao] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
   const [novaClinica, setNovaClinica] = useState<NovaClinica | null>(null);
@@ -504,7 +514,7 @@ function Admin() {
       for(let inicio=0;inicio<100000;inicio+=lote) {
         const { data, error } = await (supabaseBanco as any)
           .from("oricse_contratacoes")
-          .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
+          .select("id,plano_nome,plano_codigo,quantidade_usuarios,ciclo,valor_exibido,status,clinica_nome,razao_social,cnpj,clinica_telefone,clinica_email,clinica_cep,clinica_endereco,clinica_numero,clinica_bairro,clinica_cidade,clinica_uf,observacoes,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
           .order("created_at",{ascending:false})
           .order("id",{ascending:false})
           .range(inicio,inicio+lote-1);
@@ -520,6 +530,49 @@ function Admin() {
     } finally {
       setCarregandoSolicitacoes(false);
     }
+  }
+
+  function editarSolicitacao(campo: keyof SolicitacaoClinica, valor: string) {
+    setSolicitacaoSelecionada(atual => atual ? {...atual,[campo]:valor} : atual);
+  }
+
+  async function salvarRevisaoSolicitacao(item: SolicitacaoClinica) {
+    if(!item.clinica_nome.trim() || !item.slug_desejado?.trim()) {
+      toast.error("Nome e identificador da clínica são obrigatórios.");return false;
+    }
+    const slug=limparSlug(item.slug_desejado);
+    if(!slug || slug.length<3) {toast.error("Identificador inválido.");return false;}
+    const campos = {
+      clinica_nome:item.clinica_nome.trim(),slug_desejado:slug,
+      razao_social:item.razao_social?.trim()||null,
+      clinica_telefone:item.clinica_telefone?.trim()||null,
+      clinica_email:item.clinica_email?.trim()||null,
+      clinica_cep:item.clinica_cep?.trim()||null,
+      clinica_endereco:item.clinica_endereco?.trim()||null,
+      clinica_numero:item.clinica_numero?.trim()||null,
+      clinica_bairro:item.clinica_bairro?.trim()||null,
+      clinica_cidade:item.clinica_cidade?.trim()||null,
+      clinica_uf:item.clinica_uf?.trim()||null,
+      responsavel_nome:item.responsavel_nome?.trim()||null,
+      responsavel_crmv:item.responsavel_crmv?.trim()||null,
+      responsavel_crmv_uf:item.responsavel_crmv_uf?.trim()||null,
+      responsavel_email:item.responsavel_email?.trim()||null,
+      responsavel_telefone:item.responsavel_telefone?.trim()||null,
+      observacoes:item.observacoes?.trim()||null,
+      updated_at:new Date().toISOString()
+    };
+    setSalvandoSolicitacao(true);
+    try {
+      const {error}=await (supabaseBanco as any).from("oricse_contratacoes").update(campos).eq("id",item.id);
+      if(error) throw error;
+      setSolicitacaoSelecionada({...item,...campos});
+      await carregarSolicitacoes();
+      toast.success("Dados revisados e salvos na solicitação.");
+      return true;
+    }catch(error){
+      toast.error(error instanceof Error?error.message:"Não foi possível salvar a revisão.");
+      return false;
+    }finally{setSalvandoSolicitacao(false);}
   }
 
   async function iniciarAnaliseSolicitacao(item: SolicitacaoClinica) {
@@ -1251,6 +1304,67 @@ function Admin() {
     return "bg-slate-100 text-slate-700";
   }
 
+  const renderAutorizacaoCriacao = () => {
+    const item=solicitacaoSelecionada;
+    if(!item) return null;
+    const criada=Boolean(item.clinica_criada_id);
+    const financeiraValida=pedidoIsentoValido(item)||Boolean(item.pagamento_id&&item.pagamento_aprovado_em);
+    const elegivel=!criada&&financeiraValida&&["pagamento_aprovado","em_analise","isento_aguardando_aprovacao"].includes(item.status);
+    const editor=(nome:string,campo:keyof SolicitacaoClinica,limite=180)=><label className="text-sm font-semibold">{nome}<input value={String(item[campo]??"")} maxLength={limite} onChange={e=>editarSolicitacao(campo,e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal"/></label>;
+    return <Dialog open={Boolean(item)} onOpenChange={aberto=>{if(!aberto&&!salvandoSolicitacao&&!preparandoSolicitacao)setSolicitacaoSelecionada(null);}}>
+      <DialogContent className="max-h-[94dvh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Autorização para criar clínica</DialogTitle>
+          <DialogDescription>Dados preenchidos automaticamente pela contratação. Revise antes de criar o espaço. A clínica ficará bloqueada até a autorização final de funcionamento.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-5">
+          <div className="rounded-xl border bg-slate-50 p-4 text-sm">
+            <p><b>Pedido:</b> {item.id}</p><p><b>Status:</b> {statusSolicitacao(item)}</p>
+            <p><b>Plano:</b> {item.plano_nome} · {item.ciclo} · {item.quantidade_usuarios||0} usuários</p>
+            <p><b>Valor final:</b> {Number(item.valor_total||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</p>
+            <p><b>Pagamento:</b> {pedidoIsentoValido(item)?"Cupom 100% ("+item.promo_codigo+"), sem cobrança":item.pagamento_aprovado_em?"Confirmado em "+dataBR(item.pagamento_aprovado_em):"Não confirmado"}</p>
+            <p><b>CNPJ:</b> {item.cnpj||"Não informado"}</p>
+            <p><b>CPF do responsável:</b> {item.responsavel_cpf||"Não informado"}</p>
+          </div>
+          <section className="space-y-3"><h3 className="font-extrabold">Dados da clínica</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {editor("Nome da clínica", "clinica_nome")}
+              {editor("Identificador @", "slug_desejado",100)}
+              {editor("Razão social","razao_social")}
+              {editor("Telefone","clinica_telefone",30)}
+              {editor("E-mail","clinica_email")}
+              {editor("CEP","clinica_cep",12)}
+              {editor("Endereço","clinica_endereco")}
+              {editor("Número","clinica_numero",30)}
+              {editor("Bairro","clinica_bairro")}
+              {editor("Cidade","clinica_cidade")}
+              {editor("UF","clinica_uf",2)}
+            </div>
+          </section>
+          <section className="space-y-3"><h3 className="font-extrabold">Responsável técnico</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {editor("Nome","responsavel_nome")}
+              {editor("CRMV","responsavel_crmv",30)}
+              {editor("UF do CRMV","responsavel_crmv_uf",2)}
+              {editor("E-mail","responsavel_email")}
+              {editor("Telefone","responsavel_telefone",30)}
+            </div>
+          </section>
+          <label className="block text-sm font-semibold">Observações da contratação
+            <textarea value={item.observacoes||""} rows={3} onChange={e=>editarSolicitacao("observacoes",e.target.value)} className="mt-1 w-full rounded-xl border p-3 font-normal"/>
+          </label>
+          {!elegivel&&<p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">{criada?"O espaço já foi criado. Revise a clínica existente antes da liberação.":"A criação ainda não está autorizada: é necessário concluir a contratação, confirmar o pagamento ou validar uma isenção integral."}</p>}
+          <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+            <button type="button" onClick={()=>setSolicitacaoSelecionada(null)} className="min-h-11 rounded-xl border px-4 text-sm font-bold">Fechar</button>
+            {!criada&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void salvarRevisaoSolicitacao(item)} className="min-h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">{salvandoSolicitacao?"Salvando...":"Salvar revisão"}</button>}
+            {elegivel&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void (async()=>{if(!window.confirm("Confirmar auditoria e autorizar a CRIAÇÃO do espaço bloqueado? Isso NÃO libera o funcionamento."))return;const ok=await salvarRevisaoSolicitacao(item);if(!ok)return;await prepararClinicaSolicitada(item);setSolicitacaoSelecionada(null);})()} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">{preparandoSolicitacao?"Criando...":"Autorizar criação da clínica"}</button>}
+            {criada&&<button type="button" onClick={()=>{setSolicitacaoSelecionada(null);abrirConfiguracaoDaSolicitacao(item);}} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground">Revisar clínica criada</button>}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>;
+  };
+
   const renderClinicasNovas = () => {
     const indicadores = [
       { rotulo: "Total de solicitações", valor: solicitacoes.length, Icone: ClipboardCheck, cor: "text-primary" },
@@ -1294,7 +1408,7 @@ function Admin() {
                     <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + classeSolicitacao(item.status)}>{statusSolicitacao(item)}</span>
                     <span className="text-xs text-muted-foreground">Solicitada em {dataBR(item.created_at)}</span>
                   </div>
-                  <h3 className="mt-3 text-xl font-black">{item.clinica_nome}</h3>{item.slug_desejado && <p className="text-sm font-semibold text-primary">@{item.slug_desejado}</p>}
+                  <button type="button" onClick={()=>setSolicitacaoSelecionada(item)} className="mt-3 block text-left focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" aria-label={`Auditar e autorizar criação de ${item.clinica_nome}`}><span className="text-xl font-black underline-offset-4 hover:underline">{item.clinica_nome}</span>{item.slug_desejado && <span className="block text-sm font-semibold text-primary">@{item.slug_desejado}</span>}</button>
                   <p className="mt-1 text-sm text-muted-foreground">{item.plano_nome} · {item.ciclo} · {item.valor_exibido || "Valor não informado"}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 px-4 py-3 text-right">
@@ -1310,6 +1424,7 @@ function Admin() {
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2 border-t pt-4">
+                <button type="button" onClick={()=>setSolicitacaoSelecionada(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><ClipboardCheck size={16}/> Auditar / autorizar criação</button>
                 {(item.status === "pagamento_aprovado" || item.status === "teste_aguardando_ativacao" || item.status === "isento_aguardando_aprovacao") && <button type="button" onClick={() => void iniciarAnaliseSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Search size={16}/> Iniciar análise</button>}
                 {podePreparar && <button type="button" disabled={preparandoSolicitacao === item.id} onClick={() => void prepararClinicaSolicitada(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50"><Building2 size={16}/>{preparandoSolicitacao === item.id ? "Preparando..." : "Preparar espaço da clínica"}</button>}
                 {criada && <button type="button" onClick={() => abrirConfiguracaoDaSolicitacao(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><Settings size={16}/> Revisar plano e acesso</button>}
@@ -1858,6 +1973,7 @@ function Admin() {
         </div>
       </div>
       {renderNovaClinica()}
+      {renderAutorizacaoCriacao()}
     </main>
   );
 }
