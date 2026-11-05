@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Clock3,
   Lock,
+  Instagram,
   LogOut,
   Menu,
   Package,
@@ -48,6 +49,7 @@ type MenuRoute =
   | "/pendencias"
   | "/plantoes"
   | "/crm"
+  | "/oricstudio"
   | "/financeiro"
   | "/comandas"
   | "/estoque"
@@ -162,6 +164,11 @@ const areas: AreaMenu[] = [
     ],
   },
   {
+    titulo: "OricStúdio",
+    icone: Instagram,
+    itens: [{ to: "/oricstudio", rotulo: "Gestão de redes sociais" }],
+  },
+  {
     titulo: "Relatórios",
     icone: BarChart3,
     itens: [{ rotulo: "Módulo em preparação", emBreve: true }],
@@ -210,7 +217,7 @@ const areas: AreaMenu[] = [
 
 // As quatro áreas principais ficam visíveis. As demais mantêm todos os
 // mesmos links e permissões, mas são agrupadas em "Mais opções".
-const ordemPrincipal = ["Recepção", "Clínica veterinária", "Banho e tosa", "Hotelzinho"];
+const ordemPrincipal = ["Recepção", "Clínica veterinária", "Banho e tosa", "Hotelzinho", "OricStúdio"];
 const titulosPrincipais = new Set(ordemPrincipal);
 const areasPrincipais = ordemPrincipal.map((titulo) => areas.find((area) => area.titulo === titulo)!)
   .filter(Boolean);
@@ -286,7 +293,7 @@ export function MenuLateral({
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) => item.emBreve ||
+          (item) => item.emBreve || item.to === "/oricstudio" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
     // Mostrar títulos de bloco somente quando o usuário pode acessar ao menos um item.
@@ -311,7 +318,7 @@ export function MenuLateral({
           if (itens.length === 0) return null;
           const Icone = area.icone;
           const ativo = itens.some(
-            (item) => item.to === location.pathname && !!item.permissao && pode(item.permissao),
+            (item) => item.to === location.pathname && (item.to === "/oricstudio" || (!!item.permissao && pode(item.permissao))),
           );
           const abertoGrupo = expandido === area.titulo;
           return (
