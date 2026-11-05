@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Building2, CalendarClock, ClipboardList, CreditCard, Instagram, LockKeyhole, RefreshCw, Settings, ShieldCheck, Users, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 
 export const Route = createFileRoute("/admin-oricstudio")({ component: OricStudioAdmin });
 
@@ -95,7 +96,7 @@ function OricStudioAdmin() {
   return <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 text-foreground">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div className="space-y-1"><Link to="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4"/> Administração Geral</Link>
-      <h1 className="flex items-center gap-2 text-2xl font-bold"><Instagram className="h-7 w-7"/> OricStúdio</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-bold"><img src={ORICSTUDIO_LOGO} alt="Logo oficial OricStúdio" className="h-12 w-12 rounded-lg object-contain" /> OricStúdio</h1>
       <p className="text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet · Administração central</p></div>
       <button onClick={()=>void carregar()} disabled={carregando} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
     </header>
