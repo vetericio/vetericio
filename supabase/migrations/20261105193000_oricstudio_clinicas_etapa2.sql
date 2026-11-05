@@ -80,7 +80,7 @@ on public.oricstudio_publicacoes_versoes (publicacao_id, criado_em desc);
 
 create or replace function public.oricstudio_antes_atualizar()
 returns trigger language plpgsql security invoker set search_path = ''
-as $
+as $$
 begin
   if new.clinica_id is distinct from old.clinica_id
      or new.criado_por is distinct from old.criado_por
@@ -90,7 +90,7 @@ begin
   new.atualizado_em := now();
   return new;
 end;
-$;
+$$;
 revoke all on function public.oricstudio_antes_atualizar() from public,anon,authenticated;
 drop trigger if exists oricstudio_publicacoes_atualizar_trigger on public.oricstudio_publicacoes;
 create trigger oricstudio_publicacoes_atualizar_trigger
