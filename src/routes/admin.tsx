@@ -5,6 +5,9 @@ import {
   BadgeDollarSign,
   Building2,
   CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock3,
   CreditCard,
   Database,
   ExternalLink,
@@ -38,7 +41,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos";
+type Aba = "dashboard" | "novas" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive" | "site" | "autorizacoes";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
@@ -63,6 +66,30 @@ type Clinica = {
 };
 
 type NovaClinica = Pick<Clinica, "nome" | "slug" | "tipo_publico" | "plano" | "limite_usuarios">;
+type SolicitacaoClinica = {
+  id: string;
+  plano_nome: string;
+  ciclo: string;
+  valor_exibido: string | null;
+  status: string;
+  clinica_nome: string;
+  cnpj: string;
+  clinica_telefone: string;
+  clinica_email: string;
+  clinica_cidade: string;
+  clinica_uf: string;
+  responsavel_nome: string;
+  responsavel_cpf: string;
+  responsavel_crmv: string;
+  responsavel_crmv_uf: string;
+  responsavel_email: string;
+  responsavel_telefone: string;
+  pagamento_provedor: string | null;
+  pagamento_id: string | null;
+  pagamento_aprovado_em: string | null;
+  clinica_criada_id: string | null;
+  created_at: string;
+};
 
 const CAMPOS_CLINICA = "id,nome,slug,tipo_publico,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro";
 const valorPlanoClinica = (p: Plano) => p.codigo?.endsWith("-2026") ? p.codigo : p.nome;
@@ -114,14 +141,16 @@ type SiteConfig = {
   logo_url?: string;
 };
 
-const ABAS: { id: Aba; nome: string; icone: typeof Gauge }[] = [
-  { id: "dashboard", nome: "Visão geral", icone: Gauge },
-  { id: "clinicas", nome: "Clínicas", icone: Building2 },
-  { id: "planos", nome: "Planos", icone: BadgeDollarSign },
-  { id: "site", nome: "Site e marca", icone: PanelsTopLeft },
-  { id: "pagamentos", nome: "Pagamentos", icone: CreditCard },
-  { id: "sistema", nome: "Sistema", icone: Settings },
-  { id: "paginas", nome: "Páginas e URLs", icone: Globe2 },
+type GrupoAba = "Operação" | "Configuração";
+const ABAS: { id: Aba; nome: string; icone: typeof Gauge; grupo: GrupoAba }[] = [
+  { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
+  { id: "novas", nome: "Clínicas novas", icone: ClipboardCheck, grupo: "Operação" },
+  { id: "clinicas", nome: "Clínicas ativas", icone: Building2, grupo: "Operação" },
+  { id: "planos", nome: "Planos e acessos", icone: BadgeDollarSign, grupo: "Operação" },
+  { id: "pagamentos", nome: "Pagamentos e taxas", icone: CreditCard, grupo: "Operação" },
+  { id: "site", nome: "Site e marca", icone: PanelsTopLeft, grupo: "Configuração" },
+  { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Configuração" },
+  { id: "sistema", nome: "Sistema", icone: Settings, grupo: "Configuração" },
 ];
 
 const PERFIS: Record<PapelClinica, { nome: string; resumo: string; acessos: string[]; bloqueios: string[] }> = {
@@ -210,6 +239,10 @@ function Admin() {
   const [aba, setAba] = useState<Aba>("dashboard");
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
+  const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
+  const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
+  const [ativandoSolicitacao, setAtivandoSolicitacao] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
   const [novaClinica, setNovaClinica] = useState<NovaClinica | null>(null);
   const [criandoClinica, setCriandoClinica] = useState(false);
@@ -260,6 +293,19 @@ function Admin() {
     if (!q) return lista;
     return lista.filter((c) => [c.nome, c.slug, c.plano, c.status, c.status_financeiro].filter(Boolean).some((x) => String(x).toLowerCase().includes(q)));
   }, [clinicas, buscaClinica, filtroClinica]);
+
+  const solicitacoesEmAberto = useMemo(
+    () => solicitacoes.filter((item) => item.status !== "ativada"),
+    [solicitacoes],
+  );
+  const solicitacoesPagas = useMemo(
+    () => solicitacoes.filter((item) => Boolean(item.pagamento_aprovado_em) && item.status !== "ativada"),
+    [solicitacoes],
+  );
+  const solicitacoesProntas = useMemo(
+    () => solicitacoes.filter((item) => Boolean(item.clinica_criada_id) && item.status !== "ativada"),
+    [solicitacoes],
+  );
 
   const dominiosDaClinica = useMemo(
     () => selecionada ? dominiosClinica.filter((dominio) => dominio.clinica_id === selecionada.id) : [],
@@ -422,7 +468,85 @@ function Admin() {
     setPasta(data?.modo === "personalizado" ? data.root_folder_url || data.root_folder_id || "" : "");
   }
 
-  useEffect(() => { void carregarTudo(); }, []);
+  async function carregarSolicitacoes() {
+    setCarregandoSolicitacoes(true);
+    const { data, error } = await (supabase as any)
+      .from("oricse_contratacoes")
+      .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,clinica_criada_id,created_at")
+      .in("status", ["pagamento_aprovado", "teste_aguardando_ativacao", "em_analise", "em_configuracao", "ativada"])
+      .order("created_at", { ascending: false });
+    setCarregandoSolicitacoes(false);
+    if (error) {
+      toast.error("Não foi possível carregar as clínicas novas.");
+      return;
+    }
+    setSolicitacoes((data || []) as SolicitacaoClinica[]);
+  }
+
+  async function iniciarAnaliseSolicitacao(item: SolicitacaoClinica) {
+    const { error } = await (supabase as any)
+      .from("oricse_contratacoes")
+      .update({ status: "em_analise", updated_at: new Date().toISOString() })
+      .eq("id", item.id);
+    if (error) return toast.error("Não foi possível iniciar a análise.");
+    toast.success("Solicitação movida para análise.");
+    await carregarSolicitacoes();
+  }
+
+  async function prepararClinicaSolicitada(item: SolicitacaoClinica) {
+    if (!item.pagamento_id || !item.pagamento_aprovado_em) {
+      toast.error("A preparação exige confirmação do pagamento.");
+      return;
+    }
+    if (!window.confirm(`Criar o espaço de ${item.clinica_nome} bloqueado até sua autorização final?`)) return;
+    setPreparandoSolicitacao(item.id);
+    try {
+      const { error } = await (supabase as any).rpc("oricse_admin_preparar_clinica", { p_contratacao: item.id });
+      if (error) throw error;
+      toast.success("Espaço criado. Revise a configuração antes de liberar o funcionamento.");
+      await Promise.all([carregarTudo(), carregarSolicitacoes()]);
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível preparar a clínica.");
+    } finally {
+      setPreparandoSolicitacao(null);
+    }
+  }
+
+  function abrirConfiguracaoDaSolicitacao(item: SolicitacaoClinica) {
+    const clinica = clinicas.find((atual) => atual.id === item.clinica_criada_id);
+    if (!clinica) return toast.error("O espaço da clínica ainda não foi localizado.");
+    setSelecionada(clinica);
+    setAbaClinica("situacao");
+    setAba("clinicas");
+  }
+
+  async function autorizarFuncionamento(item: SolicitacaoClinica) {
+    const clinica = clinicas.find((atual) => atual.id === item.clinica_criada_id);
+    if (!clinica) return toast.error("Prepare o espaço da clínica antes de autorizar.");
+    if (!window.confirm(`Autorizar o funcionamento de ${clinica.nome}? A clínica passará a ter acesso ao sistema.`)) return;
+    setAtivandoSolicitacao(item.id);
+    try {
+      const financeira = item.pagamento_aprovado_em ? "em_dia" : "teste";
+      const { error: clinicaError } = await (supabase as any)
+        .from("clinicas")
+        .update({ status: "ativa", status_financeiro: financeira, updated_at: new Date().toISOString() })
+        .eq("id", clinica.id);
+      if (clinicaError) throw clinicaError;
+      const { error: solicitacaoError } = await (supabase as any)
+        .from("oricse_contratacoes")
+        .update({ status: "ativada", updated_at: new Date().toISOString() })
+        .eq("id", item.id);
+      if (solicitacaoError) throw solicitacaoError;
+      toast.success("Funcionamento autorizado.");
+      await Promise.all([carregarTudo(), carregarSolicitacoes()]);
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível autorizar a clínica.");
+    } finally {
+      setAtivandoSolicitacao(null);
+    }
+  }
+
+  useEffect(() => { void carregarTudo(); void carregarSolicitacoes(); }, []);
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
   useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
