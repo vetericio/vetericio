@@ -592,12 +592,12 @@ function Admin() {
       Number(item.promo_valor_final)===0;
   }
 
-  async function prepararClinicaSolicitada(item: SolicitacaoClinica) {
+  async function prepararClinicaSolicitada(item: SolicitacaoClinica, confirmar=true) {
     if (!pedidoIsentoValido(item) && (!item.pagamento_id || !item.pagamento_aprovado_em)) {
       toast.error("É necessário confirmar o pagamento ou a isenção integral.");
       return;
     }
-    if (!window.confirm(`Criar o espaço de ${item.clinica_nome} bloqueado até sua autorização final?`)) return;
+    if (confirmar && !window.confirm(`Criar o espaço de ${item.clinica_nome} bloqueado até sua autorização final?`)) return;
     setPreparandoSolicitacao(item.id);
     try {
       const { error } = await (supabaseBanco as any).rpc("oricse_admin_preparar_clinica", { p_contratacao: item.id });
@@ -1357,7 +1357,7 @@ function Admin() {
           <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
             <button type="button" onClick={()=>setSolicitacaoSelecionada(null)} className="min-h-11 rounded-xl border px-4 text-sm font-bold">Fechar</button>
             {!criada&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void salvarRevisaoSolicitacao(item)} className="min-h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">{salvandoSolicitacao?"Salvando...":"Salvar revisão"}</button>}
-            {elegivel&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void (async()=>{if(!window.confirm("Confirmar auditoria e autorizar a CRIAÇÃO do espaço bloqueado? Isso NÃO libera o funcionamento."))return;const ok=await salvarRevisaoSolicitacao(item);if(!ok)return;await prepararClinicaSolicitada(item);setSolicitacaoSelecionada(null);})()} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">{preparandoSolicitacao?"Criando...":"Autorizar criação da clínica"}</button>}
+            {elegivel&&<button type="button" disabled={salvandoSolicitacao||Boolean(preparandoSolicitacao)} onClick={()=>void (async()=>{if(!window.confirm("Confirmar auditoria e autorizar a CRIAÇÃO do espaço bloqueado? Isso NÃO libera o funcionamento."))return;const ok=await salvarRevisaoSolicitacao(item);if(!ok)return;await prepararClinicaSolicitada(item,false);setSolicitacaoSelecionada(null);})()} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">{preparandoSolicitacao?"Criando...":"Autorizar criação da clínica"}</button>}
             {criada&&<button type="button" onClick={()=>{setSolicitacaoSelecionada(null);abrirConfiguracaoDaSolicitacao(item);}} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground">Revisar clínica criada</button>}
           </div>
         </div>
