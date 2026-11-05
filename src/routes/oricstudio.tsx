@@ -366,7 +366,7 @@ function OricStudio() {
         </nav>
         <div className="min-w-0 space-y-4">
       {aba==="inicio" && <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Visão geral</h2><button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Novo rascunho</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Visão geral</h2>{contexto.pode_editar && <button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Novo rascunho</button>}</div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {([["Publicações editoriais",publicacoes.length],["Aguardando aprovação",pendentes.length],["Datas planejadas",planejadas.length],["Mídias cadastradas",midias.length]] as const)
             .map(([rotulo,valor])=><div key={rotulo} className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-2 text-3xl font-bold">{valor}</p></div>)}
@@ -377,7 +377,7 @@ function OricStudio() {
         <p className="text-xs text-muted-foreground">Sem integração com o Instagram nesta etapa: os indicadores acima mostram apenas dados internos do OricStúdio.</p>
       </section>}
       {aba==="publicacoes" && <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">Publicações e rascunhos</h2><button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Criar publicação</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">Publicações e rascunhos</h2>{contexto.pode_editar && <button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Criar publicação</button>}</div>
         {editorAberto && <form onSubmit={e=>void salvar(e)} className="space-y-4 rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="text-lg font-semibold">{editandoId?"Editar rascunho":"Nova publicação editorial"}</h3>
           <div className="grid gap-3 md:grid-cols-2">
@@ -395,9 +395,9 @@ function OricStudio() {
         {publicacoes.length===0?<p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Nenhum rascunho. Use “Criar publicação” para começar.</p>:
           <div className="grid gap-3">{publicacoes.map(p=><article key={p.id} className="rounded-xl border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-bold">{p.titulo}</h3><p className="mt-1 text-xs text-muted-foreground">{p.tipo} · {STATUS[p.status]} · {textoData(p.planejado_para)}</p></div><div className="flex flex-wrap gap-2">
-              <button onClick={()=>editar(p)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Pencil className="h-3.5 w-3.5"/> Editar</button>
+              {contexto.pode_editar && <button onClick={()=>editar(p)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Pencil className="h-3.5 w-3.5"/> Editar</button>}
               <button onClick={()=>void carregarVersoes(p)} className="rounded-lg border px-3 py-2 text-xs">Versões</button>
-              <button onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>
+              {contexto.pode_editar && <button onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>}
             </div></div><p className="mt-3 whitespace-pre-line text-sm">{p.legenda||"Sem legenda."}</p>
             {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
           </article>)}</div>}
@@ -436,18 +436,48 @@ function OricStudio() {
         </div>
       </section>}
       {aba==="aprovacoes" && <section className="space-y-3"><h2 className="text-xl font-bold">Aprovações editoriais</h2>
-        {pendentes.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma publicação aguardando aprovação.</p>:pendentes.map(p=><div key={p.id} className="space-y-3 rounded-xl border bg-card p-4"><h3 className="font-semibold">{p.titulo}</h3><p className="whitespace-pre-line text-sm">{p.legenda}</p><div className="flex flex-wrap gap-2"><button onClick={()=>void alterarStatus(p,"aprovado")} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"><CheckCircle2 className="h-4 w-4"/> Aprovar internamente</button><button onClick={()=>void alterarStatus(p,"rascunho")} className="rounded-lg border px-3 py-2 text-sm">Voltar para rascunho</button></div></div>)}
+        {pendentes.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma publicação aguardando aprovação.</p>:pendentes.map(p=><div key={p.id} className="space-y-3 rounded-xl border bg-card p-4"><h3 className="font-semibold">{p.titulo}</h3><p className="whitespace-pre-line text-sm">{p.legenda}</p><div className="flex flex-wrap gap-2">{contexto.pode_editar && <><button onClick={()=>void alterarStatus(p,"aprovado")} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"><CheckCircle2 className="h-4 w-4"/> Aprovar internamente</button><button onClick={()=>void alterarStatus(p,"rascunho")} className="rounded-lg border px-3 py-2 text-sm">Voltar para rascunho</button></>}</div></div>)}
         <p className="text-xs text-muted-foreground">Aprovação interna não publica nem agenda o conteúdo nas redes sociais.</p>
       </section>}
-      {aba==="biblioteca" && <section className="space-y-3"><h2 className="text-xl font-bold">Biblioteca de mídias</h2>
-        {midias.length===0?<div className="rounded-xl border bg-card p-7"><FolderOpen className="h-9 w-9 text-muted-foreground"/><h3 className="mt-3 font-semibold">Biblioteca vazia</h3><p className="mt-2 text-sm text-muted-foreground">O armazenamento e envio de arquivos serão conectados na etapa de integração; nenhum conteúdo de outras clínicas será importado.</p></div>:midias.map(m=><div key={m.id} className="rounded-lg border bg-card p-3 text-sm">{m.nome} · {m.tipo}</div>)}
+      {aba==="biblioteca" && <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados da clínica no Google Drive do ORICSE.</p></div>
+          {contexto.pode_editar && <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            <Plus className="h-4 w-4"/>{enviandoMidia?"Enviando...":"Adicionar mídia"}
+            <input type="file" className="sr-only" disabled={enviandoMidia}
+              accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime"
+              onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value="";void enviarMidia(file);}} />
+          </label>}
+        </div>
+        <p className="text-xs text-muted-foreground">Até 12 MB por arquivo nesta versão. PNG, JPEG, WebP, MP4 ou MOV. Conteúdo não é publicado automaticamente.</p>
+        {midias.length===0
+          ? <div className="rounded-xl border bg-card p-7"><FolderOpen className="h-9 w-9 text-muted-foreground"/>
+              <h3 className="mt-3 font-semibold">Sua biblioteca está vazia</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo da clínica.</p></div>
+          : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {midias.map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
+                <div className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-secondary/40">
+                  {previas[m.id]
+                    ? <img src={previas[m.id]} alt={m.nome} className="max-h-64 w-full object-contain"/>
+                    : m.tipo==="video"
+                      ? <FileImage className="h-12 w-12 text-muted-foreground"/>
+                      : <FolderOpen className="h-12 w-12 text-muted-foreground"/>}
+                </div>
+                <h3 className="mt-3 truncate text-sm font-semibold" title={m.nome}>{m.nome}</h3>
+                <p className="text-xs text-muted-foreground">{m.tipo} · {textoData(m.criado_em)}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {m.tipo==="imagem" && <button type="button" onClick={()=>void visualizarMidia(m)} className="rounded-lg border px-3 py-2 text-xs">Visualizar</button>}
+                  {contexto.pode_editar && <button type="button" onClick={()=>void excluirMidia(m)} className="rounded-lg border px-3 py-2 text-xs text-destructive">Excluir</button>}
+                </div>
+              </article>)}
+            </div>}
       </section>}
       {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz da clínica</h2>
         <label className="block space-y-1 text-sm font-semibold">Nome público<input value={preferencias.nome_publico} onChange={e=>setPreferencias({...preferencias,nome_publico:e.target.value})} maxLength={150} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Tom de voz<textarea rows={3} maxLength={600} value={preferencias.tom_de_voz} onChange={e=>setPreferencias({...preferencias,tom_de_voz:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Hashtags padrão<textarea rows={2} maxLength={1000} value={preferencias.hashtags_padrao} onChange={e=>setPreferencias({...preferencias,hashtags_padrao:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <p className="text-xs text-muted-foreground">Fuso horário de referência: {preferencias.fuso_horario}. Nenhuma alteração na marca institucional ORICSE.</p>
-        <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button>
+        {contexto.pode_editar ? <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button> : <p className="text-sm text-muted-foreground">Somente responsáveis, administradores da clínica e RTs podem editar estas preferências.</p>}
       </form>}
       {(["contas","comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
         <h2 className="text-xl font-bold">{ABAS.find(a=>a.id===aba)?.rotulo}</h2>
