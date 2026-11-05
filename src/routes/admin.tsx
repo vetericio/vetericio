@@ -278,6 +278,8 @@ function Admin() {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
   const [clinicasLixeira, setClinicasLixeira] = useState<Clinica[]>([]);
   const [processandoLixeira,setProcessandoLixeira]=useState<string|null>(null);
+  const [exclusaoPermanente,setExclusaoPermanente]=useState<{tipo:"solicitacao"|"clinica";id:string;nome:string}|null>(null);
+  const [confirmacaoPermanente,setConfirmacaoPermanente]=useState("");
   const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
   const [erroSolicitacoes, setErroSolicitacoes] = useState("");
   const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
@@ -336,15 +338,15 @@ function Admin() {
   }, [clinicas, buscaClinica, filtroClinica]);
 
   const solicitacoesEmAberto = useMemo(
-    () => solicitacoes.filter((item) => item.status !== "ativada"),
+    () => solicitacoes.filter((item) => !item.excluido_em && item.status !== "ativada"),
     [solicitacoes],
   );
   const solicitacoesPagas = useMemo(
-    () => solicitacoes.filter((item) => Boolean(item.pagamento_aprovado_em) && item.status !== "ativada"),
+    () => solicitacoes.filter((item) => !item.excluido_em && Boolean(item.pagamento_aprovado_em) && item.status !== "ativada"),
     [solicitacoes],
   );
   const solicitacoesProntas = useMemo(
-    () => solicitacoes.filter((item) => Boolean(item.clinica_criada_id) && item.status !== "ativada"),
+    () => solicitacoes.filter((item) => !item.excluido_em && Boolean(item.clinica_criada_id) && item.status !== "ativada"),
     [solicitacoes],
   );
 
@@ -655,6 +657,25 @@ function Admin() {
     }catch(e){toast.error(e instanceof Error?e.message:"Falha ao restaurar.");}
     finally{setProcessandoLixeira(null);}
   }
+  async function excluirPermanentementeDaLixeira() {
+    const item=exclusaoPermanente;
+    if(!item || confirmacaoPermanente!=="APAGAR" || processandoLixeira) return;
+    setProcessandoLixeira(item.id);
+    try{
+      const {data,error}=await (supabaseBanco as any).rpc("oricse_admin_lixeira_excluir_permanentemente",{
+        p_tipo:item.tipo,p_id:item.id,p_confirmacao:"APAGAR"
+      });
+      if(error) throw error;
+      if(!data?.ok) throw new Error("O servidor não confirmou a exclusão permanente.");
+      toast.success(`"${item.nome}" excluído permanentemente, com registro de auditoria.`);
+      setExclusaoPermanente(null);
+      setConfirmacaoPermanente("");
+      await Promise.all([carregarTudo(),carregarSolicitacoes()]);
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Falha ao excluir permanentemente. Os dados foram preservados.");
+    }finally{setProcessandoLixeira(null);}
+  }
+
   async function excluirSolicitacaoDaFila(item:SolicitacaoClinica) {
     await moverParaLixeira("solicitacao",item.id,item.clinica_nome);
   }
@@ -1408,6 +1429,26 @@ function Admin() {
     </Dialog>;
   };
 
+  const renderConfirmacaoExclusaoPermanente=()=> <Dialog open={Boolean(exclusaoPermanente)} onOpenChange={aberto=>{if(!aberto&&!processandoLixeira){setExclusaoPermanente(null);setConfirmacaoPermanente("");}}}>
+    <DialogContent className="max-w-xl">
+      <DialogHeader>
+        <DialogTitle className="text-red-700">Excluir permanentemente?</DialogTitle>
+        <DialogDescription>Esta ação não pode ser desfeita. Será executada somente pelo administrador geral e registrada na auditoria.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 text-sm">
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3"><b>{exclusaoPermanente?.nome}</b><br/>{exclusaoPermanente?.tipo==="clinica"?"Clínica":"Solicitação"} · {exclusaoPermanente?.id}</p>
+        <p>Antes da exclusão, o servidor verifica vínculos com outras tabelas, como pagamentos, animais e usuários. Se houver qualquer dependência, a operação será bloqueada e nenhum registro será apagado.</p>
+        <label className="block font-semibold">Digite <strong className="text-red-700">APAGAR</strong> para confirmar
+          <input value={confirmacaoPermanente} onChange={e=>setConfirmacaoPermanente(e.target.value)} autoComplete="off" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/>
+        </label>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" disabled={Boolean(processandoLixeira)} onClick={()=>{setExclusaoPermanente(null);setConfirmacaoPermanente("");}} className="rounded-xl border px-4 py-3 font-semibold">Cancelar</button>
+          <button type="button" disabled={confirmacaoPermanente!=="APAGAR"||Boolean(processandoLixeira)} onClick={()=>void excluirPermanentementeDaLixeira()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white disabled:opacity-50"><Trash2 size={17}/> {processandoLixeira?"Verificando vínculos...":"Excluir permanentemente"}</button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>;
+
   const renderLixeira = () => {
     const pedidos=solicitacoes.filter(item=>Boolean(item.excluido_em)&&(!item.expira_lixeira_em||new Date(item.expira_lixeira_em).getTime()>Date.now()));
     const todos=[...pedidos.map(item=>({tipo:"solicitacao" as const,id:item.id,nome:item.clinica_nome,excluido:item.excluido_em!,expira:item.expira_lixeira_em,status:item.status})),...clinicasLixeira.filter(item=>!item.expira_lixeira_em||new Date(item.expira_lixeira_em).getTime()>Date.now()).map(item=>({tipo:"clinica" as const,id:item.id,nome:item.nome,excluido:item.excluido_em!,expira:item.expira_lixeira_em||null,status:item.status}))].sort((a,b)=>b.excluido.localeCompare(a.excluido));
@@ -1417,7 +1458,10 @@ function Admin() {
       {todos.length===0&&<Card><p className="text-sm text-muted-foreground">A Lixeira está vazia.</p></Card>}
       {todos.map(item=><Card key={item.tipo+item.id}><div className="flex flex-wrap items-center justify-between gap-3">
         <div><p className="font-black">{item.nome}</p><p className="text-sm text-muted-foreground">{item.tipo==="clinica"?"Clínica":"Solicitação"} · Excluído em {dataHoraBR(item.excluido)}</p><p className="text-sm font-semibold text-amber-800">Recuperável até {dataBR(item.expira)}</p><p className="text-xs text-muted-foreground">Identificador: {item.id}</p></div>
-        <button type="button" disabled={processandoLixeira===item.id||Boolean(item.expira&&new Date(item.expira).getTime()<Date.now())} onClick={()=>void restaurarDaLixeira(item.tipo,item.id)} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-50">Restaurar</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={Boolean(processandoLixeira)||Boolean(item.expira&&new Date(item.expira).getTime()<Date.now())} onClick={()=>void restaurarDaLixeira(item.tipo,item.id)} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-50">Restaurar</button>
+          <button type="button" disabled={Boolean(processandoLixeira)} onClick={()=>{setExclusaoPermanente({tipo:item.tipo,id:item.id,nome:item.nome});setConfirmacaoPermanente("");}} className="inline-flex items-center gap-2 rounded-xl border border-red-300 px-4 py-3 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 size={16}/> Excluir permanentemente</button>
+        </div>
       </div></Card>)}
     </div>;
   };
@@ -2030,6 +2074,7 @@ function Admin() {
       </div>
       {renderNovaClinica()}
       {renderAutorizacaoCriacao()}
+      {renderConfirmacaoExclusaoPermanente()}
     </main>
   );
 }
