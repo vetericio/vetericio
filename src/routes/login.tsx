@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, AtSign } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   supabase,
@@ -31,8 +31,10 @@ function Login() {
   const [senha, setSenha] = useState("");
   const [entrando, setEntrando] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [hidratado, setHidratado] = useState(false);
+  useEffect(() => setHidratado(true), []);
 
-  if (tenant.loading && typeof window !== "undefined") {
+  if (tenant.loading && hidratado) {
     return <main className="min-h-screen bg-[#FBF7F2]" />;
   }
   if (tenant.portal) return <ClinicLogin clinic={tenant.portal} />;
