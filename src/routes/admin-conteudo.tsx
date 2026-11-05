@@ -139,7 +139,7 @@ function AdminConteudo() {
     const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor, updated_at: new Date().toISOString() });
     setSalvando(false);
     if (error) return toast.error(error.message);
-    setCfg(valor);
+    setCfg(valor as Config);
     toast.success("Conteúdo público atualizado.");
   }
 
