@@ -336,8 +336,8 @@ function OricStudio() {
           </div>
         </div>
         <div className="overflow-x-auto rounded-xl border bg-card p-2">
-          <div className="grid min-w-[420px] grid-cols-7 gap-1">
-            {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(d=><div key={d} className="px-2 py-2 text-center text-xs font-bold text-muted-foreground">{d}</div>)}
+          <div className={`grid gap-1 ${modoCalendario==="dia"?"grid-cols-1":"min-w-[420px] grid-cols-7"}`}>
+            {modoCalendario!=="dia"&&["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(d=><div key={d} className="px-2 py-2 text-center text-xs font-bold text-muted-foreground">{d}</div>)}
             {calendario.map(d=>{
               const itens=publicacoesPorDia.get(chaveDia(d))||[];
               const fora=modoCalendario==="mes"&&d.getMonth()!==referenciaCalendario.getMonth();
