@@ -80,7 +80,7 @@ function PaginaInicial() {
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8 lg:px-10">
         <Link to="/" aria-label="Oricse — início">
           <img
-            src="/oricse-logo-oryx.svg"
+            src="/oricse-logo-oryx.svg?v=14"
             width="56"
             height="56"
             alt="Oricse — sistema veterinário e petshop"
