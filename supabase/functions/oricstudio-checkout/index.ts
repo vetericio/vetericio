@@ -6,7 +6,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const ORIGIN = "https://oricse.vetericio.workers.dev";
 const API = "https://api.mercadopago.com";
 const token = () => Deno.env.get("ORICSE_MP_ACCESS_TOKEN") || Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "";
-const secret = () => Deno.env.get("ORICSE_MP_WEBHOOK_SECRET") || "";
+const secret = () => Deno.env.get("ORICSTUDIO_MP_WEBHOOK_SECRET") || "";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const db = createClient(supabaseUrl, serviceKey);
@@ -120,6 +120,45 @@ async function checkout(req:Request){
     }).eq("id",id);
     return json({error:errorText(e)},502);
   }
+}
+
+async function cancelarAssinatura(req:Request){
+  const authHeader=req.headers.get("authorization")||"";
+  const tokenUsuario=authHeader.match(/^Bearer\\s+(.+)$/i)?.[1];
+  if(!tokenUsuario)return json({error:"Sessão necessária."},401);
+  const {data:user,error:authError}=await db.auth.getUser(tokenUsuario);
+  if(authError||!user.user?.id)return json({error:"Sessão inválida."},401);
+  const data=await req.json().catch(()=>null) as {solicitacao_id?:string}|null;
+  if(!uuid(data?.solicitacao_id))return json({error:"Assinatura inválida."},400);
+  const {data:order,error:orderErr}=await db.from("oricstudio_solicitacoes")
+    .select("id,clinica_id,mp_assinatura_id,mp_assinatura_status,status")
+    .eq("id",data!.solicitacao_id!).maybeSingle();
+  if(orderErr||!order)return json({error:"Assinatura não encontrada."},404);
+  const [{data:membership},{data:selected},{data:clinic}]=await Promise.all([
+    db.from("clinica_usuarios").select("ativo,papel")
+      .eq("clinica_id",order.clinica_id).eq("user_id",user.user.id).maybeSingle(),
+    db.from("oricse_clinica_ativa_usuario").select("clinica_id")
+      .eq("user_id",user.user.id).maybeSingle(),
+    db.from("clinicas").select("status").eq("id",order.clinica_id).maybeSingle(),
+  ]);
+  if(!membership?.ativo||!["responsavel","admin_clinica","rt"].includes(membership.papel)||
+     selected?.clinica_id!==order.clinica_id || clinic?.status!=="ativa")
+    return json({error:"Sem autorização para cancelar a assinatura desta clínica."},403);
+  if(!order.mp_assinatura_id)return json({error:"Assinatura ainda não foi criada no Mercado Pago."},409);
+  const id=String(order.mp_assinatura_id);
+  const remote=await mpFetch("/preapproval/"+encodeURIComponent(id));
+  if(remote.id!==id||remote.external_reference!==order.id)
+    return json({error:"Assinatura não confere com o pedido."},409);
+  if(!["canceled","cancelled"].includes(String(remote.status))){
+    const updated=await mpFetch("/preapproval/"+encodeURIComponent(id),"PUT",{status:"canceled"});
+    if(updated.id!==id||!["canceled","cancelled"].includes(String(updated.status)))
+      return json({error:"O Mercado Pago ainda não confirmou o cancelamento."},502);
+  }
+  const {error:saveError}=await db.rpc("oricstudio_atualizar_estado_mp",{
+    p_solicitacao:order.id,p_status_mp:"canceled",
+  });
+  if(saveError)throw new Error("Cancelamento confirmado, aguardando sincronização com a clínica.");
+  return json({ok:true,mensagem:"Renovação cancelada. Acesso já pago permanece até o vencimento."});
 }
 
 async function validateWebhook(req:Request,paymentId:string){
@@ -244,6 +283,7 @@ Deno.serve(async(req:Request)=>{
   const action=queryAction||body?.acao||"";
   try{
     if(action==="checkout")return await checkout(req);
+    if(action==="cancelar")return await cancelarAssinatura(req);
     if(action==="webhook")return await webhook(req);
     return json({error:"Ação não encontrada."},404);
   }catch(e){
