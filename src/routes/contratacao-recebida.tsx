@@ -10,10 +10,22 @@ function ContratacaoRecebida() {
   const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
   const situacao = params.get("retorno");
   const pagamentoFalhou = situacao === "falha";
-  const titulo = pagamentoFalhou ? "O pagamento não foi concluído" : "Recebemos sua solicitação!";
+  const solicitacaoIsenta = situacao === "isento";
+  const pagamentoConfirmado = situacao === "sucesso";
+  const titulo = pagamentoFalhou
+    ? "O pagamento não foi concluído"
+    : solicitacaoIsenta
+      ? "Solicitação enviada. Aguarde nossa análise."
+      : pagamentoConfirmado
+        ? "Pagamento confirmado. Aguarde nossa análise."
+        : "Recebemos sua solicitação!";
   const mensagem = pagamentoFalhou
     ? "Sua solicitação foi registrada, mas não recebemos a confirmação do pagamento. Você poderá entrar em contato com nossa equipe para continuar."
-    : "Seu cadastro e sua solicitação de contratação foram recebidos. Nossa equipe analisará as informações e entrará em contato para orientar os próximos passos.";
+    : solicitacaoIsenta
+      ? "Seu cadastro e sua solicitação de contratação foram enviados. Nossa equipe analisará as informações e entrará em contato para orientar os próximos passos."
+      : pagamentoConfirmado
+        ? "Recebemos a confirmação do pagamento. Nossa equipe analisará as informações e preparará o acesso do seu estabelecimento."
+        : "Seu cadastro e sua solicitação de contratação foram recebidos. Aguarde a confirmação do pagamento e a análise da nossa equipe.";
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#F8F5F2] px-4 py-10 text-[#341421] sm:py-14"><div aria-hidden="true" className="pointer-events-none absolute -left-36 -top-44 h-80 w-[34rem] rotate-[-20deg] rounded-[100%] bg-gradient-to-r from-[#703047] via-[#B37787] to-transparent opacity-20"/><div aria-hidden="true" className="pointer-events-none absolute -bottom-44 -right-32 h-80 w-[34rem] rotate-[-20deg] rounded-[100%] bg-gradient-to-r from-transparent via-[#B37787] to-[#703047] opacity-20"/>
       <div className="relative mx-auto max-w-4xl">
@@ -32,7 +44,11 @@ function ContratacaoRecebida() {
             <h1 className="mx-auto mt-5 max-w-2xl font-display text-3xl font-bold tracking-tight text-[#703047] sm:text-5xl">{titulo}</h1>
             <p className="mx-auto mt-5 max-w-xl text-base leading-8 text-[#6B5961]">{mensagem}</p>
             {!pagamentoFalhou && <div className="mx-auto mt-9 max-w-2xl rounded-2xl border border-[#EFE3E7] bg-[#FAF2F4] px-6 py-6 text-left">
-              <div className="flex items-start gap-3"><CalendarCheck2 className="mt-0.5 shrink-0 text-[#703047]" size={30}/><div><p className="font-bold">O que acontece agora?</p><p className="mt-1 text-sm leading-6 text-[#6B5961]">A confirmação do pagamento será verificada automaticamente. Após essa confirmação, nossa equipe poderá analisar e preparar o espaço do seu estabelecimento. O acesso não é liberado automaticamente.</p></div></div>
+              <div className="flex items-start gap-3"><CalendarCheck2 className="mt-0.5 shrink-0 text-[#703047]" size={30}/><div><p className="font-bold">O que acontece agora?</p><p className="mt-1 text-sm leading-6 text-[#6B5961]">{solicitacaoIsenta
+                  ? "A solicitação já foi enviada. Aguarde a análise da nossa equipe; o acesso não é liberado automaticamente."
+                  : pagamentoConfirmado
+                    ? "Nossa equipe analisará as informações e preparará o espaço do seu estabelecimento. O acesso não é liberado automaticamente."
+                    : "A confirmação do pagamento será verificada automaticamente. Após essa confirmação, nossa equipe poderá analisar e preparar o espaço do seu estabelecimento. O acesso não é liberado automaticamente."}</p></div></div>
             </div>}
             <div className="mx-auto mt-8 max-w-2xl border-t border-[#F0E7E9] pt-7"><Headset className="mx-auto mb-3 text-[#703047]" size={27}/>
               <p className="text-sm font-semibold">Precisa falar com a nossa equipe?</p>
