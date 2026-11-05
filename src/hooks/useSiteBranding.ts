@@ -31,7 +31,7 @@ export function useSiteBranding() {
       const valor = data?.valor || {};
       setBranding({
         marca: valor.marca?.trim() || PADRAO.marca,
-        logo_url: valor.logo_url?.trim() || PADRAO.logo_url,
+        logo_url: PADRAO.logo_url,
         contato: valor.contato?.trim() || PADRAO.contato,
       });
     })();
