@@ -230,7 +230,7 @@ function TermosDeUso() {
   <main className="min-h-screen bg-[#F8F5F2] text-[#381724]">
    <div className="border-b border-[#E9DCE0] bg-white">
     <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8">
-     <Link to="/" className="inline-flex items-center gap-3" aria-label="Oricse — início"><img src="/oricse-logo-oryx.svg?v=14" alt="Logo da Oricse" width="56" height="56" className="h-12 w-12 object-contain"/><span className="text-lg font-extrabold tracking-wide">ORICSE</span></Link>
+     <Link to="/" className="inline-flex items-center gap-3" aria-label="Oricse — início"><img src="/oricse-logo-oryx.svg?v=15" alt="Logo da Oricse" width="56" height="56" className="h-12 w-12 object-contain"/><span className="text-lg font-extrabold tracking-wide">ORICSE</span></Link>
      <Link to="/planos" className="inline-flex items-center gap-2 text-sm font-semibold text-[#703047] hover:underline"><ArrowLeft size={16}/> Voltar ao site</Link>
     </header>
    </div>
