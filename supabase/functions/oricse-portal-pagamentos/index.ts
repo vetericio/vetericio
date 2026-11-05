@@ -180,9 +180,11 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return reply({ error: "Método não permitido" }, 405);
   try {
-    const action = new URL(req.url).searchParams.get("action");
-    if (action === "webhook") return await processWebhook(req);
+    const requestedAction = new URL(req.url).searchParams.get("action");
+    if (requestedAction === "webhook") return await processWebhook(req);
     const body = await req.json();
+    // Mantém compatibilidade com chamadas antigas sem query string.
+    const action = requestedAction || (body?.agenda_id ? "agenda" : body?.comanda_id ? "comanda" : "");
     if (action === "agenda") return reply(await reservaAgenda(req, body));
     if (action === "comanda") return reply(await checkoutComanda(req, body));
     return reply({ error: "Ação desconhecida" }, 404);
