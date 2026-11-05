@@ -359,6 +359,24 @@ function OricStudio() {
     finally{setSolicitando(false);}
   }
 
+  async function verificarPagamentoOricstudio(solicitacaoId:string){
+    if(solicitando)return;
+    setSolicitando(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Faça login novamente.");
+      const {data,error}=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{acao:"verificar_assinatura",solicitacao_id:solicitacaoId},
+        headers:{"Authorization":"Bearer "+token},
+      });
+      if(error||!data?.ok)throw new Error("Não foi possível verificar a assinatura. Consulte o suporte caso já tenha pago.");
+      toast.success("Situação conferida diretamente com o Mercado Pago.");
+      await carregar();
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível conciliar.");}
+    finally{setSolicitando(false);}
+  }
+
   async function cancelarRenovacaoOricstudio(){
     if(!assinatura || !contexto?.pode_editar || cancelandoAssinatura)return;
     if(!window.confirm("Cancelar as próximas cobranças do OricStúdio nesta clínica? O acesso já pago permanece até o vencimento e a assinatura deixará de renovar automaticamente."))return;
@@ -537,6 +555,9 @@ function OricStudio() {
           <p className="text-xs text-muted-foreground">O retorno ao site não comprova o pagamento. A licença só será liberada após confirmação oficial.</p>
           <button type="button" onClick={()=>void retomarCheckoutOricstudio()} disabled={solicitando||!comercial?.comercializacao_ativa}
              className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">Continuar pagamento</button>
+          <button type="button" onClick={()=>void verificarPagamentoOricstudio(pedidoAberto.id)}
+            disabled={solicitando||pedidoAberto.status!=="pagamento_pendente"}
+            className="ml-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50">Verificar pagamento</button>
         </div>}
         <p className="text-sm text-muted-foreground">Uma conta Instagram incluída. Contas adicionais têm cobrança mensal por unidade.</p>
         <label className="block text-sm">Total de contas
@@ -562,6 +583,10 @@ function OricStudio() {
         <p>{assinatura.quantidade_contas} conta(s) · {precoBRL(assinatura.valor_mensal_centavos)}/mês</p>
         <p>Renovação: {assinatura.cancelamento_em?"Cancelada — sem futuras cobranças":assinatura.mp_assinatura_status==="authorized"?"Automática":assinatura.mp_assinatura_status||"Aguardando conciliação"}</p>
         <p className="text-muted-foreground">Acesso já pago até: {textoData(contexto.licenca_expira_em)}</p>
+        <button type="button" onClick={()=>void verificarPagamentoOricstudio(assinatura.id)}
+          disabled={solicitando} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">
+          Verificar situação com o Mercado Pago
+        </button>
         {!assinatura.cancelamento_em && <button type="button" onClick={()=>void cancelarRenovacaoOricstudio()}
           disabled={cancelandoAssinatura}
           className="rounded-lg border px-3 py-2 text-sm text-destructive disabled:opacity-50">
