@@ -293,6 +293,70 @@ async function conciliarFatura(invoiceId:string){
   await conciliarPagamento(String(payment.id));
 }
 
+// Chamada programada pelo GitHub Actions. Não usar service_role ou webhooks como
+// credencial de agendamento: cada segredo tem um escopo distinto.
+async function statusIntegracaoPagamento(req:Request){
+  const userToken=(req.headers.get("authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1];
+  if(!userToken)return json({error:"Sessão necessária."},401);
+  const {data:user,error}=await db.auth.getUser(userToken);
+  if(error||!user.user?.id)return json({error:"Sessão inválida."},401);
+  const {data:profile}=await db.from("app_users")
+    .select("role").eq("user_id",user.user.id).maybeSingle();
+  if(profile?.role!=="admin")return json({error:"Apenas Administração Geral."},403);
+  const {data:product}=await db.from("oricstudio_produto")
+    .select("comercializacao_ativa,preco_centavos,preco_conta_adicional_centavos")
+    .eq("codigo","oricstudio").maybeSingle();
+  return json({
+    mercado_pago_configurado:Boolean(token()),
+    webhook_exclusivo_configurado:Boolean(secret()),
+    conciliacao_programada_configurada:
+      (Deno.env.get("ORICSTUDIO_RECONCILIATION_SECRET")||"").length>=32,
+    precos_configurados:product?.preco_centavos!=null&&product?.preco_conta_adicional_centavos!=null,
+    comercializacao_ativa:product?.comercializacao_ativa===true,
+  });
+}
+
+async function reconciliarLote(req:Request){
+  const configured=(Deno.env.get("ORICSTUDIO_RECONCILIATION_SECRET")||"").trim();
+  const provided=(req.headers.get("authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1]||"";
+  // Compara hashes sem aceitar segredos vazios ou requisições de usuários.
+  if(configured.length<32||provided.length<32)return json({error:"Não autorizado."},401);
+  const hash=async(v:string)=>new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v)));
+  const [expected,actual]=await Promise.all([hash(configured),hash(provided)]);
+  let diff=0;for(let i=0;i<expected.length;i++)diff|=expected[i]^actual[i];
+  if(diff!==0)return json({error:"Não autorizado."},401);
+  if(!token()||!secret())return json({error:"Mercado Pago ainda não homologado."},503);
+  const {data:orders,error}=await db.from("oricstudio_solicitacoes")
+    .select("id,mp_assinatura_id,ultima_conciliacao_em")
+    .in("status",["pagamento_pendente","pago"])
+    .not("mp_assinatura_id","is",null)
+    .order("ultima_conciliacao_em",{ascending:true,nullsFirst:true})
+    .limit(6);
+  if(error)throw new Error("Não foi possível selecionar assinaturas para conciliação.");
+  let checked=0,failed=0,inspectedInvoices=0;
+  for(const order of orders||[]){
+    const subId=String(order.mp_assinatura_id||"");
+    try{
+      await conciliarAssinatura(subId);
+      const query=new URLSearchParams({preapproval_id:subId,limit:"30",offset:"0"});
+      const invoices=await mpFetch("/authorized_payments/search?"+query.toString());
+      const rows=Array.isArray(invoices.results)?invoices.results as Record<string,unknown>[]:[];
+      // Faturas pendentes não liberam o módulo; conciliar somente pagamento aprovado.
+      for(const invoice of rows){
+        if(!/^\d+$/.test(String(invoice.id||"")))continue;
+        if(String((invoice.payment as Record<string,unknown>|undefined)?.status)!=="approved")continue;
+        await conciliarFatura(String(invoice.id));
+        inspectedInvoices++;
+      }
+      checked++;
+    }catch{
+      // Erro isolado por clínica, nunca registrar token, assinatura ou CPF nos logs.
+      failed++;
+    }
+  }
+  return json({ok:failed===0,assinaturas_conferidas:checked,erros:failed,faturas_aprovadas_conferidas:inspectedInvoices},failed?503:200);
+}
+
 async function webhook(req:Request){
   if(!token()||!secret())return json({error:"Integração indisponível."},503);
   const notification=await req.json().catch(()=>null) as {
@@ -322,6 +386,8 @@ Deno.serve(async(req:Request)=>{
     if(action==="checkout")return await checkout(req);
     if(action==="cancelar")return await cancelarAssinatura(req);
     if(action==="verificar_assinatura")return await verificarAssinatura(req);
+    if(action==="reconciliar_lote")return await reconciliarLote(req);
+    if(action==="status_configuracao")return await statusIntegracaoPagamento(req);
     if(action==="webhook")return await webhook(req);
     return json({error:"Ação não encontrada."},404);
   }catch(e){
