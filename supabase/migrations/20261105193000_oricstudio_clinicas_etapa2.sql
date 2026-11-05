@@ -53,7 +53,7 @@ create table if not exists public.oricstudio_publicacoes (
   titulo text not null check (char_length(trim(titulo)) between 1 and 180),
   legenda text not null default '' check (char_length(legenda)<=2200),
   tipo text not null default 'imagem' check (tipo in ('imagem','carrossel','reels','story')),
-  status text not null default 'rascunho' check (status in ('rascunho','aguardando_aprovacao')),
+  status text not null default 'rascunho' check (status in ('rascunho','aguardando_aprovacao','aprovado')),
   planejado_para timestamptz,
   criado_por uuid not null default auth.uid() references auth.users(id) on delete restrict,
   criado_em timestamptz not null default now(),
