@@ -236,6 +236,9 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
   const igUserId=String(profile.user_id||profile.id||"").trim();
   const username=String(profile.username||"").trim();
   if(!igUserId||!username)throw new Error("Conta Instagram profissional não identificada.");
+  const accountType=String(profile.account_type||"").toUpperCase();
+  if(!["BUSINESS","CREATOR","MEDIA_CREATOR"].includes(accountType))
+    throw new Error("O OricStúdio exige uma conta Instagram profissional Business ou Creator.");
   const {data:existing,error:existingErr}=await db.from("oricstudio_meta_contas")
     .select("id,clinica_id").eq("instagram_user_id",igUserId).maybeSingle();
   if(existingErr)throw new Error("Não foi possível confirmar o vínculo da conta.");
