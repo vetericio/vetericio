@@ -25,6 +25,36 @@ const VAZIO: Dados = {
 };
 
 
+const UFS_CRMV = [
+  { sigla: "AC", nome: "Acre" },
+  { sigla: "AL", nome: "Alagoas" },
+  { sigla: "AP", nome: "Amapá" },
+  { sigla: "AM", nome: "Amazonas" },
+  { sigla: "BA", nome: "Bahia" },
+  { sigla: "CE", nome: "Ceará" },
+  { sigla: "DF", nome: "Distrito Federal" },
+  { sigla: "ES", nome: "Espírito Santo" },
+  { sigla: "GO", nome: "Goiás" },
+  { sigla: "MA", nome: "Maranhão" },
+  { sigla: "MT", nome: "Mato Grosso" },
+  { sigla: "MS", nome: "Mato Grosso do Sul" },
+  { sigla: "MG", nome: "Minas Gerais" },
+  { sigla: "PA", nome: "Pará" },
+  { sigla: "PB", nome: "Paraíba" },
+  { sigla: "PR", nome: "Paraná" },
+  { sigla: "PE", nome: "Pernambuco" },
+  { sigla: "PI", nome: "Piauí" },
+  { sigla: "RJ", nome: "Rio de Janeiro" },
+  { sigla: "RN", nome: "Rio Grande do Norte" },
+  { sigla: "RS", nome: "Rio Grande do Sul" },
+  { sigla: "RO", nome: "Rondônia" },
+  { sigla: "RR", nome: "Roraima" },
+  { sigla: "SC", nome: "Santa Catarina" },
+  { sigla: "SP", nome: "São Paulo" },
+  { sigla: "SE", nome: "Sergipe" },
+  { sigla: "TO", nome: "Tocantins" },
+] as const;
+
 const TIPOS_OPERACAO = [
   { valor: "clinica", nome: "Clínica / hospital veterinário" },
   { valor: "domicilio", nome: "Veterinário em domicílio" },
@@ -363,7 +393,18 @@ function Contratar() {
 
     {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><div className="text-sm font-semibold">Tipo de operação *<details ref={operacaoMenuRef} className="group relative mt-1"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border bg-background px-3 font-normal [&::-webkit-details-marker]:hidden"><span className="truncate">{obterOperacoes(dados).map(v=>OPERACOES_BASE.find(t=>t.valor===v)?.nome).filter(Boolean).join(" + ") || "Selecione os serviços"}</span><ChevronDown size={18} className="shrink-0"/></summary><div className="absolute z-30 mt-1 w-full rounded-xl border bg-background p-2 shadow-lg">{OPERACOES_BASE.map(tipo=><label key={tipo.valor} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 font-normal hover:bg-muted"><input type="checkbox" className="h-4 w-4" checked={obterOperacoes(dados).includes(tipo.valor)} onChange={e=>{const atuais=obterOperacoes(dados);const proximos=e.target.checked?[...new Set([...atuais,tipo.valor])]:atuais.filter(v=>v!==tipo.valor);salvarLocal({...dados,tipo_operacao:proximos.length>1?"misto":proximos[0]||"misto",operacoes_ativas:proximos.join(",")});}}/>{tipo.nome}</label>)}</div></details></div>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo("CNPJ/CPF","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
 
-    {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. {texto.etapa2_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}{campo("UF do CRMV","responsavel_crmv_uf",dados,salvarLocal,crmvObrigatorio)}{campo("Telefone","responsavel_telefone",dados,salvarLocal)}{campo("E-mail","responsavel_email",dados,salvarLocal,true,"email")}{campo("CEP","responsavel_cep",dados,salvarLocal)}{campo("Endereço","responsavel_endereco",dados,salvarLocal)}{campo("Número","responsavel_numero",dados,salvarLocal)}{campo("Complemento","responsavel_complemento",dados,salvarLocal,false)}{campo("Bairro","responsavel_bairro",dados,salvarLocal)}{campo("Cidade","responsavel_cidade",dados,salvarLocal)}{campo("UF","responsavel_uf",dados,salvarLocal)}</div>{!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para operações sem atendimento clínico veterinário.</p>}</section>}
+    {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. {texto.etapa2_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}<label className="text-sm font-semibold">UF do CRMV{crmvObrigatorio&&<span className="text-destructive"> *</span>}
+  <select
+    value={dados.responsavel_crmv_uf}
+    onChange={e=>salvarLocal({...dados,responsavel_crmv_uf:e.target.value})}
+    required={crmvObrigatorio}
+    className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"
+    aria-label="UF do CRMV"
+  >
+    <option value="">Selecione o estado</option>
+    {UFS_CRMV.map(uf=><option key={uf.sigla} value={uf.sigla}>{uf.nome}</option>)}
+  </select>
+</label>{campo("Telefone","responsavel_telefone",dados,salvarLocal)}{campo("E-mail","responsavel_email",dados,salvarLocal,true,"email")}{campo("CEP","responsavel_cep",dados,salvarLocal)}{campo("Endereço","responsavel_endereco",dados,salvarLocal)}{campo("Número","responsavel_numero",dados,salvarLocal)}{campo("Complemento","responsavel_complemento",dados,salvarLocal,false)}{campo("Bairro","responsavel_bairro",dados,salvarLocal)}{campo("Cidade","responsavel_cidade",dados,salvarLocal)}{campo("UF","responsavel_uf",dados,salvarLocal)}</div>{!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para operações sem atendimento clínico veterinário.</p>}</section>}
 
     {etapa===3 && <section className="mt-5 rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
