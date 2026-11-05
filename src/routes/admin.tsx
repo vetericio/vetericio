@@ -502,7 +502,7 @@ function Admin() {
       // Paginação evita ocultar registros quando ultrapassam o limite padrão da API.
       const lote = 500;
       for(let inicio=0;inicio<100000;inicio+=lote) {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await (supabaseBanco as any)
           .from("oricse_contratacoes")
           .select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
           .order("created_at",{ascending:false})
@@ -523,7 +523,7 @@ function Admin() {
   }
 
   async function iniciarAnaliseSolicitacao(item: SolicitacaoClinica) {
-    const { error } = await (supabase as any)
+    const { error } = await (supabaseBanco as any)
       .from("oricse_contratacoes")
       .update({ status: "em_analise", updated_at: new Date().toISOString() })
       .eq("id", item.id);
@@ -547,7 +547,7 @@ function Admin() {
     if (!window.confirm(`Criar o espaço de ${item.clinica_nome} bloqueado até sua autorização final?`)) return;
     setPreparandoSolicitacao(item.id);
     try {
-      const { error } = await (supabase as any).rpc("oricse_admin_preparar_clinica", { p_contratacao: item.id });
+      const { error } = await (supabaseBanco as any).rpc("oricse_admin_preparar_clinica", { p_contratacao: item.id });
       if (error) throw error;
       toast.success("Espaço criado. Revise a configuração antes de liberar o funcionamento.");
       await Promise.all([carregarTudo(), carregarSolicitacoes()]);
@@ -578,7 +578,7 @@ function Admin() {
         .update({ status: "ativa", status_financeiro: financeira, updated_at: new Date().toISOString() })
         .eq("id", clinica.id);
       if (clinicaError) throw clinicaError;
-      const { error: solicitacaoError } = await (supabase as any)
+      const { error: solicitacaoError } = await (supabaseBanco as any)
         .from("oricse_contratacoes")
         .update({ status: "ativada", updated_at: new Date().toISOString() })
         .eq("id", item.id);
