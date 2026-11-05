@@ -94,3 +94,27 @@ grant execute on function public.oricstudio_solicitar_contratacao(integer) to au
 
 comment on table public.oricstudio_solicitacoes is
   'Propostas de contratação OricStúdio com preços congelados. Nunca representa pagamento aprovado.';
+
+create or replace function public.oricstudio_catalogo_comercial()
+returns jsonb language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object(
+    'preco_base_centavos',p.preco_centavos,
+    'preco_adicional_centavos',p.preco_conta_adicional_centavos,
+    'comercializacao_ativa',p.comercializacao_ativa
+  )
+  from public.oricstudio_produto p
+  where p.codigo='oricstudio'
+    and auth.uid() is not null
+    and exists(
+      select 1 from public.clinicas c
+      where c.id=public.oricse_clinica_ativa_obter()
+        and (
+          public.oricstudio_eh_admin() or
+          exists(select 1 from public.clinica_usuarios cu
+                 where cu.clinica_id=c.id and cu.user_id=(select auth.uid()) and cu.ativo=true)
+        )
+    );
+$$;
+revoke all on function public.oricstudio_catalogo_comercial() from public,anon;
+grant execute on function public.oricstudio_catalogo_comercial() to authenticated;
