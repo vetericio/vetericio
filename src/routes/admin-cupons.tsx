@@ -38,6 +38,7 @@ type Contratacao = {
   ciclo: string;
   status: string;
   pagamento_aprovado_em: string | null;
+  valor_total: number | null;
   promo_codigo: string | null;
   promo_desconto: number | null;
   promo_valor_original: number | null;
@@ -151,7 +152,7 @@ function AdminCupons() {
       const [cuponsRes, usosRes, contratacoesRes, planosRes] = await Promise.all([
         (supabase as any).from("oricse_codigos_promocionais").select("*").order("created_at", { ascending: false }),
         (supabase as any).from("oricse_codigo_promocional_usos").select("id,codigo_id,contratacao_id,documento_normalizado,created_at").order("created_at", { ascending: false }),
-        (supabase as any).from("oricse_contratacoes").select("id,clinica_nome,plano_nome,plano_codigo,ciclo,status,pagamento_aprovado_em,promo_codigo,promo_desconto,promo_valor_original,promo_valor_final").order("created_at", { ascending: false }),
+        (supabase as any).from("oricse_contratacoes").select("id,clinica_nome,plano_nome,plano_codigo,ciclo,status,pagamento_aprovado_em,valor_total,promo_codigo,promo_desconto,promo_valor_original,promo_valor_final").order("created_at", { ascending: false }),
         (supabase as any).from("oricse_planos").select("codigo,nome,ativo").order("ordem"),
       ]);
       for (const resposta of [cuponsRes, usosRes, contratacoesRes, planosRes]) {
@@ -173,9 +174,17 @@ function AdminCupons() {
 
   const usosPorCupom = useMemo(() => {
     const mapa = new Map<string, Uso[]>();
-    usos.forEach((uso) => mapa.set(uso.codigo_id, [...(mapa.get(uso.codigo_id) || []), uso]));
+    const contratos = new Map(contratacoes.map(item => [item.id,item]));
+    usos.forEach((uso) => {
+      const contrato = uso.contratacao_id ? contratos.get(uso.contratacao_id) : null;
+      if (!contrato || ["cancelada","recusada"].includes(contrato.status)) return;
+      const concluida = Boolean(contrato.pagamento_aprovado_em) ||
+        (Number(contrato.valor_total) === 0 && ["pagamento_aprovado","aprovada","ativa","ativada"].includes(contrato.status));
+      if (!concluida) return;
+      mapa.set(uso.codigo_id, [...(mapa.get(uso.codigo_id) || []), uso]);
+    });
     return mapa;
-  }, [usos]);
+  }, [usos, contratacoes]);
 
   const contratoPorId = useMemo(
     () => new Map(contratacoes.map((contratacao) => [contratacao.id, contratacao])),
@@ -405,7 +414,7 @@ function AdminCupons() {
                 <tbody>{cuponsVisiveis.map((cupom) => { const usosDoCupom = usosPorCupom.get(cupom.id) || []; const status = rotuloStatus(cupom, usosDoCupom.length); const desconto = cupom.tipo_desconto === "percentual" ? String(cupom.valor) + "%" : dinheiro(cupom.valor); return <tr key={cupom.id} className={cupom.id === cupomSelecionado?.id ? "border-t bg-primary/5" : "border-t"}>
                   <td className="px-4 py-3"><button type="button" onClick={() => setSelecionadoId(cupom.id)} className="text-left"><span className="block font-black tracking-wide">{cupom.codigo}</span><span className="mt-1 block text-[11px] text-muted-foreground">{cupom.planos.length ? cupom.planos.join(" · ") : "Todos os planos"}</span></button></td>
                   <td className="px-4 py-3"><span className="font-bold">{desconto}</span><span className="mt-1 block text-[11px] text-muted-foreground">{cupom.duracao === "recorrente" ? "Recorrente" : "Primeira cobrança"}{cupom.somente_primeira_assinatura ? " · nova assinatura" : ""}</span></td>
-                  <td className="px-4 py-3"><span className="font-bold">{usosDoCupom.length}{cupom.limite_usos !== null ? " / " + cupom.limite_usos : ""}</span><span className="mt-1 block text-[11px] text-muted-foreground">usos registrados</span></td>
+                  <td className="px-4 py-3"><span className="font-bold">{usosDoCupom.length}{cupom.limite_usos !== null ? " / " + cupom.limite_usos : ""}</span><span className="mt-1 block text-[11px] text-muted-foreground">usos concluídos</span></td>
                   <td className="px-4 py-3"><span className={"inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase " + classeStatus(status)}>{status}</span></td>
                   <td className="px-4 py-3"><div className="flex justify-end gap-2"><button type="button" onClick={() => void copiarCodigo(cupom.codigo)} className="rounded-lg border p-2" title="Copiar código" aria-label={"Copiar " + cupom.codigo}><Copy size={15}/></button><button type="button" onClick={() => abrirEdicao(cupom)} className="rounded-lg border p-2" title="Editar cupom" aria-label={"Editar " + cupom.codigo}><Pencil size={15}/></button><button type="button" disabled={alterandoStatus === cupom.id} onClick={() => void alterarStatus(cupom, !cupom.ativo)} className="rounded-lg border p-2 disabled:opacity-50" title={cupom.ativo ? "Pausar cupom" : "Reativar cupom"} aria-label={cupom.ativo ? "Pausar " + cupom.codigo : "Reativar " + cupom.codigo}><PauseCircle size={15}/></button></div></td>
                 </tr>; })}{!cuponsVisiveis.length && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum cupom encontrado.</td></tr>}</tbody>
