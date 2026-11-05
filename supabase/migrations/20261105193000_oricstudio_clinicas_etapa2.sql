@@ -67,7 +67,7 @@ where planejado_para is not null;
 
 create table if not exists public.oricstudio_publicacoes_versoes (
   id bigint generated always as identity primary key,
-  publicacao_id uuid not null references public.oricstudio_publicacoes(id) on delete cascade,
+  publicacao_id uuid not null,
   clinica_id uuid not null references public.clinicas(id) on delete cascade,
   evento text not null check(evento in ('criar','editar','excluir')),
   dados_anteriores jsonb,
@@ -78,6 +78,25 @@ create table if not exists public.oricstudio_publicacoes_versoes (
 create index if not exists oricstudio_versoes_publicacao_idx
 on public.oricstudio_publicacoes_versoes (publicacao_id, criado_em desc);
 
+create or replace function public.oricstudio_antes_atualizar()
+returns trigger language plpgsql security invoker set search_path = ''
+as $
+begin
+  if new.clinica_id is distinct from old.clinica_id
+     or new.criado_por is distinct from old.criado_por
+     or new.id is distinct from old.id then
+    raise exception 'Não é permitido alterar a propriedade da publicação';
+  end if;
+  new.atualizado_em := now();
+  return new;
+end;
+$;
+revoke all on function public.oricstudio_antes_atualizar() from public,anon,authenticated;
+drop trigger if exists oricstudio_publicacoes_atualizar_trigger on public.oricstudio_publicacoes;
+create trigger oricstudio_publicacoes_atualizar_trigger
+before update on public.oricstudio_publicacoes
+for each row execute function public.oricstudio_antes_atualizar();
+
 create or replace function public.oricstudio_publicacoes_auditar()
 returns trigger language plpgsql security definer set search_path = ''
 as $$
@@ -87,12 +106,6 @@ begin
     values(new.id,new.clinica_id,'criar',to_jsonb(new),auth.uid());
     return new;
   elsif tg_op = 'UPDATE' then
-    if new.clinica_id is distinct from old.clinica_id
-       or new.criado_por is distinct from old.criado_por
-       or new.id is distinct from old.id then
-      raise exception 'Não é permitido alterar a propriedade da publicação';
-    end if;
-    new.atualizado_em := now();
     insert into public.oricstudio_publicacoes_versoes(publicacao_id,clinica_id,evento,dados_anteriores,dados_atuais,autor_id)
     values(new.id,new.clinica_id,'editar',to_jsonb(old),to_jsonb(new),auth.uid());
     return new;
@@ -106,7 +119,7 @@ $$;
 revoke all on function public.oricstudio_publicacoes_auditar() from public,anon,authenticated;
 drop trigger if exists oricstudio_publicacoes_audit_trigger on public.oricstudio_publicacoes;
 create trigger oricstudio_publicacoes_audit_trigger
-before insert or update or delete on public.oricstudio_publicacoes
+after insert or update or delete on public.oricstudio_publicacoes
 for each row execute function public.oricstudio_publicacoes_auditar();
 
 -- A biblioteca registra metadados quando o armazenamento real for conectado na etapa 3.
@@ -127,7 +140,7 @@ revoke all on public.oricstudio_publicacoes, public.oricstudio_publicacoes_verso
 grant select,insert,update,delete on public.oricstudio_publicacoes to authenticated;
 grant select on public.oricstudio_publicacoes_versoes to authenticated;
 grant select on public.oricstudio_midias to authenticated;
-grant usage,select on sequence public.oricstudio_publicacoes_versoes_id_seq to authenticated;
+-- Sequencia de auditoria permanece restrita ao trigger privilegiado.
 
 create policy oricstudio_publicacoes_ler on public.oricstudio_publicacoes
 for select to authenticated using (public.oricstudio_pode_acessar(clinica_id));
