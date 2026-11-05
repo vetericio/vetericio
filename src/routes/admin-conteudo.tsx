@@ -20,11 +20,6 @@ const PADRAO = {
   texto_pagamento_mensal: "Pagamento mensal",
   texto_pagamento_anual: "Pagamento anual",
   rodape_planos: "Os planos e condições podem ser ajustados conforme a necessidade da clínica.",
-  teste_gratis_titulo: "Teste grátis",
-  teste_gratis_preco: "Grátis por 7 dias",
-  teste_gratis_texto: "Teste gratuito · 1 vez por CPF/CNPJ",
-  teste_gratis_botao: "Começar 7 dias grátis",
-
   voltar_planos: "Voltar aos planos",
   titulo_contratacao: "Contratação da Oricse",
   subtitulo_contratacao: "Preencha os dados, revise e siga para o pagamento. A contratação só será enviada para análise depois da confirmação do pagamento.",
@@ -59,13 +54,30 @@ function Bloco({ titulo, descricao, children }: { titulo: string; descricao?: st
   return <section className="rounded-2xl border bg-white p-5 shadow-sm"><div><h2 className="text-xl font-bold">{titulo}</h2>{descricao && <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>}</div><div className="mt-5 grid gap-4 md:grid-cols-2">{children}</div></section>;
 }
 
-function CanvasPlanos({ cfg }: { cfg: Config }) {
-  const cards = [
-    { nome: cfg.teste_gratis_titulo || "Teste grátis", preco: cfg.teste_gratis_preco || "Grátis por 7 dias", rotulo: cfg.teste_gratis_texto || "Teste gratuito", selo: "" },
-    { nome: "Essencial", preco: "R$ 49,90", rotulo: cfg.texto_pagamento_mensal, selo: "" },
-    { nome: "Plus", preco: "R$ 79,90", rotulo: cfg.texto_pagamento_mensal, selo: cfg.selo_mais_vendido },
-    { nome: "Master", preco: "R$ 119,90", rotulo: cfg.texto_pagamento_mensal, selo: cfg.selo_recomendado },
+type PlanoCanvas = {
+  codigo: string;
+  nome: string;
+  preco: string;
+  preco_mensal: string;
+  ativo: boolean;
+  ordem: number;
+};
+
+function CanvasPlanos({ cfg, planos }: { cfg: Config; planos: PlanoCanvas[] }) {
+  const cardsPadrao = [
+    { codigo: "solo-2026", nome: "Solo", preco: "R$ 49,90", rotulo: cfg.texto_pagamento_mensal, selo: "" },
+    { codigo: "essencial-2026", nome: "Essencial", preco: "R$ 79,90", rotulo: cfg.texto_pagamento_mensal, selo: "" },
+    { codigo: "profissional-2026", nome: "Profissional", preco: "R$ 119,90", rotulo: cfg.texto_pagamento_mensal, selo: cfg.selo_mais_vendido },
+    { codigo: "master-2026", nome: "Master", preco: "R$ 199,90", rotulo: cfg.texto_pagamento_mensal, selo: cfg.selo_recomendado },
   ];
+  const cards = planos.filter((plano) => plano.ativo).sort((a, b) => a.ordem - b.ordem).map((plano) => ({
+    codigo: plano.codigo,
+    nome: plano.nome,
+    preco: plano.preco_mensal || plano.preco,
+    rotulo: cfg.texto_pagamento_mensal,
+    selo: plano.codigo === "profissional-2026" ? cfg.selo_mais_vendido : plano.codigo === "master-2026" ? cfg.selo_recomendado : "",
+  }));
+  const cardsVisiveis = cards.length ? cards : cardsPadrao;
 
   return <div className="sticky top-5 overflow-hidden rounded-3xl border bg-[#f7f4ed] shadow-xl">
     <div className="flex items-center justify-between border-b bg-white px-4 py-3"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Canvas</p><p className="text-sm font-semibold">Prévia da página de planos</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">ao vivo</span></div>
@@ -77,15 +89,14 @@ function CanvasPlanos({ cfg }: { cfg: Config }) {
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-500">{cfg.subtitulo_planos}</p>
           <div className="mx-auto mt-4 inline-flex rounded-xl border bg-white p-1 text-xs font-semibold shadow-sm"><span className="rounded-lg bg-primary px-4 py-2 text-primary-foreground">{cfg.rotulo_mensal}</span><span className="px-4 py-2 text-slate-500">{cfg.rotulo_anual}</span></div>
         </div>
-
         <div className="mt-6 grid gap-3 xl:grid-cols-4">
-          {cards.map((card, index) => <div key={card.nome} className={`relative flex min-h-[235px] flex-col rounded-2xl border bg-white p-4 ${index >= 2 ? "border-primary/60 ring-1 ring-primary/10" : ""}`}>
+          {cardsVisiveis.map((card) => <div key={card.codigo} className={"relative flex min-h-[235px] flex-col rounded-2xl border bg-white p-4 " + (card.selo ? "border-primary/60 ring-1 ring-primary/10" : "")}>
             {card.selo && <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-[10px] font-bold text-white">{card.selo}</span>}
             <h3 className="mt-1 text-lg font-bold">{card.nome}</h3>
             <p className="mt-2 min-h-9 text-xs text-slate-500">Uma opção da Oricse para sua operação.</p>
             <p className="mt-5 text-xl font-bold">{card.preco}</p>
             <p className="mt-1 text-[10px] font-semibold text-slate-400">{card.rotulo}</p>
-            <div aria-disabled="true" className="mt-4 flex min-h-9 cursor-default items-center justify-center rounded-lg bg-primary px-3 text-xs font-bold text-white">{index === 0 ? (cfg.teste_gratis_botao || "Começar 7 dias grátis") : cfg.cta_plano}</div>
+            <div aria-disabled="true" className="mt-4 flex min-h-9 cursor-default items-center justify-center rounded-lg bg-primary px-3 text-xs font-bold text-white">{cfg.cta_plano}</div>
           </div>)}
         </div>
         <p className="mx-auto mt-5 max-w-2xl text-center text-[10px] text-slate-400">{cfg.rodape_planos}</p>
@@ -96,19 +107,28 @@ function CanvasPlanos({ cfg }: { cfg: Config }) {
 
 function AdminConteudo() {
   const [cfg, setCfg] = useState<Config>(PADRAO);
+  const [planos, setPlanos] = useState<PlanoCanvas[]>([]);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => { void (async () => {
-    const { data, error } = await (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle();
-    if (error) return toast.error("Não foi possível carregar as configurações.");
-    setCfg({ ...PADRAO, ...(data?.valor || {}) });
+    const [configRes, planosRes] = await Promise.all([
+      (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
+      (supabase as any).from("oricse_planos").select("codigo,nome,preco,preco_mensal,ativo,ordem").order("ordem"),
+    ]);
+    if (configRes.error) return toast.error("Não foi possível carregar as configurações.");
+    const valorAtual = configRes.data?.valor || {};
+    const { teste_gratis_titulo, teste_gratis_preco, teste_gratis_texto, teste_gratis_botao, ...configSemTeste } = valorAtual;
+    setCfg({ ...PADRAO, ...configSemTeste });
+    if (planosRes.error) toast.error("Não foi possível carregar os planos para a prévia.");
+    else setPlanos((planosRes.data || []) as PlanoCanvas[]);
   })(); }, []);
 
   const set = (campo: string, valor: any) => setCfg((atual) => ({ ...atual, [campo]: valor }));
 
   async function salvar() {
     setSalvando(true);
-    const valor = { ...cfg, valor_perfil_extra_mensal: Math.max(0, Number(cfg.valor_perfil_extra_mensal) || 0) };
+    const { teste_gratis_titulo, teste_gratis_preco, teste_gratis_texto, teste_gratis_botao, ...configSemTeste } = cfg;
+    const valor = { ...configSemTeste, valor_perfil_extra_mensal: Math.max(0, Number(cfg.valor_perfil_extra_mensal) || 0) };
     const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor, updated_at: new Date().toISOString() });
     setSalvando(false);
     if (error) return toast.error(error.message);
@@ -135,13 +155,6 @@ function AdminConteudo() {
           <Campo label="Texto cobrança mensal" value={cfg.texto_pagamento_mensal} onChange={(v)=>set("texto_pagamento_mensal",v)}/>
           <Campo label="Texto cobrança anual" value={cfg.texto_pagamento_anual} onChange={(v)=>set("texto_pagamento_anual",v)}/>
           <div className="md:col-span-2"><Campo label="Texto do rodapé dos planos" value={cfg.rodape_planos} onChange={(v)=>set("rodape_planos",v)} area/></div>
-        </Bloco>
-
-        <Bloco titulo="Teste grátis de 7 dias" descricao="Textos específicos do quarto card da página.">
-          <Campo label="Nome do plano grátis" value={cfg.teste_gratis_titulo} onChange={(v)=>set("teste_gratis_titulo",v)}/>
-          <Campo label="Preço / chamada" value={cfg.teste_gratis_preco} onChange={(v)=>set("teste_gratis_preco",v)}/>
-          <div className="md:col-span-2"><Campo label="Texto abaixo do preço" value={cfg.teste_gratis_texto} onChange={(v)=>set("teste_gratis_texto",v)} area/></div>
-          <Campo label="Texto do botão" value={cfg.teste_gratis_botao} onChange={(v)=>set("teste_gratis_botao",v)}/>
         </Bloco>
 
         <Bloco titulo="Formulário de contratação" descricao="Textos das etapas e da revisão antes do pagamento.">
@@ -177,7 +190,7 @@ function AdminConteudo() {
         </Bloco>
       </div>
 
-      <CanvasPlanos cfg={cfg}/>
+      <CanvasPlanos cfg={cfg} planos={planos}/>
     </div>
   </div></main>;
 }
