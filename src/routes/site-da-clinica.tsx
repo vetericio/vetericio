@@ -6,7 +6,6 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import {
   clinicSiteTemplates,
   clinicSiteTemplateLabels,
-  clinicSiteTemplateClasses,
   clinicSiteTemplateDescriptions,
   clinicSiteTones,
   normalizeClinicSiteConfig,
@@ -127,7 +126,7 @@ function SiteDaClinica() {
                     onClick={() => setTemplate(item)}
                     className={`rounded-xl border px-3 py-2 text-left text-sm font-bold capitalize ${template === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}
                   >
-                    <span className="block">{clinicSiteTemplateLabels[item]} <span className="text-xs opacity-75">· classe {clinicSiteTemplateClasses[item]}</span></span>
+                    <span className="block">{clinicSiteTemplateLabels[item]}</span>
                     <span className="mt-1 block text-xs font-normal opacity-80">{clinicSiteTemplateDescriptions[item]}</span>
                   </button>
                 ))}
@@ -173,7 +172,7 @@ function SiteDaClinica() {
           </section>
           <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
             <div className="border-b px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Prévia · {clinicSiteTemplateLabels[template]} · classe {clinicSiteTemplateClasses[template]}
+              Prévia · {clinicSiteTemplateLabels[template]}
             </div>
             <div className="max-h-[calc(100vh-150px)] overflow-auto">
               <ClinicSiteRenderer template={template} config={config} />
