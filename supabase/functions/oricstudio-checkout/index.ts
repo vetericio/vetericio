@@ -131,7 +131,9 @@ async function validateWebhook(req:Request,paymentId:string){
   const v1=signature.match(/(?:^|,)\s*v1=([^,]+)/)?.[1];
   if(!ts||!v1||!requestId||!/^[a-f0-9]{64}$/i.test(v1))return false;
   const millis=ts.length>=13?Number(ts):Number(ts)*1000;
-  if(!Number.isFinite(millis)||Math.abs(Date.now()-millis)>600000)return false;
+  // O Mercado Pago pode reenviar notificações horas depois da primeira tentativa.
+  // A proteção contra replay fica com a chave única do pagamento no banco.
+  if(!Number.isFinite(millis)||millis>Date.now()+60_000||millis<Date.now()-30*86400_000)return false;
   const message="id:"+paymentId.toLowerCase()+";request-id:"+requestId+";ts:"+ts+";";
   const hmac=await crypto.subtle.sign("HMAC",
     await crypto.subtle.importKey("raw",new TextEncoder().encode(key),
@@ -142,43 +144,95 @@ async function validateWebhook(req:Request,paymentId:string){
   return diff===0;
 }
 
+async function conciliarPagamento(paymentId:string){
+  if(!/^\\d+$/.test(paymentId))throw new Error("Pagamento inválido.");
+  const payment=await mpFetch("/v1/payments/"+paymentId);
+  const status=String(payment.status||"");
+  if(["refunded","charged_back"].includes(status)){
+    const {error}=await db.rpc("oricstudio_registrar_estorno",{
+      p_mp_pagamento_id:paymentId,p_status_mp:status,
+    });
+    if(error)throw new Error("Estorno não conciliado.");
+    return;
+  }
+  if(status!=="approved"||payment.currency_id!=="BRL")return;
+  const subId=String(payment.preapproval_id||"");
+  if(!subId)return; // Não interferir com pagamentos de outros produtos.
+  const {data:order,error:orderError}=await db.from("oricstudio_solicitacoes")
+    .select("id,clinica_id,valor_mensal_centavos,status,mp_assinatura_id")
+    .eq("mp_assinatura_id",subId).maybeSingle();
+  if(orderError)throw new Error("Erro na consulta ao contrato.");
+  if(!order)return;
+  const amount=Math.round(Number(payment.transaction_amount)*100);
+  if(!Number.isSafeInteger(amount)||amount!==order.valor_mensal_centavos)
+    throw new Error("Pagamento diferente do valor contratado.");
+  if(payment.external_reference && String(payment.external_reference)!==order.id)
+    throw new Error("Referência não confere.");
+  const subscription=await mpFetch("/preapproval/"+encodeURIComponent(subId));
+  const recurring=subscription.auto_recurring as Record<string,unknown>|undefined;
+  if(subscription.external_reference!==order.id || subscription.status!=="authorized"||
+     recurring?.currency_id!=="BRL"||
+     Math.round(Number(recurring?.transaction_amount)*100)!==order.valor_mensal_centavos)
+    throw new Error("Assinatura não confere com a contratação.");
+  const approvedAt=String(payment.date_approved||"");
+  if(!approvedAt||!Number.isFinite(Date.parse(approvedAt)))
+    throw new Error("Data de pagamento inválida.");
+  const {error}=await db.rpc("oricstudio_confirmar_pagamento",{
+    p_solicitacao_id:order.id,p_mp_pagamento_id:paymentId,
+    p_mp_assinatura_id:subId,p_aprovado_em:approvedAt,
+  });
+  if(error)throw new Error("Pagamento não conciliado.");
+}
+
+async function conciliarAssinatura(subscriptionId:string){
+  if(!/^[a-z0-9-]{8,100}$/i.test(subscriptionId))throw new Error("Assinatura inválida.");
+  const {data:order,error}=await db.from("oricstudio_solicitacoes")
+    .select("id,mp_assinatura_id").eq("mp_assinatura_id",subscriptionId).maybeSingle();
+  if(error)throw new Error("Erro ao consultar assinatura.");
+  if(!order)return;
+  const remote=await mpFetch("/preapproval/"+encodeURIComponent(subscriptionId));
+  if(remote.id!==subscriptionId || remote.external_reference!==order.id)
+    throw new Error("Vínculo de assinatura inválido.");
+  const {error:saveError}=await db.rpc("oricstudio_atualizar_estado_mp",{
+    p_solicitacao:order.id,p_status_mp:String(remote.status),
+  });
+  if(saveError)throw new Error("Estado de assinatura não conciliado.");
+}
+
+async function conciliarFatura(invoiceId:string){
+  if(!/^\\d+$/.test(invoiceId))throw new Error("Fatura inválida.");
+  const invoice=await mpFetch("/authorized_payments/"+invoiceId);
+  // Mesmo faturas emitidas não implicam pagamento; só conciliar o pagamento real.
+  const payment=invoice.payment as Record<string,unknown>|undefined;
+  if(String(payment?.status)!=="approved" || !/^\\d+$/.test(String(payment?.id||"")))return;
+  const subId=String(invoice.preapproval_id||"");
+  if(!subId)return;
+  const {data:contract}=await db.from("oricstudio_solicitacoes")
+    .select("id,valor_mensal_centavos").eq("mp_assinatura_id",subId).maybeSingle();
+  if(!contract)return;
+  if(invoice.currency_id!=="BRL"||
+     Math.round(Number(invoice.transaction_amount)*100)!==contract.valor_mensal_centavos||
+     (invoice.external_reference && String(invoice.external_reference)!==contract.id))
+    throw new Error("Fatura não confere com o contrato.");
+  await conciliarPagamento(String(payment.id));
+}
+
 async function webhook(req:Request){
   if(!token()||!secret())return json({error:"Integração indisponível."},503);
   const notification=await req.json().catch(()=>null) as {
-    type?:string;action?:string;data?:{id?:string|number};
+    type?:string;data?:{id?:string|number};
   }|null;
-  // Apenas notificações de pagamento podem liberar licença.
-  if(notification?.type!=="payment")return json({ok:true});
-  const id=String(notification.data?.id||"");
-  if(!/^\d+$/.test(id))return json({error:"Identificador de pagamento inválido."},400);
+  const kind=String(notification?.type||"");
+  if(!["payment","subscription_preapproval","subscription_authorized_payment"].includes(kind))
+    return json({ok:true});
+  const id=String(notification?.data?.id||"");
   const queryId=new URL(req.url).searchParams.get("data.id");
-  if(queryId && queryId!==id)return json({error:"Identificador da notificação inconsistente."},400);
-  if(!await validateWebhook(req,id))return json({error:"Assinatura webhook inválida."},401);
-  const payment=await mpFetch("/v1/payments/"+id);
-  if(payment.status!=="approved"||payment.currency_id!=="BRL")return json({ok:true});
-  const subscriptionId=String(payment.preapproval_id||"");
-  if(!subscriptionId)return json({ok:true});
-  const {data:order,error:orderError}=await db.from("oricstudio_solicitacoes")
-    .select("id,clinica_id,valor_mensal_centavos,status,mp_assinatura_id")
-    .eq("mp_assinatura_id",subscriptionId).maybeSingle();
-  if(orderError)throw new Error("Erro na consulta ao pedido.");
-  if(!order)return json({ok:true}); // Não afetar pedidos dos planos principais.
-  const amount=Math.round(Number(payment.transaction_amount)*100);
-  if(!Number.isSafeInteger(amount)||amount!==order.valor_mensal_centavos)
-    throw new Error("Valor de pagamento diferente do contrato.");
-  if(payment.external_reference && String(payment.external_reference)!==order.id)
-    throw new Error("Referência de pagamento inválida.");
-  const subscription=await mpFetch("/preapproval/"+encodeURIComponent(subscriptionId));
-  if(subscription.external_reference!==order.id || subscription.status!=="authorized" ||
-     Math.round(Number((subscription.auto_recurring as Record<string,unknown>|undefined)?.transaction_amount)*100)!==order.valor_mensal_centavos)
-    throw new Error("Assinatura Mercado Pago incompatível com o pedido.");
-  const approvedAt=String(payment.date_approved||"");
-  if(!approvedAt||!Number.isFinite(Date.parse(approvedAt)))throw new Error("Data de aprovação inválida.");
-  const {error:rpcError}=await db.rpc("oricstudio_confirmar_pagamento",{
-    p_solicitacao_id:order.id,p_mp_pagamento_id:id,
-    p_mp_assinatura_id:subscriptionId,p_aprovado_em:approvedAt,
-  });
-  if(rpcError)throw new Error("Conciliação da assinatura falhou.");
+  if(!id||queryId&&queryId!==id)return json({error:"Notificação inconsistente."},400);
+  if(!await validateWebhook(req,id))
+    return json({error:"Assinatura de webhook inválida."},401);
+  if(kind==="payment")await conciliarPagamento(id);
+  else if(kind==="subscription_preapproval")await conciliarAssinatura(id);
+  else await conciliarFatura(id);
   return json({ok:true});
 }
 
