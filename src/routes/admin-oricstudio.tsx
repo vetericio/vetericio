@@ -9,7 +9,7 @@ export const Route = createFileRoute("/admin-oricstudio")({ component: OricStudi
 
 type LicencaStatus = "nao_contratado" | "pendente" | "ativo" | "suspenso" | "expirado";
 type Clinica = { id: string; nome: string; status: string; plano: string };
-type Licenca = { clinica_id: string; status: LicencaStatus; motivo: string | null; atualizado_em: string; expira_em: string | null };
+type Licenca = { clinica_id: string; status: LicencaStatus; motivo: string | null; atualizado_em: string; expira_em: string | null; quantidade_contas_contratadas:number };
 type Historico = { id: number; acao: string; clinica_id: string | null; criado_em: string; usuario_id: string | null; antes: unknown; depois: unknown };
 const ESTADOS: LicencaStatus[] = ["nao_contratado","pendente","ativo","suspenso","expirado"];
 const NOMES: Record<LicencaStatus,string> = { nao_contratado:"Não contratado",pendente:"Pendente",ativo:"Ativo",suspenso:"Suspenso",expirado:"Expirado" };
@@ -34,8 +34,11 @@ function OricStudioAdmin() {
   const [historico,setHistorico] = useState<Historico[]>([]);
   const [busca,setBusca] = useState("");
   const [alterando,setAlterando] = useState<string|null>(null);
+  const [precoBase,setPrecoBase] = useState("");
+  const [precoAdicional,setPrecoAdicional] = useState("");
+  const [quantidadeSimulador,setQuantidadeSimulador] = useState(1);
   const [erro,setErro] = useState("");
-  const [produto,setProduto] = useState<{nome:string;descricao:string;preco_centavos:number|null;comercializacao_ativa:boolean;disponivel_nos_planos:boolean}|null>(null);
+  const [produto,setProduto] = useState<{nome:string;descricao:string;preco_centavos:number|null;preco_conta_adicional_centavos:number|null;comercializacao_ativa:boolean;disponivel_nos_planos:boolean}|null>(null);
 
   async function carregar() {
     setCarregando(true); setErro("");
@@ -59,12 +62,14 @@ function OricStudioAdmin() {
       };
       const [cs,ls,hs,ps]=await Promise.all([
         buscarTudo("clinicas","id,nome,status,plano","nome"),
-        buscarTudo("oricstudio_licencas","clinica_id,status,motivo,atualizado_em,expira_em","atualizado_em"),
+        buscarTudo("oricstudio_licencas","clinica_id,status,motivo,atualizado_em,expira_em,quantidade_contas_contratadas","atualizado_em"),
         buscarTudo("oricstudio_auditoria","id,acao,clinica_id,criado_em,usuario_id,antes,depois","criado_em"),
-        (supabaseBanco as any).from("oricstudio_produto").select("nome,descricao,preco_centavos,comercializacao_ativa,disponivel_nos_planos").eq("codigo","oricstudio").single()
+        (supabaseBanco as any).from("oricstudio_produto").select("nome,descricao,preco_centavos,preco_conta_adicional_centavos,comercializacao_ativa,disponivel_nos_planos").eq("codigo","oricstudio").single()
       ]);
       if (ps.error)throw ps.error;
       setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);
+      setPrecoBase(ps.data.preco_centavos==null?"":(ps.data.preco_centavos/100).toFixed(2).replace(".",","));
+      setPrecoAdicional(ps.data.preco_conta_adicional_centavos==null?"":(ps.data.preco_conta_adicional_centavos/100).toFixed(2).replace(".",","));
     } catch(e) {
       const mensagem=e instanceof Error?e.message:String(e);
       setErro("Falha ao consultar os dados. Nenhuma clínica foi ocultada: "+mensagem);
@@ -92,6 +97,49 @@ function OricStudioAdmin() {
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setAlterando(null);}
   }
+  function emCentavos(raw:string) {
+    const normalized=raw.trim().replaceAll(".","").replace(",",".");
+    if(!/^\\d+(?:\\.\\d{1,2})?$/.test(normalized))return null;
+    const result=Math.round(Number(normalized)*100);
+    return Number.isSafeInteger(result)&&result>=0?result:null;
+  }
+  const precificacaoPronta=produto?.preco_centavos!=null && produto?.preco_conta_adicional_centavos!=null;
+  const mensalidadeSimulada=precificacaoPronta
+    ? produto!.preco_centavos!+Math.max(0,quantidadeSimulador-1)*produto!.preco_conta_adicional_centavos!
+    : null;
+  const moeda=(valor:number)=> (valor/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  async function salvarTabelaPrecos() {
+    const base=emCentavos(precoBase),adicional=emCentavos(precoAdicional);
+    if(base===null||adicional===null)return toast.error("Informe valores válidos, como 49,90 e 9,90.");
+    if(!window.confirm("Salvar preço-base com 1 conta e valor por conta adicional? Isto NÃO ativa vendas nem cobra clientes."))return;
+    setAlterando("precos");
+    try {
+      const {error}=await (supabaseBanco as any).from("oricstudio_produto")
+        .update({preco_centavos:base,preco_conta_adicional_centavos:adicional,atualizado_em:new Date().toISOString()})
+        .eq("codigo","oricstudio");
+      if(error)throw error;
+      toast.success("Tabela de preços salva. Comercialização permanece desativada.");
+      await carregar();setAba("comercial");
+    }catch(e){toast.error(e instanceof Error?e.message:"Erro ao salvar preços.");}
+    finally{setAlterando(null);}
+  }
+  async function alterarQuantidade(clinica:Clinica,quantidade:number) {
+    if(!Number.isInteger(quantidade)||quantidade<1||quantidade>100)return;
+    const atual=porClinica.get(clinica.id)?.quantidade_contas_contratadas??1;
+    if(quantidade===atual)return;
+    const motivo=window.prompt(`Mudar o total de contas de ${clinica.nome} de ${atual} para ${quantidade}. Informe o motivo (nenhuma cobrança será realizada automaticamente):`,"");
+    if(!motivo?.trim())return;
+    setAlterando(clinica.id);
+    try {
+      const {error}=await (supabaseBanco as any).from("oricstudio_licencas")
+        .update({quantidade_contas_contratadas:quantidade,motivo:motivo.trim()})
+        .eq("clinica_id",clinica.id).eq("status","ativo");
+      if(error)throw error;
+      toast.success("Cota de contas atualizada, sem gerar cobrança.");
+      await carregar();setAba("clinicas");
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível atualizar a cota.");}
+    finally{setAlterando(null);}
+  }
   if(autorizado===false) return <div className="p-8">Acesso restrito à Administração Geral.</div>;
   return <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 text-foreground">
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -111,10 +159,33 @@ function OricStudioAdmin() {
       </section>}
       {aba==="clinicas" && <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Clínicas e acessos ({clinicas.length})</h2><input className="min-w-52 rounded-lg border bg-background p-2 text-sm" placeholder="Buscar clínica" value={busca} onChange={e=>setBusca(e.target.value)} /></div>
-        <div className="overflow-x-auto rounded-xl border"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-muted"><tr><th className="p-3">Clínica</th><th className="p-3">Plano atual</th><th className="p-3">Licença OricStúdio</th><th className="p-3">Motivo / situação</th></tr></thead><tbody>{visiveis.map(c=>{const l=porClinica.get(c.id);return <tr key={c.id} className="border-t"><td className="p-3 font-medium">{c.nome}<div className="text-xs text-muted-foreground">{c.status}</div></td><td className="p-3">{c.plano}</td><td className="p-3"><select aria-label={`Licença de ${c.nome}`} disabled={alterando===c.id} className="rounded-lg border bg-background px-2 py-2" value={l?.status||"nao_contratado"} onChange={e=>void mudarStatus(c,e.target.value as LicencaStatus)}>{ESTADOS.map(s=><option key={s} value={s}>{NOMES[s]}</option>)}</select></td><td className="p-3 text-muted-foreground">{l?.motivo||"Nenhuma contratação registrada"}</td></tr>})}</tbody></table></div>
+        <div className="overflow-x-auto rounded-xl border"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-muted"><tr><th className="p-3">Clínica</th><th className="p-3">Plano atual</th><th className="p-3">Licença OricStúdio</th><th className="p-3">Contas contratadas</th><th className="p-3">Motivo / situação</th></tr></thead><tbody>{visiveis.map(c=>{const l=porClinica.get(c.id);return <tr key={c.id} className="border-t"><td className="p-3 font-medium">{c.nome}<div className="text-xs text-muted-foreground">{c.status}</div></td><td className="p-3">{c.plano}</td><td className="p-3"><select aria-label={`Licença de ${c.nome}`} disabled={alterando===c.id} className="rounded-lg border bg-background px-2 py-2" value={l?.status||"nao_contratado"} onChange={e=>void mudarStatus(c,e.target.value as LicencaStatus)}>{ESTADOS.map(s=><option key={s} value={s}>{NOMES[s]}</option>)}</select></td><td className="p-3"><input type="number" min={1} max={100} className="w-20 rounded-lg border bg-background p-2" disabled={alterando===c.id || l?.status!=="ativo"} value={l?.quantidade_contas_contratadas??1} aria-label={`Total de contas contratadas de ${c.nome}`} onChange={e=>void alterarQuantidade(c,Number(e.target.value))}/></td><td className="p-3 text-muted-foreground">{l?.motivo||"Nenhuma contratação registrada"}</td></tr>})}</tbody></table></div>
         <p className="text-xs text-muted-foreground">Todos os registros são carregados com paginação. O filtro de busca não altera licenças nem oculta dados armazenados.</p>
       </section>}
-      {aba==="comercial" && <section className="rounded-xl border bg-card p-5"><h2 className="text-lg font-semibold">Comercialização</h2><p className="mt-2 text-sm">Preço: <strong>{produto?.preco_centavos==null?"A definir":(produto.preco_centavos/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong></p><p className="mt-1 text-sm">Venda pública: <strong>{produto?.comercializacao_ativa?"Ativa":"Desativada"}</strong></p><p className="mt-1 text-sm">Inclusão nos planos: <strong>{produto?.disponivel_nos_planos?"Configurada":"Nenhuma"}</strong></p><p className="mt-3 text-sm text-muted-foreground">Preços e condições comerciais serão definidos na etapa 4/5. Nenhuma cobrança foi criada.</p></section>}
+      {aba==="comercial" && <section className="space-y-4 rounded-xl border bg-card p-5">
+        <h2 className="text-lg font-semibold">OricStúdio — Assinatura por conta</h2>
+        <p className="text-sm text-muted-foreground">O sistema inclui 1 conta Instagram. A partir da segunda, acrescenta-se um valor mensal por conta adicional.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-2 text-sm font-semibold">Mensalidade base (1 conta) — R$
+            <input inputMode="decimal" placeholder="A definir" value={precoBase} onChange={e=>setPrecoBase(e.target.value)} className="mt-2 w-full rounded-lg border bg-background p-3"/>
+          </label>
+          <label className="space-y-2 text-sm font-semibold">Por conta adicional/mês — R$
+            <input inputMode="decimal" placeholder="A definir" value={precoAdicional} onChange={e=>setPrecoAdicional(e.target.value)} className="mt-2 w-full rounded-lg border bg-background p-3"/>
+          </label>
+        </div>
+        <button type="button" disabled={alterando==="precos"} onClick={()=>void salvarTabelaPrecos()} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Salvar tabela de preços</button>
+        <div className="space-y-3 rounded-xl border bg-background p-4">
+          <h3 className="font-semibold">Simulador comercial</h3>
+          <label className="block text-sm">Quantidade total de contas
+            <input className="ml-3 w-20 rounded-lg border bg-background p-2" type="number" min={1} max={100} value={quantidadeSimulador} onChange={e=>setQuantidadeSimulador(Math.max(1,Math.min(100,Number(e.target.value)||1)))}/>
+          </label>
+          <p className="text-sm">1 conta inclusa + {Math.max(0,quantidadeSimulador-1)} adicionais</p>
+          <p className="text-xl font-bold">Total mensal: {mensalidadeSimulada===null?"A definir":moeda(mensalidadeSimulada)}</p>
+        </div>
+        <p className="text-sm">Venda pública: <strong>{produto?.comercializacao_ativa?"Ativa":"Desativada"}</strong></p>
+        <p className="text-sm">Inclusão automática nos planos ORICSE: <strong>{produto?.disponivel_nos_planos?"Configurada":"Nenhuma"}</strong></p>
+        <p className="text-xs text-muted-foreground">Os valores só são uma tabela comercial. Não há checkout, cobrança recorrente, ativação automática ou desconto proporcional nesta etapa.</p>
+      </section>}
       {aba==="auditoria" && <section className="space-y-3"><h2 className="text-lg font-semibold">Auditoria ({historico.length})</h2>{historico.length===0?<p className="rounded-lg border p-4 text-sm">Ainda não há alterações de licenças.</p>:<div className="space-y-2">{historico.slice(0,100).map(h=><div key={h.id} className="rounded-lg border bg-card p-3 text-sm"><strong>{h.acao}</strong> · {new Date(h.criado_em).toLocaleString("pt-BR")}<div className="text-xs text-muted-foreground">Clínica: {clinicas.find(c=>c.id===h.clinica_id)?.nome||h.clinica_id||"Excluída"} · Usuário: {h.usuario_id||"Sistema"}</div></div>)}</div>}</section>}
       {(aba==="contas"||aba==="monitoramento"||aba==="config") && <section className="rounded-xl border bg-card p-5"><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5"/><h2 className="text-lg font-semibold">{ABAS.find(a=>a.id===aba)?.nome}</h2></div><p className="mt-3 text-sm text-muted-foreground">Área administrativa reservada. Não existem contas Meta conectadas ao OricStúdio. Integração e operações são previstas para a etapa 3/5; configurações sensíveis permanecerão no servidor.</p></section>}
     </>}
