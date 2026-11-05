@@ -5,6 +5,7 @@ import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import {
   clinicSiteTemplates,
+  clinicSiteTemplateLabels,
   normalizeClinicSiteConfig,
   prestigeDefault,
   type ClinicSiteConfig,
@@ -123,7 +124,7 @@ function SiteDaClinica() {
                     onClick={() => setTemplate(item)}
                     className={`rounded-xl border px-3 py-2 text-left text-sm font-bold capitalize ${template === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}
                   >
-                    {item}
+                    {clinicSiteTemplateLabels[item]}
                   </button>
                 ))}
               </div>
@@ -161,7 +162,7 @@ function SiteDaClinica() {
           </section>
           <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
             <div className="border-b px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Prévia · {template}
+              Prévia · {clinicSiteTemplateLabels[template]}
             </div>
             <div className="max-h-[calc(100vh-150px)] overflow-auto">
               <ClinicSiteRenderer template={template} config={config} />

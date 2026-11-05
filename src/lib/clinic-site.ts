@@ -2,6 +2,13 @@ import { z } from 'zod';
 
 export const clinicSiteTemplates = ['prestige', 'atelier', 'cuidado', 'popular', 'essencial'] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
+export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
+  prestige: 'Classe AAA',
+  atelier: 'Classe A',
+  cuidado: 'Classe B',
+  popular: 'Classe C',
+  essencial: 'Classe D',
+};
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const clinicSiteSchema = z.object({
