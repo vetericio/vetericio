@@ -156,7 +156,6 @@ const ABAS: ItemMenuAdmin[] = [
   { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
   { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
   { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
-  { id: "cupons", nome: "Cupons e condições", icone: TicketPercent, grupo: "Operação", rota: "/admin-cupons" },
   { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
   { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
   { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
@@ -959,7 +958,6 @@ function Admin() {
 
     const atalhos = [
       { titulo: "Planos e autorizações", descricao: "Matriz de recursos, limites e exceções por clínica.", Icone: BadgeDollarSign, acao: () => window.location.assign("/admin-planos") },
-      { titulo: "Cupons e condições", descricao: "Crie, pause e acompanhe campanhas comerciais.", Icone: TicketPercent, acao: () => window.location.assign("/admin-cupons") },
       { titulo: "Conteúdo público", descricao: "Ajuste textos, planos e a jornada de contratação.", Icone: PanelsTopLeft, acao: () => window.location.assign("/admin-conteudo") },
       { titulo: "Páginas e URLs", descricao: "Consulte e mantenha o catálogo de rotas da plataforma.", Icone: Globe2, acao: () => abrirPainel("paginas") },
     ];
@@ -1415,11 +1413,9 @@ function Admin() {
   const renderPlanos = () => <Card>
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold">Central de planos e funcionalidades</h2>
+        <h2 className="text-2xl font-bold">Planos e cupons</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Gerencie os planos Solo, Essencial, Profissional e Master e aprove individualmente
-          o acesso de cada clínica e de cada operação. As regras são salvas
-          no catálogo oficial, com comparação e histórico.
+          Gerencie os planos, limites e autorizações de cada clínica. Os cupons e condições comerciais ficam disponíveis logo abaixo, no mesmo núcleo de gestão.
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
@@ -1433,7 +1429,7 @@ function Admin() {
         </Link>
       </div>
       <p className="text-xs text-muted-foreground">
-        Caminho: Admin Geral → Planos → Gerenciador geral ou Gerenciador de cupons.
+        Caminho: Admin Geral → Planos e cupons → Gerenciador geral ou Gerenciador de cupons.
         As clínicas visualizam seu próprio plano em Configurações → Meu plano.
       </p>
     </div>
