@@ -14,7 +14,7 @@ const HEADERS = {
   "content-type":"application/json",
   "cache-control":"no-store",
   "access-control-allow-origin":ORIGIN,
-  "access-control-allow-headers":"authorization,apikey,content-type",
+  "access-control-allow-headers":"authorization,apikey,content-type,x-client-info,x-supabase-client-platform,x-supabase-client-platform-version,x-supabase-client-runtime,x-supabase-client-runtime-version",
   "access-control-allow-methods":"POST,OPTIONS",
 };
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:HEADERS});
@@ -151,6 +151,8 @@ async function webhook(req:Request){
   if(notification?.type!=="payment")return json({ok:true});
   const id=String(notification.data?.id||"");
   if(!/^\d+$/.test(id))return json({error:"Identificador de pagamento inválido."},400);
+  const queryId=new URL(req.url).searchParams.get("data.id");
+  if(queryId && queryId!==id)return json({error:"Identificador da notificação inconsistente."},400);
   if(!await validateWebhook(req,id))return json({error:"Assinatura webhook inválida."},401);
   const payment=await mpFetch("/v1/payments/"+id);
   if(payment.status!=="approved"||payment.currency_id!=="BRL")return json({ok:true});
