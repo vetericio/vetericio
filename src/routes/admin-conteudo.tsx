@@ -116,8 +116,11 @@ function AdminConteudo() {
       (supabase as any).from("oricse_planos").select("codigo,nome,preco,preco_mensal,ativo,ordem").order("ordem"),
     ]);
     if (configRes.error) return toast.error("Não foi possível carregar as configurações.");
-    const valorAtual = configRes.data?.valor || {};
-    const { teste_gratis_titulo, teste_gratis_preco, teste_gratis_texto, teste_gratis_botao, ...configSemTeste } = valorAtual;
+    const configSemTeste = { ...(configRes.data?.valor || {}) } as Record<string, any>;
+    delete configSemTeste.teste_gratis_titulo;
+    delete configSemTeste.teste_gratis_preco;
+    delete configSemTeste.teste_gratis_texto;
+    delete configSemTeste.teste_gratis_botao;
     setCfg({ ...PADRAO, ...configSemTeste });
     if (planosRes.error) toast.error("Não foi possível carregar os planos para a prévia.");
     else setPlanos((planosRes.data || []) as PlanoCanvas[]);
@@ -127,7 +130,11 @@ function AdminConteudo() {
 
   async function salvar() {
     setSalvando(true);
-    const { teste_gratis_titulo, teste_gratis_preco, teste_gratis_texto, teste_gratis_botao, ...configSemTeste } = cfg;
+    const configSemTeste = { ...cfg } as Record<string, any>;
+    delete configSemTeste.teste_gratis_titulo;
+    delete configSemTeste.teste_gratis_preco;
+    delete configSemTeste.teste_gratis_texto;
+    delete configSemTeste.teste_gratis_botao;
     const valor = { ...configSemTeste, valor_perfil_extra_mensal: Math.max(0, Number(cfg.valor_perfil_extra_mensal) || 0) };
     const { error } = await (supabase as any).from("oricse_config").upsert({ chave: "site_publico", valor, updated_at: new Date().toISOString() });
     setSalvando(false);
