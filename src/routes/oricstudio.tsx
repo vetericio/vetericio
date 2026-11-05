@@ -56,8 +56,14 @@ function textoData(iso: string | null) {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
+function chaveDia(data: Date) {
+  return `${data.getFullYear()}-${String(data.getMonth()+1).padStart(2,"0")}-${String(data.getDate()).padStart(2,"0")}`;
+}
+
 function OricStudio() {
   const [aba, setAba] = useState<Aba>("inicio");
+  const [modoCalendario, setModoCalendario] = useState<"mes"|"semana"|"dia">("mes");
+  const [referenciaCalendario, setReferenciaCalendario] = useState(() => new Date());
   const [contexto, setContexto] = useState<Contexto | null>(null);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
@@ -133,6 +139,36 @@ function OricStudio() {
     .filter(p => !!p.planejado_para).sort((a,b) =>
       new Date(a.planejado_para!).getTime() - new Date(b.planejado_para!).getTime()), [publicacoes]);
   const pendentes = publicacoes.filter(p => p.status === "aguardando_aprovacao");
+  const calendario = useMemo(() => {
+    const ref = referenciaCalendario;
+    let inicio: Date;
+    let quantidade: number;
+    if (modoCalendario === "dia") {
+      inicio = new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()); quantidade = 1;
+    } else if (modoCalendario === "semana") {
+      inicio = new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()-ref.getDay()); quantidade = 7;
+    } else {
+      const primeiro = new Date(ref.getFullYear(),ref.getMonth(),1);
+      inicio = new Date(primeiro.getFullYear(),primeiro.getMonth(),1-primeiro.getDay());
+      quantidade = 42;
+    }
+    return Array.from({length:quantidade},(_,i)=>new Date(inicio.getFullYear(),inicio.getMonth(),inicio.getDate()+i));
+  },[modoCalendario,referenciaCalendario]);
+  const publicacoesPorDia = useMemo(() => {
+    const mapa = new Map<string,Publicacao[]>();
+    for (const p of planejadas) {
+      if(!p.planejado_para)continue;
+      const dia=chaveDia(new Date(p.planejado_para));
+      mapa.set(dia,[...(mapa.get(dia)||[]),p]);
+    }
+    return mapa;
+  },[planejadas]);
+  function navegarCalendario(passo:number) {
+    const d=referenciaCalendario;
+    setReferenciaCalendario(modoCalendario==="mes"
+      ? new Date(d.getFullYear(),d.getMonth()+passo,1)
+      : new Date(d.getFullYear(),d.getMonth(),d.getDate()+passo*(modoCalendario==="semana"?7:1)));
+  }
   function novo() {
     setEditandoId(null); setTitulo(""); setLegenda(""); setTipo("imagem");
     setPlanejado(""); setStatus("rascunho"); setEditorAberto(true); setVersoesId(null);
@@ -284,8 +320,38 @@ function OricStudio() {
             {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
           </article>)}</div>}
       </section>}
-      {aba==="calendario" && <section className="space-y-3"><h2 className="text-xl font-bold">Calendário editorial</h2><p className="text-sm text-muted-foreground">Organização interna de datas. Agendamento real será habilitado após a integração Meta.</p>
-        {planejadas.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma data planejada.</p>:planejadas.map(p=><div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4"><div><p className="flex items-center gap-2 font-semibold"><Clock3 className="h-4 w-4"/>{textoData(p.planejado_para)}</p><p className="mt-1 text-sm">{p.titulo} · {STATUS[p.status]}</p></div><button onClick={()=>editar(p)} className="rounded-lg border px-3 py-2 text-sm">Editar</button></div>)}
+      {aba==="calendario" && <section className="space-y-4">
+        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento interno. A publicação automática será disponibilizada na etapa 3/5.</p></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={()=>navegarCalendario(-1)} aria-label="Período anterior" className="min-h-10 rounded-lg border px-3">‹</button>
+            <button type="button" onClick={()=>setReferenciaCalendario(new Date())} className="min-h-10 rounded-lg border px-3 text-sm">Hoje</button>
+            <button type="button" onClick={()=>navegarCalendario(1)} aria-label="Próximo período" className="min-h-10 rounded-lg border px-3">›</button>
+            <strong className="ml-1 text-sm capitalize">{referenciaCalendario.toLocaleDateString("pt-BR",{month:"long",year:"numeric"})}</strong>
+          </div>
+          <div className="flex rounded-lg border p-1">
+            {(["dia","semana","mes"] as const).map(m=><button type="button" key={m} onClick={()=>setModoCalendario(m)}
+              className={`rounded-md px-3 py-2 text-xs font-semibold ${modoCalendario===m?"bg-primary text-primary-foreground":"hover:bg-secondary"}`}>
+              {m==="mes"?"Mês":m==="semana"?"Semana":"Dia"}</button>)}
+          </div>
+        </div>
+        <div className="overflow-x-auto rounded-xl border bg-card p-2">
+          <div className="grid min-w-[420px] grid-cols-7 gap-1">
+            {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(d=><div key={d} className="px-2 py-2 text-center text-xs font-bold text-muted-foreground">{d}</div>)}
+            {calendario.map(d=>{
+              const itens=publicacoesPorDia.get(chaveDia(d))||[];
+              const fora=modoCalendario==="mes"&&d.getMonth()!==referenciaCalendario.getMonth();
+              return <div key={chaveDia(d)} className={`min-h-20 rounded-lg border p-1.5 sm:min-h-28 ${fora?"opacity-45":"bg-background"}`}>
+                <div className="flex items-center justify-between"><span className={`text-xs font-semibold ${chaveDia(d)===chaveDia(new Date())?"text-primary":""}`}>{d.getDate()}</span>{itens.length>0&&<span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">{itens.length}</span>}</div>
+                {itens.slice(0,2).map(p=><button type="button" key={p.id} title={p.titulo} onClick={()=>editar(p)} className="mt-1 block w-full truncate rounded bg-secondary p-1 text-left text-[10px] hover:bg-primary/10">{p.titulo}</button>)}
+                {itens.length>2&&<p className="mt-1 text-[10px] text-muted-foreground">+{itens.length-2} mais</p>}
+              </div>;
+            })}
+          </div>
+        </div>
+        <div className="space-y-2"><h3 className="text-sm font-bold">Todas as datas planejadas</h3>
+          {planejadas.length===0?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhuma data planejada.</p>:planejadas.map(p=><div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3"><div><p className="flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4"/>{textoData(p.planejado_para)}</p><p className="mt-1 text-sm">{p.titulo} · {STATUS[p.status]}</p></div><button type="button" onClick={()=>editar(p)} className="rounded-lg border px-3 py-2 text-sm">Editar</button></div>)}
+        </div>
       </section>}
       {aba==="aprovacoes" && <section className="space-y-3"><h2 className="text-xl font-bold">Aprovações editoriais</h2>
         {pendentes.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma publicação aguardando aprovação.</p>:pendentes.map(p=><div key={p.id} className="space-y-3 rounded-xl border bg-card p-4"><h3 className="font-semibold">{p.titulo}</h3><p className="whitespace-pre-line text-sm">{p.legenda}</p><div className="flex flex-wrap gap-2"><button onClick={()=>void alterarStatus(p,"aprovado")} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"><CheckCircle2 className="h-4 w-4"/> Aprovar internamente</button><button onClick={()=>void alterarStatus(p,"rascunho")} className="rounded-lg border px-3 py-2 text-sm">Voltar para rascunho</button></div></div>)}
