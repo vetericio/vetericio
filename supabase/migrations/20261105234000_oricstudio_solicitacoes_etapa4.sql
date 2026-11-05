@@ -68,6 +68,13 @@ begin
   if not exists(select 1 from public.clinicas c where c.id=v_clinica and c.status='ativa') then
     raise exception 'A clínica precisa estar ativa';
   end if;
+  if exists(
+    select 1 from public.oricstudio_licencas l
+    where l.clinica_id=v_clinica and l.status='ativo'
+      and (l.expira_em is null or l.expira_em > now())
+  ) then
+    raise exception 'A clínica já possui OricStúdio ativo; utilize o fluxo de alteração da assinatura';
+  end if;
   select preco_centavos,preco_conta_adicional_centavos,comercializacao_ativa
     into v_preco_base,v_preco_adicional,v_venda_ativa
     from public.oricstudio_produto where codigo='oricstudio';
