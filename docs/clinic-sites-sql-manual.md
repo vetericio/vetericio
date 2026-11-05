@@ -1,8 +1,15 @@
 # Execução manual: sites de clínicas
 
-1. Em um projeto de teste, crie dois usuários de teste em **Authentication** e substitua os UUIDs no arquivo `supabase/tests/clinic_sites_rls_manual.sql`.
-2. Rode primeiro a migration `supabase/migrations/20261105195430_clinic_sites.sql` no SQL Editor.
-3. Rode `supabase/tests/clinic_sites_rls_manual.sql`. Ele começa com `begin` e termina com `rollback`; confira que cada linha tenha `passou = true`.
-4. Se desejar desfazer a estrutura de teste, use `supabase/migrations/20261105195430_clinic_sites_reversal.sql`.
+Não crie projeto nem branch de preview para este teste.
 
-Não rode estes arquivos em produção antes de revisar os resultados. Nenhum deles altera tabelas, políticas ou dados já existentes; a migration é somente aditiva.
+## Opção A — Supabase local (gratuita)
+
+Com Docker em execução, use a CLI no repositório: `supabase start`, aplique a migration local e execute `supabase/tests/clinic_sites_rls_manual.sql` no Studio local. Ao terminar, `supabase stop`. A CLI e o Docker executam o banco na sua máquina e não geram custo de projeto/branch.
+
+## Opção B — projeto existente (após conferir backup)
+
+Depois de conferir o backup, crie dois usuários de teste em **Authentication** e substitua os UUIDs em `supabase/tests/clinic_sites_rls_manual.sql`. No SQL Editor, rode a migration `supabase/migrations/20261105195430_clinic_sites.sql`; depois rode o teste. Ele começa com `begin` e termina com `rollback`; confira que todas as linhas tenham `passou = true`.
+
+Se precisar desfazer apenas a estrutura criada por esta entrega, rode `supabase/migrations/20261105195430_clinic_sites_reversal.sql`.
+
+Nenhum arquivo altera tabelas, políticas ou dados já existentes; a migration é somente aditiva. Não aplique em produção antes da revisão manual do backup e dos resultados de RLS.
