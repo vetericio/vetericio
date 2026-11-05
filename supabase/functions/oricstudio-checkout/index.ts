@@ -54,18 +54,17 @@ async function checkout(req:Request){
   const body=await req.json().catch(()=>null) as {solicitacao_id?:string}|null;
   if(!uuid(body?.solicitacao_id))return json({error:"Solicitação inválida."},400);
   const id=body!.solicitacao_id!;
-  const [{data:p,error},{data:link},{data:current},{data:product},{data:clinic}]=await Promise.all([
-    db.from("oricstudio_solicitacoes").select("id,clinica_id,solicitado_por,quantidade_contas,valor_mensal_centavos,status,mp_assinatura_id,mp_assinatura_status")
-      .eq("id",id).maybeSingle(),
-    db.from("clinica_usuarios").select("papel,ativo")
-      .eq("user_id",user.user.id).eq("clinica_id", // query constructed from validated order below
-         await (async()=>{const z=await db.from("oricstudio_solicitacoes").select("clinica_id").eq("id",id).maybeSingle();return z.data?.clinica_id||"00000000-0000-0000-0000-000000000000";})()).maybeSingle(),
-    db.from("oricse_clinica_ativa_usuario").select("clinica_id").eq("user_id",user.user.id).maybeSingle(),
-    db.from("oricstudio_produto").select("comercializacao_ativa,preco_centavos,preco_conta_adicional_centavos").eq("codigo","oricstudio").single(),
-    db.from("clinicas").select("status,nome").eq("id",await (async()=>{const z=await db.from("oricstudio_solicitacoes").select("clinica_id").eq("id",id).maybeSingle();return z.data?.clinica_id||"00000000-0000-0000-0000-000000000000";})()).maybeSingle(),
-  ]);
+  const {data:p,error}=await db.from("oricstudio_solicitacoes")
+    .select("id,clinica_id,solicitado_por,quantidade_contas,valor_mensal_centavos,status,mp_assinatura_id,mp_assinatura_status")
+    .eq("id",id).maybeSingle();
   if(error||!p)return json({error:"Solicitação não encontrada."},404);
   const pedido=p as Pedido;
+  const [{data:link},{data:current},{data:product},{data:clinic}]=await Promise.all([
+    db.from("clinica_usuarios").select("papel,ativo").eq("user_id",user.user.id).eq("clinica_id",pedido.clinica_id).maybeSingle(),
+    db.from("oricse_clinica_ativa_usuario").select("clinica_id").eq("user_id",user.user.id).maybeSingle(),
+    db.from("oricstudio_produto").select("comercializacao_ativa").eq("codigo","oricstudio").single(),
+    db.from("clinicas").select("status,nome").eq("id",pedido.clinica_id).maybeSingle(),
+  ]);
   if(!link?.ativo || !["responsavel","admin_clinica","rt"].includes(link.papel)||
      current?.clinica_id!==pedido.clinica_id||
      pedido.solicitado_por!==user.user.id)return json({error:"Acesso não autorizado para esta clínica."},403);
