@@ -735,15 +735,23 @@
 
 /* Portal do Tutor: campos com 16px evitam zoom automático no iPhone. */
 .portal-tutor-demo,
+.portal-tutor-live,
 .portal-tutor-demo input,
 .portal-tutor-demo select,
 .portal-tutor-demo textarea,
-.portal-tutor-demo button {
+.portal-tutor-demo button,
+.portal-tutor-live input,
+.portal-tutor-live select,
+.portal-tutor-live textarea,
+.portal-tutor-live button {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 .portal-tutor-demo input,
 .portal-tutor-demo select,
-.portal-tutor-demo textarea {
+.portal-tutor-demo textarea,
+.portal-tutor-live input,
+.portal-tutor-live select,
+.portal-tutor-live textarea {
   font-size: 16px;
 }
