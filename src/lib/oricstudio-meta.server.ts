@@ -91,7 +91,7 @@ export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clini
       .select("atualizado_em").eq("conta_id",contaId).maybeSingle();
     const age=Date.now()-Date.parse(stored?.atualizado_em||account.conectado_em);
     const expiryMs=account.token_expira_em?Date.parse(account.token_expira_em)-Date.now():Infinity;
-    let renew=null;
+    let renew: {token:string;expiresAt:string}|null=null;
     if(age >= 24*3600_000 && expiryMs <= 30*24*3600_000) {
       renew=await metaRefreshToken(plain);
       const secured=await encryptMetaToken(renew.token);
