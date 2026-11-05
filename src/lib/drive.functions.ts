@@ -40,3 +40,31 @@ export const voltarAoDrivePadrao=createServerFn({method:"POST"}).validator((i:un
 export const enviarArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>uploadSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();const usuario=await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const raiz=await pastaRaizClinica(token,data.clinicaId);const pasta=await buscarOuCriarPasta(token,raiz.folderId,PASTAS_DRIVE[data.categoria]);const bytes=Buffer.from(data.base64.replace(/^data:[^;]+;base64,/,""),"base64");const registroId=crypto.randomUUID();const metadata={name:data.nome,parents:[pasta],appProperties:{oricseRegistroId:registroId,clinicaId:data.clinicaId,categoria:data.categoria,visibilidade:data.visibilidade,entidadeTipo:data.entidadeTipo||"",entidadeId:data.entidadeId||"",enviadoPor:usuario.userId},description:JSON.stringify(data.metadata||{}).slice(0,12000)};const form=new FormData();form.append("metadata",new Blob([JSON.stringify(metadata)],{type:"application/json"}));form.append("file",new Blob([bytes],{type:data.mimeType}),data.nome);const r=await gfetch(token,"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,parents,webViewLink,appProperties",{method:"POST",body:form});const a=await r.json() as {id:string;name:string;webViewLink?:string};const publicUrl=data.visibilidade==="publico"?await tornarPublico(token,a.id):null;return{ok:true,registroId,arquivo:{id:registroId,driveId:a.id,nome:a.name,url:publicUrl||a.webViewLink||`https://drive.google.com/open?id=${a.id}`,publicUrl,pastaId:pasta,modo:raiz.modo}};});
 export const localizarArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>arquivoSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const a=await localizarPorRegistro(token,data.registroId);if(!a)throw new Error("Arquivo não encontrado no Google Drive.");if(a.appProperties?.clinicaId!==data.clinicaId)throw new Error("Arquivo pertence a outra clínica.");return{registroId:data.registroId,driveId:a.id,nome:a.name,mimeType:a.mimeType,size:a.size?Number(a.size):null,url:a.webViewLink||`https://drive.google.com/open?id=${a.id}`,appProperties:a.appProperties||{}};});
 export const excluirArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>arquivoSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const a=await localizarPorRegistro(token,data.registroId);if(!a)return{ok:true};if(a.appProperties?.clinicaId!==data.clinicaId)throw new Error("Arquivo pertence a outra clínica.");await gfetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(a.id)}`,{method:"DELETE"});return{ok:true};});
+
+
+// Acesso privado a miniaturas do OricStúdio: arquivo não fica público no Google Drive.
+export const visualizarImagemPrivadaDrive = createServerFn({ method: "POST" })
+  .validator((i: unknown) => arquivoSchema.parse(i))
+  .handler(async ({ data }) => {
+    const admin = await carregarSupabaseAdmin();
+    await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
+    const token = await accessTokenGoogle();
+    const arquivo = await localizarPorRegistro(token, data.registroId);
+    if (!arquivo || arquivo.appProperties?.clinicaId !== data.clinicaId) {
+      throw new Error("Mídia não encontrada nesta clínica.");
+    }
+    const tipos = ["image/jpeg", "image/png", "image/webp"];
+    if (!tipos.includes(String(arquivo.mimeType))) {
+      throw new Error("Este arquivo não possui prévia de imagem.");
+    }
+    if (Number(arquivo.size || 0) > 5 * 1024 * 1024) {
+      throw new Error("Prévia indisponível para arquivos acima de 5 MB.");
+    }
+    const resposta = await gfetch(token,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}?alt=media`);
+    const bytes = Buffer.from(await resposta.arrayBuffer());
+    if (bytes.byteLength > 5 * 1024 * 1024) {
+      throw new Error("Imagem maior que o limite de prévia.");
+    }
+    return { dataUrl: `data:${arquivo.mimeType};base64,${bytes.toString("base64")}` };
+  });
