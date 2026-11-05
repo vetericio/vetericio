@@ -27,9 +27,11 @@ async function aplicarPromocao(token:string,dados:Record<string,unknown>,planoCo
   const promo=promos.find((p)=>upper(p.codigo)===codigo&&p.ativo!==false);if(!promo)throw new Error("Código promocional inválido ou inativo.");
   const agora=Date.now();if(promo.valido_de&&new Date(promo.valido_de).getTime()>agora||promo.valido_ate&&new Date(promo.valido_ate).getTime()<agora)throw new Error("Este código promocional está fora do período de validade.");
   if(Array.isArray(promo.planos)&&promo.planos.length&&!promo.planos.includes(planoCodigo))throw new Error("Este código não é válido para o plano selecionado.");
-  const usosPromo=usos.filter((u)=>String(u.codigo_id)===String(promo.id));if(promo.limite_usos!=null&&usosPromo.length>=Number(promo.limite_usos))throw new Error("Este código promocional atingiu o limite de usos.");
+  const contratosPorId=new Map(contratos.map((c)=>[String(c.id),c]));
+  const concluida=(c:Contratacao)=>Boolean(c.pagamento_aprovado_em)||(numero(c.valor_total)===0&&["pagamento_aprovado","aprovada","ativa","ativada"].includes(String(c.status)));
+  const usosPromo=usos.filter((u)=>{const c=contratosPorId.get(String(u.contratacao_id));return String(u.codigo_id)===String(promo.id)&&!!c&&!["cancelada","recusada"].includes(String(c.status))&&concluida(c);});if(promo.limite_usos!=null&&usosPromo.length>=Number(promo.limite_usos))throw new Error("Este código promocional atingiu o limite de usos.");
   const doc=documento(dados.cnpj)||documento(dados.responsavel_cpf);if(doc&&promo.limite_por_documento!=null&&usosPromo.filter((u)=>String(u.documento_normalizado||"")===doc).length>=Number(promo.limite_por_documento))throw new Error("Este documento já atingiu o limite de uso do código.");
-  if(promo.somente_primeira_assinatura&&doc&&contratos.some((c)=>!["cancelada","recusada"].includes(String(c.status))&&(documento(c.cnpj)===doc||documento(c.responsavel_cpf)===doc)))throw new Error("Este código é válido somente para a primeira assinatura.");
+  if(promo.somente_primeira_assinatura&&doc&&contratos.some((c)=>!["cancelada","recusada"].includes(String(c.status))&&concluida(c)&&(documento(c.cnpj)===doc||documento(c.responsavel_cpf)===doc)))throw new Error("Este código é válido somente para a primeira assinatura.");
   const desconto=promo.tipo_desconto==="percentual"?Math.round(valorBase*numero(promo.valor))/100:Math.min(valorBase,numero(promo.valor));
   return{codigo,desconto:Math.max(0,Math.min(valorBase,desconto)),final:Math.max(0,valorBase-desconto),duracao:promo.duracao||"primeiro_mes",promoId:promo.id,documento:doc};
 }
