@@ -919,20 +919,105 @@ function Admin() {
     setAba("clinicas");
   }
 
+  const abrirPainel = (destino: Aba) => {
+    setAba(destino);
+    if (destino === "paginas") void carregarRotas();
+    if (destino === "clinicas") setFiltroClinica("todas");
+  };
+
+  const abrirClinicaNoAdmin = (clinica: Clinica, destino: AbaClinica = "cadastro") => {
+    setSelecionada(clinica);
+    setAbaClinica(destino);
+    setAba("clinicas");
+  };
+
   const renderDashboard = () => {
+    const clinicasAtivas = clinicas.filter((c) => c.status === "ativa").length;
     const pagas = clinicas.filter((c) => c.status === "ativa" && c.status_financeiro === "em_dia").length;
     const inadimplentes = clinicas.filter((c) => c.status !== "cancelada" && (c.status_financeiro === "pendente" || c.status_financeiro === "atrasado")).length;
+    const emTeste = clinicas.filter((c) => c.status_financeiro === "teste").length;
     const canceladas = clinicas.filter((c) => c.status === "cancelada").length;
-    const ativos = vinculos.filter((v) => v.ativo).length;
+    const usuariosAtivos = vinculos.filter((v) => v.ativo).length;
+    const usuariosSemClinica = usuarios.filter((usuario) => !vinculos.some((vinculo) => vinculo.user_id === usuario.user_id && vinculo.ativo)).length;
+    const dominiosPendentes = dominiosClinica.filter((dominio) => ["rascunho", "aguardando_dns", "verificando", "erro", "suspenso"].includes(dominio.status));
+    const clinicaDoDominioPendente = clinicas.find((clinica) => clinica.id === dominiosPendentes[0]?.clinica_id);
+
     const cards = [
-      { rotulo: "Total de clínicas", valor: clinicas.length, Icone: Building2 },
-      { rotulo: "Ativas e pagas", valor: pagas, Icone: ShieldCheck, filtro: "pagas" as FiltroClinica },
-      { rotulo: "Não pagaram", valor: inadimplentes, Icone: CreditCard, filtro: "inadimplentes" as FiltroClinica },
-      { rotulo: "Canceladas", valor: canceladas, Icone: CalendarDays, filtro: "canceladas" as FiltroClinica },
-      { rotulo: "Usuários vinculados", valor: ativos, Icone: Users },
-      { rotulo: "Arquivos no Drive", valor: arquivosDrive, Icone: HardDrive },
+      { rotulo: "Clínicas em operação", valor: clinicasAtivas, detalhe: "Base ativa no sistema", Icone: Building2, acao: () => abrirPainel("clinicas") },
+      { rotulo: "Aberturas na fila", valor: solicitacoesEmAberto.length, detalhe: "Precisam de decisão", Icone: ClipboardCheck, acao: () => abrirPainel("novas") },
+      { rotulo: "Contas em atenção", valor: inadimplentes + emTeste, detalhe: inadimplentes ? inadimplentes + " em atraso ou pendentes" : emTeste + " em período de teste", Icone: CreditCard, acao: () => abrirPainel("clinicas") },
+      { rotulo: "Domínios para revisar", valor: dominiosPendentes.length, detalhe: "Publicação, DNS ou SSL", Icone: Globe2, acao: () => clinicaDoDominioPendente ? abrirClinicaNoAdmin(clinicaDoDominioPendente, "site") : abrirPainel("site") },
     ];
-    return <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cards.map(({ rotulo, valor, Icone, filtro }) => filtro ? <button key={rotulo} type="button" onClick={() => abrirFiltro(filtro)} className="text-left"><Card className="h-full transition hover:border-primary"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p><p className="mt-2 text-xs font-semibold text-primary">Ver clínicas</p></div><Icone className="text-primary" size={26}/></div></Card></button> : <Card key={rotulo}><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{rotulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div><Icone className="text-primary" size={26}/></div></Card>)}</div></div>;
+
+    const pendencias = [
+      solicitacoesEmAberto.length > 0 ? { titulo: "Solicitações de abertura", descricao: solicitacoesEmAberto.length + " clínica(s) aguardando análise, preparação ou liberação.", botao: "Abrir clínicas novas", acao: () => abrirPainel("novas"), Icone: ClipboardCheck } : null,
+      inadimplentes > 0 ? { titulo: "Situação financeira", descricao: inadimplentes + " clínica(s) estão pendentes ou em atraso e precisam de revisão.", botao: "Ver clínicas", acao: () => abrirPainel("clinicas"), Icone: CreditCard } : null,
+      emTeste > 0 ? { titulo: "Períodos de teste", descricao: emTeste + " clínica(s) estão em teste e exigem acompanhamento antes da continuidade.", botao: "Revisar contas", acao: () => abrirPainel("clinicas"), Icone: Clock3 } : null,
+      dominiosPendentes.length > 0 ? { titulo: "Domínios e publicação", descricao: dominiosPendentes.length + " endereço(s) precisam de configuração, DNS, SSL ou revisão.", botao: "Revisar domínio", acao: () => clinicaDoDominioPendente ? abrirClinicaNoAdmin(clinicaDoDominioPendente, "site") : abrirPainel("site"), Icone: Globe2 } : null,
+      usuariosSemClinica > 0 ? { titulo: "Usuários sem clínica ativa", descricao: usuariosSemClinica + " usuário(s) não possuem vínculo ativo com uma clínica.", botao: "Abrir equipe", acao: () => abrirPainel("clinicas"), Icone: Users } : null,
+    ].filter(Boolean) as Array<{ titulo: string; descricao: string; botao: string; acao: () => void; Icone: typeof Gauge }>;
+
+    const atalhos = [
+      { titulo: "Planos e autorizações", descricao: "Matriz de recursos, limites e exceções por clínica.", Icone: BadgeDollarSign, acao: () => window.location.assign("/admin-planos") },
+      { titulo: "Cupons e condições", descricao: "Crie, pause e acompanhe campanhas comerciais.", Icone: TicketPercent, acao: () => window.location.assign("/admin-cupons") },
+      { titulo: "Conteúdo público", descricao: "Ajuste textos, planos e a jornada de contratação.", Icone: PanelsTopLeft, acao: () => window.location.assign("/admin-conteudo") },
+      { titulo: "Páginas e URLs", descricao: "Consulte e mantenha o catálogo de rotas da plataforma.", Icone: Globe2, acao: () => abrirPainel("paginas") },
+    ];
+
+    return <div className="space-y-5">
+      <section className="rounded-2xl border border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Administração geral</p>
+            <h2 className="mt-1 text-2xl font-black">Visão geral da plataforma</h2>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Tenha as decisões mais importantes em um só lugar: abertura de clínicas, acesso, financeiro, presença digital e operação do produto.</p>
+          </div>
+          <div className="rounded-xl border bg-white px-4 py-3 text-right">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Última atualização</p>
+            <p className="mt-1 text-sm font-black">{dataHoraBR(ultimaAtualizacao)}</p>
+            <button type="button" onClick={() => { void carregarTudo(); void carregarSolicitacoes(); }} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"><RefreshCcw size={13}/> Atualizar painel</button>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {cards.map(({ rotulo, valor, detalhe, Icone, acao }) => <button key={rotulo} type="button" onClick={acao} className="rounded-xl border bg-white p-4 text-left transition hover:border-primary hover:shadow-sm">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-muted-foreground">{rotulo}</p><p className="mt-2 text-3xl font-black">{valor}</p></div><Icone size={21} className="text-primary"/></div>
+            <p className="mt-2 text-xs text-muted-foreground">{detalhe}</p>
+          </button>)}
+        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Fila de decisão</p><h3 className="mt-1 text-xl font-black">O que precisa da sua atenção</h3><p className="mt-1 text-sm text-muted-foreground">Pendências que podem impedir abertura, acesso, cobrança ou publicação.</p></div>
+            <button type="button" onClick={() => abrirPainel("auditoria")} className="text-sm font-bold text-primary hover:underline">Abrir controle</button>
+          </div>
+          <div className="mt-5 divide-y rounded-xl border">
+            {pendencias.length ? pendencias.map(({ titulo, descricao, botao, acao, Icone }) => <div key={titulo} className="flex flex-wrap items-center gap-3 p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icone size={19}/></span>
+              <div className="min-w-[180px] flex-1"><p className="font-bold">{titulo}</p><p className="mt-0.5 text-sm text-muted-foreground">{descricao}</p></div>
+              <button type="button" onClick={acao} className="min-h-10 rounded-lg border bg-white px-3 text-sm font-bold hover:bg-slate-50">{botao}</button>
+            </div>) : <div className="p-7 text-center"><ShieldCheck className="mx-auto text-emerald-600" size={24}/><p className="mt-3 font-bold">Nenhuma prioridade administrativa agora</p><p className="mt-1 text-sm text-muted-foreground">Novas contratações, domínios e contas que exigirem decisão aparecerão aqui.</p></div>}
+          </div>
+        </Card>
+
+        <Card>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Atalhos de gestão</p>
+          <h3 className="mt-1 text-xl font-black">Ferramentas da plataforma</h3>
+          <div className="mt-4 grid gap-2">
+            {atalhos.map(({ titulo, descricao, Icone, acao }) => <button key={titulo} type="button" onClick={acao} className="flex items-start gap-3 rounded-xl border p-3 text-left transition hover:border-primary hover:bg-[#fffaf7]">
+              <Icone size={18} className="mt-0.5 shrink-0 text-primary"/><span><span className="block text-sm font-bold">{titulo}</span><span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{descricao}</span></span>
+            </button>)}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{clinicas.length}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
+        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Assinaturas</p><p className="mt-2 text-3xl font-black">{pagas}</p><p className="text-sm text-muted-foreground">conta(s) ativa(s) e em dia · {canceladas} cancelada(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Ver situações de conta</button></Card>
+        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
+      </div>
+    </div>;
   };
 
   const renderCadastroClinica = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Cadastro</h2><p className="text-sm text-muted-foreground">Dados gerais e configuração comercial da clínica.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2">
