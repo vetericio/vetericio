@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PrestigeSite } from "@/components/clinic-site/PrestigeSite";
-import { normalizeClinicSiteConfig } from "@/lib/clinic-site";
+import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
+import { clinicSiteTemplates, normalizeClinicSiteConfig } from "@/lib/clinic-site";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -26,5 +26,6 @@ function ClinicPublicSite() {
         <p className="text-muted-foreground">Carregando página da clínica…</p>
       </main>
     );
-  return <PrestigeSite config={normalizeClinicSiteConfig(site.config)} />;
+  const template = clinicSiteTemplates.includes(site.template) ? site.template : "prestige";
+  return <ClinicSiteRenderer template={template} config={normalizeClinicSiteConfig(site.config)} />;
 }
