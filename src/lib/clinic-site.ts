@@ -9,7 +9,6 @@ export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
   popular: 'King',
   essencial: 'Essencial',
 };
-export const clinicSiteTemplateClasses: Record<ClinicSiteTemplate, string> = { prestige: 'AAA', atelier: 'A', cuidado: 'B', popular: 'C', essencial: 'D' };
 export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
   prestige: 'Editorial, exclusivo e sofisticado.', atelier: 'Moderno, claro e alto padrão.', cuidado: 'Acolhedor e confiável.', popular: 'Direto, comercial e urgente.', essencial: 'Leve, objetivo e mobile-first.',
 };
