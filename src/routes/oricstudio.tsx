@@ -298,15 +298,31 @@ function OricStudio() {
   }
   async function solicitarOricstudio() {
     if (!contexto || !comercial?.comercializacao_ativa || mensalidadeOricstudio===null) return;
-    if(!window.confirm(`Solicitar OricStúdio para ${contexto.clinica_nome}, com ${quantidadeContratacao} conta(s), por ${precoBRL(mensalidadeOricstudio)}/mês? Este pedido não efetua pagamento nem ativa o módulo.`))return;
+    if(!window.confirm(`Contratar OricStúdio para ${contexto.clinica_nome}, com ${quantidadeContratacao} conta(s), por ${precoBRL(mensalidadeOricstudio)}/mês? Você será levado ao Mercado Pago para autorizar a assinatura recorrente. O módulo só será ativado após o pagamento aprovado.`))return;
     setSolicitando(true);
     try {
       const {data,error}=await (supabaseBanco as any).rpc("oricstudio_solicitar_contratacao",{
         p_quantidade:quantidadeContratacao,
       });
       if(error)throw error;
-      toast.success("Solicitação registrada, aguardando disponibilidade do checkout.");
-      await carregar();
+      if(!data?.id)throw new Error("Solicitação sem identificador.");
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sua sessão expirou. Faça login novamente.");
+      const checkout=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{solicitacao_id:data.id},
+        headers:{"Authorization":"Bearer "+token},
+      });
+      if(checkout.error)throw new Error("Não foi possível iniciar o pagamento. A solicitação permanece registrada; consulte o suporte se necessário.");
+      const url=String(checkout.data?.checkout_url||"");
+      const parsed=new URL(url);
+      if(parsed.protocol!=="https:"||
+        !(parsed.hostname==="mercadopago.com.br"||parsed.hostname==="mercadopago.com"||
+          parsed.hostname.endsWith(".mercadopago.com.br")||
+          parsed.hostname.endsWith(".mercadopago.com"))) {
+        throw new Error("O Mercado Pago não retornou um link seguro.");
+      }
+      window.location.assign(url);
     } catch(e) {toast.error(e instanceof Error?e.message:"Não foi possível registrar a solicitação.");}
     finally {setSolicitando(false);}
   }
@@ -473,7 +489,7 @@ function OricStudio() {
         <button type="button" onClick={()=>void solicitarOricstudio()}
           disabled={!comercial?.comercializacao_ativa || mensalidadeOricstudio===null || solicitando}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
-          {solicitando?"Registrando...":"Solicitar contratação"}
+          {solicitando?"Registrando...":"Assinar pelo Mercado Pago"}
         </button>
         {(!comercial?.comercializacao_ativa || mensalidadeOricstudio===null) &&
           <p className="text-xs text-muted-foreground">Contratações ainda indisponíveis. O OricStúdio não gera cobranças nem libera contas sem confirmação.</p>}
