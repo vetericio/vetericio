@@ -13,9 +13,7 @@ function ConfiguracaoSite() {
         <ArrowLeft size={16} /> Voltar
       </Link>
       <header className="mb-5 mt-5">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
-          Configurações
-        </p>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Configurações</p>
         <h1 className="mt-1 text-2xl font-bold">Portal do Tutor</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Personalize as informações e os recursos disponíveis para os tutores da clínica.
@@ -23,18 +21,28 @@ function ConfiguracaoSite() {
       </header>
 
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-foreground">
-          Personalização do Portal do Tutor
-        </h2>
+        <h2 className="text-lg font-bold text-foreground">Personalização do Portal do Tutor</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configure a mensagem de boas-vindas, os contatos, as orientações de agendamento
-          e as seções exibidas aos tutores.
+          Configure a mensagem de boas-vindas, os contatos, as orientações de agendamento e as
+          seções exibidas aos tutores.
         </p>
         <Link
           to="/configurar-portal-tutor"
           className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
         >
           Configurar Portal do Tutor
+        </Link>
+      </section>
+      <section className="mt-4 rounded-2xl border bg-card p-5 shadow-sm">
+        <h2 className="text-lg font-bold text-foreground">Site público da clínica</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Crie a página pública da sua clínica com o modelo PRESTIGE.
+        </p>
+        <Link
+          to="/site-da-clinica"
+          className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
+        >
+          Editar site público
         </Link>
       </section>
     </main>
