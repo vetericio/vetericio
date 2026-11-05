@@ -138,7 +138,7 @@ const GRUPOS: ReadonlyArray<readonly [string, NivelPlano, readonly string[]]> = 
   ],
   [
     "Recursos Humanos (RH)",
-    2,
+    3,
     [
       "Registro de ponto (check-in e check-out)",
       "Controle das horas trabalhadas",
