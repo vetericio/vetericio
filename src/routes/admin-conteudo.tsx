@@ -72,7 +72,7 @@ function CanvasPlanos({ cfg }: { cfg: Config }) {
     <div className="max-h-[calc(100vh-120px)] overflow-auto p-5">
       <div className="mx-auto max-w-5xl rounded-3xl bg-[#faf8f3] p-6 shadow-inner">
         <div className="text-center">
-          <img src={cfg.logo_url || "/oricse-logo-oryx.svg?v=14"} alt="Oricse" className="mx-auto h-auto w-full max-w-[190px] object-contain"/>
+          <img src={cfg.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="mx-auto h-auto w-full max-w-[190px] object-contain"/>
           <h2 className="mx-auto mt-3 max-w-2xl text-2xl font-bold leading-tight">{cfg.titulo_planos}</h2>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-500">{cfg.subtitulo_planos}</p>
           <div className="mx-auto mt-4 inline-flex rounded-xl border bg-white p-1 text-xs font-semibold shadow-sm"><span className="rounded-lg bg-primary px-4 py-2 text-primary-foreground">{cfg.rotulo_mensal}</span><span className="px-4 py-2 text-slate-500">{cfg.rotulo_anual}</span></div>
