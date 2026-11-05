@@ -144,10 +144,10 @@ function brl(valor: number) {
 function Contratar() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const planoParam = params.get("plano") || "solo-2026";
-  const plano = planoParam; // Os planos descontinuados não são mais contratáveis.
-  const ehTesteGratis = plano === "teste-gratis";
+  const plano = Object.prototype.hasOwnProperty.call(PLANOS_CONTRATACAO, planoParam) ? planoParam : "solo-2026";
+  const ehTesteGratis = false;
   const cicloParam=params.get("ciclo");
-  const cicloInicial:CicloContratacao=ehTesteGratis?"teste":(CICLOS.some((item)=>item.codigo===cicloParam)?cicloParam as Exclude<CicloContratacao,"teste">:"mensal");
+  const cicloInicial:CicloContratacao=CICLOS.some((item)=>item.codigo===cicloParam)?cicloParam as Exclude<CicloContratacao,"teste">:"mensal";
   const [ciclo,setCiclo]=useState<CicloContratacao>(cicloInicial);
   const [modoRenovacao,setModoRenovacao]=useState<"automatica_cartao"|"manual">("automatica_cartao");
   const [etapa, setEtapa] = useState(1);
