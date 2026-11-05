@@ -41,7 +41,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "novas" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
+type Aba = "dashboard" | "novas" | "lixeira" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive" | "site" | "autorizacoes";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
@@ -63,6 +63,8 @@ type Clinica = {
   proximo_pagamento_em: string | null;
   acesso_ate: string | null;
   status_financeiro: StatusFinanceiro;
+  excluido_em?: string | null;
+  expira_lixeira_em?: string | null;
 };
 
 type NovaClinica = Pick<Clinica, "nome" | "slug" | "tipo_publico" | "plano" | "limite_usuarios">;
@@ -103,9 +105,11 @@ type SolicitacaoClinica = {
   slug_desejado: string | null;
   clinica_criada_id: string | null;
   created_at: string;
+  excluido_em: string | null;
+  expira_lixeira_em: string | null;
 };
 
-const CAMPOS_CLINICA = "id,nome,slug,tipo_publico,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro";
+const CAMPOS_CLINICA = "id,nome,slug,tipo_publico,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro,excluido_em,expira_lixeira_em";
 const valorPlanoClinica = (p: Plano) => p.codigo?.endsWith("-2026") ? p.codigo : p.nome;
 
 type AppUser = { user_id: string; username: string; role: string; email?: string | null; created_at: string };
@@ -166,6 +170,7 @@ type ItemMenuAdmin = {
 const ABAS: ItemMenuAdmin[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
   { id: "novas", nome: "Clínicas novas", icone: ClipboardCheck, grupo: "Operação" },
+  { id: "lixeira", nome: "Lixeira · 360 dias", icone: Trash2, grupo: "Operação" },
   { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
   { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
   { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
@@ -272,6 +277,8 @@ function Admin() {
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
+  const [clinicasLixeira, setClinicasLixeira] = useState<Clinica[]>([]);
+  const [processandoLixeira,setProcessandoLixeira]=useState<string|null>(null);
   const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
   const [erroSolicitacoes, setErroSolicitacoes] = useState("");
   const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
@@ -375,7 +382,8 @@ function Admin() {
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
-    setClinicas(c.data || []);
+    setClinicas((c.data || []).filter((x:Clinica)=>!x.excluido_em));
+    setClinicasLixeira((c.data || []).filter((x:Clinica)=>Boolean(x.excluido_em)));
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
@@ -515,7 +523,7 @@ function Admin() {
       for(let inicio=0;inicio<100000;inicio+=lote) {
         const { data, error } = await (supabaseBanco as any)
           .from("oricse_contratacoes")
-          .select("id,plano_nome,plano_codigo,quantidade_usuarios,ciclo,valor_exibido,status,clinica_nome,razao_social,cnpj,clinica_telefone,clinica_email,clinica_cep,clinica_endereco,clinica_numero,clinica_bairro,clinica_cidade,clinica_uf,observacoes,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at")
+          .select("id,plano_nome,plano_codigo,quantidade_usuarios,ciclo,valor_exibido,status,clinica_nome,razao_social,cnpj,clinica_telefone,clinica_email,clinica_cep,clinica_endereco,clinica_numero,clinica_bairro,clinica_cidade,clinica_uf,observacoes,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_valor_original,promo_desconto,promo_valor_final,slug_desejado,clinica_criada_id,created_at,excluido_em,expira_lixeira_em")
           .order("created_at",{ascending:false})
           .order("id",{ascending:false})
           .range(inicio,inicio+lote-1);
@@ -626,20 +634,30 @@ function Admin() {
     setAba("clinicas");
   }
 
-  async function excluirSolicitacaoDaFila(item: SolicitacaoClinica) {
-    if(item.clinica_criada_id) {
-      toast.info("A clínica já existe. Use o controle de exclusão da clínica cadastrada, com auditoria.");
-      setSolicitacaoSelecionada(null);
-      await abrirConfiguracaoDaSolicitacao(item);
-      return;
-    }
-    if(item.status==="cancelada") return toast.info("Solicitação já cancelada e preservada no histórico.");
-    if(!window.confirm(`Cancelar a solicitação de ${item.clinica_nome}? O registro será mantido no histórico de auditoria e nenhuma clínica será apagada.`)) return;
-    const {error}=await (supabaseBanco as any).from("oricse_contratacoes").update({status:"cancelada",updated_at:new Date().toISOString()}).eq("id",item.id).is("clinica_criada_id",null);
-    if(error) return toast.error("Não foi possível cancelar: "+error.message);
-    toast.success("Solicitação cancelada, preservada no histórico.");
-    setSolicitacaoSelecionada(null);
-    await carregarSolicitacoes();
+  async function moverParaLixeira(tipo:"solicitacao"|"clinica",id:string,nome:string) {
+    if (!window.confirm(`Excluir "${nome}" da lista principal e enviar para a Lixeira por até 360 dias? Os registros relacionados serão preservados para restauração.`)) return;
+    setProcessandoLixeira(id);
+    try {
+      const {error}=await (supabaseBanco as any).rpc("oricse_admin_lixeira_mover",{p_tipo:tipo,p_id:id});
+      if(error)throw error;
+      toast.success("Enviado à Lixeira por até 360 dias.");
+      setSolicitacaoSelecionada(null);setSelecionada(null);
+      await Promise.all([carregarTudo(),carregarSolicitacoes()]);
+    }catch(e){toast.error(e instanceof Error?e.message:"Falha ao enviar para a Lixeira.");}
+    finally{setProcessandoLixeira(null);}
+  }
+  async function restaurarDaLixeira(tipo:"solicitacao"|"clinica",id:string) {
+    setProcessandoLixeira(id);
+    try{
+      const {error}=await (supabaseBanco as any).rpc("oricse_admin_lixeira_restaurar",{p_tipo:tipo,p_id:id});
+      if(error)throw error;
+      toast.success("Registro restaurado. A clínica permanece bloqueada até autorização.");
+      await Promise.all([carregarTudo(),carregarSolicitacoes()]);
+    }catch(e){toast.error(e instanceof Error?e.message:"Falha ao restaurar.");}
+    finally{setProcessandoLixeira(null);}
+  }
+  async function excluirSolicitacaoDaFila(item:SolicitacaoClinica) {
+    await moverParaLixeira("solicitacao",item.id,item.clinica_nome);
   }
 
   async function autorizarFuncionamento(item: SolicitacaoClinica) {
@@ -819,12 +837,14 @@ function Admin() {
     if (!selecionada || confirmacaoExclusao !== "APAGAR") return;
     setOcupado(true);
     try {
-      const r = await excluirClinica({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id, confirmacao: "APAGAR" } });
+      const {error}=await (supabaseBanco as any).rpc("oricse_admin_lixeira_mover",{p_tipo:"clinica",p_id:selecionada.id});
+      if(error)throw error;
+      const r={nome:selecionada.nome};
       setExcluindoClinica(false);
       setConfirmacaoExclusao("");
       setSelecionada(null);
       await carregarTudo();
-      toast.success(`Clínica "${r.nome}" excluída.`);
+      toast.success(`Clínica "${r.nome}" enviada à Lixeira por 360 dias.`);
     } catch (e) { toast.error((e as Error).message || "Não foi possível excluir a clínica."); }
     finally { setOcupado(false); }
   }
@@ -1137,7 +1157,7 @@ function Admin() {
      <Dialog open={excluindoClinica} onOpenChange={(aberto) => { if (!ocupado) { setExcluindoClinica(aberto); if (!aberto) setConfirmacaoExclusao(""); } }}><DialogContent><DialogHeader><DialogTitle className="text-red-700">Excluir "{selecionada.nome}"?</DialogTitle><DialogDescription>Leia os avisos antes de continuar.</DialogDescription></DialogHeader>
        <ol className="list-decimal space-y-2 pl-5 text-sm"><li><strong>Esta ação é irreversível.</strong> Não existe como desfazer ou recuperar a clínica depois.</li><li><strong>Dados apagados:</strong> usuários, tutores, catálogo, comissões e configurações da clínica serão removidos, e as contas de acesso exclusivas dela serão excluídas.</li><li><strong>Arquivos no Google Drive não são apagados</strong>, mas o vínculo com a pasta será perdido. Remova-os manualmente se necessário.</li></ol>
        <label className="text-sm font-semibold">Digite <span className="font-mono text-red-700">APAGAR</span> para confirmar<input value={confirmacaoExclusao} onChange={(e) => setConfirmacaoExclusao(e.target.value)} autoComplete="off" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-       <div className="flex justify-end gap-2"><button type="button" disabled={ocupado} onClick={() => { setExcluindoClinica(false); setConfirmacaoExclusao(""); }} className="rounded-xl border px-4 py-2.5 font-semibold">Cancelar</button><button type="button" disabled={ocupado || confirmacaoExclusao !== "APAGAR"} onClick={() => void confirmarExclusaoClinica()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white disabled:opacity-40"><Trash2 size={17}/> Excluir definitivamente</button></div>
+       <div className="flex justify-end gap-2"><button type="button" disabled={ocupado} onClick={() => { setExcluindoClinica(false); setConfirmacaoExclusao(""); }} className="rounded-xl border px-4 py-2.5 font-semibold">Cancelar</button><button type="button" disabled={ocupado || confirmacaoExclusao !== "APAGAR"} onClick={() => void confirmarExclusaoClinica()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white disabled:opacity-40"><Trash2 size={17}/> Enviar à Lixeira</button></div>
      </DialogContent></Dialog></Card>;
 
   const renderSituacao = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div><p className="mt-1 text-sm text-muted-foreground">Controle administrativo, pagamentos e período de acesso.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1389,9 +1409,23 @@ function Admin() {
     </Dialog>;
   };
 
+  const renderLixeira = () => {
+    const pedidos=solicitacoes.filter(item=>Boolean(item.excluido_em));
+    const todos=[...pedidos.map(item=>({tipo:"solicitacao" as const,id:item.id,nome:item.clinica_nome,excluido:item.excluido_em!,expira:item.expira_lixeira_em,status:item.status})),...clinicasLixeira.map(item=>({tipo:"clinica" as const,id:item.id,nome:item.nome,excluido:item.excluido_em!,expira:item.expira_lixeira_em||null,status:item.status}))].sort((a,b)=>b.excluido.localeCompare(a.excluido));
+    return <div className="space-y-4">
+      <div><h2 className="text-2xl font-black">Lixeira</h2><p className="mt-1 text-sm text-muted-foreground">Itens excluídos ficam fora das listas principais. Recuperação disponível por até 360 dias.</p></div>
+      <Card><p className="font-semibold">{todos.length} item(ns) na Lixeira</p></Card>
+      {todos.length===0&&<Card><p className="text-sm text-muted-foreground">A Lixeira está vazia.</p></Card>}
+      {todos.map(item=><Card key={item.tipo+item.id}><div className="flex flex-wrap items-center justify-between gap-3">
+        <div><p className="font-black">{item.nome}</p><p className="text-sm text-muted-foreground">{item.tipo==="clinica"?"Clínica":"Solicitação"} · Excluído em {dataHoraBR(item.excluido)}</p><p className="text-sm font-semibold text-amber-800">Recuperável até {dataBR(item.expira)}</p><p className="text-xs text-muted-foreground">Identificador: {item.id}</p></div>
+        <button type="button" disabled={processandoLixeira===item.id||Boolean(item.expira&&new Date(item.expira).getTime()<Date.now())} onClick={()=>void restaurarDaLixeira(item.tipo,item.id)} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-50">Restaurar</button>
+      </div></Card>)}
+    </div>;
+  };
+
   const renderClinicasNovas = () => {
     const indicadores = [
-      { rotulo: "Total de solicitações", valor: solicitacoes.length, Icone: ClipboardCheck, cor: "text-primary" },
+      { rotulo: "Total de solicitações", valor: solicitacoes.filter(item=>!item.excluido_em).length, Icone: ClipboardCheck, cor: "text-primary" },
       { rotulo: "Planos pagos", valor: solicitacoesPagas.length, Icone: CheckCircle2, cor: "text-emerald-700" },
       { rotulo: "Prontas para liberação", valor: solicitacoesProntas.length, Icone: Building2, cor: "text-amber-700" },
     ];
@@ -1419,8 +1453,8 @@ function Admin() {
       <section className="space-y-3">
         {carregandoSolicitacoes ? <Card><p className="py-6 text-center text-sm text-muted-foreground">Carregando solicitações...</p></Card>
           : erroSolicitacoes ? <Card><p role="alert" className="p-5 font-semibold text-red-800">Não foi possível carregar o histórico. Verifique sua sessão administrativa e tente novamente.</p></Card>
-          : solicitacoes.length === 0 ? <Card><div className="py-8 text-center"><Clock3 className="mx-auto text-muted-foreground"/><h3 className="mt-3 font-bold">Nenhuma solicitação registrada</h3><p className="mt-1 text-sm text-muted-foreground">A consulta retornou zero registros, sem filtro de status.</p></div></Card>
-          : solicitacoes.map((item) => {
+          : solicitacoes.filter(item=>!item.excluido_em).length === 0 ? <Card><div className="py-8 text-center"><Clock3 className="mx-auto text-muted-foreground"/><h3 className="mt-3 font-bold">Nenhuma solicitação registrada</h3><p className="mt-1 text-sm text-muted-foreground">A consulta retornou zero registros, sem filtro de status.</p></div></Card>
+          : solicitacoes.filter(item=>!item.excluido_em).map((item) => {
             const criada = clinicas.find((clinica) => clinica.id === item.clinica_criada_id);
             const podePreparar = (item.status === "pagamento_aprovado" || item.status === "em_analise" || item.status === "isento_aguardando_aprovacao") && (Boolean(item.pagamento_id && item.pagamento_aprovado_em) || pedidoIsentoValido(item)) && !item.clinica_criada_id;
             const podeAutorizar = Boolean(criada) && item.status !== "ativada";
@@ -1986,6 +2020,7 @@ function Admin() {
           <section className="min-w-0">
             {aba === "dashboard" && renderDashboard()}
             {aba === "novas" && renderClinicasNovas()}
+            {aba === "lixeira" && renderLixeira()}
             {aba === "clinicas" && renderClinicas()}
             {aba === "planos" && renderPlanos()}
             {aba === "site" && renderSite()}
