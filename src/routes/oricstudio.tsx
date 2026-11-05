@@ -310,7 +310,7 @@ function OricStudio() {
     const token=auth.session?.access_token;
     if(!token)throw new Error("Sua sessão expirou. Faça login novamente.");
     const checkout=await supabaseBanco.functions.invoke("oricstudio-checkout",{
-      body:{solicitacao_id:id},
+      body:{acao:"checkout",solicitacao_id:id},
       headers:{"Authorization":"Bearer "+token},
     });
     if(checkout.error)throw new Error("O checkout não está disponível. Sua solicitação foi preservada.");
