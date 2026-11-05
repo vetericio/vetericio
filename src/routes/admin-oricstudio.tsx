@@ -32,6 +32,10 @@ function OricStudioAdmin() {
   const [clinicas,setClinicas] = useState<Clinica[]>([]);
   const [licencas,setLicencas] = useState<Licenca[]>([]);
   const [historico,setHistorico] = useState<Historico[]>([]);
+  const [solicitacoes,setSolicitacoes] = useState<Array<{
+    id:string;clinica_id:string;quantidade_contas:number;valor_mensal_centavos:number;
+    status:string;criado_em:string;referencia_pagamento:string|null;
+  }>>([]);
   const [busca,setBusca] = useState("");
   const [alterando,setAlterando] = useState<string|null>(null);
   const [precoBase,setPrecoBase] = useState("");
@@ -60,14 +64,15 @@ function OricStudioAdmin() {
         }
         throw new Error("Limite de consulta atingido; confirme a listagem no banco.");
       };
-      const [cs,ls,hs,ps]=await Promise.all([
+      const [cs,ls,hs,ps,sol]=await Promise.all([
         buscarTudo("clinicas","id,nome,status,plano","nome"),
         buscarTudo("oricstudio_licencas","clinica_id,status,motivo,atualizado_em,expira_em,quantidade_contas_contratadas","atualizado_em"),
         buscarTudo("oricstudio_auditoria","id,acao,clinica_id,criado_em,usuario_id,antes,depois","criado_em"),
-        (supabaseBanco as any).from("oricstudio_produto").select("nome,descricao,preco_centavos,preco_conta_adicional_centavos,comercializacao_ativa,disponivel_nos_planos").eq("codigo","oricstudio").single()
+        (supabaseBanco as any).from("oricstudio_produto").select("nome,descricao,preco_centavos,preco_conta_adicional_centavos,comercializacao_ativa,disponivel_nos_planos").eq("codigo","oricstudio").single(),
+        buscarTudo("oricstudio_solicitacoes","id,clinica_id,quantidade_contas,valor_mensal_centavos,status,criado_em,referencia_pagamento","criado_em")
       ]);
       if (ps.error)throw ps.error;
-      setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);
+      setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);setSolicitacoes(sol);
       setPrecoBase(ps.data.preco_centavos==null?"":(ps.data.preco_centavos/100).toFixed(2).replace(".",","));
       setPrecoAdicional(ps.data.preco_conta_adicional_centavos==null?"":(ps.data.preco_conta_adicional_centavos/100).toFixed(2).replace(".",","));
     } catch(e) {
@@ -148,7 +153,7 @@ function OricStudioAdmin() {
       <p className="text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet · Administração central</p></div>
       <button onClick={()=>void carregar()} disabled={carregando} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
     </header>
-    <div className="rounded-xl border bg-card p-3 text-sm"><span className="font-semibold">Produto em preparação.</span> Sem comercialização ativa, preço não definido e sem inclusão automática nos planos do ORICSE.</div>
+    <div className="rounded-xl border bg-card p-3 text-sm"><span className="font-semibold">OricStúdio — produto adicional.</span> Comercialização: {produto?.comercializacao_ativa?"ativa":"desativada"}. Valores: {produto?.preco_centavos!=null && produto?.preco_conta_adicional_centavos!=null?"configurados":"pendentes"}. Nenhuma inclusão automática nos planos do ORICSE.</div>
     <nav className="flex flex-wrap gap-2" aria-label="Páginas do OricStúdio">{ABAS.map(({id,nome,icon:Icon})=><button type="button" key={id} onClick={()=>setAba(id)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${aba===id?"bg-primary text-primary-foreground":"bg-card hover:bg-accent"}`}><Icon className="h-4 w-4"/>{nome}</button>)}</nav>
     {erro && <div role="alert" className="rounded-lg border border-destructive p-4 text-sm text-destructive">{erro}</div>}
     {carregando && <p className="text-sm text-muted-foreground">Consultando informações...</p>}
@@ -184,6 +189,19 @@ function OricStudioAdmin() {
         </div>
         <p className="text-sm">Venda pública: <strong>{produto?.comercializacao_ativa?"Ativa":"Desativada"}</strong></p>
         <p className="text-sm">Inclusão automática nos planos ORICSE: <strong>{produto?.disponivel_nos_planos?"Configurada":"Nenhuma"}</strong></p>
+        <div className="space-y-2">
+          <h3 className="font-semibold">Solicitações de contratação ({solicitacoes.length})</h3>
+          {solicitacoes.length===0
+            ? <p className="text-sm text-muted-foreground">Nenhuma solicitação registrada.</p>
+            : <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[560px] text-left text-xs"><thead className="bg-muted"><tr><th className="p-3">Clínica</th><th className="p-3">Contas</th><th className="p-3">Valor mensal</th><th className="p-3">Situação</th><th className="p-3">Data</th></tr></thead><tbody>
+              {solicitacoes.map(item=><tr key={item.id} className="border-t">
+                <td className="p-3">{clinicas.find(c=>c.id===item.clinica_id)?.nome||item.clinica_id}</td>
+                <td className="p-3">{item.quantidade_contas}</td><td className="p-3">{moeda(item.valor_mensal_centavos)}</td>
+                <td className="p-3">{item.status.replaceAll("_"," ")}</td><td className="p-3">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+              </tr>)}
+            </tbody></table></div>}
+          <p className="text-xs text-muted-foreground">Solicitações não representam pagamentos aprovados. Ativações ficam bloqueadas até a conciliação oficial.</p>
+        </div>
         <p className="text-xs text-muted-foreground">Os valores só são uma tabela comercial. Não há checkout, cobrança recorrente, ativação automática ou desconto proporcional nesta etapa.</p>
       </section>}
       {aba==="auditoria" && <section className="space-y-3"><h2 className="text-lg font-semibold">Auditoria ({historico.length})</h2>{historico.length===0?<p className="rounded-lg border p-4 text-sm">Ainda não há alterações de licenças.</p>:<div className="space-y-2">{historico.slice(0,100).map(h=><div key={h.id} className="rounded-lg border bg-card p-3 text-sm"><strong>{h.acao}</strong> · {new Date(h.criado_em).toLocaleString("pt-BR")}<div className="text-xs text-muted-foreground">Clínica: {clinicas.find(c=>c.id===h.clinica_id)?.nome||h.clinica_id||"Excluída"} · Usuário: {h.usuario_id||"Sistema"}</div></div>)}</div>}</section>}
