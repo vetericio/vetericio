@@ -153,7 +153,7 @@ function OricStudioAdmin() {
       <p className="text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet · Administração central</p></div>
       <button onClick={()=>void carregar()} disabled={carregando} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
     </header>
-    <div className="rounded-xl border bg-card p-3 text-sm"><span className="font-semibold">Produto em preparação.</span> Sem comercialização ativa, preço não definido e sem inclusão automática nos planos do ORICSE.</div>
+    <div className="rounded-xl border bg-card p-3 text-sm"><span className="font-semibold">OricStúdio — produto adicional.</span> Comercialização: {produto?.comercializacao_ativa?"ativa":"desativada"}. Valores: {produto?.preco_centavos!=null && produto?.preco_conta_adicional_centavos!=null?"configurados":"pendentes"}. Nenhuma inclusão automática nos planos do ORICSE.</div>
     <nav className="flex flex-wrap gap-2" aria-label="Páginas do OricStúdio">{ABAS.map(({id,nome,icon:Icon})=><button type="button" key={id} onClick={()=>setAba(id)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${aba===id?"bg-primary text-primary-foreground":"bg-card hover:bg-accent"}`}><Icon className="h-4 w-4"/>{nome}</button>)}</nav>
     {erro && <div role="alert" className="rounded-lg border border-destructive p-4 text-sm text-destructive">{erro}</div>}
     {carregando && <p className="text-sm text-muted-foreground">Consultando informações...</p>}
