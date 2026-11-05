@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
+import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
@@ -27,6 +28,7 @@ type Publicacao = {
   planejado_para: string | null; criado_em: string; atualizado_em: string;
 };
 type Midia = { id: string; nome: string; tipo: string; criado_em: string; caminho_privado: string };
+type ContaMeta = { id:string; clinica_id:string; instagram_user_id:string; username:string; account_type:string|null; status:string; escopos:string[]; conectado_em:string; token_expira_em:string|null };
 type Versao = { id: number; evento: string; criado_em: string; autor_id: string | null };
 type Preferencias = {
   clinica_id: string; nome_publico: string; tom_de_voz: string;
@@ -69,6 +71,11 @@ function OricStudio() {
   const [contexto, setContexto] = useState<Contexto | null>(null);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
+  const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
+  const [metaConfigurada, setMetaConfigurada] = useState(false);
+  const [metaCarregando, setMetaCarregando] = useState(false);
+  const [metaOcupada, setMetaOcupada] = useState(false);
+  const [metaErro, setMetaErro] = useState("");
   const [enviandoMidia, setEnviandoMidia] = useState(false);
   const [previas, setPrevias] = useState<Record<string,string>>({});
   const [preferencias, setPreferencias] = useState<Preferencias | null>(null);
@@ -89,7 +96,7 @@ function OricStudio() {
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro("");
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
@@ -120,6 +127,26 @@ function OricStudio() {
         tom_de_voz: "Profissional e acolhedor", hashtags_padrao: "",
         fuso_horario: "America/Sao_Paulo",
       });
+      if (c.pode_editar) {
+        setMetaCarregando(true);
+        try {
+          const {data:authSession}=await supabase.auth.getSession();
+          const token=authSession.session?.access_token;
+          if(!token)throw new Error("Sessão expirada.");
+          const [accounts,configuration]=await Promise.all([
+            listarContasMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+            statusIntegracaoMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+          ]);
+          if(seq===requisicao.current) {
+            setContasMeta(accounts as ContaMeta[]);
+            setMetaConfigurada(configuration.configurada);
+          }
+        } catch(e) {
+          if(seq===requisicao.current) setMetaErro(e instanceof Error?e.message:"Erro ao consultar a Meta.");
+        } finally {
+          if(seq===requisicao.current) setMetaCarregando(false);
+        }
+      }
     } catch (e) {
       if (seq === requisicao.current) setErro(e instanceof Error ? e.message : "Não foi possível consultar o OricStúdio.");
     } finally {
@@ -251,6 +278,63 @@ function OricStudio() {
       toast.success("Preferências da clínica salvas.");
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setSalvando(false);}
+  }
+
+  async function conectarMeta() {
+    if (!contexto?.pode_editar || metaOcupada) return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const result=await iniciarConexaoMetaOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,
+      }});
+      if(!result.url.startsWith("https://www.instagram.com/oauth/authorize?"))throw new Error("Endereço de autorização inválido.");
+      window.location.assign(result.url);
+    } catch(e) {
+      toast.error(e instanceof Error?e.message:"Falha ao iniciar conexão.");
+      setMetaOcupada(false);
+    }
+  }
+
+  async function verificarMeta(conta:ContaMeta) {
+    if (!contexto?.pode_editar || metaOcupada) return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const resposta=await verificarContaMetaOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,contaId:conta.id,
+      }});
+      toast.success(resposta.renovada?"Conexão verificada e token renovado.":"Conexão verificada com a Meta.");
+      await carregar();
+      setAba("contas");
+    } catch(e) {
+      toast.error(e instanceof Error?e.message:"Falha na verificação da conexão Meta.");
+      await carregar();
+      setAba("contas");
+    } finally {setMetaOcupada(false);}
+  }
+
+  async function desconectarMeta(conta: ContaMeta) {
+    if (!contexto?.pode_editar || metaOcupada ||
+        !window.confirm(`Desconectar @${conta.username} desta clínica? O histórico editorial permanecerá intacto.`)) return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      await desconectarContaMetaOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,contaId:conta.id,
+      }});
+      toast.success("Conexão local desativada. Você também pode revogar o aplicativo nas configurações da Meta.");
+      await carregar();
+      setAba("contas");
+    } catch(e) {
+      toast.error(e instanceof Error?e.message:"Falha ao desconectar.");
+    } finally {setMetaOcupada(false);}
   }
 
   async function enviarMidia(file: File | undefined) {
@@ -479,11 +563,45 @@ function OricStudio() {
         <p className="text-xs text-muted-foreground">Fuso horário de referência: {preferencias.fuso_horario}. Nenhuma alteração na marca institucional ORICSE.</p>
         {contexto.pode_editar ? <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button> : <p className="text-sm text-muted-foreground">Somente responsáveis, administradores da clínica e RTs podem editar estas preferências.</p>}
       </form>}
-      {(["contas","comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
+      {aba==="contas" && <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold">Contas Instagram da clínica</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas.</p>
+          </div>
+          {contexto.pode_editar && <button type="button" onClick={()=>void conectarMeta()}
+            disabled={!metaConfigurada || metaCarregando || metaOcupada}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
+            <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram"}
+          </button>}
+        </div>
+        {!contexto.pode_editar && <p className="rounded-xl border p-4 text-sm">A conexão é administrada pelo responsável, RT ou administrador da clínica.</p>}
+        {contexto.pode_editar && !metaConfigurada && !metaCarregando &&
+          <p className="rounded-xl border bg-card p-4 text-sm">A integração Meta do OricStúdio está aguardando configuração central. Nenhuma clínica precisa fornecer sua senha ao ORICSE.</p>}
+        {metaErro && <p role="alert" className="rounded-xl border border-destructive/60 p-4 text-sm text-destructive">{metaErro}</p>}
+        {metaCarregando && <p className="text-sm text-muted-foreground">Verificando conexões Meta...</p>}
+        {contexto.pode_editar && contasMeta.length===0 && !metaCarregando &&
+          <div className="rounded-xl border bg-card p-6"><h3 className="font-semibold">Nenhuma conta conectada</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Utilize o botão “Conectar Instagram” quando a integração Meta da plataforma estiver configurada.</p></div>}
+        {contasMeta.map(conta=><article key={conta.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border bg-card p-4">
+          <div><h3 className="font-semibold">@{conta.username}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">{conta.account_type||"Conta profissional"} · {conta.status} · Desde {textoData(conta.conectado_em)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Token: {conta.token_expira_em? `vence ${textoData(conta.token_expira_em)}` : "validade não informada"}</p>
+          </div>
+          {contexto.pode_editar && conta.status!=="desconectada" &&
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={metaOcupada} onClick={()=>void verificarMeta(conta)}
+                className="rounded-lg border px-3 py-2 text-xs disabled:opacity-50">Verificar conexão</button>
+              <button type="button" disabled={metaOcupada} onClick={()=>void desconectarMeta(conta)}
+                className="rounded-lg border px-3 py-2 text-xs text-destructive disabled:opacity-50">Desconectar</button>
+            </div>}
+        </article>)}
+        <p className="text-xs text-muted-foreground">A conexão não autoriza publicações automáticas por si só. A fila de publicação e as permissões aprovadas pela Meta serão validadas separadamente.</p>
+      </section>}
+      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
         <h2 className="text-xl font-bold">{ABAS.find(a=>a.id===aba)?.rotulo}</h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {aba==="contas"?"Nenhuma conta conectada. Cada clínica conectará suas próprias contas profissionais na etapa 3/5.":
-           aba==="comentarios"?"Comentários e respostas serão sincronizados após a conexão Meta, respeitando as permissões concedidas.":
+          {aba==="comentarios"?"Comentários e respostas serão sincronizados após a conexão Meta, respeitando as permissões concedidas.":
            aba==="metricas"?"Métricas reais de alcance e interações serão apresentadas após a conexão das contas. Nenhum número será simulado.":
            "Não há alertas de publicação porque a integração com Instagram ainda não está ativa. Erros de conexão e envio serão acompanhados na etapa 3/5."}
         </p>
