@@ -141,7 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "canonical", href: "https://oricse.vetericio.workers.dev/" },
       { rel: "icon", type: "image/svg+xml", href: "/oricse-logo-oryx.svg?v=15" },
       { rel: "shortcut icon", type: "image/svg+xml", href: "/oricse-logo-oryx.svg?v=15" },
-      { rel: "apple-touch-icon", type: "image/png", href: "/icon-192.png?v=13" },
+      { rel: "apple-touch-icon", href: "/oricse-logo-oryx.svg?v=15" },
     ],
   }),
   shellComponent: RootShell,
