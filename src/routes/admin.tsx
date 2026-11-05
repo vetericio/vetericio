@@ -20,6 +20,7 @@ import {
   Plus,
   RefreshCcw,
   Save,
+  TicketPercent,
   Search,
   Settings,
   ShieldCheck,
@@ -41,7 +42,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "novas" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos";
+type Aba = "dashboard" | "novas" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive" | "site" | "autorizacoes";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
@@ -141,16 +142,26 @@ type SiteConfig = {
   logo_url?: string;
 };
 
-type GrupoAba = "Operação" | "Configuração";
-const ABAS: { id: Aba; nome: string; icone: typeof Gauge; grupo: GrupoAba }[] = [
+type GrupoAba = "Operação" | "Produto e conteúdo" | "Controle";
+type ItemMenuAdmin = {
+  id: string;
+  nome: string;
+  icone: typeof Gauge;
+  grupo: GrupoAba;
+  rota?: "/admin-cupons" | "/admin-conteudo";
+};
+const ABAS: ItemMenuAdmin[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
   { id: "novas", nome: "Clínicas novas", icone: ClipboardCheck, grupo: "Operação" },
-  { id: "clinicas", nome: "Clínicas ativas", icone: Building2, grupo: "Operação" },
-  { id: "planos", nome: "Planos e acessos", icone: BadgeDollarSign, grupo: "Operação" },
-  { id: "pagamentos", nome: "Pagamentos e taxas", icone: CreditCard, grupo: "Operação" },
-  { id: "site", nome: "Site e marca", icone: PanelsTopLeft, grupo: "Configuração" },
-  { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Configuração" },
-  { id: "sistema", nome: "Sistema", icone: Settings, grupo: "Configuração" },
+  { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
+  { id: "planos", nome: "Planos, limites e acessos", icone: BadgeDollarSign, grupo: "Operação" },
+  { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
+  { id: "cupons", nome: "Cupons e condições", icone: TicketPercent, grupo: "Operação", rota: "/admin-cupons" },
+  { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
+  { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
+  { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
+  { id: "auditoria", nome: "Controle e auditoria", icone: ShieldCheck, grupo: "Controle" },
+  { id: "sistema", nome: "Sistema e integrações", icone: Settings, grupo: "Controle" },
 ];
 
 const PERFIS: Record<PapelClinica, { nome: string; resumo: string; acessos: string[]; bloqueios: string[] }> = {
@@ -231,6 +242,13 @@ function dataBR(valor: string | null | undefined) {
   return d.toLocaleDateString("pt-BR");
 }
 
+function dataHoraBR(valor: string | null | undefined) {
+  if (!valor) return "Ainda não atualizado";
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return valor;
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-2xl border bg-white p-5 shadow-sm ${className}`}>{children}</section>;
 }
@@ -239,6 +257,7 @@ function Admin() {
   const [aba, setAba] = useState<Aba>("dashboard");
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
   const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
   const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
@@ -381,6 +400,7 @@ function Admin() {
       const atual = (c.data || []).find((x: Clinica) => x.id === selecionada.id);
       if (atual) setSelecionada(atual);
     }
+    setUltimaAtualizacao(new Date().toISOString());
   }
 
   async function salvarGradeTaxas(clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) {
