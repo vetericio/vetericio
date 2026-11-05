@@ -1299,7 +1299,7 @@ function Admin() {
       ["cadastro", "Cadastro", Building2], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database], ["site", "Site e domínios", Globe2], ["autorizacoes", "Autorizações", Settings],
     ].map(([id, nome, Icone]: any) => <button key={id} onClick={() => { setAbaClinica(id);  }} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}{abaClinica === "site" && renderSiteDominiosClinica()}{abaClinica === "autorizacoes" && renderAutorizacoesClinica()}</div>;
 
-    return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para abrir a administração completa da conta.</p></div><button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Plus size={18}/> Adicionar clínica</button></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
+    return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Clínicas e equipe</h2><p className="mt-1 text-sm text-muted-foreground">Cada conta é administrada por aqui: cadastro, usuários, plano, situação financeira, site, domínio e autorizações.</p></div><button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Plus size={18}/> Adicionar clínica</button></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
   };
 
   async function carregarExcecoesClinica(clinicaId:string) {
@@ -1642,13 +1642,107 @@ function Admin() {
     {!rotasVisiveis.length&&<Card><p className="py-6 text-center text-sm text-muted-foreground">Nenhuma página corresponde aos filtros. Experimente outra busca.</p></Card>}
   </div>;
 
-  const renderSistema = () => <Card><div className="flex items-center gap-2"><Settings size={20}/><h2 className="text-xl font-bold">Sistema</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Banco de dados</p><p className="mt-1 font-bold text-emerald-700">Conectado</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Marca</p><p className="mt-1 font-bold">ORICSE</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Planos cadastrados</p><p className="mt-1 font-bold">{planos.length}</p></div><div className="rounded-xl border p-4"><p className="text-sm text-muted-foreground">Drive</p><p className="mt-1 font-bold">{arquivosDrive} arquivo(s) indexado(s)</p></div></div></Card>;
+  const renderAuditoria = () => {
+    const dominiosPendentes = dominiosClinica.filter((dominio) => ["rascunho", "aguardando_dns", "verificando", "erro", "suspenso"].includes(dominio.status));
+    const clinicaComDominioPendente = clinicas.find((clinica) => clinica.id === dominiosPendentes[0]?.clinica_id);
+    const emTeste = clinicas.filter((clinica) => clinica.status_financeiro === "teste").length;
+    const emAtencao = clinicas.filter((clinica) => clinica.status_financeiro === "pendente" || clinica.status_financeiro === "atrasado").length;
+    const usuariosSemClinica = usuarios.filter((usuario) => !vinculos.some((vinculo) => vinculo.user_id === usuario.user_id && vinculo.ativo)).length;
+    const controles = [
+      { titulo: "Abertura de clínicas", numero: solicitacoesEmAberto.length, descricao: "Contratações e testes que aguardam análise, preparação ou liberação.", acao: () => abrirPainel("novas"), botao: "Abrir fila" },
+      { titulo: "Situação de contas", numero: emAtencao + emTeste, descricao: "Contas em atraso, pendentes ou em período de teste.", acao: () => abrirPainel("clinicas"), botao: "Revisar contas" },
+      { titulo: "Domínios e publicação", numero: dominiosPendentes.length, descricao: "Endereços em rascunho, DNS, SSL, verificação ou erro.", acao: () => clinicaComDominioPendente ? abrirClinicaNoAdmin(clinicaComDominioPendente, "site") : abrirPainel("site"), botao: "Abrir domínios" },
+      { titulo: "Vínculos de equipe", numero: usuariosSemClinica, descricao: "Usuários sem vínculo ativo com uma clínica.", acao: () => abrirPainel("clinicas"), botao: "Gerenciar equipe" },
+    ];
+
+    return <div className="space-y-5">
+      <section className="rounded-2xl border border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Governança da plataforma</p>
+        <h2 className="mt-1 text-2xl font-black">Controle e auditoria</h2>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Centralize os pontos que exigem decisão administrativa. Os registros detalhados continuam nos módulos de clínicas, planos e financeiro; aqui você enxerga o que pode travar a operação.</p>
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {controles.map(({ titulo, numero, descricao, acao, botao }) => <Card key={titulo}>
+          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">{titulo}</p><p className="mt-2 text-3xl font-black">{numero}</p></div><ShieldCheck className={numero > 0 ? "text-primary" : "text-emerald-600"} size={22}/></div>
+          <p className="mt-2 min-h-10 text-sm text-muted-foreground">{descricao}</p>
+          <button type="button" onClick={acao} className="mt-4 text-sm font-bold text-primary hover:underline">{botao}</button>
+        </Card>)}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Card>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Roteiro de liberação</p>
+          <h3 className="mt-1 text-xl font-black">Antes de colocar uma clínica para funcionar</h3>
+          <ol className="mt-5 space-y-4">
+            <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">1</span><span><strong>Confirme a contratação.</strong><span className="block text-sm text-muted-foreground">Verifique dados, plano e confirmação do pagamento ou período de teste.</span></span></li>
+            <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">2</span><span><strong>Prepare o espaço.</strong><span className="block text-sm text-muted-foreground">Crie a clínica bloqueada e revise plano, limites, usuários e marca.</span></span></li>
+            <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">3</span><span><strong>Revise os acessos.</strong><span className="block text-sm text-muted-foreground">Aplique o plano e confira autorizações especiais antes da liberação.</span></span></li>
+            <li className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">4</span><span><strong>Autorize o funcionamento.</strong><span className="block text-sm text-muted-foreground">Só então a clínica recebe acesso operacional ao ORICSE.</span></span></li>
+          </ol>
+        </Card>
+
+        <Card>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Alçadas administrativas</p>
+          <h3 className="mt-1 text-xl font-black">Onde cada controle é administrado</h3>
+          <div className="mt-5 space-y-3 text-sm">
+            <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Clínicas e usuários</p><p className="mt-1 text-muted-foreground">Dados cadastrais, situação da conta, equipe, Drive, site, domínios e autorizações.</p></div>
+            <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Planos e acessos</p><p className="mt-1 text-muted-foreground">Limites, matriz de recursos e exceções individuais por clínica.</p></div>
+            <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Financeiro da plataforma</p><p className="mt-1 text-muted-foreground">Taxas, comissões ORICSE, regras de repasse e simulador.</p></div>
+            <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Produto e conteúdo</p><p className="mt-1 text-muted-foreground">Conteúdo público, marca, páginas, URLs e configuração dos sites.</p></div>
+          </div>
+        </Card>
+      </div>
+    </div>;
+  };
+
+  const renderSistema = () => {
+    const dominiosComProblema = dominiosClinica.filter((dominio) => ["erro", "suspenso"].includes(dominio.status)).length;
+    return <div className="space-y-5">
+      <section className="rounded-2xl border border-primary/15 bg-[#fffaf7] p-5 shadow-sm">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Infraestrutura e catálogo</p>
+        <h2 className="mt-1 text-2xl font-black">Sistema e integrações</h2>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Acompanhe os cadastros administrativos que sustentam a plataforma. Configurações financeiras permanecem exclusivas do Admin Geral.</p>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card><p className="text-sm text-muted-foreground">Clínicas cadastradas</p><p className="mt-1 text-3xl font-black">{clinicas.length}</p><p className="mt-1 text-xs text-muted-foreground">Base de clientes ORICSE</p></Card>
+        <Card><p className="text-sm text-muted-foreground">Planos configurados</p><p className="mt-1 text-3xl font-black">{planos.length}</p><p className="mt-1 text-xs text-muted-foreground">Oferta comercial ativa e histórica</p></Card>
+        <Card><p className="text-sm text-muted-foreground">Páginas catalogadas</p><p className="mt-1 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="mt-1 text-xs text-muted-foreground">Rotas públicas e internas mapeadas</p></Card>
+        <Card><p className="text-sm text-muted-foreground">Arquivos no Drive</p><p className="mt-1 text-3xl font-black">{arquivosDrive}</p><p className="mt-1 text-xs text-muted-foreground">Itens indexados na plataforma</p></Card>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Card>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Mapa operacional</p>
+          <h3 className="mt-1 text-xl font-black">Áreas administradas por este painel</h3>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => abrirPainel("novas")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Entrada e ativação</p><p className="mt-1 text-sm text-muted-foreground">Contratações, testes e liberação de clínicas.</p></button>
+            <button type="button" onClick={() => abrirPainel("clinicas")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Clientes e equipe</p><p className="mt-1 text-sm text-muted-foreground">Contas, usuários, acessos, marca e domínio.</p></button>
+            <button type="button" onClick={() => window.location.assign("/admin-planos")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Oferta e permissões</p><p className="mt-1 text-sm text-muted-foreground">Planos, limites e matriz de funcionalidades.</p></button>
+            <button type="button" onClick={() => abrirPainel("pagamentos")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Financeiro</p><p className="mt-1 text-sm text-muted-foreground">Taxas, comissões, repasses e simulações.</p></button>
+          </div>
+        </Card>
+
+        <Card>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Integridade administrativa</p>
+          <h3 className="mt-1 text-xl font-black">Pontos para acompanhar</h3>
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border bg-slate-50 p-4"><span><strong>Domínios com erro ou suspensos</strong><span className="mt-0.5 block text-sm text-muted-foreground">Exigem revisão de publicação, DNS ou SSL.</span></span><strong className={dominiosComProblema ? "text-primary" : "text-emerald-700"}>{dominiosComProblema}</strong></div>
+            <div className="flex items-center justify-between gap-3 rounded-xl border bg-slate-50 p-4"><span><strong>Solicitações sem conclusão</strong><span className="mt-0.5 block text-sm text-muted-foreground">Entradas que ainda não foram autorizadas.</span></span><strong className={solicitacoesEmAberto.length ? "text-primary" : "text-emerald-700"}>{solicitacoesEmAberto.length}</strong></div>
+            <div className="flex items-center justify-between gap-3 rounded-xl border bg-slate-50 p-4"><span><strong>Atualização administrativa</strong><span className="mt-0.5 block text-sm text-muted-foreground">Dados carregados nesta sessão.</span></span><strong className="text-sm">{dataHoraBR(ultimaAtualizacao)}</strong></div>
+          </div>
+          <button type="button" onClick={() => { void carregarTudo(); void carregarSolicitacoes(); }} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold hover:bg-slate-50"><RefreshCcw size={16}/> Atualizar informações</button>
+        </Card>
+      </div>
+    </div>;
+  };
 
   const renderPagamentos = () => (
     <div className="space-y-6">
       <div>
         <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Financeiro da plataforma</p>
-        <h2 className="mt-1 text-2xl font-black">Pagamentos, taxas e repasses</h2>
+        <h2 className="mt-1 text-2xl font-black">Financeiro, taxas e repasses</h2>
         <p className="mt-1 max-w-4xl text-sm text-muted-foreground">A taxa do Mercado Pago é descontada primeiro. A comissão ORICSE incide apenas sobre o saldo restante, por segmento, e o simulador mostra o líquido antes da cobrança.</p>
       </div>
       <PainelTaxasPagamento
@@ -1697,17 +1791,21 @@ function Admin() {
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Comece pelas clínicas novas e siga o fluxo de aprovação.</p>
               </div>
 
-              {(["Operação", "Configuração"] as GrupoAba[]).map((grupo) => (
+              {(["Operação", "Produto e conteúdo", "Controle"] as GrupoAba[]).map((grupo) => (
                 <div key={grupo} className="mt-4">
                   <p className="px-2 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">{grupo}</p>
                   <div className="mt-1 grid gap-1">
-                    {ABAS.filter((item) => item.grupo === grupo).map(({ id, nome, icone: Icone }) => (
-                      <button key={id} type="button" onClick={() => { setAba(id); if (id === "paginas") void carregarRotas(); if (id === "clinicas") setFiltroClinica("todas"); }} aria-current={aba === id ? "page" : undefined} className={"flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition " + (aba === id ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-700 hover:bg-slate-100")}>
+                    {ABAS.filter((item) => item.grupo === grupo).map(({ id, nome, icone: Icone, rota }) => {
+                      const ativa = !rota && aba === id;
+                      return <button key={id} type="button" onClick={() => {
+                        if (rota) { window.location.assign(rota); return; }
+                        abrirPainel(id as Aba);
+                      }} aria-current={ativa ? "page" : undefined} className={"flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition " + (ativa ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-700 hover:bg-slate-100")}>
                         <Icone size={18}/>
                         <span className="min-w-0 flex-1">{nome}</span>
-                        {id === "novas" && solicitacoesEmAberto.length > 0 && <span className={"rounded-full px-2 py-0.5 text-xs " + (aba === id ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>{solicitacoesEmAberto.length}</span>}
-                      </button>
-                    ))}
+                        {id === "novas" && solicitacoesEmAberto.length > 0 && <span className={"rounded-full px-2 py-0.5 text-xs " + (ativa ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>{solicitacoesEmAberto.length}</span>}
+                      </button>;
+                    })}
                   </div>
                 </div>
               ))}
@@ -1729,6 +1827,7 @@ function Admin() {
             {aba === "sistema" && renderSistema()}
             {aba === "paginas" && renderPaginas()}
             {aba === "pagamentos" && renderPagamentos()}
+            {aba === "auditoria" && renderAuditoria()}
           </section>
         </div>
       </div>
