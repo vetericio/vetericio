@@ -161,7 +161,7 @@ type ItemMenuAdmin = {
   nome: string;
   icone: typeof Gauge;
   grupo: GrupoAba;
-  rota?: "/admin-cupons" | "/admin-conteudo";
+  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio";
 };
 const ABAS: ItemMenuAdmin[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
@@ -169,6 +169,7 @@ const ABAS: ItemMenuAdmin[] = [
   { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
   { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
   { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
+  { id: "oricstudio", nome: "OricStúdio", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
   { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
   { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
   { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
@@ -545,19 +546,19 @@ function Admin() {
     const campos = {
       clinica_nome:item.clinica_nome.trim(),slug_desejado:slug,
       razao_social:item.razao_social?.trim()||null,
-      clinica_telefone:item.clinica_telefone?.trim()||null,
-      clinica_email:item.clinica_email?.trim()||null,
+      clinica_telefone:item.clinica_telefone?.trim()||"",
+      clinica_email:item.clinica_email?.trim()||"",
       clinica_cep:item.clinica_cep?.trim()||null,
       clinica_endereco:item.clinica_endereco?.trim()||null,
       clinica_numero:item.clinica_numero?.trim()||null,
       clinica_bairro:item.clinica_bairro?.trim()||null,
-      clinica_cidade:item.clinica_cidade?.trim()||null,
-      clinica_uf:item.clinica_uf?.trim()||null,
-      responsavel_nome:item.responsavel_nome?.trim()||null,
-      responsavel_crmv:item.responsavel_crmv?.trim()||null,
-      responsavel_crmv_uf:item.responsavel_crmv_uf?.trim()||null,
-      responsavel_email:item.responsavel_email?.trim()||null,
-      responsavel_telefone:item.responsavel_telefone?.trim()||null,
+      clinica_cidade:item.clinica_cidade?.trim()||"",
+      clinica_uf:item.clinica_uf?.trim()||"",
+      responsavel_nome:item.responsavel_nome?.trim()||"",
+      responsavel_crmv:item.responsavel_crmv?.trim()||"",
+      responsavel_crmv_uf:item.responsavel_crmv_uf?.trim()||"",
+      responsavel_email:item.responsavel_email?.trim()||"",
+      responsavel_telefone:item.responsavel_telefone?.trim()||"",
       observacoes:item.observacoes?.trim()||null,
       updated_at:new Date().toISOString()
     };
