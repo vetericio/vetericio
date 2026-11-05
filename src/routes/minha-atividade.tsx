@@ -2,11 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermissoes } from "@/hooks/usePermissoes";
 
 export const Route = createFileRoute("/minha-atividade")({ component: MinhaAtividade });
 
 type Registro = {id:string;modalidade:"hora"|"diaria";data:string;estado:string;segundos_trabalhados:number;ultimo_inicio_em:string|null;valor_unitario:number};
 export function MinhaAtividade({somenteHistorico=false}:{somenteHistorico?:boolean}) {
+  const {pode,carregando:carregandoPermissoes}=usePermissoes();
   const [clinica,setClinica]=useState("");
   const [config,setConfig]=useState<{modalidade:"hora"|"diaria";valor_unitario:number}|null>(null);
   const [registros,setRegistros]=useState<Registro[]>([]);
@@ -35,11 +37,13 @@ export function MinhaAtividade({somenteHistorico=false}:{somenteHistorico?:boole
   const segundos=(r:Registro)=>Number(r.segundos_trabalhados||0)+(r.estado==="ativa"&&r.ultimo_inicio_em?Math.max(0,Math.floor((agora-new Date(r.ultimo_inicio_em).getTime())/1000)):0);
   const duracao=(n:number)=>`${Math.floor(n/3600)}h ${String(Math.floor(n%3600/60)).padStart(2,"0")}min`;
   async function acao(operacao:string){
-    if(!clinica||ocupado)return;setOcupado(true);
+    if(!clinica||ocupado||!pode("atividade.ponto"))return;setOcupado(true);
     const {error}=await (supabase as any).rpc("oricse_registrar_atividade",{p_clinica:clinica,p_acao:operacao});
     if(error)toast.error(error.message);else {toast.success("Atividade registrada.");const {data}=await supabase.auth.getUser();if(data.user)await atualizar(clinica,data.user.id);}
     setOcupado(false);
   }
+  if(carregandoPermissoes)return <main className="p-5 text-sm">Verificando acesso ao plano...</main>;
+  if(!pode("atividade.ponto"))return <main className="mx-auto max-w-xl p-6"><h1 className="text-2xl font-bold">Recurso exclusivo do plano Master</h1><p className="mt-2 text-muted-foreground">RH, ponto e banco de horas estão disponíveis somente no Master.</p><Link to="/plano-clinica" className="mt-4 inline-block font-semibold underline">Ver plano da clínica</Link></main>;
   return <main className="mx-auto max-w-4xl space-y-5 p-5">
     <Link to="/" className="text-sm font-semibold">← Voltar</Link>
     <header><h1 className="text-2xl font-bold">{somenteHistorico?"Banco de horas e diárias":"Check-in / check-out"}</h1><p className="text-sm text-muted-foreground">{somenteHistorico?"Consulte suas horas, diárias e valores calculados a partir dos registros.":"Registre o início, as pausas e o fim de sua atividade. Os horários são registrados pelo servidor."}</p></header>
