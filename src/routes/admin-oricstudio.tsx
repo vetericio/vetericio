@@ -36,6 +36,8 @@ function OricStudioAdmin() {
     id:string;clinica_id:string;quantidade_contas:number;valor_mensal_centavos:number;
     status:string;criado_em:string;referencia_pagamento:string|null;
   }>>([]);
+  const [cobrancas,setCobrancas] = useState<Array<{id:number;clinica_id:string;tipo:string;criado_em:string;referencia:string|null}>>([]);
+  const [pagamentos,setPagamentos] = useState<Array<{id:number;clinica_id:string;valor_centavos:number;status_mp:string;aprovado_em:string}>>([]);
   const [busca,setBusca] = useState("");
   const [alterando,setAlterando] = useState<string|null>(null);
   const [precoBase,setPrecoBase] = useState("");
@@ -64,15 +66,17 @@ function OricStudioAdmin() {
         }
         throw new Error("Limite de consulta atingido; confirme a listagem no banco.");
       };
-      const [cs,ls,hs,ps,sol]=await Promise.all([
+      const [cs,ls,hs,ps,sol,ce,pg]=await Promise.all([
         buscarTudo("clinicas","id,nome,status,plano","nome"),
         buscarTudo("oricstudio_licencas","clinica_id,status,motivo,atualizado_em,expira_em,quantidade_contas_contratadas","atualizado_em"),
         buscarTudo("oricstudio_auditoria","id,acao,clinica_id,criado_em,usuario_id,antes,depois","criado_em"),
         (supabaseBanco as any).from("oricstudio_produto").select("nome,descricao,preco_centavos,preco_conta_adicional_centavos,comercializacao_ativa,disponivel_nos_planos").eq("codigo","oricstudio").single(),
-        buscarTudo("oricstudio_solicitacoes","id,clinica_id,quantidade_contas,valor_mensal_centavos,status,criado_em,referencia_pagamento","criado_em")
+        buscarTudo("oricstudio_solicitacoes","id,clinica_id,quantidade_contas,valor_mensal_centavos,status,criado_em,referencia_pagamento","criado_em"),
+        buscarTudo("oricstudio_eventos_cobranca","id,clinica_id,tipo,criado_em,referencia","criado_em"),
+        buscarTudo("oricstudio_pagamentos","id,clinica_id,valor_centavos,status_mp,aprovado_em","aprovado_em")
       ]);
       if (ps.error)throw ps.error;
-      setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);setSolicitacoes(sol);
+      setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);setSolicitacoes(sol);setCobrancas(ce);setPagamentos(pg);
       setPrecoBase(ps.data.preco_centavos==null?"":(ps.data.preco_centavos/100).toFixed(2).replace(".",","));
       setPrecoAdicional(ps.data.preco_conta_adicional_centavos==null?"":(ps.data.preco_conta_adicional_centavos/100).toFixed(2).replace(".",","));
     } catch(e) {
@@ -205,7 +209,29 @@ function OricStudioAdmin() {
         <p className="text-xs text-muted-foreground">Os valores só são uma tabela comercial. Não há checkout, cobrança recorrente, ativação automática ou desconto proporcional nesta etapa.</p>
       </section>}
       {aba==="auditoria" && <section className="space-y-3"><h2 className="text-lg font-semibold">Auditoria ({historico.length})</h2>{historico.length===0?<p className="rounded-lg border p-4 text-sm">Ainda não há alterações de licenças.</p>:<div className="space-y-2">{historico.slice(0,100).map(h=><div key={h.id} className="rounded-lg border bg-card p-3 text-sm"><strong>{h.acao}</strong> · {new Date(h.criado_em).toLocaleString("pt-BR")}<div className="text-xs text-muted-foreground">Clínica: {clinicas.find(c=>c.id===h.clinica_id)?.nome||h.clinica_id||"Excluída"} · Usuário: {h.usuario_id||"Sistema"}</div></div>)}</div>}</section>}
-      {(aba==="contas"||aba==="monitoramento"||aba==="config") && <section className="rounded-xl border bg-card p-5"><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5"/><h2 className="text-lg font-semibold">{ABAS.find(a=>a.id===aba)?.nome}</h2></div><p className="mt-3 text-sm text-muted-foreground">Área administrativa reservada. Não existem contas Meta conectadas ao OricStúdio. Integração e operações são previstas para a etapa 3/5; configurações sensíveis permanecerão no servidor.</p></section>}
+      {aba==="monitoramento" && <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Monitoramento financeiro OricStúdio</h2>
+        <p className="text-xs text-muted-foreground">Dados de cobranças conciliadas, separados dos planos principais ORICSE.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Pagamentos registrados</p><p className="mt-2 text-2xl font-bold">{pagamentos.length}</p></div>
+          <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Reversões / estornos</p><p className="mt-2 text-2xl font-bold">{pagamentos.filter(p=>p.status_mp!=="approved").length}</p></div>
+          <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Eventos financeiros</p><p className="mt-2 text-2xl font-bold">{cobrancas.length}</p></div>
+        </div>
+        <h3 className="font-semibold">Últimos eventos de cobrança</h3>
+        {cobrancas.length===0?<p className="rounded-xl border p-4 text-sm">Nenhum evento registrado.</p>
+          :<div className="space-y-2">{cobrancas.slice(0,50).map(e=><div key={e.id} className="rounded-xl border bg-card p-3 text-sm">
+            <strong>{e.tipo.replaceAll("_"," ")}</strong> · {clinicas.find(c=>c.id===e.clinica_id)?.nome||e.clinica_id}
+            <p className="mt-1 text-xs text-muted-foreground">{new Date(e.criado_em).toLocaleString("pt-BR")}</p>
+          </div>)}</div>}
+        <h3 className="font-semibold">Pagamentos confirmados no sistema</h3>
+        {pagamentos.length===0?<p className="rounded-xl border p-4 text-sm">Nenhum pagamento registrado.</p>
+          :<div className="space-y-2">{pagamentos.slice(0,50).map(p=><div key={p.id} className="rounded-xl border bg-card p-3 text-sm">
+            <strong>{moeda(p.valor_centavos)}</strong> · {clinicas.find(c=>c.id===p.clinica_id)?.nome||p.clinica_id} · {p.status_mp}
+            <p className="mt-1 text-xs text-muted-foreground">{new Date(p.aprovado_em).toLocaleString("pt-BR")}</p>
+          </div>)}</div>}
+        <p className="text-xs text-muted-foreground">Esta tela não executa cobranças nem substitui a conciliação periódica com o Mercado Pago.</p>
+      </section>}
+      {(aba==="contas"||aba==="config") && <section className="rounded-xl border bg-card p-5"><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5"/><h2 className="text-lg font-semibold">{ABAS.find(a=>a.id===aba)?.nome}</h2></div><p className="mt-3 text-sm text-muted-foreground">Área administrativa reservada. Não existem contas Meta conectadas ao OricStúdio. Integração e operações são previstas para a etapa 3/5; configurações sensíveis permanecerão no servidor.</p></section>}
     </>}
   </main>;
 }
