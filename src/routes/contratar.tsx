@@ -189,7 +189,11 @@ function Contratar() {
       const {data,error}=await (supabaseBanco as any).rpc("oricse_finalizar_contratacao_isenta",{p_contratacao:id});
       if(error)throw error;
       setPedido((anterior:any)=>({...anterior,...data,status:"isento_aguardando_aprovacao",valor_exibido:"R$ 0,00"}));
-      toast.success("Pedido gratuito enviado para aprovação.");
+      toast.success("Solicitação enviada para análise.");
+      const destino = new URL("/contratacao-recebida", window.location.origin);
+      destino.searchParams.set("retorno", "isento");
+      destino.searchParams.set("pedido", id);
+      window.location.assign(destino.toString());
     } catch(e){toast.error(e instanceof Error?e.message:"Falha ao concluir o pedido gratuito.");}
     finally{setAbrindoCheckout(false);}
   }
