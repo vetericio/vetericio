@@ -39,3 +39,11 @@ export const statusIntegracaoMetaOricStudio=createServerFn({method:"POST"})
     const cfg=metaConfig();
     return {configurada:cfg.configured};
   });
+
+export const verificarContaMetaOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>base.extend({contaId:z.string().uuid()}).parse(i))
+  .handler(async({data})=>{
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {verifyAndRefreshMetaAccount}=await import("@/lib/oricstudio-meta.server");
+    return verifyAndRefreshMetaAccount(supabaseAdmin,data.accessToken,data.clinicaId,data.contaId);
+  });
