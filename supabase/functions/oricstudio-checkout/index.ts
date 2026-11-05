@@ -239,7 +239,9 @@ async function webhook(req:Request){
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response(null,{headers:HEADERS});
   if(req.method!=="POST")return json({error:"Método não permitido."},405);
-  const action=new URL(req.url).searchParams.get("action");
+  const queryAction=new URL(req.url).searchParams.get("action");
+  const body=await req.clone().json().catch(()=>null) as {acao?:string}|null;
+  const action=queryAction||body?.acao||"";
   try{
     if(action==="checkout")return await checkout(req);
     if(action==="webhook")return await webhook(req);
