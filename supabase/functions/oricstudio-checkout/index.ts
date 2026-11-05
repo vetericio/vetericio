@@ -161,6 +161,43 @@ async function cancelarAssinatura(req:Request){
   return json({ok:true,mensagem:"Renovação cancelada. Acesso já pago permanece até o vencimento."});
 }
 
+async function verificarAssinatura(req:Request){
+  const userToken=(req.headers.get("authorization")||"").match(/^Bearer\\s+(.+)$/i)?.[1];
+  if(!userToken)return json({error:"Faça login novamente."},401);
+  const {data:user,error:authError}=await db.auth.getUser(userToken);
+  if(authError||!user.user?.id)return json({error:"Sessão inválida."},401);
+  const data=await req.json().catch(()=>null) as {solicitacao_id?:string}|null;
+  if(!uuid(data?.solicitacao_id))return json({error:"Contrato inválido."},400);
+  const {data:order,error:orderError}=await db.from("oricstudio_solicitacoes")
+    .select("id,clinica_id,mp_assinatura_id")
+    .eq("id",data!.solicitacao_id!).maybeSingle();
+  if(orderError||!order)return json({error:"Contrato não encontrado."},404);
+  const [{data:link},{data:selected}]=await Promise.all([
+    db.from("clinica_usuarios").select("ativo,papel").eq("clinica_id",order.clinica_id)
+      .eq("user_id",user.user.id).maybeSingle(),
+    db.from("oricse_clinica_ativa_usuario").select("clinica_id")
+      .eq("user_id",user.user.id).maybeSingle(),
+  ]);
+  if(!link?.ativo||!["responsavel","admin_clinica","rt"].includes(link.papel)||
+     selected?.clinica_id!==order.clinica_id)
+    return json({error:"Acesso à assinatura negado."},403);
+  if(!order.mp_assinatura_id)
+    return json({error:"O checkout ainda não criou uma assinatura."},409);
+  const subId=String(order.mp_assinatura_id);
+  await conciliarAssinatura(subId);
+  const params=new URLSearchParams({preapproval_id:subId,limit:"30",offset:"0"});
+  const invoices=await mpFetch("/authorized_payments/search?"+params.toString());
+  const rows=Array.isArray(invoices.results)?invoices.results as Record<string,unknown>[]:[];
+  let aprovadas=0;
+  for(const invoice of rows){
+    if(!/^\\d+$/.test(String(invoice.id||"")))continue;
+    if((invoice.payment as Record<string,unknown>|undefined)?.status!=="approved")continue;
+    await conciliarFatura(String(invoice.id));
+    aprovadas++;
+  }
+  return json({ok:true,faturas_verificadas:rows.length,pagamentos_verificados:aprovadas});
+}
+
 async function validateWebhook(req:Request,paymentId:string){
   const key=secret();
   if(!key)throw new Error("Webhook sem segredo configurado.");
@@ -284,6 +321,7 @@ Deno.serve(async(req:Request)=>{
   try{
     if(action==="checkout")return await checkout(req);
     if(action==="cancelar")return await cancelarAssinatura(req);
+    if(action==="verificar_assinatura")return await verificarAssinatura(req);
     if(action==="webhook")return await webhook(req);
     return json({error:"Ação não encontrada."},404);
   }catch(e){
