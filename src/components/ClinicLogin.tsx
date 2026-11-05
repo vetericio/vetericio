@@ -60,7 +60,7 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
       />
       <div className="relative w-full max-w-[470px]">
         <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_30px_100px_-45px_rgba(16,76,63,0.35)]">
-          <div className="bg-[#0d5147] px-7 py-8 text-center text-white sm:px-10">
+          <div className={`${clinic.clinica_logo_url?"bg-[#0d5147] text-white":"bg-[#faf7f4] text-[#312530]"} px-7 py-8 text-center sm:px-10`}>
             {clinic.clinica_logo_url ? (
               <img
                 src={clinic.clinica_logo_url}
@@ -68,9 +68,9 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
                 className="mx-auto mb-4 max-h-16 max-w-[190px] object-contain"
               />
             ) : (
-              <img src="/oricse-logo-oryx.svg" alt="Oricse" className="mx-auto mb-4 h-16 w-16 object-contain" />
+              <img src="/oricse-logo-oryx.svg" alt="Oricse" className="mx-auto mb-4 h-24 w-24 object-contain sm:h-28 sm:w-28" />
             )}
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
+            <p className={`text-xs font-bold uppercase tracking-[0.2em] ${clinic.clinica_logo_url?"text-emerald-200":"text-[#702a43]"}` }>
               Acesso exclusivo
             </p>
             <h1 className="mt-2 text-2xl font-semibold">{clinic.clinica_nome}</h1>
