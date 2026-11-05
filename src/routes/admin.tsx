@@ -276,6 +276,7 @@ function Admin() {
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
+  const [assinaturasClinicas,setAssinaturasClinicas]=useState<Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>>({});
   const [clinicasLixeira, setClinicasLixeira] = useState<Clinica[]>([]);
   const [processandoLixeira,setProcessandoLixeira]=useState<string|null>(null);
   const [exclusaoPermanente,setExclusaoPermanente]=useState<{tipo:"solicitacao"|"clinica";id:string;nome:string}|null>(null);
@@ -369,7 +370,7 @@ function Admin() {
   }
 
   async function carregarTudo() {
-    const [c, u, v, p, cfg, arqs, taxas, dom] = await Promise.all([
+    const [c, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
       (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
@@ -378,11 +379,16 @@ function Admin() {
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
       (supabaseBanco as any).rpc("oricse_listar_grade_taxas_pagamento"),
       (supabase as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
+      (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
+    if(assinaturas.error) toast.error("Não foi possível carregar a vigência das assinaturas: "+assinaturas.error.message);
+    const porClinica:Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>={};
+    for(const assinatura of assinaturas.data||[]){if(!porClinica[assinatura.clinica_id])porClinica[assinatura.clinica_id]=assinatura;}
+    setAssinaturasClinicas(porClinica);
     setClinicas((c.data || []).filter((x:Clinica)=>!x.excluido_em));
     setClinicasLixeira((c.data || []).filter((x:Clinica)=>Boolean(x.excluido_em)));
     setUsuarios(u.data || []);
@@ -681,29 +687,18 @@ function Admin() {
   }
 
   async function autorizarFuncionamento(item: SolicitacaoClinica) {
-    const clinica = clinicas.find((atual) => atual.id === item.clinica_criada_id);
-    if (!clinica) return toast.error("Prepare o espaço da clínica antes de autorizar.");
-    if (!window.confirm(`Autorizar o funcionamento de ${clinica.nome}? A clínica passará a ter acesso ao sistema.`)) return;
+    if(!item.clinica_criada_id) return toast.error("Prepare o espaço da clínica antes de autorizar.");
+    if (!window.confirm(`Autorizar o funcionamento de ${item.clinica_nome}? O período contratado começa na ativação e o vencimento será calculado automaticamente.`)) return;
     setAtivandoSolicitacao(item.id);
     try {
-      const financeira = pedidoIsentoValido(item) ? "isento" : item.pagamento_aprovado_em ? "em_dia" : "teste";
-      const { error: clinicaError } = await (supabaseBanco as any)
-        .from("clinicas")
-        .update({ status: "ativa", status_financeiro: financeira, updated_at: new Date().toISOString() })
-        .eq("id", clinica.id);
-      if (clinicaError) throw clinicaError;
-      const { error: solicitacaoError } = await (supabaseBanco as any)
-        .from("oricse_contratacoes")
-        .update({ status: "ativada", updated_at: new Date().toISOString() })
-        .eq("id", item.id);
-      if (solicitacaoError) throw solicitacaoError;
-      toast.success("Funcionamento autorizado.");
-      await Promise.all([carregarTudo(), carregarSolicitacoes()]);
-    } catch (error) {
-      toast.error((error as Error).message || "Não foi possível autorizar a clínica.");
-    } finally {
-      setAtivandoSolicitacao(null);
-    }
+      const {data,error}=await (supabaseBanco as any).rpc("oricse_admin_ativar_contratacao",{p_contratacao:item.id});
+      if(error)throw error;
+      if(!data?.ok)throw new Error("Ativação não confirmada pelo servidor.");
+      toast.success("Clínica ativada. Vigência e cobrança calculadas automaticamente.");
+      await Promise.all([carregarTudo(),carregarSolicitacoes()]);
+    } catch(error) {
+      toast.error((error as Error).message||"Não foi possível autorizar a clínica.");
+    }finally{setAtivandoSolicitacao(null);}
   }
 
   useEffect(() => { void carregarTudo(); void carregarSolicitacoes(); }, []);
@@ -840,10 +835,6 @@ function Admin() {
         limite_usuarios: Math.max(1, Number(selecionada.limite_usuarios) || 1),
         observacoes: selecionada.observacoes?.trim() || null,
         logo_url: selecionada.logo_url?.trim() || null,
-        ultimo_pagamento_em: selecionada.ultimo_pagamento_em || null,
-        proximo_pagamento_em: selecionada.proximo_pagamento_em || null,
-        acesso_ate: selecionada.acesso_ate || null,
-        status_financeiro: selecionada.status_financeiro,
         updated_at: new Date().toISOString(),
       }).eq("id", selecionada.id);
       if (error) throw error;
@@ -1180,14 +1171,32 @@ function Admin() {
        <div className="flex justify-end gap-2"><button type="button" disabled={ocupado} onClick={() => { setExcluindoClinica(false); setConfirmacaoExclusao(""); }} className="rounded-xl border px-4 py-2.5 font-semibold">Cancelar</button><button type="button" disabled={ocupado || confirmacaoExclusao !== "APAGAR"} onClick={() => void confirmarExclusaoClinica()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white disabled:opacity-40"><Trash2 size={17}/> Enviar à Lixeira</button></div>
      </DialogContent></Dialog></Card>;
 
-  const renderSituacao = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div><p className="mt-1 text-sm text-muted-foreground">Controle administrativo, pagamentos e período de acesso.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conta criada em</p><p className="mt-2 text-lg font-bold">{dataBR(selecionada.created_at)}</p></div>
-    <label className="text-sm font-semibold">Situação financeira<select value={selecionada.status_financeiro} onChange={(e) => setSelecionada({ ...selecionada, status_financeiro: e.target.value as StatusFinanceiro })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="em_dia">Em dia</option><option value="pendente">Pendente</option><option value="atrasado">Atrasado</option><option value="isento">Isento</option><option value="teste">Período de teste</option></select></label>
-    <label className="text-sm font-semibold">Último pagamento<input type="date" value={dataInput(selecionada.ultimo_pagamento_em)} onChange={(e) => setSelecionada({ ...selecionada, ultimo_pagamento_em: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <label className="text-sm font-semibold">Próximo pagamento<input type="date" value={dataInput(selecionada.proximo_pagamento_em)} onChange={(e) => setSelecionada({ ...selecionada, proximo_pagamento_em: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <label className="text-sm font-semibold md:col-span-2">Acesso liberado até<input type="date" value={dataInput(selecionada.acesso_ate)} onChange={(e) => setSelecionada({ ...selecionada, acesso_ate: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <div className="rounded-xl border p-4 md:col-span-2"><p className="text-sm font-semibold">Resumo</p><p className="mt-2 text-sm text-muted-foreground">Plano: <strong className="text-foreground">{selecionada.plano}</strong> · Status: <strong className="text-foreground">{selecionada.status}</strong> · Acesso até: <strong className="text-foreground">{dataBR(selecionada.acesso_ate)}</strong></p></div>
-  </div></Card>;
+  const renderSituacao = () => {
+    if(!selecionada)return null;
+    const assinatura=assinaturasClinicas[selecionada.id];
+    const contratacao=solicitacoes.find(item=>item.clinica_criada_id===selecionada.id && !item.excluido_em);
+    const ciclo=assinatura?.ciclo||contratacao?.ciclo;
+    const nomesCiclo:Record<string,string>={mensal:"Mensal",trimestral:"Trimestral",semestral:"Semestral",anual:"Anual · 365 dias",bienal:"Dois anos",teste:"Teste"};
+    const isento=Boolean(contratacao && pedidoIsentoValido(contratacao));
+    const status=assinatura?(isento?"Isento por cupom":selecionada.status_financeiro==="atrasado"?"Em atraso":selecionada.status_financeiro==="pendente"?"Pendente":"Em dia"):"Aguardando ativação";
+    const campo=(titulo:string,valor:string)=><div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p><p className="mt-2 text-lg font-bold">{valor}</p></div>;
+    return <Card>
+      <div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div>
+      <p className="mt-1 text-sm text-muted-foreground">Informações automáticas da contratação e do plano selecionado. Datas e situação financeira não podem ser alteradas manualmente nesta tela.</p>
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {campo("Conta criada em",dataBR(selecionada.created_at))}
+        {campo("Plano contratado",selecionada.plano)}
+        {campo("Período contratado",ciclo?nomesCiclo[ciclo]||ciclo:"Sem contratação vinculada")}
+        {campo("Situação financeira",status)}
+        {campo("Último pagamento",assinatura?.ultimo_pagamento_em?dataBR(assinatura.ultimo_pagamento_em):"Nenhum pagamento registrado")}
+        {campo("Próximo vencimento",assinatura?.proximo_vencimento_em?dataBR(assinatura.proximo_vencimento_em):"Será calculado na ativação")}
+        {campo("Acesso liberado até",assinatura?.proximo_vencimento_em?dataBR(assinatura.proximo_vencimento_em):"Aguardando ativação")}
+        {campo("Situação da clínica",selecionada.status)}
+        {campo("Origem do benefício",isento?`Cupom integral: ${contratacao?.promo_codigo}`:"Conforme a contratação")}
+      </div>
+      {!assinatura&&<p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">A vigência começa na autorização de funcionamento. A clínica não recebe uma data de pagamento fictícia por ter usado cupom.</p>}
+    </Card>;
+  };
 
   const renderUsuariosClinica = () => !selecionada ? null : <ClinicUsersPanel clinica={{ id: selecionada.id, nome: selecionada.nome, limite_usuarios: selecionada.limite_usuarios }} usuariosDaClinica={usuariosDaClinica as any} perfis={PERFIS} onAtualizarVinculo={atualizarVinculo} onRefresh={carregarTudo} />;
 
