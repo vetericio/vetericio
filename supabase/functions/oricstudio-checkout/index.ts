@@ -124,7 +124,7 @@ async function checkout(req:Request){
 
 async function cancelarAssinatura(req:Request){
   const authHeader=req.headers.get("authorization")||"";
-  const tokenUsuario=authHeader.match(/^Bearer\\s+(.+)$/i)?.[1];
+  const tokenUsuario=authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
   if(!tokenUsuario)return json({error:"Sessão necessária."},401);
   const {data:user,error:authError}=await db.auth.getUser(tokenUsuario);
   if(authError||!user.user?.id)return json({error:"Sessão inválida."},401);
@@ -162,7 +162,7 @@ async function cancelarAssinatura(req:Request){
 }
 
 async function verificarAssinatura(req:Request){
-  const userToken=(req.headers.get("authorization")||"").match(/^Bearer\\s+(.+)$/i)?.[1];
+  const userToken=(req.headers.get("authorization")||"").match(/^Bearer\s+(.+)$/i)?.[1];
   if(!userToken)return json({error:"Faça login novamente."},401);
   const {data:user,error:authError}=await db.auth.getUser(userToken);
   if(authError||!user.user?.id)return json({error:"Sessão inválida."},401);
@@ -190,7 +190,7 @@ async function verificarAssinatura(req:Request){
   const rows=Array.isArray(invoices.results)?invoices.results as Record<string,unknown>[]:[];
   let aprovadas=0;
   for(const invoice of rows){
-    if(!/^\\d+$/.test(String(invoice.id||"")))continue;
+    if(!/^\d+$/.test(String(invoice.id||"")))continue;
     if((invoice.payment as Record<string,unknown>|undefined)?.status!=="approved")continue;
     await conciliarFatura(String(invoice.id));
     aprovadas++;
@@ -221,7 +221,7 @@ async function validateWebhook(req:Request,paymentId:string){
 }
 
 async function conciliarPagamento(paymentId:string){
-  if(!/^\\d+$/.test(paymentId))throw new Error("Pagamento inválido.");
+  if(!/^\d+$/.test(paymentId))throw new Error("Pagamento inválido.");
   const payment=await mpFetch("/v1/payments/"+paymentId);
   const status=String(payment.status||"");
   if(["refunded","charged_back"].includes(status)){
@@ -276,11 +276,11 @@ async function conciliarAssinatura(subscriptionId:string){
 }
 
 async function conciliarFatura(invoiceId:string){
-  if(!/^\\d+$/.test(invoiceId))throw new Error("Fatura inválida.");
+  if(!/^\d+$/.test(invoiceId))throw new Error("Fatura inválida.");
   const invoice=await mpFetch("/authorized_payments/"+invoiceId);
   // Mesmo faturas emitidas não implicam pagamento; só conciliar o pagamento real.
   const payment=invoice.payment as Record<string,unknown>|undefined;
-  if(String(payment?.status)!=="approved" || !/^\\d+$/.test(String(payment?.id||"")))return;
+  if(String(payment?.status)!=="approved" || !/^\d+$/.test(String(payment?.id||"")))return;
   const subId=String(invoice.preapproval_id||"");
   if(!subId)return;
   const {data:contract}=await db.from("oricstudio_solicitacoes")
