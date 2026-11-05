@@ -20,7 +20,6 @@ import {
   Plus,
   RefreshCcw,
   Save,
-  TicketPercent,
   Search,
   Settings,
   ShieldCheck,
