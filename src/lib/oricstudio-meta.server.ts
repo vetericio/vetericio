@@ -63,7 +63,7 @@ export async function encryptMetaToken(token: string) {
   };
 }
 
-async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
+export async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
   const iv=Buffer.from(ivBase64,"base64");
   if(iv.length!==12)throw new Error("Credencial Meta inválida.");
   const bytes=Buffer.from(ciphertext,"base64");
@@ -123,7 +123,7 @@ export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clini
     if(updateErr)throw new Error("Falha ao atualizar estado da conta.");
     await db.from("oricstudio_meta_auditoria").insert({
       clinica_id:idNoBanco(clinicaId),conta_id:contaId,usuario_id:userId,
-      acao:"verificar",detalhes:{resultado:"sucesso",modo:"login_unificado"},
+      acao:renovada?"renovar":"verificar",detalhes:{resultado:"sucesso",modo:direct?"instagram_direto":"facebook"},
     });
     return {ok:true,renovada,username:String(profile.username)};
   } catch {
@@ -300,7 +300,7 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
 export async function metaListForClinic(db:Db,accessToken:string,clinicaId:string) {
   await requireMetaEditor(db,accessToken,clinicaId,false);
   const {data,error}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas")
-    .select("id,clinica_id,instagram_user_id,username,account_type,status,escopos,conectado_em,token_expira_em"),
+    .select("id,clinica_id,instagram_user_id,username,account_type,status,login_tipo,escopos,conectado_em,token_expira_em"),
     clinicaId).order("conectado_em",{ascending:false});
   if(error)throw new Error("Não foi possível consultar as contas conectadas.");
   return (data||[]) as MetaConta[];
