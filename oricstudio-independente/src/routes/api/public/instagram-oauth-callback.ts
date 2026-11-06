@@ -35,6 +35,10 @@ export const Route=createFileRoute("/api/public/instagram-oauth-callback")({
     if(consumeError||!consumed?.length)return back(false,"state_ja_usado");
     if(q.error||q.error_reason)return back(false,"access_denied");
     if(!q.code)return back(false,"code_ausente");
+    // A autorizacao inicial nao basta se o papel do usuario for revogado durante o login.
+    const {data:adminRole}=await supabaseAdmin.from("user_roles")
+      .select("role").eq("user_id",flow.user_id).eq("role","admin").maybeSingle();
+    if(!adminRole)return back(false,"permissao_revogada");
     if(cfg.missing.length)return back(false,"configuracao_incompleta");
     try {
       const result=await finalizeInstagramDirect(supabaseAdmin,flow.user_id,q.code);

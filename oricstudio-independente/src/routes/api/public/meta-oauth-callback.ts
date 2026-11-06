@@ -38,6 +38,9 @@ export const Route = createFileRoute("/api/public/meta-oauth-callback")({
           return back(false, q.error_reason || q.error || "erro_meta");
         }
         if (!q.code) return back(false, "code_ausente");
+        const {data:adminRole}=await supabaseAdmin.from("user_roles")
+          .select("role").eq("user_id",st.user_id).eq("role","admin").maybeSingle();
+        if(!adminRole)return back(false,"permissao_revogada");
         if (cfg.missing.length) return back(false, "configuracao_incompleta");
 
         try {
