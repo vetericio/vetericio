@@ -214,7 +214,7 @@ export async function processarFilaOricstudio(db:Db,limite=3) {
     throw new Error("Gateway de mídia não configurado.");
   const {data:jobs,error}=await db.rpc("oricstudio_claim_envios",{p_limite:Math.min(10,Math.max(1,limite))});
   if(error)throw new Error("Não foi possível reservar a fila.");
-  const results=[];
+  const results:Array<{id:string;status:string}>=[];
   for(const row of jobs||[]){
     const status=await processar(db,row as Envio);
     results.push({id:row.id,status});

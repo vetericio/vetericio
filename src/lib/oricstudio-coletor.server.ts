@@ -103,7 +103,7 @@ export async function coletarOricStudio(db:Db,limit=30) {
     .select("id,clinica_id,instagram_user_id,login_tipo,status,token_expira_em")
     .eq("status","ativa").limit(Math.min(Math.max(limit,1),100));
   if(error)throw new Error("Falha ao consultar contas OricStudio.");
-  const out=[];
+  const out:Array<{conta_id:string;status:string;comentarios?:number}>=[];
   for(const account of (accounts||[]) as Conta[])out.push(await collectAccount(db,account));
   return {pausado:false,processados:out.length,resultados:out};
 }
