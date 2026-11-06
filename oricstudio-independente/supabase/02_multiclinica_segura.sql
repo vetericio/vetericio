@@ -111,9 +111,9 @@ grant execute on function public.studio_eh_membro(uuid),public.studio_clinica_at
   to authenticated;
 
 create policy studio_clinica_ler on public.studio_clinicas
-for select to authenticated using (public.studio_pode_ler(id));
+for select to authenticated using (public.studio_eh_membro(id));
 create policy studio_membro_ler on public.studio_membros
-for select to authenticated using (public.studio_pode_ler(clinica_id));
+for select to authenticated using (user_id=(select auth.uid()) or public.studio_eh_admin(clinica_id));
 create policy studio_selecao_ler on public.studio_selecao
 for select to authenticated using (user_id=(select auth.uid()));
 create policy studio_selecao_criar on public.studio_selecao
@@ -186,6 +186,50 @@ end $$;
 revoke all on function public.studio_gerar_configuracao() from public,anon,authenticated;
 create trigger studio_seed_settings after insert on public.studio_clinicas
 for each row execute function public.studio_gerar_configuracao();
+
+-- Ao receber o primeiro vínculo válido, preselecionar a clínica com
+-- os mesmos UUIDs espelhados pela plataforma; sem localStorage.
+create function public.studio_selecionar_primeira()
+returns trigger language plpgsql security definer set search_path = ''
+as $
+begin
+  if new.ativo then
+   insert into public.studio_selecao(user_id,clinica_id)
+   values(new.user_id,new.clinica_id)
+   on conflict(user_id) do nothing;
+  end if;
+  return new;
+end $;
+revoke all on function public.studio_selecionar_primeira() from public,anon,authenticated;
+create trigger studio_select_first_member after insert on public.studio_membros
+for each row execute function public.studio_selecionar_primeira();
+
+-- Mesmo o service_role não pode mudar a propriedade de um objeto
+-- já existente por UPDATE ou UPSERT com um ID de outra clínica.
+create function public.studio_proibir_transferencia()
+returns trigger language plpgsql security invoker set search_path = ''
+as $
+begin
+  if new.clinica_id is distinct from old.clinica_id then
+    raise exception 'Não é permitido transferir recursos entre clínicas';
+  end if;
+  return new;
+end $;
+revoke all on function public.studio_proibir_transferencia() from public,anon,authenticated;
+do $
+declare t text;
+begin
+ foreach t in array array[
+  'oauth_states','meta_connections','meta_tokens','facebook_pages',
+  'instagram_accounts','brands','media_assets','posts','publish_jobs',
+  'post_versions','metric_snapshots','comments','automation_rules','alerts',
+  'reports','app_settings','audit_log','data_deletion_requests','post_events',
+  'assistant_keys','ig_media','regras_publicacao','oauth_clients','oauth_codes','oauth_tokens'
+ ] loop
+   execute format('create trigger %I before update on public.%I for each row execute function public.studio_proibir_transferencia()',
+     'studio_no_move_'||t,t);
+ end loop;
+end $;
 
 -- Proibir vínculos cruzados até para gravações privilegiadas: a clínica
 -- da entidade filha é sempre a mesma da entidade pai.
