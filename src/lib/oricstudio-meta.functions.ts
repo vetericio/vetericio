@@ -70,6 +70,7 @@ export const statusIntegracaoMetaOricStudio=createServerFn({method:"POST"})
         callback:cfg.redirectUri,
         formatoIdValido:cfg.clientIdFormatoValido,
         configurationIdConfigurado:cfg.configIdFormatoValido,
+        configurationId:cfg.configId,
         appSecretConfigurado:cfg.temAppSecret,
         chaveCriptografiaValida:cfg.temChaveCriptografiaValida,
       } : null,
