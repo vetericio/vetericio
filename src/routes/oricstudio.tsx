@@ -8,9 +8,11 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
+import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
-import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
+import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio,prepararEnvioOricStudio} from "@/lib/oricstudio-operacao.functions";
+import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
   validateSearch: (search: Record<string, unknown>) => ({ ambiente: search.ambiente === "plataforma" ? "plataforma" as const : undefined }),
@@ -91,7 +93,10 @@ function OricStudio() {
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
+  const [operacao,setOperacao]=useState<Record<string,any[]>>({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});
+  const [erroOperacao,setErroOperacao]=useState("");
   const [metaConfigurada, setMetaConfigurada] = useState(false);
+  const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
     instagramAppId:string; callback:string; formatoIdValido:boolean;
     configurationIdConfigurado:boolean; appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
@@ -115,11 +120,16 @@ function OricStudio() {
   const [status, setStatus] = useState<"rascunho" | "aguardando_aprovacao">("rascunho");
   const [versoes, setVersoes] = useState<Versao[]>([]);
   const [versoesId, setVersoesId] = useState<string | null>(null);
+  const [agendandoId,setAgendandoId]=useState<string|null>(null);
+  const [agendandoConta,setAgendandoConta]=useState("");
+  const [agendandoMidias,setAgendandoMidias]=useState<string[]>([]);
+  const [agendando,setAgendando]=useState(false);
 
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setMetaDiagnostico(null); setPedidoAberto(null); setAssinatura(null); setComercial(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]);
+    setOperacao({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});setErroOperacao(""); setMetaErro(""); setMetaDiagnostico(null); setPedidoAberto(null); setAssinatura(null); setComercial(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
@@ -198,14 +208,22 @@ function OricStudio() {
           const {data:authSession}=await supabase.auth.getSession();
           const token=authSession.session?.access_token;
           if(!token)throw new Error("Sessão expirada.");
-          const [accounts,configuration]=await Promise.all([
+          const [accounts,configuration,instagramDireto]=await Promise.all([
             listarContasMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
             statusIntegracaoMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+            statusInstagramDiretoOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
           ]);
           if(seq===requisicao.current) {
             setContasMeta(accounts as ContaMeta[]);
             setMetaConfigurada(configuration.configurada);
+             setInstagramDiretoConfigurado(instagramDireto.configurada);
             setMetaDiagnostico(configuration.diagnostico ?? null);
+          }
+          try {
+            const result=await consultarOperacaoOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}});
+            if(seq===requisicao.current)setOperacao(result);
+          }catch(error){
+            if(seq===requisicao.current)setErroOperacao(error instanceof Error?error.message:"Não foi possível carregar a operação.");
           }
         } catch(e) {
           if(seq===requisicao.current) setMetaErro(e instanceof Error?e.message:"Erro ao consultar a Meta.");
@@ -303,6 +321,26 @@ function OricStudio() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao salvar."); }
     finally { setSalvando(false); }
   }
+  async function registrarEnvio(p:Publicacao) {
+    if(!contexto?.pode_editar||agendando)return;
+    if(!agendandoConta)return toast.error("Selecione a conta Instagram.");
+    if(!agendandoMidias.length)return toast.error("Selecione pelo menos uma mídia.");
+    if(!window.confirm("Registrar este agendamento no motor do OricStudio? A publicação externa continua protegida até homologação."))return;
+    setAgendando(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      const result=await prepararEnvioOricStudio({data:{
+        accessToken:auth.session.access_token,clinicaId:contexto.clinica_id,
+        publicacaoId:p.id,contaId:agendandoConta,midias:agendandoMidias,
+      }});
+      toast.success(result.publicacaoHabilitada?"Envio agendado na fila.":"Agendado. Publicação real aguardando homologação.");
+      setAgendandoId(null);setAgendandoConta("");setAgendandoMidias([]);
+      await carregar();setAba("publicacoes");
+    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível agendar.");}
+    finally{setAgendando(false);}
+  }
+
   async function alterarStatus(p: Publicacao, proximo: Status) {
     if (!contexto?.pode_editar || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
     const { error } = await filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
@@ -436,6 +474,54 @@ function OricStudio() {
       await carregar();
     }catch(e){toast.error(e instanceof Error?e.message:"Falha ao cancelar renovação.");}
     finally{setCancelandoAssinatura(false);}
+  }
+
+  async function resolverAlerta(id:string) {
+    if(!contexto?.pode_editar)return;
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      await resolverAlertaOricStudio({data:{accessToken:auth.session.access_token,
+        clinicaId:contexto.clinica_id,alertaId:id}});
+      toast.success("Alerta resolvido.");await carregar();setAba("alertas");
+    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível resolver o alerta.");}
+  }
+
+  async function alterarRegra(regra:any,ativo:boolean) {
+    if(!contexto?.pode_editar)return;
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      await salvarRegraOricStudio({data:{
+        accessToken:auth.session.access_token,clinicaId:contexto.clinica_id,
+        contaId:regra.conta_id,modo:regra.modo,maxPorDia:regra.max_por_dia,
+        maxPorSemana:regra.max_por_semana,ativa:ativo,
+        precisaAprovacao:regra.precisa_aprovacao,
+      }});
+      toast.success(ativo?"Regra ativada.":"Regra suspensa.");
+      await carregar();setAba("configuracoes");
+    }catch(error){toast.error(error instanceof Error?error.message:"Falha ao alterar a regra.");}
+  }
+
+  async function conectarInstagramDireto() {
+    if(!contexto?.pode_editar||metaOcupada)return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const result=await iniciarConexaoInstagramDiretoOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,
+      }});
+      const url=new URL(result.url);
+      if(url.protocol!=="https:"||url.hostname!=="www.instagram.com"||
+        url.pathname!=="/oauth/authorize")
+        throw new Error("A Meta não forneceu a URL oficial do Instagram.");
+      window.location.assign(url.toString());
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Falha na conexão Instagram.");
+      setMetaOcupada(false);
+    }
   }
 
   async function conectarMeta() {
@@ -663,7 +749,7 @@ function OricStudio() {
         <div className="rounded-xl border bg-card p-5"><h3 className="font-bold">Próximas datas do calendário editorial</h3>
           {planejadas.length===0?<p className="mt-2 text-sm text-muted-foreground">Nenhuma data foi planejada.</p>:planejadas.slice(0,5).map(p=><p key={p.id} className="mt-3 border-t pt-3 text-sm">{textoData(p.planejado_para)} · {p.titulo}</p>)}
         </div>
-        <p className="text-xs text-muted-foreground">Sem integração com o Instagram nesta etapa: os indicadores acima mostram apenas dados internos do OricStúdio.</p>
+        <p className="text-xs text-muted-foreground">Os números mostram apenas registros reais. Publicação automática exige credenciais Meta e homologação.</p>
       </section>}
       {aba==="publicacoes" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">Publicações e rascunhos</h2>{contexto.pode_editar && <button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Criar publicação</button>}</div>
@@ -678,21 +764,61 @@ function OricStudio() {
             <label className="space-y-1 text-sm font-medium">Data planejada (opcional)<input type="datetime-local" value={planejado} onChange={e=>setPlanejado(e.target.value)} className="w-full rounded-lg border bg-background p-3"/></label>
             <label className="space-y-1 text-sm font-medium">Fluxo editorial<select value={status} onChange={e=>setStatus(e.target.value as typeof status)} className="w-full rounded-lg border bg-background p-3"><option value="rascunho">Salvar rascunho</option><option value="aguardando_aprovacao">Enviar para aprovação interna</option></select></label>
           </div>
-          <p className="text-xs text-muted-foreground">A data é apenas planejamento. Nenhuma publicação será enviada ou agendada no Instagram.</p>
+          <p className="text-xs text-muted-foreground">A data é planejamento editorial. Após aprovação, selecione a conta e a mídia para registrar o agendamento no motor independente.</p>
           <div className="flex flex-wrap gap-2"><button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"><Save className="h-4 w-4"/>{salvando?"Salvando...":"Salvar"}</button><button type="button" onClick={()=>setEditorAberto(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button></div>
         </form>}
+        <AgendamentoOricStudio
+          clinicaId={contexto.clinica_id}
+          posts={publicacoes}
+          midias={midias}
+          contas={contasMeta}
+          envios={operacao.envios||[]}
+          podeEditar={contexto.pode_editar}
+          onUpdated={()=>{void carregar();}}
+        />
         {publicacoes.length===0?<p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Nenhum rascunho. Use “Criar publicação” para começar.</p>:
           <div className="grid gap-3">{publicacoes.map(p=><article key={p.id} className="rounded-xl border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-bold">{p.titulo}</h3><p className="mt-1 text-xs text-muted-foreground">{p.tipo} · {STATUS[p.status]} · {textoData(p.planejado_para)}</p></div><div className="flex flex-wrap gap-2">
               {contexto.pode_editar && <button onClick={()=>editar(p)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Pencil className="h-3.5 w-3.5"/> Editar</button>}
               <button onClick={()=>void carregarVersoes(p)} className="rounded-lg border px-3 py-2 text-xs">Versões</button>
+               {contexto.pode_editar&&p.status==="aprovado"&&
+                 <button type="button" onClick={()=>{setAgendandoId(agendandoId===p.id?null:p.id);setAgendandoConta("");setAgendandoMidias([]);}}
+                   className="rounded-lg border px-3 py-2 text-xs font-semibold">Agendar no Instagram</button>}
               {contexto.pode_editar && <button onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>}
             </div></div><p className="mt-3 whitespace-pre-line text-sm">{p.legenda||"Sem legenda."}</p>
-            {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
+            {agendandoId===p.id&&<div className="mt-3 space-y-3 rounded-xl border bg-secondary/30 p-4">
+               <h4 className="text-sm font-semibold">Programar publicação — {p.titulo}</h4>
+               <p className="text-xs text-muted-foreground">Conta profissional, mídia e data aprovada são obrigatórias. Arquivos continuam privados; a Meta recebe link assinado temporário.</p>
+               <label className="block text-xs font-semibold">Conta Instagram
+                 <select value={agendandoConta} onChange={e=>setAgendandoConta(e.target.value)}
+                   className="mt-1 w-full rounded-lg border bg-background p-2 text-sm">
+                   <option value="">Selecionar uma conta</option>
+                   {contasMeta.filter(c=>c.status==="ativa").map(c=><option key={c.id} value={c.id}>@{c.username}</option>)}
+                 </select>
+               </label>
+               <fieldset className="space-y-2">
+                 <legend className="text-xs font-semibold">Mídias ({agendandoMidias.length} selecionadas)</legend>
+                 {midias.length===0?<p className="text-xs text-muted-foreground">Adicione arquivos JPEG ou MP4 na Biblioteca.</p>:
+                   midias.map(m=><label key={m.id} className="flex items-center gap-2 text-xs">
+                     <input type="checkbox" checked={agendandoMidias.includes(m.id)}
+                       onChange={e=>setAgendandoMidias(ids=>e.target.checked?[...ids,m.id]:ids.filter(x=>x!==m.id))}/>
+                     {m.nome} — {m.tipo}
+                   </label>)}
+               </fieldset>
+               <div className="flex gap-2">
+                 <button type="button" disabled={agendando||!agendandoConta||agendandoMidias.length===0}
+                   onClick={()=>void registrarEnvio(p)}
+                   className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                   {agendando?"Registrando...":"Confirmar agendamento"}
+                 </button>
+                 <button type="button" onClick={()=>setAgendandoId(null)} className="rounded-lg border px-4 py-2 text-xs">Cancelar</button>
+               </div>
+             </div>}
+             {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
           </article>)}</div>}
       </section>}
       {aba==="calendario" && <section className="space-y-4">
-        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento interno. A publicação automática será disponibilizada na etapa 3/5.</p></div>
+        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento editorial e envios agendados. Publicações reais dependem da autorização da Meta e da ativação da fila.</p></div>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
           <div className="flex items-center gap-2">
             <button type="button" onClick={()=>navegarCalendario(-1)} aria-label="Período anterior" className="min-h-10 rounded-lg border px-3">‹</button>
@@ -726,7 +852,7 @@ function OricStudio() {
       </section>}
       {aba==="aprovacoes" && <section className="space-y-3"><h2 className="text-xl font-bold">Aprovações editoriais</h2>
         {pendentes.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma publicação aguardando aprovação.</p>:pendentes.map(p=><div key={p.id} className="space-y-3 rounded-xl border bg-card p-4"><h3 className="font-semibold">{p.titulo}</h3><p className="whitespace-pre-line text-sm">{p.legenda}</p><div className="flex flex-wrap gap-2">{contexto.pode_editar && <><button onClick={()=>void alterarStatus(p,"aprovado")} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"><CheckCircle2 className="h-4 w-4"/> Aprovar internamente</button><button onClick={()=>void alterarStatus(p,"rascunho")} className="rounded-lg border px-3 py-2 text-sm">Voltar para rascunho</button></>}</div></div>)}
-        <p className="text-xs text-muted-foreground">Aprovação interna não publica nem agenda o conteúdo nas redes sociais.</p>
+        <p className="text-xs text-muted-foreground">Após aprovar, abra Publicações, selecione a conta e as mídias para programar o envio. Não há publicação automática sem homologação.</p>
       </section>}
       {aba==="biblioteca" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -774,14 +900,21 @@ function OricStudio() {
             <h2 className="text-xl font-bold">Contas Instagram {modoPlataforma?"da ORICSE":"da clínica"}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{modoPlataforma?"Conecte apenas as contas oficiais da ORICSE, separadas das contas de clientes.":"Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas."}</p>
           </div>
-          {contexto.pode_editar && <button type="button" onClick={()=>void conectarMeta()}
-            disabled={!metaConfigurada || metaCarregando || metaOcupada}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
-            <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram"}
-          </button>}
+          {contexto.pode_editar && <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={()=>void conectarInstagramDireto()}
+              disabled={!instagramDiretoConfigurado||metaCarregando||metaOcupada}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
+              <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram — sem Facebook"}
+            </button>
+            <button type="button" onClick={()=>void conectarMeta()}
+              disabled={!metaConfigurada||metaCarregando||metaOcupada}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-50">
+              Conectar com Facebook
+            </button>
+          </div>}
         </div>
         {!contexto.pode_editar && <p className="rounded-xl border p-4 text-sm">A conexão é administrada pelo responsável, RT ou administrador da clínica.</p>}
-        {contexto.pode_editar && !metaConfigurada && !metaCarregando &&
+        {contexto.pode_editar && !metaConfigurada && !instagramDiretoConfigurado && !metaCarregando &&
           <p className="rounded-xl border bg-card p-4 text-sm">A integração Meta do OricStúdio está aguardando configuração central. Nenhuma clínica precisa fornecer sua senha ao ORICSE.</p>}
         {modoPlataforma && metaDiagnostico &&
           <details className="rounded-xl border bg-card p-4 text-sm">
@@ -833,14 +966,66 @@ function OricStudio() {
         </article>)}
         <p className="text-xs text-muted-foreground">A conexão não autoriza publicações automáticas por si só. A fila de publicação e as permissões aprovadas pela Meta serão validadas separadamente.</p>
       </section>}
-      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
+      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="space-y-3">
         <h2 className="text-xl font-bold">{ABAS.find(a=>a.id===aba)?.rotulo}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {aba==="comentarios"?"Comentários e respostas serão sincronizados após a conexão Meta, respeitando as permissões concedidas.":
-           aba==="metricas"?"Métricas reais de alcance e interações serão apresentadas após a conexão das contas. Nenhum número será simulado.":
-           "Não há alertas de publicação porque a integração com Instagram ainda não está ativa. Erros de conexão e envio serão acompanhados na etapa 3/5."}
-        </p>
+        {erroOperacao&&<p role="alert" className="rounded-xl border border-destructive/50 p-3 text-sm text-destructive">{erroOperacao}</p>}
+        {aba==="comentarios" && <>
+          {(operacao.comentarios||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhum comentário sincronizado nesta clínica. As respostas reais dependem da conexão Meta autorizada.</p>
+            :(operacao.comentarios||[]).map(c=><article key={c.id} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>@{c.autor||"Usuário"} · {textoData(c.publicado_em)}</span>
+                <span>{c.respondido?"Respondido":c.requer_humano?"Precisa de revisão":"Pendente"}</span>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{c.texto}</p>
+              {c.resposta_sugerida&&<p className="mt-3 rounded-lg bg-secondary p-3 text-xs">Sugestão (não enviada): {c.resposta_sugerida}</p>}
+            </article>)}
+        </>}
+        {aba==="metricas" && <>
+          {(operacao.insights||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sem métricas coletadas nesta clínica. Nenhum número será inventado.</p>
+            :(operacao.insights||[]).map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
+              <p className="text-sm font-semibold">{m.tipo} · {new Date(m.referencia+"T12:00:00").toLocaleDateString("pt-BR")}</p>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(m.dados||{}).filter(([,v])=>typeof v==="string"||typeof v==="number")
+                  .slice(0,12).map(([k,v])=><div key={k} className="rounded-lg bg-secondary/50 p-3">
+                    <dt className="text-xs text-muted-foreground">{k.replaceAll("_"," ")}</dt>
+                    <dd className="font-semibold">{String(v)}</dd>
+                  </div>)}
+              </dl>
+            </article>)}
+        </>}
+        {aba==="alertas" && <>
+          {(operacao.alertas||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhum alerta registrado para esta clínica.</p>
+            :(operacao.alertas||[]).map(a=><article key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border bg-card p-4">
+              <div><p className="text-sm font-semibold">{a.tipo} · {textoData(a.criado_em)}</p>
+                <p className="mt-1 text-sm">{a.mensagem}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{a.resolvido?"Resolvido":"Pendente"}</p></div>
+              {contexto.pode_editar&&!a.resolvido&&
+                <button type="button" onClick={()=>void resolverAlerta(a.id)} className="rounded-lg border px-3 py-2 text-xs">Resolver alerta</button>}
+            </article>)}
+        </>}
       </section>}
+      {aba==="configuracoes" && (operacao.regras||[]).length>0 &&
+        <section className="space-y-3 rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Regras e autonomia das contas</h2>
+          {(operacao.regras||[]).map(r=><article key={r.id} className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+            <div><p className="text-sm font-semibold">{r.modo.replaceAll("_"," ")}</p>
+              <p className="text-xs text-muted-foreground">Até {r.max_por_dia}/dia e {r.max_por_semana}/semana · {r.precisa_aprovacao?"Aprovação humana":"Automação permitida"}</p></div>
+            <button type="button" disabled={!contexto.pode_editar} onClick={()=>void alterarRegra(r,!r.ativa)}
+              className="rounded-lg border px-3 py-2 text-xs">{r.ativa?"Suspender":"Ativar"}</button>
+          </article>)}
+        </section>}
+      {aba==="publicacoes" && (operacao.envios||[]).length>0 &&
+        <section className="space-y-3 rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Fila de publicação</h2>
+          {(operacao.envios||[]).map(e=><div key={e.id} className="flex flex-wrap justify-between gap-3 border-t pt-3 text-sm">
+            <span>{textoData(e.planejado_para)} · {e.formato} · <strong>{e.status}</strong></span>
+            <span>{e.tentativas} tentativa(s)</span>
+            {e.erro_resumido&&<p className="w-full text-xs text-destructive">{e.erro_resumido}</p>}
+          </div>)}
+        </section>}
         </div>
       </div>
     </>}
