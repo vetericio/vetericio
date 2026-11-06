@@ -10,8 +10,9 @@ export const Route=createFileRoute("/api/oricstudio/meta/callback")({
   server:{
     handlers:{
       GET:async({request})=>{
-        const back=(result:"conectado"|"erro")=>
-          Response.redirect(`https://oricse.vetericio.workers.dev/oricstudio?meta=${result}`,302);
+        const back=(result:"conectado"|"erro",plataforma=false)=>
+          Response.redirect(
+            `https://oricse.vetericio.workers.dev/oricstudio?${plataforma?"ambiente=plataforma&":""}meta=${result}`,302);
         try{
           const url=new URL(request.url);
           if(url.searchParams.has("error"))return back("erro");
@@ -22,8 +23,8 @@ export const Route=createFileRoute("/api/oricstudio/meta/callback")({
           if(!input.success)return back("erro");
           const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
           const {finalizeMetaOAuth}=await import("@/lib/oricstudio-meta.server");
-          await finalizeMetaOAuth(supabaseAdmin,input.data.state,input.data.code);
-          return back("conectado");
+          const retorno=await finalizeMetaOAuth(supabaseAdmin,input.data.state,input.data.code);
+          return back("conectado",retorno.plataforma);
         }catch{
           // Nunca registrar codes, access tokens ou secrets no log/URL.
           return back("erro");
