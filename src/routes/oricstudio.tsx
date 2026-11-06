@@ -8,9 +8,9 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
-import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
+import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive, enviarMidiaSistemaOricStudio, visualizarMidiaSistemaOricStudio, excluirMidiaSistemaOricStudio } from "@/lib/drive.functions";
 import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
-import {enviarMidiaSistemaOricStudio, visualizarMidiaSistemaOricStudio, excluirMidiaSistemaOricStudio} from "@/lib/oricstudio-sistema-midias.functions";
+
 import { conectarThreadsOricStudio, listarContasThreadsOricStudio, statusThreadsOricStudio, desconectarThreadsOricStudio, verificarThreadsOricStudio } from "@/lib/oricstudio-threads.functions";
 
 export const Route = createFileRoute("/oricstudio")({
