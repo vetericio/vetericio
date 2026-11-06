@@ -15,5 +15,5 @@ export const Route=createFileRoute("/api/oricstudio/midia")({
       return new Response("Link de mídia inválido ou expirado",{status:404,
         headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
     }
-  }}}},
+  }}},
 });
