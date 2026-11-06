@@ -2340,14 +2340,14 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onR
         </div>
         <dl className="space-y-3 rounded-2xl bg-white p-5 text-sm shadow-sm">
           <div className="rounded-xl bg-primary px-4 py-5 text-primary-foreground sm:px-5">
-            <dt className="text-sm font-bold">Tutor pagará</dt>
-            <dd className="mt-1 break-words text-4xl font-black leading-tight tracking-tight tabular-nums sm:text-5xl" aria-live="polite">{moedaCentavos(valorCobradoTutor)}</dd>
+            <dt className="text-sm font-bold">{modoTaxasSimulacao === "reter" ? "Líquido da clínica" : "Tutor pagará"}</dt>
+            <dd className="mt-1 break-words text-4xl font-black leading-tight tracking-tight tabular-nums sm:text-5xl" aria-live="polite">{moedaCentavos(modoTaxasSimulacao === "reter" ? liquido : valorCobradoTutor)}</dd>
           </div>
           <div className="flex justify-between gap-3"><dt>{modoTaxasSimulacao === "reter" ? "Valor final para o tutor" : "Líquido desejado pela clínica"}</dt><dd className="font-bold">{moedaCentavos(valorInformado)}</dd></div>
           {modoTaxasSimulacao === "repassar" && <div className="flex justify-between gap-3 rounded-lg bg-amber-50 px-2 py-1 text-amber-900"><dt>Repasse das taxas</dt><dd className="font-black">+ {moedaCentavos(taxaRepassada)}</dd></div>}
           <div className="flex justify-between gap-3"><dt>Mercado Pago ({percentual(linhaSimulada?.mp_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(descontoMp)}</dd></div>
           <div className="flex justify-between gap-3"><dt>ORICSE ({percentual(comissaoSimulada?.oricse_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(comissaoOricse)}</dd></div>
-          <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-semibold">Líquido da clínica</dt><dd className="font-bold text-emerald-700">{moedaCentavos(liquido)}</dd></div>
+          {modoTaxasSimulacao === "repassar" && <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-semibold">Líquido da clínica</dt><dd className="font-bold text-emerald-700">{moedaCentavos(liquido)}</dd></div>}
           <div className="flex justify-between gap-3 text-xs text-muted-foreground"><dt>Taxa efetiva final</dt><dd className="font-bold">{percentual(taxaFinal)}</dd></div>
         </dl>
       </div>
