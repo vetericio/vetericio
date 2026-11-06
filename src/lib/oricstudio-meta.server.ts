@@ -181,8 +181,10 @@ export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: s
   url.searchParams.set("client_id",cfg.clientId);
   url.searchParams.set("config_id",cfg.configId);
   url.searchParams.set("redirect_uri",cfg.redirectUri);
-  url.searchParams.set("response_type","code");
-  url.searchParams.set("prompt","login");
+  // Parâmetros emitidos pela configuração do Unified Login da própria Meta.
+  // Não enviar response_type/prompt legados, que fazem o diálogo ignorar o config_id.
+  url.searchParams.set("display","popup");
+  url.searchParams.set("override_default_response_type","true");
   url.searchParams.set("state",state);
   return url.toString();
 }
