@@ -33,7 +33,6 @@ import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { ROTAS_CATALOGO, ROTAS_EDITAVEIS, CAMINHOS_RESERVADOS } from "@/lib/admin-page-routes";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
-import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
@@ -304,6 +303,8 @@ function Admin() {
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
   const [gradeTaxas, setGradeTaxas] = useState<{ modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] }>({ modalidades: [], segmentos: [], comissoes: [] });
   const [salvandoTaxas, setSalvandoTaxas] = useState(false);
+  const [erroTaxas, setErroTaxas] = useState<string | null>(null);
+  const [carregandoTaxas, setCarregandoTaxas] = useState(true);
   const [dominiosClinica, setDominiosClinica] = useState<DominioClinica[]>([]);
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
@@ -351,6 +352,7 @@ function Admin() {
   }
 
   async function carregarTudo() {
+    setCarregandoTaxas(true);
     const [c, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
       (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
@@ -370,8 +372,9 @@ function Admin() {
     const porClinica:Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>={};
     for(const assinatura of assinaturas.data||[]){if(!porClinica[assinatura.clinica_id])porClinica[assinatura.clinica_id]=assinatura;}
     setAssinaturasClinicas(porClinica);
-    setClinicas(c.data || []);
-    setClinicasLixeira(clinicasNaLixeira.data || []);
+    // A lista de clínicas e a lixeira vêm da mesma consulta, sem variável indefinida.
+    setClinicas((c.data || []).filter((item: Clinica) => !item.excluido_em));
+    setClinicasLixeira((c.data || []).filter((item: Clinica) => Boolean(item.excluido_em)));
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
@@ -384,9 +387,11 @@ function Admin() {
     setSite({ ...SITE_PADRAO, ...(cfg.data?.valor || {}) });
     setArquivosDrive(arqs.count || 0);
     if (taxas.error) {
+      setErroTaxas(`Não foi possível carregar os valores salvos: ${taxas.error.message}`);
       toast.error("Não foi possível carregar a grade de pagamentos.");
     } else {
       const dados = taxas.data || {};
+      setErroTaxas(Array.isArray(dados.modalidades) && dados.modalidades.length > 0 ? null : "O banco não retornou condições de pagamento. Os dados existentes foram preservados.");
       setGradeTaxas({
         modalidades: Array.isArray(dados.modalidades) ? dados.modalidades.map((item: any) => ({
           ...item,
@@ -413,6 +418,7 @@ function Admin() {
       if (atual) setSelecionada(atual);
     }
     setUltimaAtualizacao(new Date().toISOString());
+    setCarregandoTaxas(false);
   }
 
   async function salvarGradeTaxas(clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) {
@@ -1979,6 +1985,9 @@ function Admin() {
         clinicas={clinicas}
         grade={gradeTaxas}
         salvando={salvandoTaxas}
+        carregando={carregandoTaxas}
+        erro={erroTaxas}
+        onRestaurar={() => carregarTudo()}
         onSalvarTudo={async (clinicaId, modalidades, segmentos, comissoes) => {
           await salvarGradeTaxas(clinicaId, modalidades, segmentos);
           await salvarComissoesOricse(clinicaId, comissoes);
@@ -2070,10 +2079,13 @@ function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento
   return [linha.modalidade, linha.prazo_recebimento_dias, linha.parcelas].join(":");
 }
 
-function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
+function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onRestaurar, onSalvarTudo }: {
   clinicas: Clinica[];
   grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] };
   salvando: boolean;
+  carregando: boolean;
+  erro: string | null;
+  onRestaurar: () => Promise<void>;
   onSalvarTudo: (clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[], comissoes: TaxaComissao[]) => Promise<void>;
 }) {
   const [clinicaId, setClinicaId] = useState<string>("");
@@ -2171,9 +2183,10 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
       return [...atuais, segmento];
     });
   }
-  function restaurarTudo() {
-    setLinhas(globais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
-    setComissoes(comissoesGlobais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
+  async function restaurarTudo() {
+    // Reconsulta o banco: restaura também as exceções da clínica selecionada,
+    // não os valores gerais e nem versões desatualizadas mantidas em memória.
+    await onRestaurar();
   }
   function regrasSelecionadas(chave: string) {
     return comissoes.filter((linha) => segmentosSelecionados.includes(linha.segmento) && chaveTaxa(linha) === chave);
@@ -2245,8 +2258,10 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h3 className="font-black">Taxas e comissão por condição</h3><p className="mt-1 text-sm text-muted-foreground">A edição de Comissão ORICSE afeta apenas as áreas marcadas acima. A coluna ao lado mostra, com clareza, como cada regra ficará distribuída.</p></div>
-        <button type="button" onClick={restaurarTudo} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar valores salvos</button>
+        <button type="button" disabled={carregando || salvando} onClick={() => void restaurarTudo()} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50 disabled:opacity-50">{carregando ? "Carregando valores..." : "Restaurar valores salvos"}</button>
       </div>
+      {erro && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{erro} <button type="button" className="font-bold underline" onClick={() => void onRestaurar()}>Tentar novamente</button></p>}
+      {!erro && carregando && !linhas.length && <p role="status" className="mt-4 text-sm text-muted-foreground">Carregando as taxas e comissões salvas...</p>}
       <div className="mt-4 overflow-x-auto rounded-xl border">
         <table className="min-w-[1120px] w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr>
