@@ -6,6 +6,7 @@ import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { useClinicBranding } from "@/hooks/useClinicBranding";
 import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
@@ -32,6 +33,7 @@ export function Cabecalho({
   aoMudarMenuFixo: (fixo: boolean) => void;
 }) {
   const location = useLocation();
+  const { nome: nomeClinica, logoUrl } = useClinicBranding();
   const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
   useProtecaoDadosLocais();
   const plantaoArea = [
