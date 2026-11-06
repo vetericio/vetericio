@@ -229,6 +229,10 @@ export async function exchangeToken(admin: Admin, form: URLSearchParams) {
       .maybeSingle();
     if (!row || row.used_at || row.expires_at < now)
       throw new OAuthError("invalid_grant", "Código inválido ou expirado.");
+    if(!row.clinica_id)throw new OAuthError("invalid_grant","Código sem clínica.");
+    const {assertTenantStillActive,tenantScopedAdmin}=await import("./tenant-admin.server");
+    await assertTenantStillActive(admin,row.clinica_id,row.user_id,"editor");
+    admin=tenantScopedAdmin(admin,row.clinica_id);
     // Single use: mark first, so a replayed code fails even if the rest of the request does.
     const { data: claimed } = await admin
       .from("oauth_codes")
@@ -252,7 +256,7 @@ export async function exchangeToken(admin: Admin, form: URLSearchParams) {
     const hash = await sha256Hex(form.get("refresh_token") ?? "");
     const { data: tok } = await admin
       .from("oauth_tokens")
-      .select("id, client_id, user_id, refresh_expires_at, revogado_em")
+      .select("id, client_id, user_id, refresh_expires_at, revogado_em, clinica_id")
       .eq("refresh_hash", hash)
       .maybeSingle();
     if (!tok || tok.revogado_em || !tok.refresh_expires_at || tok.refresh_expires_at < now)
@@ -260,6 +264,10 @@ export async function exchangeToken(admin: Admin, form: URLSearchParams) {
         "invalid_grant",
         "Sessão do conector expirada ou revogada. Conecte de novo.",
       );
+    if(!tok.clinica_id)throw new OAuthError("invalid_grant","Sessão sem clínica.");
+    const {assertTenantStillActive,tenantScopedAdmin}=await import("./tenant-admin.server");
+    await assertTenantStillActive(admin,tok.clinica_id,tok.user_id,"editor");
+    admin=tenantScopedAdmin(admin,tok.clinica_id);
     if (client_id && tok.client_id !== client_id)
       throw new OAuthError("invalid_grant", "Token de outro cliente.");
     // Rotation: the old pair stops working as soon as the new one is issued.
@@ -281,19 +289,21 @@ export async function exchangeToken(admin: Admin, form: URLSearchParams) {
 export async function verifyAccess(
   admin: Admin,
   request: Request,
-): Promise<{ actor: Actor; userId: string; email: string | null } | null> {
+): Promise<{ actor: Actor; userId: string; email: string | null; clinicId:string } | null> {
   const token = /^Bearer ([A-Za-z0-9_-]{20,200})$/.exec(
     request.headers.get("authorization") ?? "",
   )?.[1];
   if (!token) return null;
   const { data: tok } = await admin
     .from("oauth_tokens")
-    .select("id, user_id, expires_at, revogado_em")
+    .select("id, user_id, expires_at, revogado_em, clinica_id")
     .eq("access_hash", await sha256Hex(token))
     .maybeSingle();
-  if (!tok || tok.revogado_em || tok.expires_at < new Date().toISOString()) return null;
-  const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", tok.user_id);
-  if (!(roles ?? []).some((r) => r.role === "admin" || r.role === "editor")) return null;
+  if (!tok || tok.revogado_em || tok.expires_at < new Date().toISOString() || !tok.clinica_id)return null;
+  const {assertTenantStillActive,tenantScopedAdmin}=await import("./tenant-admin.server");
+  try { await assertTenantStillActive(admin,tok.clinica_id,tok.user_id,"editor"); }
+  catch { return null; }
+  admin=tenantScopedAdmin(admin,tok.clinica_id);
   await admin
     .from("oauth_tokens")
     .update({ ultimo_uso: new Date().toISOString() })
@@ -304,5 +314,6 @@ export async function verifyAccess(
     actor: { userId: null, email: `mcp:${email ?? tok.user_id}`, role: "assistente" },
     userId: tok.user_id,
     email,
+    clinicId:tok.clinica_id,
   };
 }
