@@ -189,8 +189,8 @@ export const cancelarEnvioOricStudio=createServerFn({method:"POST"})
 /** Relatório operacional real do OricStudio, sem misturar dados de clínicas. */
 export const gerarRelatorioOricStudio=createServerFn({method:"POST"})
  .validator((i:unknown)=>base.extend({
-   inicio:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
-   fim:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+   inicio:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+   fim:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
    contaId:z.string().uuid().nullable().default(null),
  }).refine(v=>v.inicio<=v.fim,{message:"Período inválido."})
  .refine(v=>(Date.parse(v.fim)-Date.parse(v.inicio))<=366*86400000,
