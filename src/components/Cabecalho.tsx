@@ -5,7 +5,6 @@ import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
-import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
@@ -33,7 +32,6 @@ export function Cabecalho({
   aoMudarMenuFixo: (fixo: boolean) => void;
 }) {
   const location = useLocation();
-  const { marca, logo_url } = useSiteBranding();
   const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
   useProtecaoDadosLocais();
   const plantaoArea = [
