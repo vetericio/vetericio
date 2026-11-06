@@ -351,8 +351,9 @@ function Admin() {
   }
 
   async function carregarTudo() {
-    const [c, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
-      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
+    const [c, clinicasNaLixeira, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
+      semClinicasNaLixeira((supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA)).order("nome"),
+      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).not("excluido_em", "is", null).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
@@ -363,6 +364,7 @@ function Admin() {
       (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
+    if (clinicasNaLixeira.error) toast.error("Não foi possível consultar a Lixeira.");
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);

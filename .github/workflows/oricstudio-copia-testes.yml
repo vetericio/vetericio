@@ -9,6 +9,12 @@ on:
 jobs:
   validar-copia:
     runs-on: ubuntu-latest
+    env:
+      # Valores fictícios: nenhum segredo ou banco de produção é usado por testes.
+      ORICSTUDIO_INSTANCE_ID: oricstudio
+      SUPABASE_URL: https://oricstudio-ci.example.invalid
+      APP_BASE_URL: https://oricstudio-ci.example.invalid
+      META_GRAPH_VERSION: v24.0
     defaults:
       run:
         working-directory: oricstudio-independente
