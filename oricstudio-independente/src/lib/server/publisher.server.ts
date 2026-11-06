@@ -38,7 +38,7 @@ export async function runPublishQueue(admin: Admin, clinicId?:string) {
   // UI e API usam o tenant verificado na sessão; o cron passa-o
   // explicitamente. O projeto original não possui esse contexto.
   const activeClinic=clinicId||(admin as any).__studioClinicId as string|undefined;
-  if(!activeClinic && process.env.NODE_ENV!=="test")
+  if(!activeClinic && process.env["NODE_ENV"]!=="test")
     return {pausado:true,processados:0,motivo:"Clínica não definida; publicação bloqueada."};
   if(activeClinic && !(admin as any).__studioClinicId) {
     const {tenantScopedAdmin}=await import("./tenant-admin.server");

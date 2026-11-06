@@ -788,6 +788,7 @@ export type Database = {
       }
       oauth_states: {
         Row: {
+          clinica_id: string
           created_at: string
           expires_at: string
           id: string
@@ -797,6 +798,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          clinica_id?: string
           provider?: "instagram" | "facebook"
           created_at?: string
           expires_at: string
@@ -806,6 +808,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          clinica_id?: string
           provider?: "instagram" | "facebook"
           created_at?: string
           expires_at?: string

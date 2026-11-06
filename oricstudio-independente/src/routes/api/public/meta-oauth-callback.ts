@@ -34,7 +34,8 @@ export const Route = createFileRoute("/api/public/meta-oauth-callback")({
 
         const who = { user_id: st.user_id };
         if (q.error || q.error_reason) {
-          await audit(tenantAdmin, { ...who, acao: "conectar_meta", resultado: "erro", detalhes: { error: q.error, error_reason: q.error_reason } });
+          // A recusa é informada sem gravar antes de revalidar o tenant.
+          return back(false,"access_denied");
           return back(false, q.error_reason || q.error || "erro_meta");
         }
         if (!q.code) return back(false, "code_ausente");
