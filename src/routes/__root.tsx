@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import premiumCss from "../themes-premium.css?url";
@@ -43,6 +43,15 @@ const VisualPageRuntime = lazy(() =>
     default: module.VisualPageRuntime,
   })),
 );
+
+// A customização visual é opcional: uma falha num chunk dela não pode derrubar
+// login, início, navegação clínica ou administração.
+class OptionalRuntimeBoundary extends Component<{children: ReactNode; fallback?: ReactNode},{failed:boolean}> {
+  state={failed:false};
+  static getDerivedStateFromError(){return {failed:true};}
+  componentDidCatch(error:Error){console.error("ORICSE optional runtime failed:",error);}
+  render(){return this.state.failed?(this.props.fallback??null):this.props.children;}
+}
 
 function NotFoundComponent() {
   return (
@@ -670,17 +679,21 @@ function RootComponent() {
       <ClinicasAtivasContext.Provider value={{ quantidade: quantidadeClinicasAtivas }}>
       <TenantContext.Provider value={contextoPortal}>
         {mostrarRuntimeVisual && (
-          <Suspense fallback={null}>
-            <VisualPageRuntime />
-          </Suspense>
+          <OptionalRuntimeBoundary>
+            <Suspense fallback={null}>
+              <VisualPageRuntime />
+            </Suspense>
+          </OptionalRuntimeBoundary>
         )}
         {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && <RockDecoracao />}
         {mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
-            <Suspense fallback={null}>
-              <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
-            </Suspense>
+            <OptionalRuntimeBoundary fallback={<div className="border-b bg-background p-3 text-sm"><a className="font-semibold underline" href="/inicio">Início</a><span className="mx-3">·</span><a className="font-semibold underline" href="/admin">Administração</a></div>}>
+              <Suspense fallback={null}>
+                <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
+              </Suspense>
+            </OptionalRuntimeBoundary>
           </div>
         )}
         {mostrarClinico && (
