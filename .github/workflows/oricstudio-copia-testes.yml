@@ -25,6 +25,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Instalar dependencias sem usar o ambiente do Gestor
         run: bun install --frozen-lockfile
+      - name: Conferir independencia e impedir segredos do Gestor
+        run: bun scripts/validar-independencia.mjs
       - name: Compilar copia sem publicar e gerar tipagem das rotas
         run: bun run build
       - name: Checar tipos
