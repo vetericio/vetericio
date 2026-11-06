@@ -38,7 +38,11 @@ export function metaConfig() {
   const clientIdFormatoValido = /^\d{8,30}$/.test(clientId);
   const configIdFormatoValido = /^\d{8,30}$/.test(configId);
   const configured = Boolean(clientIdFormatoValido && clientSecret && keyBytes.length === 32 && configIdFormatoValido);
-  return {clientId,clientSecret,redirectUri,encryptionKey,configId,configured,clientIdFormatoValido,configIdFormatoValido};
+  return {
+    clientId,clientSecret,redirectUri,encryptionKey,configId,configured,
+    clientIdFormatoValido,configIdFormatoValido,
+    temAppSecret:Boolean(clientSecret),temChaveCriptografiaValida:keyBytes.length===32,
+  };
 }
 
 function sha256(data: string) {return createHash("sha256").update(data).digest("hex");}
