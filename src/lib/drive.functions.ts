@@ -97,36 +97,3 @@ export async function baixarMidiaOricstudioServidor(clinicaId:string,registroId:
     }
   });
 }
-
-
-// A Meta precisa recuperar a mídia a partir de uma URL HTTPS. Este helper é
-// exclusivo do servidor e usado somente após validar assinatura de curta
-// duração no endpoint OricStudio. O Google Drive continua PRIVADO.
-export async function oricstudioMidiaDrivePrivada(
-  clinicaId:string,registroId:string,headOnly=false,
-):Promise<Response>{
-  if(!/^[0-9a-f-]{36}$/i.test(clinicaId)||!/^[0-9a-f-]{36}$/i.test(registroId))
-    return new Response("Não encontrado",{status:404});
-  const token=await accessTokenGoogle();
-  const file=await localizarPorRegistro(token,registroId);
-  if(!file||file.appProperties?.clinicaId!==clinicaId||
-     file.appProperties?.entidadeTipo!=="oricstudio")
-    return new Response("Não encontrado",{status:404});
-  const tipo=String(file.mimeType||"");
-  if(!["image/jpeg","video/mp4","video/quicktime"].includes(tipo))
-    return new Response("Tipo de mídia não permitido",{status:415});
-  const tamanho=Number(file.size||0);
-  if(!Number.isFinite(tamanho)||tamanho<=0||tamanho>300*1024*1024)
-    return new Response("Mídia acima do limite",{status:413});
-  const headers=new Headers({
-    "Content-Type":tipo,
-    "Content-Length":String(tamanho),
-    "Cache-Control":"private, no-store",
-    "X-Content-Type-Options":"nosniff",
-  });
-  if(headOnly)return new Response(null,{status:200,headers});
-  const src=await gfetch(token,
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`);
-  if(!src.body)throw new Error("Arquivo indisponível no Drive.");
-  return new Response(src.body,{status:200,headers});
-}
