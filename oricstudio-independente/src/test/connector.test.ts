@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { tenantScopedAdmin } from "@/lib/server/tenant-admin.server";
 import {
   allowedRedirect,
   createCode,
@@ -64,11 +65,15 @@ async function challengeOf(verifier: string) {
     .replace(/=+$/, "");
 }
 
+const CLINIC = "11111111-1111-4111-8111-111111111111";
 const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
 const VERIFIER = "v".repeat(20) + "erifier-0123456789-abcdefghijklmnop";
 
 async function setup() {
-  const tables: Record<string, Row[]> = { user_roles: [{ user_id: "u1", role: "admin" }] };
+  const tables: Record<string, Row[]> = {
+    studio_clinicas: [{id:CLINIC,ativa:true,licenca_ativa:true,licenca_expira_em:null}],
+    studio_membros: [{clinica_id:CLINIC,user_id:"u1",papel:"admin",ativo:true}],
+  };
   const admin = fakeAdmin(tables);
   const client = await registerClient(admin, { redirect_uris: [CALLBACK], client_name: "Claude" });
   const { params } = await validateAuthorize(admin, {
@@ -79,7 +84,7 @@ async function setup() {
     code_challenge_method: "S256",
     state: "xyz",
   });
-  return { tables, admin, client, params };
+  return { tables, admin, scoped:tenantScopedAdmin(admin,CLINIC), client, params };
 }
 
 const form = (o: Record<string, string>) => new URLSearchParams(o);
@@ -112,11 +117,11 @@ describe("OAuth do conector", () => {
   });
 
   it("troca código uma única vez, valida verifier, e o token dá acesso", async () => {
-    const { admin, client, params, tables } = await setup();
-    const code = await createCode(admin, "u1", params);
+    const { admin, scoped, client, params, tables } = await setup();
+    const code = await createCode(scoped, "u1", params);
     expect(tables["oauth_codes"]![0]!["code_hash"]).not.toBe(code); // only the hash is stored
 
-    const bad = await createCode(admin, "u1", params);
+    const bad = await createCode(scoped, "u1", params);
     await expect(
       exchangeToken(
         admin,
@@ -159,8 +164,8 @@ describe("OAuth do conector", () => {
   });
 
   it("rotaciona o refresh token e invalida o anterior", async () => {
-    const { admin, client, params } = await setup();
-    const code = await createCode(admin, "u1", params);
+    const { admin, scoped, client, params } = await setup();
+    const code = await createCode(scoped, "u1", params);
     const first = await exchangeToken(
       admin,
       form({
@@ -194,9 +199,8 @@ describe("OAuth do conector", () => {
   });
 
   it("não dá acesso a quem não é admin nem editor", async () => {
-    const { admin, client, params, tables } = await setup();
-    tables["user_roles"] = [{ user_id: "u1", role: "viewer" }];
-    const code = await createCode(admin, "u1", params);
+    const { admin, scoped, client, params, tables } = await setup();
+    const code = await createCode(scoped, "u1", params);
     const t = await exchangeToken(
       admin,
       form({
@@ -206,6 +210,7 @@ describe("OAuth do conector", () => {
         code_verifier: VERIFIER,
       }),
     );
+    tables["studio_membros"] = [{clinica_id:CLINIC,user_id:"u1",papel:"viewer",ativo:true}];
     expect(await verifyAccess(admin, bearer(t.access_token))).toBeNull();
   });
 });
