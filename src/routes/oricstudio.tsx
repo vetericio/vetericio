@@ -542,9 +542,19 @@ function OricStudio() {
         accessToken:token,clinicaId:contexto.clinica_id,
       }});
       const authorizeUrl=new URL(result.url);
-      // Unified Login usa o diálogo OAuth da Meta/Facebook; o fluxo legado usava instagram.com.
-      if(authorizeUrl.protocol!=="https:" || authorizeUrl.hostname!=="www.facebook.com" ||
-        authorizeUrl.pathname!=="/dialog/oauth") throw new Error("Endereço de autorização inválido.");
+      // O servidor pode emitir o dialog OAuth versionado (ex.: /v26.0/dialog/oauth)
+      // ou não versionado. Aceitar apenas a origem oficial e os parâmetros
+      // obrigatórios, sem liberar redirecionamento para hosts externos.
+      const validMetaPath=/^\\/(?:v\\d+(?:\\.\\d+)?\\/)?dialog\\/oauth\\/?$/;
+      if(authorizeUrl.protocol!=="https:" ||
+         authorizeUrl.hostname!=="www.facebook.com" ||
+         !validMetaPath.test(authorizeUrl.pathname) ||
+         !["client_id","config_id","redirect_uri","state"].every(
+           key=>Boolean(authorizeUrl.searchParams.get(key))
+         ) ||
+         authorizeUrl.searchParams.get("response_type")!=="code") {
+        throw new Error("Endereço de autorização da Meta inválido. Atualize a página e tente novamente.");
+      }
       window.location.assign(authorizeUrl.toString());
     } catch(e) {
       toast.error(e instanceof Error?e.message:"Falha ao iniciar conexão.");
