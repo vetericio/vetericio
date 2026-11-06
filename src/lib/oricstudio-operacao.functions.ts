@@ -22,6 +22,12 @@ async function context(accessToken:string,clinicId:string,write=false){
       .eq("clinica_id",clinicId).eq("ativo",true).maybeSingle();
     if(error||!link)throw new Error("Você não tem acesso a esta clínica.");
   }
+  if(!actor.isPlatformAdmin && clinicId!==ORICSTUDIO_PLATAFORMA_ID){
+    const {data:selection}=await supabaseAdmin.from("oricse_clinica_ativa_usuario")
+      .select("clinica_id").eq("user_id",actor.userId).maybeSingle();
+    if(selection?.clinica_id!==clinicId)
+      throw new Error("Selecione esta clínica no Oricse antes de executar a operação.");
+  }
   return {db:supabaseAdmin as Db,actor};
 }
 function safeError(error:unknown,message:string) {

@@ -41,15 +41,6 @@ export const iniciarConexaoMetaOricStudio=createServerFn({method:"POST"})
     return {url:await authorizeMetaUrl(supabaseAdmin,data.accessToken,data.clinicaId)};
   });
 
-// Modalidade principal: Instagram API with Instagram Login, sem Página do Facebook.
-export const iniciarConexaoDiretaInstagramOricStudio=createServerFn({method:"POST"})
-  .validator((i:unknown)=>base.parse(i))
-  .handler(async({data})=>{
-    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
-    const {autorizarInstagramDireto}=await import("@/lib/oricstudio-instagram.server");
-    return {url:await autorizarInstagramDireto(supabaseAdmin,data.accessToken,data.clinicaId)};
-  });
-
 export const desconectarContaMetaOricStudio=createServerFn({method:"POST"})
   .validator((i:unknown)=>base.extend({contaId:z.string().uuid()}).parse(i))
   .handler(async({data})=>{
