@@ -8,6 +8,8 @@ type Admin = (typeof import("@/integrations/supabase/client.server"))["supabaseA
 export async function authenticateAssistant(
   request: Request,
 ): Promise<{ admin: Admin; actor: Actor; keyName: string } | Response> {
+  if(process.env["ORICSTUDIO_ASSISTENTE_HOMOLOGADO"]!=="true")
+    return new Response("Assistente em homologação", {status:503});
   const token = /^Bearer ([A-Za-z0-9_-]{32,128})$/.exec(
     request.headers.get("authorization") ?? "",
   )?.[1];
@@ -16,16 +18,25 @@ export async function authenticateAssistant(
   const hash = await sha256Hex(token);
   const { data: key } = await supabaseAdmin
     .from("assistant_keys")
-    .select("id, nome, revogada_em")
+    .select("id, nome, revogada_em, clinica_id")
     .eq("key_hash", hash)
     .maybeSingle();
-  if (!key || key.revogada_em) return new Response("Unauthorized", { status: 401 });
+  if (!key || key.revogada_em || !key.clinica_id)
+    return new Response("Unauthorized", { status: 401 });
+  // Chave do assistente sempre pertence a exatamente uma clínica.
+  const {data:clinic}=await (supabaseAdmin as any).from("studio_clinicas")
+    .select("id,ativa,licenca_ativa,licenca_expira_em").eq("id",key.clinica_id).maybeSingle();
+  if(!clinic?.ativa||!clinic.licenca_ativa||
+    (clinic.licenca_expira_em&&Date.parse(clinic.licenca_expira_em)<=Date.now()))
+    return new Response("Clínica sem licença", {status:403});
+  const {tenantScopedAdmin}=await import("./tenant-admin.server");
+  const admin=tenantScopedAdmin(supabaseAdmin,key.clinica_id);
   await supabaseAdmin
     .from("assistant_keys")
     .update({ ultimo_uso: new Date().toISOString() })
     .eq("id", key.id);
   return {
-    admin: supabaseAdmin,
+    admin,
     actor: { userId: null, email: `assistente:${key.nome}`, role: "assistente" },
     keyName: key.nome,
   };
