@@ -40,7 +40,8 @@ import { Button } from "@/components/ui/button";
 import { PauseToggle } from "@/components/pause-toggle";
 import { ThemeToggle, useApplyTheme } from "@/components/theme-toggle";
 import { supabase } from "@/integrations/supabase/client";
-import { useRoles, useSession } from "@/lib/session";
+import { useRoles, useSession, useClinicSelection, useClinicOptions, selectClinic } from "@/lib/session";
+import { toast } from "sonner";
 import { useSettings } from "@/lib/queries";
 
 export const Route = createFileRoute("/_app")({
@@ -115,7 +116,7 @@ function Shell({ userId, email }: { userId: string; email: string }) {
 
   return (
     <SidebarProvider>
-      <AppSidebar email={email} />
+      <AppSidebar email={email} userId={userId} />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur">
           <SidebarTrigger aria-label="Abrir menu" />
@@ -145,10 +146,12 @@ function Shell({ userId, email }: { userId: string; email: string }) {
   );
 }
 
-function AppSidebar({ email }: { email: string }) {
+function AppSidebar({ email, userId }: { email: string; userId: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { setOpenMobile } = useSidebar();
   const navigate = useNavigate();
+  const selection=useClinicSelection(userId);
+  const clinics=useClinicOptions(userId);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -157,8 +160,34 @@ function AppSidebar({ email }: { email: string }) {
 
   return (
     <Sidebar>
-      <SidebarHeader className="px-4 py-3">
+      <SidebarHeader className="space-y-2 px-4 py-3">
         <span className="text-base font-semibold">OricStudio</span>
+        <label className="block text-xs font-semibold text-muted-foreground" htmlFor="studio-clinica">
+          Clínica / operação
+        </label>
+        <select
+          id="studio-clinica"
+          aria-label="Clínica ativa do OricStudio"
+          className="w-full rounded-lg border bg-background px-2 py-2 text-sm font-medium text-foreground"
+          value={selection.data??""}
+          disabled={clinics.isLoading||selection.isLoading}
+          onChange={(e)=>{void selectClinic(userId,e.target.value).catch((error)=>
+            toast.error(error instanceof Error?error.message:"Não foi possível trocar de clínica."));}}
+        >
+          <option value="" disabled>Selecionar clínica</option>
+          {(clinics.data??[]).map(c=>{
+            const licenciada=c.ativa&&c.licenca_ativa&&
+              (!c.licenca_expira_em||Date.parse(c.licenca_expira_em)>Date.now());
+            return <option key={c.id} value={c.id} disabled={!licenciada}>
+              {c.nome}{!licenciada?" — acesso indisponível":""}
+            </option>;
+          })}
+        </select>
+        {clinics.isSuccess&&clinics.data.length===0?(
+          <p className="text-xs text-muted-foreground">
+            Nenhuma clínica atribuída. Solicite liberação na administração da Oricse.
+          </p>
+        ):null}
       </SidebarHeader>
       <SidebarContent>
         {NAV.map((g) => (
