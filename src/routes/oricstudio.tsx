@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import {
   AlertCircle, ArrowLeft, BarChart3, Bell, CalendarDays, CheckCircle2,
   Clock3, FileImage, FolderOpen, Instagram, LayoutDashboard, LockKeyhole,
-  MessageCircle, Pencil, Plus, RefreshCw, Save, Settings2, ShieldCheck, Trash2, Users,
+  MessageCircle, Pencil, Plus, RefreshCw, Save, Settings2, ShieldCheck, ScrollText, Trash2, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
-import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio,prepararEnvioOricStudio} from "@/lib/oricstudio-operacao.functions";
+import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio,prepararEnvioOricStudio,gerarRelatorioOricStudio} from "@/lib/oricstudio-operacao.functions";
 import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/oricstudio")({
 
 type Status = "rascunho" | "aguardando_aprovacao" | "aprovado";
 type Tipo = "imagem" | "carrossel" | "reels" | "story";
-type Aba = "inicio" | "contas" | "publicacoes" | "calendario" | "biblioteca" | "aprovacoes" | "comentarios" | "metricas" | "alertas" | "configuracoes";
+type Aba = "inicio" | "contas" | "publicacoes" | "calendario" | "biblioteca" | "aprovacoes" | "comentarios" | "metricas" | "relatorios" | "alertas" | "configuracoes";
 type Contexto = {
   clinica_id: string; clinica_nome: string; clinica_status: string;
   licenca_status: string; licenca_expira_em: string | null; tem_acesso: boolean; pode_editar: boolean;
@@ -47,6 +47,7 @@ const ABAS = [
   { id: "aprovacoes", rotulo: "Aprovações", Icone: ShieldCheck },
   { id: "comentarios", rotulo: "Comentários", Icone: MessageCircle },
   { id: "metricas", rotulo: "Métricas", Icone: BarChart3 },
+  { id: "relatorios", rotulo: "Relatórios", Icone: ScrollText },
   { id: "alertas", rotulo: "Alertas", Icone: Bell },
   { id: "configuracoes", rotulo: "Configurações", Icone: Settings2 },
 ] as const;
@@ -95,6 +96,11 @@ function OricStudio() {
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
   const [operacao,setOperacao]=useState<Record<string,any[]>>({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});
   const [erroOperacao,setErroOperacao]=useState("");
+  const [periodoInicio,setPeriodoInicio]=useState(()=>{
+    const d=new Date();d.setDate(d.getDate()-30);return d.toISOString().slice(0,10);
+  });
+  const [periodoFim,setPeriodoFim]=useState(()=>new Date().toISOString().slice(0,10));
+  const [gerandoRelatorio,setGerandoRelatorio]=useState(false);
   const [metaConfigurada, setMetaConfigurada] = useState(false);
   const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
@@ -628,6 +634,24 @@ function OricStudio() {
     } finally {setEnviandoMidia(false);}
   }
 
+  async function criarRelatorio() {
+    if(!contexto?.pode_editar || gerandoRelatorio)return;
+    setGerandoRelatorio(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const accessToken=auth.session?.access_token;
+      if(!accessToken)throw new Error("Sessão expirada. Entre novamente.");
+      await gerarRelatorioOricStudio({data:{
+        accessToken,clinicaId:contexto.clinica_id,
+        inicio:periodoInicio,fim:periodoFim,contaId:null,
+      }});
+      toast.success("Relatório salvo no ambiente desta clínica.");
+      await carregar();
+      setAba("relatorios");
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível gerar o relatório.");}
+    finally{setGerandoRelatorio(false);}
+  }
+
   async function visualizarMidia(m: Midia) {
     if (!contexto?.tem_acesso || m.tipo !== "imagem") return;
     try {
@@ -1006,6 +1030,52 @@ function OricStudio() {
                 <button type="button" onClick={()=>void resolverAlerta(a.id)} className="rounded-lg border px-3 py-2 text-xs">Resolver alerta</button>}
             </article>)}
         </>}
+      </section>}
+      {aba==="relatorios" && <section className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold">Relatórios da clínica</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Resultados registrados pelo OricStudio, sem estimativas ou dados de outras clínicas.
+            </p>
+          </div>
+          {contexto.pode_editar && <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs">De
+              <input type="date" value={periodoInicio} max={periodoFim}
+                onChange={e=>setPeriodoInicio(e.target.value)}
+                className="mt-1 block rounded-lg border bg-background px-3 py-2 text-sm"/>
+            </label>
+            <label className="text-xs">Até
+              <input type="date" value={periodoFim} min={periodoInicio}
+                onChange={e=>setPeriodoFim(e.target.value)}
+                className="mt-1 block rounded-lg border bg-background px-3 py-2 text-sm"/>
+            </label>
+            <button type="button" disabled={gerandoRelatorio||!periodoInicio||!periodoFim}
+              onClick={()=>void criarRelatorio()}
+              className="min-h-10 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+              {gerandoRelatorio?"Gerando...":"Gerar relatório"}
+            </button>
+          </div>}
+        </div>
+        {erroOperacao&&<p role="alert" className="text-sm text-destructive">{erroOperacao}</p>}
+        {(operacao.relatorios||[]).length===0?
+          <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+            Nenhum relatório registrado. Gere o primeiro a partir dos dados reais disponíveis.
+          </p>:(operacao.relatorios||[]).map((rel:any)=>{
+            const c=rel.conteudo||{};
+            return <article key={rel.id} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <strong className="text-sm">{rel.tipo.replaceAll("_"," ")} · {rel.periodo_inicio} a {rel.periodo_fim}</strong>
+                <span className="text-xs text-muted-foreground">Gerado em {textoData(rel.gerado_em)}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                <p className="rounded-lg bg-secondary/40 p-3">Métricas registradas: <strong>{c.total_registros_metricas??"—"}</strong></p>
+                <p className="rounded-lg bg-secondary/40 p-3">Comentários: <strong>{c.comentarios_recebidos??"—"}</strong></p>
+                <p className="rounded-lg bg-secondary/40 p-3">Respondidos: <strong>{c.comentarios_respondidos??"—"}</strong></p>
+              </div>
+              {c.aviso&&<p className="mt-3 text-xs text-muted-foreground">{c.aviso}</p>}
+            </article>;
+          })}
       </section>}
       {aba==="configuracoes" && (operacao.regras||[]).length>0 &&
         <section className="space-y-3 rounded-xl border bg-card p-5">
