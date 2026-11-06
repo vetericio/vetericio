@@ -35,9 +35,18 @@ export const statusIntegracaoMetaOricStudio=createServerFn({method:"POST"})
   .handler(async({data})=>{
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const {requireMetaEditor,metaConfig}=await import("@/lib/oricstudio-meta.server");
-    await requireMetaEditor(supabaseAdmin,data.accessToken,data.clinicaId,false);
+    const editor=await requireMetaEditor(supabaseAdmin,data.accessToken,data.clinicaId,false);
     const cfg=metaConfig();
-    return {configurada:cfg.configured};
+    // O identificador e o callback OAuth são públicos; a secret jamais sai do servidor.
+    // Mesmo com credenciais preenchidas, a Meta deve aprovar o app e o redirect URI.
+    return {
+      configurada:cfg.configured,
+      diagnostico:editor.isPlatformAdmin ? {
+        instagramAppId:cfg.clientId,
+        callback:cfg.redirectUri,
+        formatoIdValido:cfg.clientIdFormatoValido,
+      } : null,
+    };
   });
 
 export const verificarContaMetaOricStudio=createServerFn({method:"POST"})
