@@ -24,5 +24,5 @@ export const Route=createFileRoute("/api/oricstudio/jobs/publicar")({
       console.error("OricStudio publish queue",e instanceof Error?e.message:"falha interna");
       return Response.json({ok:false,erro:"Falha no processamento da fila."},{status:500});
     }
-  }}}},
+  }}},
 });
