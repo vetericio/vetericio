@@ -34,6 +34,7 @@ import { ROTAS_CATALOGO, ROTAS_EDITAVEIS, CAMINHOS_RESERVADOS } from "@/lib/admi
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
+import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
@@ -272,6 +273,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 function Admin() {
+  const quantidadeClinicasAtivas = useQuantidadeClinicasAtivas();
   const [aba, setAba] = useState<Aba>("dashboard");
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
@@ -1147,7 +1149,7 @@ function Admin() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{clinicas.length}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
+        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
         <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Assinaturas</p><p className="mt-2 text-3xl font-black">{pagas}</p><p className="text-sm text-muted-foreground">conta(s) ativa(s) e em dia · {canceladas} cancelada(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Ver situações de conta</button></Card>
         <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
       </div>
@@ -1956,7 +1958,7 @@ function Admin() {
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card><p className="text-sm text-muted-foreground">Clínicas cadastradas</p><p className="mt-1 text-3xl font-black">{clinicas.length}</p><p className="mt-1 text-xs text-muted-foreground">Base de clientes ORICSE</p></Card>
+        <Card><p className="text-sm text-muted-foreground">Clínicas cadastradas</p><p className="mt-1 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Base de clientes ORICSE</p></Card>
         <Card><p className="text-sm text-muted-foreground">Planos configurados</p><p className="mt-1 text-3xl font-black">{planos.length}</p><p className="mt-1 text-xs text-muted-foreground">Oferta comercial ativa e histórica</p></Card>
         <Card><p className="text-sm text-muted-foreground">Páginas catalogadas</p><p className="mt-1 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="mt-1 text-xs text-muted-foreground">Rotas públicas e internas mapeadas</p></Card>
         <Card><p className="text-sm text-muted-foreground">Arquivos no Drive</p><p className="mt-1 text-3xl font-black">{arquivosDrive}</p><p className="mt-1 text-xs text-muted-foreground">Itens indexados na plataforma</p></Card>
