@@ -12,7 +12,7 @@ import { useSession } from "@/lib/session";
 
 // Approval page of the Claude connector. The person logs in here (never inside Claude) and decides.
 export const Route = createFileRoute("/oauth/autorizar")({
-  head: () => ({ meta: [{ title: "Conectar o Claude — Gestor Instagram" }] }),
+  head: () => ({ meta: [{ title: "Conectar o Claude — OricStudio" }] }),
   component: AuthorizePage,
 });
 
@@ -85,7 +85,7 @@ function AuthorizePage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="size-5" /> Conectar o Claude ao Gestor
+            <ShieldCheck className="size-5" /> Conectar o Claude ao OricStudio
           </CardTitle>
           <CardDescription>
             {session?.user.email
@@ -102,7 +102,7 @@ function AuthorizePage() {
             <>
               <p>
                 <strong>{info.data?.clientName}</strong> ({info.data?.redirectHost}) quer acesso ao
-                Gestor Instagram em seu nome.
+                OricStudio em seu nome.
               </p>
               <div>
                 <p className="font-medium">Ele poderá:</p>

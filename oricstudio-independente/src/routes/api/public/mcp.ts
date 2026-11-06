@@ -4,6 +4,8 @@ import { baseUrl, CORS, verifyAccess } from "@/lib/server/oauth.server";
 // MCP endpoint of the MCP connector (ChatGPT/Codex/Claude) (Streamable HTTP, stateless, JSON responses).
 // Without a valid OAuth token it answers 401 pointing to the discovery document.
 async function handle(request: Request) {
+  if(process.env["ORICSTUDIO_MCP_HOMOLOGADO"]!=="true")
+    return Response.json({error:"O conector ainda está em homologação."},{status:503});
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const who = await verifyAccess(supabaseAdmin, request);
   if (!who) {
@@ -28,7 +30,8 @@ async function handle(request: Request) {
     );
   }
   const { handleRpc } = await import("@/lib/server/mcp.server");
-  const ctx = { admin: supabaseAdmin, actor: who.actor, email: who.email };
+  const {tenantScopedAdmin}=await import("@/lib/server/tenant-admin.server");
+  const ctx={admin:tenantScopedAdmin(supabaseAdmin,who.clinicId),actor:who.actor,email:who.email};
   const messages = Array.isArray(body) ? body : [body];
   const out = (await Promise.all(messages.map((m) => handleRpc(ctx, (m ?? {}) as never)))).filter(
     (r) => r !== null,

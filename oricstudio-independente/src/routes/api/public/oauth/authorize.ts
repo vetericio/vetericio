@@ -7,6 +7,8 @@ export const Route = createFileRoute("/api/public/oauth/authorize")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        if(process.env["ORICSTUDIO_MCP_HOMOLOGADO"]!=="true")
+          return new Response("Conector em homologação",{status:503});
         const url = new URL(request.url);
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

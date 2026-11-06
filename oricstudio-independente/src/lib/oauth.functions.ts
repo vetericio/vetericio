@@ -41,6 +41,8 @@ export const decideOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => authorizeSchema.extend({ aprovar: z.boolean() }).parse(input))
   .handler(async ({ context, data }) => {
+    if(process.env["ORICSTUDIO_MCP_HOMOLOGADO"]!=="true")
+      throw new Error("Conector do OricStudio em homologação.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { validateAuthorize, createCode, redirectWith } = await import("./server/oauth.server");
     const { audit } = await import("./server/meta.server");
@@ -73,6 +75,8 @@ export const revokeConnector = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ client_id: z.string().max(200) }).parse(input))
   .handler(async ({ context, data }) => {
+    if(process.env["ORICSTUDIO_MCP_HOMOLOGADO"]!=="true")
+      throw new Error("Conector do OricStudio em homologação.");
     if (!(await roles(context)).includes("admin"))
       throw new Error("Somente administradores podem revogar conexões.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

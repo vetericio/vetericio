@@ -7,6 +7,8 @@ export const Route = createFileRoute("/api/public/oauth/token")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       POST: async ({ request }) => {
+        if(process.env["ORICSTUDIO_MCP_HOMOLOGADO"]!=="true")
+          return oauthJson({error:"temporarily_unavailable"},503);
         try {
           const type = request.headers.get("content-type") ?? "";
           const form = type.includes("application/json")
