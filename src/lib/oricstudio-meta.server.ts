@@ -84,7 +84,7 @@ async function metaRefreshToken(token:string) {
 export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clinicaId:string,contaId:string) {
   const {userId}=await requireMetaEditor(db,accessToken,clinicaId,true);
   const {data:account,error:accountErr}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas")
-    .select("id,instagram_user_id,status").eq("id",contaId),clinicaId).maybeSingle();
+    .select("id,instagram_user_id,status,login_tipo,token_expira_em").eq("id",contaId),clinicaId).maybeSingle();
   if(accountErr||!account||account.status==="desconectada")
     throw new Error("Conta não encontrada nesta clínica.");
   const {data:secret,error:secretErr}=await db.from("oricstudio_meta_tokens")
@@ -92,21 +92,40 @@ export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clini
   if(secretErr||!secret)throw new Error("Conta sem credencial Meta ativa.");
   try {
     const token=await decryptMetaToken(secret.token_cifrado_base64,secret.iv_base64);
-    const profileUrl=new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(account.instagram_user_id)}`);
+    const direct=account.login_tipo==="instagram";
+    const profileUrl=direct
+      ? new URL("https://graph.instagram.com/me")
+      : new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(account.instagram_user_id)}`);
     profileUrl.searchParams.set("fields","id,username,account_type");
     profileUrl.searchParams.set("access_token",token);
     const profile=await graphGet(profileUrl);
-    if(!profile.id||!profile.username)throw new Error("Conta profissional não confirmada.");
+    if(!(profile.id||profile.user_id)||!profile.username)throw new Error("Conta profissional não confirmada.");
+    let renovada=false;
+    let tokenNovo:string|null=null;
+    let expiraEm:string|null=null;
+    if(direct && account.token_expira_em &&
+      Date.parse(account.token_expira_em)-Date.now()<14*86400_000) {
+      const nova=await metaRefreshToken(token);
+      tokenNovo=nova.token;expiraEm=nova.expiresAt;renovada=true;
+    }
+    if(renovada && tokenNovo && expiraEm) {
+      const encriptado=await encryptMetaToken(tokenNovo);
+      const {error:tokenUpdate}=await db.from("oricstudio_meta_tokens").update({
+        ...encriptado,token_expira_em:expiraEm,atualizado_em:new Date().toISOString(),
+      }).eq("conta_id",account.id);
+      if(tokenUpdate)throw new Error("Token renovado não pôde ser salvo.");
+    }
     const {error:updateErr}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas").update({
       username:String(profile.username),account_type:profile.account_type?String(profile.account_type):null,
       status:"ativa",ultimo_erro:null,atualizado_em:new Date().toISOString(),
+      ...(expiraEm?{token_expira_em:expiraEm}:{}),
     }),clinicaId).eq("id",contaId);
     if(updateErr)throw new Error("Falha ao atualizar estado da conta.");
     await db.from("oricstudio_meta_auditoria").insert({
       clinica_id:idNoBanco(clinicaId),conta_id:contaId,usuario_id:userId,
       acao:"verificar",detalhes:{resultado:"sucesso",modo:"login_unificado"},
     });
-    return {ok:true,renovada:false,username:String(profile.username)};
+    return {ok:true,renovada,username:String(profile.username)};
   } catch {
     await filtrarPorAmbiente(db.from("oricstudio_meta_contas").update({
       status:"reautenticar",ultimo_erro:"Falha na validação da credencial Meta",
