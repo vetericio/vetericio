@@ -25,8 +25,8 @@ export const Route=createFileRoute("/api/public/instagram-oauth-callback")({
     if(!q.state)return back(false,"state_ausente");
     const hash=await sha256Hex(q.state);
     const {data:flow,error:flowError}=await supabaseAdmin.from("oauth_states")
-      .select("id,user_id,expires_at,used_at").eq("state_hash",hash).maybeSingle();
-    if(flowError||!flow)return back(false,"state_invalido");
+      .select("id,user_id,expires_at,used_at,provider").eq("state_hash",hash).maybeSingle();
+    if(flowError||!flow||flow.provider!=="instagram")return back(false,"state_invalido");
     if(flow.used_at)return back(false,"state_ja_usado");
     if(Date.parse(flow.expires_at)<=Date.now())return back(false,"state_expirado");
     const {data:consumed,error:consumeError}=await supabaseAdmin.from("oauth_states")

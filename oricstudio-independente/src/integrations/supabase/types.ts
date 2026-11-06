@@ -791,11 +791,13 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          provider: "instagram" | "facebook"
           state_hash: string
           used_at: string | null
           user_id: string
         }
         Insert: {
+          provider?: "instagram" | "facebook"
           created_at?: string
           expires_at: string
           id?: string
@@ -804,6 +806,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          provider?: "instagram" | "facebook"
           created_at?: string
           expires_at?: string
           id?: string

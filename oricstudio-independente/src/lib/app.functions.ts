@@ -76,6 +76,7 @@ export const metaOAuthStart = createServerFn({ method: "POST" })
     await supabaseAdmin.from("oauth_states").insert({
       user_id: context.userId,
       state_hash: await sha256Hex(state),
+      provider:"facebook",
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     });
     return { url: buildAuthorizeUrl(state) };
@@ -104,7 +105,7 @@ export const metaInstagramOAuthStart=createServerFn({method:"POST"})
     const state=randomToken(32);
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const {error}=await supabaseAdmin.from("oauth_states").insert({
-      user_id:context.userId,state_hash:await sha256Hex(state),
+      user_id:context.userId,state_hash:await sha256Hex(state),provider:"instagram",
       expires_at:new Date(Date.now()+10*60*1000).toISOString(),
     });
     if(error)throw new Error("Não foi possível iniciar a conexão Instagram.");

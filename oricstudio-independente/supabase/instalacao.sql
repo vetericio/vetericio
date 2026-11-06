@@ -50,6 +50,7 @@ CREATE TABLE public.oauth_states (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
   state_hash text NOT NULL UNIQUE,
+  provider text NOT NULL DEFAULT 'facebook' CHECK(provider IN ('facebook','instagram')),
   expires_at timestamptz NOT NULL,
   used_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()

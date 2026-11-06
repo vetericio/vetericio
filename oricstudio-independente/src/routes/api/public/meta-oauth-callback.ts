@@ -25,11 +25,11 @@ export const Route = createFileRoute("/api/public/meta-oauth-callback")({
         if (!q.state) return back(false, "state_ausente");
 
         const hash = await sha256Hex(q.state);
-        const { data: st } = await supabaseAdmin.from("oauth_states").select("id, user_id, expires_at, used_at").eq("state_hash", hash).maybeSingle();
-        if (!st) return back(false, "state_invalido");
+        const { data: st } = await supabaseAdmin.from("oauth_states").select("id, user_id, expires_at, used_at, provider").eq("state_hash", hash).maybeSingle();
+        if (!st || st.provider!=="facebook") return back(false, "state_invalido");
         if (st.used_at) return back(false, "state_ja_usado");
         if (new Date(st.expires_at).getTime() < Date.now()) return back(false, "state_expirado");
-        const { data: marked } = await supabaseAdmin.from("oauth_states").update({ used_at: new Date().toISOString() }).eq("id", st.id).is("used_at", null).select("id");
+        const { data: marked } = await supabaseAdmin.from("oauth_states").update({ used_at: new Date().toISOString() }).eq("id", st.id).is("used_at", null).gt("expires_at",new Date().toISOString()).select("id");
         if (!marked?.length) return back(false, "state_ja_usado");
 
         const who = { user_id: st.user_id };
