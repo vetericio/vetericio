@@ -10,6 +10,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
+import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio} from "@/lib/oricstudio-operacao.functions";
 import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
@@ -91,6 +92,8 @@ function OricStudio() {
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
+  const [operacao,setOperacao]=useState<Record<string,any[]>>({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});
+  const [erroOperacao,setErroOperacao]=useState("");
   const [metaConfigurada, setMetaConfigurada] = useState(false);
   const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
@@ -120,7 +123,8 @@ function OricStudio() {
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setMetaDiagnostico(null); setPedidoAberto(null); setAssinatura(null); setComercial(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]);
+    setOperacao({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});setErroOperacao(""); setMetaErro(""); setMetaDiagnostico(null); setPedidoAberto(null); setAssinatura(null); setComercial(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
@@ -209,6 +213,12 @@ function OricStudio() {
             setMetaConfigurada(configuration.configurada);
              setInstagramDiretoConfigurado(instagramDireto.configurada);
             setMetaDiagnostico(configuration.diagnostico ?? null);
+          }
+          try {
+            const result=await consultarOperacaoOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}});
+            if(seq===requisicao.current)setOperacao(result);
+          }catch(error){
+            if(seq===requisicao.current)setErroOperacao(error instanceof Error?error.message:"Não foi possível carregar a operação.");
           }
         } catch(e) {
           if(seq===requisicao.current) setMetaErro(e instanceof Error?e.message:"Erro ao consultar a Meta.");
