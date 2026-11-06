@@ -63,15 +63,20 @@ export async function finalizeInstagramDirect(admin: Admin, userId: string, code
   const cfg = instagramDirectConfig();
   if (cfg.missing.length) throw new Error("Integração direta do Instagram não configurada.");
   if (!code || code.length > 4096) throw new Error("Código OAuth inválido.");
-  const short = await fetchJson("https://api.instagram.com/oauth/access_token", {
+  const shortResponse = await fetchJson("https://api.instagram.com/oauth/access_token", {
     method: "POST",
     body: new URLSearchParams({
       client_id: cfg.appId, client_secret: cfg.appSecret,
       grant_type: "authorization_code", redirect_uri: cfg.redirectUri, code,
     }),
   });
-  if (typeof short.access_token !== "string" || !short.access_token) {
-    throw new Error("A Meta não forneceu o token de acesso.");
+  // Respostas Meta podem ser planas ou encapsuladas em data[0].
+  // Rejeitar listas ambiguas: nunca escolher conta aleatoria.
+  const short = typeof shortResponse.access_token === "string" ? shortResponse
+    : Array.isArray(shortResponse.data) && shortResponse.data.length===1
+      ? shortResponse.data[0] : null;
+  if (typeof short?.access_token !== "string" || !short.access_token) {
+    throw new Error("A Meta não forneceu um token de acesso único.");
   }
   const long = await graphInstagram("/access_token", {
     grant_type: "ig_exchange_token",
