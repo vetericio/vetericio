@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/public/meta-oauth-callback")({
         if (!q.state) return back(false, "state_ausente");
 
         const hash = await sha256Hex(q.state);
-        const { data: st } = await supabaseAdmin.from("oauth_states").select("id, user_id, expires_at, used_at, provider").eq("state_hash", hash).maybeSingle();
+        const { data: st } = await supabaseAdmin.from("oauth_states").select("id, user_id, expires_at, used_at, provider, clinica_id").eq("state_hash", hash).maybeSingle();
         if (!st || st.provider!=="facebook") return back(false, "state_invalido");
         if (st.used_at) return back(false, "state_ja_usado");
         if (new Date(st.expires_at).getTime() < Date.now()) return back(false, "state_expirado");
@@ -34,13 +34,14 @@ export const Route = createFileRoute("/api/public/meta-oauth-callback")({
 
         const who = { user_id: st.user_id };
         if (q.error || q.error_reason) {
-          await audit(supabaseAdmin, { ...who, acao: "conectar_meta", resultado: "erro", detalhes: { error: q.error, error_reason: q.error_reason } });
+          await audit(tenantAdmin, { ...who, acao: "conectar_meta", resultado: "erro", detalhes: { error: q.error, error_reason: q.error_reason } });
           return back(false, q.error_reason || q.error || "erro_meta");
         }
         if (!q.code) return back(false, "code_ausente");
-        const {data:adminRole}=await supabaseAdmin.from("user_roles")
-          .select("role").eq("user_id",st.user_id).eq("role","admin").maybeSingle();
-        if(!adminRole)return back(false,"permissao_revogada");
+        const {assertTenantStillActive,tenantScopedAdmin}=await import("@/lib/server/tenant-admin.server");
+        try { await assertTenantStillActive(supabaseAdmin,st.clinica_id,st.user_id); }
+        catch { return back(false,"permissao_revogada"); }
+        const tenantAdmin=tenantScopedAdmin(supabaseAdmin,st.clinica_id);
         if (cfg.missing.length) return back(false, "configuracao_incompleta");
 
         try {
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/api/public/meta-oauth-callback")({
           const declined = perms.data.filter((p) => p.status !== "granted").map((p) => p.permission);
           const expira = long.expires_in ? new Date(Date.now() + long.expires_in * 1000).toISOString() : null;
 
-          const { data: conn, error: connErr } = await supabaseAdmin.from("meta_connections").upsert({
+          const { data: conn, error: connErr } = await tenantAdmin.from("meta_connections").upsert({
             meta_user_id: me.id, meta_user_name: me.name ?? null, connected_by: st.user_id, status: "ativa",
             escopos_concedidos: granted, escopos_recusados: declined, expira_em: expira,
             ultima_verificacao: new Date().toISOString(), ultimo_erro: null,

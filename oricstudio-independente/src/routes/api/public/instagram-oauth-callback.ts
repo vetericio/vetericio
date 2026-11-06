@@ -25,7 +25,7 @@ export const Route=createFileRoute("/api/public/instagram-oauth-callback")({
     if(!q.state)return back(false,"state_ausente");
     const hash=await sha256Hex(q.state);
     const {data:flow,error:flowError}=await supabaseAdmin.from("oauth_states")
-      .select("id,user_id,expires_at,used_at,provider").eq("state_hash",hash).maybeSingle();
+      .select("id,user_id,expires_at,used_at,provider,clinica_id").eq("state_hash",hash).maybeSingle();
     if(flowError||!flow||flow.provider!=="instagram")return back(false,"state_invalido");
     if(flow.used_at)return back(false,"state_ja_usado");
     if(Date.parse(flow.expires_at)<=Date.now())return back(false,"state_expirado");
@@ -36,20 +36,21 @@ export const Route=createFileRoute("/api/public/instagram-oauth-callback")({
     if(q.error||q.error_reason)return back(false,"access_denied");
     if(!q.code)return back(false,"code_ausente");
     // A autorizacao inicial nao basta se o papel do usuario for revogado durante o login.
-    const {data:adminRole}=await supabaseAdmin.from("user_roles")
-      .select("role").eq("user_id",flow.user_id).eq("role","admin").maybeSingle();
-    if(!adminRole)return back(false,"permissao_revogada");
+    const {assertTenantStillActive,tenantScopedAdmin}=await import("@/lib/server/tenant-admin.server");
+    try { await assertTenantStillActive(supabaseAdmin,flow.clinica_id,flow.user_id); }
+    catch { return back(false,"permissao_revogada"); }
+    const tenantAdmin=tenantScopedAdmin(supabaseAdmin,flow.clinica_id);
     if(cfg.missing.length)return back(false,"configuracao_incompleta");
     try {
-      const result=await finalizeInstagramDirect(supabaseAdmin,flow.user_id,q.code);
-      await supabaseAdmin.from("audit_log").insert({
+      const result=await finalizeInstagramDirect(tenantAdmin,flow.user_id,q.code);
+      await tenantAdmin.from("audit_log").insert({
         user_id:flow.user_id,acao:"oauth_instagram_direto",resultado:"sucesso",
         detalhes:{username:result.username},
       });
       return back(true);
     }catch{
       // Nao expor authorization code, tokens, App Secret ou mensagens Meta na URL.
-      await supabaseAdmin.from("audit_log").insert({
+      await tenantAdmin.from("audit_log").insert({
         user_id:flow.user_id,acao:"oauth_instagram_direto",resultado:"erro",
         detalhes:{motivo:"falha_conexao_ou_persistencia"},
       });
