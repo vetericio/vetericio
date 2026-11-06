@@ -92,6 +92,9 @@ function OricStudio() {
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
   const [metaConfigurada, setMetaConfigurada] = useState(false);
+  const [metaDiagnostico, setMetaDiagnostico] = useState<{
+    instagramAppId:string; callback:string; formatoIdValido:boolean;
+  } | null>(null);
   const [metaCarregando, setMetaCarregando] = useState(false);
   const [metaOcupada, setMetaOcupada] = useState(false);
   const [metaErro, setMetaErro] = useState("");
@@ -115,7 +118,7 @@ function OricStudio() {
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setPedidoAberto(null); setAssinatura(null); setComercial(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setMetaDiagnostico(null); setPedidoAberto(null); setAssinatura(null); setComercial(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
@@ -201,6 +204,7 @@ function OricStudio() {
           if(seq===requisicao.current) {
             setContasMeta(accounts as ContaMeta[]);
             setMetaConfigurada(configuration.configurada);
+            setMetaDiagnostico(configuration.diagnostico ?? null);
           }
         } catch(e) {
           if(seq===requisicao.current) setMetaErro(e instanceof Error?e.message:"Erro ao consultar a Meta.");
@@ -775,6 +779,30 @@ function OricStudio() {
         {!contexto.pode_editar && <p className="rounded-xl border p-4 text-sm">A conexão é administrada pelo responsável, RT ou administrador da clínica.</p>}
         {contexto.pode_editar && !metaConfigurada && !metaCarregando &&
           <p className="rounded-xl border bg-card p-4 text-sm">A integração Meta do OricStúdio está aguardando configuração central. Nenhuma clínica precisa fornecer sua senha ao ORICSE.</p>}
+        {modoPlataforma && metaDiagnostico &&
+          <details className="rounded-xl border bg-card p-4 text-sm">
+            <summary className="cursor-pointer font-semibold">Diagnóstico da conexão Instagram (Administração ORICSE)</summary>
+            <p className="mt-3 text-muted-foreground">
+              A configuração no servidor não garante que o aplicativo tenha o produto
+              <strong> Instagram API with Instagram Login</strong> habilitado na Meta.
+              Se aparecer “Solicitação inválida”, confira estes dados no painel Meta for Developers.
+            </p>
+            <dl className="mt-3 space-y-2">
+              <div><dt className="font-semibold">Instagram App ID utilizado</dt>
+                <dd className="break-all font-mono">{metaDiagnostico.instagramAppId || "Não configurado"}</dd></div>
+              <div><dt className="font-semibold">Redirect URI para cadastrar exatamente na Meta</dt>
+                <dd className="break-all font-mono">{metaDiagnostico.callback}</dd></div>
+              <div><dt className="font-semibold">Formato do Instagram App ID</dt>
+                <dd>{metaDiagnostico.formatoIdValido ? "Numérico válido (produto e permissões ainda dependem da Meta)" : "Inválido: configure o ID específico do Instagram Login no Cloudflare"}</dd></div>
+            </dl>
+            <p className="mt-3 text-muted-foreground">
+              Meta for Developers → Seu aplicativo → Instagram → API setup with Instagram Login.
+              Use o Instagram App ID e o Instagram App Secret dessa seção;
+              não utilize o App ID geral do Facebook. Confira o Redirect URI sem alterar barras ou domínio.
+            </p>
+            <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer"
+              className="mt-2 inline-block font-semibold text-primary underline">Abrir Meta for Developers</a>
+          </details>}
         {metaErro && <p role="alert" className="rounded-xl border border-destructive/60 p-4 text-sm text-destructive">{metaErro}</p>}
         {metaCarregando && <p className="text-sm text-muted-foreground">Verificando conexões Meta...</p>}
         {contexto.pode_editar && contasMeta.length===0 && !metaCarregando &&

@@ -22,18 +22,22 @@ const SCOPES = [
 ].join(",");
 
 export function metaConfig() {
-  const clientId = process.env["ORICSTUDIO_META_CLIENT_ID"] || "";
-  const clientSecret = process.env["ORICSTUDIO_META_CLIENT_SECRET"] || "";
-  const redirectUri = process.env["ORICSTUDIO_META_REDIRECT_URI"] ||
-    "https://oricse.vetericio.workers.dev/api/oricstudio/meta/callback";
+  const clientId = (process.env["ORICSTUDIO_META_CLIENT_ID"] || "").trim();
+  const clientSecret = (process.env["ORICSTUDIO_META_CLIENT_SECRET"] || "").trim();
+  const redirectUri = (process.env["ORICSTUDIO_META_REDIRECT_URI"] ||
+    "https://oricse.vetericio.workers.dev/api/oricstudio/meta/callback").trim();
   const encryptionKey = process.env["ORICSTUDIO_META_ENCRYPTION_KEY"] || "";
   const u = new URL(redirectUri);
   if (u.protocol !== "https:" || u.pathname !== "/api/oricstudio/meta/callback" || u.search || u.hash) {
     throw new Error("Redirect URI do OricStúdio inválido.");
   }
   const keyBytes = Buffer.from(encryptionKey, "base64");
-  const configured = Boolean(clientId && clientSecret && keyBytes.length === 32);
-  return {clientId,clientSecret,redirectUri,encryptionKey,configured};
+  // Instagram App ID (Instagram > API setup with Instagram Login) é numérico.
+  // Um ID do produto Facebook/Meta também pode ser numérico: só a Meta valida
+  // se o app correto está associado a este login e a esta redirect URI.
+  const clientIdFormatoValido = /^\d{8,30}$/.test(clientId);
+  const configured = Boolean(clientIdFormatoValido && clientSecret && keyBytes.length === 32);
+  return {clientId,clientSecret,redirectUri,encryptionKey,configured,clientIdFormatoValido};
 }
 
 function sha256(data: string) {return createHash("sha256").update(data).digest("hex");}
@@ -181,7 +185,7 @@ export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: s
     if (ativa?.clinica_id!==clinicaId) throw new Error("Selecione esta clínica antes de conectar o Instagram.");
   }
   const cfg=metaConfig();
-  if(!cfg.configured)throw new Error("Integração Meta pendente de configuração pela Administração Geral.");
+  if(!cfg.configured)throw new Error("O OricStúdio precisa de Instagram App ID, App Secret e chave de criptografia configurados. Use as credenciais do produto Instagram Login, não o App ID geral da Meta.");
   const state=randomBytes(32).toString("base64url");
   const {error}=await db.from("oricstudio_meta_oauth_states").insert({
     state_hash:sha256(state),clinica_id:idNoBanco(clinicaId),iniciado_por:userId,
@@ -193,6 +197,10 @@ export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: s
   url.searchParams.set("redirect_uri",cfg.redirectUri);
   url.searchParams.set("response_type","code");
   url.searchParams.set("scope",SCOPES);
+  // O Instagram Login é distinto do Facebook Login: sem esta opção a Meta
+  // pode levar o usuário à tela de autenticação incompatível com estes escopos.
+  url.searchParams.set("enable_fb_login","0");
+  url.searchParams.set("force_authentication","1");
   url.searchParams.set("state",state);
   return url.toString();
 }
