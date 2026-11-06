@@ -342,7 +342,7 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
         atualizado_por:auth.user.id,atualizado_em:new Date().toISOString(),
       },{onConflict:sistema?"id":"clinica_id"});
       if(error)throw error;
-      toast.success("Preferências da clínica salvas.");
+      toast.success(sistema?"Preferências oficiais do ORICSE salvas.":"Preferências da clínica salvas.");
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setSalvando(false);}
   }
@@ -469,7 +469,7 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
 
   async function desconectarThreads(conta:ContaThreads){
     if(!contexto?.pode_editar||metaOcupada||
-      !window.confirm(`Desconectar @${conta.username} do Threads nesta clínica?`))return;
+      !window.confirm(`Desconectar @${conta.username} do Threads ${sistema?"do ORICSE":"desta clínica"}?`))return;
     setMetaOcupada(true);
     try{
       const {data:auth}=await supabase.auth.getSession();
@@ -527,7 +527,7 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
 
   async function desconectarMeta(conta: ContaMeta) {
     if (!contexto?.pode_editar || metaOcupada ||
-        !window.confirm(`Desconectar @${conta.username} desta clínica? O histórico editorial permanecerá intacto.`)) return;
+        !window.confirm(`Desconectar @${conta.username} ${sistema?"do ORICSE":"desta clínica"}? O histórico editorial permanecerá intacto.`)) return;
     setMetaOcupada(true);
     try {
       const {data:auth}=await supabase.auth.getSession();
@@ -641,7 +641,7 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
     </header>
     {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">Carregando o OricStúdio...</p>}
     {!carregando && erro && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/60 bg-card p-5 text-sm text-destructive"><AlertCircle className="h-5 w-5 shrink-0"/>{erro}</div>}
-    {!carregando && !erro && !contexto && <div className="rounded-xl border bg-card p-6"><p className="font-semibold">Nenhuma clínica selecionada</p><p className="mt-2 text-sm text-muted-foreground">Entre em uma clínica autorizada no ORICSE para consultar o OricStúdio.</p></div>}
+    {!carregando && !erro && !contexto && <div className="rounded-xl border bg-card p-6"><p className="font-semibold">{sistema?"Acesso exclusivo da Administração Geral":"Nenhuma clínica selecionada"}</p><p className="mt-2 text-sm text-muted-foreground">{sistema?"Entre como administrador do ORICSE para acessar este espaço.":"Entre em uma clínica autorizada no ORICSE para consultar o OricStúdio."}</p></div>}
     {!carregando && !erro && contexto && !contexto.tem_acesso && <section className="rounded-2xl border bg-card p-6 sm:p-8">
       <div className="flex items-center gap-2 text-primary"><LockKeyhole className="h-6 w-6"/><span className="font-semibold">Produto adicional</span></div>
       <h2 className="mt-3 text-2xl font-bold">OricStúdio para {contexto.clinica_nome}</h2>
@@ -788,7 +788,7 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
       </section>}
       {aba==="biblioteca" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados da clínica no Google Drive do ORICSE.</p></div>
+          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">{sistema?"Arquivos exclusivos da plataforma no Google Drive oficial do ORICSE.":"Arquivos privados da clínica no Google Drive do ORICSE."}</p></div>
           {contexto.pode_editar && <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
             <Plus className="h-4 w-4"/>{enviandoMidia?"Enviando...":"Adicionar mídia"}
             <input type="file" className="sr-only" disabled={enviandoMidia}
@@ -800,7 +800,7 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
         {midias.length===0
           ? <div className="rounded-xl border bg-card p-7"><FolderOpen className="h-9 w-9 text-muted-foreground"/>
               <h3 className="mt-3 font-semibold">Sua biblioteca está vazia</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo da clínica.</p></div>
+              <p className="mt-2 text-sm text-muted-foreground">{sistema?"Adicione imagens e vídeos para organizar o conteúdo oficial do ORICSE.":"Adicione imagens e vídeos para organizar o conteúdo da clínica."}</p></div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {midias.map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
                 <div className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-secondary/40">
@@ -819,12 +819,12 @@ export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"})
               </article>)}
             </div>}
       </section>}
-      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz da clínica</h2>
+      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz {sistema?"do ORICSE":"da clínica"}</h2>
         <label className="block space-y-1 text-sm font-semibold">Nome público<input value={preferencias.nome_publico} onChange={e=>setPreferencias({...preferencias,nome_publico:e.target.value})} maxLength={150} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Tom de voz<textarea rows={3} maxLength={600} value={preferencias.tom_de_voz} onChange={e=>setPreferencias({...preferencias,tom_de_voz:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Hashtags padrão<textarea rows={2} maxLength={1000} value={preferencias.hashtags_padrao} onChange={e=>setPreferencias({...preferencias,hashtags_padrao:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <p className="text-xs text-muted-foreground">Fuso horário de referência: {preferencias.fuso_horario}. Nenhuma alteração na marca institucional ORICSE.</p>
-        {contexto.pode_editar ? <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button> : <p className="text-sm text-muted-foreground">Somente responsáveis, administradores da clínica e RTs podem editar estas preferências.</p>}
+        {contexto.pode_editar ? <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button> : <p className="text-sm text-muted-foreground">{sistema?"Somente administradores do ORICSE podem editar estas preferências.":"Somente responsáveis, administradores da clínica e RTs podem editar estas preferências."}</p>}
       </form>}
       {aba==="contas" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
