@@ -23,6 +23,8 @@ async function hasAnyUser() {
 }
 
 export const getSetupStatus = createServerFn({ method: "GET" }).handler(async () => {
+  // Nao liberar bootstrap global de administradores para uma instalacao multi-clinica.
+  if (process.env["ORICSTUDIO_SETUP_PERMITIDO"] !== "true") return { disponivel:false };
   return { disponivel: !(await hasAnyUser()) };
 });
 
@@ -34,6 +36,8 @@ const setupSchema = z.object({
 export const runInitialSetup = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => setupSchema.parse(input))
   .handler(async ({ data }) => {
+    if (process.env["ORICSTUDIO_SETUP_PERMITIDO"] !== "true")
+      throw new Error("O cadastro inicial está bloqueado até a homologação do acesso por clínica.");
     if (await hasAnyUser()) throw new Error("A configuração inicial já foi concluída.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
