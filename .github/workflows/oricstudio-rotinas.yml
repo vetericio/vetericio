@@ -1,0 +1,58 @@
+name: OricStudio — agendamento e coleta protegidos
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oricstudio-operacoes
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Executar fila de publicações com autenticação
+        env:
+          CRON_SECRET: ${{ secrets.ORICSTUDIO_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CRON_SECRET" ]; then
+            echo "OricStudio: agendador não configurado; nenhuma publicação será executada."
+            exit 0
+          fi
+          if [[ ! "$CRON_SECRET" =~ ^[A-Za-z0-9_-]{32,256}$ ]]; then
+            echo "::error::Segredo ORICSTUDIO_CRON_SECRET inválido."
+            exit 1
+          fi
+          curl --fail-with-body --retry 1 --retry-delay 5 --max-time 110 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" \
+            "https://oricse.vetericio.workers.dev/api/oricstudio/jobs/publicar"
+
+  coletar:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Executar coleta de métricas e comentários com autenticação
+        env:
+          CRON_SECRET: ${{ secrets.ORICSTUDIO_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CRON_SECRET" ]; then
+            echo "OricStudio: coleta não configurada; nenhuma coleta externa será executada."
+            exit 0
+          fi
+          if [[ ! "$CRON_SECRET" =~ ^[A-Za-z0-9_-]{32,256}$ ]]; then
+            echo "::error::Segredo ORICSTUDIO_CRON_SECRET inválido."
+            exit 1
+          fi
+          curl --fail-with-body --retry 1 --retry-delay 5 --max-time 110 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" \
+            "https://oricse.vetericio.workers.dev/api/oricstudio/jobs/coletar"
