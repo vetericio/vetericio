@@ -80,51 +80,30 @@ async function metaRefreshToken(token:string) {
 export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clinicaId:string,contaId:string) {
   const {userId}=await requireMetaEditor(db,accessToken,clinicaId,true);
   const {data:account,error:accountErr}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas")
-    .select("id,username,status,token_expira_em,conectado_em")
-    .eq("id",contaId),clinicaId).maybeSingle();
-  if(accountErr||!account || account.status==="desconectada")
+    .select("id,instagram_user_id,status").eq("id",contaId),clinicaId).maybeSingle();
+  if(accountErr||!account||account.status==="desconectada")
     throw new Error("Conta não encontrada nesta clínica.");
   const {data:secret,error:secretErr}=await db.from("oricstudio_meta_tokens")
     .select("token_cifrado_base64,iv_base64").eq("conta_id",contaId).maybeSingle();
   if(secretErr||!secret)throw new Error("Conta sem credencial Meta ativa.");
-  let plain="";
   try {
-    plain=await decryptMetaToken(secret.token_cifrado_base64,secret.iv_base64);
-    const url=new URL("https://graph.instagram.com/me");
-    url.searchParams.set("fields","user_id,username,account_type");
-    url.searchParams.set("access_token",plain);
-    const profile=await graphGet(url);
-    if(!profile.user_id || !profile.username)
-      throw new Error("A conta profissional não foi confirmada pela Meta.");
-    // Evita renovar tokens recém-emitidos: exige ao menos 24 horas desde a conexão/renovação.
-    const {data:stored}=await db.from("oricstudio_meta_tokens")
-      .select("atualizado_em").eq("conta_id",contaId).maybeSingle();
-    const age=Date.now()-Date.parse(stored?.atualizado_em||account.conectado_em);
-    const expiryMs=account.token_expira_em?Date.parse(account.token_expira_em)-Date.now():Infinity;
-    let renew: {token:string;expiresAt:string}|null=null;
-    if(age >= 24*3600_000 && expiryMs <= 30*24*3600_000) {
-      renew=await metaRefreshToken(plain);
-      const secured=await encryptMetaToken(renew.token);
-      const {error:saveErr}=await db.from("oricstudio_meta_tokens").update({
-        ...secured,token_expira_em:renew.expiresAt,atualizado_em:new Date().toISOString(),
-      }).eq("conta_id",contaId);
-      if(saveErr)throw new Error("Falha ao salvar renovação da conexão.");
-    }
+    const token=await decryptMetaToken(secret.token_cifrado_base64,secret.iv_base64);
+    const profileUrl=new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(account.instagram_user_id)}`);
+    profileUrl.searchParams.set("fields","id,username,account_type");
+    profileUrl.searchParams.set("access_token",token);
+    const profile=await graphGet(profileUrl);
+    if(!profile.id||!profile.username)throw new Error("Conta profissional não confirmada.");
     const {error:updateErr}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas").update({
-      username:String(profile.username),
-      account_type:profile.account_type?String(profile.account_type):null,
-      status:"ativa",ultimo_erro:null,
-      ...(renew?{token_expira_em:renew.expiresAt}:{}),
-      atualizado_em:new Date().toISOString(),
+      username:String(profile.username),account_type:profile.account_type?String(profile.account_type):null,
+      status:"ativa",ultimo_erro:null,atualizado_em:new Date().toISOString(),
     }),clinicaId).eq("id",contaId);
     if(updateErr)throw new Error("Falha ao atualizar estado da conta.");
     await db.from("oricstudio_meta_auditoria").insert({
       clinica_id:idNoBanco(clinicaId),conta_id:contaId,usuario_id:userId,
-      acao:renew?"renovar":"verificar",detalhes:{resultado:"sucesso"},
+      acao:"verificar",detalhes:{resultado:"sucesso",modo:"login_unificado"},
     });
-    return {ok:true,renovada:Boolean(renew),username:String(profile.username)};
-  } catch(e) {
-    // Não revelar token, URLs ou detalhes internos em histórico de auditoria.
+    return {ok:true,renovada:false,username:String(profile.username)};
+  } catch {
     await filtrarPorAmbiente(db.from("oricstudio_meta_contas").update({
       status:"reautenticar",ultimo_erro:"Falha na validação da credencial Meta",
       atualizado_em:new Date().toISOString(),
