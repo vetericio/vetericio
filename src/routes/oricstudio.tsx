@@ -202,6 +202,7 @@ function OricStudio() {
           const [accounts,configuration,instagramDireto]=await Promise.all([
             listarContasMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
             statusIntegracaoMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+            statusInstagramDiretoOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
           ]);
           if(seq===requisicao.current) {
             setContasMeta(accounts as ContaMeta[]);
