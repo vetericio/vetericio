@@ -83,13 +83,22 @@ export const prepararEnvioOricStudio=createServerFn({method:"POST"})
     if(accountError||account?.status!=="ativa")
       throw new Error("Conta não conectada ou pertencente a outra clínica.");
     const {data:files,error:fileError}=await filterTenant(db.from(midiasTable)
-      .select("id,caminho_privado,tipo").in("id",data.midias),data.clinicaId);
+      .select("id,caminho_privado,tipo,nome").in("id",data.midias),data.clinicaId);
     if(fileError || files?.length!==data.midias.length)
       throw new Error("Uma ou mais mídias não pertencem à clínica.");
     // Biblioteca permanece privada. Ao publicar, o servidor gera um ticket HMAC
     // temporário para a Meta buscar os bytes, sem tornar o Drive público.
     if(new Set(data.midias).size!==data.midias.length)
       throw new Error("Não repita uma mídia no mesmo agendamento.");
+    // Metadados da biblioteca incluem PNG/WebP para planejamento, mas a Meta
+    // só pode receber formatos suportados no gateway de mídia temporário.
+    for(const file of files) {
+      const name=String(file.nome||"").toLowerCase();
+      if(file.tipo==="imagem" && !/\.(jpg|jpeg)$/.test(name))
+        throw new Error("Para publicar imagens, use JPEG (.jpg). Converta PNG ou WebP antes de agendar.");
+      if(file.tipo==="video" && !/\.(mp4|mov)$/.test(name))
+        throw new Error("Para publicar vídeos, use MP4 ou MOV.");
+    }
     if(post.tipo==="carrossel" && (files.length<2 || files.length>10))
       throw new Error("Carrossel requer entre 2 e 10 mídias.");
     if(post.tipo!=="carrossel" && files.length!==1)
