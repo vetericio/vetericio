@@ -448,8 +448,11 @@ function OricStudio() {
       const result=await iniciarConexaoMetaOricStudio({data:{
         accessToken:token,clinicaId:contexto.clinica_id,
       }});
-      if(!result.url.startsWith("https://www.instagram.com/oauth/authorize?"))throw new Error("Endereço de autorização inválido.");
-      window.location.assign(result.url);
+      const authorizeUrl=new URL(result.url);
+      // Unified Login usa o diálogo OAuth da Meta/Facebook; o fluxo legado usava instagram.com.
+      if(authorizeUrl.protocol!=="https:" || authorizeUrl.hostname!=="www.facebook.com" ||
+        authorizeUrl.pathname!=="/dialog/oauth") throw new Error("Endereço de autorização inválido.");
+      window.location.assign(authorizeUrl.toString());
     } catch(e) {
       toast.error(e instanceof Error?e.message:"Falha ao iniciar conexão.");
       setMetaOcupada(false);
