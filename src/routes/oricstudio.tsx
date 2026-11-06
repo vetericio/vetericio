@@ -451,6 +451,33 @@ function OricStudio() {
     finally{setCancelandoAssinatura(false);}
   }
 
+  async function resolverAlerta(id:string) {
+    if(!contexto?.pode_editar)return;
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      await resolverAlertaOricStudio({data:{accessToken:auth.session.access_token,
+        clinicaId:contexto.clinica_id,alertaId:id}});
+      toast.success("Alerta resolvido.");await carregar();setAba("alertas");
+    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível resolver o alerta.");}
+  }
+
+  async function alterarRegra(regra:any,ativo:boolean) {
+    if(!contexto?.pode_editar)return;
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      await salvarRegraOricStudio({data:{
+        accessToken:auth.session.access_token,clinicaId:contexto.clinica_id,
+        contaId:regra.conta_id,modo:regra.modo,maxPorDia:regra.max_por_dia,
+        maxPorSemana:regra.max_por_semana,ativa:ativo,
+        precisaAprovacao:regra.precisa_aprovacao,
+      }});
+      toast.success(ativo?"Regra ativada.":"Regra suspensa.");
+      await carregar();setAba("configuracoes");
+    }catch(error){toast.error(error instanceof Error?error.message:"Falha ao alterar a regra.");}
+  }
+
   async function conectarInstagramDireto() {
     if(!contexto?.pode_editar||metaOcupada)return;
     setMetaOcupada(true);
@@ -874,14 +901,66 @@ function OricStudio() {
         </article>)}
         <p className="text-xs text-muted-foreground">A conexão não autoriza publicações automáticas por si só. A fila de publicação e as permissões aprovadas pela Meta serão validadas separadamente.</p>
       </section>}
-      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
+      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="space-y-3">
         <h2 className="text-xl font-bold">{ABAS.find(a=>a.id===aba)?.rotulo}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {aba==="comentarios"?"Comentários e respostas serão sincronizados após a conexão Meta, respeitando as permissões concedidas.":
-           aba==="metricas"?"Métricas reais de alcance e interações serão apresentadas após a conexão das contas. Nenhum número será simulado.":
-           "Não há alertas de publicação porque a integração com Instagram ainda não está ativa. Erros de conexão e envio serão acompanhados na etapa 3/5."}
-        </p>
+        {erroOperacao&&<p role="alert" className="rounded-xl border border-destructive/50 p-3 text-sm text-destructive">{erroOperacao}</p>}
+        {aba==="comentarios" && <>
+          {(operacao.comentarios||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhum comentário sincronizado nesta clínica. As respostas reais dependem da conexão Meta autorizada.</p>
+            :(operacao.comentarios||[]).map(c=><article key={c.id} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>@{c.autor||"Usuário"} · {textoData(c.publicado_em)}</span>
+                <span>{c.respondido?"Respondido":c.requer_humano?"Precisa de revisão":"Pendente"}</span>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{c.texto}</p>
+              {c.resposta_sugerida&&<p className="mt-3 rounded-lg bg-secondary p-3 text-xs">Sugestão (não enviada): {c.resposta_sugerida}</p>}
+            </article>)}
+        </>}
+        {aba==="metricas" && <>
+          {(operacao.insights||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sem métricas coletadas nesta clínica. Nenhum número será inventado.</p>
+            :(operacao.insights||[]).map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
+              <p className="text-sm font-semibold">{m.tipo} · {new Date(m.referencia+"T12:00:00").toLocaleDateString("pt-BR")}</p>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(m.dados||{}).filter(([,v])=>typeof v==="string"||typeof v==="number")
+                  .slice(0,12).map(([k,v])=><div key={k} className="rounded-lg bg-secondary/50 p-3">
+                    <dt className="text-xs text-muted-foreground">{k.replaceAll("_"," ")}</dt>
+                    <dd className="font-semibold">{String(v)}</dd>
+                  </div>)}
+              </dl>
+            </article>)}
+        </>}
+        {aba==="alertas" && <>
+          {(operacao.alertas||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhum alerta registrado para esta clínica.</p>
+            :(operacao.alertas||[]).map(a=><article key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border bg-card p-4">
+              <div><p className="text-sm font-semibold">{a.tipo} · {textoData(a.criado_em)}</p>
+                <p className="mt-1 text-sm">{a.mensagem}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{a.resolvido?"Resolvido":"Pendente"}</p></div>
+              {contexto.pode_editar&&!a.resolvido&&
+                <button type="button" onClick={()=>void resolverAlerta(a.id)} className="rounded-lg border px-3 py-2 text-xs">Resolver alerta</button>}
+            </article>)}
+        </>}
       </section>}
+      {aba==="configuracoes" && (operacao.regras||[]).length>0 &&
+        <section className="space-y-3 rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Regras e autonomia das contas</h2>
+          {(operacao.regras||[]).map(r=><article key={r.id} className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+            <div><p className="text-sm font-semibold">{r.modo.replaceAll("_"," ")}</p>
+              <p className="text-xs text-muted-foreground">Até {r.max_por_dia}/dia e {r.max_por_semana}/semana · {r.precisa_aprovacao?"Aprovação humana":"Automação permitida"}</p></div>
+            <button type="button" disabled={!contexto.pode_editar} onClick={()=>void alterarRegra(r,!r.ativa)}
+              className="rounded-lg border px-3 py-2 text-xs">{r.ativa?"Suspender":"Ativar"}</button>
+          </article>)}
+        </section>}
+      {aba==="publicacoes" && (operacao.envios||[]).length>0 &&
+        <section className="space-y-3 rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Fila de publicação</h2>
+          {(operacao.envios||[]).map(e=><div key={e.id} className="flex flex-wrap justify-between gap-3 border-t pt-3 text-sm">
+            <span>{textoData(e.planejado_para)} · {e.formato} · <strong>{e.status}</strong></span>
+            <span>{e.tentativas} tentativa(s)</span>
+            {e.erro_resumido&&<p className="w-full text-xs text-destructive">{e.erro_resumido}</p>}
+          </div>)}
+        </section>}
         </div>
       </div>
     </>}
