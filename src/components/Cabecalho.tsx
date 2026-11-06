@@ -86,9 +86,10 @@ export function Cabecalho({
               className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[165px] sm:max-w-[200px]" : "max-w-[120px] sm:max-w-[145px]"}`}
             />
           ) : (
-            <p className="text-sm font-bold text-foreground sm:text-base">
-              {nomeClinica || "Clínica"}
-            </p>
+            <Link to="/" className="inline-flex items-center gap-2.5 text-foreground" aria-label="Oricse, ir para o início">
+              <img src="/oricse-logo-oryx.svg?v=15" alt="" className="h-7 w-7 object-contain sm:h-8 sm:w-8" />
+              <span className="text-base font-black tracking-tight sm:text-lg">Oricse</span>
+            </Link>
           )}
         </div>
 
