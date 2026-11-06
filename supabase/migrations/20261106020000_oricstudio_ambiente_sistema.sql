@@ -75,10 +75,7 @@ create table if not exists public.oricstudio_sistema_midias (
   criado_em timestamptz not null default now()
 );
 
--- O sistema tem sua própria biblioteca em bucket privado, sem identificar clínicas.
-insert into storage.buckets (id,name,public)
-values ('oricstudio-sistema','oricstudio-sistema',false)
-on conflict(id) do nothing;
+-- A biblioteca oficial usa Google Drive privado, sem utilizar bucket Supabase.
 
 alter table public.oricstudio_sistema_publicacoes enable row level security;
 alter table public.oricstudio_sistema_versoes enable row level security;
@@ -124,4 +121,4 @@ for select to authenticated using(clinica_id is null and public.oricstudio_eh_ad
 comment on table public.oricstudio_sistema_publicacoes is
 'Publicações do produto ORICSE, isoladas da base das clínicas e acessíveis somente à Administração Geral.';
 comment on table public.oricstudio_sistema_midias is
-'Biblioteca oficial do ORICSE; arquivos em bucket exclusivo privado sob serviço autenticado.';
+'Biblioteca oficial do ORICSE; arquivos no Google Drive exclusivo do sistema, com acesso autenticado.';
