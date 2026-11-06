@@ -14,6 +14,25 @@ export const listarContasMetaOricStudio=createServerFn({method:"POST"})
     return metaListForClinic(supabaseAdmin,data.accessToken,data.clinicaId);
   });
 
+export const iniciarConexaoInstagramDiretoOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>base.parse(i))
+  .handler(async({data})=>{
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {autorizarInstagramDireto}=await import("@/lib/oricstudio-instagram.server");
+    return {url:await autorizarInstagramDireto(supabaseAdmin,data.accessToken,data.clinicaId)};
+  });
+
+export const statusInstagramDiretoOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>base.parse(i))
+  .handler(async({data})=>{
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {requireMetaEditor}=await import("@/lib/oricstudio-meta.server");
+    await requireMetaEditor(supabaseAdmin,data.accessToken,data.clinicaId,false);
+    const {instagramDiretoConfig}=await import("@/lib/oricstudio-instagram.server");
+    const cfg=instagramDiretoConfig();
+    return {configurada:cfg.configured,callback:cfg.callback};
+  });
+
 export const iniciarConexaoMetaOricStudio=createServerFn({method:"POST"})
   .validator((i:unknown)=>base.parse(i))
   .handler(async({data})=>{
