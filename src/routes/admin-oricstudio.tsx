@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
+import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 
 export const Route = createFileRoute("/admin-oricstudio")({ component: OricStudioAdmin });
 
@@ -50,6 +51,7 @@ function OricStudioAdmin() {
   const [quantidadeSimulador,setQuantidadeSimulador] = useState(1);
   const [erro,setErro] = useState("");
   const [produto,setProduto] = useState<{nome:string;descricao:string;preco_centavos:number|null;preco_conta_adicional_centavos:number|null;comercializacao_ativa:boolean;disponivel_nos_planos:boolean}|null>(null);
+  const quantidadeClinicasAtivas = useQuantidadeClinicasAtivas();
 
   async function carregar() {
     setCarregando(true); setErro("");
@@ -101,7 +103,10 @@ function OricStudioAdmin() {
   useEffect(()=>{void carregar();},[]);
   const porClinica=useMemo(()=>new Map(licencas.map(l=>[l.clinica_id,l])),[licencas]);
   const visiveis=useMemo(()=>clinicas.filter(c=>c.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"))),[clinicas,busca]);
-  const ativos=licencas.filter(l=>l.status==="ativo").length;
+  const clinicasAtivasIds = useMemo(() => new Set(clinicas.map((clinica) => clinica.id)), [clinicas]);
+  const ativos=licencas.filter(l=>l.status==="ativo" && clinicasAtivasIds.has(l.clinica_id)).length;
+  const totalClinicas = quantidadeClinicasAtivas === null ? "—" : quantidadeClinicasAtivas;
+  const semLicencaAtiva = quantidadeClinicasAtivas === null ? "—" : Math.max(0, quantidadeClinicasAtivas - ativos);
   async function mudarStatus(clinica:Clinica,novo:LicencaStatus) {
     const antes=porClinica.get(clinica.id)?.status||"nao_contratado";
     if(antes===novo)return;
@@ -175,11 +180,11 @@ function OricStudioAdmin() {
     {carregando && <p className="text-sm text-muted-foreground">Consultando informações...</p>}
     {!carregando && !erro && <>
       {aba==="visao" && <section className="grid gap-3 sm:grid-cols-3">
-        {[["Clínicas cadastradas",clinicas.length],["Licenças ativas",ativos],["Sem licença ativa",clinicas.length-ativos]].map(([titulo,valor])=><div key={titulo} className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">{titulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div>)}
+        {[["Clínicas cadastradas",totalClinicas],["Licenças ativas",ativos],["Sem licença ativa",semLicencaAtiva]].map(([titulo,valor])=><div key={titulo} className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">{titulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div>)}
         <div className="sm:col-span-3 rounded-xl border bg-card p-5"><h2 className="font-semibold">Etapa 1/5 — Administração Geral</h2><p className="mt-2 text-sm text-muted-foreground">O controle das licenças fica centralizado aqui. Nenhuma clínica obtém acesso automaticamente. A construção do aplicativo para cada clínica é a etapa 2/5.</p></div>
       </section>}
       {aba==="clinicas" && <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Clínicas e acessos ({clinicas.length})</h2><input className="min-w-52 rounded-lg border bg-background p-2 text-sm" placeholder="Buscar clínica" value={busca} onChange={e=>setBusca(e.target.value)} /></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Clínicas e acessos ({totalClinicas})</h2><input className="min-w-52 rounded-lg border bg-background p-2 text-sm" placeholder="Buscar clínica" value={busca} onChange={e=>setBusca(e.target.value)} /></div>
         <div className="overflow-x-auto rounded-xl border"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-muted"><tr><th className="p-3">Clínica</th><th className="p-3">Plano atual</th><th className="p-3">Licença OricStúdio</th><th className="p-3">Contas contratadas</th><th className="p-3">Motivo / situação</th></tr></thead><tbody>{visiveis.map(c=>{const l=porClinica.get(c.id);return <tr key={c.id} className="border-t"><td className="p-3 font-medium">{c.nome}<div className="text-xs text-muted-foreground">{c.status}</div></td><td className="p-3">{c.plano}</td><td className="p-3"><select aria-label={`Licença de ${c.nome}`} disabled={alterando===c.id} className="rounded-lg border bg-background px-2 py-2" value={l?.status||"nao_contratado"} onChange={e=>void mudarStatus(c,e.target.value as LicencaStatus)}>{ESTADOS.map(s=><option key={s} value={s}>{NOMES[s]}</option>)}</select></td><td className="p-3"><input type="number" min={1} max={100} className="w-20 rounded-lg border bg-background p-2" disabled={alterando===c.id || l?.status!=="ativo"} key={`${c.id}:${l?.quantidade_contas_contratadas??1}`} defaultValue={l?.quantidade_contas_contratadas??1} aria-label={`Total de contas contratadas de ${c.nome}`} onBlur={e=>void alterarQuantidade(c,Number(e.target.value))} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur();}}/></td><td className="p-3 text-muted-foreground">{l?.motivo||"Nenhuma contratação registrada"}</td></tr>})}</tbody></table></div>
         <p className="text-xs text-muted-foreground">Todos os registros são carregados com paginação. O filtro de busca não altera licenças nem oculta dados armazenados.</p>
       </section>}
