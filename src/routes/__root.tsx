@@ -633,7 +633,8 @@ function RootComponent() {
     };
   }, []);
 
-  const rotaAdmin = location.pathname.startsWith("/admin");
+  const rotaAdmin = location.pathname.startsWith("/admin") ||
+    (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
   const rotaPublica =
     ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
