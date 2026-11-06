@@ -26,7 +26,7 @@ const ITENS: Item[] = [
   { id: "lixeira", nome: "Lixeira · 360 dias", Icone: Trash2, grupo: "Operação", aba: "lixeira" },
   { id: "clinicas", nome: "Clínicas e equipe", Icone: Building2, grupo: "Operação", aba: "clinicas" },
   { id: "planos", nome: "Planos e cupons", Icone: BadgeDollarSign, grupo: "Operação", aba: "planos" },
-  { id: "pagamentos", nome: "Financeiro, taxas e repasses", Icone: CreditCard, grupo: "Operação", aba: "pagamentos" },
+  { id: "pagamentos", nome: "OricsePay", Icone: CreditCard, grupo: "Operação", aba: "pagamentos" },
   { id: "oricstudio-plataforma", nome: "Meu OricStúdio · ORICSE", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio" },
   { id: "oricstudio", nome: "OricStúdio · Gestão do produto", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
   { id: "conteudo", nome: "Conteúdo público", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
