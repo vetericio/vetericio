@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, CalendarClock, ClipboardList, CreditCard, Instagr
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
+import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 
 export const Route = createFileRoute("/admin-oricstudio")({ component: OricStudioAdmin });
 
@@ -63,7 +64,9 @@ function OricStudioAdmin() {
         const todas:any[]=[];
         const lote=500;
         for (let inicio=0;inicio<100000;inicio+=lote) {
-          const {data,error}=await (supabaseBanco as any).from(tabela).select(colunas).order(ordenar,{ascending:tabela==="clinicas"}).range(inicio,inicio+lote-1);
+          const origem=(supabaseBanco as any).from(tabela).select(colunas);
+          const consulta=tabela==="clinicas" ? semClinicasNaLixeira(origem) : origem;
+          const {data,error}=await consulta.order(ordenar,{ascending:tabela==="clinicas"}).range(inicio,inicio+lote-1);
           if(error)throw error;
           todas.push(...(data||[]));
           if((data||[]).length<lote)return todas;

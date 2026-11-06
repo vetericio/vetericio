@@ -13,6 +13,7 @@ import {
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import {
   limparContextoAdminClinica,
   salvarContextoAdminClinica,
@@ -137,18 +138,16 @@ function Inicio() {
       // Clínicas são dados operacionais migrados para o PostgreSQL. Usar o
       // cliente direto aqui evita que o proxy legado tente buscá-las no Drive
       // e deixe o administrador sem uma clínica ativa.
-      const { data, error } = await (supabaseBanco as any)
+      const { data, error } = await semClinicasNaLixeira((supabaseBanco as any)
         .from("clinicas")
-        .select("id,nome,slug,status")
+        .select("id,nome,slug,status"))
         .order("nome");
       if (!ativo) return;
       if (error) {
         setErroClinicas(error.message || "Não foi possível carregar as clínicas.");
         setClinicas([]);
       } else {
-        const lista = ((data || []) as ClinicaAdmin[]).filter(
-          (clinica) => clinica.status !== "cancelada",
-        );
+        const lista = (data || []) as ClinicaAdmin[];
         setClinicas(lista);
         setClinicaId((atual) => atual || lista[0]?.id || "");
       }

@@ -33,6 +33,7 @@ import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { ROTAS_CATALOGO, ROTAS_EDITAVEIS, CAMINHOS_RESERVADOS } from "@/lib/admin-page-routes";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
+import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
@@ -389,8 +390,8 @@ function Admin() {
     const porClinica:Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>={};
     for(const assinatura of assinaturas.data||[]){if(!porClinica[assinatura.clinica_id])porClinica[assinatura.clinica_id]=assinatura;}
     setAssinaturasClinicas(porClinica);
-    setClinicas((c.data || []).filter((x:Clinica)=>!x.excluido_em));
-    setClinicasLixeira((c.data || []).filter((x:Clinica)=>Boolean(x.excluido_em)));
+    setClinicas(c.data || []);
+    setClinicasLixeira(clinicasNaLixeira.data || []);
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
