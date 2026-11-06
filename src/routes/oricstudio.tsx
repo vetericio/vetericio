@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
+import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
 import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio} from "@/lib/oricstudio-operacao.functions";
@@ -742,6 +743,15 @@ function OricStudio() {
           <p className="text-xs text-muted-foreground">A data é apenas planejamento. Nenhuma publicação será enviada ou agendada no Instagram.</p>
           <div className="flex flex-wrap gap-2"><button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"><Save className="h-4 w-4"/>{salvando?"Salvando...":"Salvar"}</button><button type="button" onClick={()=>setEditorAberto(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button></div>
         </form>}
+        <AgendamentoOricStudio
+          clinicaId={contexto.clinica_id}
+          posts={publicacoes}
+          midias={midias}
+          contas={contasMeta}
+          envios={operacao.envios||[]}
+          podeEditar={contexto.pode_editar}
+          onUpdated={()=>{void carregar();}}
+        />
         {publicacoes.length===0?<p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Nenhum rascunho. Use “Criar publicação” para começar.</p>:
           <div className="grid gap-3">{publicacoes.map(p=><article key={p.id} className="rounded-xl border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-bold">{p.titulo}</h3><p className="mt-1 text-xs text-muted-foreground">{p.tipo} · {STATUS[p.status]} · {textoData(p.planejado_para)}</p></div><div className="flex flex-wrap gap-2">
