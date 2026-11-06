@@ -51,5 +51,5 @@ export const Route=createFileRoute("/api/public/instagram-oauth-callback")({
       });
       return back(false,"falha_na_conexao_instagram");
     }
-  }}}},
+  }}},
 });
