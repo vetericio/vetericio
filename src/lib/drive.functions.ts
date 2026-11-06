@@ -68,3 +68,104 @@ export const visualizarImagemPrivadaDrive = createServerFn({ method: "POST" })
     }
     return { dataUrl: `data:${arquivo.mimeType};base64,${bytes.toString("base64")}` };
   });
+
+
+// OricStúdio da plataforma: usa o Google Drive do ORICSE (nunca o Drive de clínica).
+// O mesmo editor da aplicação atende sistema e clínicas, com isolamento explícito.
+const mediaSistemaSchema=authSchema.extend({
+  nome:z.string().min(1).max(220),
+  mimeType:z.enum(["image/png","image/jpeg","image/webp","video/mp4","video/quicktime"]),
+  base64:z.string().min(1).max(18_000_000)
+});
+const registroSistemaSchema=authSchema.extend({registroId:z.string().uuid()});
+
+async function verificarAdminOricStudio(accessToken:string){
+  const admin=await carregarSupabaseAdmin();
+  const {data:auth,error}=await admin.auth.getUser(accessToken);
+  if(error||!auth.user?.id)throw new Error("Sessão expirada.");
+  const {data:p,error:roleError}=await admin.from("app_users")
+    .select("role").eq("user_id",auth.user.id).maybeSingle();
+  if(roleError||p?.role!=="admin")throw new Error("OricStúdio do ORICSE restrito à Administração Geral.");
+  return {admin,userId:auth.user.id};
+}
+
+export const enviarMidiaSistemaOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>mediaSistemaSchema.parse(i))
+  .handler(async({data})=>{
+    const {admin,userId}=await verificarAdminOricStudio(data.accessToken);
+    const b64=data.base64.replace(/^data:[^;]+;base64,/,"");
+    if(!/^[A-Za-z0-9+/]*={0,2}$/.test(b64))throw new Error("Arquivo inválido.");
+    const bytes=Buffer.from(b64,"base64");
+    if(!bytes.length||bytes.length>12*1024*1024)throw new Error("Arquivo acima de 12 MB.");
+    const token=await accessTokenGoogle();
+    const raiz=await buscarOuCriarPasta(token,rootFolderId(),"OricStudio-Sistema");
+    const pasta=await buscarOuCriarPasta(token,raiz,"Biblioteca");
+    const registroId=crypto.randomUUID();
+    const metadata={
+      name:data.nome,parents:[pasta],
+      appProperties:{
+        oricseRegistroId:registroId,oricstudioAmbiente:"sistema",
+        enviadoPor:userId,visibilidade:"interno"
+      }
+    };
+    const form=new FormData();
+    form.append("metadata",new Blob([JSON.stringify(metadata)],{type:"application/json"}));
+    form.append("file",new Blob([bytes],{type:data.mimeType}),data.nome);
+    const r=await gfetch(token,
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,appProperties",
+      {method:"POST",body:form});
+    const doc=await r.json() as {id:string};
+    const {error}=await admin.from("oricstudio_sistema_midias").insert({
+      id:registroId,nome:data.nome,
+      tipo:data.mimeType.startsWith("video/")?"video":"imagem",
+      caminho_privado:registroId
+    });
+    if(error){
+      await gfetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(doc.id)}`,
+        {method:"DELETE"}).catch(()=>null);
+      throw new Error("Falha ao registrar a mídia do ORICSE.");
+    }
+    return {registroId};
+  });
+
+export const visualizarMidiaSistemaOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>registroSistemaSchema.parse(i))
+  .handler(async({data})=>{
+    const {admin}=await verificarAdminOricStudio(data.accessToken);
+    const {data:item,error}=await admin.from("oricstudio_sistema_midias")
+      .select("caminho_privado,tipo").eq("id",data.registroId).maybeSingle();
+    if(error||!item||item.tipo!=="imagem")throw new Error("Mídia não encontrada.");
+    const token=await accessTokenGoogle();
+    const doc=await localizarPorRegistro(token,item.caminho_privado);
+    if(!doc||doc.appProperties?.oricstudioAmbiente!=="sistema")
+      throw new Error("Arquivo não pertence ao OricStúdio do ORICSE.");
+    if(!["image/jpeg","image/png","image/webp"].includes(String(doc.mimeType)))
+      throw new Error("Prévia indisponível para este formato.");
+    if(Number(doc.size||0)>5*1024*1024)throw new Error("Imagem acima do limite de prévia.");
+    const resposta=await gfetch(token,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(doc.id)}?alt=media`);
+    const bytes=Buffer.from(await resposta.arrayBuffer());
+    if(bytes.length>5*1024*1024)throw new Error("Imagem acima do limite de prévia.");
+    return {dataUrl:`data:${doc.mimeType};base64,${bytes.toString("base64")}`};
+  });
+
+export const excluirMidiaSistemaOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>registroSistemaSchema.parse(i))
+  .handler(async({data})=>{
+    const {admin}=await verificarAdminOricStudio(data.accessToken);
+    const {data:item,error}=await admin.from("oricstudio_sistema_midias")
+      .select("caminho_privado").eq("id",data.registroId).maybeSingle();
+    if(error||!item)throw new Error("Mídia não encontrada.");
+    const token=await accessTokenGoogle();
+    const doc=await localizarPorRegistro(token,item.caminho_privado);
+    if(doc){
+      if(doc.appProperties?.oricstudioAmbiente!=="sistema")
+        throw new Error("Arquivo não pertence ao OricStúdio do ORICSE.");
+      await gfetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(doc.id)}`,
+        {method:"DELETE"});
+    }
+    const {error:deleteError}=await admin.from("oricstudio_sistema_midias")
+      .delete().eq("id",data.registroId);
+    if(deleteError)throw new Error("Falha ao remover registro do ORICSE.");
+    return {ok:true};
+  });

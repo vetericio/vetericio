@@ -8,8 +8,10 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
-import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
+import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive, enviarMidiaSistemaOricStudio, visualizarMidiaSistemaOricStudio, excluirMidiaSistemaOricStudio } from "@/lib/drive.functions";
 import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
+
+import { conectarThreadsOricStudio, listarContasThreadsOricStudio, statusThreadsOricStudio, desconectarThreadsOricStudio, verificarThreadsOricStudio } from "@/lib/oricstudio-threads.functions";
 
 export const Route = createFileRoute("/oricstudio")({
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
@@ -20,18 +22,19 @@ type Status = "rascunho" | "aguardando_aprovacao" | "aprovado";
 type Tipo = "imagem" | "carrossel" | "reels" | "story";
 type Aba = "inicio" | "contas" | "publicacoes" | "calendario" | "biblioteca" | "aprovacoes" | "comentarios" | "metricas" | "alertas" | "configuracoes";
 type Contexto = {
-  clinica_id: string; clinica_nome: string; clinica_status: string;
+  clinica_id: string | null; clinica_nome: string; clinica_status: string;
   licenca_status: string; licenca_expira_em: string | null; tem_acesso: boolean; pode_editar: boolean;
 };
 type Publicacao = {
-  id: string; clinica_id: string; titulo: string; legenda: string; tipo: Tipo; status: Status;
+  id: string; clinica_id: string | null; titulo: string; legenda: string; tipo: Tipo; status: Status;
   planejado_para: string | null; criado_em: string; atualizado_em: string;
 };
 type Midia = { id: string; nome: string; tipo: string; criado_em: string; caminho_privado: string };
 type ContaMeta = { id:string; clinica_id:string; instagram_user_id:string; username:string; account_type:string|null; status:string; escopos:string[]; conectado_em:string; token_expira_em:string|null };
+type ContaThreads = {id:string;clinica_id:string;username:string;status:string;conectado_em:string;token_expira_em:string|null};
 type Versao = { id: number; evento: string; criado_em: string; autor_id: string | null };
 type Preferencias = {
-  clinica_id: string; nome_publico: string; tom_de_voz: string;
+  clinica_id: string | null; nome_publico: string; tom_de_voz: string;
   hashtags_padrao: string; fuso_horario: string;
 };
 const ABAS = [
@@ -64,7 +67,12 @@ function chaveDia(data: Date) {
   return `${data.getFullYear()}-${String(data.getMonth()+1).padStart(2,"0")}-${String(data.getDate()).padStart(2,"0")}`;
 }
 
-function OricStudio() {
+export function OricStudio({ambiente="clinica"}:{ambiente?:"clinica"|"sistema"}) {
+  const sistema=ambiente==="sistema";
+  const tabelaPosts=sistema?"oricstudio_sistema_publicacoes":"oricstudio_publicacoes";
+  const tabelaVersoes=sistema?"oricstudio_sistema_versoes":"oricstudio_publicacoes_versoes";
+  const tabelaMidias=sistema?"oricstudio_sistema_midias":"oricstudio_midias";
+  const tabelaPreferencias=sistema?"oricstudio_sistema_preferencias":"oricstudio_preferencias";
   const [aba, setAba] = useState<Aba>("inicio");
   const [modoCalendario, setModoCalendario] = useState<"mes"|"semana"|"dia">("mes");
   const [referenciaCalendario, setReferenciaCalendario] = useState(() => new Date());
@@ -82,6 +90,8 @@ function OricStudio() {
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
   const [metaConfigurada, setMetaConfigurada] = useState(false);
+  const [contasThreads,setContasThreads] = useState<ContaThreads[]>([]);
+  const [threadsConfigurado,setThreadsConfigurado] = useState(false);
   const [metaCarregando, setMetaCarregando] = useState(false);
   const [metaOcupada, setMetaOcupada] = useState(false);
   const [metaErro, setMetaErro] = useState("");
@@ -105,17 +115,29 @@ function OricStudio() {
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setPedidoAberto(null); setAssinatura(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setContasThreads([]); setMetaErro(""); setPedidoAberto(null); setAssinatura(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
       // A clínica é escolhida no servidor, nunca por um ID recebido do navegador.
-      const { data, error } = await (supabaseBanco as any).rpc("oricstudio_meu_contexto");
-      if (error) throw error;
-      const c = data as Contexto | null;
+      let c:Contexto|null=null;
+      if(sistema){
+        const {data:perfil,error:perfilErro}=await (supabase as any).from("app_users")
+          .select("role").eq("user_id",auth.user.id).maybeSingle();
+        if(perfilErro)throw perfilErro;
+        if(perfil?.role!=="admin")throw new Error("Acesso restrito à Administração Geral.");
+        c={
+          clinica_id:null,clinica_nome:"ORICSE",clinica_status:"ativa",
+          licenca_status:"interno",licenca_expira_em:null,tem_acesso:true,pode_editar:true
+        };
+      }else{
+        const {data,error}=await (supabaseBanco as any).rpc("oricstudio_meu_contexto");
+        if(error)throw error;
+        c=data as Contexto|null;
+      }
       if (seq !== requisicao.current) return;
       setContexto(c);
-      if (c) {
+      if (c && !sistema) {
         const catalogo=await (supabaseBanco as any).rpc("oricstudio_catalogo_comercial");
         if (catalogo.error) throw catalogo.error;
         if (seq!==requisicao.current) return;
@@ -139,20 +161,27 @@ function OricStudio() {
         }
       }
       if (!c?.tem_acesso) return;
+      const postsQ=(supabaseBanco as any).from(tabelaPosts)
+        .select(sistema?
+          "id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em":
+          "id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em");
+      const midiasQ=(supabaseBanco as any).from(tabelaMidias)
+        .select("id,nome,tipo,criado_em,caminho_privado");
+      const prefQ=(supabaseBanco as any).from(tabelaPreferencias)
+        .select(sistema?
+          "nome_publico,tom_de_voz,hashtags_padrao,fuso_horario":
+          "clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario");
       const [posts, arquivos, pref] = await Promise.all([
-        (supabaseBanco as any).from("oricstudio_publicacoes")
-          .select("id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em")
-          .eq("clinica_id", c.clinica_id).order("criado_em", { ascending: false }),
-        (supabaseBanco as any).from("oricstudio_midias")
-          .select("id,nome,tipo,criado_em,caminho_privado").eq("clinica_id", c.clinica_id)
-          .order("criado_em", { ascending: false }),
-        (supabaseBanco as any).from("oricstudio_preferencias")
-          .select("clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario")
-          .eq("clinica_id", c.clinica_id).maybeSingle(),
+        (sistema?postsQ:postsQ.eq("clinica_id",c.clinica_id))
+          .order("criado_em",{ascending:false}),
+        (sistema?midiasQ:midiasQ.eq("clinica_id",c.clinica_id))
+          .order("criado_em",{ascending:false}),
+        (sistema?prefQ.eq("id","oricse"):prefQ.eq("clinica_id",c.clinica_id))
+          .maybeSingle(),
       ]);
       for (const response of [posts, arquivos, pref]) if (response.error) throw response.error;
       if (seq !== requisicao.current) return;
-      setPublicacoes((posts.data || []) as Publicacao[]);
+      setPublicacoes((posts.data || []).map((p:any)=>({...p,clinica_id:sistema?null:p.clinica_id})) as Publicacao[]);
       setMidias((arquivos.data || []) as Midia[]);
       setPreferencias(pref.data || {
         clinica_id: c.clinica_id, nome_publico: c.clinica_nome,
@@ -165,13 +194,17 @@ function OricStudio() {
           const {data:authSession}=await supabase.auth.getSession();
           const token=authSession.session?.access_token;
           if(!token)throw new Error("Sessão expirada.");
-          const [accounts,configuration]=await Promise.all([
+          const [accounts,configuration,threadsAccounts,threadsStatus]=await Promise.all([
             listarContasMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
             statusIntegracaoMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+            listarContasThreadsOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+            statusThreadsOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
           ]);
           if(seq===requisicao.current) {
             setContasMeta(accounts as ContaMeta[]);
             setMetaConfigurada(configuration.configurada);
+            setContasThreads(threadsAccounts as ContaThreads[]);
+            setThreadsConfigurado(threadsStatus.configurada);
           }
         } catch(e) {
           if(seq===requisicao.current) setMetaErro(e instanceof Error?e.message:"Erro ao consultar a Meta.");
@@ -184,7 +217,7 @@ function OricStudio() {
     } finally {
       if (seq === requisicao.current) setCarregando(false);
     }
-  }, []);
+  }, [sistema,tabelaPosts,tabelaMidias,tabelaPreferencias]);
 
   useEffect(() => {
     void carregar();
@@ -255,11 +288,11 @@ function OricStudio() {
         titulo: titulo.trim(), legenda: legenda.trim(), tipo, status,
         planejado_para: planejado ? new Date(planejado).toISOString() : null,
       };
-      const query = editandoId
-        ? (supabaseBanco as any).from("oricstudio_publicacoes").update(dados)
-            .eq("id",editandoId).eq("clinica_id", contexto.clinica_id)
-        : (supabaseBanco as any).from("oricstudio_publicacoes")
-            .insert({ ...dados, clinica_id: contexto.clinica_id });
+      const base=(supabaseBanco as any).from(tabelaPosts);
+      const query=editandoId
+        ?(sistema?base.update(dados).eq("id",editandoId):
+          base.update(dados).eq("id",editandoId).eq("clinica_id",contexto.clinica_id))
+        :base.insert(sistema?dados:{...dados,clinica_id:contexto.clinica_id});
       const { error } = await query;
       if (error) throw error;
       toast.success(editandoId ? "Rascunho atualizado." : "Rascunho salvo.");
@@ -271,25 +304,25 @@ function OricStudio() {
   }
   async function alterarStatus(p: Publicacao, proximo: Status) {
     if (!contexto?.pode_editar || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
-    const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
-      .update({ status: proximo }).eq("id", p.id).eq("clinica_id", contexto.clinica_id);
+    const q=(supabaseBanco as any).from(tabelaPosts).update({status:proximo}).eq("id",p.id);
+    const {error}=await (sistema?q:q.eq("clinica_id",contexto.clinica_id));
     if (error) return toast.error(error.message);
     toast.success("Etapa editorial atualizada. Nada foi publicado.");
     void carregar();
   }
   async function excluir(p: Publicacao) {
     if (!contexto?.pode_editar || !window.confirm(`Excluir definitivamente o rascunho "${p.titulo}"?`)) return;
-    const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
-      .delete().eq("id", p.id).eq("clinica_id", contexto.clinica_id);
+    const q=(supabaseBanco as any).from(tabelaPosts).delete().eq("id",p.id);
+    const {error}=await (sistema?q:q.eq("clinica_id",contexto.clinica_id));
     if (error) return toast.error(error.message);
     toast.success("Rascunho excluído; o evento fica na auditoria.");
     setEditorAberto(false);
     void carregar();
   }
   async function carregarVersoes(p: Publicacao) {
-    const { data, error } = await (supabaseBanco as any).from("oricstudio_publicacoes_versoes")
-      .select("id,evento,criado_em,autor_id")
-      .eq("publicacao_id",p.id).eq("clinica_id",p.clinica_id)
+    const q=(supabaseBanco as any).from(tabelaVersoes)
+      .select("id,evento,criado_em,autor_id").eq("publicacao_id",p.id);
+    const {data,error}=await(sistema?q:q.eq("clinica_id",p.clinica_id))
       .order("criado_em",{ascending:false}).limit(30);
     if (error) return toast.error(error.message);
     setVersoes((data||[]) as Versao[]);
@@ -302,12 +335,14 @@ function OricStudio() {
     if (!auth.user?.id) return toast.error("Faça login novamente.");
     setSalvando(true);
     try {
-      const {error} = await (supabaseBanco as any).from("oricstudio_preferencias").upsert({
-        ...preferencias, clinica_id: contexto.clinica_id, atualizado_por: auth.user.id,
-        atualizado_em: new Date().toISOString(),
-      },{onConflict:"clinica_id"});
+      const {clinica_id:ignorarClinica,...dados}=preferencias;
+      void ignorarClinica;
+      const {error}=await (supabaseBanco as any).from(tabelaPreferencias).upsert({
+        ...dados,...(sistema?{id:"oricse"}:{clinica_id:contexto.clinica_id}),
+        atualizado_por:auth.user.id,atualizado_em:new Date().toISOString(),
+      },{onConflict:sistema?"id":"clinica_id"});
       if(error)throw error;
-      toast.success("Preferências da clínica salvas.");
+      toast.success(sistema?"Preferências oficiais do ORICSE salvas.":"Preferências da clínica salvas.");
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setSalvando(false);}
   }
@@ -407,12 +442,67 @@ function OricStudio() {
       const result=await iniciarConexaoMetaOricStudio({data:{
         accessToken:token,clinicaId:contexto.clinica_id,
       }});
-      if(!result.url.startsWith("https://www.instagram.com/oauth/authorize?"))throw new Error("Endereço de autorização inválido.");
+      if(!result.url.startsWith("https://www.facebook.com/dialog/oauth?"))throw new Error("Endereço de autorização inválido.");
       window.location.assign(result.url);
     } catch(e) {
       toast.error(e instanceof Error?e.message:"Falha ao iniciar conexão.");
       setMetaOcupada(false);
     }
+  }
+
+  async function conectarThreads(){
+    if(!contexto?.pode_editar||metaOcupada)return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const result=await conectarThreadsOricStudio({data:{accessToken:token,clinicaId:contexto.clinica_id}});
+      if(!result.url.startsWith("https://threads.net/oauth/authorize?"))
+        throw new Error("Endereço de autorização Threads inválido.");
+      window.location.assign(result.url);
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Falha ao conectar o Threads.");
+      setMetaOcupada(false);
+    }
+  }
+
+  async function desconectarThreads(conta:ContaThreads){
+    if(!contexto?.pode_editar||metaOcupada||
+      !window.confirm(`Desconectar @${conta.username} do Threads ${sistema?"do ORICSE":"desta clínica"}?`))return;
+    setMetaOcupada(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      await desconectarThreadsOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,contaId:conta.id
+      }});
+      toast.success("Conta Threads desconectada localmente.");
+      await carregar();
+      setAba("contas");
+    }catch(e){toast.error(e instanceof Error?e.message:"Falha ao desconectar Threads.");}
+    finally{setMetaOcupada(false);}
+  }
+
+  async function verificarThreads(conta:ContaThreads){
+    if(!contexto?.pode_editar||metaOcupada)return;
+    setMetaOcupada(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const status=await verificarThreadsOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,contaId:conta.id
+      }});
+      toast.success(status.renovada?"Threads verificado e renovado.":"Threads verificado.");
+      await carregar();
+      setAba("contas");
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Falha ao verificar o Threads.");
+      await carregar();
+      setAba("contas");
+    }finally{setMetaOcupada(false);}
   }
 
   async function verificarMeta(conta:ContaMeta) {
@@ -437,7 +527,7 @@ function OricStudio() {
 
   async function desconectarMeta(conta: ContaMeta) {
     if (!contexto?.pode_editar || metaOcupada ||
-        !window.confirm(`Desconectar @${conta.username} desta clínica? O histórico editorial permanecerá intacto.`)) return;
+        !window.confirm(`Desconectar @${conta.username} ${sistema?"do ORICSE":"desta clínica"}? O histórico editorial permanecerá intacto.`)) return;
     setMetaOcupada(true);
     try {
       const {data:auth}=await supabase.auth.getSession();
@@ -472,25 +562,31 @@ function OricStudio() {
         reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
         reader.readAsDataURL(file);
       });
-      const arquivo = await enviarArquivoDrive({data:{
-        accessToken:token, clinicaId:contexto.clinica_id, categoria:"imagens",
-        nome:file.name, mimeType:file.type, base64:b64,
-        visibilidade:"interno", entidadeTipo:"oricstudio",
-        metadata:{modulo:"oricstudio",uso:"biblioteca_privada"},
-      }});
+      const arquivo=sistema
+        ?await enviarMidiaSistemaOricStudio({data:{
+          accessToken:token,nome:file.name,mimeType:file.type as "image/png"|"image/jpeg"|"image/webp"|"video/mp4"|"video/quicktime",base64:b64
+        }})
+        :await enviarArquivoDrive({data:{
+          accessToken:token,clinicaId:contexto.clinica_id as string,categoria:"imagens",
+          nome:file.name,mimeType:file.type,base64:b64,
+          visibilidade:"interno",entidadeTipo:"oricstudio",
+          metadata:{modulo:"oricstudio",uso:"biblioteca_privada"}
+        }});
       if (!arquivo?.registroId) throw new Error("Upload não retornou identificação.");
-      const {error} = await (supabaseBanco as any).from("oricstudio_midias").insert({
-        clinica_id:contexto.clinica_id,nome:file.name,
-        tipo:file.type.startsWith("video/")?"video":"imagem",
-        caminho_privado:arquivo.registroId,
-      });
-      if(error) {
-        try { await excluirArquivoDrive({data:{
-          accessToken:token,clinicaId:contexto.clinica_id,registroId:arquivo.registroId,
-        }}); } catch {}
-        throw error;
+      if(!sistema){
+        const {error}=await (supabaseBanco as any).from("oricstudio_midias").insert({
+          clinica_id:contexto.clinica_id,nome:file.name,
+          tipo:file.type.startsWith("video/")?"video":"imagem",
+          caminho_privado:arquivo.registroId
+        });
+        if(error){
+          try{await excluirArquivoDrive({data:{
+            accessToken:token,clinicaId:contexto.clinica_id as string,registroId:arquivo.registroId
+          }});}catch{}
+          throw error;
+        }
       }
-      toast.success("Arquivo salvo na biblioteca privada da clínica.");
+      toast.success(sistema?"Arquivo salvo na biblioteca privada do ORICSE.":"Arquivo salvo na biblioteca privada da clínica.");
       await carregar();
       setAba("biblioteca");
     } catch(e) {
@@ -504,9 +600,11 @@ function OricStudio() {
       const {data:auth} = await supabase.auth.getSession();
       const token=auth.session?.access_token;
       if(!token)throw new Error("Faça login novamente.");
-      const arquivo=await visualizarImagemPrivadaDrive({data:{
-        accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
-      }});
+      const arquivo=sistema
+        ?await visualizarMidiaSistemaOricStudio({data:{accessToken:token,registroId:m.id}})
+        :await visualizarImagemPrivadaDrive({data:{
+          accessToken:token,clinicaId:contexto.clinica_id as string,registroId:m.caminho_privado
+        }});
       setPrevias(atual=>({...atual,[m.id]:arquivo.dataUrl}));
     } catch(e) {toast.error(e instanceof Error?e.message:"Não foi possível abrir a imagem.");}
   }
@@ -517,12 +615,16 @@ function OricStudio() {
       const {data:auth} = await supabase.auth.getSession();
       const token=auth.session?.access_token;
       if(!token)throw new Error("Faça login novamente.");
-      await excluirArquivoDrive({data:{
-        accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
-      }});
-      const {error}=await (supabaseBanco as any).from("oricstudio_midias")
-        .delete().eq("id",m.id).eq("clinica_id",contexto.clinica_id);
-      if(error)throw error;
+      if(sistema){
+        await excluirMidiaSistemaOricStudio({data:{accessToken:token,registroId:m.id}});
+      }else{
+        await excluirArquivoDrive({data:{
+          accessToken:token,clinicaId:contexto.clinica_id as string,registroId:m.caminho_privado
+        }});
+        const {error}=await(supabaseBanco as any).from("oricstudio_midias")
+          .delete().eq("id",m.id).eq("clinica_id",contexto.clinica_id);
+        if(error)throw error;
+      }
       toast.success("Mídia excluída.");
       setPrevias(atual=>{const n={...atual};delete n[m.id];return n;});
       await carregar();
@@ -531,15 +633,15 @@ function OricStudio() {
 
   return <main className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-16 pt-6 text-foreground sm:px-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <div><Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> Voltar ao ORICSE</Link>
+      <div><Link to={sistema?"/admin-oricstudio":"/inicio"} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> Voltar ao ORICSE</Link>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-extrabold sm:text-3xl"><img src={ORICSTUDIO_LOGO} alt="Logo oficial OricStúdio" className="h-14 w-14 rounded-xl object-contain" /> OricStúdio</h1>
         <p className="mt-1 text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet</p>
       </div>
       <button type="button" disabled={carregando} onClick={()=>void carregar()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
     </header>
-    {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">Carregando a clínica e verificando a licença...</p>}
+    {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">Carregando o OricStúdio...</p>}
     {!carregando && erro && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/60 bg-card p-5 text-sm text-destructive"><AlertCircle className="h-5 w-5 shrink-0"/>{erro}</div>}
-    {!carregando && !erro && !contexto && <div className="rounded-xl border bg-card p-6"><p className="font-semibold">Nenhuma clínica selecionada</p><p className="mt-2 text-sm text-muted-foreground">Entre em uma clínica autorizada no ORICSE para consultar o OricStúdio.</p></div>}
+    {!carregando && !erro && !contexto && <div className="rounded-xl border bg-card p-6"><p className="font-semibold">{sistema?"Acesso exclusivo da Administração Geral":"Nenhuma clínica selecionada"}</p><p className="mt-2 text-sm text-muted-foreground">{sistema?"Entre como administrador do ORICSE para acessar este espaço.":"Entre em uma clínica autorizada no ORICSE para consultar o OricStúdio."}</p></div>}
     {!carregando && !erro && contexto && !contexto.tem_acesso && <section className="rounded-2xl border bg-card p-6 sm:p-8">
       <div className="flex items-center gap-2 text-primary"><LockKeyhole className="h-6 w-6"/><span className="font-semibold">Produto adicional</span></div>
       <h2 className="mt-3 text-2xl font-bold">OricStúdio para {contexto.clinica_nome}</h2>
@@ -577,7 +679,7 @@ function OricStudio() {
       </div>
     </section>}
     {!carregando && !erro && contexto?.tem_acesso && <>
-      <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">Licença ativa · Ambiente exclusivo da clínica</span></div>
+      <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">{sistema?"Ambiente oficial do sistema · Sem vínculo com clínicas":"Licença ativa · Ambiente exclusivo da clínica"}</span></div>
       {assinatura && contexto.pode_editar && <section className="space-y-2 rounded-xl border bg-card p-4 text-sm">
         <h2 className="font-semibold">Sua assinatura OricStúdio</h2>
         <p>{assinatura.quantidade_contas} conta(s) · {precoBRL(assinatura.valor_mensal_centavos)}/mês</p>
@@ -686,7 +788,7 @@ function OricStudio() {
       </section>}
       {aba==="biblioteca" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados da clínica no Google Drive do ORICSE.</p></div>
+          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">{sistema?"Arquivos exclusivos da plataforma no Google Drive oficial do ORICSE.":"Arquivos privados da clínica no Google Drive do ORICSE."}</p></div>
           {contexto.pode_editar && <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
             <Plus className="h-4 w-4"/>{enviandoMidia?"Enviando...":"Adicionar mídia"}
             <input type="file" className="sr-only" disabled={enviandoMidia}
@@ -698,7 +800,7 @@ function OricStudio() {
         {midias.length===0
           ? <div className="rounded-xl border bg-card p-7"><FolderOpen className="h-9 w-9 text-muted-foreground"/>
               <h3 className="mt-3 font-semibold">Sua biblioteca está vazia</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo da clínica.</p></div>
+              <p className="mt-2 text-sm text-muted-foreground">{sistema?"Adicione imagens e vídeos para organizar o conteúdo oficial do ORICSE.":"Adicione imagens e vídeos para organizar o conteúdo da clínica."}</p></div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {midias.map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
                 <div className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-secondary/40">
@@ -717,18 +819,18 @@ function OricStudio() {
               </article>)}
             </div>}
       </section>}
-      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz da clínica</h2>
+      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz {sistema?"do ORICSE":"da clínica"}</h2>
         <label className="block space-y-1 text-sm font-semibold">Nome público<input value={preferencias.nome_publico} onChange={e=>setPreferencias({...preferencias,nome_publico:e.target.value})} maxLength={150} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Tom de voz<textarea rows={3} maxLength={600} value={preferencias.tom_de_voz} onChange={e=>setPreferencias({...preferencias,tom_de_voz:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Hashtags padrão<textarea rows={2} maxLength={1000} value={preferencias.hashtags_padrao} onChange={e=>setPreferencias({...preferencias,hashtags_padrao:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <p className="text-xs text-muted-foreground">Fuso horário de referência: {preferencias.fuso_horario}. Nenhuma alteração na marca institucional ORICSE.</p>
-        {contexto.pode_editar ? <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button> : <p className="text-sm text-muted-foreground">Somente responsáveis, administradores da clínica e RTs podem editar estas preferências.</p>}
+        {contexto.pode_editar ? <button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Save className="h-4 w-4"/> Salvar preferências</button> : <p className="text-sm text-muted-foreground">{sistema?"Somente administradores do ORICSE podem editar estas preferências.":"Somente responsáveis, administradores da clínica e RTs podem editar estas preferências."}</p>}
       </form>}
       {aba==="contas" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold">Contas Instagram da clínica</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas.</p>
+            <h2 className="text-xl font-bold">Contas Instagram {sistema?"do ORICSE":"da clínica"}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">As contas profissionais ficam isoladas neste ambiente e não são compartilhadas com outros espaços.</p>
           </div>
           {contexto.pode_editar && <button type="button" onClick={()=>void conectarMeta()}
             disabled={!metaConfigurada || metaCarregando || metaOcupada}
@@ -757,7 +859,35 @@ function OricStudio() {
                 className="rounded-lg border px-3 py-2 text-xs text-destructive disabled:opacity-50">Desconectar</button>
             </div>}
         </article>)}
-        <p className="text-xs text-muted-foreground">A conexão não autoriza publicações automáticas por si só. A fila de publicação e as permissões aprovadas pela Meta serão validadas separadamente.</p>
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">Contas Threads {sistema?"do ORICSE":"da clínica"}</h3>
+              <p className="text-sm text-muted-foreground">Autorize o Threads separadamente do Instagram.</p>
+            </div>
+            {contexto.pode_editar && <button type="button" onClick={()=>void conectarThreads()}
+              disabled={!threadsConfigurado||metaOcupada||metaCarregando}
+              className="rounded-xl border px-4 py-2 text-sm font-bold disabled:opacity-50">
+              Conectar Threads
+            </button>}
+          </div>
+          {!threadsConfigurado && <p className="text-sm text-muted-foreground">
+            Threads aguardando credenciais no servidor: ORICSTUDIO_THREADS_CLIENT_ID e ORICSTUDIO_THREADS_CLIENT_SECRET.
+          </p>}
+          {contasThreads.map(conta=><div key={conta.id}
+            className="flex flex-wrap justify-between items-center gap-2 rounded-lg border p-3">
+            <div><strong>@{conta.username}</strong>
+              <p className="text-xs text-muted-foreground">{conta.status} · {conta.token_expira_em?textoData(conta.token_expira_em):"Sem vencimento informado"}</p>
+            </div>
+            {contexto.pode_editar&&conta.status!=="desconectada"&&<div className="flex flex-wrap gap-2">
+              <button type="button" disabled={metaOcupada} onClick={()=>void verificarThreads(conta)}
+                className="rounded-lg border px-3 py-2 text-xs">Verificar conexão</button>
+              <button type="button" disabled={metaOcupada} onClick={()=>void desconectarThreads(conta)}
+                className="rounded-lg border px-3 py-2 text-xs text-destructive">Desconectar</button>
+            </div>}
+          </div>)}
+        </div>
+        <p className="text-xs text-muted-foreground">Conectar contas não autoriza publicações automáticas por si só. As permissões e a fila de publicação serão homologadas separadamente.</p>
       </section>}
       {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
         <h2 className="text-xl font-bold">{ABAS.find(a=>a.id===aba)?.rotulo}</h2>

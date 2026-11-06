@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const base=z.object({
   accessToken:z.string().min(20),
-  clinicaId:z.string().uuid(),
+  clinicaId:z.string().uuid().nullable(),
 });
 
 export const listarContasMetaOricStudio=createServerFn({method:"POST"})
