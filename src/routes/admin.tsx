@@ -166,7 +166,7 @@ type ItemMenuAdmin = {
   nome: string;
   icone: typeof Gauge;
   grupo: GrupoAba;
-  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio";
+  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio" | "/oricstudio?ambiente=plataforma";
 };
 const ABAS: ItemMenuAdmin[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
@@ -175,7 +175,8 @@ const ABAS: ItemMenuAdmin[] = [
   { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
   { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
   { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
-  { id: "oricstudio", nome: "OricStúdio", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
+  { id: "oricstudio-plataforma", nome: "Meu OricStúdio · ORICSE", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio?ambiente=plataforma" },
+  { id: "oricstudio", nome: "OricStúdio · Gestão do produto", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
   { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
   { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
   { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
