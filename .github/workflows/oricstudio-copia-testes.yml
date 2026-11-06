@@ -1,0 +1,25 @@
+name: OricStudio independente - testes da copia
+on:
+  pull_request:
+    paths:
+      - "oricstudio-independente/**"
+      - ".github/workflows/oricstudio-copia-testes.yml"
+  workflow_dispatch:
+
+jobs:
+  validar-copia:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oricstudio-independente
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Instalar dependencias sem usar o ambiente do Gestor
+        run: bun install --frozen-lockfile
+      - name: Checar tipos
+        run: bunx tsc --noEmit
+      - name: Testes automatizados
+        run: bun run test
+      - name: Compilar copia sem publicar
+        run: bun run build
