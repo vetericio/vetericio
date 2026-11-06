@@ -25,5 +25,5 @@ export const Route=createFileRoute("/api/oricstudio/instagram/callback")({
     }catch {
       return back(false);
     }
-  }}}},
+  }}},
 });
