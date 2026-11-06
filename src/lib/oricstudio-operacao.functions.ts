@@ -80,9 +80,41 @@ export const prepararEnvioOricStudio=createServerFn({method:"POST"})
       .select("id,caminho_privado,tipo").in("id",data.midias),data.clinicaId);
     if(fileError || files?.length!==data.midias.length)
       throw new Error("Uma ou mais mídias não pertencem à clínica.");
-    // A biblioteca continua PRIVADA no Google Drive. Não supor que seja URL
-    // pública para a Meta e não promover arquivos privados silenciosamente.
-    throw new Error("Arquivos validados. Para publicar é necessário preparar uma URL temporária de mídia autorizada pela Meta; a biblioteca privada nunca será exposta automaticamente.");
+    // Biblioteca permanece privada. Ao publicar, o servidor gera um ticket HMAC
+    // temporário para a Meta buscar os bytes, sem tornar o Drive público.
+    if(new Set(data.midias).size!==data.midias.length)
+      throw new Error("Não repita uma mídia no mesmo agendamento.");
+    if(post.tipo==="carrossel" && (files.length<2 || files.length>10))
+      throw new Error("Carrossel requer entre 2 e 10 mídias.");
+    if(post.tipo!=="carrossel" && files.length!==1)
+      throw new Error("Este formato aceita apenas uma mídia.");
+    if(post.tipo==="imagem" && files[0]?.tipo!=="imagem")
+      throw new Error("Selecione uma imagem para este tipo de publicação.");
+    if(post.tipo==="reels" && files[0]?.tipo!=="video")
+      throw new Error("Reels exigem arquivo de vídeo.");
+    const {data:existente,error:buscaErro}=await db.from("oricstudio_envios")
+      .select("id,status").eq("publicacao_id",post.id).eq("conta_id",data.contaId).maybeSingle();
+    if(buscaErro)throw new Error("Falha ao conferir agendamentos existentes.");
+    if(existente)throw new Error("Esta publicação já tem um envio para a conta escolhida.");
+    const clinicaDb=modoPlataforma?null:data.clinicaId;
+    const midias=data.midias.map(midiaId=>{
+      const item=files.find((m:any)=>m.id===midiaId);
+      return {id:midiaId,tipo:item?.tipo};
+    });
+    const {data:envio,error:envioErro}=await db.from("oricstudio_envios").insert({
+      clinica_id:clinicaDb,publicacao_id:post.id,conta_id:data.contaId,
+      planejado_para:post.planejado_para,status:"agendado",formato:post.tipo,
+      legenda:post.legenda,midias,aprovado_por:actor.userId,
+    }).select("id,status").single();
+    if(envioErro || !envio)throw new Error("Não foi possível agendar esta publicação.");
+    await db.from("oricstudio_envio_eventos").insert({
+      clinica_id:clinicaDb,envio_id:envio.id,
+      etapa:"agendamento",resultado:"criado",
+      detalhe:"Agendamento salvo; publicação externa só inicia após homologação.",
+    });
+    return {id:envio.id,status:envio.status,
+      publicacaoHabilitada:process.env["ORICSTUDIO_PUBLICACAO_HOMOLOGADA"]==="true"};
+
   });
 
 export const resolverAlertaOricStudio=createServerFn({method:"POST"})
@@ -118,5 +150,23 @@ export const salvarRegraOricStudio=createServerFn({method:"POST"})
      atualizada_em:new Date().toISOString(),
    },{onConflict:"conta_id"});
    safeError(saveError,"Não foi possível salvar a regra.");
+   return {ok:true};
+ });
+
+export const cancelarEnvioOricStudio=createServerFn({method:"POST"})
+ .validator((i:unknown)=>base.extend({envioId:z.string().uuid()}).parse(i))
+ .handler(async({data})=>{
+   const {db,actor}=await context(data.accessToken,data.clinicaId,true);
+   const {data:row,error}=await filterTenant(db.from("oricstudio_envios")
+     .update({status:"cancelado",atualizado_em:new Date().toISOString()})
+     .eq("id",data.envioId).eq("status","agendado")
+     .is("iniciada_publicacao_em",null).select("id").maybeSingle(),
+     data.clinicaId);
+   if(error||!row)throw new Error("Envio iniciado, concluído ou de outra clínica: cancelamento não permitido.");
+   await db.from("oricstudio_envio_eventos").insert({
+     clinica_id:data.clinicaId===ORICSTUDIO_PLATAFORMA_ID?null:data.clinicaId,
+     envio_id:data.envioId,etapa:"cancelamento",resultado:"cancelado",
+     detalhe:"Cancelamento solicitado por usuário autenticado "+actor.userId,
+   });
    return {ok:true};
  });
