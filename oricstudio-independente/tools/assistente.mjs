@@ -19,7 +19,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, rmSync } 
 import { homedir, tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 
-const BASE = (process.env.ORICSTUDIO_URL || "").replace(/\\/+$/, "");
+const BASE = (process.env.ORICSTUDIO_URL || "").replace(/\/+$/, "");
 function verificarDestino() {
   if (!BASE) throw new Error("Configure ORICSTUDIO_URL com o endereço da instância OricStudio.");
   const url = new URL(BASE);
