@@ -47,10 +47,10 @@ const VisualPageRuntime = lazy(() =>
 // A customização visual é opcional: uma falha num chunk dela não pode derrubar
 // login, início, navegação clínica ou administração.
 class OptionalRuntimeBoundary extends Component<{children: ReactNode; fallback?: ReactNode},{failed:boolean}> {
-  state={failed:false};
+  override state={failed:false};
   static getDerivedStateFromError(){return {failed:true};}
-  componentDidCatch(error:Error){console.error("ORICSE optional runtime failed:",error);}
-  render(){return this.state.failed?(this.props.fallback??null):this.props.children;}
+  override componentDidCatch(error:Error){console.error("ORICSE optional runtime failed:",error);}
+  override render(){return this.state.failed?(this.props.fallback??null):this.props.children;}
 }
 
 function NotFoundComponent() {
