@@ -2079,6 +2079,15 @@ function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento
   return [linha.modalidade, linha.prazo_recebimento_dias, linha.parcelas].join(":");
 }
 
+function rotuloPagamentoSimulador(linha: TaxaModalidade) {
+  if (linha.modalidade !== "cartao_credito") return linha.descricao;
+  const parcelas = Math.max(1, Number(linha.parcelas) || 1);
+  const quando = linha.prazo_recebimento_dias === 0
+    ? "na hora"
+    : `em ${linha.prazo_recebimento_dias} dias`;
+  return `${parcelas} ${parcelas === 1 ? "parcela" : "parcelas"} (${quando})`;
+}
+
 function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onRestaurar, onSalvarTudo }: {
   clinicas: Clinica[];
   grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] };
@@ -2335,7 +2344,7 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onR
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)]">
         <div className="grid content-start gap-3">
           <label className="text-sm font-bold">{modoTaxasSimulacao === "reter" ? "Valor final do serviço" : "Valor líquido desejado pela clínica"}<input inputMode="decimal" value={valorSimulacao} onChange={(event) => setValorSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-bold"/></label>
-          <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
+          <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{rotuloPagamentoSimulador(linha)}</option>)}</select></label>
           <label className="text-sm font-bold">Área da venda<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
         </div>
         <dl className="space-y-3 rounded-2xl bg-white p-5 text-sm shadow-sm">
