@@ -594,6 +594,7 @@ export type Database = {
           id: string
           meta_user_id: string
           meta_user_name: string | null
+          login_provider: "facebook" | "instagram"
           status: string
           ultima_verificacao: string | null
           ultimo_erro: string | null
@@ -608,6 +609,7 @@ export type Database = {
           id?: string
           meta_user_id: string
           meta_user_name?: string | null
+          login_provider?: "facebook" | "instagram"
           status?: string
           ultima_verificacao?: string | null
           ultimo_erro?: string | null
@@ -622,6 +624,7 @@ export type Database = {
           id?: string
           meta_user_id?: string
           meta_user_name?: string | null
+          login_provider?: "facebook" | "instagram"
           status?: string
           ultima_verificacao?: string | null
           ultimo_erro?: string | null
