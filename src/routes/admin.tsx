@@ -2338,13 +2338,16 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onR
           <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
           <label className="text-sm font-bold">Área da venda<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
         </div>
-        <dl className="space-y-2 rounded-2xl bg-white p-5 text-sm shadow-sm">
+        <dl className="space-y-3 rounded-2xl bg-white p-5 text-sm shadow-sm">
+          <div className="rounded-xl bg-primary px-4 py-5 text-primary-foreground sm:px-5">
+            <dt className="text-sm font-bold">Tutor pagará</dt>
+            <dd className="mt-1 break-words text-4xl font-black leading-tight tracking-tight tabular-nums sm:text-5xl" aria-live="polite">{moedaCentavos(valorCobradoTutor)}</dd>
+          </div>
           <div className="flex justify-between gap-3"><dt>{modoTaxasSimulacao === "reter" ? "Valor final para o tutor" : "Líquido desejado pela clínica"}</dt><dd className="font-bold">{moedaCentavos(valorInformado)}</dd></div>
-          <div className="flex justify-between gap-3"><dt>Tutor pagará</dt><dd className="font-black">{moedaCentavos(valorCobradoTutor)}</dd></div>
           {modoTaxasSimulacao === "repassar" && <div className="flex justify-between gap-3 rounded-lg bg-amber-50 px-2 py-1 text-amber-900"><dt>Repasse das taxas</dt><dd className="font-black">+ {moedaCentavos(taxaRepassada)}</dd></div>}
           <div className="flex justify-between gap-3"><dt>Mercado Pago ({percentual(linhaSimulada?.mp_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(descontoMp)}</dd></div>
           <div className="flex justify-between gap-3"><dt>ORICSE ({percentual(comissaoSimulada?.oricse_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(comissaoOricse)}</dd></div>
-          <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-black">Líquido da clínica</dt><dd className="font-black text-emerald-700">{moedaCentavos(liquido)}</dd></div>
+          <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-semibold">Líquido da clínica</dt><dd className="font-bold text-emerald-700">{moedaCentavos(liquido)}</dd></div>
           <div className="flex justify-between gap-3 text-xs text-muted-foreground"><dt>Taxa efetiva final</dt><dd className="font-bold">{percentual(taxaFinal)}</dd></div>
         </dl>
       </div>
