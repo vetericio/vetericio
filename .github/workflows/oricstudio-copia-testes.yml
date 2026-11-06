@@ -1,12 +1,42 @@
 name: OricStudio independente - testes da copia
 on:
+  push:
+    branches:
+      - feat/oricstudio-copia-independente-gestor
+    paths:
+      - "oricstudio-independente/**"
+      - "src/lib/oricstudio-*.ts"
+      - "src/routes/oricstudio.tsx"
+      - "src/routes/api/oricstudio/**"
+      - "src/components/oricstudio/**"
+      - "supabase/migrations/*oricstudio*.sql"
+      - ".github/workflows/oricstudio-copia-testes.yml"
   pull_request:
     paths:
       - "oricstudio-independente/**"
+      - "src/lib/oricstudio-*.ts"
+      - "src/routes/oricstudio.tsx"
+      - "src/routes/api/oricstudio/**"
+      - "src/components/oricstudio/**"
+      - "supabase/migrations/*oricstudio*.sql"
       - ".github/workflows/oricstudio-copia-testes.yml"
   workflow_dispatch:
 
 jobs:
+  validar-oricse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências Oricse
+        run: npm install --no-audit --no-fund
+      - name: Compilar integração nativa OricStudio na Oricse
+        run: npm run build
+      - name: Verificar tipagem integral da plataforma
+        run: npx tsc --noEmit
+
   validar-copia:
     runs-on: ubuntu-latest
     env:
