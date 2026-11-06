@@ -32,6 +32,7 @@ import {
 } from "@/lib/tenant-context";
 import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -453,7 +454,8 @@ function RootComponent() {
       ["/", "/login", "/modelos", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
-    const rotaAdmin = location.pathname.startsWith("/admin");
+    const rotaAdmin = location.pathname.startsWith("/admin") ||
+    (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
     if (autenticado === false && !rotaPublica && !rotaAdmin) navigate({ to: "/login" });
     if (autenticado && acessoPortalNegado) return;
     if (
@@ -781,6 +783,8 @@ function RootComponent() {
               </Link>
             </section>
           </main>
+        ) : rotaAdmin && autenticado && role === "admin" ? (
+          <AdminShell><Outlet /></AdminShell>
         ) : (
           <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
             <Outlet />
