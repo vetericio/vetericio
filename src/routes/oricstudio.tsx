@@ -8,10 +8,12 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
+import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
 import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
+  validateSearch: (search: Record<string, unknown>) => ({ ambiente: search.ambiente === "plataforma" ? "plataforma" as const : undefined }),
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
   component: OricStudio,
 });
@@ -65,6 +67,14 @@ function chaveDia(data: Date) {
 }
 
 function OricStudio() {
+  const { ambiente } = Route.useSearch();
+  const modoPlataforma = ambiente === "plataforma";
+  // A interface é única: apenas o provedor de dados muda entre a clínica e a ORICSE.
+  const tabelaPublicacoes = modoPlataforma ? "oricstudio_sistema_publicacoes" : "oricstudio_publicacoes";
+  const tabelaVersoes = modoPlataforma ? "oricstudio_sistema_versoes" : "oricstudio_publicacoes_versoes";
+  const tabelaMidias = modoPlataforma ? "oricstudio_sistema_midias" : "oricstudio_midias";
+  const tabelaPreferencias = modoPlataforma ? "oricstudio_sistema_preferencias" : "oricstudio_preferencias";
+  const filtrarClinica = (consulta: any, id: string) => modoPlataforma ? consulta : consulta.eq("clinica_id", id);
   const [aba, setAba] = useState<Aba>("inicio");
   const [modoCalendario, setModoCalendario] = useState<"mes"|"semana"|"dia">("mes");
   const [referenciaCalendario, setReferenciaCalendario] = useState(() => new Date());
@@ -105,17 +115,31 @@ function OricStudio() {
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setPedidoAberto(null); setAssinatura(null);
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro(""); setPedidoAberto(null); setAssinatura(null); setComercial(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
-      // A clínica é escolhida no servidor, nunca por um ID recebido do navegador.
-      const { data, error } = await (supabaseBanco as any).rpc("oricstudio_meu_contexto");
-      if (error) throw error;
-      const c = data as Contexto | null;
+      // O modo interno não depende da clínica selecionada. A autorização é confirmada no banco,
+      // e todas as tabelas do sistema têm RLS exclusivo para administradores da plataforma.
+      let c: Contexto | null;
+      if (modoPlataforma) {
+        const {data:admin, error} = await (supabaseBanco as any).rpc("oricstudio_eh_admin");
+        if (error) throw error;
+        if (admin !== true) throw new Error("Acesso exclusivo da Administração Geral do ORICSE.");
+        c = {
+          clinica_id: ORICSTUDIO_PLATAFORMA_ID, clinica_nome:"ORICSE",
+          clinica_status:"ativa", licenca_status:"interno", licenca_expira_em:null,
+          tem_acesso:true, pode_editar:true,
+        };
+      } else {
+        // A clínica é resolvida pelo servidor; nenhum ID fornecido pelo navegador autoriza acesso.
+        const {data, error} = await (supabaseBanco as any).rpc("oricstudio_meu_contexto");
+        if (error) throw error;
+        c = data as Contexto | null;
+      }
       if (seq !== requisicao.current) return;
       setContexto(c);
-      if (c) {
+      if (c && !modoPlataforma) {
         const catalogo=await (supabaseBanco as any).rpc("oricstudio_catalogo_comercial");
         if (catalogo.error) throw catalogo.error;
         if (seq!==requisicao.current) return;
@@ -140,21 +164,26 @@ function OricStudio() {
       }
       if (!c?.tem_acesso) return;
       const [posts, arquivos, pref] = await Promise.all([
-        (supabaseBanco as any).from("oricstudio_publicacoes")
-          .select("id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em")
-          .eq("clinica_id", c.clinica_id).order("criado_em", { ascending: false }),
-        (supabaseBanco as any).from("oricstudio_midias")
-          .select("id,nome,tipo,criado_em,caminho_privado").eq("clinica_id", c.clinica_id)
+        filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
+          .select(modoPlataforma
+            ? "id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em"
+            : "id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em"),
+          c.clinica_id).order("criado_em", { ascending: false }),
+        filtrarClinica((supabaseBanco as any).from(tabelaMidias)
+          .select("id,nome,tipo,criado_em,caminho_privado"), c.clinica_id)
           .order("criado_em", { ascending: false }),
-        (supabaseBanco as any).from("oricstudio_preferencias")
-          .select("clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario")
-          .eq("clinica_id", c.clinica_id).maybeSingle(),
+        modoPlataforma
+          ? (supabaseBanco as any).from(tabelaPreferencias)
+            .select("nome_publico,tom_de_voz,hashtags_padrao,fuso_horario").eq("id","oricse").maybeSingle()
+          : (supabaseBanco as any).from(tabelaPreferencias)
+            .select("clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario")
+            .eq("clinica_id", c.clinica_id).maybeSingle(),
       ]);
       for (const response of [posts, arquivos, pref]) if (response.error) throw response.error;
       if (seq !== requisicao.current) return;
-      setPublicacoes((posts.data || []) as Publicacao[]);
+      setPublicacoes(((posts.data || []) as Publicacao[]).map(p=>({...p,clinica_id:c.clinica_id})));
       setMidias((arquivos.data || []) as Midia[]);
-      setPreferencias(pref.data || {
+      setPreferencias(pref.data ? {...pref.data,clinica_id:c.clinica_id} : {
         clinica_id: c.clinica_id, nome_publico: c.clinica_nome,
         tom_de_voz: "Profissional e acolhedor", hashtags_padrao: "",
         fuso_horario: "America/Sao_Paulo",
@@ -184,7 +213,7 @@ function OricStudio() {
     } finally {
       if (seq === requisicao.current) setCarregando(false);
     }
-  }, []);
+  }, [modoPlataforma]);
 
   useEffect(() => {
     void carregar();
@@ -256,10 +285,10 @@ function OricStudio() {
         planejado_para: planejado ? new Date(planejado).toISOString() : null,
       };
       const query = editandoId
-        ? (supabaseBanco as any).from("oricstudio_publicacoes").update(dados)
-            .eq("id",editandoId).eq("clinica_id", contexto.clinica_id)
-        : (supabaseBanco as any).from("oricstudio_publicacoes")
-            .insert({ ...dados, clinica_id: contexto.clinica_id });
+        ? filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes).update(dados)
+            .eq("id",editandoId), contexto.clinica_id)
+        : (supabaseBanco as any).from(tabelaPublicacoes)
+            .insert(modoPlataforma ? dados : { ...dados, clinica_id: contexto.clinica_id });
       const { error } = await query;
       if (error) throw error;
       toast.success(editandoId ? "Rascunho atualizado." : "Rascunho salvo.");
@@ -271,25 +300,25 @@ function OricStudio() {
   }
   async function alterarStatus(p: Publicacao, proximo: Status) {
     if (!contexto?.pode_editar || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
-    const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
-      .update({ status: proximo }).eq("id", p.id).eq("clinica_id", contexto.clinica_id);
+    const { error } = await filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
+      .update({ status: proximo }).eq("id", p.id), contexto.clinica_id);
     if (error) return toast.error(error.message);
     toast.success("Etapa editorial atualizada. Nada foi publicado.");
     void carregar();
   }
   async function excluir(p: Publicacao) {
     if (!contexto?.pode_editar || !window.confirm(`Excluir definitivamente o rascunho "${p.titulo}"?`)) return;
-    const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
-      .delete().eq("id", p.id).eq("clinica_id", contexto.clinica_id);
+    const { error } = await filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
+      .delete().eq("id", p.id), contexto.clinica_id);
     if (error) return toast.error(error.message);
     toast.success("Rascunho excluído; o evento fica na auditoria.");
     setEditorAberto(false);
     void carregar();
   }
   async function carregarVersoes(p: Publicacao) {
-    const { data, error } = await (supabaseBanco as any).from("oricstudio_publicacoes_versoes")
+    const { data, error } = await filtrarClinica((supabaseBanco as any).from(tabelaVersoes)
       .select("id,evento,criado_em,autor_id")
-      .eq("publicacao_id",p.id).eq("clinica_id",p.clinica_id)
+      .eq("publicacao_id",p.id), p.clinica_id)
       .order("criado_em",{ascending:false}).limit(30);
     if (error) return toast.error(error.message);
     setVersoes((data||[]) as Versao[]);
@@ -302,12 +331,19 @@ function OricStudio() {
     if (!auth.user?.id) return toast.error("Faça login novamente.");
     setSalvando(true);
     try {
-      const {error} = await (supabaseBanco as any).from("oricstudio_preferencias").upsert({
-        ...preferencias, clinica_id: contexto.clinica_id, atualizado_por: auth.user.id,
+      const valores = {
+        nome_publico: preferencias.nome_publico,
+        tom_de_voz: preferencias.tom_de_voz,
+        hashtags_padrao: preferencias.hashtags_padrao,
+        fuso_horario: preferencias.fuso_horario,
+        atualizado_por: auth.user.id,
         atualizado_em: new Date().toISOString(),
-      },{onConflict:"clinica_id"});
+      };
+      const {error} = await (supabaseBanco as any).from(tabelaPreferencias).upsert(
+        modoPlataforma ? {...valores,id:"oricse"} : {...valores,clinica_id:contexto.clinica_id},
+        {onConflict:modoPlataforma?"id":"clinica_id"});
       if(error)throw error;
-      toast.success("Preferências da clínica salvas.");
+      toast.success(modoPlataforma?"Preferências da ORICSE salvas.":"Preferências da clínica salvas.");
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setSalvando(false);}
   }
@@ -437,7 +473,7 @@ function OricStudio() {
 
   async function desconectarMeta(conta: ContaMeta) {
     if (!contexto?.pode_editar || metaOcupada ||
-        !window.confirm(`Desconectar @${conta.username} desta clínica? O histórico editorial permanecerá intacto.`)) return;
+        !window.confirm(`Desconectar @${conta.username} ${modoPlataforma?"da ORICSE":"desta clínica"}? O histórico editorial permanecerá intacto.`)) return;
     setMetaOcupada(true);
     try {
       const {data:auth}=await supabase.auth.getSession();
@@ -479,9 +515,9 @@ function OricStudio() {
         metadata:{modulo:"oricstudio",uso:"biblioteca_privada"},
       }});
       if (!arquivo?.registroId) throw new Error("Upload não retornou identificação.");
-      const {error} = await (supabaseBanco as any).from("oricstudio_midias").insert({
-        clinica_id:contexto.clinica_id,nome:file.name,
-        tipo:file.type.startsWith("video/")?"video":"imagem",
+      const {error} = await (supabaseBanco as any).from(tabelaMidias).insert({
+        ...(modoPlataforma ? {} : {clinica_id:contexto.clinica_id}),
+        nome:file.name, tipo:file.type.startsWith("video/")?"video":"imagem",
         caminho_privado:arquivo.registroId,
       });
       if(error) {
@@ -490,7 +526,7 @@ function OricStudio() {
         }}); } catch {}
         throw error;
       }
-      toast.success("Arquivo salvo na biblioteca privada da clínica.");
+      toast.success(modoPlataforma?"Arquivo salvo na biblioteca privada da ORICSE.":"Arquivo salvo na biblioteca privada da clínica.");
       await carregar();
       setAba("biblioteca");
     } catch(e) {
@@ -520,8 +556,8 @@ function OricStudio() {
       await excluirArquivoDrive({data:{
         accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
       }});
-      const {error}=await (supabaseBanco as any).from("oricstudio_midias")
-        .delete().eq("id",m.id).eq("clinica_id",contexto.clinica_id);
+      const {error}=await filtrarClinica((supabaseBanco as any).from(tabelaMidias)
+        .delete().eq("id",m.id), contexto.clinica_id);
       if(error)throw error;
       toast.success("Mídia excluída.");
       setPrevias(atual=>{const n={...atual};delete n[m.id];return n;});
@@ -531,13 +567,13 @@ function OricStudio() {
 
   return <main className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-16 pt-6 text-foreground sm:px-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <div><Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> Voltar ao ORICSE</Link>
+      <div><Link to={modoPlataforma?"/admin":"/inicio"} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> {modoPlataforma?"Voltar à Administração Geral":"Voltar ao ORICSE"}</Link>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-extrabold sm:text-3xl"><img src={ORICSTUDIO_LOGO} alt="Logo oficial OricStúdio" className="h-14 w-14 rounded-xl object-contain" /> OricStúdio</h1>
         <p className="mt-1 text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet</p>
       </div>
       <button type="button" disabled={carregando} onClick={()=>void carregar()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
     </header>
-    {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">Carregando a clínica e verificando a licença...</p>}
+    {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">{modoPlataforma?"Carregando OricStúdio da ORICSE...":"Carregando a clínica e verificando a licença..."}</p>}
     {!carregando && erro && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/60 bg-card p-5 text-sm text-destructive"><AlertCircle className="h-5 w-5 shrink-0"/>{erro}</div>}
     {!carregando && !erro && !contexto && <div className="rounded-xl border bg-card p-6"><p className="font-semibold">Nenhuma clínica selecionada</p><p className="mt-2 text-sm text-muted-foreground">Entre em uma clínica autorizada no ORICSE para consultar o OricStúdio.</p></div>}
     {!carregando && !erro && contexto && !contexto.tem_acesso && <section className="rounded-2xl border bg-card p-6 sm:p-8">
@@ -577,7 +613,7 @@ function OricStudio() {
       </div>
     </section>}
     {!carregando && !erro && contexto?.tem_acesso && <>
-      <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">Licença ativa · Ambiente exclusivo da clínica</span></div>
+      <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">{modoPlataforma?"Uso interno da plataforma · Sem assinatura ou cobranças":"Licença ativa · Ambiente exclusivo da clínica"}</span></div>
       {assinatura && contexto.pode_editar && <section className="space-y-2 rounded-xl border bg-card p-4 text-sm">
         <h2 className="font-semibold">Sua assinatura OricStúdio</h2>
         <p>{assinatura.quantidade_contas} conta(s) · {precoBRL(assinatura.valor_mensal_centavos)}/mês</p>
@@ -686,7 +722,7 @@ function OricStudio() {
       </section>}
       {aba==="biblioteca" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados da clínica no Google Drive do ORICSE.</p></div>
+          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados {modoPlataforma?"da própria ORICSE":"da clínica"} no Google Drive do ORICSE.</p></div>
           {contexto.pode_editar && <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
             <Plus className="h-4 w-4"/>{enviandoMidia?"Enviando...":"Adicionar mídia"}
             <input type="file" className="sr-only" disabled={enviandoMidia}
@@ -698,7 +734,7 @@ function OricStudio() {
         {midias.length===0
           ? <div className="rounded-xl border bg-card p-7"><FolderOpen className="h-9 w-9 text-muted-foreground"/>
               <h3 className="mt-3 font-semibold">Sua biblioteca está vazia</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo da clínica.</p></div>
+              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo {modoPlataforma?"da ORICSE":"da clínica"}.</p></div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {midias.map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
                 <div className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-secondary/40">
@@ -717,7 +753,7 @@ function OricStudio() {
               </article>)}
             </div>}
       </section>}
-      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz da clínica</h2>
+      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz {modoPlataforma?"da ORICSE":"da clínica"}</h2>
         <label className="block space-y-1 text-sm font-semibold">Nome público<input value={preferencias.nome_publico} onChange={e=>setPreferencias({...preferencias,nome_publico:e.target.value})} maxLength={150} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Tom de voz<textarea rows={3} maxLength={600} value={preferencias.tom_de_voz} onChange={e=>setPreferencias({...preferencias,tom_de_voz:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Hashtags padrão<textarea rows={2} maxLength={1000} value={preferencias.hashtags_padrao} onChange={e=>setPreferencias({...preferencias,hashtags_padrao:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
@@ -727,8 +763,8 @@ function OricStudio() {
       {aba==="contas" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold">Contas Instagram da clínica</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas.</p>
+            <h2 className="text-xl font-bold">Contas Instagram {modoPlataforma?"da ORICSE":"da clínica"}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{modoPlataforma?"Conecte apenas as contas oficiais da ORICSE, separadas das contas de clientes.":"Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas."}</p>
           </div>
           {contexto.pode_editar && <button type="button" onClick={()=>void conectarMeta()}
             disabled={!metaConfigurada || metaCarregando || metaOcupada}
