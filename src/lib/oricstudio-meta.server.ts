@@ -63,7 +63,7 @@ export async function encryptMetaToken(token: string) {
   };
 }
 
-async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
+export async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
   const iv=Buffer.from(ivBase64,"base64");
   if(iv.length!==12)throw new Error("Credencial Meta inválida.");
   const bytes=Buffer.from(ciphertext,"base64");
@@ -84,7 +84,7 @@ async function metaRefreshToken(token:string) {
 export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clinicaId:string,contaId:string) {
   const {userId}=await requireMetaEditor(db,accessToken,clinicaId,true);
   const {data:account,error:accountErr}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas")
-    .select("id,instagram_user_id,status").eq("id",contaId),clinicaId).maybeSingle();
+    .select("id,instagram_user_id,status,login_tipo,token_expira_em").eq("id",contaId),clinicaId).maybeSingle();
   if(accountErr||!account||account.status==="desconectada")
     throw new Error("Conta não encontrada nesta clínica.");
   const {data:secret,error:secretErr}=await db.from("oricstudio_meta_tokens")
@@ -92,21 +92,40 @@ export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clini
   if(secretErr||!secret)throw new Error("Conta sem credencial Meta ativa.");
   try {
     const token=await decryptMetaToken(secret.token_cifrado_base64,secret.iv_base64);
-    const profileUrl=new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(account.instagram_user_id)}`);
+    const direct=account.login_tipo==="instagram";
+    const profileUrl=direct
+      ? new URL("https://graph.instagram.com/me")
+      : new URL(`https://graph.facebook.com/v26.0/${encodeURIComponent(account.instagram_user_id)}`);
     profileUrl.searchParams.set("fields","id,username,account_type");
     profileUrl.searchParams.set("access_token",token);
     const profile=await graphGet(profileUrl);
-    if(!profile.id||!profile.username)throw new Error("Conta profissional não confirmada.");
+    if(!(profile.id||profile.user_id)||!profile.username)throw new Error("Conta profissional não confirmada.");
+    let renovada=false;
+    let tokenNovo:string|null=null;
+    let expiraEm:string|null=null;
+    if(direct && account.token_expira_em &&
+      Date.parse(account.token_expira_em)-Date.now()<14*86400_000) {
+      const nova=await metaRefreshToken(token);
+      tokenNovo=nova.token;expiraEm=nova.expiresAt;renovada=true;
+    }
+    if(renovada && tokenNovo && expiraEm) {
+      const encriptado=await encryptMetaToken(tokenNovo);
+      const {error:tokenUpdate}=await db.from("oricstudio_meta_tokens").update({
+        ...encriptado,token_expira_em:expiraEm,atualizado_em:new Date().toISOString(),
+      }).eq("conta_id",account.id);
+      if(tokenUpdate)throw new Error("Token renovado não pôde ser salvo.");
+    }
     const {error:updateErr}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas").update({
       username:String(profile.username),account_type:profile.account_type?String(profile.account_type):null,
       status:"ativa",ultimo_erro:null,atualizado_em:new Date().toISOString(),
+      ...(expiraEm?{token_expira_em:expiraEm}:{}),
     }),clinicaId).eq("id",contaId);
     if(updateErr)throw new Error("Falha ao atualizar estado da conta.");
     await db.from("oricstudio_meta_auditoria").insert({
       clinica_id:idNoBanco(clinicaId),conta_id:contaId,usuario_id:userId,
-      acao:"verificar",detalhes:{resultado:"sucesso",modo:"login_unificado"},
+      acao:renovada?"renovar":"verificar",detalhes:{resultado:"sucesso",modo:direct?"instagram_direto":"facebook"},
     });
-    return {ok:true,renovada:false,username:String(profile.username)};
+    return {ok:true,renovada,username:String(profile.username)};
   } catch {
     await filtrarPorAmbiente(db.from("oricstudio_meta_contas").update({
       status:"reautenticar",ultimo_erro:"Falha na validação da credencial Meta",
@@ -214,12 +233,12 @@ async function graphGet(url:URL) {
 export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
   const stateHash=sha256(state);
   const {data:flow,error:flowErr}=await db.from("oricstudio_meta_oauth_states")
-    .select("state_hash,clinica_id,iniciado_por,expira_em,usado_em").eq("state_hash",stateHash).maybeSingle();
+    .select("state_hash,clinica_id,iniciado_por,expira_em,usado_em,login_tipo").eq("state_hash",stateHash).eq("login_tipo","facebook").maybeSingle();
   if(flowErr||!flow||flow.usado_em||Date.parse(flow.expira_em)<=Date.now())
     throw new Error("Autorização expirada ou já utilizada.");
   const {data:consumed,error:consumedErr}=await db.from("oricstudio_meta_oauth_states")
     .update({usado_em:new Date().toISOString()}).eq("state_hash",stateHash)
-    .is("usado_em",null).gt("expira_em",new Date().toISOString()).select("state_hash").maybeSingle();
+    .eq("login_tipo","facebook").is("usado_em",null).gt("expira_em",new Date().toISOString()).select("state_hash").maybeSingle();
   if(consumedErr||!consumed)throw new Error("Esta autorização já foi usada.");
   await requireMetaEditorByUser(db,flow.iniciado_por,flow.clinica_id || ORICSTUDIO_PLATAFORMA_ID);
   const cfg=metaConfig();
@@ -253,7 +272,7 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
       throw new Error("Uma das contas do Instagram já está vinculada a outra clínica.");
     const values={
       clinica_id:flow.clinica_id,instagram_user_id:metaAccount.instagramUserId,username:metaAccount.username,
-      account_type:metaAccount.accountType,status:"incompleta",escopos:UNIFIED_SCOPES,
+      account_type:metaAccount.accountType,status:"incompleta",login_tipo:"facebook",escopos:UNIFIED_SCOPES,
       conectado_por:flow.iniciado_por,token_expira_em:expiry,atualizado_em:new Date().toISOString(),ultimo_erro:null,
     };
     const q=existing
@@ -281,7 +300,7 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
 export async function metaListForClinic(db:Db,accessToken:string,clinicaId:string) {
   await requireMetaEditor(db,accessToken,clinicaId,false);
   const {data,error}=await filtrarPorAmbiente(db.from("oricstudio_meta_contas")
-    .select("id,clinica_id,instagram_user_id,username,account_type,status,escopos,conectado_em,token_expira_em"),
+    .select("id,clinica_id,instagram_user_id,username,account_type,status,login_tipo,escopos,conectado_em,token_expira_em"),
     clinicaId).order("conectado_em",{ascending:false});
   if(error)throw new Error("Não foi possível consultar as contas conectadas.");
   return (data||[]) as MetaConta[];
