@@ -18,5 +18,5 @@ export const Route=createFileRoute("/api/oricstudio/jobs/coletar")({
     }catch{
       return Response.json({ok:false,erro:"Coleta indisponível"},{status:500});
     }
-  }}}},
+  }}},
 });
