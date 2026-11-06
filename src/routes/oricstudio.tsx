@@ -94,6 +94,7 @@ function OricStudio() {
   const [metaConfigurada, setMetaConfigurada] = useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
     instagramAppId:string; callback:string; formatoIdValido:boolean;
+    configurationIdConfigurado:boolean; appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
   } | null>(null);
   const [metaCarregando, setMetaCarregando] = useState(false);
   const [metaOcupada, setMetaOcupada] = useState(false);
@@ -783,22 +784,28 @@ function OricStudio() {
           <details className="rounded-xl border bg-card p-4 text-sm">
             <summary className="cursor-pointer font-semibold">Diagnóstico da conexão Instagram (Administração ORICSE)</summary>
             <p className="mt-3 text-muted-foreground">
-              A configuração no servidor não garante que o aplicativo tenha o produto
-              <strong> Instagram API with Instagram Login</strong> habilitado na Meta.
-              Se aparecer “Solicitação inválida”, confira estes dados no painel Meta for Developers.
+              Este aplicativo usa <strong>Instagram API with Unified Login</strong>. Se aparecer
+              “Solicitação inválida”, confirme primeiro a configuração abaixo — sem expor segredos.
             </p>
             <dl className="mt-3 space-y-2">
-              <div><dt className="font-semibold">Instagram App ID utilizado</dt>
+              <div><dt className="font-semibold">App ID utilizado</dt>
                 <dd className="break-all font-mono">{metaDiagnostico.instagramAppId || "Não configurado"}</dd></div>
-              <div><dt className="font-semibold">Redirect URI para cadastrar exatamente na Meta</dt>
+              <div><dt className="font-semibold">Redirect URI cadastrado na Meta</dt>
                 <dd className="break-all font-mono">{metaDiagnostico.callback}</dd></div>
-              <div><dt className="font-semibold">Formato do Instagram App ID</dt>
-                <dd>{metaDiagnostico.formatoIdValido ? "Numérico válido (produto e permissões ainda dependem da Meta)" : "Inválido: configure o ID específico do Instagram Login no Cloudflare"}</dd></div>
+              <div><dt className="font-semibold">Formato do App ID</dt>
+                <dd>{metaDiagnostico.formatoIdValido ? "Numérico válido" : "Ausente ou inválido no Cloudflare"}</dd></div>
+              <div><dt className="font-semibold">Configuration ID do Login Unificado</dt>
+                <dd>{metaDiagnostico.configurationIdConfigurado ? "Configurado" : "Ausente ou inválido no Cloudflare"}</dd></div>
+              <div><dt className="font-semibold">App Secret</dt>
+                <dd>{metaDiagnostico.appSecretConfigurado ? "Configurado" : "Ausente no Cloudflare"}</dd></div>
+              <div><dt className="font-semibold">Chave de criptografia</dt>
+                <dd>{metaDiagnostico.chaveCriptografiaValida ? "Válida" : "Ausente ou inválida (deve ser Base64 de 32 bytes)"}</dd></div>
             </dl>
             <p className="mt-3 text-muted-foreground">
-              Meta for Developers → Seu aplicativo → Instagram → API setup with Instagram Login.
-              Use o Instagram App ID e o Instagram App Secret dessa seção;
-              não utilize o App ID geral do Facebook. Confira o Redirect URI sem alterar barras ou domínio.
+              No Cloudflare, confira os nomes exatos: ORICSTUDIO_META_CLIENT_ID,
+              ORICSTUDIO_META_CLIENT_SECRET, ORICSTUDIO_META_CONFIG_ID,
+              ORICSTUDIO_META_REDIRECT_URI e ORICSTUDIO_META_ENCRYPTION_KEY.
+              No painel Meta, utilize a configuração selecionada em Instagram → API setup with Unified Login.
             </p>
             <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer"
               className="mt-2 inline-block font-semibold text-primary underline">Abrir Meta for Developers</a>
