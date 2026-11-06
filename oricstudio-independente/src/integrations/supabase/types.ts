@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       alerts: {
         Row: {
+          clinica_id: string
           chave: string
           created_at: string
           detalhe: Json
@@ -28,6 +29,7 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          clinica_id?: string
           chave?: string
           created_at?: string
           detalhe?: Json
@@ -40,6 +42,7 @@ export type Database = {
           tipo: string
         }
         Update: {
+          clinica_id?: string
           chave?: string
           created_at?: string
           detalhe?: Json
@@ -63,6 +66,7 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          clinica_id: string
           id: boolean
           modo_autonomia: string
           pausa_geral: boolean
@@ -72,6 +76,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          clinica_id?: string
           id?: boolean
           modo_autonomia?: string
           pausa_geral?: boolean
@@ -81,6 +86,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          clinica_id?: string
           id?: boolean
           modo_autonomia?: string
           pausa_geral?: boolean
@@ -93,6 +99,7 @@ export type Database = {
       }
       assistant_keys: {
         Row: {
+          clinica_id: string
           created_at: string
           id: string
           key_hash: string
@@ -101,6 +108,7 @@ export type Database = {
           ultimo_uso: string | null
         }
         Insert: {
+          clinica_id?: string
           created_at?: string
           id?: string
           key_hash: string
@@ -109,6 +117,7 @@ export type Database = {
           ultimo_uso?: string | null
         }
         Update: {
+          clinica_id?: string
           created_at?: string
           id?: string
           key_hash?: string
@@ -120,6 +129,7 @@ export type Database = {
       }
       audit_log: {
         Row: {
+          clinica_id: string
           acao: string
           alvo: string | null
           created_at: string
@@ -130,6 +140,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          clinica_id?: string
           acao: string
           alvo?: string | null
           created_at?: string
@@ -140,6 +151,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          clinica_id?: string
           acao?: string
           alvo?: string | null
           created_at?: string
@@ -153,6 +165,7 @@ export type Database = {
       }
       automation_rules: {
         Row: {
+          clinica_id: string
           acao: Json
           ativa: boolean
           created_at: string
@@ -162,6 +175,7 @@ export type Database = {
           nome: string
         }
         Insert: {
+          clinica_id?: string
           acao?: Json
           ativa?: boolean
           created_at?: string
@@ -171,6 +185,7 @@ export type Database = {
           nome: string
         }
         Update: {
+          clinica_id?: string
           acao?: Json
           ativa?: boolean
           created_at?: string
@@ -191,6 +206,7 @@ export type Database = {
       }
       brands: {
         Row: {
+          clinica_id: string
           contato_resposta: string | null
           created_at: string
           descricao: string | null
@@ -207,6 +223,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string
           contato_resposta?: string | null
           created_at?: string
           descricao?: string | null
@@ -223,6 +240,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string
           contato_resposta?: string | null
           created_at?: string
           descricao?: string | null
@@ -250,6 +268,7 @@ export type Database = {
       }
       comments: {
         Row: {
+          clinica_id: string
           arquivado: boolean
           autor: string | null
           categoria: string
@@ -273,6 +292,7 @@ export type Database = {
           texto: string | null
         }
         Insert: {
+          clinica_id?: string
           arquivado?: boolean
           autor?: string | null
           categoria?: string
@@ -296,6 +316,7 @@ export type Database = {
           texto?: string | null
         }
         Update: {
+          clinica_id?: string
           arquivado?: boolean
           autor?: string | null
           categoria?: string
@@ -330,6 +351,7 @@ export type Database = {
       }
       data_deletion_requests: {
         Row: {
+          clinica_id: string
           concluida_em: string | null
           confirmation_code: string
           created_at: string
@@ -339,6 +361,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          clinica_id?: string
           concluida_em?: string | null
           confirmation_code: string
           created_at?: string
@@ -348,6 +371,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          clinica_id?: string
           concluida_em?: string | null
           confirmation_code?: string
           created_at?: string
@@ -360,6 +384,7 @@ export type Database = {
       }
       facebook_pages: {
         Row: {
+          clinica_id: string
           connection_id: string
           created_at: string
           id: string
@@ -368,6 +393,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string
           connection_id: string
           created_at?: string
           id: string
@@ -376,6 +402,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string
           connection_id?: string
           created_at?: string
           id?: string
@@ -395,6 +422,7 @@ export type Database = {
       }
       ig_media: {
         Row: {
+          clinica_id: string
           caption: string | null
           comments_count: number | null
           ig_media_id: string
@@ -412,6 +440,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string
           caption?: string | null
           comments_count?: number | null
           ig_media_id: string
@@ -429,6 +458,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string
           caption?: string | null
           comments_count?: number | null
           ig_media_id?: string
@@ -464,6 +494,7 @@ export type Database = {
       }
       instagram_accounts: {
         Row: {
+          clinica_id: string
           connection_id: string | null
           created_at: string
           foto_url: string | null
@@ -480,6 +511,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          clinica_id?: string
           connection_id?: string | null
           created_at?: string
           foto_url?: string | null
@@ -496,6 +528,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          clinica_id?: string
           connection_id?: string | null
           created_at?: string
           foto_url?: string | null
@@ -530,6 +563,7 @@ export type Database = {
       }
       media_assets: {
         Row: {
+          clinica_id: string
           altura: number | null
           created_at: string
           created_by: string | null
@@ -545,6 +579,7 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          clinica_id?: string
           altura?: number | null
           created_at?: string
           created_by?: string | null
@@ -560,6 +595,7 @@ export type Database = {
           tipo: string
         }
         Update: {
+          clinica_id?: string
           altura?: number | null
           created_at?: string
           created_by?: string | null
@@ -586,6 +622,7 @@ export type Database = {
       }
       meta_connections: {
         Row: {
+          clinica_id: string
           connected_by: string | null
           created_at: string
           escopos_concedidos: string[]
@@ -601,6 +638,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string
           connected_by?: string | null
           created_at?: string
           escopos_concedidos?: string[]
@@ -616,6 +654,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string
           connected_by?: string | null
           created_at?: string
           escopos_concedidos?: string[]
@@ -634,6 +673,7 @@ export type Database = {
       }
       meta_tokens: {
         Row: {
+          clinica_id: string
           connection_id: string
           created_at: string
           expira_em: string | null
@@ -644,6 +684,7 @@ export type Database = {
           token_criptografado: string
         }
         Insert: {
+          clinica_id?: string
           connection_id: string
           created_at?: string
           expira_em?: string | null
@@ -654,6 +695,7 @@ export type Database = {
           token_criptografado: string
         }
         Update: {
+          clinica_id?: string
           connection_id?: string
           created_at?: string
           expira_em?: string | null
@@ -675,6 +717,7 @@ export type Database = {
       }
       metric_snapshots: {
         Row: {
+          clinica_id: string
           coletado_em: string
           dia: string | null
           id: string
@@ -687,6 +730,7 @@ export type Database = {
           valor: number | null
         }
         Insert: {
+          clinica_id?: string
           coletado_em?: string
           dia?: string | null
           id?: string
@@ -699,6 +743,7 @@ export type Database = {
           valor?: number | null
         }
         Update: {
+          clinica_id?: string
           coletado_em?: string
           dia?: string | null
           id?: string
@@ -729,18 +774,21 @@ export type Database = {
       }
       oauth_clients: {
         Row: {
+          clinica_id: string | null
           client_id: string
           client_name: string | null
           created_at: string
           redirect_uris: string[]
         }
         Insert: {
+          clinica_id?: string | null
           client_id: string
           client_name?: string | null
           created_at?: string
           redirect_uris: string[]
         }
         Update: {
+          clinica_id?: string | null
           client_id?: string
           client_name?: string | null
           created_at?: string
@@ -750,6 +798,7 @@ export type Database = {
       }
       oauth_codes: {
         Row: {
+          clinica_id: string
           client_id: string
           code_challenge: string
           code_hash: string
@@ -759,6 +808,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          clinica_id?: string
           client_id: string
           code_challenge: string
           code_hash: string
@@ -768,6 +818,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          clinica_id?: string
           client_id?: string
           code_challenge?: string
           code_hash?: string
@@ -799,6 +850,7 @@ export type Database = {
         }
         Insert: {
           clinica_id?: string
+          clinica_id?: string
           provider?: "instagram" | "facebook"
           created_at?: string
           expires_at: string
@@ -808,6 +860,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          clinica_id?: string
           clinica_id?: string
           provider?: "instagram" | "facebook"
           created_at?: string
@@ -821,6 +874,7 @@ export type Database = {
       }
       oauth_tokens: {
         Row: {
+          clinica_id: string
           access_hash: string
           client_id: string
           created_at: string
@@ -833,6 +887,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          clinica_id?: string
           access_hash: string
           client_id: string
           created_at?: string
@@ -845,6 +900,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          clinica_id?: string
           access_hash?: string
           client_id?: string
           created_at?: string
@@ -868,6 +924,7 @@ export type Database = {
       }
       post_events: {
         Row: {
+          clinica_id: string
           created_at: string
           detalhe: string | null
           etapa: string
@@ -876,6 +933,7 @@ export type Database = {
           resultado: string
         }
         Insert: {
+          clinica_id?: string
           created_at?: string
           detalhe?: string | null
           etapa: string
@@ -884,6 +942,7 @@ export type Database = {
           resultado: string
         }
         Update: {
+          clinica_id?: string
           created_at?: string
           detalhe?: string | null
           etapa?: string
@@ -903,6 +962,7 @@ export type Database = {
       }
       post_versions: {
         Row: {
+          clinica_id: string
           created_at: string
           created_by: string | null
           id: string
@@ -912,6 +972,7 @@ export type Database = {
           versao: number
         }
         Insert: {
+          clinica_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -921,6 +982,7 @@ export type Database = {
           versao: number
         }
         Update: {
+          clinica_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -941,6 +1003,7 @@ export type Database = {
       }
       posts: {
         Row: {
+          clinica_id: string
           agendado_para: string | null
           alt_text: string | null
           aprovado_em: string | null
@@ -972,6 +1035,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string
           agendado_para?: string | null
           alt_text?: string | null
           aprovado_em?: string | null
@@ -1003,6 +1067,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string
           agendado_para?: string | null
           alt_text?: string | null
           aprovado_em?: string | null
@@ -1052,6 +1117,7 @@ export type Database = {
       }
       publish_jobs: {
         Row: {
+          clinica_id: string
           created_at: string
           id: string
           locked_at: string | null
@@ -1062,6 +1128,7 @@ export type Database = {
           ultimo_erro: string | null
         }
         Insert: {
+          clinica_id?: string
           created_at?: string
           id?: string
           locked_at?: string | null
@@ -1072,6 +1139,7 @@ export type Database = {
           ultimo_erro?: string | null
         }
         Update: {
+          clinica_id?: string
           created_at?: string
           id?: string
           locked_at?: string | null
@@ -1093,6 +1161,7 @@ export type Database = {
       }
       regras_publicacao: {
         Row: {
+          clinica_id: string
           ativa: boolean
           campanhas_com_aprovacao: string[]
           dias_semana: number[]
@@ -1110,6 +1179,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string
           ativa?: boolean
           campanhas_com_aprovacao?: string[]
           dias_semana?: number[]
@@ -1127,6 +1197,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string
           ativa?: boolean
           campanhas_com_aprovacao?: string[]
           dias_semana?: number[]
@@ -1155,6 +1226,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          clinica_id: string
           conteudo: Json
           created_at: string
           gerado_em: string
@@ -1165,6 +1237,7 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          clinica_id?: string
           conteudo?: Json
           created_at?: string
           gerado_em?: string
@@ -1175,6 +1248,7 @@ export type Database = {
           tipo?: string
         }
         Update: {
+          clinica_id?: string
           conteudo?: Json
           created_at?: string
           gerado_em?: string
