@@ -165,7 +165,7 @@ function ContasPage() {
             ) : null}
             <Button
               onClick={() => connectDirect.mutate()}
-              disabled={connectDirect.isPending || directConfig.isLoading || missingInstagram.length > 0}
+              disabled={connectDirect.isPending || directConfig.isLoading || missingInstagram.length > 0 || !directConfig.data?.habilitada}
             >
               {connectDirect.isPending?<Loader2 className="size-4 animate-spin"/>:<AtSign className="size-4"/>}
               Conectar Instagram (sem Facebook)
@@ -173,7 +173,7 @@ function ContasPage() {
             <Button
               variant="outline"
               onClick={() => connect.mutate()}
-              disabled={connect.isPending || missing.length > 0}
+              disabled={connect.isPending || missing.length > 0 || !config.data?.habilitada}
             >
               {connect.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -186,6 +186,16 @@ function ContasPage() {
         }
       />
 
+      {directConfig.data && !directConfig.data.habilitada && (
+        <Alert className="mb-6">
+          <AlertTriangle className="size-4"/>
+          <AlertTitle>Conexões em homologação</AlertTitle>
+          <AlertDescription>
+            O OricStudio ainda não está autorizado a conectar contas reais. 
+            A liberação depende do app Meta próprio, da segurança por clínica e dos testes de publicação.
+          </AlertDescription>
+        </Alert>
+      )}
       {directConfig.data && missingInstagram.length > 0 && (
         <Alert className="mb-6">
           <AlertTriangle className="size-4"/>

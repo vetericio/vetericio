@@ -93,7 +93,8 @@ export const getInstagramDirectStatus=createServerFn({method:"GET"})
     await requireAdmin(context);
     const {instagramDirectConfig}=await import("./server/instagram-direct.server");
     const cfg=instagramDirectConfig();
-    return {missing:cfg.missing,redirectUri:cfg.redirectUri};
+    return {missing:cfg.missing,redirectUri:cfg.redirectUri,
+      habilitada:process.env["ORICSTUDIO_CONEXOES_HOMOLOGADAS"]==="true"};
   });
 
 export const metaInstagramOAuthStart=createServerFn({method:"POST"})
@@ -274,6 +275,7 @@ export const getConfigStatus = createServerFn({ method: "GET" })
     return {
       missing: cfg.missing,
       usaConfigId: !!cfg.configId,
+      habilitada:process.env["ORICSTUDIO_CONEXOES_HOMOLOGADAS"]==="true",
       versao: cfg.version,
       redirectUri: cfg.baseUrl ? cfg.redirectUri : null,
     };
