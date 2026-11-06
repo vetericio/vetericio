@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Assistente local do Gestor Instagram: envia arquivos do computador e agenda publicações
+// Assistente local do OricStudio: envia arquivos do computador e agenda publicações
 // pela API do assistente, com as mesmas regras do painel (fila, aprovação, pausa geral, registro).
 //
 //   node tools/assistente.mjs criar-chave            gera a chave local e mostra o hash para registrar
@@ -11,7 +11,7 @@
 //   node tools/assistente.mjs comentarios [--conta minha_conta]   comentários sem resposta, com contexto
 //   node tools/assistente.mjs sugerir --id <id> --texto "..."      grava sugestão (publicar exige clique humano)
 //
-// A chave fica em %USERPROFILE%\.gestor-instagram\chave-assistente e nunca é enviada a outro lugar
+// A chave fica em %USERPROFILE%\.oricstudio\chave-assistente e nunca é enviada a outro lugar
 // além do próprio sistema. Revogar: preencher revogada_em em assistant_keys.
 import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -19,8 +19,16 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, rmSync } 
 import { homedir, tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 
-const BASE = process.env.GESTOR_URL ?? "https://gestor-insta-vetericio.lovable.app";
-const KEY_DIR = join(homedir(), ".gestor-instagram");
+const BASE = (process.env.ORICSTUDIO_URL || "").replace(/\\/+$/, "");
+function verificarDestino() {
+  if (!BASE) throw new Error("Configure ORICSTUDIO_URL com o endereço da instância OricStudio.");
+  const url = new URL(BASE);
+  if (url.protocol !== "https:" || url.hostname === "gestor-insta-vetericio.lovable.app" ||
+      url.hostname.endsWith(".gestor-insta-vetericio.lovable.app")) {
+    throw new Error("Destino inválido: o OricStudio não pode enviar dados para o Gestor 2.0.");
+  }
+}
+const KEY_DIR = join(homedir(), ".oricstudio");
 const KEY_FILE = join(KEY_DIR, "chave-assistente");
 
 function args(argv) {
@@ -46,6 +54,7 @@ function key() {
 }
 
 async function api(path, init = {}) {
+  verificarDestino();
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${key()}`, ...(init.headers ?? {}) },
@@ -64,7 +73,7 @@ const MIME = {
 
 /** PNG/WebP → JPEG with Windows' System.Drawing (white background, quality 92). */
 function toJpeg(file) {
-  const out = join(tmpdir(), `gestor-${randomBytes(6).toString("hex")}.jpg`);
+  const out = join(tmpdir(), `oricstudio-${randomBytes(6).toString("hex")}.jpg`);
   const ps = [
     "Add-Type -AssemblyName System.Drawing",
     `$src = [System.Drawing.Image]::FromFile($args[0])`,

@@ -1,8 +1,8 @@
-// Dados do responsável exibidos nas páginas públicas (/privacidade, /termos, /exclusao-de-dados).
-// A Meta exige uma política de privacidade com um contato válido: preencha antes de publicar o app.
+// Informações públicas da aplicação independente OricStudio.
+// Revisar política de privacidade e termos antes da homologação Meta.
 export const LEGAL = {
-  nomeServico: "Gestor de Contas Instagram",
-  controlador: "Veterício",
-  emailContato: "fnandojg@gmail.com",
-  atualizadoEm: "31/10/2026",
+  nomeServico: "OricStudio — Oricse",
+  controlador: "Veterício Serviços Veterinários LTDA",
+  emailContato: "vetericio@gmail.com",
+  atualizadoEm: "06/11/2026",
 };

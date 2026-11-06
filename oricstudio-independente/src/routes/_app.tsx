@@ -158,7 +158,7 @@ function AppSidebar({ email }: { email: string }) {
   return (
     <Sidebar>
       <SidebarHeader className="px-4 py-3">
-        <span className="text-base font-semibold">Gestor Instagram</span>
+        <span className="text-base font-semibold">OricStudio</span>
       </SidebarHeader>
       <SidebarContent>
         {NAV.map((g) => (

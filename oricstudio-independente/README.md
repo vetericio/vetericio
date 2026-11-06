@@ -1,6 +1,6 @@
 # OricStudio — código copiado independentemente do Gestor Instagram 2.0
 
-**Status: cópia de desenvolvimento. NÃO publicada, NÃO conectada à Meta e ainda NÃO substitui a tela `/oricstudio` do ORICSE.**
+**Status: cópia de desenvolvimento. Build/typecheck/testes automatizados aprovados. Login direto Instagram implementado em código e aguardando credenciais/homologação. NÃO publicada, NÃO conectada à Meta e ainda NÃO substitui a tela `/oricstudio` do ORICSE.**
 
 A base deste diretório é uma **cópia física do código** do repositório privado `vetericio/gestor-insta-vetericio` (branch `main`, snapshot da árvore Git `d1dfd1fd8f8ba4ec1d797ccee481b3d0497ac203`). Não há importação remota, integração de API, compartilhamento de tokens ou sincronização automática de código com o Gestor original. O aplicativo original **não foi modificado**.
 
@@ -26,3 +26,12 @@ O Gestor 2.0 é a referência de implementação e comportamento para: autentica
 Códigos de páginas, componentes, APIs, servidores, testes, scripts e instruções de referência preservados sob este diretório. O `.env` real do projeto de origem foi deliberadamente excluído; `.env.example` contém apenas placeholders e deve ser ajustado à implantação OricStudio.
 
 **Nunca confundir 'código copiado' com 'produto publicado e validado'.** A cópia está presente apenas na ramificação de desenvolvimento até a aprovação técnica.
+
+## Conexões e segurança adicionadas
+- Novo botão **Conectar Instagram (sem Facebook)** com Instagram API with Instagram Login, escopos profissionais `instagram_business_*`, OAuth state one-time, troca por token longo e criptografia em servidor. Não usa `config_id` nem Página Facebook.
+- Login Facebook for Business permanece o mesmo do Gestor; não reaproveitar App ID ou segredos da instalação original.
+- O tipo de login é salvo em `meta_connections.login_provider`, e a publicação escolhe o host Graph conforme a origem do token.
+- A verificação da conexão direta confirma perfil e tenta renovar token próximo do vencimento; não há credenciais de produção configuradas nem homologação real.
+- `tools/assistente.mjs` exige `ORICSTUDIO_URL`, sem URL-padrão apontando ao Gestor. Armazena a chave local em `.oricstudio`.
+
+**Bloqueio comercial:** Multi-tenancy, SSO com ORICSE, RLS e isolamento por clínica ainda precisam de implementação/testes; não habilitar para clientes antes disso.

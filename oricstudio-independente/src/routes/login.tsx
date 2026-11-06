@@ -13,7 +13,7 @@ import { getSetupStatus } from "@/lib/app.functions";
 import { useSession } from "@/lib/session";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — Gestor Instagram" }] }),
+  head: () => ({ meta: [{ title: "Entrar — OricStudio" }] }),
   component: LoginPage,
 });
 
@@ -59,7 +59,7 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Gestor Instagram</CardTitle>
+          <CardTitle>OricStudio</CardTitle>
           <CardDescription>Acesso restrito à equipe.</CardDescription>
         </CardHeader>
         <CardContent>

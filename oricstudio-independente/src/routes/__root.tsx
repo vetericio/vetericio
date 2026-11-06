@@ -80,17 +80,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Gestor Instagram" },
-      { name: "description", content: "Gestão interna de contas profissionais do Instagram." },
+      { title: "OricStudio" },
+      { name: "description", content: "OricStudio — gestão de redes sociais para o mercado pet." },
       { name: "robots", content: "noindex" },
-      { property: "og:title", content: "Gestor Instagram" },
+      { property: "og:title", content: "OricStudio" },
       {
         property: "og:description",
-        content: "Gestão interna de contas profissionais do Instagram.",
+        content: "OricStudio — gestão de redes sociais para o mercado pet.",
       },
       { property: "og:type", content: "website" },
       { name: "theme-color", content: "#0f172a" },
-      { name: "apple-mobile-web-app-title", content: "Gestor" },
+      { name: "apple-mobile-web-app-title", content: "OricStudio" },
     ],
     links: [
       {

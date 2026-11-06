@@ -17,7 +17,7 @@ import { formatDateTime, useAccounts, useBrands, useConnections, useSettings } f
 import { shiftDay } from "@/lib/report";
 
 export const Route = createFileRoute("/_app/")({
-  head: () => ({ meta: [{ title: "Visão geral — Gestor Instagram" }] }),
+  head: () => ({ meta: [{ title: "Visão geral — OricStudio" }] }),
   component: Overview,
 });
 

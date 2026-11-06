@@ -13,7 +13,7 @@ import { getSetupStatus, runInitialSetup } from "@/lib/app.functions";
 import { errorMessage } from "@/lib/queries";
 
 export const Route = createFileRoute("/configuracao-inicial")({
-  head: () => ({ meta: [{ title: "Configuração inicial — Gestor Instagram" }] }),
+  head: () => ({ meta: [{ title: "Configuração inicial — OricStudio" }] }),
   component: SetupPage,
 });
 
