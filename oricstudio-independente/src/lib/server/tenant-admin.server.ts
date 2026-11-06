@@ -47,6 +47,7 @@ export function tenantScopedAdmin(admin:Admin, clinicId:string):Admin {
     throw new Error("Identificador de clínica inválido.");
   return new Proxy(admin,{
     get(target,prop,receiver){
+      if(prop==="__studioClinicId")return clinicId;
       if(prop==="from")return (table:string)=>{
         const original=(target.from as any).call(target,table);
         if(["studio_clinicas","studio_membros","studio_selecao","user_roles"].includes(table))
