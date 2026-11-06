@@ -68,3 +68,32 @@ export const visualizarImagemPrivadaDrive = createServerFn({ method: "POST" })
     }
     return { dataUrl: `data:${arquivo.mimeType};base64,${bytes.toString("base64")}` };
   });
+
+
+/**
+ * Fornece bytes diretamente ao gateway assinado de publicação Meta.
+ * Nunca chama autorização do navegador: o gateway valida o ticket HMAC,
+ * a licença e o registro de mídia antes de invocar esta função.
+ */
+export async function baixarMidiaOricstudioServidor(clinicaId:string,registroId:string) {
+  if(!/^[0-9a-f-]{36}$/i.test(registroId))throw new Error("Identificador de mídia inválido.");
+  const token=await accessTokenGoogle();
+  const arquivo=await localizarPorRegistro(token,registroId);
+  if(!arquivo || arquivo.appProperties?.clinicaId!==clinicaId ||
+     arquivo.appProperties?.entidadeTipo!=="oricstudio")
+    throw new Error("Arquivo não pertence ao OricStudio deste ambiente.");
+  if(!["image/jpeg","video/mp4","video/quicktime"].includes(String(arquivo.mimeType)))
+    throw new Error("Para publicar, converta as mídias em JPEG ou MP4.");
+  if(Number(arquivo.size||0)>100*1024*1024)
+    throw new Error("Arquivo acima do limite autorizado para publicação.");
+  const resposta=await gfetch(token,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}?alt=media`);
+  return new Response(resposta.body,{
+    headers:{
+      "Content-Type":String(arquivo.mimeType),
+      "Cache-Control":"private, no-store",
+      "X-Content-Type-Options":"nosniff",
+      ...(arquivo.size?{"Content-Length":String(arquivo.size)}:{}),
+    }
+  });
+}
