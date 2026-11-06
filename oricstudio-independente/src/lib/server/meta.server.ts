@@ -256,12 +256,19 @@ const REQUIRED_CORE = ["instagram_basic", "pages_show_list"];
 /** Verify every (or one) connection and update statuses. */
 export async function runConnectionCheck(admin: Admin, onlyConnectionId?: string) {
   const cfg = metaConfig();
-  if (cfg.missing.length) throw new Error(`Secrets ausentes: ${cfg.missing.join(", ")}`);
-  let q = admin.from("meta_connections").select("id").neq("status", "desconectada");
+  // Instagram Login funciona mesmo que as credenciais do Facebook Login nao existam.
+  let q = admin.from("meta_connections").select("id,login_provider").neq("status", "desconectada");
   if (onlyConnectionId) q = q.eq("id", onlyConnectionId);
   const { data: conns } = await q;
   const results: { id: string; status: string }[] = [];
   for (const c of conns || []) {
+    if ((c as any).login_provider === "instagram") {
+      const {verifyDirectInstagramConnection}=await import("./instagram-direct.server");
+      const check=await verifyDirectInstagramConnection(admin,c.id);
+      results.push({id:c.id,status:check.status});
+      continue;
+    }
+    if (cfg.missing.length) throw new Error(`Secrets do Login Facebook ausentes: ${cfg.missing.join(", ")}`);
     let status = "ativa";
     let erro: string | null = null;
     let expira: string | null = null;

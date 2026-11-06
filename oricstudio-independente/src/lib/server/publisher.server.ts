@@ -8,6 +8,7 @@ import {
   GraphNetworkError,
   audit,
   getPageToken,
+  getUserToken,
   graphGet,
   graphPost,
   metaConfig,
@@ -439,10 +440,19 @@ export async function accountContext(admin: Admin, accountId: string): Promise<C
     .select("ig_user_id, page_id, connection_id")
     .eq("id", accountId)
     .maybeSingle();
-  if (!acc?.page_id || !acc.connection_id) return null;
-  const token = await getPageToken(admin, acc.connection_id, acc.page_id);
-  if (!token) return null;
-  return { igUserId: acc.ig_user_id, token, graph: metaConfig().graph };
+  if (!acc?.connection_id) return null;
+  const {data:connection}=await admin.from("meta_connections")
+    .select("login_provider").eq("id",acc.connection_id).maybeSingle();
+  if ((connection as any)?.login_provider==="instagram") {
+    const token=await getUserToken(admin,acc.connection_id);
+    if (!token) return null;
+    return {igUserId:acc.ig_user_id,token,graph:"https://graph.instagram.com/v26.0"};
+  }
+  // Preservar o comportamento original do Gestor 2.0 para Facebook Login.
+  if(!acc.page_id)return null;
+  const token=await getPageToken(admin,acc.connection_id,acc.page_id);
+  if(!token)return null;
+  return {igUserId:acc.ig_user_id,token,graph:metaConfig().graph};
 }
 
 async function containerStatus(

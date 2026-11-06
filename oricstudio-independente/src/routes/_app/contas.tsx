@@ -27,6 +27,8 @@ import {
   metaConnectionCheck,
   metaDisconnect,
   metaOAuthStart,
+  metaInstagramOAuthStart,
+  getInstagramDirectStatus,
   setAccountManaged,
 } from "@/lib/app.functions";
 import { META_SCOPES } from "@/lib/meta-permissions";
@@ -62,6 +64,8 @@ const MOTIVOS: Record<string, string> = {
   configuracao_incompleta: "Faltam secrets do app Meta no servidor.",
   falha_na_troca_do_token:
     "Não foi possível trocar o código por um token. Confira META_APP_ID, META_APP_SECRET e a URL de redirecionamento.",
+  falha_na_conexao_instagram:
+    "Não foi possível concluir o login direto do Instagram. Confira a configuração do aplicativo Meta do OricStudio.",
   parametros_invalidos: "A resposta da Meta veio em um formato inesperado.",
 };
 
@@ -78,6 +82,11 @@ function ContasPage() {
     queryKey: ["config-status"],
     queryFn: () => getConfigStatus(),
     retry: false,
+  });
+  const directConfig = useQuery({
+    queryKey:["instagram-direct-config"],
+    queryFn:()=>getInstagramDirectStatus(),
+    retry:false,
   });
   const shown = useRef(false);
 
@@ -108,6 +117,11 @@ function ContasPage() {
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
+  const connectDirect = useMutation({
+    mutationFn:()=>metaInstagramOAuthStart(),
+    onSuccess:({url})=>{window.location.href=url;},
+    onError:(e)=>toast.error(errorMessage(e)),
+  });
 
   const check = useMutation({
     mutationFn: (connectionId?: string) =>
@@ -123,6 +137,7 @@ function ContasPage() {
   });
 
   const missing = config.data?.missing ?? [];
+  const missingInstagram = directConfig.data?.missing ?? [];
   const pageName = (id: string | null) =>
     id ? (pages.data?.find((p) => p.id === id)?.nome ?? id) : "—";
   const activeConnections = (connections.data ?? []).filter((c) => c.status !== "desconectada");
@@ -149,6 +164,14 @@ function ContasPage() {
               </Button>
             ) : null}
             <Button
+              onClick={() => connectDirect.mutate()}
+              disabled={connectDirect.isPending || directConfig.isLoading || missingInstagram.length > 0}
+            >
+              {connectDirect.isPending?<Loader2 className="size-4 animate-spin"/>:<AtSign className="size-4"/>}
+              Conectar Instagram (sem Facebook)
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => connect.mutate()}
               disabled={connect.isPending || missing.length > 0}
             >
@@ -163,6 +186,16 @@ function ContasPage() {
         }
       />
 
+      {directConfig.data && missingInstagram.length > 0 && (
+        <Alert className="mb-6">
+          <AlertTriangle className="size-4"/>
+          <AlertTitle>Conexão direta aguardando configuração</AlertTitle>
+          <AlertDescription>
+            Para conectar sem Página no Facebook, configure no servidor os itens: {missingInstagram.join(", ")}.
+            O login por Facebook é independente e continua como alternativa.
+          </AlertDescription>
+        </Alert>
+      )}
       {config.isError ? (
         <Alert className="mb-6">
           <AlertTriangle className="size-4" />

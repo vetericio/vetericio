@@ -79,6 +79,34 @@ export const metaOAuthStart = createServerFn({ method: "POST" })
     return { url: buildAuthorizeUrl(state) };
   });
 
+// Login direto do Instagram, sem exigencia de Pagina no Facebook.
+export const getInstagramDirectStatus=createServerFn({method:"GET"})
+  .middleware([requireSupabaseAuth])
+  .handler(async({context})=>{
+    await requireAdmin(context);
+    const {instagramDirectConfig}=await import("./server/instagram-direct.server");
+    const cfg=instagramDirectConfig();
+    return {missing:cfg.missing,redirectUri:cfg.redirectUri};
+  });
+
+export const metaInstagramOAuthStart=createServerFn({method:"POST"})
+  .middleware([requireSupabaseAuth])
+  .handler(async({context})=>{
+    await requireAdmin(context);
+    const {instagramDirectConfig,buildInstagramAuthorizeUrl}=await import("./server/instagram-direct.server");
+    const {randomToken,sha256Hex}=await import("./server/crypto.server");
+    const cfg=instagramDirectConfig();
+    if(cfg.missing.length)throw new Error(`Configure a integração Instagram: ${cfg.missing.join(", ")}`);
+    const state=randomToken(32);
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {error}=await supabaseAdmin.from("oauth_states").insert({
+      user_id:context.userId,state_hash:await sha256Hex(state),
+      expires_at:new Date(Date.now()+10*60*1000).toISOString(),
+    });
+    if(error)throw new Error("Não foi possível iniciar a conexão Instagram.");
+    return {url:buildInstagramAuthorizeUrl(state)};
+  });
+
 export const metaConnectionCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>

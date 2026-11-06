@@ -62,6 +62,7 @@ CREATE TABLE public.meta_connections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   meta_user_id text NOT NULL UNIQUE,
   meta_user_name text,
+  login_provider text NOT NULL DEFAULT 'facebook' CHECK(login_provider IN ('facebook','instagram')),
   connected_by uuid,
   status text NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa','token_expirado','permissao_insuficiente','revogada','erro','desconectada')),
   escopos_concedidos text[] NOT NULL DEFAULT '{}',
