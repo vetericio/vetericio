@@ -33,7 +33,6 @@ import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { ROTAS_CATALOGO, ROTAS_EDITAVEIS, CAMINHOS_RESERVADOS } from "@/lib/admin-page-routes";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
-import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
@@ -304,6 +303,8 @@ function Admin() {
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
   const [gradeTaxas, setGradeTaxas] = useState<{ modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] }>({ modalidades: [], segmentos: [], comissoes: [] });
   const [salvandoTaxas, setSalvandoTaxas] = useState(false);
+  const [erroTaxas, setErroTaxas] = useState<string | null>(null);
+  const [carregandoTaxas, setCarregandoTaxas] = useState(true);
   const [dominiosClinica, setDominiosClinica] = useState<DominioClinica[]>([]);
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
@@ -351,9 +352,9 @@ function Admin() {
   }
 
   async function carregarTudo() {
-    const [c, clinicasNaLixeira, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
-      semClinicasNaLixeira((supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA)).order("nome"),
-      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).not("excluido_em", "is", null).order("nome"),
+    setCarregandoTaxas(true);
+    const [c, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
+      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
@@ -364,7 +365,6 @@ function Admin() {
       (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
-    if (clinicasNaLixeira.error) toast.error("Não foi possível consultar a Lixeira.");
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
@@ -372,8 +372,9 @@ function Admin() {
     const porClinica:Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>={};
     for(const assinatura of assinaturas.data||[]){if(!porClinica[assinatura.clinica_id])porClinica[assinatura.clinica_id]=assinatura;}
     setAssinaturasClinicas(porClinica);
-    setClinicas(c.data || []);
-    setClinicasLixeira(clinicasNaLixeira.data || []);
+    // A lista de clínicas e a lixeira vêm da mesma consulta, sem variável indefinida.
+    setClinicas((c.data || []).filter((item: Clinica) => !item.excluido_em));
+    setClinicasLixeira((c.data || []).filter((item: Clinica) => Boolean(item.excluido_em)));
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
@@ -386,9 +387,11 @@ function Admin() {
     setSite({ ...SITE_PADRAO, ...(cfg.data?.valor || {}) });
     setArquivosDrive(arqs.count || 0);
     if (taxas.error) {
+      setErroTaxas(`Não foi possível carregar os valores salvos: ${taxas.error.message}`);
       toast.error("Não foi possível carregar a grade de pagamentos.");
     } else {
       const dados = taxas.data || {};
+      setErroTaxas(Array.isArray(dados.modalidades) && dados.modalidades.length > 0 ? null : "O banco não retornou condições de pagamento. Os dados existentes foram preservados.");
       setGradeTaxas({
         modalidades: Array.isArray(dados.modalidades) ? dados.modalidades.map((item: any) => ({
           ...item,
@@ -415,6 +418,7 @@ function Admin() {
       if (atual) setSelecionada(atual);
     }
     setUltimaAtualizacao(new Date().toISOString());
+    setCarregandoTaxas(false);
   }
 
   async function salvarGradeTaxas(clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) {
@@ -1974,13 +1978,16 @@ function Admin() {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Financeiro da plataforma</p>
-        <h2 className="mt-1 text-2xl font-black">Financeiro, taxas e repasses</h2>
+        <h2 className="mt-1 text-2xl font-black">OricsePay</h2>
         <p className="mt-1 max-w-4xl text-sm text-muted-foreground">A taxa do Mercado Pago é descontada primeiro. A comissão ORICSE incide apenas sobre o saldo restante, por segmento, e o simulador mostra o líquido antes da cobrança.</p>
       </div>
       <PainelTaxasPagamento
         clinicas={clinicas}
         grade={gradeTaxas}
         salvando={salvandoTaxas}
+        carregando={carregandoTaxas}
+        erro={erroTaxas}
+        onRestaurar={() => carregarTudo()}
         onSalvarTudo={async (clinicaId, modalidades, segmentos, comissoes) => {
           await salvarGradeTaxas(clinicaId, modalidades, segmentos);
           await salvarComissoesOricse(clinicaId, comissoes);
@@ -2072,10 +2079,13 @@ function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento
   return [linha.modalidade, linha.prazo_recebimento_dias, linha.parcelas].join(":");
 }
 
-function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
+function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onRestaurar, onSalvarTudo }: {
   clinicas: Clinica[];
   grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] };
   salvando: boolean;
+  carregando: boolean;
+  erro: string | null;
+  onRestaurar: () => Promise<void>;
   onSalvarTudo: (clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[], comissoes: TaxaComissao[]) => Promise<void>;
 }) {
   const [clinicaId, setClinicaId] = useState<string>("");
@@ -2173,9 +2183,10 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
       return [...atuais, segmento];
     });
   }
-  function restaurarTudo() {
-    setLinhas(globais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
-    setComissoes(comissoesGlobais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
+  async function restaurarTudo() {
+    // Reconsulta o banco: restaura também as exceções da clínica selecionada,
+    // não os valores gerais e nem versões desatualizadas mantidas em memória.
+    await onRestaurar();
   }
   function regrasSelecionadas(chave: string) {
     return comissoes.filter((linha) => segmentosSelecionados.includes(linha.segmento) && chaveTaxa(linha) === chave);
@@ -2247,8 +2258,10 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h3 className="font-black">Taxas e comissão por condição</h3><p className="mt-1 text-sm text-muted-foreground">A edição de Comissão ORICSE afeta apenas as áreas marcadas acima. A coluna ao lado mostra, com clareza, como cada regra ficará distribuída.</p></div>
-        <button type="button" onClick={restaurarTudo} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar valores salvos</button>
+        <button type="button" disabled={carregando || salvando} onClick={() => void restaurarTudo()} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50 disabled:opacity-50">{carregando ? "Carregando valores..." : "Restaurar valores salvos"}</button>
       </div>
+      {erro && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{erro} <button type="button" className="font-bold underline" onClick={() => void onRestaurar()}>Tentar novamente</button></p>}
+      {!erro && carregando && !linhas.length && <p role="status" className="mt-4 text-sm text-muted-foreground">Carregando as taxas e comissões salvas...</p>}
       <div className="mt-4 overflow-x-auto rounded-xl border">
         <table className="min-w-[1120px] w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr>
@@ -2325,13 +2338,16 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
           <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
           <label className="text-sm font-bold">Área da venda<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
         </div>
-        <dl className="space-y-2 rounded-2xl bg-white p-5 text-sm shadow-sm">
+        <dl className="space-y-3 rounded-2xl bg-white p-5 text-sm shadow-sm">
+          <div className="rounded-xl bg-primary px-4 py-5 text-primary-foreground sm:px-5">
+            <dt className="text-sm font-bold">{modoTaxasSimulacao === "reter" ? "Líquido da clínica" : "Tutor pagará"}</dt>
+            <dd className="mt-1 break-words text-4xl font-black leading-tight tracking-tight tabular-nums sm:text-5xl" aria-live="polite">{moedaCentavos(modoTaxasSimulacao === "reter" ? liquido : valorCobradoTutor)}</dd>
+          </div>
           <div className="flex justify-between gap-3"><dt>{modoTaxasSimulacao === "reter" ? "Valor final para o tutor" : "Líquido desejado pela clínica"}</dt><dd className="font-bold">{moedaCentavos(valorInformado)}</dd></div>
-          <div className="flex justify-between gap-3"><dt>Tutor pagará</dt><dd className="font-black">{moedaCentavos(valorCobradoTutor)}</dd></div>
           {modoTaxasSimulacao === "repassar" && <div className="flex justify-between gap-3 rounded-lg bg-amber-50 px-2 py-1 text-amber-900"><dt>Repasse das taxas</dt><dd className="font-black">+ {moedaCentavos(taxaRepassada)}</dd></div>}
           <div className="flex justify-between gap-3"><dt>Mercado Pago ({percentual(linhaSimulada?.mp_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(descontoMp)}</dd></div>
           <div className="flex justify-between gap-3"><dt>ORICSE ({percentual(comissaoSimulada?.oricse_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(comissaoOricse)}</dd></div>
-          <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-black">Líquido da clínica</dt><dd className="font-black text-emerald-700">{moedaCentavos(liquido)}</dd></div>
+          {modoTaxasSimulacao === "repassar" && <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-semibold">Líquido da clínica</dt><dd className="font-bold text-emerald-700">{moedaCentavos(liquido)}</dd></div>}
           <div className="flex justify-between gap-3 text-xs text-muted-foreground"><dt>Taxa efetiva final</dt><dd className="font-bold">{percentual(taxaFinal)}</dd></div>
         </dl>
       </div>
