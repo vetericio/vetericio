@@ -45,6 +45,9 @@ export const statusIntegracaoMetaOricStudio=createServerFn({method:"POST"})
         instagramAppId:cfg.clientId,
         callback:cfg.redirectUri,
         formatoIdValido:cfg.clientIdFormatoValido,
+        configurationIdConfigurado:cfg.configIdFormatoValido,
+        appSecretConfigurado:cfg.temAppSecret,
+        chaveCriptografiaValida:cfg.temChaveCriptografiaValida,
       } : null,
     };
   });
