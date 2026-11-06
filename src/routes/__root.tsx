@@ -4,7 +4,6 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
   useLocation,
   useNavigate,
   HeadContent,
@@ -64,7 +63,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
+function ErrorComponent({ error }: { error: unknown; reset: () => void }) {
   console.error(error);
   useEffect(() => {
     const erro = error instanceof Error ? error : new Error(String(error));
