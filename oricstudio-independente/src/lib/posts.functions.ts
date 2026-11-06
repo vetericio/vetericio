@@ -8,15 +8,12 @@ import { postSchema } from "./post-schema";
 
 type Ctx = { supabase: any; userId: string; claims: any };
 
-async function roleOf(context: Ctx): Promise<"admin" | "editor" | null> {
-  const { data } = await context.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", context.userId);
-  const roles = (data ?? []).map((r: { role: string }) => r.role);
-  if (roles.includes("admin")) return "admin";
-  if (roles.includes("editor")) return "editor";
-  return null;
+async function roleOf(context:Ctx):Promise<"admin"|"editor"|null>{
+  try {
+    const {tenantForUser}=await import("./server/tenant-admin.server");
+    const tenant=await tenantForUser(context,"viewer");
+    return tenant.role==="viewer"?null:tenant.role;
+  }catch{return null;}
 }
 
 async function requireEditor(context: Ctx) {
@@ -31,10 +28,10 @@ function who(context: Ctx) {
   return { user_id: context.userId, user_email: email };
 }
 
-async function server() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { audit } = await import("./server/meta.server");
-  return { admin: supabaseAdmin, audit };
+async function server(context:Ctx) {
+  const {admin}=await (await import("./server/tenant-admin.server")).scopedAdminForUser(context,"editor");
+  const {audit}=await import("./server/meta.server");
+  return {admin,audit};
 }
 
 // ---------- Media ----------
@@ -65,7 +62,12 @@ export const registerMedia = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => mediaSchema.parse(input))
   .handler(async ({ context, data }) => {
     await requireEditor(context);
-    const { admin } = await server();
+    const { admin } = await server(context);
+    if(data.storage_path.split("/")[1]!==data.instagram_account_id)
+      throw new Error("Arquivo de uma conta Instagram diferente.");
+    const {data:account}=await admin.from("instagram_accounts")
+      .select("id").eq("id",data.instagram_account_id).maybeSingle();
+    if(!account)throw new Error("Conta não pertence à clínica ativa.");
     const folder = data.storage_path.split("/").slice(0, 3).join("/");
     const file = data.storage_path.split("/")[3]!;
     const { data: listed } = await admin.storage.from("midia").list(folder, { search: file });
@@ -94,7 +96,10 @@ export const importMediaFromUrl = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireEditor(context);
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
+    const {data:account}=await admin.from("instagram_accounts")
+      .select("id").eq("id",data.instagram_account_id).maybeSingle();
+    if(!account)throw new Error("Conta não pertence à clínica ativa.");
     const { importFromUrl } = await import("./server/media.server");
     const { row, host, bytes } = await importFromUrl(
       admin,
@@ -117,7 +122,7 @@ export const savePost = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => postSchema.parse(input))
   .handler(async ({ context, data }) => {
     const role = await requireEditor(context);
-    const { admin } = await server();
+    const { admin } = await server(context);
     const { savePostCore } = await import("./server/posts.server");
     return savePostCore(
       admin,
@@ -134,7 +139,7 @@ export const approvePost = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if ((await roleOf(context)) !== "admin")
       throw new Error("Somente administradores aprovam publicações.");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: row } = await admin
       .from("posts")
       .update({
@@ -156,7 +161,7 @@ export const cancelSchedule = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => idSchema.parse(input))
   .handler(async ({ context, data }) => {
     await requireEditor(context);
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: row } = await admin
       .from("posts")
       .update({
@@ -193,7 +198,7 @@ export const reschedulePost = createServerFn({ method: "POST" })
     if (!Number.isFinite(horario.getTime()) || horario.getTime() <= Date.now())
       throw new Error("Escolha um horário futuro.");
 
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: atual } = await admin
       .from("posts")
       .select("id, instagram_account_id")
@@ -245,7 +250,7 @@ export const retryPost = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if ((await roleOf(context)) !== "admin")
       throw new Error("Somente administradores podem tentar novamente.");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: row } = await admin
       .from("posts")
       .select("status, publish_attempted_at, container_id")
@@ -278,7 +283,7 @@ export const deletePost = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => idSchema.parse(input))
   .handler(async ({ context, data }) => {
     await requireEditor(context);
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: row } = await admin
       .from("posts")
       .delete()
@@ -300,7 +305,7 @@ export const revokeAssistantKey = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if ((await roleOf(context)) !== "admin")
       throw new Error("Somente administradores podem revogar chaves.");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: row } = await admin
       .from("assistant_keys")
       .update({ revogada_em: new Date().toISOString() })
@@ -320,7 +325,7 @@ export const renameMedia = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireEditor(context);
-    const { admin } = await server();
+    const { admin } = await server(context);
     const { error } = await admin
       .from("media_assets")
       .update({ nome_original: data.nome })
@@ -334,7 +339,7 @@ export const deleteMedia = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => idSchema.parse(input))
   .handler(async ({ context, data }) => {
     await requireEditor(context);
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { data: emUso } = await admin
       .from("posts")
       .select("id")

@@ -6,19 +6,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type Ctx = { supabase: any; userId: string; claims: any };
 
-async function roleOf(context: Ctx): Promise<"admin" | "editor" | "viewer" | null> {
-  const { data } = await context.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", context.userId);
-  const roles = (data ?? []).map((r: { role: string }) => r.role);
-  return roles.includes("admin")
-    ? "admin"
-    : roles.includes("editor")
-      ? "editor"
-      : roles.includes("viewer")
-        ? "viewer"
-        : null;
+async function roleOf(context:Ctx):Promise<"admin"|"editor"|"viewer"|null>{
+  try {
+    const {tenantForUser}=await import("./server/tenant-admin.server");
+    const tenant=await tenantForUser(context,"viewer");
+    return tenant.role;
+  }catch{return null;}
 }
 
 async function need(context: Ctx, min: "admin" | "editor") {
@@ -39,10 +32,10 @@ function who(context: Ctx) {
   };
 }
 
-async function server() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { audit } = await import("./server/meta.server");
-  return { admin: supabaseAdmin, audit };
+async function server(context:Ctx) {
+  const {admin}=await (await import("./server/tenant-admin.server")).scopedAdminForUser(context,"editor");
+  const {audit}=await import("./server/meta.server");
+  return {admin,audit};
 }
 
 const optionalAccount = z.object({ accountId: z.string().uuid().optional() });
@@ -52,7 +45,7 @@ export const collectNow = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => optionalAccount.parse(input ?? {}))
   .handler(async ({ context, data }) => {
     await need(context, "editor");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { runCollection } = await import("./server/collector.server");
     const resultados = await runCollection(admin, data.accountId);
     await audit(admin, {
@@ -79,7 +72,7 @@ export const generateReportNow = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await need(context, "editor");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { generateReport } = await import("./server/reports.server");
     const id = await generateReport(admin, data.tipo, data.inicio, data.fim, data.accountId);
     await audit(admin, { ...who(context), acao: "relatorio_gerado", alvo: id, detalhes: data });
@@ -91,7 +84,7 @@ export const resolveAlert = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await need(context, "editor");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     await admin
       .from("alerts")
       .update({ resolvido: true, resolvido_em: new Date().toISOString() })
@@ -124,7 +117,7 @@ export const saveRules = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await need(context, "admin");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { error } = await admin
       .from("regras_publicacao")
       .upsert(
@@ -146,7 +139,7 @@ export const resumeAutomation = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ accountId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await need(context, "admin");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     await admin
       .from("regras_publicacao")
       .update({ suspensa_em: null, motivo_suspensao: null })
@@ -171,7 +164,7 @@ export const saveAlertLimits = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await need(context, "admin");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { accountId, ...limites } = data;
     const { data: brand } = await admin
       .from("brands")
@@ -202,7 +195,7 @@ export const replyComment = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await need(context, "editor");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { replyToComment } = await import("./server/collector.server");
     const email = who(context).user_email ?? context.userId;
     const replyId = await replyToComment(admin, data.id, data.message, email);
@@ -222,7 +215,7 @@ export const hideComment = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await need(context, "admin");
-    const { admin, audit } = await server();
+    const { admin, audit } = await server(context);
     const { setCommentHidden } = await import("./server/collector.server");
     await setCommentHidden(admin, data.id, data.hide);
     await audit(admin, {
@@ -240,7 +233,7 @@ export const archiveComment = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await need(context, "editor");
-    const { admin } = await server();
+    const { admin } = await server(context);
     const { data: c } = await admin
       .from("comments")
       .update({ arquivado: data.arquivado })
