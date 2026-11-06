@@ -38,6 +38,7 @@ import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
+import { useAdminNavigation } from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({ component: Admin });
@@ -160,30 +161,6 @@ type SiteConfig = {
   logo_url?: string;
 };
 
-type GrupoAba = "Operação" | "Produto e conteúdo" | "Controle";
-type ItemMenuAdmin = {
-  id: string;
-  nome: string;
-  icone: typeof Gauge;
-  grupo: GrupoAba;
-  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio" | "/oricstudio?ambiente=plataforma";
-};
-const ABAS: ItemMenuAdmin[] = [
-  { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
-  { id: "novas", nome: "Clínicas novas", icone: ClipboardCheck, grupo: "Operação" },
-  { id: "lixeira", nome: "Lixeira · 360 dias", icone: Trash2, grupo: "Operação" },
-  { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
-  { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
-  { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
-  { id: "oricstudio-plataforma", nome: "Meu OricStúdio · ORICSE", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio?ambiente=plataforma" },
-  { id: "oricstudio", nome: "OricStúdio · Gestão do produto", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
-  { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
-  { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
-  { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
-  { id: "auditoria", nome: "Controle e auditoria", icone: ShieldCheck, grupo: "Controle" },
-  { id: "sistema", nome: "Sistema e integrações", icone: Settings, grupo: "Controle" },
-];
-
 const PERFIS: Record<PapelClinica, { nome: string; resumo: string; acessos: string[]; bloqueios: string[] }> = {
   rt: {
     nome: "RT",
@@ -275,7 +252,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function Admin() {
   const quantidadeClinicasAtivas = useQuantidadeClinicasAtivas();
-  const [aba, setAba] = useState<Aba>("dashboard");
+  const { aba, setAba } = useAdminNavigation();
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
@@ -2036,41 +2013,7 @@ function Admin() {
           </div>
         </header>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[270px_minmax(0,1fr)]">
-          <aside className="xl:sticky xl:top-4 xl:self-start">
-            <nav aria-label="Navegação administrativa" className="rounded-2xl border bg-white p-3 shadow-sm">
-              <div className="border-b px-2 pb-4 pt-1">
-                <p className="text-sm font-black">Administração ORICSE</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Comece pelas clínicas novas e siga o fluxo de aprovação.</p>
-              </div>
-
-              {(["Operação", "Produto e conteúdo", "Controle"] as GrupoAba[]).map((grupo) => (
-                <div key={grupo} className="mt-4">
-                  <p className="px-2 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">{grupo}</p>
-                  <div className="mt-1 grid gap-1">
-                    {ABAS.filter((item) => item.grupo === grupo).map(({ id, nome, icone: Icone, rota }) => {
-                      const ativa = !rota && aba === id;
-                      return <button key={id} type="button" onClick={() => {
-                        if (rota) { window.location.assign(rota); return; }
-                        abrirPainel(id as Aba);
-                      }} aria-current={ativa ? "page" : undefined} className={"flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition " + (ativa ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-700 hover:bg-slate-100")}>
-                        <Icone size={18}/>
-                        <span className="min-w-0 flex-1">{nome}</span>
-                        {id === "novas" && solicitacoesEmAberto.length > 0 && <span className={"rounded-full px-2 py-0.5 text-xs " + (ativa ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>{solicitacoesEmAberto.length}</span>}
-                      </button>;
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              <button type="button" onClick={() => setAba("novas")} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-primary/20 bg-[#fff8f4] p-3 text-left hover:bg-[#fff3eb]">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"><ClipboardCheck size={18}/></span>
-                <span className="min-w-0 flex-1"><span className="block text-xs font-bold text-primary">Próxima ação</span><span className="block text-xs text-slate-600">Liberar clínicas prontas</span></span>
-                <span className="rounded-full bg-white px-2 py-1 text-sm font-black text-primary">{solicitacoesProntas.length}</span>
-              </button>
-            </nav>
-          </aside>
-
+        <div className="mt-6">
           <section className="min-w-0">
             {aba === "dashboard" && renderDashboard()}
             {aba === "novas" && renderClinicasNovas()}
