@@ -185,3 +185,71 @@ export const cancelarEnvioOricStudio=createServerFn({method:"POST"})
    });
    return {ok:true};
  });
+
+/** Relatório operacional real do OricStudio, sem misturar dados de clínicas. */
+export const gerarRelatorioOricStudio=createServerFn({method:"POST"})
+ .validator((i:unknown)=>base.extend({
+   inicio:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+   fim:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+   contaId:z.string().uuid().nullable().default(null),
+ }).refine(v=>v.inicio<=v.fim,{message:"Período inválido."})
+ .refine(v=>(Date.parse(v.fim)-Date.parse(v.inicio))<=366*86400000,
+   {message:"Escolha um período de até um ano."}).parse(i))
+ .handler(async({data})=>{
+   const {db,actor}=await context(data.accessToken,data.clinicaId,true);
+   const scope=(q:any)=>filterTenant(q,data.clinicaId);
+   if(data.contaId){
+     const {data:account,error:accountError}=await scope(db.from("oricstudio_meta_contas")
+       .select("id").eq("id",data.contaId)).maybeSingle();
+     if(accountError||!account)throw new Error("Conta não pertence à clínica selecionada.");
+   }
+   const accountFilter=(q:any)=>data.contaId?q.eq("conta_id",data.contaId):q;
+   const [insights,comments,posts]=await Promise.all([
+     accountFilter(scope(db.from("oricstudio_insights")
+       .select("tipo,referencia,dados").gte("referencia",data.inicio).lte("referencia",data.fim))).limit(2000),
+     accountFilter(scope(db.from("oricstudio_comentarios")
+       .select("id,respondido,arquivado,publicado_em")
+       .gte("publicado_em",data.inicio+"T00:00:00Z")
+       .lte("publicado_em",data.fim+"T23:59:59Z"))).limit(2000),
+     accountFilter(scope(db.from("oricstudio_envios")
+       .select("id,status,planejado_para")
+       .gte("planejado_para",data.inicio+"T00:00:00Z")
+       .lte("planejado_para",data.fim+"T23:59:59Z"))).limit(2000),
+   ]);
+   if(insights.error||comments.error||posts.error)
+     throw new Error("Não foi possível consultar os dados do relatório desta clínica.");
+   const porTipo:Record<string,number>={};
+   for(const row of insights.data||[]){
+     const tipo=String(row.tipo||"sem_tipo");
+     porTipo[tipo]=(porTipo[tipo]||0)+1;
+   }
+   const porStatus:Record<string,number>={};
+   for(const row of posts.data||[]){
+     const status=String(row.status||"outro");
+     porStatus[status]=(porStatus[status]||0)+1;
+   }
+   const resumo={
+     inicio:data.inicio,fim:data.fim,origem:"oricstudio_clinica",
+     coletado_em:new Date().toISOString(),
+     total_registros_metricas:(insights.data||[]).length,
+     tipos_metrica:porTipo,
+     comentarios_recebidos:(comments.data||[]).length,
+     comentarios_respondidos:(comments.data||[]).filter((c:any)=>c.respondido).length,
+     envios:porStatus,
+     aviso:(insights.data||[]).length===2000||(comments.data||[]).length===2000||(posts.data||[]).length===2000
+      ?"Volume máximo de consulta atingido; reduza o período para um relatório completo.":null,
+   };
+   const {data:saved,error}=await db.from("oricstudio_relatorios").insert({
+     clinica_id:data.clinicaId===ORICSTUDIO_PLATAFORMA_ID?null:data.clinicaId,
+     conta_id:data.contaId,tipo:"personalizado",
+     periodo_inicio:data.inicio,periodo_fim:data.fim,
+     conteudo:resumo,
+   }).select("id").single();
+   if(error||!saved)throw new Error("Não foi possível salvar o relatório.");
+   await db.from("oricstudio_auditoria").insert({
+     clinica_id:data.clinicaId===ORICSTUDIO_PLATAFORMA_ID?null:data.clinicaId,
+     acao:"gerar_relatorio",usuario_id:actor.userId,
+     depois:{relatorio_id:saved.id,periodo_inicio:data.inicio,periodo_fim:data.fim},
+   });
+   return {id:saved.id,conteudo:resumo};
+ });
