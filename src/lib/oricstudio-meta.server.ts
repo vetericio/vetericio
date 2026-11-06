@@ -4,17 +4,13 @@ import { createHash, randomBytes } from "node:crypto";
 
 type Db = any;
 export type MetaConta = {
-  id: string; clinica_id: string; instagram_user_id: string; username: string;
+  id: string; clinica_id: string | null; instagram_user_id: string; username: string;
   account_type: string | null; status: string; escopos: string[];
   conectado_em: string; token_expira_em: string | null;
 };
 
-const SCOPES = [
-  "instagram_business_basic",
-  "instagram_business_content_publish",
-  "instagram_business_manage_comments",
-  "instagram_business_manage_insights",
-].join(",");
+const META_GRAPH_VERSION = "v26.0";
+const UNIFIED_LOGIN_CONFIG_ID = "1756732415409150";
 
 export function metaConfig() {
   const clientId = process.env["ORICSTUDIO_META_CLIENT_ID"] || "";
@@ -28,7 +24,9 @@ export function metaConfig() {
   }
   const keyBytes = Buffer.from(encryptionKey, "base64");
   const configured = Boolean(clientId && clientSecret && keyBytes.length === 32);
-  return {clientId,clientSecret,redirectUri,encryptionKey,configured};
+  // O login unificado utiliza o ID do aplicativo Meta e um config_id. Não usa instagram_business_*.
+  const configId = process.env["ORICSTUDIO_META_CONFIG_ID"] || UNIFIED_LOGIN_CONFIG_ID;
+  return {clientId,clientSecret,redirectUri,encryptionKey,configured,configId};
 }
 
 function sha256(data: string) {return createHash("sha256").update(data).digest("hex");}
@@ -49,7 +47,7 @@ export async function encryptMetaToken(token: string) {
   };
 }
 
-async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
+export async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<string> {
   const iv=Buffer.from(ivBase64,"base64");
   if(iv.length!==12)throw new Error("Credencial Meta inválida.");
   const bytes=Buffer.from(ciphertext,"base64");
@@ -57,21 +55,11 @@ async function decryptMetaToken(ciphertext:string,ivBase64:string):Promise<strin
   return new TextDecoder().decode(decrypted);
 }
 
-async function metaRefreshToken(token:string) {
-  const u=new URL("https://graph.instagram.com/refresh_access_token");
-  u.searchParams.set("grant_type","ig_refresh_token");
-  u.searchParams.set("access_token",token);
-  const response=await graphGet(u);
-  if(typeof response.access_token!=="string" || !Number.isFinite(Number(response.expires_in))
-    || Number(response.expires_in)<=0)throw new Error("A Meta não forneceu token renovado.");
-  return {token:response.access_token,expiresAt:new Date(Date.now()+Number(response.expires_in)*1000).toISOString()};
-}
-
-export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clinicaId:string,contaId:string) {
+export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clinicaId:string|null,contaId:string) {
   const {userId}=await requireMetaEditor(db,accessToken,clinicaId,true);
   const {data:account,error:accountErr}=await db.from("oricstudio_meta_contas")
-    .select("id,username,status,token_expira_em,conectado_em")
-    .eq("id",contaId).eq("clinica_id",clinicaId).maybeSingle();
+    .select("id,instagram_user_id,username,status,token_expira_em,conectado_em")
+    .eq("id",contaId).filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).maybeSingle();
   if(accountErr||!account || account.status==="desconectada")
     throw new Error("Conta não encontrada nesta clínica.");
   const {data:secret,error:secretErr}=await db.from("oricstudio_meta_tokens")
@@ -80,58 +68,51 @@ export async function verifyAndRefreshMetaAccount(db:Db,accessToken:string,clini
   let plain="";
   try {
     plain=await decryptMetaToken(secret.token_cifrado_base64,secret.iv_base64);
-    const url=new URL("https://graph.instagram.com/me");
-    url.searchParams.set("fields","user_id,username,account_type");
-    url.searchParams.set("access_token",plain);
-    const profile=await graphGet(url);
-    if(!profile.user_id || !profile.username)
+    const profileUrl=new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/${account.instagram_user_id}`);
+    profileUrl.searchParams.set("fields","id,username");
+    profileUrl.searchParams.set("access_token",plain);
+    const profile=await graphGet(profileUrl);
+    if(!profile.id || !profile.username)
       throw new Error("A conta profissional não foi confirmada pela Meta.");
     // Evita renovar tokens recém-emitidos: exige ao menos 24 horas desde a conexão/renovação.
-    const {data:stored}=await db.from("oricstudio_meta_tokens")
-      .select("atualizado_em").eq("conta_id",contaId).maybeSingle();
-    const age=Date.now()-Date.parse(stored?.atualizado_em||account.conectado_em);
     const expiryMs=account.token_expira_em?Date.parse(account.token_expira_em)-Date.now():Infinity;
-    let renew: {token:string;expiresAt:string}|null=null;
-    if(age >= 24*3600_000 && expiryMs <= 30*24*3600_000) {
-      renew=await metaRefreshToken(plain);
-      const secured=await encryptMetaToken(renew.token);
-      const {error:saveErr}=await db.from("oricstudio_meta_tokens").update({
-        ...secured,token_expira_em:renew.expiresAt,atualizado_em:new Date().toISOString(),
-      }).eq("conta_id",contaId);
-      if(saveErr)throw new Error("Falha ao salvar renovação da conexão.");
-    }
+    // O Unified Login usa token empresarial; nunca tentar renová-lo pela antiga API Instagram.
+    if(expiryMs<=0) throw new Error("Credencial Meta expirada.");
     const {error:updateErr}=await db.from("oricstudio_meta_contas").update({
       username:String(profile.username),
-      account_type:profile.account_type?String(profile.account_type):null,
       status:"ativa",ultimo_erro:null,
-      ...(renew?{token_expira_em:renew.expiresAt}:{}),
       atualizado_em:new Date().toISOString(),
-    }).eq("id",contaId).eq("clinica_id",clinicaId);
+    }).eq("id",contaId).filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId);
     if(updateErr)throw new Error("Falha ao atualizar estado da conta.");
     await db.from("oricstudio_meta_auditoria").insert({
       clinica_id:clinicaId,conta_id:contaId,usuario_id:userId,
-      acao:renew?"renovar":"verificar",detalhes:{resultado:"sucesso"},
+      acao:"verificar",detalhes:{resultado:"sucesso"},
     });
-    return {ok:true,renovada:Boolean(renew),username:String(profile.username)};
+    return {ok:true,renovada:false,username:String(profile.username)};
   } catch(e) {
     // Não revelar token, URLs ou detalhes internos em histórico de auditoria.
     await db.from("oricstudio_meta_contas").update({
       status:"reautenticar",ultimo_erro:"Falha na validação da credencial Meta",
       atualizado_em:new Date().toISOString(),
-    }).eq("id",contaId).eq("clinica_id",clinicaId);
+    }).eq("id",contaId).filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId);
     throw new Error("Não foi possível verificar a conexão Meta. Conecte a conta novamente.");
   }
 }
 
 
-export async function requireMetaEditor(db: Db, token: string, clinicaId: string, exigirAtiva = true) {
+export async function requireMetaEditor(db: Db, token: string, clinicaId: string | null, exigirAtiva = true) {
   const {data:result,error}=await db.auth.getUser(token);
   if(error||!result?.user?.id)throw new Error("Sessão ORICSE inválida ou expirada.");
   const userId = result.user.id;
+  if(clinicaId===null){
+    const {data:admin}=await db.from("app_users").select("role").eq("user_id",userId).maybeSingle();
+    if(admin?.role!=="admin")throw new Error("OricStúdio do sistema restrito à Administração Geral.");
+    return {userId,isPlatformAdmin:true};
+  }
   const [{data:admin},{data:link},{data:lic},{data:clinic}]=await Promise.all([
     db.from("app_users").select("role").eq("user_id",userId).maybeSingle(),
-    db.from("clinica_usuarios").select("ativo,papel").eq("user_id",userId).eq("clinica_id",clinicaId).maybeSingle(),
-    db.from("oricstudio_licencas").select("status,expira_em").eq("clinica_id",clinicaId).maybeSingle(),
+    db.from("clinica_usuarios").select("ativo,papel").eq("user_id",userId).filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).maybeSingle(),
+    db.from("oricstudio_licencas").select("status,expira_em").filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).maybeSingle(),
     db.from("clinicas").select("status").eq("id",clinicaId).maybeSingle(),
   ]);
   const isPlatformAdmin=admin?.role==="admin";
@@ -144,11 +125,16 @@ export async function requireMetaEditor(db: Db, token: string, clinicaId: string
   return {userId,isPlatformAdmin};
 }
 
-export async function requireMetaEditorByUser(db: Db,userId:string,clinicaId:string) {
+export async function requireMetaEditorByUser(db: Db,userId:string,clinicaId:string|null) {
+  if(clinicaId===null){
+    const {data:admin}=await db.from("app_users").select("role").eq("user_id",userId).maybeSingle();
+    if(admin?.role!=="admin")throw new Error("A autorização do sistema foi revogada.");
+    return;
+  }
   const [{data:admin},{data:link},{data:lic},{data:clinic}]=await Promise.all([
     db.from("app_users").select("role").eq("user_id",userId).maybeSingle(),
-    db.from("clinica_usuarios").select("ativo,papel").eq("user_id",userId).eq("clinica_id",clinicaId).maybeSingle(),
-    db.from("oricstudio_licencas").select("status,expira_em").eq("clinica_id",clinicaId).maybeSingle(),
+    db.from("clinica_usuarios").select("ativo,papel").eq("user_id",userId).filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).maybeSingle(),
+    db.from("oricstudio_licencas").select("status,expira_em").filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).maybeSingle(),
     db.from("clinicas").select("status").eq("id",clinicaId).maybeSingle(),
   ]);
   if (admin?.role!=="admin" && !(link?.ativo&&["responsavel","admin_clinica","rt"].includes(link.papel))) {
@@ -159,7 +145,7 @@ export async function requireMetaEditorByUser(db: Db,userId:string,clinicaId:str
     throw new Error("Licença do OricStúdio indisponível.");
 }
 
-export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: string) {
+export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: string | null) {
   const {userId,isPlatformAdmin}=await requireMetaEditor(db,accessToken,clinicaId);
   // A clínica deve ser a selecionada na sessão, exceto para administração central.
   if (!isPlatformAdmin) {
@@ -175,28 +161,15 @@ export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: s
     expira_em:new Date(Date.now()+10*60*1000).toISOString(),
   });
   if(error)throw new Error("Não foi possível iniciar a conexão.");
-  const url=new URL("https://www.instagram.com/oauth/authorize");
+  const url=new URL("https://www.facebook.com/dialog/oauth");
   url.searchParams.set("client_id",cfg.clientId);
   url.searchParams.set("redirect_uri",cfg.redirectUri);
   url.searchParams.set("response_type","code");
-  url.searchParams.set("scope",SCOPES);
+  url.searchParams.set("config_id",cfg.configId);
+  url.searchParams.set("override_default_response_type","true");
+  url.searchParams.set("prompt","login");
   url.searchParams.set("state",state);
   return url.toString();
-}
-
-async function postForToken(url: string, fields: Record<string,string>) {
-  const r=await fetch(url,{
-    method:"POST",
-    headers:{"Content-Type":"application/x-www-form-urlencoded"},
-    body:new URLSearchParams(fields),
-  });
-  const body=await r.json().catch(()=>null) as any;
-  // A Meta pode retornar o token diretamente ou em data[0].
-  const data=body?.access_token ? body :
-    (Array.isArray(body?.data) && body.data.length===1 ? body.data[0] : null);
-  if(!r.ok||typeof data?.access_token!=="string"||!data.access_token)
-    throw new Error("Não foi possível trocar a autorização com a Meta.");
-  return data;
 }
 
 async function graphGet(url:URL) {
@@ -219,36 +192,43 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
   await requireMetaEditorByUser(db,flow.iniciado_por,flow.clinica_id);
   const cfg=metaConfig();
   if(!cfg.configured)throw new Error("Integração Meta ainda não configurada.");
-  const short=await postForToken("https://api.instagram.com/oauth/access_token",{
-    client_id:cfg.clientId,client_secret:cfg.clientSecret,
-    grant_type:"authorization_code",redirect_uri:cfg.redirectUri,code,
-  });
-  const exchange=new URL("https://graph.instagram.com/access_token");
-  exchange.searchParams.set("grant_type","ig_exchange_token");
-  exchange.searchParams.set("client_secret",cfg.clientSecret);
-  exchange.searchParams.set("access_token",short.access_token);
-  const long=await graphGet(exchange);
-  if (typeof long.access_token!=="string")throw new Error("A Meta não retornou token de longa duração.");
-  const profileUrl=new URL("https://graph.instagram.com/me");
-  profileUrl.searchParams.set("fields","user_id,username,account_type");
-  profileUrl.searchParams.set("access_token",long.access_token);
-  const profile=await graphGet(profileUrl);
-  const igUserId=String(profile.user_id||profile.id||"").trim();
-  const username=String(profile.username||"").trim();
+  // Unified Login: o code é trocado na Graph API, não na API antiga do Instagram.
+  const tokenUrl=new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`);
+  tokenUrl.searchParams.set("client_id",cfg.clientId);
+  tokenUrl.searchParams.set("client_secret",cfg.clientSecret);
+  tokenUrl.searchParams.set("redirect_uri",cfg.redirectUri);
+  tokenUrl.searchParams.set("code",code);
+  const tokenData=await graphGet(tokenUrl);
+  if(typeof tokenData.access_token!=="string" || !tokenData.access_token)
+    throw new Error("A Meta não retornou a credencial do login unificado.");
+
+  // /me no Unified Login identifica o usuário do sistema, não a conta Instagram.
+  const assignedUrl=new URL(`https://graph.facebook.com/${META_GRAPH_VERSION}/me/assigned_instagram_accounts`);
+  assignedUrl.searchParams.set("fields","id,username");
+  assignedUrl.searchParams.set("access_token",tokenData.access_token);
+  const assigned=await graphGet(assignedUrl);
+  const accounts=Array.isArray(assigned.data)?assigned.data.filter(
+    (a:any)=>typeof a?.id==="string" && typeof a?.username==="string"
+  ):[];
+  if(accounts.length===0)
+    throw new Error("Nenhuma conta profissional do Instagram foi compartilhada com o OricStúdio.");
+  if(accounts.length!==1 || assigned.paging?.next)
+    throw new Error("Compartilhe apenas uma conta Instagram por conexão.");
+  const profile=accounts[0];
+  const igUserId=String(profile.id).trim();
+  const username=String(profile.username).trim();
   if(!igUserId||!username)throw new Error("Conta Instagram profissional não identificada.");
-  const accountType=String(profile.account_type||"").toUpperCase();
-  if(!["BUSINESS","CREATOR","MEDIA_CREATOR"].includes(accountType))
-    throw new Error("O OricStúdio exige uma conta Instagram profissional Business ou Creator.");
+  const accountType="BUSINESS_OR_CREATOR";
   const {data:existing,error:existingErr}=await db.from("oricstudio_meta_contas")
     .select("id,clinica_id").eq("instagram_user_id",igUserId).maybeSingle();
   if(existingErr)throw new Error("Não foi possível confirmar o vínculo da conta.");
   if(existing&&existing.clinica_id!==flow.clinica_id)
     throw new Error("Esta conta do Instagram já está vinculada a outra clínica.");
-  const expiry=Number(long.expires_in)>0?new Date(Date.now()+Number(long.expires_in)*1000).toISOString():null;
-  const encrypted=await encryptMetaToken(long.access_token);
+  const expiry=Number(tokenData.expires_in)>0?new Date(Date.now()+Number(tokenData.expires_in)*1000).toISOString():null;
+  const encrypted=await encryptMetaToken(tokenData.access_token);
   const values={
     clinica_id:flow.clinica_id,instagram_user_id:igUserId,username,
-    account_type:profile.account_type?String(profile.account_type):null,
+    account_type:accountType,
     status:"incompleta",
     // Escopos solicitados não são equivalentes a escopos efetivamente concedidos.
     escopos:[],
@@ -257,7 +237,7 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
     ultimo_erro:null,
   };
   const q=existing
-    ? db.from("oricstudio_meta_contas").update(values).eq("id",existing.id).eq("clinica_id",flow.clinica_id).select("id").single()
+    ? db.from("oricstudio_meta_contas").update(values).eq("id",existing.id).filter("clinica_id",flow.clinica_id===null?"is":"eq",flow.clinica_id===null?"null":flow.clinica_id).select("id").single()
     : db.from("oricstudio_meta_contas").insert(values).select("id").single();
   const {data:account,error:accountErr}=await q;
   if(accountErr||!account?.id)throw new Error("Não foi possível salvar a conta profissional.");
@@ -268,34 +248,34 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
   if(secretErr)throw new Error("Não foi possível armazenar o token protegido.");
   const {error:activateErr}=await db.from("oricstudio_meta_contas")
     .update({status:"ativa",atualizado_em:new Date().toISOString()})
-    .eq("id",account.id).eq("clinica_id",flow.clinica_id);
+    .eq("id",account.id).filter("clinica_id",flow.clinica_id===null?"is":"eq",flow.clinica_id===null?"null":flow.clinica_id);
   if(activateErr)throw new Error("Conta registrada, aguardando validação.");
   await db.from("oricstudio_meta_auditoria").insert({
     clinica_id:flow.clinica_id,conta_id:account.id,usuario_id:flow.iniciado_por,
-    acao:"conectar",detalhes:{username,account_type:profile.account_type||null},
+    acao:"conectar",detalhes:{username,account_type:accountType,oauth:"unified"},
   });
   return {username};
 }
 
-export async function metaListForClinic(db:Db,accessToken:string,clinicaId:string) {
+export async function metaListForClinic(db:Db,accessToken:string,clinicaId:string|null) {
   await requireMetaEditor(db,accessToken,clinicaId,false);
   const {data,error}=await db.from("oricstudio_meta_contas")
     .select("id,clinica_id,instagram_user_id,username,account_type,status,escopos,conectado_em,token_expira_em")
-    .eq("clinica_id",clinicaId).order("conectado_em",{ascending:false});
+    .filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).order("conectado_em",{ascending:false});
   if(error)throw new Error("Não foi possível consultar as contas conectadas.");
   return (data||[]) as MetaConta[];
 }
 
-export async function metaDisconnect(db:Db,accessToken:string,clinicaId:string,accountId:string) {
+export async function metaDisconnect(db:Db,accessToken:string,clinicaId:string|null,accountId:string) {
   const {userId}=await requireMetaEditor(db,accessToken,clinicaId,false);
   const {data:acct,error}=await db.from("oricstudio_meta_contas")
-    .select("id,instagram_user_id").eq("clinica_id",clinicaId).eq("id",accountId).maybeSingle();
+    .select("id,instagram_user_id").filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId).eq("id",accountId).maybeSingle();
   if(error||!acct)throw new Error("Conta não encontrada nesta clínica.");
   const {error:secretErr}=await db.from("oricstudio_meta_tokens").delete().eq("conta_id",accountId);
   if(secretErr)throw new Error("Não foi possível excluir as credenciais.");
   const {error:updateErr}=await db.from("oricstudio_meta_contas")
     .update({status:"desconectada",atualizado_em:new Date().toISOString()})
-    .eq("id",accountId).eq("clinica_id",clinicaId);
+    .eq("id",accountId).filter("clinica_id",clinicaId===null?"is":"eq",clinicaId===null?"null":clinicaId);
   if(updateErr)throw new Error("Credenciais excluídas; consulte o status da conta.");
   await db.from("oricstudio_meta_auditoria").insert({
     clinica_id:clinicaId,conta_id:accountId,usuario_id:userId,

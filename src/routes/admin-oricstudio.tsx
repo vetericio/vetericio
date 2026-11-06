@@ -102,6 +102,10 @@ function OricStudioAdmin() {
   const porClinica=useMemo(()=>new Map(licencas.map(l=>[l.clinica_id,l])),[licencas]);
   const visiveis=useMemo(()=>clinicas.filter(c=>c.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"))),[clinicas,busca]);
   const ativos=licencas.filter(l=>l.status==="ativo").length;
+  async function abrirStudioOricse() {
+    if(autorizado!==true)return;
+    await navigate({to:"/admin-oricstudio-sistema"});
+  }
   async function mudarStatus(clinica:Clinica,novo:LicencaStatus) {
     const antes=porClinica.get(clinica.id)?.status||"nao_contratado";
     if(antes===novo)return;
@@ -167,7 +171,14 @@ function OricStudioAdmin() {
       <div className="space-y-1"><Link to="/admin" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="h-4 w-4"/> Administração Geral</Link>
       <h1 className="flex items-center gap-2 text-2xl font-bold"><img src={ORICSTUDIO_LOGO} alt="Logo oficial OricStúdio" className="h-12 w-12 rounded-lg object-contain" /> OricStúdio</h1>
       <p className="text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet · Administração central</p></div>
-      <button onClick={()=>void carregar()} disabled={carregando} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={()=>void abrirStudioOricse()}
+          disabled={carregando||!!alterando||autorizado!==true}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+          <Instagram className="h-4 w-4"/> OricStúdio do ORICSE
+        </button>
+        <button onClick={()=>void carregar()} disabled={carregando} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
+      </div>
     </header>
     <div className="rounded-xl border bg-card p-3 text-sm"><span className="font-semibold">OricStúdio — produto adicional.</span> Comercialização: {produto?.comercializacao_ativa?"ativa":"desativada"}. Valores: {produto?.preco_centavos!=null && produto?.preco_conta_adicional_centavos!=null?"configurados":"pendentes"}. Nenhuma inclusão automática nos planos do ORICSE.</div>
     <nav className="flex flex-wrap gap-2" aria-label="Páginas do OricStúdio">{ABAS.map(({id,nome,icon:Icon})=><button type="button" key={id} onClick={()=>setAba(id)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${aba===id?"bg-primary text-primary-foreground":"bg-card hover:bg-accent"}`}><Icon className="h-4 w-4"/>{nome}</button>)}</nav>
