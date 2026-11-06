@@ -1978,7 +1978,7 @@ function Admin() {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Financeiro da plataforma</p>
-        <h2 className="mt-1 text-2xl font-black">Financeiro, taxas e repasses</h2>
+        <h2 className="mt-1 text-2xl font-black">OricsePay</h2>
         <p className="mt-1 max-w-4xl text-sm text-muted-foreground">A taxa do Mercado Pago é descontada primeiro. A comissão ORICSE incide apenas sobre o saldo restante, por segmento, e o simulador mostra o líquido antes da cobrança.</p>
       </div>
       <PainelTaxasPagamento
