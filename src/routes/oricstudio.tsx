@@ -545,7 +545,7 @@ function OricStudio() {
       // O servidor pode emitir o dialog OAuth versionado (ex.: /v26.0/dialog/oauth)
       // ou não versionado. Aceitar apenas a origem oficial e os parâmetros
       // obrigatórios, sem liberar redirecionamento para hosts externos.
-      const validMetaPath=/^\\/(?:v\\d+(?:\\.\\d+)?\\/)?dialog\\/oauth\\/?$/;
+      const validMetaPath=new RegExp("^/(?:v[0-9]+(?:[.][0-9]+)?/)?dialog/oauth/?$");
       if(authorizeUrl.protocol!=="https:" ||
          authorizeUrl.hostname!=="www.facebook.com" ||
          !validMetaPath.test(authorizeUrl.pathname) ||
