@@ -6,7 +6,7 @@ import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { usePermissoes } from "@/hooks/usePermissoes";
-import { useClinicBranding } from "@/hooks/useClinicBranding";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
@@ -33,7 +33,7 @@ export function Cabecalho({
   aoMudarMenuFixo: (fixo: boolean) => void;
 }) {
   const location = useLocation();
-  const { nome: nomeClinica, logoUrl } = useClinicBranding();
+  const { marca, logo_url } = useSiteBranding();
   const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
   useProtecaoDadosLocais();
   const plantaoArea = [
@@ -79,18 +79,11 @@ export function Cabecalho({
         className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-3" : "pb-1 pt-1"}`}
       >
         <div className={plantaoArea ? "mb-1 flex justify-center" : "mb-0 flex justify-center"}>
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={`Logo de ${nomeClinica || "clínica"}`}
-              className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[165px] sm:max-w-[200px]" : "max-w-[120px] sm:max-w-[145px]"}`}
-            />
-          ) : (
-            <Link to="/" className="inline-flex items-center gap-2.5 text-foreground" aria-label="Oricse, ir para o início">
-              <img src="/oricse-logo-oryx.svg?v=15" alt="" className="h-7 w-7 object-contain sm:h-8 sm:w-8" />
-              <span className="text-base font-black tracking-tight sm:text-lg">Oricse</span>
-            </Link>
-          )}
+          <img
+            src={logo_url}
+            alt={`${marca} — Soluções para o mercado pet`}
+            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[165px] sm:max-w-[200px]" : "max-w-[120px] sm:max-w-[145px]"}`}
+          />
         </div>
 
         {plantaoArea && (
