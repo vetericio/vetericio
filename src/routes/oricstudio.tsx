@@ -105,7 +105,8 @@ function OricStudio() {
   const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
     instagramAppId:string; callback:string; formatoIdValido:boolean;
-    configurationIdConfigurado:boolean; appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
+    configurationIdConfigurado:boolean; configurationId:string;
+    appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
   } | null>(null);
   const [metaCarregando, setMetaCarregando] = useState(false);
   const [metaOcupada, setMetaOcupada] = useState(false);
