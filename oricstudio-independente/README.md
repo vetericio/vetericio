@@ -35,3 +35,6 @@ Códigos de páginas, componentes, APIs, servidores, testes, scripts e instruç�
 - `tools/assistente.mjs` exige `ORICSTUDIO_URL`, sem URL-padrão apontando ao Gestor. Armazena a chave local em `.oricstudio`.
 
 **Bloqueio comercial:** Multi-tenancy, SSO com ORICSE, RLS e isolamento por clínica ainda precisam de implementação/testes; não habilitar para clientes antes disso.
+
+## Travas de operação
+O agendador de produção retorna `pausado=true` enquanto `ORICSTUDIO_PUBLICACAO_HOMOLOGADA` não estiver definido como `true`. As duas modalidades de OAuth também ficam bloqueadas até `ORICSTUDIO_CONEXOES_HOMOLOGADAS=true`. **Não ativar essas variáveis em produção antes da migração multi-tenant, testes de duas clínicas e liberação pela Meta.** Os testes de CI usam apenas contas e chamadas simuladas.

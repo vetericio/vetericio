@@ -12,6 +12,8 @@ jobs:
     env:
       # Valores fictícios: nenhum segredo ou banco de produção é usado por testes.
       ORICSTUDIO_INSTANCE_ID: oricstudio
+      # Somente CI com dados e chamadas simuladas, jamais ativar em produção antes da revisão.
+      ORICSTUDIO_PUBLICACAO_HOMOLOGADA: "true"
       SUPABASE_URL: https://oricstudio-ci.example.invalid
       APP_BASE_URL: https://oricstudio-ci.example.invalid
       META_GRAPH_VERSION: v24.0

@@ -65,6 +65,8 @@ export const metaOAuthStart = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context);
+    if(process.env["ORICSTUDIO_CONEXOES_HOMOLOGADAS"]!=="true")
+      throw new Error("Conexões Meta do OricStudio ainda não foram homologadas.");
     const { metaConfig, buildAuthorizeUrl } = await import("./server/meta.server");
     const { randomToken, sha256Hex } = await import("./server/crypto.server");
     const cfg = metaConfig();
@@ -93,6 +95,8 @@ export const metaInstagramOAuthStart=createServerFn({method:"POST"})
   .middleware([requireSupabaseAuth])
   .handler(async({context})=>{
     await requireAdmin(context);
+    if(process.env["ORICSTUDIO_CONEXOES_HOMOLOGADAS"]!=="true")
+      throw new Error("Conexões Instagram do OricStudio ainda não foram homologadas.");
     const {instagramDirectConfig,buildInstagramAuthorizeUrl}=await import("./server/instagram-direct.server");
     const {randomToken,sha256Hex}=await import("./server/crypto.server");
     const cfg=instagramDirectConfig();

@@ -30,6 +30,11 @@ type ContainerStatus = "EXPIRED" | "ERROR" | "FINISHED" | "IN_PROGRESS" | "PUBLI
 class PermanentError extends Error {}
 
 export async function runPublishQueue(admin: Admin) {
+  // Gate de produção: esta cópia é originalmente single-tenant e ainda precisa
+  // de validação de isolamento por clínica. Nunca publicar só porque cron rodou.
+  if (process.env["ORICSTUDIO_PUBLICACAO_HOMOLOGADA"] !== "true") {
+    return {pausado:true,processados:0,motivo:"OricStudio em homologação; publicação externa bloqueada."};
+  }
   const { data: settings } = await admin
     .from("app_settings")
     .select("pausa_geral")
