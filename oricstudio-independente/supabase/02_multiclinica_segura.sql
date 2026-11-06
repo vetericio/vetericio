@@ -163,7 +163,8 @@ begin
     execute format('alter table public.%I add column if not exists clinica_id uuid',tbl);
     execute format('alter table public.%I alter column clinica_id set default public.studio_clinica_atual()',tbl);
     execute format('alter table public.%I add constraint %I foreign key(clinica_id) references public.studio_clinicas(id) on delete cascade',tbl,'studio_'||tbl||'_tenant_fk');
-    if tbl <> 'app_settings' then
+    -- Registro de cliente OAuth contém apenas callback público, sem usuário nem clínica.
+    if tbl not in ('app_settings','oauth_clients') then
       execute format('alter table public.%I alter column clinica_id set not null',tbl);
     end if;
     execute format('create index if not exists %I on public.%I(clinica_id)', 'studio_'||tbl||'_tenant_idx',tbl);

@@ -6,12 +6,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type Ctx = { supabase: any; userId: string; claims: any };
 
-async function roles(context: Ctx): Promise<string[]> {
-  const { data } = await context.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", context.userId);
-  return (data ?? []).map((r: { role: string }) => r.role);
+async function roles(context:Ctx):Promise<string[]>{
+  const {tenantForUser}=await import("./server/tenant-admin.server");
+  const tenant=await tenantForUser(context);
+  return [tenant.role];
 }
 
 function emailOf(context: Ctx) {
@@ -31,7 +29,8 @@ const authorizeSchema = z.object({
 export const describeOAuthRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => authorizeSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    await roles(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { validateAuthorize } = await import("./server/oauth.server");
     const { clientName, params } = await validateAuthorize(supabaseAdmin, data);
@@ -57,8 +56,10 @@ export const decideOAuth = createServerFn({ method: "POST" })
     const r = await roles(context);
     if (!r.includes("admin") && !r.includes("editor"))
       throw new Error("Somente administradores e editores podem conectar o Gestor Instagram.");
-    const code = await createCode(supabaseAdmin, context.userId, params);
-    await audit(supabaseAdmin, {
+    const {admin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"editor");
+    const code = await createCode(admin, context.userId, params);
+    await audit(admin, {
       user_id: context.userId,
       user_email: emailOf(context),
       acao: "conector_mcp_autorizado",
@@ -76,13 +77,15 @@ export const revokeConnector = createServerFn({ method: "POST" })
       throw new Error("Somente administradores podem revogar conexões.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { audit } = await import("./server/meta.server");
-    const { error } = await supabaseAdmin
+    const {admin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"admin");
+    const { error } = await admin
       .from("oauth_tokens")
       .update({ revogado_em: new Date().toISOString(), refresh_hash: null })
       .eq("client_id", data.client_id)
       .is("revogado_em", null);
     if (error) throw new Error("Não foi possível revogar.");
-    await audit(supabaseAdmin, {
+    await audit(admin, {
       user_id: context.userId,
       user_email: emailOf(context),
       acao: "conector_mcp_revogado",
