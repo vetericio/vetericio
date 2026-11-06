@@ -14,9 +14,11 @@ function emailOf(claims: any): string | null {
 // O OricStudio integra-se ao licenciamento da Oricse e não possui auto-bootstrap
 // de administradores. O servidor central provisionará usuários e clínicas.
 export const getSetupStatus=createServerFn({method:"GET"}).handler(async()=>({disponivel:false}));
-export const runInitialSetup=createServerFn({method:"POST"}).handler(async()=>{
-  throw new Error("O cadastro administrativo avulso foi desativado. Use a Oricse.");
-});
+export const runInitialSetup=createServerFn({method:"POST"})
+  .inputValidator((input:unknown)=>z.object({email:z.string().email(),password:z.string()}).parse(input))
+  .handler(async()=>{
+    throw new Error("O cadastro administrativo avulso foi desativado. Use a Oricse.");
+  });
 
 // ---------- Meta OAuth ----------
 export const metaOAuthStart = createServerFn({ method: "POST" })

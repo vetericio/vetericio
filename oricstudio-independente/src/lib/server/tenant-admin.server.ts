@@ -33,7 +33,7 @@ function tenantValue(value:unknown,clinicId:string):unknown {
   if(Array.isArray(value))return value.map(v=>tenantValue(v,clinicId));
   if(!value||typeof value!=="object")throw new Error("Registro de clínica inválido.");
   const record=value as Record<string,unknown>;
-  if(record.clinica_id!=null && record.clinica_id!==clinicId)
+  if(record['clinica_id']!=null && record['clinica_id']!==clinicId)
     throw new Error("Tentativa de alteração entre clínicas bloqueada.");
   return {...record,clinica_id:clinicId};
 }
@@ -93,12 +93,12 @@ export async function assertTenantObject(
 export async function assertTenantStillActive(admin:Admin, clinicId:string, userId:string, min:Role="admin") {
   // Usado no callback OAuth após o navegador voltar da Meta. Nunca confiar
   // apenas no state: o operador pode ter sido removido durante o login.
-  const {data:clinic}=await admin.from("studio_clinicas" as any)
+  const {data:clinic}=await (admin as any).from("studio_clinicas")
     .select("id,ativa,licenca_ativa,licenca_expira_em").eq("id",clinicId).maybeSingle();
   if(!clinic?.ativa||!clinic.licenca_ativa||
      (clinic.licenca_expira_em&&Date.parse(clinic.licenca_expira_em)<=Date.now()))
     throw new Error("Clínica indisponível ou sem licença.");
-  const {data:member}=await admin.from("studio_membros" as any)
+  const {data:member}=await (admin as any).from("studio_membros")
     .select("papel,ativo").eq("clinica_id",clinicId).eq("user_id",userId).maybeSingle();
   if(!member?.ativo||(min==="admin"&&member.papel!=="admin")||
      (min==="editor"&&member.papel==="viewer"))
