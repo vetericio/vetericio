@@ -850,7 +850,6 @@ export type Database = {
         }
         Insert: {
           clinica_id?: string
-          clinica_id?: string
           provider?: "instagram" | "facebook"
           created_at?: string
           expires_at: string
@@ -860,7 +859,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          clinica_id?: string
           clinica_id?: string
           provider?: "instagram" | "facebook"
           created_at?: string
@@ -1294,8 +1292,9 @@ export type Database = {
       call_job: { Args: { _path: string }; Returns: number }
       can_edit: { Args: { _user_id: string }; Returns: boolean }
       claim_due_posts: {
-        Args: { _lease_seconds?: number; _limit?: number }
+        Args: { _lease_seconds?: number; _limit?: number; _clinica_id?: string }
         Returns: {
+          clinica_id: string
           agendado_para: string | null
           alt_text: string | null
           aprovado_em: string | null
