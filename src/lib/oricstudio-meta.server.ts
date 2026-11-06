@@ -233,12 +233,12 @@ async function graphGet(url:URL) {
 export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
   const stateHash=sha256(state);
   const {data:flow,error:flowErr}=await db.from("oricstudio_meta_oauth_states")
-    .select("state_hash,clinica_id,iniciado_por,expira_em,usado_em").eq("state_hash",stateHash).maybeSingle();
+    .select("state_hash,clinica_id,iniciado_por,expira_em,usado_em,login_tipo").eq("state_hash",stateHash).eq("login_tipo","facebook").maybeSingle();
   if(flowErr||!flow||flow.usado_em||Date.parse(flow.expira_em)<=Date.now())
     throw new Error("Autorização expirada ou já utilizada.");
   const {data:consumed,error:consumedErr}=await db.from("oricstudio_meta_oauth_states")
     .update({usado_em:new Date().toISOString()}).eq("state_hash",stateHash)
-    .is("usado_em",null).gt("expira_em",new Date().toISOString()).select("state_hash").maybeSingle();
+    .eq("login_tipo","facebook").is("usado_em",null).gt("expira_em",new Date().toISOString()).select("state_hash").maybeSingle();
   if(consumedErr||!consumed)throw new Error("Esta autorização já foi usada.");
   await requireMetaEditorByUser(db,flow.iniciado_por,flow.clinica_id || ORICSTUDIO_PLATAFORMA_ID);
   const cfg=metaConfig();
@@ -272,7 +272,7 @@ export async function finalizeMetaOAuth(db: Db, state: string, code: string) {
       throw new Error("Uma das contas do Instagram já está vinculada a outra clínica.");
     const values={
       clinica_id:flow.clinica_id,instagram_user_id:metaAccount.instagramUserId,username:metaAccount.username,
-      account_type:metaAccount.accountType,status:"incompleta",escopos:UNIFIED_SCOPES,
+      account_type:metaAccount.accountType,status:"incompleta",login_tipo:"facebook",escopos:UNIFIED_SCOPES,
       conectado_por:flow.iniciado_por,token_expira_em:expiry,atualizado_em:new Date().toISOString(),ultimo_erro:null,
     };
     const q=existing

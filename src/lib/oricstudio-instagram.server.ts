@@ -132,8 +132,11 @@ export async function finalizarInstagramDireto(db:Db,state:string,code:string) {
     ultimo_erro:null,atualizado_em:new Date().toISOString(),
   };
   const {data:saved,error:saveError}=existing
-    ? await db.from("oricstudio_meta_contas").update(row).eq("id",existing.id)
-        .eq("clinica_id",flow.clinica_id).select("id").single()
+    ? await (flow.clinica_id
+        ? db.from("oricstudio_meta_contas").update(row).eq("id",existing.id)
+            .eq("clinica_id",flow.clinica_id)
+        : db.from("oricstudio_meta_contas").update(row).eq("id",existing.id)
+            .is("clinica_id",null)).select("id").single()
     : await db.from("oricstudio_meta_contas").insert(row).select("id").single();
   if(saveError||!saved?.id)throw new Error("Falha ao registrar conta Instagram.");
   const {error:tokenError}=await db.from("oricstudio_meta_tokens").upsert({
