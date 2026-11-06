@@ -105,7 +105,8 @@ function OricStudio() {
   const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
     instagramAppId:string; callback:string; formatoIdValido:boolean;
-    configurationIdConfigurado:boolean; appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
+    configurationIdConfigurado:boolean; configurationId:string;
+    appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
   } | null>(null);
   const [metaCarregando, setMetaCarregando] = useState(false);
   const [metaOcupada, setMetaOcupada] = useState(false);
@@ -928,24 +929,31 @@ function OricStudio() {
             <button type="button" onClick={()=>void conectarInstagramDireto()}
               disabled={!instagramDiretoConfigurado||metaCarregando||metaOcupada}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
-              <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram — sem Facebook"}
+              <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram — login direto"}
             </button>
             <button type="button" onClick={()=>void conectarMeta()}
               disabled={!metaConfigurada||metaCarregando||metaOcupada}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-50">
-              Conectar com Facebook
+              Conectar com a Meta — Login Unificado
             </button>
           </div>}
         </div>
         {!contexto.pode_editar && <p className="rounded-xl border p-4 text-sm">A conexão é administrada pelo responsável, RT ou administrador da clínica.</p>}
-        {contexto.pode_editar && !metaConfigurada && !instagramDiretoConfigurado && !metaCarregando &&
+        {contexto.pode_editar && !instagramDiretoConfigurado && !metaCarregando &&
+           <p className="rounded-xl border bg-card p-3 text-sm text-muted-foreground">
+             O login direto com Instagram ainda não foi configurado neste aplicativo.
+             Para entrar agora use <strong>Conectar com a Meta — Login Unificado</strong>.
+             O botão de login direto requer Instagram App ID e Secret específicos do produto.
+           </p>}
+         {contexto.pode_editar && !metaConfigurada && !instagramDiretoConfigurado && !metaCarregando &&
           <p className="rounded-xl border bg-card p-4 text-sm">A integração Meta do OricStúdio está aguardando configuração central. Nenhuma clínica precisa fornecer sua senha ao ORICSE.</p>}
         {modoPlataforma && metaDiagnostico &&
           <details className="rounded-xl border bg-card p-4 text-sm">
             <summary className="cursor-pointer font-semibold">Diagnóstico da conexão Instagram (Administração ORICSE)</summary>
             <p className="mt-3 text-muted-foreground">
-              Este aplicativo usa <strong>Instagram API with Unified Login</strong>. Se aparecer
-              “Solicitação inválida”, confirme primeiro a configuração abaixo — sem expor segredos.
+              Este aplicativo utiliza <strong>Instagram API with Unified Login</strong>.
+              Se a Meta disser “config_id é obrigatório” mesmo com o ID na URL,
+              confira se a configuração foi selecionada e pertence ao mesmo App ID.
             </p>
             <dl className="mt-3 space-y-2">
               <div><dt className="font-semibold">App ID utilizado</dt>
@@ -955,7 +963,10 @@ function OricStudio() {
               <div><dt className="font-semibold">Formato do App ID</dt>
                 <dd>{metaDiagnostico.formatoIdValido ? "Numérico válido" : "Ausente ou inválido no Cloudflare"}</dd></div>
               <div><dt className="font-semibold">Configuration ID do Login Unificado</dt>
-                <dd>{metaDiagnostico.configurationIdConfigurado ? "Configurado" : "Ausente ou inválido no Cloudflare"}</dd></div>
+                <dd>{metaDiagnostico.configurationIdConfigurado
+                   ? "Formato válido; vínculo Meta não verificado"
+                   : "Ausente ou inválido no Cloudflare"}
+                   {" · ID: "}{metaDiagnostico.configurationId || "não configurado"}</dd></div>
               <div><dt className="font-semibold">App Secret</dt>
                 <dd>{metaDiagnostico.appSecretConfigurado ? "Configurado" : "Ausente no Cloudflare"}</dd></div>
               <div><dt className="font-semibold">Chave de criptografia</dt>
@@ -965,7 +976,11 @@ function OricStudio() {
               No Cloudflare, confira os nomes exatos: ORICSTUDIO_META_CLIENT_ID,
               ORICSTUDIO_META_CLIENT_SECRET, ORICSTUDIO_META_CONFIG_ID,
               ORICSTUDIO_META_REDIRECT_URI e ORICSTUDIO_META_ENCRYPTION_KEY.
-              No painel Meta, utilize a configuração selecionada em Instagram → API setup with Unified Login.
+              No painel Meta, abra o aplicativo com o App ID acima.
+               Entre em Casos de uso → Gerenciar mensagens e conteúdo do Instagram →
+               API setup with Unified Login. Selecione a configuração e clique
+               em <strong>Use this configuration</strong>. Copie o Configuration ID
+               desse mesmo aplicativo e confirme o callback exato registrado.
             </p>
             <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer"
               className="mt-2 inline-block font-semibold text-primary underline">Abrir Meta for Developers</a>

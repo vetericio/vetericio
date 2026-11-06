@@ -191,18 +191,17 @@ export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: s
   const state=randomBytes(32).toString("base64url");
   const {error}=await db.from("oricstudio_meta_oauth_states").insert({
     state_hash:sha256(state),clinica_id:idNoBanco(clinicaId),iniciado_por:userId,
-    expira_em:new Date(Date.now()+10*60*1000).toISOString(),
+    login_tipo:"facebook",expira_em:new Date(Date.now()+10*60*1000).toISOString(),
   });
   if(error)throw new Error("Não foi possível iniciar a conexão.");
-  // Apps recentes usam Instagram API with Unified Login. O config_id da
-  // configuração selecionada na Meta substitui escopos na URL de autorização.
-  const url=new URL("https://www.facebook.com/dialog/oauth");
+  // Configuração "Unified Login" deve ser criada no MESMO Meta App
+  // e selecionada em "Use this configuration" no painel Meta.
+  // Não misturar escopos do Instagram Login direto neste fluxo.
+  const url=new URL("https://www.facebook.com/v26.0/dialog/oauth");
   url.searchParams.set("client_id",cfg.clientId);
-  url.searchParams.set("config_id",cfg.configId);
   url.searchParams.set("redirect_uri",cfg.redirectUri);
-  // Parâmetros emitidos pela configuração do Unified Login da própria Meta.
-  // Não enviar response_type/prompt legados, que fazem o diálogo ignorar o config_id.
-  url.searchParams.set("display","popup");
+  url.searchParams.set("config_id",cfg.configId);
+  url.searchParams.set("response_type","code");
   url.searchParams.set("override_default_response_type","true");
   url.searchParams.set("state",state);
   return url.toString();
