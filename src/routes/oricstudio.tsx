@@ -11,7 +11,7 @@ import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
-import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio} from "@/lib/oricstudio-operacao.functions";
+import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio,prepararEnvioOricStudio} from "@/lib/oricstudio-operacao.functions";
 import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
@@ -120,6 +120,10 @@ function OricStudio() {
   const [status, setStatus] = useState<"rascunho" | "aguardando_aprovacao">("rascunho");
   const [versoes, setVersoes] = useState<Versao[]>([]);
   const [versoesId, setVersoesId] = useState<string | null>(null);
+  const [agendandoId,setAgendandoId]=useState<string|null>(null);
+  const [agendandoConta,setAgendandoConta]=useState("");
+  const [agendandoMidias,setAgendandoMidias]=useState<string[]>([]);
+  const [agendando,setAgendando]=useState(false);
 
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
@@ -317,6 +321,26 @@ function OricStudio() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao salvar."); }
     finally { setSalvando(false); }
   }
+  async function registrarEnvio(p:Publicacao) {
+    if(!contexto?.pode_editar||agendando)return;
+    if(!agendandoConta)return toast.error("Selecione a conta Instagram.");
+    if(!agendandoMidias.length)return toast.error("Selecione pelo menos uma mídia.");
+    if(!window.confirm("Registrar este agendamento no motor do OricStudio? A publicação externa continua protegida até homologação."))return;
+    setAgendando(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      const result=await prepararEnvioOricStudio({data:{
+        accessToken:auth.session.access_token,clinicaId:contexto.clinica_id,
+        publicacaoId:p.id,contaId:agendandoConta,midias:agendandoMidias,
+      }});
+      toast.success(result.publicacaoHabilitada?"Envio agendado na fila.":"Agendado. Publicação real aguardando homologação.");
+      setAgendandoId(null);setAgendandoConta("");setAgendandoMidias([]);
+      await carregar();setAba("publicacoes");
+    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível agendar.");}
+    finally{setAgendando(false);}
+  }
+
   async function alterarStatus(p: Publicacao, proximo: Status) {
     if (!contexto?.pode_editar || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
     const { error } = await filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
@@ -725,7 +749,7 @@ function OricStudio() {
         <div className="rounded-xl border bg-card p-5"><h3 className="font-bold">Próximas datas do calendário editorial</h3>
           {planejadas.length===0?<p className="mt-2 text-sm text-muted-foreground">Nenhuma data foi planejada.</p>:planejadas.slice(0,5).map(p=><p key={p.id} className="mt-3 border-t pt-3 text-sm">{textoData(p.planejado_para)} · {p.titulo}</p>)}
         </div>
-        <p className="text-xs text-muted-foreground">Sem integração com o Instagram nesta etapa: os indicadores acima mostram apenas dados internos do OricStúdio.</p>
+        <p className="text-xs text-muted-foreground">Os números mostram apenas registros reais. Publicação automática exige credenciais Meta e homologação.</p>
       </section>}
       {aba==="publicacoes" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">Publicações e rascunhos</h2>{contexto.pode_editar && <button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Criar publicação</button>}</div>
@@ -740,7 +764,7 @@ function OricStudio() {
             <label className="space-y-1 text-sm font-medium">Data planejada (opcional)<input type="datetime-local" value={planejado} onChange={e=>setPlanejado(e.target.value)} className="w-full rounded-lg border bg-background p-3"/></label>
             <label className="space-y-1 text-sm font-medium">Fluxo editorial<select value={status} onChange={e=>setStatus(e.target.value as typeof status)} className="w-full rounded-lg border bg-background p-3"><option value="rascunho">Salvar rascunho</option><option value="aguardando_aprovacao">Enviar para aprovação interna</option></select></label>
           </div>
-          <p className="text-xs text-muted-foreground">A data é apenas planejamento. Nenhuma publicação será enviada ou agendada no Instagram.</p>
+          <p className="text-xs text-muted-foreground">A data é planejamento editorial. Após aprovação, selecione a conta e a mídia para registrar o agendamento no motor independente.</p>
           <div className="flex flex-wrap gap-2"><button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"><Save className="h-4 w-4"/>{salvando?"Salvando...":"Salvar"}</button><button type="button" onClick={()=>setEditorAberto(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button></div>
         </form>}
         <AgendamentoOricStudio
@@ -757,13 +781,44 @@ function OricStudio() {
             <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-bold">{p.titulo}</h3><p className="mt-1 text-xs text-muted-foreground">{p.tipo} · {STATUS[p.status]} · {textoData(p.planejado_para)}</p></div><div className="flex flex-wrap gap-2">
               {contexto.pode_editar && <button onClick={()=>editar(p)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Pencil className="h-3.5 w-3.5"/> Editar</button>}
               <button onClick={()=>void carregarVersoes(p)} className="rounded-lg border px-3 py-2 text-xs">Versões</button>
+               {contexto.pode_editar&&p.status==="aprovado"&&
+                 <button type="button" onClick={()=>{setAgendandoId(agendandoId===p.id?null:p.id);setAgendandoConta("");setAgendandoMidias([]);}}
+                   className="rounded-lg border px-3 py-2 text-xs font-semibold">Agendar no Instagram</button>}
               {contexto.pode_editar && <button onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>}
             </div></div><p className="mt-3 whitespace-pre-line text-sm">{p.legenda||"Sem legenda."}</p>
-            {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
+            {agendandoId===p.id&&<div className="mt-3 space-y-3 rounded-xl border bg-secondary/30 p-4">
+               <h4 className="text-sm font-semibold">Programar publicação — {p.titulo}</h4>
+               <p className="text-xs text-muted-foreground">Conta profissional, mídia e data aprovada são obrigatórias. Arquivos continuam privados; a Meta recebe link assinado temporário.</p>
+               <label className="block text-xs font-semibold">Conta Instagram
+                 <select value={agendandoConta} onChange={e=>setAgendandoConta(e.target.value)}
+                   className="mt-1 w-full rounded-lg border bg-background p-2 text-sm">
+                   <option value="">Selecionar uma conta</option>
+                   {contasMeta.filter(c=>c.status==="ativa").map(c=><option key={c.id} value={c.id}>@{c.username}</option>)}
+                 </select>
+               </label>
+               <fieldset className="space-y-2">
+                 <legend className="text-xs font-semibold">Mídias ({agendandoMidias.length} selecionadas)</legend>
+                 {midias.length===0?<p className="text-xs text-muted-foreground">Adicione arquivos JPEG ou MP4 na Biblioteca.</p>:
+                   midias.map(m=><label key={m.id} className="flex items-center gap-2 text-xs">
+                     <input type="checkbox" checked={agendandoMidias.includes(m.id)}
+                       onChange={e=>setAgendandoMidias(ids=>e.target.checked?[...ids,m.id]:ids.filter(x=>x!==m.id))}/>
+                     {m.nome} — {m.tipo}
+                   </label>)}
+               </fieldset>
+               <div className="flex gap-2">
+                 <button type="button" disabled={agendando||!agendandoConta||agendandoMidias.length===0}
+                   onClick={()=>void registrarEnvio(p)}
+                   className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                   {agendando?"Registrando...":"Confirmar agendamento"}
+                 </button>
+                 <button type="button" onClick={()=>setAgendandoId(null)} className="rounded-lg border px-4 py-2 text-xs">Cancelar</button>
+               </div>
+             </div>}
+             {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
           </article>)}</div>}
       </section>}
       {aba==="calendario" && <section className="space-y-4">
-        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento interno. A publicação automática será disponibilizada na etapa 3/5.</p></div>
+        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento editorial e envios agendados. Publicações reais dependem da autorização da Meta e da ativação da fila.</p></div>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
           <div className="flex items-center gap-2">
             <button type="button" onClick={()=>navegarCalendario(-1)} aria-label="Período anterior" className="min-h-10 rounded-lg border px-3">‹</button>
@@ -797,7 +852,7 @@ function OricStudio() {
       </section>}
       {aba==="aprovacoes" && <section className="space-y-3"><h2 className="text-xl font-bold">Aprovações editoriais</h2>
         {pendentes.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma publicação aguardando aprovação.</p>:pendentes.map(p=><div key={p.id} className="space-y-3 rounded-xl border bg-card p-4"><h3 className="font-semibold">{p.titulo}</h3><p className="whitespace-pre-line text-sm">{p.legenda}</p><div className="flex flex-wrap gap-2">{contexto.pode_editar && <><button onClick={()=>void alterarStatus(p,"aprovado")} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"><CheckCircle2 className="h-4 w-4"/> Aprovar internamente</button><button onClick={()=>void alterarStatus(p,"rascunho")} className="rounded-lg border px-3 py-2 text-sm">Voltar para rascunho</button></>}</div></div>)}
-        <p className="text-xs text-muted-foreground">Aprovação interna não publica nem agenda o conteúdo nas redes sociais.</p>
+        <p className="text-xs text-muted-foreground">Após aprovar, abra Publicações, selecione a conta e as mídias para programar o envio. Não há publicação automática sem homologação.</p>
       </section>}
       {aba==="biblioteca" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
