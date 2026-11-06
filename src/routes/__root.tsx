@@ -66,7 +66,6 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
-  const router = useRouter();
   useEffect(() => {
     const erro = error instanceof Error ? error : new Error(String(error));
     reportLovableError(erro, { boundary: "tanstack_root_error_component" });
@@ -99,18 +98,30 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">Esta página não carregou</h1>
         <div className="mt-6">
-          <button
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.delete("oricse_recovery");
-              window.history.replaceState(null, "", url.toString());
-              router.invalidate();
-              reset();
-            }}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Tentar novamente
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.delete("oricse_recovery");
+                url.searchParams.delete("oricse_module_retry");
+                url.searchParams.set("oricse_build", String(Date.now()));
+                // Navegação completa descarta a árvore React que falhou e baixa a versão atual.
+                window.location.replace(url.toString());
+              }}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Recarregar sistema
+            </button>
+            <a href="/admin" className="rounded-md border px-4 py-2 text-sm font-medium">
+              Abrir administração
+            </a>
+            <a href="/login" className="rounded-md border px-4 py-2 text-sm font-medium">
+              Voltar ao login
+            </a>
+          </div>
+          <p className="mt-5 break-words text-xs text-muted-foreground">
+            Diagnóstico: {error instanceof Error ? error.message : String(error)}
+          </p>
         </div>
       </div>
     </div>
