@@ -393,7 +393,7 @@ function Admin() {
     for(const assinatura of assinaturas.data||[]){if(!porClinica[assinatura.clinica_id])porClinica[assinatura.clinica_id]=assinatura;}
     setAssinaturasClinicas(porClinica);
     setClinicas(c.data || []);
-    setClinicasLixeira(clinicasNaLixeira.data || []);
+    setClinicasLixeira((c.data || []).filter((clinica:Clinica)=>clinica.status==="excluida"));
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
