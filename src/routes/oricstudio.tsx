@@ -10,7 +10,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
-import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
+import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
   validateSearch: (search: Record<string, unknown>) => ({ ambiente: search.ambiente === "plataforma" ? "plataforma" as const : undefined }),
@@ -92,6 +92,7 @@ function OricStudio() {
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
   const [metaConfigurada, setMetaConfigurada] = useState(false);
+  const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
   const [metaDiagnostico, setMetaDiagnostico] = useState<{
     instagramAppId:string; callback:string; formatoIdValido:boolean;
     configurationIdConfigurado:boolean; appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
@@ -198,13 +199,14 @@ function OricStudio() {
           const {data:authSession}=await supabase.auth.getSession();
           const token=authSession.session?.access_token;
           if(!token)throw new Error("Sessão expirada.");
-          const [accounts,configuration]=await Promise.all([
+          const [accounts,configuration,instagramDireto]=await Promise.all([
             listarContasMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
             statusIntegracaoMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
           ]);
           if(seq===requisicao.current) {
             setContasMeta(accounts as ContaMeta[]);
             setMetaConfigurada(configuration.configurada);
+             setInstagramDiretoConfigurado(instagramDireto.configurada);
             setMetaDiagnostico(configuration.diagnostico ?? null);
           }
         } catch(e) {
@@ -436,6 +438,27 @@ function OricStudio() {
       await carregar();
     }catch(e){toast.error(e instanceof Error?e.message:"Falha ao cancelar renovação.");}
     finally{setCancelandoAssinatura(false);}
+  }
+
+  async function conectarInstagramDireto() {
+    if(!contexto?.pode_editar||metaOcupada)return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const result=await iniciarConexaoInstagramDiretoOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,
+      }});
+      const url=new URL(result.url);
+      if(url.protocol!=="https:"||url.hostname!=="www.instagram.com"||
+        url.pathname!=="/oauth/authorize")
+        throw new Error("A Meta não forneceu a URL oficial do Instagram.");
+      window.location.assign(url.toString());
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Falha na conexão Instagram.");
+      setMetaOcupada(false);
+    }
   }
 
   async function conectarMeta() {
@@ -774,14 +797,21 @@ function OricStudio() {
             <h2 className="text-xl font-bold">Contas Instagram {modoPlataforma?"da ORICSE":"da clínica"}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{modoPlataforma?"Conecte apenas as contas oficiais da ORICSE, separadas das contas de clientes.":"Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas."}</p>
           </div>
-          {contexto.pode_editar && <button type="button" onClick={()=>void conectarMeta()}
-            disabled={!metaConfigurada || metaCarregando || metaOcupada}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
-            <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram"}
-          </button>}
+          {contexto.pode_editar && <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={()=>void conectarInstagramDireto()}
+              disabled={!instagramDiretoConfigurado||metaCarregando||metaOcupada}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
+              <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram — sem Facebook"}
+            </button>
+            <button type="button" onClick={()=>void conectarMeta()}
+              disabled={!metaConfigurada||metaCarregando||metaOcupada}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-50">
+              Conectar com Facebook
+            </button>
+          </div>}
         </div>
         {!contexto.pode_editar && <p className="rounded-xl border p-4 text-sm">A conexão é administrada pelo responsável, RT ou administrador da clínica.</p>}
-        {contexto.pode_editar && !metaConfigurada && !metaCarregando &&
+        {contexto.pode_editar && !metaConfigurada && !instagramDiretoConfigurado && !metaCarregando &&
           <p className="rounded-xl border bg-card p-4 text-sm">A integração Meta do OricStúdio está aguardando configuração central. Nenhuma clínica precisa fornecer sua senha ao ORICSE.</p>}
         {modoPlataforma && metaDiagnostico &&
           <details className="rounded-xl border bg-card p-4 text-sm">
