@@ -3,66 +3,20 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function requireAdmin(context: { supabase: any; userId: string }) {
-  const { data } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  if (!data) throw new Error("Acesso restrito a administradores.");
+  const {tenantForUser}=await import("./server/tenant-admin.server");
+  return tenantForUser(context,"admin");
 }
 
 function emailOf(claims: any): string | null {
   return (claims && typeof claims.email === "string" && claims.email) || null;
 }
 
-// ---------- Configuração inicial (pública, verificada no servidor) ----------
-async function hasAnyUser() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
-  if (error) throw new Error("Falha ao verificar usuários.");
-  return (data?.users?.length ?? 0) > 0;
-}
-
-export const getSetupStatus = createServerFn({ method: "GET" }).handler(async () => {
-  // Nao liberar bootstrap global de administradores para uma instalacao multi-clinica.
-  if (process.env["ORICSTUDIO_SETUP_PERMITIDO"] !== "true") return { disponivel:false };
-  return { disponivel: !(await hasAnyUser()) };
+// O OricStudio integra-se ao licenciamento da Oricse e não possui auto-bootstrap
+// de administradores. O servidor central provisionará usuários e clínicas.
+export const getSetupStatus=createServerFn({method:"GET"}).handler(async()=>({disponivel:false}));
+export const runInitialSetup=createServerFn({method:"POST"}).handler(async()=>{
+  throw new Error("O cadastro administrativo avulso foi desativado. Use a Oricse.");
 });
-
-const setupSchema = z.object({
-  email: z.string().trim().email().max(255),
-  password: z.string().min(10, "Mínimo de 10 caracteres").max(72),
-});
-
-export const runInitialSetup = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => setupSchema.parse(input))
-  .handler(async ({ data }) => {
-    if (process.env["ORICSTUDIO_SETUP_PERMITIDO"] !== "true")
-      throw new Error("O cadastro inicial está bloqueado até a homologação do acesso por clínica.");
-    if (await hasAnyUser()) throw new Error("A configuração inicial já foi concluída.");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-    });
-    if (error || !created.user)
-      throw new Error(error?.message || "Não foi possível criar o usuário.");
-    // Race guard: if another user appeared concurrently, abort.
-    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 2 });
-    if ((list?.users?.length ?? 0) > 1) {
-      await supabaseAdmin.auth.admin.deleteUser(created.user.id);
-      throw new Error("A configuração inicial já foi concluída.");
-    }
-    await supabaseAdmin.from("user_roles").insert({ user_id: created.user.id, role: "admin" });
-    const { audit } = await import("./server/meta.server");
-    await audit(supabaseAdmin, {
-      user_id: created.user.id,
-      user_email: data.email,
-      acao: "configuracao_inicial",
-      alvo: "admin",
-    });
-    return { ok: true };
-  });
 
 // ---------- Meta OAuth ----------
 export const metaOAuthStart = createServerFn({ method: "POST" })
@@ -75,7 +29,8 @@ export const metaOAuthStart = createServerFn({ method: "POST" })
     const { randomToken, sha256Hex } = await import("./server/crypto.server");
     const cfg = metaConfig();
     if (cfg.missing.length) throw new Error(`Configure os secrets: ${cfg.missing.join(", ")}`);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {admin:supabaseAdmin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"admin");
     const state = randomToken(32);
     await supabaseAdmin.from("oauth_states").insert({
       user_id: context.userId,
@@ -124,7 +79,8 @@ export const metaConnectionCheck = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {admin:supabaseAdmin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"admin");
     const { runConnectionCheck, audit } = await import("./server/meta.server");
     try {
       const results = await runConnectionCheck(supabaseAdmin, data.connectionId);
@@ -161,7 +117,8 @@ export const metaDisconnect = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {admin:supabaseAdmin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"admin");
     const { audit, getUserToken, metaConfig } = await import("./server/meta.server");
     const who = { user_id: context.userId, user_email: emailOf(context.claims) };
     if (data.tipo === "conta") {
@@ -172,10 +129,13 @@ export const metaDisconnect = createServerFn({ method: "POST" })
       await audit(supabaseAdmin, { ...who, acao: "desativar_conta", alvo: data.accountId });
       return { ok: true };
     }
+    const {data:origin}=await supabaseAdmin.from("meta_connections")
+      .select("login_provider").eq("id",data.connectionId).maybeSingle();
+    if(!origin)throw new Error("A conexão não pertence à clínica ativa.");
     let revogado = false;
     try {
       const token = await getUserToken(supabaseAdmin, data.connectionId);
-      if (token) {
+      if (token && origin.login_provider!=="instagram") {
         const res = await fetch(
           `${metaConfig().graph}/me/permissions?access_token=${encodeURIComponent(token)}`,
           { method: "DELETE" },
@@ -211,7 +171,8 @@ export const setAccountManaged = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {admin:supabaseAdmin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"admin");
     const { audit } = await import("./server/meta.server");
     const { error } = await supabaseAdmin
       .from("instagram_accounts")
@@ -239,7 +200,8 @@ export const updateSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const {admin:supabaseAdmin}=await (await import("./server/tenant-admin.server"))
+      .scopedAdminForUser(context,"admin");
     const { audit } = await import("./server/meta.server");
     const { error } = await supabaseAdmin
       .from("app_settings")
