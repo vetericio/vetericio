@@ -533,6 +533,7 @@ function OricStudio() {
 
   async function conectarMeta() {
     if (!contexto?.pode_editar || metaOcupada) return;
+    setMetaErro("");
     setMetaOcupada(true);
     try {
       const {data:auth}=await supabase.auth.getSession();
@@ -557,7 +558,9 @@ function OricStudio() {
       }
       window.location.assign(authorizeUrl.toString());
     } catch(e) {
-      toast.error(e instanceof Error?e.message:"Falha ao iniciar conexão.");
+      const motivo=e instanceof Error?e.message:"Falha ao iniciar conexão.";
+      setMetaErro("Falha ao abrir autorização Meta: "+motivo);
+      toast.error(motivo);
       setMetaOcupada(false);
     }
   }
@@ -962,8 +965,10 @@ function OricStudio() {
             <summary className="cursor-pointer font-semibold">Diagnóstico da conexão Instagram (Administração ORICSE)</summary>
             <p className="mt-3 text-muted-foreground">
               Este aplicativo utiliza <strong>Instagram API with Unified Login</strong>.
-              Se a Meta disser “config_id é obrigatório” mesmo com o ID na URL,
-              confira se a configuração foi selecionada e pertence ao mesmo App ID.
+              Versão de conexão OricStudio 07/11/2026: endereço estável
+              <code> facebook.com/dialog/oauth </code> com <code>response_type=code</code>.
+              Se a Meta disser “config_id é obrigatório” mesmo com o parâmetro na URL,
+              confirme se o Configuration ID foi criado e ativado no mesmo App ID.
             </p>
             <dl className="mt-3 space-y-2">
               <div><dt className="font-semibold">App ID utilizado</dt>
