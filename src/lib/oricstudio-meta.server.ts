@@ -194,13 +194,17 @@ export async function authorizeMetaUrl(db: Db, accessToken: string, clinicaId: s
     login_tipo:"facebook",expira_em:new Date(Date.now()+10*60*1000).toISOString(),
   });
   if(error)throw new Error("Não foi possível iniciar a conexão.");
-  // Configuração "Unified Login" deve ser criada no MESMO Meta App
-  // e selecionada em "Use this configuration" no painel Meta.
-  // Não misturar escopos do Instagram Login direto neste fluxo.
-  const url=new URL("https://www.facebook.com/v26.0/dialog/oauth");
+  // Instagram API with Unified Login: usar exatamente o endpoint estável
+  // apresentado no URL de login gerado pela Meta. Manter response_type=code,
+  // config_id e state, sem scopes clássicos do Facebook nem tokens na URL.
+  //
+  // Também é compatível com clientes ORICSE antigos que só reconhecem
+  // /dialog/oauth. O endpoint /v26.0/dialog/oauth foi introduzido na migração
+  // anterior e causou bloqueio local em abas/PWAs ainda com JS anterior.
+  const url=new URL("https://www.facebook.com/dialog/oauth");
   url.searchParams.set("client_id",cfg.clientId);
-  url.searchParams.set("redirect_uri",cfg.redirectUri);
   url.searchParams.set("config_id",cfg.configId);
+  url.searchParams.set("redirect_uri",cfg.redirectUri);
   url.searchParams.set("response_type","code");
   url.searchParams.set("override_default_response_type","true");
   url.searchParams.set("state",state);
