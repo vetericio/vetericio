@@ -444,18 +444,38 @@ function Contratar() {
   };
 
   function validarAtual() {
-    const obrig1 = ["clinica_nome","clinica_telefone","clinica_email","clinica_cep","clinica_endereco","clinica_numero","clinica_bairro","clinica_cidade","clinica_uf"];
-    if (ehTesteGratis) obrig1.push("cnpj");
-    const obrig2 = ["responsavel_nome","responsavel_cpf","responsavel_email","responsavel_telefone","responsavel_cep","responsavel_endereco","responsavel_numero","responsavel_bairro","responsavel_cidade","responsavel_uf"];
-    if (exigeCrmv(dados)) obrig2.push("responsavel_crmv", "responsavel_crmv_uf");
-    if (etapa === 1 && obterOperacoes(dados).length === 0) {
-      setErroValidacao("Selecione pelo menos uma área de atuação.");
-      return false;
+    if (etapa === 1) {
+      if (!dados.clinica_nome.trim()) { setErroValidacao("Informe o nome da clínica."); return false; }
+      if (!slugValido(normalizarSlug(dados.slug_desejado || ""))) {
+        setErroValidacao("Escolha um endereço do site com 3 a 30 caracteres (letras, números e hífen).");
+        return false;
+      }
+      if (!ESTILOS_SITE.some(estilo => estilo.id === dados.estilo_site)) {
+        setErroValidacao("Selecione o estilo visual do site."); return false;
+      }
+      if (!logoDataUrl) {
+        setErroValidacao("Envie a logo da clínica para continuar."); return false;
+      }
     }
-    const faltando = (etapa===1?obrig1:obrig2).filter(k=>!String(dados[k]||"").trim());
+    const obrigatoriosClinica = ["clinica_telefone","clinica_email","clinica_cep","clinica_endereco","clinica_numero","clinica_bairro","clinica_cidade","clinica_uf"];
+    const obrigatoriosResponsavel = ["responsavel_nome","responsavel_cpf","responsavel_email","responsavel_telefone","responsavel_cep","responsavel_endereco","responsavel_numero","responsavel_bairro","responsavel_cidade","responsavel_uf"];
+    if (exigeCrmv(dados)) obrigatoriosResponsavel.push("responsavel_crmv", "responsavel_crmv_uf");
+    if (etapa === 2 && obterOperacoes(dados).length === 0) {
+      setErroValidacao("Selecione pelo menos uma área de atuação."); return false;
+    }
+    if (etapa === 3) {
+      if (!dados.servicos_iniciais.trim()) {
+        setErroValidacao("Selecione pelo menos um serviço inicial."); return false;
+      }
+      if (dados.horario_abertura >= dados.horario_fechamento) {
+        setErroValidacao("O horário final deve ser posterior ao horário inicial."); return false;
+      }
+    }
+    const obrig = etapa === 2 ? obrigatoriosClinica : etapa === 4 ? obrigatoriosResponsavel : [];
+    const faltando = obrig.filter(k => !String(dados[k] || "").trim());
     if (faltando.length) {
-      const rotulos:Record<string,string>={
-        clinica_nome:"Nome da clínica",clinica_telefone:"Telefone da clínica",clinica_email:"E-mail da clínica",
+      const rotulos: Record<string,string> = {
+        clinica_telefone:"Telefone da clínica",clinica_email:"E-mail da clínica",
         clinica_cep:"CEP da clínica",clinica_endereco:"Endereço da clínica",clinica_numero:"Número da clínica",
         clinica_bairro:"Bairro da clínica",clinica_cidade:"Cidade da clínica",clinica_uf:"UF da clínica",
         responsavel_nome:"Nome do responsável",responsavel_cpf:"CPF",responsavel_email:"E-mail do responsável",
@@ -463,26 +483,30 @@ function Contratar() {
         responsavel_endereco:"Endereço do responsável",responsavel_numero:"Número do responsável",
         responsavel_bairro:"Bairro do responsável",responsavel_cidade:"Cidade do responsável",
         responsavel_uf:"UF do responsável",responsavel_crmv:"CRMV",responsavel_crmv_uf:"UF do CRMV",
-        cnpj:"CNPJ/CPF",
       };
-      setErroValidacao("Confira os campos: "+faltando.map(k=>rotulos[k]||k).join(", ")+".");
+      setErroValidacao("Confira os campos: " + faltando.map(k => rotulos[k] || k).join(", ") + ".");
       return false;
     }
     setErroValidacao("");
-    if (etapa===1 && ehTesteGratis) {
-      const doc = String(dados.cnpj || "").replace(/\D/g, "");
-      if (![11,14].includes(doc.length)) { toast.error("Informe um CPF ou CNPJ válido para o teste gratuito."); return false; }
-    }
     return true;
   }
 
+  async function avancarEtapa() {
+    if (!validarAtual()) return;
+    if (etapa === 1 && !(await conferirSlug())) return;
+    setEtapa(etapa + 1);
+  }
+
   async function continuarPagamento() {
+    if (!logoDataUrl || !slugValido(normalizarSlug(dados.slug_desejado || ""))) { setEtapa(1); setErroValidacao("Confirme a logo e o endereço do site."); return; }
     if (!planoConhecido || (!ehTesteGratis && (!configPlano || valorBase <= 0))) { toast.error("Não foi possível validar o valor deste plano. Volte à página de planos."); return; }
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
     if (plano === "master-2026" && !aceitouFidelidadeMaster) { toast.error("Confirme ciência da fidelidade de 12 meses do plano Master."); return; }
     setEnviando(true);
     const payload = {
       ...dados,
+      logo_data_url: logoDataUrl,
+      logo_nome: logoNome,
       operacoes_selecionadas: obterOperacoes(dados),
       plano_codigo: plano,
       ciclo,
@@ -506,7 +530,7 @@ function Contratar() {
     if (error) { toast.error(error.message || (ehTesteGratis ? "Não foi possível iniciar o teste gratuito." : "Não foi possível iniciar a contratação.")); return; }
     const novoPedido = Array.isArray(data) ? data[0] : data;
     setPedido(novoPedido);
-    setEtapa(4);
+    setEtapa(6);
     if (!ehTesteGratis && novoPedido?.id) {
       if (novoPedido.status === "isento_aguardando_aprovacao") {
         toast.success("Solicitação enviada para análise.");
