@@ -56,10 +56,16 @@ const UFS_CRMV = [
 ] as const;
 
 const TIPOS_OPERACAO = [
-  { valor: "clinica", nome: "Clínica / hospital veterinário" },
+  { valor: "clinica", nome: "Clínica veterinária" },
+  { valor: "hospital", nome: "Hospital veterinário" },
   { valor: "domicilio", nome: "Veterinário em domicílio" },
-  { valor: "hotelzinho", nome: "Hotelzinho" },
-  { valor: "petshop", nome: "Pet shop / banho e tosa" },
+  { valor: "petshop", nome: "Petshop e loja" },
+  { valor: "banho_tosa", nome: "Banho e tosa" },
+  { valor: "hotelzinho", nome: "Hotelzinho e creche" },
+  { valor: "ong", nome: "ONG e proteção animal" },
+  { valor: "diagnostico", nome: "Diagnóstico e laboratório" },
+  { valor: "ensino", nome: "Treinamento e ensino" },
+  { valor: "outro", nome: "Outro serviço pet" },
   { valor: "misto", nome: "Operação mista (combinar serviços)" },
 ] as const;
 const ETAPAS_ABERTURA = ["Identidade", "Estrutura", "Serviços", "Configurações", "Revisão"];
@@ -70,22 +76,28 @@ const ESTILOS_SITE = [
   { id: "acolhedor", nome: "Acolhedor", legenda: "Próximo dos tutores", fundo: "bg-[#FFF6F0]", barra: "bg-[#B66D67]", detalhe: "bg-[#F9D9CA]" },
 ] as const;
 const SERVICOS_INICIAIS = [
-  { id: "consultas", nome: "Consultas", operacoes: ["clinica", "domicilio"] },
-  { id: "vacinas", nome: "Vacinação", operacoes: ["clinica", "domicilio"] },
-  { id: "exames", nome: "Exames e diagnósticos", operacoes: ["clinica"] },
-  { id: "cirurgias", nome: "Cirurgias", operacoes: ["clinica"] },
+  { id: "consultas", nome: "Consultas", operacoes: ["clinica", "hospital", "domicilio", "ong"] },
+  { id: "vacinas", nome: "Vacinação", operacoes: ["clinica", "hospital", "domicilio", "ong"] },
+  { id: "exames", nome: "Exames e diagnósticos", operacoes: ["clinica", "hospital", "diagnostico"] },
+  { id: "cirurgias", nome: "Cirurgias", operacoes: ["clinica", "hospital"] },
   { id: "atendimento_domiciliar", nome: "Visitas domiciliares", operacoes: ["domicilio"] },
-  { id: "banho", nome: "Banho", operacoes: ["petshop"] },
-  { id: "tosa", nome: "Tosa", operacoes: ["petshop"] },
+  { id: "banho", nome: "Banho", operacoes: ["petshop", "banho_tosa"] },
+  { id: "tosa", nome: "Tosa", operacoes: ["petshop", "banho_tosa"] },
   { id: "loja", nome: "Venda de produtos", operacoes: ["petshop"] },
   { id: "hospedagem", nome: "Hospedagem", operacoes: ["hotelzinho"] },
   { id: "creche", nome: "Creche e recreação", operacoes: ["hotelzinho"] },
+  { id: "internacao", nome: "Internação", operacoes: ["hospital"] },
+  { id: "urgencia", nome: "Emergências 24h", operacoes: ["hospital"] },
+  { id: "adocao", nome: "Adoção responsável", operacoes: ["ong"] },
+  { id: "resgate", nome: "Resgate e acolhimento", operacoes: ["ong"] },
+  { id: "aulas", nome: "Aulas e treinamentos", operacoes: ["ensino"] },
+  { id: "outros_servicos", nome: "Outros serviços pet", operacoes: ["outro"] },
 ] as const;
 const normalizarSlug = (valor: string) => valor.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").slice(0, 30);
 const slugValido = (slug: string) => slug.length >= 3 && slug.length <= 30 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])$/.test(slug);
 const SLUGS_RESERVADOS = new Set(["www","admin","app","api","login","portal","tutor","suporte","mail","email","blog","sistema","oricse"]);
 const OPERACOES_BASE = TIPOS_OPERACAO.filter(tipo => tipo.valor !== "misto");
-const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica"]);
+const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica", "hospital", "domicilio", "diagnostico"]);
 const obterOperacoes = (dados: Dados) => dados.tipo_operacao === "misto" ? (dados.operacoes_ativas || "").split(",").filter(valor => OPERACOES_BASE.some(tipo => tipo.valor === valor)) : [dados.tipo_operacao];
 const exigeCrmv = (dados: Dados) => obterOperacoes(dados).some(tipo => TIPOS_COM_ATENDIMENTO_VETERINARIO.has(tipo));
 
