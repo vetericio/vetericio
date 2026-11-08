@@ -934,49 +934,16 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           return { data, error: null };
         }
         case "oricse_validar_codigo_promocional": {
-          const codigo = String(args.p_codigo || "")
-              .trim()
-              .toUpperCase(),
-            plano = String(args.p_plano_codigo || ""),
-            base = numero(args.p_valor_base);
-          const { data: promos, error } = await fromDrive("oricse_codigos_promocionais").select(
-            "*",
-          );
-          if (error) throw error;
-          const p = (promos || []).find(
-            (x: any) => String(x.codigo || "").toUpperCase() === codigo && x.ativo !== false,
-          );
-          if (!p) return { data: { valido: false, mensagem: "Código inválido." }, error: null };
-          const agora = Date.now();
-          if (p.valido_de && new Date(p.valido_de).getTime() > agora)
-            return {
-              data: { valido: false, mensagem: "Código ainda não está válido." },
-              error: null,
-            };
-          if (p.valido_ate && new Date(p.valido_ate).getTime() < agora)
-            return { data: { valido: false, mensagem: "Código expirado." }, error: null };
-          if (Array.isArray(p.planos) && p.planos.length && !p.planos.includes(plano))
-            return {
-              data: { valido: false, mensagem: "Código não disponível para este plano." },
-              error: null,
-            };
-          const desconto =
-            p.tipo_desconto === "percentual"
-              ? Math.min(base, (base * numero(p.valor)) / 100)
-              : Math.min(base, numero(p.valor));
-          const final = Math.max(0, Math.round((base - desconto) * 100) / 100);
-          return {
+          const { validarCodigoPromocionalDrive } = await import("@/lib/checkout-drive.functions");
+          const data = await validarCodigoPromocionalDrive({
             data: {
-              valido: true,
-              codigo,
-              valor_original: base,
-              desconto_aplicado: Math.round(desconto * 100) / 100,
-              valor_final: final,
-              duracao: p.duracao || "primeiro_mes",
-              mensagem: "Código aplicado.",
+              codigo: String(args.p_codigo || ""),
+              plano_codigo: String(args.p_plano_codigo || ""),
+              documento: String(args.p_documento || ""),
+              valor_base: numero(args.p_valor_base),
             },
-            error: null,
-          };
+          } as never);
+          return { data, error: null };
         }
         default:
           return {
