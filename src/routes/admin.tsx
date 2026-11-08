@@ -38,6 +38,7 @@ import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
 import { prestigeDefault } from "@/lib/clinic-site";
+import { SiteDaClinica } from "@/routes/site-da-clinica";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
 import { useAdminNavigation } from "@/components/admin/AdminShell";
@@ -256,6 +257,7 @@ function Admin() {
   const quantidadeClinicasAtivas = useQuantidadeClinicasAtivas();
   const { aba, setAba } = useAdminNavigation();
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
+  const [editorSiteAberto, setEditorSiteAberto] = useState(false);
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
@@ -313,6 +315,11 @@ function Admin() {
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
   const [salvandoDominio, setSalvandoDominio] = useState(false);
+
+  useEffect(() => {
+    // Ao trocar de clínica, feche o editor anterior antes de abrir outro.
+    setEditorSiteAberto(false);
+  }, [selecionada?.id]);
 
   const clinicasFiltradas = useMemo(() => {
     const q = buscaClinica.trim().toLowerCase();
@@ -1411,6 +1418,35 @@ function Admin() {
           <span className={"rounded-full px-3 py-1.5 text-xs font-bold " + (plano?.dominio_incluso ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700")}>{plano?.dominio_incluso ? "Domínio próprio incluído no plano" : "Domínio próprio controlado pelo plano"}</span>
         </div>
       </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <PanelsTopLeft size={23}/>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">Site da clínica</p>
+              <h3 className="mt-1 text-xl font-bold">Editor visual · {selecionada.nome}</h3>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Escolha um dos seis modelos, envie a logo e as fotos, personalize serviços e
+                contatos e publique o site da clínica selecionada. Não precisa trocar de conta.
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setEditorSiteAberto((aberto) => !aberto)}
+            aria-expanded={editorSiteAberto} aria-controls="oricse-editor-visual-da-clinica"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground hover:opacity-90">
+            <PanelsTopLeft size={19}/>
+            {editorSiteAberto ? "Fechar editor" : "Editar site da clínica"}
+          </button>
+        </div>
+      </Card>
+      {editorSiteAberto && (
+        <div id="oricse-editor-visual-da-clinica" className="min-w-0 overflow-hidden rounded-2xl border bg-background shadow-sm">
+          <SiteDaClinica key={selecionada.id} adminClinicaId={selecionada.id} embedded/>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-2">
         <Card>
