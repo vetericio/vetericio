@@ -93,6 +93,7 @@ export function VisualPageEditor() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const cleanupFrameListenersRef = useRef<(() => void) | null>(null);
   const selectedRef = useRef<SelectedItem[]>([]);
   const documentRef = useRef(documento);
   selectedRef.current = selected;
@@ -360,7 +361,13 @@ export function VisualPageEditor() {
     return () => cancelAnimationFrame(id);
   }, [applyToFrame]);
 
+  // Each iframe reload gets fresh listeners; remove the previous handlers to
+  // prevent duplicate drag updates and stale closures when changing pages.
+  useEffect(() => () => cleanupFrameListenersRef.current?.(), []);
+
   const bindFrame = useCallback(() => {
+    cleanupFrameListenersRef.current?.();
+    cleanupFrameListenersRef.current = null;
     const doc = iframeRef.current?.contentDocument;
     const win = iframeRef.current?.contentWindow;
     if (!doc || !win) return;
@@ -424,12 +431,17 @@ export function VisualPageEditor() {
       drag = { sx: event.clientX, sy: event.clientY, starts };
     };
     const move = (event: PointerEvent) => {
-      if (!drag) return;
-      const dx = (event.clientX - drag.sx) / Math.max(zoom / 100, 0.1),
-        dy = (event.clientY - drag.sy) / Math.max(zoom / 100, 0.1);
+      // React may run the state updater after pointerup has cleared drag.
+      // Capture an immutable reference for this event, rather than reading
+      // drag inside the deferred update and crashing on drag.starts.
+      const activeDrag = drag;
+      if (!activeDrag) return;
+      const dx = (event.clientX - activeDrag.sx) / Math.max(zoom / 100, 0.1),
+        dy = (event.clientY - activeDrag.sy) / Math.max(zoom / 100, 0.1);
+      const starts = activeDrag.starts;
       updateLayout(
         (value) =>
-          drag!.starts.forEach(({ item, x, y }) => {
+          starts.forEach(({ item, x, y }) => {
             const target =
               item.kind === "patch"
                 ? value.patches.find((p) => p.id === item.id)
@@ -454,8 +466,20 @@ export function VisualPageEditor() {
     doc.addEventListener("pointerdown", pointerDown, true);
     win.addEventListener("pointermove", move, true);
     win.addEventListener("pointerup", stop, true);
+    win.addEventListener("pointercancel", stop, true);
+    win.addEventListener("blur", stop, true);
     doc.addEventListener("click", block, true);
     doc.addEventListener("submit", block, true);
+    cleanupFrameListenersRef.current = () => {
+      drag = null;
+      doc.removeEventListener("pointerdown", pointerDown, true);
+      win.removeEventListener("pointermove", move, true);
+      win.removeEventListener("pointerup", stop, true);
+      win.removeEventListener("pointercancel", stop, true);
+      win.removeEventListener("blur", stop, true);
+      doc.removeEventListener("click", block, true);
+      doc.removeEventListener("submit", block, true);
+    };
   }, [applyToFrame, checkpoint, device, route, updateLayout, zoom]);
 
   function patchSelected(style: Partial<VisualStyle>, text?: string) {
