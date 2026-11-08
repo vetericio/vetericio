@@ -17,6 +17,7 @@ import {
   ImageUp,
   LogOut,
   PanelsTopLeft,
+  Palette,
   Plus,
   RefreshCcw,
   Save,
@@ -26,7 +27,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { extrairDriveFolderId } from "@/lib/drive-storage";
@@ -272,6 +273,7 @@ function Admin() {
   const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
   const [ativandoSolicitacao, setAtivandoSolicitacao] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
+  const restaurouClinicaViaLink = useRef(false);
   const [novaClinica, setNovaClinica] = useState<NovaClinica | null>(null);
   const [criandoClinica, setCriandoClinica] = useState(false);
   const [erroNovaClinica, setErroNovaClinica] = useState("");
@@ -800,6 +802,22 @@ function Admin() {
   }
 
   useEffect(() => { void carregarTudo(); void carregarSolicitacoes(); }, []);
+  // Retorno do editor visual para a mesma clínica e aba do Admin Geral.
+  // A clínica é resolvida exclusivamente entre os registros que o Admin pode consultar.
+  useEffect(() => {
+    if (restaurouClinicaViaLink.current || clinicas.length === 0 || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("clinica");
+    if (!id || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) return;
+    const clinica = clinicas.find((item) => item.id === id);
+    if (!clinica) return;
+    restaurouClinicaViaLink.current = true;
+    setSelecionada(clinica);
+    setAbaClinica(params.get("aba") === "site" ? "site" : "cadastro");
+    setAba("clinicas");
+  }, [clinicas, setAba]);
+
+
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
   useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
@@ -1409,6 +1427,31 @@ function Admin() {
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Você administra os endereços públicos desta clínica. O site público e o Portal do Tutor usam o mesmo domínio; o sistema ORICSE continua protegido e centralizado.</p>
           </div>
           <span className={"rounded-full px-3 py-1.5 text-xs font-bold " + (plano?.dominio_incluso ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700")}>{plano?.dominio_incluso ? "Domínio próprio incluído no plano" : "Domínio próprio controlado pelo plano"}</span>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Palette size={24}/>
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold">Editor visual do site</h3>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Personalize o site de <strong>{selecionada.nome}</strong>: escolha um dos seis modelos,
+                envie logo e fotos, ajuste textos, contatos, serviços e cores. Salve rascunhos
+                ou publique quando estiver pronto.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                A publicação do site é independente da ativação DNS/SSL do domínio.
+              </p>
+            </div>
+          </div>
+          <a href={"/site-da-clinica?origem=admin&clinica="+encodeURIComponent(selecionada.id)}
+             className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:bg-primary/90">
+             <Palette size={18}/> Editar site da clínica <ExternalLink size={16}/>
+          </a>
         </div>
       </Card>
 
