@@ -556,13 +556,104 @@ function Contratar() {
 
   return <main className="min-h-screen bg-background px-4 py-6 sm:px-6"><div className="mx-auto max-w-4xl">
     <Link to="/planos" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><ArrowLeft size={18}/> {texto.voltar_planos}</Link>
-    <header className="mt-6 rounded-3xl border bg-card p-6 shadow-sm"><p className="text-sm font-semibold text-primary">Plano {nomePlano} · {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><h1 className="mt-2 text-3xl font-bold">{ehTesteGratis ? "Comece seu teste gratuito" : texto.titulo_contratacao}</h1><p className="mt-2 text-muted-foreground">{ehTesteGratis ? "Use a Oricse por 7 dias sem cobrança. O teste é único por CPF/CNPJ." : texto.subtitulo_contratacao}</p></header>
+    <header className="mt-6 rounded-3xl border bg-card p-6 shadow-sm"><p className="text-sm font-semibold text-primary">Plano {nomePlano} · {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><h1 className="mt-2 text-3xl font-bold">{ehTesteGratis ? "Comece seu teste gratuito" : texto.titulo_contratacao}</h1><p className="mt-2 text-muted-foreground">{ehTesteGratis ? "Use a Oricse por 7 dias sem cobrança. O teste é único por CPF/CNPJ." : "Personalize sua clínica, configure serviços e revise tudo em cinco etapas. A ativação ocorrerá após a análise da ORICSE."}</p></header>
     {retornoPagamento && <div className="mt-4 rounded-xl border p-4 text-sm font-semibold">{retornoPagamento === "sucesso" ? "Pagamento enviado. A confirmação está sendo processada." : retornoPagamento === "pendente" ? "Pagamento pendente de confirmação." : "Pagamento não concluído."}{pedidoRetorno && <span className="block text-xs font-normal">Pedido {pedidoRetorno.slice(0,8)}</span>}</div>}
-    <div className="mt-5 flex gap-2">{[1,2,3,4].map(n=><div key={n} className={`h-2 flex-1 rounded-full ${n<=etapa?"bg-primary":"bg-muted"}`}/>)}</div>
+    <div className="mt-5 grid grid-cols-5 gap-2" aria-label="Progresso da abertura">
+      {ETAPAS_ABERTURA.map((nome,index)=><div key={nome} className="min-w-0"><div className={"h-2 rounded-full " + (index+1<=etapa?"bg-primary":"bg-muted")}/><p className={"mt-2 truncate text-center text-[10px] sm:text-xs " + (index+1===etapa?"font-bold text-primary":"text-muted-foreground")}>{nome}</p></div>)}
+    </div>
 
-    {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">1. {texto.etapa1_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><div className="text-sm font-semibold">Tipo de operação *<details ref={operacaoMenuRef} className="group relative mt-1"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border bg-background px-3 font-normal [&::-webkit-details-marker]:hidden"><span className="truncate">{obterOperacoes(dados).map(v=>OPERACOES_BASE.find(t=>t.valor===v)?.nome).filter(Boolean).join(" + ") || "Selecione os serviços"}</span><ChevronDown size={18} className="shrink-0"/></summary><div className="absolute z-30 mt-1 w-full rounded-xl border bg-background p-2 shadow-lg">{OPERACOES_BASE.map(tipo=><label key={tipo.valor} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 font-normal hover:bg-muted"><input type="checkbox" className="h-4 w-4" checked={obterOperacoes(dados).includes(tipo.valor)} onChange={e=>{const atuais=obterOperacoes(dados);const proximos=e.target.checked?[...new Set([...atuais,tipo.valor])]:atuais.filter(v=>v!==tipo.valor);salvarLocal({...dados,tipo_operacao:proximos.length>1?"misto":proximos[0]||"misto",operacoes_ativas:proximos.join(",")});}}/>{tipo.nome}</label>)}</div></details></div>{campo("Nome da clínica","clinica_nome",dados,salvarLocal)}{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo("CNPJ/CPF","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
+    {etapa===1 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+      <div className="flex items-center gap-3 text-primary"><Globe2 size={24}/><h2 className="text-2xl font-extrabold">1. Identidade da sua clínica</h2></div>
+      <p className="mt-2 text-sm text-muted-foreground">Comece pelo nome, escolha como deseja aparecer na internet e defina a identidade visual.</p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {campo("Nome da clínica", "clinica_nome", dados, salvarLocal)}
+        <label className="text-sm font-semibold">Nome exibido aos tutores
+          <input value={dados.nome_publico} onChange={e => salvarLocal({...dados,nome_publico:e.target.value.slice(0,100)})}
+            placeholder={dados.clinica_nome || "Nome que aparecerá no Portal do Tutor"} maxLength={100}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">Pode ser igual ao nome da clínica.</span>
+        </label>
+      </div>
+      <label className="mt-5 block text-sm font-semibold">Endereço do seu site <span className="text-destructive">*</span>
+        <div className="mt-1 flex min-h-12 items-center overflow-hidden rounded-xl border bg-background">
+          <input value={dados.slug_desejado} onChange={e => { salvarLocal({...dados,slug_desejado:normalizarSlug(e.target.value)});setSituacaoSlug("indefinido");}}
+            placeholder="minhaclinica" maxLength={30} autoComplete="off"
+            className="min-w-0 flex-1 px-3 py-3 font-normal outline-none" aria-label="Endereço da clínica"/>
+          <span className="shrink-0 border-l bg-muted/40 px-3 py-3 text-xs font-medium text-muted-foreground">.oricse.com.br</span>
+        </div>
+        <span className="mt-1 block text-xs font-normal text-muted-foreground">De 3 a 30 caracteres. A ativação do endereço ocorrerá após a aprovação da clínica.</span>
+        {situacaoSlug==="livre" && <span className="mt-1 block text-xs font-semibold text-emerald-700">Endereço disponível neste momento.</span>}
+        {situacaoSlug==="ocupado" && <span className="mt-1 block text-xs font-semibold text-destructive">Escolha outro endereço.</span>}
+      </label>
+      <div className="mt-7 border-t pt-6">
+        <h3 className="flex items-center gap-2 text-lg font-bold"><Sparkles size={19} className="text-primary"/> Escolha o estilo do site</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Logo após definir o endereço, selecione a aparência desejada. Você poderá revisar a escolha antes de enviar.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Estilo do site">
+          {ESTILOS_SITE.map(estilo => <button key={estilo.id} type="button" role="radio" aria-checked={dados.estilo_site===estilo.id}
+            onClick={()=>salvarLocal({...dados,estilo_site:estilo.id})}
+            className={"rounded-2xl border-2 p-3 text-left transition hover:border-primary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary " + (dados.estilo_site===estilo.id?"border-primary bg-primary/5":"border-border")}>
+            <div className={"h-28 overflow-hidden rounded-xl border p-3 " + estilo.fundo}>
+              <div className="flex items-center gap-2"><div className={"h-5 w-5 rounded-md " + estilo.barra}/>
+                <div className={"h-1.5 w-16 rounded-full " + estilo.barra}/><div className="ml-auto h-1.5 w-8 rounded-full bg-gray-400/30"/></div>
+              <div className={"mt-4 h-3 w-28 rounded " + estilo.barra}/><div className={"mt-2 h-1.5 w-36 max-w-full rounded " + estilo.detalhe}/>
+              <div className="mt-3 flex gap-2"><div className={"h-6 w-16 rounded-lg " + estilo.barra}/><div className={"h-6 w-14 rounded-lg " + estilo.detalhe}/></div>
+            </div>
+            <span className="mt-3 flex items-center justify-between gap-3"><strong>{estilo.nome}</strong>{dados.estilo_site===estilo.id&&<Check size={18} className="text-primary"/>}</span>
+            <span className="block text-xs text-muted-foreground">{estilo.legenda}</span>
+          </button>)}
+        </div>
+      </div>
+      <div className="mt-7 border-t pt-6">
+        <h3 className="flex items-center gap-2 text-lg font-bold"><ImageUp size={20} className="text-primary"/> Logo da clínica <span className="text-destructive">*</span></h3>
+        <p className="mt-1 text-sm text-muted-foreground">PNG, JPG ou WebP de até 5 MB. A ORICSE prepara a imagem para o site e para o Portal do Tutor.</p>
+        <label className="mt-3 flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-primary/40 bg-muted/20 p-5">
+          {logoDataUrl?<img src={logoDataUrl} alt="Prévia da logo da clínica" className="h-20 w-20 shrink-0 rounded-xl border bg-white object-contain p-2"/>:<ImageUp size={40} className="shrink-0 text-primary"/>}
+          <span className="min-w-0 text-sm"><strong className="block">{logoNome||"Escolher arquivo da logo"}</strong><span className="block text-xs text-muted-foreground">Clique para selecionar ou substituir</span></span>
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={e=>void escolherLogo(e.target.files?.[0])}/>
+        </label>
+      </div>
+      <div className="mt-6 rounded-2xl border bg-muted/25 p-4">
+        <h3 className="font-bold">Prévia da identidade</h3>
+        <div className="mt-3 flex items-center gap-4 rounded-xl border bg-background p-4">
+          {logoDataUrl?<img src={logoDataUrl} alt="" className="h-14 w-14 rounded-lg object-contain"/>:<div className="flex h-14 w-14 items-center justify-center rounded-lg border"><ImageUp size={22}/></div>}
+          <div className="min-w-0"><p className="truncate font-bold">{dados.nome_publico||dados.clinica_nome||"Sua clínica"}</p><p className="truncate text-xs text-muted-foreground">{dados.slug_desejado||"sua-clinica"}.oricse.com.br</p></div>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">O Portal do Tutor mantém o padrão ORICSE e recebe a identidade permitida da sua clínica.</p>
+      </div>
+    </section>}
 
-    {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. {texto.etapa2_titulo}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}<label className="text-sm font-semibold">UF do CRMV{crmvObrigatorio&&<span className="text-destructive"> *</span>}
+    {etapa===2 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">2. Estrutura e dados da clínica</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><div className="text-sm font-semibold">Tipo de operação *<details ref={operacaoMenuRef} className="group relative mt-1"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border bg-background px-3 font-normal [&::-webkit-details-marker]:hidden"><span className="truncate">{obterOperacoes(dados).map(v=>OPERACOES_BASE.find(t=>t.valor===v)?.nome).filter(Boolean).join(" + ") || "Selecione os serviços"}</span><ChevronDown size={18} className="shrink-0"/></summary><div className="absolute z-30 mt-1 w-full rounded-xl border bg-background p-2 shadow-lg">{OPERACOES_BASE.map(tipo=><label key={tipo.valor} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 font-normal hover:bg-muted"><input type="checkbox" className="h-4 w-4" checked={obterOperacoes(dados).includes(tipo.valor)} onChange={e=>{const atuais=obterOperacoes(dados);const proximos=e.target.checked?[...new Set([...atuais,tipo.valor])]:atuais.filter(v=>v!==tipo.valor);salvarLocal({...dados,tipo_operacao:proximos.length>1?"misto":proximos[0]||"misto",operacoes_ativas:proximos.join(",")});}}/>{tipo.nome}</label>)}</div></details></div>{campo("Razão social","razao_social",dados,salvarLocal,false)}{campo("CNPJ/CPF","cnpj",dados,salvarLocal,ehTesteGratis)}{campo("Telefone","clinica_telefone",dados,salvarLocal)}{campo("E-mail","clinica_email",dados,salvarLocal,true,"email")}{campo("CEP","clinica_cep",dados,salvarLocal)}{campo("Endereço","clinica_endereco",dados,salvarLocal)}{campo("Número","clinica_numero",dados,salvarLocal)}{campo("Complemento","clinica_complemento",dados,salvarLocal,false)}{campo("Bairro","clinica_bairro",dados,salvarLocal)}{campo("Cidade","clinica_cidade",dados,salvarLocal)}{campo("UF","clinica_uf",dados,salvarLocal)}</div>{ehTesteGratis && <p className="mt-3 text-xs text-muted-foreground">O CPF/CNPJ é usado para garantir um único período de teste gratuito por empresa/profissional.</p>}</section>}
+
+    {etapa===3 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+      <div className="flex items-center gap-3 text-primary"><Clock3 size={24}/><h2 className="text-2xl font-extrabold">3. Serviços e funcionamento</h2></div>
+      <p className="mt-2 text-sm text-muted-foreground">Marque o que sua clínica oferece. A ORICSE utilizará essas preferências na preparação inicial, conforme o plano contratado.</p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {SERVICOS_INICIAIS.filter(servico=>servico.operacoes.some(op=>obterOperacoes(dados).includes(op))).map(servico=>{
+          const selecionados=dados.servicos_iniciais.split(",").filter(Boolean);
+          const marcado=selecionados.includes(servico.id);
+          return <label key={servico.id} className={"flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-sm font-semibold " + (marcado?"border-primary bg-primary/5":"")}>
+            <input type="checkbox" className="h-4 w-4 accent-primary" checked={marcado}
+              onChange={e=>salvarLocal({...dados,servicos_iniciais:(e.target.checked?[...new Set([...selecionados,servico.id])]:selecionados.filter(item=>item!==servico.id)).join(",")})}/>
+            {servico.nome}
+          </label>;
+        })}
+      </div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-semibold">Início do funcionamento
+          <input type="time" value={dados.horario_abertura} onChange={e=>salvarLocal({...dados,horario_abertura:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+        </label>
+        <label className="text-sm font-semibold">Fim do funcionamento
+          <input type="time" value={dados.horario_fechamento} onChange={e=>salvarLocal({...dados,horario_fechamento:e.target.value})} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+        </label>
+      </div>
+      <label className="mt-5 flex items-center justify-between gap-4 rounded-xl border p-4 text-sm">
+        <span><strong className="block">Agendamento online</strong><span className="mt-1 block text-xs text-muted-foreground">Solicite a configuração inicial de agenda, se seu plano permitir.</span></span>
+        <input type="checkbox" className="h-5 w-5 accent-primary" checked={dados.agenda_online==="sim"} onChange={e=>salvarLocal({...dados,agenda_online:e.target.checked?"sim":"nao"})}/>
+      </label>
+      <p className="mt-4 flex items-start gap-2 rounded-xl bg-muted/30 p-3 text-xs text-muted-foreground"><ShieldCheck size={17} className="shrink-0 text-primary"/> A ativação das agendas e do Portal do Tutor ocorre após a aprovação e segue as permissões do seu plano.</p>
+    </section>}
+
+    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm"><h2 className="text-xl font-bold">4. Configurações e responsável</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{campo("Nome do responsável","responsavel_nome",dados,salvarLocal)}{campo("CPF","responsavel_cpf",dados,salvarLocal)}{campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}<label className="text-sm font-semibold">UF do CRMV{crmvObrigatorio&&<span className="text-destructive"> *</span>}
   <select
     value={dados.responsavel_crmv_uf}
     onChange={e=>salvarLocal({...dados,responsavel_crmv_uf:e.target.value})}
@@ -575,9 +666,9 @@ function Contratar() {
   </select>
 </label>{campo("Telefone","responsavel_telefone",dados,salvarLocal)}{campo("E-mail","responsavel_email",dados,salvarLocal,true,"email")}{campo("CEP","responsavel_cep",dados,salvarLocal)}{campo("Endereço","responsavel_endereco",dados,salvarLocal)}{campo("Número","responsavel_numero",dados,salvarLocal)}{campo("Complemento","responsavel_complemento",dados,salvarLocal,false)}{campo("Bairro","responsavel_bairro",dados,salvarLocal)}{campo("Cidade","responsavel_cidade",dados,salvarLocal)}{campo("UF","responsavel_uf",dados,salvarLocal)}</div>{!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para operações sem atendimento clínico veterinário.</p>}</section>}
 
-    {etapa===3 && <section className="mt-5 rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
+    {etapa===5 && <section className="mt-5 rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Revisão do pedido</p><h2 className="mt-1 text-2xl font-bold">3. {texto.etapa3_titulo}</h2><p className="mt-1 text-sm text-muted-foreground">Escolha o período, confira cada valor e aplique seu código antes de pagar.</p></div>
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Revisão do pedido</p><h2 className="mt-1 text-2xl font-bold">5. Revisão e contratação</h2><p className="mt-1 text-sm text-muted-foreground">Escolha o período, confira cada valor e aplique seu código antes de pagar.</p></div>
         {!ehTesteGratis && <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-bold text-primary">Plano {nomePlano}</div>}
       </div>
 
@@ -611,16 +702,15 @@ function Contratar() {
 
       </div> : <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5 text-sm"><p className="font-bold text-primary">Como funciona o teste de 7 dias</p><p className="mt-2 text-muted-foreground">O teste é único por CPF/CNPJ. Ao final dos 7 dias, o acesso à área clínica fica pausado até a contratação de um plano. Seus dados permanecem armazenados, mas enquanto a conta estiver pausada não será possível editar, exportar, gerar downloads ou fazer backup pelo sistema.</p></div>}
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-semibold">Identificador público (@)
-          <div className="mt-1 flex min-h-11 items-center rounded-xl border bg-background px-3 font-normal"><span className="mr-1 font-bold text-primary">@</span><input aria-label="Identificador público" autoComplete="off" value={dados.slug_desejado || ""} onChange={e=>salvarLocal({...dados,slug_desejado:e.target.value.toLowerCase().replace(/^@+/,"").replace(/[^a-z0-9_.]/g,"").slice(0,30)})} placeholder="minhaclinica" className="min-w-0 flex-1 bg-transparent py-3 outline-none"/></div>
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">Seu identificador único na ORICSE.</span>
-        </label>
-        <label className="text-sm font-semibold">Nome público
-          <input value={dados.nome_publico || ""} onChange={e=>salvarLocal({...dados,nome_publico:e.target.value})} placeholder="Nome exibido aos tutores" maxLength={100} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">Nome apresentado no Portal do Tutor.</span>
-        </label>
-      </div>
+      <div className="mt-5 grid gap-3 rounded-2xl border bg-background p-4 text-sm sm:grid-cols-2">
+    <p><strong className="block">Clínica</strong>{dados.clinica_nome}</p>
+    <p><strong className="block">Endereço solicitado</strong>{dados.slug_desejado}.oricse.com.br</p>
+    <p><strong className="block">Estilo do site</strong>{ESTILOS_SITE.find(e => e.id === dados.estilo_site)?.nome || "Moderno"}</p>
+    <p><strong className="block">Serviços</strong>{SERVICOS_INICIAIS.filter(e => dados.servicos_iniciais.split(",").includes(e.id)).map(e => e.nome).join(", ")}</p>
+    <p><strong className="block">Horário inicial</strong>{dados.horario_abertura} às {dados.horario_fechamento}</p>
+    <p><strong className="block">Portal do Tutor</strong>Padronizado, com a identidade da clínica</p>
+    {logoDataUrl && <img className="h-20 w-20 rounded-xl border bg-white object-contain p-2" src={logoDataUrl} alt="Logo escolhida"/>}
+  </div>
       <label className="mt-5 block text-sm font-semibold">{texto.observacoes_rotulo}<textarea value={dados.observacoes} onChange={e=>salvarLocal({...dados,observacoes:e.target.value})} rows={3} className="mt-1 w-full rounded-xl border bg-background px-3 py-2 font-normal"/></label>
       {plano === "master-2026" && <div className="mt-5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
         <p className="text-base font-extrabold">Importante: plano Master com fidelidade de 12 meses</p>
@@ -633,9 +723,13 @@ function Contratar() {
       <div className="mt-5 space-y-4 border-t pt-5 text-sm"><div className="flex items-start gap-3"><input id="aceitar-termos" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={termos} onChange={e=>setTermos(e.target.checked)}/><div><label htmlFor="aceitar-termos" className="cursor-pointer">Li e concordo com os </label><Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Termos de Uso <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div><div className="flex items-start gap-3"><input id="aceitar-privacidade" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={privacidade} onChange={e=>setPrivacidade(e.target.checked)}/><div><label htmlFor="aceitar-privacidade" className="cursor-pointer">Li e concordo com a </label><Link to="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Política de Privacidade <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1"> e tratamento de dados.</span><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div></div>
     </section>}
 
-    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(Number(pedido?.valor_total??valorCobrado))} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>Desconto:</b> {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedidoIsento?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&!pedidoIsento&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}{pedidoIsento&&pedido?.id&&<a href={`/contratacao-recebida?retorno=isento&pedido=${encodeURIComponent(String(pedido.id))}`} className="mt-4 block w-full rounded-xl border border-primary px-4 py-3 text-center font-semibold text-primary">Ver solicitação recebida</a>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedidoIsento?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
+    {etapa===6 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(Number(pedido?.valor_total??valorCobrado))} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>Desconto:</b> {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedidoIsento?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&!pedidoIsento&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}{pedidoIsento&&pedido?.id&&<a href={`/contratacao-recebida?retorno=isento&pedido=${encodeURIComponent(String(pedido.id))}`} className="mt-4 block w-full rounded-xl border border-primary px-4 py-3 text-center font-semibold text-primary">Ver solicitação recebida</a>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedidoIsento?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
 
-    {etapa<4 && erroValidacao && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm font-semibold text-destructive">{erroValidacao}</p>}
-    {etapa<4 && <div className="mt-5 flex justify-between gap-3">{etapa>1?<button onClick={()=>setEtapa(etapa-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> {texto.botao_voltar}</button>:<span/>}{etapa<3?<button onClick={()=>{if(validarAtual())setEtapa(etapa+1)}} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">{texto.botao_continuar} <ChevronRight size={18}/></button>:<button disabled={enviando} onClick={continuarPagamento} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?texto.preparando_pagamento:(ehTesteGratis ? "Iniciar teste grátis" : texto.botao_pagamento)}</button>}</div>}
+    {etapa<6 && erroValidacao && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm font-semibold text-destructive">{erroValidacao}</p>}
+    {etapa<=5 && <div className="mt-5 flex items-center justify-between gap-3">
+      {etapa>1?<button type="button" onClick={()=>{setErroValidacao("");setEtapa(etapa-1);}} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> Voltar</button>:<span/>}
+      {etapa<5?<button type="button" disabled={verificandoSlug} onClick={()=>void avancarEtapa()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50">{verificandoSlug?"Verificando endereço...":"Continuar"} <ChevronRight size={18}/></button>
+      :<button type="button" disabled={enviando} onClick={()=>void continuarPagamento()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?"Enviando...":valorCobrado===0?"Enviar para aprovação":"Continuar para pagamento"}</button>}
+    </div>}
   </div></main>;
 }
