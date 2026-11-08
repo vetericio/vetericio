@@ -20,6 +20,10 @@ jobs:
       # também contém uma cópia independente do OricStúdio, com seu próprio
       # conjunto de dependências e lint; varrê-la daqui produzia relatórios
       # gigantes e tornava o job instável.
+      - name: Exibir diferenças de formatação do editor (diagnóstico)
+        run: |
+          npx prettier --write src/routes/site-da-clinica.tsx
+          git diff -- src/routes/site-da-clinica.tsx
       - name: Formatação das páginas de clínicas
         run: >-
           npx prettier --check
