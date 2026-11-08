@@ -9,7 +9,7 @@ import {
 } from "@/integrations/supabase/client";
 import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { ClinicLogin, PortalUnavailable } from "@/components/ClinicLogin";
-import { useTenantContext } from "@/lib/tenant-context";
+import { hostDaPagina, useTenantContext } from "@/lib/tenant-context";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -27,6 +27,7 @@ function Login() {
   const navigate = useNavigate();
   const tenant = useTenantContext();
   const { marca, logo_url } = useSiteBranding();
+  const acessoDaPlataforma = ["oricse.com.br", "app.oricse.com.br", "oricse.vetericio.workers.dev"].includes(hostDaPagina());
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [entrando, setEntrando] = useState(false);
@@ -36,7 +37,7 @@ function Login() {
     return <main className="min-h-screen bg-[#FBF7F2]" />;
   }
   if (tenant.portal) return <ClinicLogin clinic={tenant.portal} />;
-  if (tenant.error) return <PortalUnavailable message={tenant.error} />;
+  if (tenant.error && !acessoDaPlataforma) return <PortalUnavailable message={tenant.error} />;
 
   async function entrar(event: FormEvent) {
     event.preventDefault();
