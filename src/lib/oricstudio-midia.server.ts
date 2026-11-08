@@ -18,7 +18,7 @@ export function criarLinkTemporarioOricstudio(midiaId:string,clinicaId:string,ho
   const duracao=Math.min(Math.max(horas,1),24);
   const ticket:Ticket={midiaId,clinicaId,vence:Date.now()+duracao*3600000};
   const encoded=Buffer.from(JSON.stringify(ticket)).toString("base64url");
-  const origin=process.env["ORICSTUDIO_PUBLIC_ORIGIN"]||"https://oricse.vetericio.workers.dev";
+  const origin=process.env["ORICSTUDIO_PUBLIC_ORIGIN"]||"https://oricse.com.br";
   const url=new URL("/api/oricstudio/midia",origin);
   if(url.protocol!=="https:")throw new Error("Servidor OricStudio exige HTTPS.");
   url.searchParams.set("ticket",encoded+"."+assinar(encoded));
