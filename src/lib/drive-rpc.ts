@@ -934,16 +934,10 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           return { data, error: null };
         }
         case "oricse_validar_codigo_promocional": {
-          const { validarCodigoPromocionalDrive } = await import("@/lib/checkout-drive.functions");
-          const data = await validarCodigoPromocionalDrive({
-            data: {
-              codigo: String(args.p_codigo || ""),
-              plano_codigo: String(args.p_plano_codigo || ""),
-              documento: String(args.p_documento || ""),
-              valor_base: numero(args.p_valor_base),
-            },
-          } as never);
-          return { data, error: null };
+          // A contratação pública e o checkout consultam a mesma função no PostgreSQL.
+          // Não acessa diretamente a tabela privada de cupons no Google Drive.
+          const { supabaseBanco } = await import("@/integrations/supabase/client");
+          return await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", args);
         }
         default:
           return {
