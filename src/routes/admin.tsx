@@ -36,6 +36,7 @@ import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
+import { prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
 import { prestigeDefault } from "@/lib/clinic-site";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
@@ -1302,37 +1303,28 @@ function Admin() {
   async function sincronizarEnderecoOricse() {
     if (!selecionada) return;
     const slug = limparSlug(selecionada.slug || "");
-    if (!slug || !/[a-z0-9]/.test(slug)) return void toast.error("Defina e salve um nome válido para o endereço ORICSE primeiro.");
-
-    const hostname = slug + ".oricse.com.br";
-    const atual = dominiosDaClinica.find((dominio) => dominio.tipo === "oricse");
-    if (atual?.status === "ativo" && atual.hostname !== hostname) {
-      return void toast.error("Este endereço já está ativo. Troque o endereço somente depois de migrar o DNS.");
-    }
+    if (!slug || !/[a-z0-9]/.test(slug))
+      return void toast.error("Defina e salve um nome válido para o endereço ORICSE primeiro.");
 
     setSalvandoDominio(true);
     try {
-      const dados = {
-        hostname,
-        principal: true,
-        publicar_site: true,
-        dns_alvo: "sites.oricse.com.br",
-        verificacao_tipo: "automatica",
-        atualizado_em: new Date().toISOString(),
-      };
-      const resposta = atual
-        ? await (supabase as any).from("oricse_dominios_clinica").update(dados).eq("id", atual.id)
-        : await (supabase as any).from("oricse_dominios_clinica").insert({
-            ...dados,
-            clinica_id: selecionada.id,
-            tipo: "oricse",
-            status: "rascunho",
-          });
-      if (resposta.error) throw resposta.error;
+      const resultado = await prepararEnderecoOricse({
+        data: {
+          accessToken: await tokenAtual(),
+          clinicaId: selecionada.id,
+          slug,
+        },
+      });
       await carregarTudo();
-      toast.success("Endereço ORICSE preparado para publicação.");
-    } catch (e) {
-      toast.error((e as Error).message || "Não foi possível preparar o endereço ORICSE.");
+      toast.success(`Endereço ${resultado.hostname} ativo e publicado.`);
+    } catch (erro) {
+      const mensagem =
+        erro instanceof Error && erro.message
+          ? erro.message
+          : typeof erro === "string" && erro
+            ? erro
+            : "Não foi possível preparar o endereço ORICSE. Tente novamente.";
+      toast.error(mensagem);
     } finally {
       setSalvandoDominio(false);
     }
