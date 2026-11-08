@@ -134,7 +134,7 @@ export default {
       }
       if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin), url.pathname);
       if (url.pathname === "/favicon.ico")
-        return securityHeaders(Response.redirect(new URL("/oricse-logo-oryx.svg?v=15", url), 302), url.pathname);
+        return securityHeaders(Response.redirect(new URL("/oricse-favicon-32.png?v=16", url), 302), url.pathname);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       // Um chunk removido não pode cair no fallback HTML da aplicação,
