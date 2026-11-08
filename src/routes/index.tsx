@@ -85,36 +85,24 @@ function PreviewSistema() {
             <span className="text-xs font-black tracking-[.14em]">ORICSE</span>
           </div>
           <span className="rounded-full bg-[#f4e7e8] px-2.5 py-1 text-[10px] font-bold text-[#702a43]">
-            VISÃO GERAL
+            PLATAFORMA
           </span>
         </div>
         <div className="grid gap-3 p-4 sm:grid-cols-[1.08fr_.92fr]">
-          <div className="rounded-lg bg-white p-3 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b6672]">Agenda de hoje</p>
-            <div className="mt-3 space-y-2">
-              {[
-                ["09:30", "Thor", "Consulta"],
-                ["10:15", "Nina", "Retorno"],
-                ["11:00", "Mel", "Banho e tosa"],
-              ].map(([hora, pet, tipo]) => (
-                <div key={pet} className="flex items-center justify-between border-b border-[#f1ebe6] pb-2 text-xs last:border-0">
-                  <span className="font-bold text-[#702a43]">{hora}</span>
-                  <span className="font-semibold">{pet}</span>
-                  <span className="text-[#7d6d72]">{tipo}</span>
+          <div className="rounded-lg bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8b6672]">Sua operação conectada</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {["Agenda", "Atendimento", "Internação", "Caixa", "Portal do Tutor", "OricsePay"].map((item) => (
+                <div key={item} className="rounded-md border border-[#f1ebe6] bg-[#fffdfa] px-3 py-2.5 text-xs font-semibold text-[#513942]">
+                  {item}
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-lg bg-[#4A1826] p-3 text-[#fffaf5]">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#dcb8bd]">Operação em ordem</p>
-            <p className="mt-4 font-display text-2xl font-semibold">Tudo no mesmo lugar.</p>
-            <div className="mt-5 flex flex-wrap gap-1.5">
-              {["Agenda", "Clínica", "Caixa", "Tutor"].map((item) => (
-                <span key={item} className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold">
-                  {item}
-                </span>
-              ))}
-            </div>
+          <div className="rounded-lg bg-[#4A1826] p-4 text-[#fffaf5]">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#dcb8bd]">Do seu jeito</p>
+            <p className="mt-4 font-display text-2xl font-semibold">Uma plataforma para a sua rotina.</p>
+            <p className="mt-3 text-xs leading-5 text-[#f8e9ed]/75">Cada clínica organiza as próprias agendas, equipe e atendimentos.</p>
           </div>
         </div>
       </div>
