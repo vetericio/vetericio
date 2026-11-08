@@ -438,7 +438,7 @@ function SiteDaClinica() {
           </div>
           <div className="flex min-h-[600px] justify-center overflow-auto bg-slate-200/40 p-3 sm:p-6">
             <iframe ref={iframe} title="Prévia do site da clínica" src="/site-da-clinica-preview"
-              onLoad={()=>setReady(false)} loading="eager"
+              onLoad={()=>setReady(true)} loading="eager"
               className="max-w-full flex-none border bg-white shadow-xl"
               style={{width:device==="mobile"?390:device==="tablet"?768:1200,height:790}}/>
           </div>
