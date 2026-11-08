@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-const origin = "https://oricse.vetericio.workers.dev";
+const origin = "https://oricse.com.br";
 const encoder = new TextEncoder();
 const cors = {
   "content-type": "application/json",
