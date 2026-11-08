@@ -266,6 +266,7 @@ function Admin() {
   const [erroSolicitacoes, setErroSolicitacoes] = useState("");
   const [preparandoSolicitacao, setPreparandoSolicitacao] = useState<string | null>(null);
   const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState<SolicitacaoClinica | null>(null);
+  const [implantacaoPedido, setImplantacaoPedido] = useState<Record<string, string> | null>(null);
   const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
   const [ativandoSolicitacao, setAtivandoSolicitacao] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<Clinica | null>(null);
@@ -536,6 +537,21 @@ function Admin() {
     }
   }
 
+  // Carrega apenas o pedido aberto. A logo não acompanha a listagem,
+  // mantendo o painel rápido e os dados de implantação restritos ao Admin.
+  useEffect(() => {
+    const id = solicitacaoSelecionada?.id;
+    if (!id) { setImplantacaoPedido(null); return; }
+    let ativo = true;
+    setImplantacaoPedido(null);
+    void (async () => {
+      const {data,error} = await (supabaseBanco as any)
+        .from("oricse_contratacoes").select("dados").eq("id",id).maybeSingle();
+      if (ativo && !error) setImplantacaoPedido(data?.dados || {});
+    })();
+    return () => { ativo = false; };
+  }, [solicitacaoSelecionada?.id]);
+
   function editarSolicitacao(campo: keyof SolicitacaoClinica, valor: string) {
     setSolicitacaoSelecionada(atual => atual ? {...atual,[campo]:valor} : atual);
   }
@@ -604,8 +620,34 @@ function Admin() {
     if (confirmar && !window.confirm(`Criar o espaço de ${item.clinica_nome} bloqueado até sua autorização final?`)) return;
     setPreparandoSolicitacao(item.id);
     try {
-      const { error } = await (supabaseBanco as any).rpc("oricse_admin_preparar_clinica", { p_contratacao: item.id });
+      const {data: clinicaId,error} = await (supabaseBanco as any)
+        .rpc("oricse_admin_preparar_clinica", { p_contratacao: item.id });
       if (error) throw error;
+      // A identidade escolhida na contratação acompanha a clínica criada.
+      // A imagem é enviada ao Google Drive apenas depois da aprovação administrativa.
+      const {data: pedidoDados,error: erroDados} = await (supabaseBanco as any)
+        .from("oricse_contratacoes").select("dados").eq("id",item.id).maybeSingle();
+      if (erroDados) toast.error("Clínica criada, mas não foi possível recuperar a identidade visual solicitada.");
+      const identidade = pedidoDados?.dados as Record<string, unknown> | undefined;
+      const imagem = typeof identidade?.logo_data_url === "string" ? identidade.logo_data_url : "";
+      const tipo = /^data:(image\/(?:png|jpeg|webp));base64,/i.exec(imagem)?.[1];
+      const destinoId = typeof clinicaId === "string" ? clinicaId : item.clinica_criada_id;
+      if (destinoId && tipo && imagem.length < 600_000) {
+        try {
+          const {data: sessao} = await supabase.auth.getSession();
+          if (!sessao.session?.access_token) throw new Error("Sessão expirada.");
+          await enviarLogoClinica({data:{
+            accessToken:sessao.session.access_token,
+            clinicaId:String(destinoId),
+            fileName:String(identidade?.logo_nome || "logo-clinica.webp").slice(0,120),
+            mimeType:tipo as "image/png"|"image/jpeg"|"image/webp",
+            base64:imagem,
+          }} as never);
+        } catch (erroLogo) {
+          toast.error("A clínica foi criada, mas a logo ainda precisa ser enviada: " +
+            (erroLogo instanceof Error ? erroLogo.message : "verifique a configuração."));
+        }
+      }
       toast.success("Espaço criado. Revise a configuração antes de liberar o funcionamento.");
       await Promise.all([carregarTudo(), carregarSolicitacoes()]);
     } catch (error) {
@@ -1395,6 +1437,23 @@ function Admin() {
             <p><b>CNPJ:</b> {item.cnpj||"Não informado"}</p>
             <p><b>CPF do responsável:</b> {item.responsavel_cpf||"Não informado"}</p>
           </div>
+          <section className="rounded-xl border bg-white p-4 text-sm">
+            <h3 className="font-extrabold">Identidade e implantação solicitadas</h3>
+            {implantacaoPedido ? <div className="mt-3 flex flex-wrap items-center gap-4">
+              {/^(data:image\/(?:png|jpeg|webp);base64,)/i.test(implantacaoPedido.logo_data_url || "") &&
+                (implantacaoPedido.logo_data_url || "").length < 600_000 &&
+                <img src={implantacaoPedido.logo_data_url} alt="Logo enviada na contratação" className="h-24 w-24 rounded-xl border bg-white object-contain p-2"/>}
+              <div className="min-w-0 flex-1 space-y-1">
+                <p><strong>Nome público:</strong> {implantacaoPedido.nome_publico || item.clinica_nome}</p>
+                <p><strong>Endereço:</strong> {item.slug_desejado || "Não escolhido"}.oricse.com.br</p>
+                <p><strong>Estilo:</strong> {implantacaoPedido.estilo_site || "Não informado"}</p>
+                <p><strong>Serviços:</strong> {(implantacaoPedido.servicos_iniciais || "").split(",").filter(Boolean).join(", ") || "Não informados"}</p>
+                <p><strong>Funcionamento:</strong> {implantacaoPedido.horario_abertura || "—"} às {implantacaoPedido.horario_fechamento || "—"}</p>
+                <p><strong>Agenda online:</strong> {implantacaoPedido.agenda_online === "sim" ? "Solicitada" : "Não solicitada"}</p>
+              </div>
+            </div> : <p className="mt-2 text-muted-foreground">Carregando as preferências da implantação...</p>}
+            <p className="mt-3 text-xs text-muted-foreground">Os recursos efetivamente habilitados serão limitados pelo plano contratado. A logo será vinculada após a criação administrativa.</p>
+          </section>
           <section className="space-y-3"><h3 className="font-extrabold">Dados da clínica</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               {editor("Nome da clínica", "clinica_nome")}
