@@ -64,7 +64,7 @@ function PaginaInicial() {
         {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
-      <section className="relative border-y border-[#f0e3de] bg-[#fffdfa]">
+      <section className="relative border-t border-[#f0e3de] bg-[#fffdfa] after:absolute after:inset-x-0 after:bottom-0 after:z-20 after:h-[3px] after:bg-[linear-gradient(90deg,#7f341d_0%,#d8882a_22%,#ffd86a_50%,#d8882a_78%,#7f341d_100%)] after:shadow-[0_-1px_7px_rgba(163,88,28,.45)]">
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
