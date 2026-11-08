@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "oricse-promo-aplicado-v1";
 const ADMIN_ID = "oricse-promo-admin";
@@ -202,7 +202,7 @@ function garantirCheckout() {
     aplicar.disabled = true;
     result.className = "oricse-promo-result";
     result.textContent = "Validando código...";
-    const { data, error } = await (supabase as any).rpc("oricse_validar_codigo_promocional", { p_codigo: codigo, p_plano_codigo: plano, p_documento: documento, p_valor_base: total });
+    const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", { p_codigo: codigo, p_plano_codigo: plano, p_documento: documento, p_valor_base: total });
     aplicar.disabled = false;
     if (error || !data?.valido) {
       salvarPromoAplicado(null);
