@@ -135,6 +135,14 @@ Deno.serve(async (req: Request) => {
       if (!access) return json({ error: "Credencial de cobrança da ORICSE não configurada" }, 503);
       if (!secret()) return json({ error: "Webhook de confirmação ainda não configurado" }, 503);
       const p = await statusPedido(pedido_id);
+      // Pedidos com desconto integral seguem exclusivamente para aprovação.
+      // Nunca tentar gerar preferência, assinatura ou cobrança de R$ 0,00.
+      if (p.status === "isento_aguardando_aprovacao") {
+        return json({ code: "ISENCAO_INTEGRAL", error: "Pedido isento: aguarde a aprovação administrativa." }, 409);
+      }
+      if (Number(p.valor_total) === 0) {
+        return json({ code: "VALOR_ZERO", error: "Pedido sem cobrança. A classificação administrativa precisa ser conferida." }, 409);
+      }
       if (p.status !== "aguardando_pagamento") return json({ error: "Pedido não está aguardando pagamento" }, 409);
       const { amount, nome } = await price(p);
       const automatico = p.modo_renovacao === "automatica_cartao" || p.renovacao_automatica === true;
