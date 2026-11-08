@@ -83,16 +83,21 @@ const mobile = (max: number) => ({
 
 function SiteDaClinica() {
   const { clinicaId: clinicaIdContexto, carregando, pode, adminGlobal } = usePermissoes();
-  const pesquisa = typeof window === "undefined"
-    ? new URLSearchParams()
-    : new URLSearchParams(window.location.search);
+  const pesquisa =
+    typeof window === "undefined"
+      ? new URLSearchParams()
+      : new URLSearchParams(window.location.search);
   const origemAdmin = pesquisa.get("origem") === "admin";
   const clinicaSolicitada = pesquisa.get("clinica") || "";
-  const clinicaSolicitadaValida = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(clinicaSolicitada);
+  const clinicaSolicitadaValida = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(
+    clinicaSolicitada,
+  );
   // Só administradores globais podem escolher uma clínica por URL.
   // Para usuários de clínica, a única fonte é o contexto autenticado.
   const clinicaId = origemAdmin
-    ? adminGlobal && clinicaSolicitadaValida ? clinicaSolicitada : ""
+    ? adminGlobal && clinicaSolicitadaValida
+      ? clinicaSolicitada
+      : ""
     : clinicaIdContexto;
   const voltarPara = origemAdmin
     ? "/admin?clinica=" + encodeURIComponent(clinicaSolicitada) + "&aba=site"
@@ -462,13 +467,21 @@ function SiteDaClinica() {
       <main className="p-6 text-sm text-muted-foreground">Carregando editor da clínica...</main>
     );
   if ((origemAdmin && (!adminGlobal || !clinicaSolicitadaValida)) || !clinicaId || erroClinica)
-    return <main className="mx-auto max-w-xl p-8">
-      <h1 className="text-2xl font-bold">Clínica não disponível</h1>
-      <p className="mt-2 text-muted-foreground">
-        {erroClinica || "Selecione uma clínica válida em Admin Geral → Site e domínios para editar seu site."}
-      </p>
-      <a href="/admin" className="mt-4 inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold">Voltar ao Admin Geral</a>
-    </main>;
+    return (
+      <main className="mx-auto max-w-xl p-8">
+        <h1 className="text-2xl font-bold">Clínica não disponível</h1>
+        <p className="mt-2 text-muted-foreground">
+          {erroClinica ||
+            "Selecione uma clínica válida em Admin Geral → Site e domínios para editar seu site."}
+        </p>
+        <a
+          href="/admin"
+          className="mt-4 inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold"
+        >
+          Voltar ao Admin Geral
+        </a>
+      </main>
+    );
   if (!pode("administracao.site"))
     return (
       <main className="mx-auto max-w-xl p-8">
