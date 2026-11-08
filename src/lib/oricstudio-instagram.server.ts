@@ -14,7 +14,7 @@ export function instagramDiretoConfig() {
   const appId=(process.env["ORICSTUDIO_IG_APP_ID"]||"").trim();
   const appSecret=process.env["ORICSTUDIO_IG_APP_SECRET"]||"";
   const callback=(process.env["ORICSTUDIO_IG_REDIRECT_URI"]||
-    "https://oricse.vetericio.workers.dev/api/oricstudio/instagram/callback").trim();
+    "https://oricse.com.br/api/oricstudio/instagram/callback").trim();
   let redirectValido=false;
   try {
     const u=new URL(callback);
