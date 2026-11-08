@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {
-  ArrowRight, Bath, CalendarDays, ChevronDown, ClipboardList, CreditCard,
+  ArrowRight, Bath, CalendarCheck, CalendarDays, ChevronDown, ClipboardList, CreditCard,
   FileText, Hotel, Menu, Package, PawPrint, Scissors, Settings, Sparkles,
   Stethoscope, Store, UserRound, Users, X
 } from "lucide-react";
@@ -22,9 +22,10 @@ const modulos = [
   { icon: Stethoscope, titulo: "Clínica veterinária", descricao: "Prontuário, receitas, vacinas, exames, documentos e acompanhamento clínico completo em um só fluxo." },
   { icon: Scissors, titulo: "Banho e tosa", descricao: "Controle serviços, pacotes, profissionais, horários e observações importantes para cada pet." },
   { icon: Hotel, titulo: "Hotelzinho", descricao: "Cuide de reservas, hospedagens, check-in, estadias, diárias e rotinas de cuidado com clareza." },
-  { icon: Sparkles, titulo: "Meu OricStúdio", descricao: "Crie e organize a presença digital da clínica, planeje conteúdos e mantenha sua marca viva sem sair da Oricse." },
+  { icon: Sparkles, titulo: "Meu OricStúdio", descricao: "Crie e organize a presença digital do seu negócio, planeje conteúdos e fortaleça sua marca." },
   { icon: Users, titulo: "Gestão de clientes", descricao: "Histórico completo de tutores e pets, relacionamento, lembretes e campanhas segmentadas." },
-  { icon: CreditCard, titulo: "Financeiro e OricsePay", descricao: "Caixa, comandas, pagamentos online, cobranças, repasses e visão financeira da operação." },
+  { icon: CreditCard, titulo: "Financeiro", descricao: "Caixa, comandas, cobranças, repasses e uma visão clara da saúde financeira da operação." },
+  { icon: CalendarCheck, titulo: "OricsePay", descricao: "Disponibilize a agenda no Portal do Tutor e confirme o agendamento somente após o pagamento." },
   { icon: Package, titulo: "Estoque e produtos", descricao: "Catálogo, movimentações, vendas, alertas e produtos conectados à rotina da clínica e do pet shop." },
   { icon: ClipboardList, titulo: "Relatórios", descricao: "Acompanhe atendimentos, vendas, desempenho, caixa e os dados que ajudam sua empresa a crescer." },
   { icon: UserRound, titulo: "RH e atividade", descricao: "Equipe, acessos, ponto, jornadas e permissões definidos de acordo com cada função." },
