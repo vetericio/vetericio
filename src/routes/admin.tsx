@@ -36,14 +36,17 @@ import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
-import { prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
+import { prepararEnderecoOricse, verificarDominioClinica, excluirDominioClinica } from "@/lib/clinic-domain.functions";
+import { uniqueClinicDomains, domainOnlineLabel, normalizeDomain, type DomainReachability } from "@/lib/clinic-domain";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
 import { prestigeDefault } from "@/lib/clinic-site";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
 import { useAdminNavigation } from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export const Route = createFileRoute("/admin")({ component: Admin });
+export const Route = createFileRoute("/admin")({ head: () => ({ meta: [{ title: "Administração | ORICSE" }, { name: "description", content: "Administração de clínicas e domínios ORICSE." }, { property: "og:title", content: "Administração | ORICSE" }, { property: "og:description", content: "Administração de clínicas e domínios ORICSE." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: Admin });
 
 type Aba = "dashboard" | "novas" | "lixeira" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
 type AbaClinica = "cadastro" | "situacao" | "usuarios" | "drive" | "site" | "autorizacoes";
@@ -211,24 +214,6 @@ function hostnameValido(valor: string) {
   return /^(?=.{3,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(valor);
 }
 
-function rotuloStatusDominio(status: StatusDominio) {
-  return ({
-    rascunho: "Aguardando ativação",
-    aguardando_dns: "Aguardando DNS",
-    verificando: "Verificando domínio",
-    ativo: "Ativo",
-    erro: "Precisa de atenção",
-    suspenso: "Suspenso",
-  } as Record<StatusDominio, string>)[status];
-}
-
-function classeStatusDominio(status: StatusDominio) {
-  return status === "ativo"
-    ? "bg-emerald-50 text-emerald-700"
-    : status === "erro" || status === "suspenso"
-      ? "bg-red-50 text-red-700"
-      : "bg-amber-50 text-amber-800";
-}
 
 function dataInput(valor: string | null | undefined) {
   return valor ? valor.slice(0, 10) : "";
@@ -310,6 +295,14 @@ function Admin() {
   const [erroTaxas, setErroTaxas] = useState<string | null>(null);
   const [carregandoTaxas, setCarregandoTaxas] = useState(true);
   const [dominiosClinica, setDominiosClinica] = useState<DominioClinica[]>([]);
+  const prepararDominio = useServerFn(prepararEnderecoOricse);
+  const verificarDominio = useServerFn(verificarDominioClinica);
+  const excluirDominio = useServerFn(excluirDominioClinica);
+  const [verificacoes, setVerificacoes] = useState<Record<string, DomainReachability | "verificando">>({});
+  const [exclusaoDominio, setExclusaoDominio] = useState<DominioClinica | null>(null);
+  const [hostnameConfirmado, setHostnameConfirmado] = useState("");
+  const [confirmarInterrupcao, setConfirmarInterrupcao] = useState(false);
+  const [excluindoDominio, setExcluindoDominio] = useState<string | null>(null);
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
   const [salvandoDominio, setSalvandoDominio] = useState(false);
@@ -338,7 +331,7 @@ function Admin() {
   );
 
   const dominiosDaClinica = useMemo(
-    () => selecionada ? dominiosClinica.filter((dominio) => dominio.clinica_id === selecionada.id) : [],
+    () => selecionada ? uniqueClinicDomains(dominiosClinica, selecionada.id) : [],
     [dominiosClinica, selecionada?.id],
   );
 
@@ -366,7 +359,7 @@ function Admin() {
       (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
       (supabaseBanco as any).rpc("oricse_listar_grade_taxas_pagamento"),
-      (supabase as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
+      (supabaseBanco as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
       (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
@@ -836,7 +829,7 @@ function Admin() {
       if (error) throw error;
       if (!data?.id) throw new Error("Não foi possível confirmar o cadastro da clínica.");
 
-      const { error: erroEndereco } = await (supabase as any).from("oricse_dominios_clinica").insert({
+      const { error: erroEndereco } = await (supabaseBanco as any).from("oricse_dominios_clinica").insert({
         clinica_id: data.id,
         hostname: `${slug}.oricse.com.br`,
         tipo: "oricse",
@@ -1310,22 +1303,24 @@ function Admin() {
   const renderDriveClinica = () => !selecionada ? null : <Card><div className="flex items-center gap-2"><Database size={20}/><h2 className="text-xl font-bold">Google Drive · {selecionada.nome}</h2></div><p className="mt-1 text-sm text-muted-foreground">A ORICSE cria uma pasta própria para cada clínica. Se necessário, você pode conectar uma pasta personalizada.</p><div className="mt-4 rounded-xl border bg-slate-50 p-4"><div className="text-sm font-semibold">Destino atual</div><div className="mt-1 text-lg font-bold">{drive?.modo === "personalizado" ? "Drive personalizado" : "Drive da ORICSE"}</div><div className="text-xs text-muted-foreground">Status: {drive?.status || "pendente"}</div>{drive?.root_folder_url && <a href={drive.root_folder_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary underline">Abrir pasta <ExternalLink size={14}/></a>}</div><label className="mt-4 block text-sm font-semibold">Pasta personalizada<input value={pasta} onChange={(e) => setPasta(e.target.value)} placeholder="Cole o link de uma pasta do Google Drive" className="mt-2 min-h-12 w-full rounded-xl border px-3 font-normal"/></label><div className="mt-3 flex flex-wrap gap-2"><button disabled={ocupado} onClick={conectarDrive} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-60">Testar e conectar</button><button disabled={ocupado} onClick={usarPadrao} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><RefreshCcw size={17}/> Usar Drive da ORICSE</button></div></Card>;
 
   async function sincronizarEnderecoOricse() {
-    if (!selecionada) return;
+    if (!selecionada || salvandoDominio) return;
     const slug = limparSlug(selecionada.slug || "");
     if (!slug || !/[a-z0-9]/.test(slug))
       return void toast.error("Defina e salve um nome válido para o endereço ORICSE primeiro.");
 
+    const existente = dominiosDaClinica.find(d => d.tipo === "oricse");
+    if (existente && normalizeDomain(existente.hostname) !== `${slug}.oricse.com.br`)
+      return void toast.error("Já existe um endereço ORICSE para esta clínica. Migre o endereço antes de alterar.");
     setSalvandoDominio(true);
     try {
-      const resultado = await prepararEnderecoOricse({
+      const resultado = await prepararDominio({
         data: {
-          accessToken: await tokenAtual(),
           clinicaId: selecionada.id,
           slug,
         },
       });
       await carregarTudo();
-      toast.success(`Endereço ${resultado.hostname} ativo e publicado.`);
+      toast.success(`Endereço ${resultado.hostname} sincronizado. Verifique o acesso HTTPS para confirmar que está no ar.`);
     } catch (erro) {
       const mensagem =
         erro instanceof Error && erro.message
@@ -1340,7 +1335,7 @@ function Admin() {
   }
 
   async function adicionarDominioProprio() {
-    if (!selecionada) return;
+    if (!selecionada || salvandoDominio) return;
     const hostname = normalizarHostname(novoDominio);
     if (!hostnameValido(hostname)) return void toast.error("Informe um domínio válido, por exemplo suaclinica.com.br.");
     if (hostname.endsWith(".oricse.com.br") || hostname === "oricse.com.br") return void toast.error("Use o endereço ORICSE para subdomínios da plataforma.");
@@ -1348,9 +1343,13 @@ function Admin() {
     const hostnames = [hostname];
     if (incluirWww && !hostname.startsWith("www.")) hostnames.push("www." + hostname);
 
+    if (hostnames.some(host => dominiosClinica.some(d => normalizeDomain(d.hostname) === host)))
+      return void toast.info("Este endereço já está cadastrado. Nenhum domínio foi criado.");
+    if (dominiosDaClinica.some(d => d.tipo === "proprio"))
+      return void toast.info("Já existe um domínio próprio configurado para esta clínica.");
     setSalvandoDominio(true);
     try {
-      const { error } = await (supabase as any).from("oricse_dominios_clinica").insert(hostnames.map((item, indice) => ({
+      const { error } = await (supabaseBanco as any).from("oricse_dominios_clinica").insert(hostnames.map((item, indice) => ({
         clinica_id: selecionada.id,
         hostname: item,
         tipo: "proprio",
@@ -1371,7 +1370,7 @@ function Admin() {
       toast.success("Domínio próprio incluído. Agora aponte o DNS indicado.");
     } catch (e) {
       const erro = e as { code?: string; message?: string };
-      toast.error(erro.code === "23505" ? "Esse domínio já está vinculado a outra clínica." : (erro.message || "Não foi possível incluir o domínio."));
+      toast.error(erro.code === "23505" ? "Este domínio ou tipo de domínio já está cadastrado. Atualize a lista." : (erro.message || "Não foi possível incluir o domínio."));
     } finally {
       setSalvandoDominio(false);
     }
@@ -1380,7 +1379,7 @@ function Admin() {
   async function alterarPublicacaoDominio(dominio: DominioClinica, publicar_site: boolean) {
     setSalvandoDominio(true);
     try {
-      const { error } = await (supabase as any).from("oricse_dominios_clinica").update({
+      const { error } = await (supabaseBanco as any).from("oricse_dominios_clinica").update({
         publicar_site,
         atualizado_em: new Date().toISOString(),
       }).eq("id", dominio.id);
@@ -1394,10 +1393,40 @@ function Admin() {
     }
   }
 
+  async function verificarAcessoDominio(dominio: DominioClinica) {
+    if (verificacoes[dominio.id] === "verificando") return;
+    setVerificacoes(v => ({ ...v, [dominio.id]: "verificando" }));
+    try {
+      const result = await verificarDominio({ data: { clinicaId: dominio.clinica_id, dominioId: dominio.id } });
+      setVerificacoes(v => ({ ...v, [dominio.id]: result.status }));
+    } catch {
+      setVerificacoes(v => ({ ...v, [dominio.id]: "nao_verificado" }));
+    }
+  }
+
+  async function confirmarExclusaoDominio() {
+    if (!exclusaoDominio || excluindoDominio) return;
+    const row = exclusaoDominio;
+    setExcluindoDominio(row.id);
+    try {
+      await excluirDominio({ data: { clinicaId: row.clinica_id, dominioId: row.id, confirmacao: hostnameConfirmado, confirmarInterrupcao } });
+      setDominiosClinica(rows => rows.filter(d => d.id !== row.id));
+      setExclusaoDominio(null);
+      await carregarTudo();
+      toast.success(`Domínio ${row.hostname} excluído.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o domínio.");
+    } finally { setExcluindoDominio(null); }
+  }
+
+  function indicadorDominio(dominio?: DominioClinica) {
+    const label = dominio ? domainOnlineLabel(dominio, verificacoes[dominio.id]) : "Aguardando ativação";
+    return <span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-bold " + (label === "● Ativo" ? "domain-online" : "bg-muted text-muted-foreground")}>{label}</span>;
+  }
+
   const renderSiteDominiosClinica = () => {
     if (!selecionada) return null;
     const enderecoOricse = dominiosDaClinica.find((dominio) => dominio.tipo === "oricse");
-    const dominiosProprios = dominiosDaClinica.filter((dominio) => dominio.tipo === "proprio");
     const plano = planos.find((item) => valorPlanoClinica(item) === selecionada.plano);
     const enderecoSugerido = selecionada.slug ? limparSlug(selecionada.slug) + ".oricse.com.br" : "defina-o-no-cadastro.oricse.com.br";
 
@@ -1416,7 +1445,7 @@ function Admin() {
         <Card>
           <div className="flex items-start justify-between gap-3">
             <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Endereço ORICSE</p><h3 className="mt-1 text-xl font-bold">Subdomínio da clínica</h3></div>
-            <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + classeStatusDominio(enderecoOricse?.status || "rascunho")}>{rotuloStatusDominio(enderecoOricse?.status || "rascunho")}</span>
+            {indicadorDominio(enderecoOricse)}
           </div>
           <div className="mt-5 rounded-xl border bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço que será publicado</p>
@@ -1439,15 +1468,23 @@ function Admin() {
         </Card>
       </div>
 
+      <Dialog open={Boolean(exclusaoDominio)} onOpenChange={open => { if (!open && !excluindoDominio) setExclusaoDominio(null); }}>
+        <DialogContent onEscapeKeyDown={e => { if (excluindoDominio) e.preventDefault(); }} onPointerDownOutside={e => { if (excluindoDominio) e.preventDefault(); }}>
+          <DialogHeader><DialogTitle>Excluir {exclusaoDominio?.hostname}?</DialogTitle><DialogDescription>Esta ação exclui somente este endereço e não pode ser desfeita.</DialogDescription></DialogHeader>
+          {exclusaoDominio?.tipo === "oricse" && <label className="flex items-start gap-2 text-sm text-destructive"><input type="checkbox" checked={confirmarInterrupcao} onChange={e => setConfirmarInterrupcao(e.target.checked)}/> Entendo que excluir este endereço ORICSE interrompe o site e o Portal do Tutor neste endereço.</label>}
+          <label className="text-sm font-semibold">Digite o hostname para confirmar<input className="mt-2 min-h-11 w-full rounded-md border bg-background px-3" value={hostnameConfirmado} onChange={e => setHostnameConfirmado(e.target.value)} autoCapitalize="none" autoCorrect="off"/></label>
+          <div className="flex justify-end gap-2"><Button variant="outline" disabled={Boolean(excluindoDominio)} onClick={() => setExclusaoDominio(null)}>Cancelar</Button><Button variant="destructive" disabled={Boolean(excluindoDominio) || !exclusaoDominio || normalizeDomain(hostnameConfirmado) !== normalizeDomain(exclusaoDominio.hostname) || (exclusaoDominio.tipo === "oricse" && !confirmarInterrupcao)} onClick={() => void confirmarExclusaoDominio()}><Trash2/>{excluindoDominio ? "Excluindo…" : "Confirmar exclusão"}</Button></div>
+        </DialogContent>
+      </Dialog>
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h3 className="text-xl font-bold">Domínios configurados</h3><p className="mt-1 text-sm text-muted-foreground">Cada endereço é validado separadamente. Domínio raiz e www são registros distintos para garantir certificado SSL e redirecionamento corretos.</p></div>
           <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">{dominiosDaClinica.length} {dominiosDaClinica.length === 1 ? "endereço" : "endereços"}</span>
         </div>
         <div className="mt-5 overflow-x-auto rounded-xl border">
-          <table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Endereço</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">DNS / SSL</th><th className="px-4 py-3">Site</th></tr></thead>
-          <tbody>{dominiosDaClinica.map((dominio) => <tr key={dominio.id} className="border-t align-top"><td className="px-4 py-4"><p className="font-bold">{dominio.hostname}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.tipo === "oricse" ? "Endereço ORICSE" : dominio.principal ? "Domínio principal da clínica" : "Alias www"}</p></td><td className="px-4 py-4"><span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-bold " + classeStatusDominio(dominio.status)}>{rotuloStatusDominio(dominio.status)}</span>{dominio.ultimo_erro && <p className="mt-2 max-w-xs text-xs text-red-700">{dominio.ultimo_erro}</p>}</td><td className="px-4 py-4"><p className="font-mono text-xs">{dominio.verificacao_tipo === "automatica" ? "Infraestrutura ORICSE" : "CNAME → " + dominio.dns_alvo}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.ssl_status ? "SSL: " + dominio.ssl_status : "SSL será emitido após a validação"}</p></td><td className="px-4 py-4"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={dominio.publicar_site} disabled={salvandoDominio} onChange={(e) => void alterarPublicacaoDominio(dominio, e.target.checked)} className="h-4 w-4"/> Publicado</label></td></tr>)}
-          {dominiosDaClinica.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Nenhum endereço preparado para esta clínica.</td></tr>}</tbody></table>
+          <table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Endereço</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">DNS / SSL</th><th className="px-4 py-3">Site</th><th className="px-4 py-3">Ações</th></tr></thead>
+          <tbody>{dominiosDaClinica.map((dominio) => <tr key={dominio.id} className="border-t align-top"><td className="px-4 py-4"><p className="font-bold">{dominio.hostname}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.tipo === "oricse" ? "Endereço ORICSE" : dominio.principal ? "Domínio principal da clínica" : "Alias www"}</p></td><td className="px-4 py-4">{indicadorDominio(dominio)}<Button variant="ghost" className="mt-2 min-h-11" disabled={verificacoes[dominio.id] === "verificando" || !dominio.publicar_site || dominio.status !== "ativo"} onClick={() => void verificarAcessoDominio(dominio)}><RefreshCcw size={14}/> Verificar HTTPS</Button>{dominio.ultimo_erro && <p className="mt-2 max-w-xs text-xs text-red-700">{dominio.ultimo_erro}</p>}</td><td className="px-4 py-4"><p className="font-mono text-xs">{dominio.verificacao_tipo === "automatica" ? "Infraestrutura ORICSE" : "CNAME → " + dominio.dns_alvo}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.ssl_status ? "SSL: " + dominio.ssl_status : "SSL será emitido após a validação"}</p></td><td className="px-4 py-4"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={dominio.publicar_site} disabled={salvandoDominio} onChange={(e) => void alterarPublicacaoDominio(dominio, e.target.checked)} className="h-4 w-4"/> Publicado</label></td><td className="px-4 py-4"><Button variant="outline" className="min-h-11 text-destructive" disabled={excluindoDominio === dominio.id} onClick={() => { setExclusaoDominio(dominio); setHostnameConfirmado(""); setConfirmarInterrupcao(false); }}><Trash2 size={16}/>{excluindoDominio === dominio.id ? "Excluindo…" : "Excluir"}</Button></td></tr>)}
+          {dominiosDaClinica.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhum endereço preparado para esta clínica.</td></tr>}</tbody></table>
         </div>
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">Próxima etapa de infraestrutura</p><p className="mt-1">Após conectar <strong>oricse.com.br</strong> ao Cloudflare, os subdomínios ORICSE serão ativados por wildcard. Para domínio próprio, a clínica aponta o CNAME informado e a ORICSE valida o domínio antes de publicar.</p></div>
       </Card>
