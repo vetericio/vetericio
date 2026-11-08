@@ -81,8 +81,18 @@ const mobile = (max: number) => ({
   maxLength: max,
 });
 
-function SiteDaClinica() {
-  const { clinicaId, carregando, pode } = usePermissoes();
+export function SiteDaClinica({
+  adminClinicaId,
+  embedded = false,
+}: {
+  adminClinicaId?: string;
+  embedded?: boolean;
+} = {}) {
+  const { clinicaId: clinicaDaSessao, carregando, adminGlobal, pode } = usePermissoes();
+  // O Admin Geral edita a clínica que selecionou no painel. A seleção
+  // sozinha não concede acesso: o banco aplica RLS em todas as operações.
+  const clinicaId = adminClinicaId ? (adminGlobal ? adminClinicaId : "") : clinicaDaSessao;
+  const podeEditar = adminClinicaId ? adminGlobal : pode("administracao.site");
   const [config, setConfig] = useState<ClinicSiteConfig>(prestigeDefault);
   const [template, setTemplate] = useState<ClinicSiteTemplate>("prestige");
   const [slug, setSlug] = useState("");
@@ -431,11 +441,9 @@ function SiteDaClinica() {
     );
   };
 
-  if (carregando || loading)
-    return (
-      <main className="p-6 text-sm text-muted-foreground">Carregando editor da clínica...</main>
-    );
-  if (!pode("administracao.site"))
+  if (carregando)
+    return <div className="p-6 text-sm text-muted-foreground">Verificando acesso ao editor...</div>;
+  if (!podeEditar)
     return (
       <main className="mx-auto max-w-xl p-8">
         <h1 className="text-2xl font-bold">Sem permissão</h1>
@@ -444,19 +452,41 @@ function SiteDaClinica() {
         </p>
       </main>
     );
+  if (!clinicaId) {
+    return (
+      <div className="rounded-2xl border bg-background p-6">
+        <h2 className="text-lg font-bold">Selecione uma clínica</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Abra o Admin Geral, selecione a clínica e acesse Site e domínios.
+        </p>
+      </div>
+    );
+  }
+  if (loading)
+    return <div className="p-6 text-sm text-muted-foreground">Carregando site da clínica...</div>;
 
   return (
-    <main className="min-h-screen bg-muted/30 p-3 pb-20 sm:p-5">
-      <div className="mx-auto max-w-[1750px]">
+    <main
+      className={
+        embedded
+          ? "w-full min-w-0 bg-muted/30 p-2 sm:p-4"
+          : "min-h-screen bg-muted/30 p-3 pb-20 sm:p-5"
+      }
+    >
+      <div className={embedded ? "w-full min-w-0" : "mx-auto max-w-[1750px]"}>
         <header className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-4">
           <div>
-            <Link
-              to="/configuracao-site"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground"
-            >
-              <ArrowLeft size={15} /> Voltar
-            </Link>
-            <h1 className="mt-1 text-2xl font-extrabold">Editor visual do site</h1>
+            {!embedded && (
+              <Link
+                to="/configuracao-site"
+                className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground"
+              >
+                <ArrowLeft size={15} /> Voltar
+              </Link>
+            )}
+            <h1 className="mt-1 text-2xl font-extrabold">
+              {embedded ? "Editor visual · " + config.name : "Editor visual do site"}
+            </h1>
             <p className="mt-1 text-xs text-muted-foreground">
               {slug ? slug + ".oricse.com.br" : "Endereço não configurado"} ·{" "}
               {status === "publicado" ? "Publicado" : "Rascunho"}
