@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-const BASE_URL = "https://oricse.vetericio.workers.dev";
+const BASE_URL = "https://oricse.com.br";
 const CALLBACK_PATH = "/api/oricstudio/meta/data-deletion";
 
 type DeletionStatus = "pending" | "completed" | "failed";
