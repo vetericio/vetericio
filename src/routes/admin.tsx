@@ -36,6 +36,7 @@ import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
+import { prestigeDefault } from "@/lib/clinic-site";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
 import { useAdminNavigation } from "@/components/admin/AdminShell";
@@ -632,21 +633,63 @@ function Admin() {
       const imagem = typeof identidade?.logo_data_url === "string" ? identidade.logo_data_url : "";
       const tipo = /^data:(image\/(?:png|jpeg|webp));base64,/i.exec(imagem)?.[1];
       const destinoId = typeof clinicaId === "string" ? clinicaId : item.clinica_criada_id;
+      let logoUrl = "";
       if (destinoId && tipo && imagem.length < 600_000) {
         try {
           const {data: sessao} = await supabase.auth.getSession();
           if (!sessao.session?.access_token) throw new Error("Sessão expirada.");
-          await enviarLogoClinica({data:{
+          const resultadoLogo = await enviarLogoClinica({data:{
             accessToken:sessao.session.access_token,
             clinicaId:String(destinoId),
             fileName:String(identidade?.logo_nome || "logo-clinica.webp").slice(0,120),
             mimeType:tipo as "image/png"|"image/jpeg"|"image/webp",
             base64:imagem,
           }} as never);
+          logoUrl = String(resultadoLogo?.logoUrl || "");
         } catch (erroLogo) {
           toast.error("A clínica foi criada, mas a logo ainda precisa ser enviada: " +
             (erroLogo instanceof Error ? erroLogo.message : "verifique a configuração."));
         }
+      }
+      // Prepara, sem publicar, o modelo de site escolhido pelo cliente.
+      // A clínica permanece bloqueada e sua identidade será revisada antes da ativação.
+      if (destinoId && item.slug_desejado) {
+        const estilos: Record<string,{ template:string; primary:string; secondary:string; background:string; text:string }> = {
+          moderno: {template:"atelier",primary:"#702E45",secondary:"#EEE1E4",background:"#F9F8F7",text:"#32242B"},
+          natural: {template:"essencial",primary:"#50715C",secondary:"#D8E4D4",background:"#F5F8F1",text:"#27382E"},
+          executivo: {template:"prestige",primary:"#C9AA76",secondary:"#30383D",background:"#272B30",text:"#FFFFFF"},
+          acolhedor: {template:"cuidado",primary:"#B66D67",secondary:"#F9D9CA",background:"#FFF6F0",text:"#543A37"},
+        };
+        const visual = estilos[String(identidade?.estilo_site || "moderno")] || estilos.moderno;
+        const servicosNomes: Record<string,string> = {
+          consultas:"Consultas",vacinas:"Vacinação",exames:"Exames e diagnósticos",
+          cirurgias:"Cirurgias",atendimento_domiciliar:"Atendimento domiciliar",
+          banho:"Banho",tosa:"Tosa",loja:"Pet shop",hospedagem:"Hospedagem",creche:"Creche",
+        };
+        const servicos = String(identidade?.servicos_iniciais || "").split(",")
+          .map(codigo => servicosNomes[codigo]).filter(Boolean);
+        const endereco = [item.clinica_endereco,item.clinica_numero,item.clinica_bairro,
+          item.clinica_cidade,item.clinica_uf].filter(Boolean).join(", ");
+        const config = {
+          ...prestigeDefault,
+          name: String(identidade?.nome_publico || item.clinica_nome).slice(0,120),
+          logoUrl,
+          phone: item.clinica_telefone || "",
+          whatsapp: item.clinica_telefone || "",
+          address: endereco,
+          hours: "Das " + String(identidade?.horario_abertura || "08:00") +
+            " às " + String(identidade?.horario_fechamento || "18:00"),
+          services: servicos.length ? servicos : prestigeDefault.services,
+          primaryColor: visual.primary,
+          secondaryColor: visual.secondary,
+          backgroundColor: visual.background,
+          textColor: visual.text,
+        };
+        const {error: erroSite} = await (supabaseBanco as any).from("clinic_sites").upsert({
+          clinica_id: destinoId, slug: item.slug_desejado, template: visual.template,
+          status:"rascunho",config,updated_at:new Date().toISOString(),
+        },{onConflict:"clinica_id"});
+        if (erroSite) toast.error("Clínica criada, mas a pré-configuração do site precisa ser revisada: " + erroSite.message);
       }
       toast.success("Espaço criado. Revise a configuração antes de liberar o funcionamento.");
       await Promise.all([carregarTudo(), carregarSolicitacoes()]);
