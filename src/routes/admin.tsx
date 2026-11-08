@@ -53,7 +53,7 @@ type Clinica = {
   id: string;
   nome: string;
   slug: string | null;
-  tipo_publico: "vet" | "pet";
+  tipo_publico: "vet" | "clinica" | "hospital" | "domicilio" | "pet" | "banho_tosa" | "hotel" | "ong" | "diagnostico" | "ensino" | "outro";
   status: "ativa" | "bloqueada" | "inativa" | "cancelada";
   plano: string;
   dominio: string | null;
@@ -775,8 +775,17 @@ function Admin() {
             </label>
             <label className="text-sm font-semibold">Tipo de parceiro
               <select value={novaClinica.tipo_publico} onChange={(e) => setNovaClinica({ ...novaClinica, tipo_publico: e.target.value as NovaClinica["tipo_publico"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">
-                <option value="vet">Veterinário / clínica veterinária</option>
+                <option value="vet">Veterinário autônomo</option>
+                <option value="clinica">Clínica veterinária</option>
+                <option value="hospital">Hospital veterinário</option>
+                <option value="domicilio">Atendimento veterinário domiciliar</option>
                 <option value="pet">Pet shop</option>
+                <option value="banho_tosa">Banho e tosa</option>
+                <option value="hotel">Hotelzinho / creche pet</option>
+                <option value="ong">ONG / proteção animal</option>
+                <option value="diagnostico">Centro de diagnóstico / laboratório</option>
+                <option value="ensino">Faculdade / universidade</option>
+                <option value="outro">Outro negócio do mercado pet</option>
               </select>
             </label>
             <label className="text-sm font-semibold">Link público
