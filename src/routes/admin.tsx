@@ -393,7 +393,7 @@ function Admin() {
       (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
       (supabaseBanco as any).rpc("oricse_listar_grade_taxas_pagamento"),
-      (supabase as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
+      (supabaseBanco as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
       (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
@@ -863,7 +863,7 @@ function Admin() {
       if (error) throw error;
       if (!data?.id) throw new Error("Não foi possível confirmar o cadastro da clínica.");
 
-      const { error: erroEndereco } = await (supabase as any).from("oricse_dominios_clinica").insert({
+      const { error: erroEndereco } = await (supabaseBanco as any).from("oricse_dominios_clinica").insert({
         clinica_id: data.id,
         hostname: `${slug}.oricse.com.br`,
         tipo: "oricse",
@@ -1352,7 +1352,7 @@ function Admin() {
         },
       });
       await carregarTudo();
-      toast.success(`Endereço ${resultado.hostname} ativo e publicado.`);
+      toast.success(`Endereço ${resultado.hostname} salvo. Verifique o acesso HTTPS para confirmar a ativação.`);
     } catch (erro) {
       const mensagem =
         erro instanceof Error && erro.message
@@ -1381,7 +1381,7 @@ function Admin() {
 
     setSalvandoDominio(true);
     try {
-      const { error } = await (supabase as any).from("oricse_dominios_clinica").insert(hostnames.map((item, indice) => ({
+      const { error } = await (supabaseBanco as any).from("oricse_dominios_clinica").insert(hostnames.map((item, indice) => ({
         clinica_id: selecionada.id,
         hostname: item,
         tipo: "proprio",
@@ -1411,7 +1411,7 @@ function Admin() {
   async function alterarPublicacaoDominio(dominio: DominioClinica, publicar_site: boolean) {
     setSalvandoDominio(true);
     try {
-      const { error } = await (supabase as any).from("oricse_dominios_clinica").update({
+      const { error } = await (supabaseBanco as any).from("oricse_dominios_clinica").update({
         publicar_site,
         atualizado_em: new Date().toISOString(),
       }).eq("id", dominio.id);
@@ -1460,7 +1460,7 @@ function Admin() {
     }
     setExcluindoDominio(dominio.id);
     try {
-      const { data: apagado, error } = await (supabase as any)
+      const { data: apagado, error } = await (supabaseBanco as any)
         .from("oricse_dominios_clinica")
         .delete()
         .eq("id", dominio.id)
