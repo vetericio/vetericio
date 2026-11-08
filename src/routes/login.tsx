@@ -17,7 +17,7 @@ export const Route = createFileRoute("/login")({
       { title: "Entrar — Oricse" },
       { name: "description", content: "Acesse sua conta Oricse." },
       { property: "og:title", content: "Entrar — Oricse" },
-      { property: "og:url", content: "https://oricse.vetericio.workers.dev/login" },
+      { property: "og:url", content: "https://oricse.com.br/login" },
     ],
   }),
   component: Login,
@@ -52,7 +52,7 @@ function Login() {
     }
 
     setEntrando(true);
-    const email = `${nome}@vetericio.local`;
+    const email = nome.includes("@") && !nome.startsWith("@") ? nome : `${nome}@vetericio.local`;
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
@@ -134,15 +134,15 @@ function Login() {
             </div>
 
             <label className="mt-8 block text-sm font-semibold text-foreground">
-              Usuário da clínica
+              Usuário ou e-mail
               <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#FBF7F2] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
                 <AtSign aria-hidden="true" size={18} className="shrink-0 text-muted-foreground" />
                 <input
                   value={usuario}
                   onChange={(e) => setUsuario(e.target.value)}
-                  placeholder="@nomedaclinica"
+                  placeholder="@nomedaclinica ou email@clinica.com"
                   autoComplete="username"
-                  aria-label="@nomedaclinica"
+                  aria-label="@nomedaclinica ou e-mail"
                   className="h-11 min-w-0 flex-1 bg-transparent px-2 outline-none placeholder:text-muted-foreground/60"
                 />
               </span>
