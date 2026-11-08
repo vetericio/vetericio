@@ -26,7 +26,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { extrairDriveFolderId } from "@/lib/drive-storage";
@@ -37,6 +37,7 @@ import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
+import { dominiosUnicosPorClinica, normalizarDominio, rotuloDisponibilidadeDominio, type EstadoOnlineDominio } from "@/lib/clinic-domain-status";
 import { prestigeDefault } from "@/lib/clinic-site";
 import { SiteDaClinica } from "@/routes/site-da-clinica";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
@@ -315,6 +316,12 @@ function Admin() {
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
   const [salvandoDominio, setSalvandoDominio] = useState(false);
+  const [verificacoes, setVerificacoes] = useState<Record<string, EstadoOnlineDominio | "verificando">>({});
+  const verificacoesEfetuadas = useRef(new Set<string>());
+  const [exclusaoDominio, setExclusaoDominio] = useState<DominioClinica | null>(null);
+  const [confirmarHostname, setConfirmarHostname] = useState("");
+  const [confirmarInterrupcao, setConfirmarInterrupcao] = useState(false);
+  const [excluindoDominio, setExcluindoDominio] = useState<string | null>(null);
 
   useEffect(() => {
     // Ao trocar de clínica, feche o editor anterior antes de abrir outro.
@@ -345,9 +352,22 @@ function Admin() {
   );
 
   const dominiosDaClinica = useMemo(
-    () => selecionada ? dominiosClinica.filter((dominio) => dominio.clinica_id === selecionada.id) : [],
+    () => selecionada ? dominiosUnicosPorClinica(dominiosClinica, selecionada.id) : [],
     [dominiosClinica, selecionada?.id],
   );
+
+  // O ícone só pode ser carregado com DNS, HTTPS e um arquivo real respondendo.
+  // O status do banco, sozinho, não confirma que o site está acessível.
+  useEffect(() => {
+    if (abaClinica !== "site" || !selecionada) return;
+    for (const dominio of dominiosDaClinica) {
+      if (dominio.status !== "ativo" || !dominio.publicar_site) continue;
+      const chave = `${dominio.clinica_id}:${dominio.id}:${dominio.atualizado_em}`;
+      if (verificacoesEfetuadas.current.has(chave)) continue;
+      verificacoesEfetuadas.current.add(chave);
+      void verificarDisponibilidadeDominio(dominio);
+    }
+  }, [abaClinica, selecionada?.id, dominiosDaClinica]);
 
   const usuariosDaClinica = useMemo(() => {
     if (!selecionada) return [];
@@ -1354,6 +1374,10 @@ function Admin() {
 
     const hostnames = [hostname];
     if (incluirWww && !hostname.startsWith("www.")) hostnames.push("www." + hostname);
+    if (hostnames.some(nome => dominiosClinica.some(dominio => normalizarDominio(dominio.hostname) === nome))) {
+      toast.error("Este endereço já está cadastrado e não pode ser criado novamente.");
+      return;
+    }
 
     setSalvandoDominio(true);
     try {
@@ -1399,6 +1423,79 @@ function Admin() {
     } finally {
       setSalvandoDominio(false);
     }
+  }
+
+  async function verificarDisponibilidadeDominio(dominio: DominioClinica) {
+    if (!dominio.publicar_site || dominio.status !== "ativo") return;
+    if (!hostnameValido(dominio.hostname)) return;
+    setVerificacoes(v => ({ ...v, [dominio.id]: "verificando" }));
+    const imagem = new Image();
+    let finalizada = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const finalizar = (resultado: EstadoOnlineDominio) => {
+      if (finalizada) return;
+      finalizada = true;
+      clearTimeout(timer);
+      imagem.onload = null;
+      imagem.onerror = null;
+      setVerificacoes(v => ({ ...v, [dominio.id]: resultado }));
+    };
+    timer = setTimeout(() => finalizar("nao_verificado"), 8000);
+    imagem.onload = () => finalizar(imagem.naturalWidth > 0 ? "ativo" : "nao_verificado");
+    imagem.onerror = () => finalizar("nao_verificado");
+    // O endereço responde ao próprio arquivo público do ORICSE por HTTPS.
+    imagem.src = `https://${normalizarDominio(dominio.hostname)}/favicon-oricse.png?check=${Date.now()}`;
+  }
+
+  async function excluirDominioConfirmado() {
+    if (!selecionada || !exclusaoDominio || excluindoDominio) return;
+    const dominio = exclusaoDominio;
+    if (normalizarDominio(confirmarHostname) !== normalizarDominio(dominio.hostname)) {
+      toast.error("Digite o endereço completo para confirmar.");
+      return;
+    }
+    if (dominio.tipo === "oricse" && !confirmarInterrupcao) {
+      toast.error("Confirme que o site e o Portal do Tutor poderão ficar indisponíveis.");
+      return;
+    }
+    setExcluindoDominio(dominio.id);
+    try {
+      const { data: apagado, error } = await (supabase as any)
+        .from("oricse_dominios_clinica")
+        .delete()
+        .eq("id", dominio.id)
+        .eq("clinica_id", selecionada.id)
+        .select("id")
+        .maybeSingle();
+      if (error || !apagado) throw new Error(error?.message || "Não foi possível excluir. Verifique as permissões.");
+      if (dominio.tipo === "proprio" && normalizarDominio(selecionada.dominio || "") === normalizarDominio(dominio.hostname)) {
+        const { error: erroClinica } = await (supabaseBanco as any)
+          .from("clinicas")
+          .update({ dominio: null, updated_at: new Date().toISOString() })
+          .eq("id", selecionada.id)
+          .eq("dominio", dominio.hostname);
+        if (erroClinica) toast.error("Domínio excluído, mas não foi possível atualizar a referência no cadastro da clínica.");
+      }
+      setDominiosClinica(lista => lista.filter(item => item.id !== dominio.id));
+      setExclusaoDominio(null);
+      await carregarTudo();
+      toast.success("Endereço excluído.");
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível excluir o endereço.");
+    } finally {
+      setExcluindoDominio(null);
+    }
+  }
+
+  function indicadorDominio(dominio?: DominioClinica) {
+    if (!dominio) return <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">Aguardando ativação</span>;
+    const resultado = verificacoes[dominio.id];
+    const rotulo = rotuloDisponibilidadeDominio(dominio, resultado);
+    const ativo = rotulo === "Ativo";
+    return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${ativo ? "bg-emerald-50 text-emerald-700" : rotulo === "Indisponível" || rotulo === "Precisa de atenção" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>
+      {ativo && <span aria-hidden="true" className="h-2 w-2 rounded-full bg-emerald-500" />}
+      {rotulo}
+    </span>;
   }
 
   const renderSiteDominiosClinica = () => {
@@ -1452,7 +1549,7 @@ function Admin() {
         <Card>
           <div className="flex items-start justify-between gap-3">
             <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Endereço ORICSE</p><h3 className="mt-1 text-xl font-bold">Subdomínio da clínica</h3></div>
-            <span className={"rounded-full px-2.5 py-1 text-xs font-bold " + classeStatusDominio(enderecoOricse?.status || "rascunho")}>{rotuloStatusDominio(enderecoOricse?.status || "rascunho")}</span>
+            {indicadorDominio(enderecoOricse)}
           </div>
           <div className="mt-5 rounded-xl border bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço que será publicado</p>
@@ -1475,15 +1572,31 @@ function Admin() {
         </Card>
       </div>
 
+      <Dialog open={Boolean(exclusaoDominio)} onOpenChange={(aberto) => { if (!aberto && !excluindoDominio) setExclusaoDominio(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir endereço {exclusaoDominio?.hostname}?</DialogTitle>
+            <DialogDescription>Esta ação exclui o cadastro deste endereço. Ela não altera outros sites da clínica.</DialogDescription>
+          </DialogHeader>
+          {exclusaoDominio?.tipo === "oricse" && <label className="flex items-start gap-2 text-sm text-red-700"><input type="checkbox" checked={confirmarInterrupcao} onChange={(e) => setConfirmarInterrupcao(e.target.checked)} /> Entendo que o site e o Portal do Tutor deste endereço podem parar de funcionar.</label>}
+          <label className="text-sm font-semibold">Digite o endereço completo para confirmar:
+            <input type="text" value={confirmarHostname} onChange={(e) => setConfirmarHostname(e.target.value)} className="mt-2 min-h-11 w-full rounded-xl border px-3" autoComplete="off" />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setExclusaoDominio(null)} disabled={Boolean(excluindoDominio)} className="rounded-xl border px-4 py-2 font-semibold">Cancelar</button>
+            <button type="button" onClick={() => void excluirDominioConfirmado()} disabled={Boolean(excluindoDominio) || !exclusaoDominio || normalizarDominio(confirmarHostname) !== normalizarDominio(exclusaoDominio.hostname) || (exclusaoDominio.tipo === "oricse" && !confirmarInterrupcao)} className="inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-50"><Trash2 size={16}/>{excluindoDominio ? "Excluindo..." : "Confirmar exclusão"}</button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h3 className="text-xl font-bold">Domínios configurados</h3><p className="mt-1 text-sm text-muted-foreground">Cada endereço é validado separadamente. Domínio raiz e www são registros distintos para garantir certificado SSL e redirecionamento corretos.</p></div>
           <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">{dominiosDaClinica.length} {dominiosDaClinica.length === 1 ? "endereço" : "endereços"}</span>
         </div>
         <div className="mt-5 overflow-x-auto rounded-xl border">
-          <table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Endereço</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">DNS / SSL</th><th className="px-4 py-3">Site</th></tr></thead>
-          <tbody>{dominiosDaClinica.map((dominio) => <tr key={dominio.id} className="border-t align-top"><td className="px-4 py-4"><p className="font-bold">{dominio.hostname}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.tipo === "oricse" ? "Endereço ORICSE" : dominio.principal ? "Domínio principal da clínica" : "Alias www"}</p></td><td className="px-4 py-4"><span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-bold " + classeStatusDominio(dominio.status)}>{rotuloStatusDominio(dominio.status)}</span>{dominio.ultimo_erro && <p className="mt-2 max-w-xs text-xs text-red-700">{dominio.ultimo_erro}</p>}</td><td className="px-4 py-4"><p className="font-mono text-xs">{dominio.verificacao_tipo === "automatica" ? "Infraestrutura ORICSE" : "CNAME → " + dominio.dns_alvo}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.ssl_status ? "SSL: " + dominio.ssl_status : "SSL será emitido após a validação"}</p></td><td className="px-4 py-4"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={dominio.publicar_site} disabled={salvandoDominio} onChange={(e) => void alterarPublicacaoDominio(dominio, e.target.checked)} className="h-4 w-4"/> Publicado</label></td></tr>)}
-          {dominiosDaClinica.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Nenhum endereço preparado para esta clínica.</td></tr>}</tbody></table>
+          <table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Endereço</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">DNS / SSL</th><th className="px-4 py-3">Site</th><th className="px-4 py-3">Ações</th></tr></thead>
+          <tbody>{dominiosDaClinica.map((dominio) => <tr key={dominio.id} className="border-t align-top"><td className="px-4 py-4"><p className="font-bold">{dominio.hostname}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.tipo === "oricse" ? "Endereço ORICSE" : dominio.principal ? "Domínio principal da clínica" : "Alias www"}</p></td><td className="px-4 py-4">{indicadorDominio(dominio)}<button type="button" onClick={() => void verificarDisponibilidadeDominio(dominio)} disabled={verificacoes[dominio.id] === "verificando" || !dominio.publicar_site || dominio.status !== "ativo"} className="mt-2 flex min-h-10 items-center gap-1 text-xs font-semibold text-primary disabled:opacity-40"><RefreshCcw size={14}/> Verificar acesso</button>{dominio.ultimo_erro && <p className="mt-2 max-w-xs text-xs text-red-700">{dominio.ultimo_erro}</p>}</td><td className="px-4 py-4"><p className="font-mono text-xs">{dominio.verificacao_tipo === "automatica" ? "Infraestrutura ORICSE" : "CNAME → " + dominio.dns_alvo}</p><p className="mt-1 text-xs text-muted-foreground">{dominio.ssl_status ? "SSL: " + dominio.ssl_status : "SSL será emitido após a validação"}</p></td><td className="px-4 py-4"><label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={dominio.publicar_site} disabled={salvandoDominio} onChange={(e) => void alterarPublicacaoDominio(dominio, e.target.checked)} className="h-4 w-4"/> Publicado</label></td><td className="px-4 py-4"><button type="button" onClick={() => { setExclusaoDominio(dominio); setConfirmarHostname(""); setConfirmarInterrupcao(false); }} disabled={Boolean(excluindoDominio)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 size={15}/> Excluir</button></td></tr>)}
+          {dominiosDaClinica.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhum endereço preparado para esta clínica.</td></tr>}</tbody></table>
         </div>
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-bold">Próxima etapa de infraestrutura</p><p className="mt-1">Após conectar <strong>oricse.com.br</strong> ao Cloudflare, os subdomínios ORICSE serão ativados por wildcard. Para domínio próprio, a clínica aponta o CNAME informado e a ORICSE valida o domínio antes de publicar.</p></div>
       </Card>
