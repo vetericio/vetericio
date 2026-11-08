@@ -39,10 +39,14 @@
           await Promise.all(chaves.filter((chave) => chave.startsWith("oricse-")).map((chave) => caches.delete(chave)));
         }
       } catch (_) {}
-      const separador = destino.includes("?") ? "&" : "?";
-      const atualizado = destino + separador + "oricse_build=" + Date.now();
-      document.getElementById("continuar").href = atualizado;
-      location.replace(atualizado);
+      // A URL informa que uma tentativa automática já foi feita.
+      // Preservar a query e o hash na ordem correta evita rotas quebradas.
+      const atualizado = new URL(destino, location.origin);
+      atualizado.searchParams.set("oricse_module_retry", "1");
+      atualizado.searchParams.set("oricse_build", String(Date.now()));
+      const caminho = atualizado.pathname + atualizado.search + atualizado.hash;
+      document.getElementById("continuar").href = caminho;
+      location.replace(caminho);
     })();
   </script>
 </body>
