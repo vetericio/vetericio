@@ -13,7 +13,13 @@ type AuthLike = {
   getSession: () => Promise<any>;
   getUser: () => Promise<any>;
 };
-type FactoryArgs = { auth: AuthLike; fromDrive: FromFn; fromIdentity: FromFn; getSelectedClinicId: () => Promise<string | null> };
+type FactoryArgs = {
+  auth: AuthLike;
+  fromDrive: FromFn;
+  fromIdentity: FromFn;
+  getSelectedClinicId: () => Promise<string | null>;
+  databaseRpc: (name: string, args: Record<string, unknown>) => Promise<any>;
+};
 
 function erro(message: string, code = "DRIVE_RPC") {
   return { message, code };
@@ -105,7 +111,7 @@ function localParaIso(data: string, hora: string, timeZone: string) {
   ).toISOString();
 }
 
-export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClinicId }: FactoryArgs) {
+export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClinicId, databaseRpc }: FactoryArgs) {
   async function user() {
     const { data, error } = await auth.getUser();
     if (error) throw error;
@@ -919,25 +925,12 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
             error: null,
           };
         }
-        case "oricse_iniciar_contratacao": {
-          const { iniciarContratacaoDrive } = await import("@/lib/checkout-drive.functions");
-          const data = await iniciarContratacaoDrive({
-            data: { dados: args.p_dados || {} },
-          } as never);
-          return { data, error: null };
-        }
-        case "oricse_iniciar_teste_gratis": {
-          const { iniciarTesteGratisDrive } = await import("@/lib/checkout-drive.functions");
-          const data = await iniciarTesteGratisDrive({
-            data: { dados: args.p_dados || {} },
-          } as never);
-          return { data, error: null };
-        }
+        case "oricse_iniciar_contratacao":
+        case "oricse_iniciar_teste_gratis":
         case "oricse_validar_codigo_promocional": {
-          // A contratação pública e o checkout consultam a mesma função no PostgreSQL.
-          // Não acessa diretamente a tabela privada de cupons no Google Drive.
-          const { supabaseBanco } = await import("@/integrations/supabase/client");
-          return await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", args);
+          // Fluxo público: usar o RPC PostgreSQL diretamente, não importar
+          // funções de servidor no navegador (chunks dinâmicos não publicados).
+          return await databaseRpc(name, args);
         }
         default:
           return {
