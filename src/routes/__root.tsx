@@ -73,6 +73,51 @@ function NotFoundComponent() {
   );
 }
 
+// Um deploy pode substituir chunks versionados enquanto uma aba antiga está aberta.
+// Recuperação limitada, sem limpar dados da clínica, sessão nem credenciais.
+const ERRO_MODULO = /failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module|failed to load module script|chunkloaderror|vite:preloaderror/i;
+let recargaVersaoEmAndamento = false;
+
+function mensagemDeErro(error: unknown): string {
+  if (error instanceof Error) return error.name + ": " + error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error)
+    return String((error as { message?: unknown }).message ?? "");
+  return String(error ?? "");
+}
+
+async function recarregarVersaoAtual(forcar = false) {
+  if (typeof window === "undefined" || recargaVersaoEmAndamento) return;
+  const url = new URL(window.location.href);
+  const registrado = Number(url.searchParams.get("oricse_recovery") || 0);
+  const anterior = Number(url.searchParams.get("oricse_build") || 0);
+  const recente = Number.isFinite(anterior) && anterior > 0 &&
+    Date.now() >= anterior && Date.now() - anterior < 90_000;
+  const tentativas = recente && Number.isFinite(registrado) ? registrado : 0;
+  // Evita loop eterno quando há falha genuína, mas não bloqueia a segunda
+  // tentativa, que pode ocorrer após a publicação ser concluída.
+  if (!forcar && tentativas >= 2) return;
+  recargaVersaoEmAndamento = true;
+  url.searchParams.set("oricse_recovery", String(forcar ? 1 : tentativas + 1));
+  url.searchParams.set("oricse_build", String(Date.now()));
+  url.searchParams.delete("oricse_module_retry");
+  try {
+    if ("serviceWorker" in navigator) {
+      const registros = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registros.map((registro) => registro.unregister()));
+    }
+    if ("caches" in window) {
+      const chaves = await caches.keys();
+      await Promise.all(chaves.map((chave) => caches.delete(chave)));
+    }
+  } catch (error) {
+    console.warn("Atualização do cache ORICSE:", error);
+  } finally {
+    // Importante: mesmo sem Service Worker (ou se a limpeza falhar), recarrega.
+    window.location.replace(url.toString());
+  }
+}
+
 function ErrorComponent({ error }: { error: unknown; reset: () => void }) {
   console.error(error);
   useEffect(() => {
@@ -80,27 +125,7 @@ function ErrorComponent({ error }: { error: unknown; reset: () => void }) {
     reportLovableError(erro, { boundary: "tanstack_root_error_component" });
   }, [error]);
   useEffect(() => {
-    // A troca de versão pode deixar o HTML aberto apontando para chunks já
-    // removidos no deploy. A antiga proteção usava memória em JS e era perdida
-    // no reload, impedindo uma recuperação confiável no Firefox e em PWAs.
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("oricse_recovery")) return;
-    url.searchParams.set("oricse_recovery", "1");
-    url.searchParams.set("oricse_build", String(Date.now()));
-    void (async () => {
-      try {
-        const registros =
-          "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistrations() : [];
-        await Promise.all(registros.map((registro) => registro.unregister()));
-        if ("caches" in window) {
-          const chaves = await caches.keys();
-          await Promise.all(chaves.map((chave) => caches.delete(chave)));
-        }
-      } catch (erroRecuperacao) {
-        console.warn("Não foi possível limpar o cache do ORICSE:", erroRecuperacao);
-      }
-      window.location.replace(url.toString());
-    })();
+    if (ERRO_MODULO.test(mensagemDeErro(error))) void recarregarVersaoAtual();
   }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -109,14 +134,7 @@ function ErrorComponent({ error }: { error: unknown; reset: () => void }) {
         <div className="mt-6">
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
-              onClick={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.delete("oricse_recovery");
-                url.searchParams.delete("oricse_module_retry");
-                url.searchParams.set("oricse_build", String(Date.now()));
-                // Navegação completa descarta a árvore React que falhou e baixa a versão atual.
-                window.location.replace(url.toString());
-              }}
+              onClick={() => void recarregarVersaoAtual(true)}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             >
               Recarregar sistema
@@ -612,23 +630,15 @@ function RootComponent() {
       const motivo = event instanceof PromiseRejectionEvent
         ? event.reason
         : (event as Event & { payload?: unknown }).payload ?? event;
-      const mensagem = motivo instanceof Error ? motivo.message : String(motivo ?? "");
-      if (!/dynamically imported module|vite:preloaderror/i.test(mensagem)) return;
+      if (event.type !== "vite:preloadError" && !ERRO_MODULO.test(mensagemDeErro(motivo))) return;
       event.preventDefault?.();
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("oricse_module_retry")) return;
-      url.searchParams.set("oricse_module_retry", "1");
-      url.searchParams.set("oricse_build", String(Date.now()));
-      void navigator.serviceWorker
-        ?.getRegistrations()
-        .then((registros) => Promise.all(registros.map((registro) => registro.unregister())))
-        .finally(() => window.location.replace(url.toString()));
+      void recarregarVersaoAtual();
     };
 
     window.addEventListener("vite:preloadError", recuperarModuloExpirado);
     window.addEventListener("unhandledrejection", recuperarModuloExpirado);
     if ("serviceWorker" in navigator)
-      navigator.serviceWorker.register("/sw.js?v=14", { scope: "/" }).catch(() => undefined);
+      navigator.serviceWorker.register("/sw.js?v=15", { scope: "/" }).catch(() => undefined);
     return () => {
       window.removeEventListener("vite:preloadError", recuperarModuloExpirado);
       window.removeEventListener("unhandledrejection", recuperarModuloExpirado);
