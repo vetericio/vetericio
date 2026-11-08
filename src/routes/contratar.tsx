@@ -177,9 +177,10 @@ function Contratar() {
   const retornoPagamento = params.get("retorno");
   const pedidoRetorno = params.get("pedido");
   useEffect(() => {
-    if (!retornoPagamento || !["sucesso","pendente","falha"].includes(retornoPagamento)) return;
+    if (!retornoPagamento || !["sucesso","pendente","falha","isento"].includes(retornoPagamento)) return;
     const url = new URL("/contratacao-recebida", window.location.origin);
     url.searchParams.set("retorno", retornoPagamento);
+    if (pedidoRetorno && /^[0-9a-f-]{36}$/i.test(pedidoRetorno)) url.searchParams.set("pedido", pedidoRetorno);
     window.location.replace(url.toString());
   }, [retornoPagamento]);
 
