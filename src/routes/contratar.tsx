@@ -21,7 +21,7 @@ const VAZIO: Dados = {
   clinica_nome: "", razao_social: "", cnpj: "", clinica_telefone: "", clinica_email: "", clinica_cep: "", clinica_endereco: "", clinica_numero: "", clinica_complemento: "", clinica_bairro: "", clinica_cidade: "", clinica_uf: "",
   tipo_operacao: "clinica", operacoes_ativas: "clinica", slug_desejado: "", nome_publico: "", dominio: "", quantidade_usuarios: "1",
   responsavel_nome: "", responsavel_cpf: "", responsavel_crmv: "", responsavel_crmv_uf: "", responsavel_email: "", responsavel_telefone: "", responsavel_cep: "", responsavel_endereco: "", responsavel_numero: "", responsavel_complemento: "", responsavel_bairro: "", responsavel_cidade: "", responsavel_uf: "",
-  observacoes: "", estilo_site: "moderno", servicos_iniciais: "", horario_abertura: "08:00", horario_fechamento: "18:00", agenda_online: "sim",
+  observacoes: "", modelo_site: "atelier", estilo_site: "moderno", servicos_iniciais: "", horario_abertura: "08:00", horario_fechamento: "18:00", agenda_online: "sim",
 };
 
 
@@ -70,10 +70,12 @@ const TIPOS_OPERACAO = [
 ] as const;
 const ETAPAS_ABERTURA = ["Identidade", "Estrutura", "Serviços", "Configurações", "Revisão"];
 const ESTILOS_SITE = [
-  { id: "moderno", nome: "Moderno", legenda: "Discreto e atual", fundo: "bg-slate-50", barra: "bg-[#702E45]", detalhe: "bg-rose-100" },
-  { id: "natural", nome: "Natural", legenda: "Leve e acolhedor", fundo: "bg-[#F5F8F1]", barra: "bg-[#50715C]", detalhe: "bg-[#D8E4D4]" },
-  { id: "executivo", nome: "Executivo", legenda: "Sólido e profissional", fundo: "bg-[#272B30]", barra: "bg-[#C9AA76]", detalhe: "bg-[#5A6169]" },
-  { id: "acolhedor", nome: "Acolhedor", legenda: "Próximo dos tutores", fundo: "bg-[#FFF6F0]", barra: "bg-[#B66D67]", detalhe: "bg-[#F9D9CA]" },
+  { id: "prestige", nome: "Signature", legenda: "Premium e editorial", fundo: "bg-[#121A18]", barra: "bg-[#C9A86A]", detalhe: "bg-[#29423C]" },
+  { id: "atelier", nome: "Prime", legenda: "Elegante e contemporâneo", fundo: "bg-[#F7F1EB]", barra: "bg-[#73523C]", detalhe: "bg-[#E4D5C6]" },
+  { id: "cuidado", nome: "Class", legenda: "Acolhedor e humano", fundo: "bg-[#F2F8F4]", barra: "bg-[#307760]", detalhe: "bg-[#D7E8DE]" },
+  { id: "popular", nome: "King", legenda: "Comercial e marcante", fundo: "bg-[#FFFDF8]", barra: "bg-[#B33C34]", detalhe: "bg-[#FFE297]" },
+  { id: "essencial", nome: "Essencial", legenda: "Clean e objetivo", fundo: "bg-white", barra: "bg-[#263C54]", detalhe: "bg-[#E7EDF2]" },
+  { id: "horizonte", nome: "Horizonte", legenda: "Natureza e bem-estar", fundo: "bg-[#F6F8F0]", barra: "bg-[#537B52]", detalhe: "bg-[#DCE8D1]" },
 ] as const;
 const SERVICOS_INICIAIS = [
   { id: "consultas", nome: "Consultas", operacoes: ["clinica", "hospital", "domicilio", "ong"] },
@@ -462,7 +464,7 @@ function Contratar() {
         setErroValidacao("Escolha um endereço do site com 3 a 30 caracteres (letras, números e hífen).");
         return false;
       }
-      if (!ESTILOS_SITE.some(estilo => estilo.id === dados.estilo_site)) {
+      if (!ESTILOS_SITE.some(estilo => estilo.id === dados.modelo_site)) {
         setErroValidacao("Selecione o estilo visual do site."); return false;
       }
       if (!logoDataUrl) {
@@ -599,18 +601,18 @@ function Contratar() {
       </label>
       <div className="mt-7 border-t pt-6">
         <h3 className="flex items-center gap-2 text-lg font-bold"><Sparkles size={19} className="text-primary"/> Escolha o estilo do site</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Logo após definir o endereço, selecione a aparência desejada. Você poderá revisar a escolha antes de enviar.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Escolha um dos seis sites completos. Depois você poderá trocar textos, cores, fotos e seções no editor da clínica.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Estilo do site">
-          {ESTILOS_SITE.map(estilo => <button key={estilo.id} type="button" role="radio" aria-checked={dados.estilo_site===estilo.id}
-            onClick={()=>salvarLocal({...dados,estilo_site:estilo.id})}
-            className={"rounded-2xl border-2 p-3 text-left transition hover:border-primary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary " + (dados.estilo_site===estilo.id?"border-primary bg-primary/5":"border-border")}>
+          {ESTILOS_SITE.map(estilo => <button key={estilo.id} type="button" role="radio" aria-checked={dados.modelo_site===estilo.id}
+            onClick={()=>salvarLocal({...dados,modelo_site:estilo.id,estilo_site:estilo.id})}
+            className={"rounded-2xl border-2 p-3 text-left transition hover:border-primary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary " + (dados.modelo_site===estilo.id?"border-primary bg-primary/5":"border-border")}>
             <div className={"h-28 overflow-hidden rounded-xl border p-3 " + estilo.fundo}>
               <div className="flex items-center gap-2"><div className={"h-5 w-5 rounded-md " + estilo.barra}/>
                 <div className={"h-1.5 w-16 rounded-full " + estilo.barra}/><div className="ml-auto h-1.5 w-8 rounded-full bg-gray-400/30"/></div>
               <div className={"mt-4 h-3 w-28 rounded " + estilo.barra}/><div className={"mt-2 h-1.5 w-36 max-w-full rounded " + estilo.detalhe}/>
               <div className="mt-3 flex gap-2"><div className={"h-6 w-16 rounded-lg " + estilo.barra}/><div className={"h-6 w-14 rounded-lg " + estilo.detalhe}/></div>
             </div>
-            <span className="mt-3 flex items-center justify-between gap-3"><strong>{estilo.nome}</strong>{dados.estilo_site===estilo.id&&<Check size={18} className="text-primary"/>}</span>
+            <span className="mt-3 flex items-center justify-between gap-3"><strong>{estilo.nome}</strong>{dados.modelo_site===estilo.id&&<Check size={18} className="text-primary"/>}</span>
             <span className="block text-xs text-muted-foreground">{estilo.legenda}</span>
           </button>)}
         </div>
@@ -717,7 +719,7 @@ function Contratar() {
       <div className="mt-5 grid gap-3 rounded-2xl border bg-background p-4 text-sm sm:grid-cols-2">
     <p><strong className="block">Clínica</strong>{dados.clinica_nome}</p>
     <p><strong className="block">Endereço solicitado</strong>{dados.slug_desejado}.oricse.com.br</p>
-    <p><strong className="block">Estilo do site</strong>{ESTILOS_SITE.find(e => e.id === dados.estilo_site)?.nome || "Moderno"}</p>
+    <p><strong className="block">Estilo do site</strong>{ESTILOS_SITE.find(e => e.id === dados.modelo_site)?.nome || "Prime"}</p>
     <p><strong className="block">Serviços</strong>{SERVICOS_INICIAIS.filter(e => dados.servicos_iniciais.split(",").includes(e.id)).map(e => e.nome).join(", ")}</p>
     <p><strong className="block">Horário inicial</strong>{dados.horario_abertura} às {dados.horario_fechamento}</p>
     <p><strong className="block">Portal do Tutor</strong>Padronizado, com a identidade da clínica</p>
