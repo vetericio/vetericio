@@ -8,6 +8,7 @@ const inputSchema = z.object({
   fileName: z.string().min(1).max(180),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]),
   base64: z.string().min(20),
+  categoria: z.enum(["logo", "site"]).default("logo"),
 });
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -52,7 +53,7 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     if (!bytes.length || bytes.length > MAX_BYTES)
       throw new Error("A imagem deve ter no máximo 5 MB.");
 
-    const caminho = `clinicas/${data.clinicaId}/logo/${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
+    const caminho = `clinicas/${data.clinicaId}/${data.categoria}/${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
     const { error: erroUpload } = await supabaseAdmin.storage
       .from(BUCKET)
       .upload(caminho, bytes, {
@@ -65,12 +66,14 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
 
     const { data: publica } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(caminho);
     const logoUrl = publica.publicUrl;
-    const { error: erroClinica } = await supabaseAdmin
-      .from("clinicas")
-      .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
-      .eq("id", data.clinicaId);
-    if (erroClinica)
-      throw new Error("Logo enviada, mas não foi possível vinculá-la à clínica.");
+    if (data.categoria === "logo") {
+      const { error: erroClinica } = await supabaseAdmin
+        .from("clinicas")
+        .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+        .eq("id", data.clinicaId);
+      if (erroClinica)
+        throw new Error("Logo enviada, mas não foi possível vinculá-la à clínica.");
+    }
 
     return { ok: true, logoUrl, caminho };
   });
