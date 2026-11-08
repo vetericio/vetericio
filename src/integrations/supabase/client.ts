@@ -75,6 +75,8 @@ function proxyPara(client: ReturnType<typeof createSupabaseClient>) {
     auth: client.auth as any,
     fromDrive,
     fromIdentity,
+    databaseRpc: (name: string, args: Record<string, unknown>) =>
+      (client as any).rpc(name, args),
     getSelectedClinicId: async () => {
       const { data, error } = await client.rpc('oricse_clinica_ativa_obter');
       if (error) throw error;
