@@ -691,6 +691,21 @@ function Admin() {
         },{onConflict:"clinica_id"});
         if (erroSite) toast.error("Clínica criada, mas a pré-configuração do site precisa ser revisada: " + erroSite.message);
       }
+      if (destinoId && identidade) {
+        const tiposPublicos: Record<string,string> = {
+          clinica:"clinica",hospital:"hospital",domicilio:"domicilio",
+          petshop:"pet",banho_tosa:"banho_tosa",hotelzinho:"hotel",
+          ong:"ong",diagnostico:"diagnostico",ensino:"ensino",outro:"outro",
+        };
+        const operacoes: string[] = Array.isArray(identidade.operacoes_selecionadas)
+          ? identidade.operacoes_selecionadas.map(String)
+          : [String(identidade.tipo_operacao || "clinica")];
+        const principal = operacoes.length === 1 ? operacoes[0] : "outro";
+        const {error: erroTipo} = await (supabaseBanco as any).from("clinicas")
+          .update({tipo_publico: tiposPublicos[principal] || "outro"})
+          .eq("id",destinoId);
+        if (erroTipo) toast.error("Revise o tipo de operação no cadastro da clínica criada: " + erroTipo.message);
+      }
       toast.success("Espaço criado. Revise a configuração antes de liberar o funcionamento.");
       await Promise.all([carregarTudo(), carregarSolicitacoes()]);
     } catch (error) {
