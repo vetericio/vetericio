@@ -86,36 +86,21 @@ function mensagemDeErro(error: unknown): string {
   return String(error ?? "");
 }
 
-async function recarregarVersaoAtual(forcar = false) {
+function enderecoDeRecuperacao() {
+  const atual = new URL(window.location.href);
+  atual.searchParams.delete("oricse_recovery");
+  atual.searchParams.delete("oricse_build");
+  atual.searchParams.delete("oricse_module_retry");
+  const destino = atual.pathname + atual.search + atual.hash;
+  return "/atualizar.html?next=" + encodeURIComponent(destino);
+}
+
+async function recarregarVersaoAtual() {
   if (typeof window === "undefined" || recargaVersaoEmAndamento) return;
-  const url = new URL(window.location.href);
-  const registrado = Number(url.searchParams.get("oricse_recovery") || 0);
-  const anterior = Number(url.searchParams.get("oricse_build") || 0);
-  const recente = Number.isFinite(anterior) && anterior > 0 &&
-    Date.now() >= anterior && Date.now() - anterior < 90_000;
-  const tentativas = recente && Number.isFinite(registrado) ? registrado : 0;
-  // Evita loop eterno quando há falha genuína, mas não bloqueia a segunda
-  // tentativa, que pode ocorrer após a publicação ser concluída.
-  if (!forcar && tentativas >= 2) return;
   recargaVersaoEmAndamento = true;
-  url.searchParams.set("oricse_recovery", String(forcar ? 1 : tentativas + 1));
-  url.searchParams.set("oricse_build", String(Date.now()));
-  url.searchParams.delete("oricse_module_retry");
-  try {
-    if ("serviceWorker" in navigator) {
-      const registros = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registros.map((registro) => registro.unregister()));
-    }
-    if ("caches" in window) {
-      const chaves = await caches.keys();
-      await Promise.all(chaves.map((chave) => caches.delete(chave)));
-    }
-  } catch (error) {
-    console.warn("Atualização do cache ORICSE:", error);
-  } finally {
-    // Importante: mesmo sem Service Worker (ou se a limpeza falhar), recarrega.
-    window.location.replace(url.toString());
-  }
+  // Esta página é estática: funciona mesmo quando o bundle atual não consegue
+  // iniciar e remove o cache antigo antes de voltar ao endereço solicitado.
+  window.location.replace(enderecoDeRecuperacao());
 }
 
 function ErrorComponent({ error }: { error: unknown; reset: () => void }) {
@@ -637,8 +622,19 @@ function RootComponent() {
 
     window.addEventListener("vite:preloadError", recuperarModuloExpirado);
     window.addEventListener("unhandledrejection", recuperarModuloExpirado);
-    if ("serviceWorker" in navigator)
-      navigator.serviceWorker.register("/sw.js?v=15", { scope: "/" }).catch(() => undefined);
+
+    // A versão 16 somente aposenta o cache legado. Ela não armazena código:
+    // cada publicação passa a obter seus módulos diretamente da rede.
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker
+        .getRegistration("/")
+        .then((registro) => {
+          if (registro && !registro.active?.scriptURL.includes("sw.js?v=16"))
+            return navigator.serviceWorker.register("/sw.js?v=16", { scope: "/" });
+          return undefined;
+        })
+        .catch(() => undefined);
+    }
     return () => {
       window.removeEventListener("vite:preloadError", recuperarModuloExpirado);
       window.removeEventListener("unhandledrejection", recuperarModuloExpirado);
