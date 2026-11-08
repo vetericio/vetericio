@@ -46,7 +46,7 @@ function OrixHero() {
     <div className="relative mx-auto flex min-h-[360px] items-end justify-center overflow-hidden rounded-[32px] border border-[#eadbd4] bg-[linear-gradient(145deg,#fffaf6,#f1dfdc)] px-5 pt-8 shadow-[0_25px_70px_rgba(74,24,38,.10)]">
       <div className="absolute left-7 top-7 rounded-full border border-[#d9b7bf] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8d4359]">Conexão que acompanha</div>
       <img
-        src="https://images.rawpixel.com/image_png_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIzLTA4L3Jhd3BpeGVsb2ZmaWNlN19waG90b19vZl9zY2ltaXRhcl9ob3JuZWRfb3J5eF9pc29sYXRlZF9vbl93aGl0ZV9mYjQwNDgyNi1iMjA5LTRiY2QtOWU2Zi01NjI5YmVjMmQ1ZjUucG5n.png"
+        src="https://andrewzuckerman.mo.cloudinary.net/andrewzuckerman/ORYX_0f831c5142.png?tx=w_3000%2Cc_fit%2Cf_webp"
         alt="Órix"
         className="relative z-10 h-[310px] w-auto max-w-full object-contain object-bottom drop-shadow-[0_18px_18px_rgba(74,24,38,.18)]"
       />
