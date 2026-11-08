@@ -105,10 +105,15 @@ function SiteDaClinica() {
     if (!clinicaId) return;
     let active = true;
     void (async () => {
-      const [site, history, clinic] = await Promise.all([
+      const [site, draft, history, clinic] = await Promise.all([
         (supabaseBanco as any)
           .from("clinic_sites")
-          .select("slug,status,template,config,draft_template,draft_config")
+          .select("slug,status,template,config")
+          .eq("clinica_id", clinicaId)
+          .maybeSingle(),
+        (supabaseBanco as any)
+          .from("clinic_site_drafts")
+          .select("template,config")
           .eq("clinica_id", clinicaId)
           .maybeSingle(),
         (supabaseBanco as any)
@@ -130,9 +135,9 @@ function SiteDaClinica() {
         setHasRecord(true);
         setSlug(current.slug || "");
         setStatus(current.status === "publicado" ? "publicado" : "rascunho");
-        const chosen = current.draft_template || current.template;
+        const chosen = draft.data?.template || current.template;
         if (clinicSiteTemplates.includes(chosen)) setTemplate(chosen);
-        setConfig(normalizeClinicSiteConfig(current.draft_config || current.config));
+        setConfig(normalizeClinicSiteConfig(draft.data?.config || current.config));
       } else if (clinic.data) {
         setSlug(clinic.data.slug || "");
         setConfig(
@@ -314,41 +319,35 @@ function SiteDaClinica() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      const base = { clinica_id: clinicaId, slug, updated_at: now };
-      const values = publish
-        ? {
-            ...base,
-            status: "publicado",
-            config,
-            template,
-            draft_config: null,
-            draft_template: null,
-            draft_updated_at: null,
-            publicado_em: now,
-          }
-        : { ...base, draft_config: config, draft_template: template, draft_updated_at: now };
-      let result: any;
-      if (hasRecord) {
-        result = await (supabaseBanco as any)
-          .from("clinic_sites")
-          .update(values)
-          .eq("clinica_id", clinicaId)
-          .select("id")
-          .maybeSingle();
+      if (publish) {
+        const payload = {
+          clinica_id: clinicaId, slug, updated_at: now,
+          status: "publicado", config, template, publicado_em: now,
+        };
+        const result = hasRecord
+          ? await (supabaseBanco as any).from("clinic_sites").update(payload)
+            .eq("clinica_id", clinicaId).select("id").maybeSingle()
+          : await (supabaseBanco as any).from("clinic_sites").insert(payload)
+            .select("id").maybeSingle();
+        if (result.error || !result.data)
+          throw new Error(result.error?.message || "Não foi possível publicar o site.");
+        const clearDraft = await (supabaseBanco as any).from("clinic_site_drafts")
+          .delete().eq("clinica_id", clinicaId);
+        if (clearDraft.error) toast.error("Site publicado; o rascunho anterior precisa ser revisado.");
       } else {
-        result = await (supabaseBanco as any)
-          .from("clinic_sites")
-          .insert({
-            ...values,
-            config,
-            template,
-            status: publish ? "publicado" : "rascunho",
-          })
-          .select("id")
-          .maybeSingle();
+        if (!hasRecord) {
+          const initial = await (supabaseBanco as any).from("clinic_sites").insert({
+            clinica_id: clinicaId, slug, updated_at: now, status: "rascunho",
+            config, template,
+          }).select("id").maybeSingle();
+          if (initial.error || !initial.data)
+            throw new Error(initial.error?.message || "Não foi possível criar o rascunho.");
+        }
+        const draft = await (supabaseBanco as any).from("clinic_site_drafts").upsert({
+          clinica_id: clinicaId,config,template,updated_at:now,
+        }, { onConflict:"clinica_id" });
+        if (draft.error) throw new Error(draft.error.message);
       }
-      if (result.error || !result.data)
-        throw new Error(result.error?.message || "Não foi possível salvar o site.");
       setHasRecord(true);
       setDirty(false);
       if (publish) {
