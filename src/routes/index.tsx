@@ -33,9 +33,9 @@ const modulos = [
 ] as const;
 
 const joias = [
-  ["Atendimento impecável", "Da recepção ao prontuário, cada detalhe do cuidado fica registrado e acessível para a equipe certa."],
-  ["Operação leve", "Módulos conectados evitam retrabalho entre agenda, clínica, caixa, serviços e relacionamento."],
-  ["Experiência para o tutor", "Portal com documentos, vacinas, exames, agendamento, comunicados e pagamentos online."],
+  ["Portal do Tutor", "Documentos, vacinas e pagamentos em um só lugar.", UserRound],
+  ["Fluxo integrado", "Agenda, atendimento e caixa sem retrabalho.", CalendarCheck],
+  ["Recebimento online", "Cobrança prática para a clínica e para o tutor.", CreditCard],
 ] as const;
 
 function Titulo({children, claro = false}:{children:ReactNode; claro?:boolean}) {
@@ -130,7 +130,19 @@ function PaginaInicial() {
         )}
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10"><div className="grid gap-3 sm:grid-cols-3">{joias.map(([titulo,texto],i)=><article key={titulo} className="rounded-2xl border border-[#ecdfd9] bg-white p-5"><span className="font-display text-2xl text-[#a56a78]">0{i+1}</span><h2 className="mt-4 text-base font-bold text-[#4A1826]">{titulo}</h2><p className="mt-2 text-sm leading-6 text-[#765c66]">{texto}</p></article>)}</div></section>
+      <section className="mx-auto max-w-7xl px-5 py-6 sm:px-8 lg:px-10">
+        <div className="grid gap-3 md:grid-cols-3">
+          {joias.map(([titulo, texto, Icone]) => (
+            <article key={titulo} className="flex min-h-[100px] items-center gap-3.5 rounded-[20px] border border-[#ecdfd9] bg-white/95 px-4 py-4 shadow-[0_8px_28px_rgba(74,24,38,.035)] transition-shadow hover:shadow-[0_12px_32px_rgba(74,24,38,.085)]">
+              <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[#f8eff0] text-[#8d4359]"><Icone size={20} strokeWidth={1.7}/></span>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold leading-5 text-[#4A1826]">{titulo}</h2>
+                <p className="mt-1 text-xs leading-[1.5] text-[#765c66]">{texto}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section id="solucoes" className="border-y border-[#eee0da] bg-[#fbf6f2] px-5 py-20 sm:px-8 sm:py-24 lg:px-10">
         <div className="mx-auto max-w-7xl">
