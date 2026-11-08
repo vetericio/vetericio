@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ArrowRight, BadgeDollarSign, Bath, CalendarDays, Check, ClipboardList,
   CreditCard, FileText, HeartPulse, Hotel, Menu, PawPrint, Scissors,
@@ -68,7 +68,7 @@ function TelaSistema() {
   );
 }
 
-function Titulo({children}:{children:React.ReactNode}) {
+function Titulo({children}:{children:ReactNode}) {
   return <h2 className="font-display text-3xl font-semibold leading-[.98] tracking-[-.045em] text-[#173727] sm:text-5xl">{children}</h2>;
 }
 
