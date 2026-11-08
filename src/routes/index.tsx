@@ -4,7 +4,8 @@ import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {
   ArrowRight, Bath, CalendarCheck, CalendarDays, ChevronDown, ClipboardList, CreditCard,
   FileText, Hotel, Menu, Package, PawPrint, Scissors, Settings, Sparkles,
-  Stethoscope, Store, UserRound, Users, X
+  Stethoscope, Store, UserRound, Users, X, Instagram, Heart, MessageCircle, Bookmark,
+  CalendarClock, CheckCircle2, Images, Megaphone
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -166,11 +167,106 @@ function PaginaInicial() {
         </div>
       </section>
 
-      <section id="oricstudio" className="bg-[#4A1826] px-5 py-20 text-[#fff9f4] sm:px-8 sm:py-24 lg:px-10">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
-          <div><img src={ORICSTUDIO_LOGO} alt="OricStúdio — Gestão de Redes Sociais para o Mercado Pet" className="h-auto w-full max-w-[310px] rounded-2xl bg-white p-3"/><p className="mt-6 text-[10px] font-bold uppercase tracking-[.2em] text-[#dbabb5]">Meu OricStúdio</p><Titulo claro>Sua comunicação também pode trabalhar por você.</Titulo><p className="mt-5 max-w-md text-[17px] leading-7 text-[#f3dce0]/80">O OricStúdio é a gestão de redes sociais feita para o mercado pet. Planeje conteúdo, conecte sua presença digital e mantenha a comunicação da clínica organizada sem sair da Oricse.</p><Link to="/planos" className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#f4dfdf] px-6 py-3.5 font-bold text-[#4A1826]">Conhecer o OricStúdio <ArrowRight size={17}/></Link></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[["Planejamento de conteúdo","Organize pautas e tenha clareza do que comunicar."],["Presença da clínica","Conecte canais e mantenha sua marca com identidade."],["Comunicação com tutores","Transforme campanhas e lembretes em relacionamento."],["Tudo dentro da Oricse","Sem perder o contexto da sua operação e do seu público."]].map(([t,d])=><article key={t} className="rounded-2xl border border-white/15 bg-white/[.07] p-6"><Sparkles size={20} className="text-[#e7b8c1]"/><h3 className="mt-10 text-lg font-bold">{t}</h3><p className="mt-2 text-sm leading-6 text-[#f5dfe2]/75">{d}</p></article>)}
+      <section id="oricstudio" aria-labelledby="oricstudio-titulo" className="relative isolate overflow-hidden bg-[#35111f] px-5 py-16 text-[#fff9f4] sm:px-8 sm:py-20 lg:px-10 lg:py-24">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-44 -top-44 h-[540px] w-[540px] rounded-full bg-[#a45670]/20 blur-[95px]"/>
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-60 left-[18%] h-[490px] w-[590px] rounded-full bg-[#8e4c44]/20 blur-[100px]"/>
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.93fr_1.07fr] xl:gap-20">
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[.06] p-2 pr-5">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5">
+                <img src={ORICSTUDIO_LOGO} alt="" className="h-full w-full object-contain"/>
+              </span>
+              <span className="block">
+                <span className="block text-sm font-extrabold tracking-tight text-white">OricStúdio</span>
+                <span className="block text-[10px] font-semibold uppercase tracking-[.14em] text-[#e5b9c7]">Marketing pensado para o mercado pet</span>
+              </span>
+            </div>
+
+            <p className="mt-9 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-[#f4bdcb]">
+              <Sparkles size={15}/> Sua marca merece aparecer
+            </p>
+            <h2 id="oricstudio-titulo" className="mt-4 max-w-[640px] font-display text-[clamp(2.65rem,4.5vw,4.75rem)] font-semibold leading-[1.07] tracking-[-.06em]">
+              Quem cuida tão bem merece <span className="text-[#f5c6a8]">ser lembrado.</span>
+            </h2>
+            <p className="mt-6 max-w-[540px] text-[16px] leading-[1.8] text-[#f2d8df]/85 sm:text-[17px]">
+              Seu próximo post não precisa nascer na correria. Planeje campanhas, organize imagens e legendas, acompanhe aprovações e crie uma comunicação com a personalidade do seu negócio.
+            </p>
+            <p className="mt-5 max-w-[510px] text-sm font-semibold leading-6 text-[#f6d0b7]">
+              Menos tempo pensando no que postar. Mais espaço para cuidar de quem importa.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <a href="/solucoes#meu-oricstudio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#ffe2ca] px-6 py-3.5 text-sm font-extrabold text-[#4A1826] shadow-[0_12px_30px_rgba(0,0,0,.15)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                Conhecer o OricStúdio <ArrowRight size={18}/>
+              </a>
+              <Link to="/oricstudio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/35 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                Já tenho acesso <ArrowRight size={16}/>
+              </Link>
+            </div>
+            <div className="mt-9 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-[#f8e2e4]/85">
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={16} className="text-[#f5c6a8]"/> Calendário editorial</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={16} className="text-[#f5c6a8]"/> Biblioteca de mídias</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={16} className="text-[#f5c6a8]"/> Revisão de conteúdo</span>
+            </div>
+          </div>
+
+          <div className="relative mx-auto flex w-full max-w-[640px] justify-start pb-4 pt-5 sm:min-h-[610px] sm:items-center sm:pl-5">
+            <div aria-hidden="true" className="absolute left-[8%] top-[15%] h-[440px] w-[440px] rounded-full border border-[#ffdfc8]/10 bg-[#7d455b]/15 blur-[2px]"/>
+            <div aria-hidden="true" className="absolute right-0 top-[8%] h-[320px] w-[320px] rounded-full border border-white/10"/>
+
+            <div className="absolute right-0 top-12 z-[1] hidden w-[265px] rotate-[5deg] rounded-[24px] border border-[#efdce2]/40 bg-[#fffaf7] p-5 text-[#4A1826] shadow-[0_30px_70px_rgba(0,0,0,.28)] sm:block">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2 text-[12px] font-extrabold"><CalendarDays size={17} className="text-[#a65f75]"/> Calendário editorial</span>
+                <span className="text-[10px] font-bold text-[#ac8791]">EXEMPLO</span>
+              </div>
+              <p className="mt-2 text-[11px] leading-4 text-[#8a6c76]">Uma semana de conteúdo organizada</p>
+              <div className="mt-4 space-y-2.5">
+                {[
+                  ["SEG", "Dica de prevenção", "Ideia salva"],
+                  ["QUA", "Cuidados com os pets", "Em revisão"],
+                  ["SEX", "Campanha de check-up", "Aprovado"],
+                ].map(([dia, nome, etapa])=>(
+                  <div key={dia} className="flex items-center gap-2.5 rounded-xl border border-[#f1e2e2] bg-white px-2.5 py-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f8eded] text-[10px] font-extrabold text-[#914963]">{dia}</span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-bold">{nome}</span><span className="block text-[10px] text-[#9c7e89]">{etapa}</span></span>
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#d99d82]"/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative z-[2] w-[min(88vw,326px)] overflow-hidden rounded-[32px] border-[7px] border-[#fff7f2] bg-white text-[#4A1826] shadow-[0_28px_85px_rgba(0,0,0,.36)] sm:ml-2 sm:-rotate-[4deg]">
+              <div className="flex items-center gap-2.5 px-4 py-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f9e5de] text-[#994865]"><PawPrint size={17}/></span>
+                <span className="min-w-0 flex-1"><span className="block text-[12px] font-extrabold">sua.clinica</span><span className="block text-[10px] text-[#94757c]">Campanha ilustrativa</span></span>
+                <Instagram size={20} className="text-[#713749]"/>
+              </div>
+              <img src="/oricstudio-campanha-exemplo.svg" alt="Exemplo ilustrativo de post veterinário com cachorro, gato e convite para um check-up" className="block aspect-[4/5] w-full object-cover" loading="lazy" decoding="async"/>
+              <div className="px-4 pb-4 pt-3">
+                <div className="flex items-center gap-3 text-[#704255]"><Heart size={19}/><MessageCircle size={19}/><Bookmark size={19} className="ml-auto"/></div>
+                <p className="mt-3 text-[12px] leading-[1.5] text-[#674350]"><strong>sua.clinica</strong> 🐾 Prevenir também é uma forma de amar. Que tal organizar o próximo check-up?</p>
+                <p className="mt-2 text-[10px] text-[#987d87]">Exemplo ilustrativo de conteúdo</p>
+              </div>
+            </div>
+
+            <div className="absolute bottom-[10%] right-0 z-[3] hidden max-w-[245px] rounded-2xl border border-white/20 bg-[#fff7ef] px-4 py-3 text-[#502231] shadow-[0_18px_40px_rgba(0,0,0,.22)] sm:block">
+              <div className="flex items-center gap-2 text-[12px] font-extrabold"><CheckCircle2 size={17} className="text-[#a25b73]"/> Pronto para revisar</div>
+              <p className="mt-1 text-[11px] leading-4 text-[#876a73]">Arte, legenda e planejamento no mesmo lugar.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mx-auto mt-10 grid max-w-7xl gap-5 border-t border-white/15 pt-7 sm:grid-cols-3 sm:gap-7">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#ffd7c0]"><CalendarClock size={19}/></span>
+            <div><h3 className="text-sm font-bold text-white">Chega de post de última hora</h3><p className="mt-1 text-xs leading-5 text-[#f2d5db]/75">Visualize suas ideias em um calendário editorial.</p></div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#ffd7c0]"><Images size={19}/></span>
+            <div><h3 className="text-sm font-bold text-white">Sua identidade em cada campanha</h3><p className="mt-1 text-xs leading-5 text-[#f2d5db]/75">Artes e legendas organizadas para a equipe.</p></div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#ffd7c0]"><Megaphone size={19}/></span>
+            <div><h3 className="text-sm font-bold text-white">Comunicação com intenção</h3><p className="mt-1 text-xs leading-5 text-[#f2d5db]/75">Campanhas de prevenção, serviços e relacionamento.</p></div>
           </div>
         </div>
       </section>
