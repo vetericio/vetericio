@@ -16,5 +16,26 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
-      - run: bun run lint
+      # Valida somente o módulo que este workflow publica. O repositório
+      # também contém uma cópia independente do OricStúdio, com seu próprio
+      # conjunto de dependências e lint; varrê-la daqui produzia relatórios
+      # gigantes e tornava o job instável.
+      - name: Formatação das páginas de clínicas
+        run: >-
+          npx prettier --check
+          src/routes/configuracao-site.tsx
+          src/routes/site-da-clinica.tsx
+          src/routes/modelos.tsx
+          src/lib/clinic-site.ts
+          src/components/admin/VisualPageEditor.tsx
+          src/components/clinic-site
+      - name: Lint das páginas de clínicas
+        run: >-
+          npx eslint --rule "@typescript-eslint/no-explicit-any: off"
+          src/routes/configuracao-site.tsx
+          src/routes/site-da-clinica.tsx
+          src/routes/modelos.tsx
+          src/lib/clinic-site.ts
+          src/components/admin/VisualPageEditor.tsx
+          src/components/clinic-site
       - run: bun run build

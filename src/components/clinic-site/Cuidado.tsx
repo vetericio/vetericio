@@ -1,2 +1,29 @@
-import type { ClinicSiteConfig } from '@/lib/clinic-site';
-export function Cuidado({config}:{config:ClinicSiteConfig}) { return <main className="min-h-screen bg-[#eff7f3] text-[#21453c]"><header className="p-5 text-center font-bold">{config.name}</header><section className="mx-auto max-w-4xl px-5 py-14 text-center"><h1 className="text-4xl font-bold">{config.slogan}</h1><p className="mx-auto mt-4 max-w-2xl">{config.description}</p><a className="mt-6 inline-block rounded-xl bg-[#287665] px-6 py-3 font-bold text-white" href={`https://wa.me/${config.whatsapp.replace(/\D/g,'')}`}>Falar com a clínica</a></section><section className="mx-auto max-w-5xl px-5 pb-16"><h2 className="text-2xl font-bold">Como podemos cuidar</h2><div className="mt-5 grid gap-4 sm:grid-cols-3">{config.services.map(s=><div key={s} className="rounded-2xl bg-white p-5 shadow-sm"><b>{s}</b><p className="mt-2 text-sm">Explicamos cada etapa com clareza e carinho.</p></div>)}</div></section></main> }
+import type { ClinicSiteConfig } from "@/lib/clinic-site";
+export function Cuidado({ config }: { config: ClinicSiteConfig }) {
+  return (
+    <main className="min-h-screen bg-[#eff7f3] text-[#21453c]">
+      <header className="p-5 text-center font-bold">{config.name}</header>
+      <section className="mx-auto max-w-4xl px-5 py-14 text-center">
+        <h1 className="text-4xl font-bold">{config.slogan}</h1>
+        <p className="mx-auto mt-4 max-w-2xl">{config.description}</p>
+        <a
+          className="mt-6 inline-block rounded-xl bg-[#287665] px-6 py-3 font-bold text-white"
+          href={`https://wa.me/${config.whatsapp.replace(/\D/g, "")}`}
+        >
+          Falar com a clínica
+        </a>
+      </section>
+      <section className="mx-auto max-w-5xl px-5 pb-16">
+        <h2 className="text-2xl font-bold">Como podemos cuidar</h2>
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          {config.services.map((s) => (
+            <div key={s} className="rounded-2xl bg-white p-5 shadow-sm">
+              <b>{s}</b>
+              <p className="mt-2 text-sm">Explicamos cada etapa com clareza e carinho.</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}

@@ -1,26 +1,59 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { Link } from "@tanstack/react-router";
 import {
-  AlignCenter, AlignLeft, AlignRight, ArrowLeft, BringToFront, Copy, Eye, EyeOff,
-  ImagePlus, Layers3, Monitor, Move, Plus, Redo2, RotateCcw, Save, SendToBack,
-  Smartphone, Trash2, Type, Undo2, UploadCloud,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  ArrowLeft,
+  BringToFront,
+  Copy,
+  Eye,
+  EyeOff,
+  ImagePlus,
+  Layers3,
+  Monitor,
+  Move,
+  Plus,
+  Redo2,
+  RotateCcw,
+  Save,
+  SendToBack,
+  Smartphone,
+  Trash2,
+  Type,
+  Undo2,
+  UploadCloud,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ROTAS_CATALOGO } from "@/lib/admin-page-routes";
 import {
-  applyVisualLayout, cloneVisual, editableTarget, EMPTY_DOCUMENT, ensurePage, validImageSource,
-  visualLabel, visualSelector, type VisualAdded, type VisualDevice, type VisualDocument,
-  type VisualLayout, type VisualPatch, type VisualStyle, VISUAL_DRAFT_KEY, VISUAL_NODE_ATTR,
-  VISUAL_PUBLISHED_KEY, VISUAL_VERSIONS_KEY,
+  applyVisualLayout,
+  cloneVisual,
+  editableTarget,
+  EMPTY_DOCUMENT,
+  ensurePage,
+  validImageSource,
+  visualLabel,
+  visualSelector,
+  type VisualAdded,
+  type VisualDevice,
+  type VisualDocument,
+  type VisualLayout,
+  type VisualPatch,
+  type VisualStyle,
+  VISUAL_DRAFT_KEY,
+  VISUAL_NODE_ATTR,
+  VISUAL_PUBLISHED_KEY,
+  VISUAL_VERSIONS_KEY,
 } from "@/lib/visual-editor";
 
 type Version = { id: string; publishedAt: string; pages: VisualDocument["pages"] };
 type SelectedItem = { id: string; kind: "patch" | "added" };
 
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-const deviceWidth = (device: VisualDevice) => device === "desktop" ? 1440 : 390;
+const deviceWidth = (device: VisualDevice) => (device === "desktop" ? 1440 : 390);
 
 function number(value: string, fallback = 0) {
   const parsed = Number(value);
@@ -32,15 +65,21 @@ export function VisualPageEditor() {
   const [route, setRoute] = useState("/");
   useEffect(() => {
     const pagina = new URLSearchParams(window.location.search).get("pagina") || "/";
-    if (ROTAS_CATALOGO.some(r => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas"))
+    if (
+      ROTAS_CATALOGO.some(
+        (r) => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
+      )
+    )
       setRoute(pagina);
   }, []);
   const [buscaPagina, setBuscaPagina] = useState("");
-  const gruposPaginas = Array.from(new Set(ROTAS_CATALOGO.map(r => r.grupo)));
-  const paginasFiltradas = ROTAS_CATALOGO.filter(r =>
-    !buscaPagina.trim() ||
-    (r.nome + " " + r.original + " " + r.grupo).toLocaleLowerCase("pt-BR")
-      .includes(buscaPagina.trim().toLocaleLowerCase("pt-BR"))
+  const gruposPaginas = Array.from(new Set(ROTAS_CATALOGO.map((r) => r.grupo)));
+  const paginasFiltradas = ROTAS_CATALOGO.filter(
+    (r) =>
+      !buscaPagina.trim() ||
+      (r.nome + " " + r.original + " " + r.grupo)
+        .toLocaleLowerCase("pt-BR")
+        .includes(buscaPagina.trim().toLocaleLowerCase("pt-BR")),
   );
   const [zoom, setZoom] = useState(70);
   const [documento, setDocumento] = useState<VisualDocument>(EMPTY_DOCUMENT());
@@ -59,134 +98,255 @@ export function VisualPageEditor() {
   selectedRef.current = selected;
   documentRef.current = documento;
 
-  const layout = useMemo(() => ensurePage(cloneVisual(documento), route)[device], [documento, route, device]);
+  const layout = useMemo(
+    () => ensurePage(cloneVisual(documento), route)[device],
+    [documento, route, device],
+  );
   const first = useMemo(() => {
     const item = selected[0];
     if (!item) return null;
-    return item.kind === "patch" ? layout.patches.find((x) => x.id === item.id) || null : layout.added.find((x) => x.id === item.id) || null;
+    return item.kind === "patch"
+      ? layout.patches.find((x) => x.id === item.id) || null
+      : layout.added.find((x) => x.id === item.id) || null;
   }, [selected, layout]);
 
-  useEffect(() => { void (async () => {
-    setLoading(true);
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user?.id) {
-      window.location.replace("/login");
-      return;
-    }
-    const { data: access } = await (supabase as any).from("app_users").select("role").eq("user_id", auth.user.id).maybeSingle();
-    if (access?.role !== "admin") {
-      toast.error("O editor visual é exclusivo do administrador da plataforma.");
-      window.location.replace("/inicio");
-      return;
-    }
-    const [draft, published, history] = await Promise.all([
-      (supabase as any).from("oricse_config").select("valor").eq("chave", VISUAL_DRAFT_KEY).maybeSingle(),
-      (supabase as any).from("oricse_config").select("valor").eq("chave", VISUAL_PUBLISHED_KEY).maybeSingle(),
-      (supabase as any).from("oricse_config").select("valor").eq("chave", VISUAL_VERSIONS_KEY).maybeSingle(),
-    ]);
-    setDocumento(draft.data?.valor || published.data?.valor || EMPTY_DOCUMENT());
-    setLastPublishedAt(published.data?.valor?.updatedAt || "");
-    setVersions(Array.isArray(history.data?.valor) ? history.data.valor : []);
-    setLoading(false);
-  })(); }, []);
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.id) {
+        window.location.replace("/login");
+        return;
+      }
+      const { data: access } = await (supabase as any)
+        .from("app_users")
+        .select("role")
+        .eq("user_id", auth.user.id)
+        .maybeSingle();
+      if (access?.role !== "admin") {
+        toast.error("O editor visual é exclusivo do administrador da plataforma.");
+        window.location.replace("/inicio");
+        return;
+      }
+      const [draft, published, history] = await Promise.all([
+        (supabase as any)
+          .from("oricse_config")
+          .select("valor")
+          .eq("chave", VISUAL_DRAFT_KEY)
+          .maybeSingle(),
+        (supabase as any)
+          .from("oricse_config")
+          .select("valor")
+          .eq("chave", VISUAL_PUBLISHED_KEY)
+          .maybeSingle(),
+        (supabase as any)
+          .from("oricse_config")
+          .select("valor")
+          .eq("chave", VISUAL_VERSIONS_KEY)
+          .maybeSingle(),
+      ]);
+      setDocumento(draft.data?.valor || published.data?.valor || EMPTY_DOCUMENT());
+      setLastPublishedAt(published.data?.valor?.updatedAt || "");
+      setVersions(Array.isArray(history.data?.valor) ? history.data.valor : []);
+      setLoading(false);
+    })();
+  }, []);
 
   const checkpoint = useCallback(() => {
     setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
     setRedo([]);
   }, []);
 
-  const updateLayout = useCallback((mutate: (layout: VisualLayout) => void, remember = true) => {
-    if (remember) checkpoint();
-    setDocumento((current) => {
-      const next = cloneVisual(current);
-      mutate(ensurePage(next, route)[device]);
-      next.updatedAt = new Date().toISOString();
-      return next;
-    });
-  }, [checkpoint, route, device]);
+  const updateLayout = useCallback(
+    (mutate: (layout: VisualLayout) => void, remember = true) => {
+      if (remember) checkpoint();
+      setDocumento((current) => {
+        const next = cloneVisual(current);
+        mutate(ensurePage(next, route)[device]);
+        next.updatedAt = new Date().toISOString();
+        return next;
+      });
+    },
+    [checkpoint, route, device],
+  );
 
   function undoNow() {
-    const previous = undo.at(-1); if (!previous) return;
-    setRedo((items) => [...items, cloneVisual(documento)]); setDocumento(previous); setUndo((items) => items.slice(0, -1)); setSelected([]);
+    const previous = undo.at(-1);
+    if (!previous) return;
+    setRedo((items) => [...items, cloneVisual(documento)]);
+    setDocumento(previous);
+    setUndo((items) => items.slice(0, -1));
+    setSelected([]);
   }
   function redoNow() {
-    const next = redo.at(-1); if (!next) return;
-    setUndo((items) => [...items, cloneVisual(documento)]); setDocumento(next); setRedo((items) => items.slice(0, -1)); setSelected([]);
+    const next = redo.at(-1);
+    if (!next) return;
+    setUndo((items) => [...items, cloneVisual(documento)]);
+    setDocumento(next);
+    setRedo((items) => items.slice(0, -1));
+    setSelected([]);
   }
 
   const selectedElements = useCallback(() => {
-    const doc = iframeRef.current?.contentDocument; if (!doc) return [] as HTMLElement[];
-    return selectedRef.current.map((item) => {
-      if (item.kind === "added") return doc.querySelector(`[${VISUAL_NODE_ATTR}="${item.id}"]`) as HTMLElement | null;
-      const patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((x) => x.id === item.id);
-      try { return patch ? doc.querySelector(patch.selector) as HTMLElement | null : null; } catch { return null; }
-    }).filter(Boolean) as HTMLElement[];
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return [] as HTMLElement[];
+    return selectedRef.current
+      .map((item) => {
+        if (item.kind === "added")
+          return doc.querySelector(`[${VISUAL_NODE_ATTR}="${item.id}"]`) as HTMLElement | null;
+        const patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
+          (x) => x.id === item.id,
+        );
+        try {
+          return patch ? (doc.querySelector(patch.selector) as HTMLElement | null) : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as HTMLElement[];
   }, [route, device]);
 
   const drawSelection = useCallback(() => {
-    const doc = iframeRef.current?.contentDocument; if (!doc) return;
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
     doc.querySelectorAll("[data-oricse-editor-overlay]").forEach((x) => x.remove());
     const elements = selectedElements();
     for (const element of elements) {
       const rect = element.getBoundingClientRect();
       const overlay = doc.createElement("div");
       overlay.dataset["oricseEditorOverlay"] = "1";
-      Object.assign(overlay.style, { position:"fixed", left:`${rect.left}px`, top:`${rect.top}px`, width:`${rect.width}px`, height:`${rect.height}px`, border:"2px solid #6F293B", boxSizing:"border-box", pointerEvents:"none", zIndex:"2147483646" });
+      Object.assign(overlay.style, {
+        position: "fixed",
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        border: "2px solid #6F293B",
+        boxSizing: "border-box",
+        pointerEvents: "none",
+        zIndex: "2147483646",
+      });
       doc.body.appendChild(overlay);
     }
     if (elements.length) {
       const rect = elements[0].getBoundingClientRect();
       type ResizeMode = "horizontal" | "vertical" | "proportional";
       const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
-        event.preventDefault(); event.stopPropagation(); checkpoint();
-        const sx=event.clientX, sy=event.clientY;
+        event.preventDefault();
+        event.stopPropagation();
+        checkpoint();
+        const sx = event.clientX,
+          sy = event.clientY;
         const starts = selectedRef.current.map((item) => {
           const target = elements[selectedRef.current.indexOf(item)];
           const box = target?.getBoundingClientRect();
-          const page=ensurePage(cloneVisual(documentRef.current),route)[device];
-          const layer=item.kind==="patch"?page.patches.find(x=>x.id===item.id):page.added.find(x=>x.id===item.id);
-          return { item, width:box?.width || 100, height:box?.height || 40, x:layer?.style.x||0 };
+          const page = ensurePage(cloneVisual(documentRef.current), route)[device];
+          const layer =
+            item.kind === "patch"
+              ? page.patches.find((x) => x.id === item.id)
+              : page.added.find((x) => x.id === item.id);
+          return {
+            item,
+            width: box?.width || 100,
+            height: box?.height || 40,
+            x: layer?.style.x || 0,
+          };
         });
         const move = (ev: PointerEvent) => {
-          const dx=(ev.clientX-sx)/Math.max(zoom/100,.1), dy=(ev.clientY-sy)/Math.max(zoom/100,.1);
-          updateLayout((value) => starts.forEach(({item,width,height,x}) => {
-            const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);
-            if(!target)return;
-            if(mode==="horizontal"){
-              const nextWidth=Math.max(10,Math.round(width-dx));
-              target.style.width=nextWidth;
-              target.style.x=Math.round(x+(width-nextWidth));
-            }else if(mode==="vertical"){
-              target.style.height=Math.max(10,Math.round(height+dy));
-            }else{
-              const relativeX=dx/Math.max(width,1),relativeY=dy/Math.max(height,1);
-              const scale=Math.max(0.05,1+(Math.abs(relativeX)>=Math.abs(relativeY)?relativeX:relativeY));
-              target.style.width=Math.max(10,Math.round(width*scale));
-              target.style.height=Math.max(10,Math.round(height*scale));
-            }
-          }), false);
+          const dx = (ev.clientX - sx) / Math.max(zoom / 100, 0.1),
+            dy = (ev.clientY - sy) / Math.max(zoom / 100, 0.1);
+          updateLayout(
+            (value) =>
+              starts.forEach(({ item, width, height, x }) => {
+                const target =
+                  item.kind === "patch"
+                    ? value.patches.find((x) => x.id === item.id)
+                    : value.added.find((x) => x.id === item.id);
+                if (!target) return;
+                if (mode === "horizontal") {
+                  const nextWidth = Math.max(10, Math.round(width - dx));
+                  target.style.width = nextWidth;
+                  target.style.x = Math.round(x + (width - nextWidth));
+                } else if (mode === "vertical") {
+                  target.style.height = Math.max(10, Math.round(height + dy));
+                } else {
+                  const relativeX = dx / Math.max(width, 1),
+                    relativeY = dy / Math.max(height, 1);
+                  const scale = Math.max(
+                    0.05,
+                    1 + (Math.abs(relativeX) >= Math.abs(relativeY) ? relativeX : relativeY),
+                  );
+                  target.style.width = Math.max(10, Math.round(width * scale));
+                  target.style.height = Math.max(10, Math.round(height * scale));
+                }
+              }),
+            false,
+          );
         };
-        const stop=()=>{doc.defaultView?.removeEventListener("pointermove",move);doc.defaultView?.removeEventListener("pointerup",stop);};
-        doc.defaultView?.addEventListener("pointermove",move); doc.defaultView?.addEventListener("pointerup",stop);
+        const stop = () => {
+          doc.defaultView?.removeEventListener("pointermove", move);
+          doc.defaultView?.removeEventListener("pointerup", stop);
+        };
+        doc.defaultView?.addEventListener("pointermove", move);
+        doc.defaultView?.addEventListener("pointerup", stop);
       };
-      const createHandle=(mode:ResizeMode,label:string,style:Partial<CSSStyleDeclaration>)=>{
-        const handle=doc.createElement("button");
-        handle.type="button";
-        handle.setAttribute("aria-label",label);
-        handle.title=label;
-        handle.dataset["oricseEditorOverlay"]="1";
-        Object.assign(handle.style,{position:"fixed",border:"2px solid white",background:"#6F293B",padding:"0",pointerEvents:"auto",touchAction:"none",zIndex:"2147483647",boxShadow:"0 1px 4px rgba(0,0,0,.28)"},style);
-        handle.addEventListener("pointerdown",beginResize(mode));
+      const createHandle = (
+        mode: ResizeMode,
+        label: string,
+        style: Partial<CSSStyleDeclaration>,
+      ) => {
+        const handle = doc.createElement("button");
+        handle.type = "button";
+        handle.setAttribute("aria-label", label);
+        handle.title = label;
+        handle.dataset["oricseEditorOverlay"] = "1";
+        Object.assign(
+          handle.style,
+          {
+            position: "fixed",
+            border: "2px solid white",
+            background: "#6F293B",
+            padding: "0",
+            pointerEvents: "auto",
+            touchAction: "none",
+            zIndex: "2147483647",
+            boxShadow: "0 1px 4px rgba(0,0,0,.28)",
+          },
+          style,
+        );
+        handle.addEventListener("pointerdown", beginResize(mode));
         doc.body.appendChild(handle);
       };
-      createHandle("horizontal","Alterar somente a largura",{left:`${rect.left-5}px`,top:`${rect.top+rect.height/2-18}px`,width:"10px",height:"36px",borderRadius:"6px",cursor:"ew-resize"});
-      createHandle("vertical","Alterar somente a altura",{left:`${rect.left+rect.width/2-18}px`,top:`${rect.bottom-5}px`,width:"36px",height:"10px",borderRadius:"6px",cursor:"ns-resize"});
-      createHandle("proportional","Redimensionar mantendo a proporção",{left:`${rect.right-9}px`,top:`${rect.bottom-9}px`,width:"20px",height:"20px",borderRadius:"50%",cursor:"nwse-resize"});
+      createHandle("horizontal", "Alterar somente a largura", {
+        left: `${rect.left - 5}px`,
+        top: `${rect.top + rect.height / 2 - 18}px`,
+        width: "10px",
+        height: "36px",
+        borderRadius: "6px",
+        cursor: "ew-resize",
+      });
+      createHandle("vertical", "Alterar somente a altura", {
+        left: `${rect.left + rect.width / 2 - 18}px`,
+        top: `${rect.bottom - 5}px`,
+        width: "36px",
+        height: "10px",
+        borderRadius: "6px",
+        cursor: "ns-resize",
+      });
+      createHandle("proportional", "Redimensionar mantendo a proporção", {
+        left: `${rect.right - 9}px`,
+        top: `${rect.bottom - 9}px`,
+        width: "20px",
+        height: "20px",
+        borderRadius: "50%",
+        cursor: "nwse-resize",
+      });
     }
   }, [checkpoint, selectedElements, updateLayout, zoom, route, device]);
 
   const applyToFrame = useCallback(() => {
-    const doc = iframeRef.current?.contentDocument; if (!doc) return;
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
     applyVisualLayout(doc, layout);
     doc.documentElement.style.setProperty("--oricse-editor-cursor", "move");
     doc.querySelectorAll("a,button,input,textarea,select").forEach((element) => {
@@ -195,238 +355,853 @@ export function VisualPageEditor() {
     drawSelection();
   }, [layout, drawSelection]);
 
-  useEffect(() => { const id = requestAnimationFrame(applyToFrame); return () => cancelAnimationFrame(id); }, [applyToFrame]);
+  useEffect(() => {
+    const id = requestAnimationFrame(applyToFrame);
+    return () => cancelAnimationFrame(id);
+  }, [applyToFrame]);
 
   const bindFrame = useCallback(() => {
-    const doc = iframeRef.current?.contentDocument; const win = iframeRef.current?.contentWindow;
+    const doc = iframeRef.current?.contentDocument;
+    const win = iframeRef.current?.contentWindow;
     if (!doc || !win) return;
     applyToFrame();
-    let drag: null | { sx:number; sy:number; starts: Array<{item:SelectedItem;x:number;y:number}> } = null;
+    let drag: null | {
+      sx: number;
+      sy: number;
+      starts: Array<{ item: SelectedItem; x: number; y: number }>;
+    } = null;
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
-      event.preventDefault(); event.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
       const element = editableTarget(raw);
       const addedId = element.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
       let item: SelectedItem;
-      if (addedId) item = { id:addedId, kind:"added" };
+      if (addedId) item = { id: addedId, kind: "added" };
       else {
         const selector = visualSelector(element);
-        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((x) => x.selector === selector);
+        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
+          (x) => x.selector === selector,
+        );
         if (!patch) {
           const rect = element.getBoundingClientRect();
-          patch = { id:uid("element"), selector, label:visualLabel(element), style:{baseWidth:Math.max(1,Math.round(rect.width)),baseHeight:Math.max(1,Math.round(rect.height)),width:Math.max(1,Math.round(rect.width)),height:Math.max(1,Math.round(rect.height))} };
+          patch = {
+            id: uid("element"),
+            selector,
+            label: visualLabel(element),
+            style: {
+              baseWidth: Math.max(1, Math.round(rect.width)),
+              baseHeight: Math.max(1, Math.round(rect.height)),
+              width: Math.max(1, Math.round(rect.width)),
+              height: Math.max(1, Math.round(rect.height)),
+            },
+          };
           updateLayout((value) => value.patches.push(patch!), true);
         }
-        item = { id:patch.id, kind:"patch" };
+        item = { id: patch.id, kind: "patch" };
       }
       const multi = event.shiftKey || event.ctrlKey || event.metaKey;
       const already = selectedRef.current.some((x) => x.id === item.id && x.kind === item.kind);
       const next = multi
-        ? (already ? selectedRef.current.filter((x) => x.id !== item.id || x.kind !== item.kind) : [...selectedRef.current,item])
-        : (already && selectedRef.current.length > 1 ? selectedRef.current : [item]);
-      setSelected(next); selectedRef.current=next;
+        ? already
+          ? selectedRef.current.filter((x) => x.id !== item.id || x.kind !== item.kind)
+          : [...selectedRef.current, item]
+        : already && selectedRef.current.length > 1
+          ? selectedRef.current
+          : [item];
+      setSelected(next);
+      selectedRef.current = next;
       checkpoint();
       const page = ensurePage(cloneVisual(documentRef.current), route)[device];
       const starts = next.map((entry) => {
-        const target=entry.kind==="patch"?page.patches.find(x=>x.id===entry.id):page.added.find(x=>x.id===entry.id);
-        return {item:entry,x:target?.style.x||0,y:target?.style.y||0};
+        const target =
+          entry.kind === "patch"
+            ? page.patches.find((x) => x.id === entry.id)
+            : page.added.find((x) => x.id === entry.id);
+        return { item: entry, x: target?.style.x || 0, y: target?.style.y || 0 };
       });
-      drag={sx:event.clientX,sy:event.clientY,starts};
+      drag = { sx: event.clientX, sy: event.clientY, starts };
     };
     const move = (event: PointerEvent) => {
-      if(!drag) return;
-      const dx=(event.clientX-drag.sx)/Math.max(zoom/100,.1),dy=(event.clientY-drag.sy)/Math.max(zoom/100,.1);
-      updateLayout((value)=>drag!.starts.forEach(({item,x,y})=>{
-        const target=item.kind==="patch"?value.patches.find(p=>p.id===item.id):value.added.find(p=>p.id===item.id);
-        if(target){target.style.x=Math.round(x+dx);target.style.y=Math.round(y+dy);}
-      }),false);
+      if (!drag) return;
+      const dx = (event.clientX - drag.sx) / Math.max(zoom / 100, 0.1),
+        dy = (event.clientY - drag.sy) / Math.max(zoom / 100, 0.1);
+      updateLayout(
+        (value) =>
+          drag!.starts.forEach(({ item, x, y }) => {
+            const target =
+              item.kind === "patch"
+                ? value.patches.find((p) => p.id === item.id)
+                : value.added.find((p) => p.id === item.id);
+            if (target) {
+              target.style.x = Math.round(x + dx);
+              target.style.y = Math.round(y + dy);
+            }
+          }),
+        false,
+      );
     };
-    const stop=()=>{drag=null;};
-    const block = (event: Event) => { if ((event.target as Element)?.closest("a,button,form")) { event.preventDefault(); event.stopPropagation(); } };
-    doc.addEventListener("pointerdown",pointerDown,true); win.addEventListener("pointermove",move,true); win.addEventListener("pointerup",stop,true); doc.addEventListener("click",block,true); doc.addEventListener("submit",block,true);
+    const stop = () => {
+      drag = null;
+    };
+    const block = (event: Event) => {
+      if ((event.target as Element)?.closest("a,button,form")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    doc.addEventListener("pointerdown", pointerDown, true);
+    win.addEventListener("pointermove", move, true);
+    win.addEventListener("pointerup", stop, true);
+    doc.addEventListener("click", block, true);
+    doc.addEventListener("submit", block, true);
   }, [applyToFrame, checkpoint, device, route, updateLayout, zoom]);
 
   function patchSelected(style: Partial<VisualStyle>, text?: string) {
     if (!selected.length) return;
-    updateLayout((value) => selected.forEach((item) => {
-      const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);
-      if(target){target.style={...target.style,...style};if(text!==undefined)target.text=text;}
-    }));
+    updateLayout((value) =>
+      selected.forEach((item) => {
+        const target =
+          item.kind === "patch"
+            ? value.patches.find((x) => x.id === item.id)
+            : value.added.find((x) => x.id === item.id);
+        if (target) {
+          target.style = { ...target.style, ...style };
+          if (text !== undefined) target.text = text;
+        }
+      }),
+    );
   }
 
   function addText() {
-    const item: VisualAdded={id:uid("text"),kind:"text",text:"Novo texto",style:{x:40,y:80,width:320,height:70,fontSize:30,fontWeight:700,color:"#4A1826",zIndex:20}};
-    updateLayout((value)=>value.added.push(item));setSelected([{id:item.id,kind:"added"}]);
+    const item: VisualAdded = {
+      id: uid("text"),
+      kind: "text",
+      text: "Novo texto",
+      style: {
+        x: 40,
+        y: 80,
+        width: 320,
+        height: 70,
+        fontSize: 30,
+        fontWeight: 700,
+        color: "#4A1826",
+        zIndex: 20,
+      },
+    };
+    updateLayout((value) => value.added.push(item));
+    setSelected([{ id: item.id, kind: "added" }]);
   }
   function addImage() {
-    const src=window.prompt("Cole o endereço da imagem (URL HTTPS, caminho do site ou data:image):","");
-    if(!src)return;if(!validImageSource(src))return toast.error("Use uma URL de imagem válida.");
-    const item:VisualAdded={id:uid("image"),kind:"image",src,text:"Imagem",style:{x:40,y:80,width:260,height:200,zIndex:20}};
-    updateLayout((value)=>value.added.push(item));setSelected([{id:item.id,kind:"added"}]);
+    const src = window.prompt(
+      "Cole o endereço da imagem (URL HTTPS, caminho do site ou data:image):",
+      "",
+    );
+    if (!src) return;
+    if (!validImageSource(src)) return toast.error("Use uma URL de imagem válida.");
+    const item: VisualAdded = {
+      id: uid("image"),
+      kind: "image",
+      src,
+      text: "Imagem",
+      style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
+    };
+    updateLayout((value) => value.added.push(item));
+    setSelected([{ id: item.id, kind: "added" }]);
   }
   function duplicate() {
-    if(!selected.length)return;
-    const newSelection:SelectedItem[]=[];
-    updateLayout((value)=>selected.forEach((item)=>{
-      if(item.kind==="added"){const source=value.added.find(x=>x.id===item.id);if(source){const copy={...cloneVisual(source),id:uid(source.kind),style:{...source.style,x:(source.style.x||0)+20,y:(source.style.y||0)+20}};value.added.push(copy);newSelection.push({id:copy.id,kind:"added"});}}
-      else {const source=value.patches.find(x=>x.id===item.id);if(source){const copy={...cloneVisual(source),id:uid("copy"),selector:source.selector,style:{...source.style,x:(source.style.x||0)+20,y:(source.style.y||0)+20}};value.patches.push(copy);newSelection.push({id:copy.id,kind:"patch"});}}
-    }));setSelected(newSelection);
+    if (!selected.length) return;
+    const newSelection: SelectedItem[] = [];
+    updateLayout((value) =>
+      selected.forEach((item) => {
+        if (item.kind === "added") {
+          const source = value.added.find((x) => x.id === item.id);
+          if (source) {
+            const copy = {
+              ...cloneVisual(source),
+              id: uid(source.kind),
+              style: {
+                ...source.style,
+                x: (source.style.x || 0) + 20,
+                y: (source.style.y || 0) + 20,
+              },
+            };
+            value.added.push(copy);
+            newSelection.push({ id: copy.id, kind: "added" });
+          }
+        } else {
+          const source = value.patches.find((x) => x.id === item.id);
+          if (source) {
+            const copy = {
+              ...cloneVisual(source),
+              id: uid("copy"),
+              selector: source.selector,
+              style: {
+                ...source.style,
+                x: (source.style.x || 0) + 20,
+                y: (source.style.y || 0) + 20,
+              },
+            };
+            value.patches.push(copy);
+            newSelection.push({ id: copy.id, kind: "patch" });
+          }
+        }
+      }),
+    );
+    setSelected(newSelection);
   }
   function hideOrDelete() {
-    if(!selected.length)return;
-    updateLayout((value)=>selected.forEach((item)=>{if(item.kind==="added")value.added=value.added.filter(x=>x.id!==item.id);else{const patch=value.patches.find(x=>x.id===item.id);if(patch)patch.hidden=true;}}));setSelected([]);
+    if (!selected.length) return;
+    updateLayout((value) =>
+      selected.forEach((item) => {
+        if (item.kind === "added") value.added = value.added.filter((x) => x.id !== item.id);
+        else {
+          const patch = value.patches.find((x) => x.id === item.id);
+          if (patch) patch.hidden = true;
+        }
+      }),
+    );
+    setSelected([]);
   }
-  function toggleVisibility(item:SelectedItem) {
-    updateLayout((value)=>{const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);if(!target)return;if(item.kind==="patch")(target as VisualPatch).hidden=!(target as VisualPatch).hidden;else target.style.opacity=target.style.opacity===0?1:0;});
+  function toggleVisibility(item: SelectedItem) {
+    updateLayout((value) => {
+      const target =
+        item.kind === "patch"
+          ? value.patches.find((x) => x.id === item.id)
+          : value.added.find((x) => x.id === item.id);
+      if (!target) return;
+      if (item.kind === "patch") (target as VisualPatch).hidden = !(target as VisualPatch).hidden;
+      else target.style.opacity = target.style.opacity === 0 ? 1 : 0;
+    });
   }
-  function moveLayer(front:boolean) {
-    updateLayout((value)=>{
-      const all=[...value.patches,...value.added];
-      const levels=all.map(item=>item.style.zIndex||0);
-      const targetLevel=front?Math.max(0,...levels)+1:Math.min(0,...levels)-1;
-      selected.forEach((item)=>{
-        const target=item.kind==="patch"?value.patches.find(x=>x.id===item.id):value.added.find(x=>x.id===item.id);
-        if(target)target.style.zIndex=targetLevel;
+  function moveLayer(front: boolean) {
+    updateLayout((value) => {
+      const all = [...value.patches, ...value.added];
+      const levels = all.map((item) => item.style.zIndex || 0);
+      const targetLevel = front ? Math.max(0, ...levels) + 1 : Math.min(0, ...levels) - 1;
+      selected.forEach((item) => {
+        const target =
+          item.kind === "patch"
+            ? value.patches.find((x) => x.id === item.id)
+            : value.added.find((x) => x.id === item.id);
+        if (target) target.style.zIndex = targetLevel;
       });
     });
   }
-  function resetPage() { if(!confirm("Restaurar esta página neste tamanho?"))return;updateLayout((value)=>{value.patches=[];value.added=[];});setSelected([]); }
+  function resetPage() {
+    if (!confirm("Restaurar esta página neste tamanho?")) return;
+    updateLayout((value) => {
+      value.patches = [];
+      value.added = [];
+    });
+    setSelected([]);
+  }
 
   async function saveDraft() {
-    setSaving(true);const payload={...documento,updatedAt:new Date().toISOString()};
-    const {error}=await (supabase as any).from("oricse_config").upsert({chave:VISUAL_DRAFT_KEY,valor:payload,updated_at:new Date().toISOString()});
-    setSaving(false);if(error)return toast.error(error.message);setDocumento(payload);toast.success("Rascunho salvo.");
+    setSaving(true);
+    const payload = { ...documento, updatedAt: new Date().toISOString() };
+    const { error } = await (supabase as any)
+      .from("oricse_config")
+      .upsert({ chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: new Date().toISOString() });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setDocumento(payload);
+    toast.success("Rascunho salvo.");
   }
   async function publish() {
     setSaving(true);
-    const payload={...documento,updatedAt:new Date().toISOString()};
-    const history:Version[]=[{id:uid("version"),publishedAt:payload.updatedAt,pages:cloneVisual(payload.pages)},...versions].slice(0,12);
+    const payload = { ...documento, updatedAt: new Date().toISOString() };
+    const history: Version[] = [
+      { id: uid("version"), publishedAt: payload.updatedAt, pages: cloneVisual(payload.pages) },
+      ...versions,
+    ].slice(0, 12);
     try {
-      const [published,draft,savedHistory]=await Promise.all([
-        (supabase as any).from("oricse_config").upsert(
-          {chave:VISUAL_PUBLISHED_KEY,valor:payload,updated_at:payload.updatedAt},
-          {onConflict:"chave"},
-        ),
-        (supabase as any).from("oricse_config").upsert(
-          {chave:VISUAL_DRAFT_KEY,valor:payload,updated_at:payload.updatedAt},
-          {onConflict:"chave"},
-        ),
-        (supabase as any).from("oricse_config").upsert(
-          {chave:VISUAL_VERSIONS_KEY,valor:history,updated_at:payload.updatedAt},
-          {onConflict:"chave"},
-        ),
+      const [published, draft, savedHistory] = await Promise.all([
+        (supabase as any)
+          .from("oricse_config")
+          .upsert(
+            { chave: VISUAL_PUBLISHED_KEY, valor: payload, updated_at: payload.updatedAt },
+            { onConflict: "chave" },
+          ),
+        (supabase as any)
+          .from("oricse_config")
+          .upsert(
+            { chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: payload.updatedAt },
+            { onConflict: "chave" },
+          ),
+        (supabase as any)
+          .from("oricse_config")
+          .upsert(
+            { chave: VISUAL_VERSIONS_KEY, valor: history, updated_at: payload.updatedAt },
+            { onConflict: "chave" },
+          ),
       ]);
-      const writeError=published.error||draft.error||savedHistory.error;
-      if(writeError) throw writeError;
+      const writeError = published.error || draft.error || savedHistory.error;
+      if (writeError) throw writeError;
 
-      const verification=await (supabase as any)
+      const verification = await (supabase as any)
         .from("oricse_config")
         .select("valor")
-        .eq("chave",VISUAL_PUBLISHED_KEY)
+        .eq("chave", VISUAL_PUBLISHED_KEY)
         .maybeSingle();
-      if(verification.error) throw verification.error;
-      if(verification.data?.valor?.updatedAt!==payload.updatedAt) {
+      if (verification.error) throw verification.error;
+      if (verification.data?.valor?.updatedAt !== payload.updatedAt) {
         throw new Error("A publicação não foi confirmada pelo banco. Tente novamente.");
       }
 
       setDocumento(payload);
       setVersions(history);
       setLastPublishedAt(payload.updatedAt);
-      oricseStorage.setItem("oricse:visual-published-at",payload.updatedAt);
-      if(typeof BroadcastChannel!=="undefined"){
-        const channel=new BroadcastChannel("oricse-visual-editor");
-        channel.postMessage({type:"published",updatedAt:payload.updatedAt});
+      oricseStorage.setItem("oricse:visual-published-at", payload.updatedAt);
+      if (typeof BroadcastChannel !== "undefined") {
+        const channel = new BroadcastChannel("oricse-visual-editor");
+        channel.postMessage({ type: "published", updatedAt: payload.updatedAt });
         channel.close();
       }
       window.dispatchEvent(new Event("oricse:visual-published"));
       toast.success("Publicado e confirmado no site real.");
-    } catch(error) {
-      toast.error(error instanceof Error?error.message:"Não foi possível publicar.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível publicar.");
     } finally {
       setSaving(false);
     }
   }
-  function restore(version:Version){checkpoint();setDocumento({version:1,updatedAt:new Date().toISOString(),pages:cloneVisual(version.pages)});setSelected([]);toast.success("Versão carregada como rascunho. Revise e publique.");}
+  function restore(version: Version) {
+    checkpoint();
+    setDocumento({
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      pages: cloneVisual(version.pages),
+    });
+    setSelected([]);
+    toast.success("Versão carregada como rascunho. Revise e publique.");
+  }
 
-  useEffect(()=>{const onKey=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="z"){event.preventDefault();event.shiftKey?redoNow():undoNow();}else if(event.key==="Delete"&&selectedRef.current.length){event.preventDefault();hideOrDelete();}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);});
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoNow();
+        } else {
+          undoNow();
+        }
+      } else if (event.key === "Delete" && selectedRef.current.length) {
+        event.preventDefault();
+        hideOrDelete();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
-  if(loading)return <main className="flex min-h-screen items-center justify-center bg-[#ece8e3]">Carregando editor visual…</main>;
-  const frameWidth=deviceWidth(device);const scale=zoom/100;
+  if (loading)
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#ece8e3]">
+        Carregando editor visual…
+      </main>
+    );
+  const frameWidth = deviceWidth(device);
+  const scale = zoom / 100;
 
-  return <main className="min-h-screen bg-[#ded9d3] text-slate-900">
-    <header className="sticky top-0 z-50 flex min-h-16 flex-wrap items-center gap-2 border-b bg-white px-3 py-2 shadow-sm">
-      <Link to="/admin" className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"><ArrowLeft size={17}/> Admin</Link>
-      <button onClick={()=>setLeftOpen(x=>!x)} className="rounded-xl border p-2" title="Páginas e elementos"><Layers3 size={18}/></button>
-      <button onClick={addText} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"><Type size={17}/> Texto</button>
-      <button onClick={addImage} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"><ImagePlus size={17}/> Imagem</button>
-      <button disabled={!undo.length} onClick={undoNow} className="rounded-xl border p-2 disabled:opacity-30"><Undo2 size={18}/></button>
-      <button disabled={!redo.length} onClick={redoNow} className="rounded-xl border p-2 disabled:opacity-30"><Redo2 size={18}/></button>
-      <div className="mx-1 h-8 w-px bg-slate-200"/>
-      <button onClick={()=>{setDevice("desktop");setSelected([])}} className={`rounded-xl p-2 ${device==="desktop"?"bg-primary text-white":"border"}`}><Monitor size={18}/></button>
-      <button onClick={()=>{setDevice("mobile");setSelected([])}} className={`rounded-xl p-2 ${device==="mobile"?"bg-primary text-white":"border"}`}><Smartphone size={18}/></button>
-      <select value={zoom} onChange={e=>setZoom(Number(e.target.value))} className="rounded-xl border px-2 py-2"><option value={40}>40%</option><option value={55}>55%</option><option value={70}>70%</option><option value={85}>85%</option><option value={100}>100%</option></select>
-      <button onClick={()=>setRightOpen(x=>!x)} className="rounded-xl border p-2" title="Propriedades"><Move size={18}/></button>
-      <div className="ml-auto flex items-center gap-2">
-        {lastPublishedAt&&<span className="hidden text-xs font-semibold text-emerald-700 xl:inline">No site: {new Date(lastPublishedAt).toLocaleString("pt-BR")}</span>}
-        <button disabled={saving} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold"><Save size={17}/> Salvar rascunho</button>
-        <button disabled={saving} onClick={publish} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"><UploadCloud size={17}/> {saving?"Publicando…":"Publicar no site"}</button>
-      </div>
-    </header>
-
-    <div className={`grid min-h-[calc(100vh-64px)] ${leftOpen&&rightOpen?"lg:grid-cols-[260px_minmax(0,1fr)_290px]":leftOpen?"lg:grid-cols-[260px_minmax(0,1fr)]":rightOpen?"lg:grid-cols-[minmax(0,1fr)_290px]":"grid-cols-1"}`}>
-      {leftOpen&&<aside className="border-r bg-white p-3">
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">Páginas do ORICSE
-            <input value={buscaPagina} onChange={e=>setBuscaPagina(e.target.value)}
-              aria-label="Buscar página do editor" placeholder="Pesquisar página..." className="mt-2 w-full rounded-xl border px-3 py-2 text-sm font-normal normal-case tracking-normal"/>
-          </label>
-          <select value={route} onChange={e=>{
-              setRoute(e.target.value);setSelected([]);
-              window.history.replaceState(window.history.state,"","/admin-canvas?pagina="+encodeURIComponent(e.target.value));
-            }} aria-label="Selecionar página para editar"
-            className="w-full rounded-xl border p-2 text-sm font-semibold">
-            {!paginasFiltradas.some(r=>r.original===route)&&<option value={route}>{ROTAS_CATALOGO.find(r=>r.original===route)?.nome||route} — selecionada</option>}
-            {gruposPaginas.map(grupo=><optgroup key={grupo} label={grupo}>
-              {paginasFiltradas.filter(r=>r.grupo===grupo).map(r=><option key={r.original} value={r.original} disabled={r.dinamica || r.original === "/admin-canvas"}>{r.nome} ({r.original}){r.dinamica?" · por clínica":r.original === "/admin-canvas"?" · editor (não editável)":""}</option>)}
-            </optgroup>)}
-          </select>
-          <p className="text-xs leading-5 text-muted-foreground">{paginasFiltradas.length} páginas encontradas. Endereços que dependem da clínica são listados para consulta e exigem um link real para prévia.</p>
-          <a href={route} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-semibold text-primary underline underline-offset-4"><Eye size={14}/> Abrir página selecionada</a>
+  return (
+    <main className="min-h-screen bg-[#ded9d3] text-slate-900">
+      <header className="sticky top-0 z-50 flex min-h-16 flex-wrap items-center gap-2 border-b bg-white px-3 py-2 shadow-sm">
+        <Link
+          to="/admin"
+          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
+        >
+          <ArrowLeft size={17} /> Admin
+        </Link>
+        <button
+          onClick={() => setLeftOpen((x) => !x)}
+          className="rounded-xl border p-2"
+          title="Páginas e elementos"
+        >
+          <Layers3 size={18} />
+        </button>
+        <button
+          onClick={addText}
+          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
+        >
+          <Type size={17} /> Texto
+        </button>
+        <button
+          onClick={addImage}
+          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
+        >
+          <ImagePlus size={17} /> Imagem
+        </button>
+        <button
+          disabled={!undo.length}
+          onClick={undoNow}
+          className="rounded-xl border p-2 disabled:opacity-30"
+        >
+          <Undo2 size={18} />
+        </button>
+        <button
+          disabled={!redo.length}
+          onClick={redoNow}
+          className="rounded-xl border p-2 disabled:opacity-30"
+        >
+          <Redo2 size={18} />
+        </button>
+        <div className="mx-1 h-8 w-px bg-slate-200" />
+        <button
+          onClick={() => {
+            setDevice("desktop");
+            setSelected([]);
+          }}
+          className={`rounded-xl p-2 ${device === "desktop" ? "bg-primary text-white" : "border"}`}
+        >
+          <Monitor size={18} />
+        </button>
+        <button
+          onClick={() => {
+            setDevice("mobile");
+            setSelected([]);
+          }}
+          className={`rounded-xl p-2 ${device === "mobile" ? "bg-primary text-white" : "border"}`}
+        >
+          <Smartphone size={18} />
+        </button>
+        <select
+          value={zoom}
+          onChange={(e) => setZoom(Number(e.target.value))}
+          className="rounded-xl border px-2 py-2"
+        >
+          <option value={40}>40%</option>
+          <option value={55}>55%</option>
+          <option value={70}>70%</option>
+          <option value={85}>85%</option>
+          <option value={100}>100%</option>
+        </select>
+        <button
+          onClick={() => setRightOpen((x) => !x)}
+          className="rounded-xl border p-2"
+          title="Propriedades"
+        >
+          <Move size={18} />
+        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {lastPublishedAt && (
+            <span className="hidden text-xs font-semibold text-emerald-700 xl:inline">
+              No site: {new Date(lastPublishedAt).toLocaleString("pt-BR")}
+            </span>
+          )}
+          <button
+            disabled={saving}
+            onClick={saveDraft}
+            className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold"
+          >
+            <Save size={17} /> Salvar rascunho
+          </button>
+          <button
+            disabled={saving}
+            onClick={publish}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"
+          >
+            <UploadCloud size={17} /> {saving ? "Publicando…" : "Publicar no site"}
+          </button>
         </div>
-        <div className="mt-5 flex items-center justify-between"><h2 className="font-bold">Camadas</h2><button onClick={()=>setSelected([])} className="text-xs font-semibold text-primary">Desmarcar</button></div>
-        <div className="mt-2 max-h-[48vh] space-y-1 overflow-auto">
-          {[...layout.added.map(x=>({item:{id:x.id,kind:"added" as const},label:x.text||x.kind,hidden:x.style.opacity===0})),...layout.patches.map(x=>({item:{id:x.id,kind:"patch" as const},label:x.label,hidden:x.hidden}))].reverse().map(({item,label,hidden})=><div key={`${item.kind}-${item.id}`} className={`flex items-center gap-1 rounded-lg border p-1 ${selected.some(x=>x.id===item.id&&x.kind===item.kind)?"border-primary bg-primary/5":""}`}><button onClick={()=>setSelected([item])} className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs font-semibold">{label}</button><button onClick={()=>toggleVisibility(item)} className="p-1 text-muted-foreground">{hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button></div>)}
-          {!layout.added.length&&!layout.patches.length&&<p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">Clique em qualquer objeto dentro da página para começar a editá-lo.</p>}
-        </div>
-        <div className="mt-5 border-t pt-4"><div className="flex items-center justify-between"><h2 className="font-bold">Versões</h2><button onClick={resetPage} className="inline-flex items-center gap-1 text-xs font-semibold text-red-600"><RotateCcw size={13}/> Restaurar página</button></div><div className="mt-2 space-y-2">{versions.slice(0,5).map(v=><button key={v.id} onClick={()=>restore(v)} className="w-full rounded-xl border p-2 text-left text-xs"><strong>{new Date(v.publishedAt).toLocaleString("pt-BR")}</strong><span className="mt-1 block text-muted-foreground">Carregar como rascunho</span></button>)}{!versions.length&&<p className="text-xs text-muted-foreground">Nenhuma versão publicada ainda.</p>}</div></div>
-      </aside>}
+      </header>
 
-      <section className="min-w-0 overflow-auto p-6">
-        <div className="mx-auto origin-top" style={{width:frameWidth*scale,minHeight:760*scale}}>
-          <div className="origin-top-left overflow-hidden rounded-lg bg-white shadow-2xl" style={{width:frameWidth,height:device==="desktop"?900:844,transform:`scale(${scale})`}}>
-            <iframe key={`${route}-${device}`} ref={iframeRef} src={`${route}${route.includes("?")?"&":"?"}visual_editor=1`} onLoad={bindFrame} title={`Editor de ${route}`} className="h-full w-full border-0 bg-white" style={{width:frameWidth}}/>
+      <div
+        className={`grid min-h-[calc(100vh-64px)] ${leftOpen && rightOpen ? "lg:grid-cols-[260px_minmax(0,1fr)_290px]" : leftOpen ? "lg:grid-cols-[260px_minmax(0,1fr)]" : rightOpen ? "lg:grid-cols-[minmax(0,1fr)_290px]" : "grid-cols-1"}`}
+      >
+        {leftOpen && (
+          <aside className="border-r bg-white p-3">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Páginas do ORICSE
+                <input
+                  value={buscaPagina}
+                  onChange={(e) => setBuscaPagina(e.target.value)}
+                  aria-label="Buscar página do editor"
+                  placeholder="Pesquisar página..."
+                  className="mt-2 w-full rounded-xl border px-3 py-2 text-sm font-normal normal-case tracking-normal"
+                />
+              </label>
+              <select
+                value={route}
+                onChange={(e) => {
+                  setRoute(e.target.value);
+                  setSelected([]);
+                  window.history.replaceState(
+                    window.history.state,
+                    "",
+                    "/admin-canvas?pagina=" + encodeURIComponent(e.target.value),
+                  );
+                }}
+                aria-label="Selecionar página para editar"
+                className="w-full rounded-xl border p-2 text-sm font-semibold"
+              >
+                {!paginasFiltradas.some((r) => r.original === route) && (
+                  <option value={route}>
+                    {ROTAS_CATALOGO.find((r) => r.original === route)?.nome || route} — selecionada
+                  </option>
+                )}
+                {gruposPaginas.map((grupo) => (
+                  <optgroup key={grupo} label={grupo}>
+                    {paginasFiltradas
+                      .filter((r) => r.grupo === grupo)
+                      .map((r) => (
+                        <option
+                          key={r.original}
+                          value={r.original}
+                          disabled={r.dinamica || r.original === "/admin-canvas"}
+                        >
+                          {r.nome} ({r.original})
+                          {r.dinamica
+                            ? " · por clínica"
+                            : r.original === "/admin-canvas"
+                              ? " · editor (não editável)"
+                              : ""}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {paginasFiltradas.length} páginas encontradas. Endereços que dependem da clínica são
+                listados para consulta e exigem um link real para prévia.
+              </p>
+              <a
+                href={route}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-xs font-semibold text-primary underline underline-offset-4"
+              >
+                <Eye size={14} /> Abrir página selecionada
+              </a>
+            </div>
+            <div className="mt-5 flex items-center justify-between">
+              <h2 className="font-bold">Camadas</h2>
+              <button
+                onClick={() => setSelected([])}
+                className="text-xs font-semibold text-primary"
+              >
+                Desmarcar
+              </button>
+            </div>
+            <div className="mt-2 max-h-[48vh] space-y-1 overflow-auto">
+              {[
+                ...layout.added.map((x) => ({
+                  item: { id: x.id, kind: "added" as const },
+                  label: x.text || x.kind,
+                  hidden: x.style.opacity === 0,
+                })),
+                ...layout.patches.map((x) => ({
+                  item: { id: x.id, kind: "patch" as const },
+                  label: x.label,
+                  hidden: x.hidden,
+                })),
+              ]
+                .reverse()
+                .map(({ item, label, hidden }) => (
+                  <div
+                    key={`${item.kind}-${item.id}`}
+                    className={`flex items-center gap-1 rounded-lg border p-1 ${selected.some((x) => x.id === item.id && x.kind === item.kind) ? "border-primary bg-primary/5" : ""}`}
+                  >
+                    <button
+                      onClick={() => setSelected([item])}
+                      className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs font-semibold"
+                    >
+                      {label}
+                    </button>
+                    <button
+                      onClick={() => toggleVisibility(item)}
+                      className="p-1 text-muted-foreground"
+                    >
+                      {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                ))}
+              {!layout.added.length && !layout.patches.length && (
+                <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                  Clique em qualquer objeto dentro da página para começar a editá-lo.
+                </p>
+              )}
+            </div>
+            <div className="mt-5 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold">Versões</h2>
+                <button
+                  onClick={resetPage}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-red-600"
+                >
+                  <RotateCcw size={13} /> Restaurar página
+                </button>
+              </div>
+              <div className="mt-2 space-y-2">
+                {versions.slice(0, 5).map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => restore(v)}
+                    className="w-full rounded-xl border p-2 text-left text-xs"
+                  >
+                    <strong>{new Date(v.publishedAt).toLocaleString("pt-BR")}</strong>
+                    <span className="mt-1 block text-muted-foreground">Carregar como rascunho</span>
+                  </button>
+                ))}
+                {!versions.length && (
+                  <p className="text-xs text-muted-foreground">Nenhuma versão publicada ainda.</p>
+                )}
+              </div>
+            </div>
+          </aside>
+        )}
+
+        <section className="min-w-0 overflow-auto p-6">
+          <div
+            className="mx-auto origin-top"
+            style={{ width: frameWidth * scale, minHeight: 760 * scale }}
+          >
+            <div
+              className="origin-top-left overflow-hidden rounded-lg bg-white shadow-2xl"
+              style={{
+                width: frameWidth,
+                height: device === "desktop" ? 900 : 844,
+                transform: `scale(${scale})`,
+              }}
+            >
+              <iframe
+                key={`${route}-${device}`}
+                ref={iframeRef}
+                src={`${route}${route.includes("?") ? "&" : "?"}visual_editor=1`}
+                onLoad={bindFrame}
+                title={`Editor de ${route}`}
+                className="h-full w-full border-0 bg-white"
+                style={{ width: frameWidth }}
+              />
+            </div>
           </div>
-        </div>
-        <p className="mt-4 text-center text-xs text-slate-600">Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção.</p>
-      </section>
+          <p className="mt-4 text-center text-xs text-slate-600">
+            Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça
+            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção.
+          </p>
+        </section>
 
-      {rightOpen&&<aside className="border-l bg-white p-4">
-        <h2 className="font-bold">Propriedades</h2><p className="mt-1 text-xs text-muted-foreground">{selected.length?`${selected.length} elemento(s) selecionado(s)`:"Selecione algo na página."}</p>
-        {first&&<div className="mt-4 space-y-4">
-          {(!("kind" in first)||first.kind!=="image")&&<label className="block text-xs font-bold">Texto<textarea value={first.text||""} onChange={e=>patchSelected({},e.target.value)} rows={4} className="mt-1 w-full rounded-xl border p-2 font-normal"/></label>}
-          {"src" in first&&first.kind==="image"&&<label className="block text-xs font-bold">Imagem<input value={first.src||""} onChange={e=>updateLayout(v=>{const x=v.added.find(a=>a.id===first.id);if(x)x.src=e.target.value;})} className="mt-1 w-full rounded-xl border p-2 font-normal"/></label>}
-          <div className="grid grid-cols-2 gap-2">{([['x','X'],['y','Y'],['width','Largura'],['height','Altura']] as const).map(([key,label])=><label key={key} className="text-xs font-bold">{label}<input type="number" value={first.style[key]??""} onChange={e=>patchSelected({[key]:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"/></label>)}</div>
-          <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Fonte<input type="number" min={6} max={220} value={first.style.fontSize??""} onChange={e=>patchSelected({fontSize:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"/></label><label className="text-xs font-bold">Peso<select value={first.style.fontWeight||400} onChange={e=>patchSelected({fontWeight:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"><option value={400}>Normal</option><option value={500}>Médio</option><option value={600}>Semibold</option><option value={700}>Negrito</option><option value={900}>Black</option></select></label></div>
-          <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Texto<input type="color" value={first.style.color||"#4A1826"} onChange={e=>patchSelected({color:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label><label className="text-xs font-bold">Fundo<input type="color" value={first.style.backgroundColor||"#FFFFFF"} onChange={e=>patchSelected({backgroundColor:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label></div>
-          <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Borda<input type="color" value={first.style.borderColor||"#303842"} onChange={e=>patchSelected({borderColor:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label><label className="text-xs font-bold">Espessura<input type="number" min={0} max={30} value={first.style.borderWidth??0} onChange={e=>patchSelected({borderWidth:number(e.target.value)})} className="mt-1 h-10 w-full rounded border px-2 font-normal"/></label></div>
-          <div className="grid grid-cols-2 gap-2"><label className="text-xs font-bold">Preenchimento / ícone<input type="color" value={first.style.fill||first.style.color||"#303842"} onChange={e=>patchSelected({fill:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label><label className="text-xs font-bold">Traço / ícone<input type="color" value={first.style.stroke||first.style.color||"#303842"} onChange={e=>patchSelected({stroke:e.target.value})} className="mt-1 h-10 w-full rounded border"/></label></div>
-          <div className="flex gap-2"><button onClick={()=>patchSelected({textAlign:"left"})} className="rounded-lg border p-2"><AlignLeft size={17}/></button><button onClick={()=>patchSelected({textAlign:"center"})} className="rounded-lg border p-2"><AlignCenter size={17}/></button><button onClick={()=>patchSelected({textAlign:"right"})} className="rounded-lg border p-2"><AlignRight size={17}/></button><label className="ml-auto flex items-center gap-2 text-xs font-bold">Opacidade<input type="number" min={0} max={1} step={0.1} value={first.style.opacity??1} onChange={e=>patchSelected({opacity:number(e.target.value,1)})} className="w-16 rounded-lg border p-2"/></label></div>
-          <label className="block text-xs font-bold">Nível da camada<input type="number" value={first.style.zIndex??0} onChange={e=>patchSelected({zIndex:number(e.target.value)})} className="mt-1 w-full rounded-lg border p-2 font-normal"/></label>
-          <div className="grid grid-cols-2 gap-2"><button onClick={()=>moveLayer(true)} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><BringToFront size={15}/> Trazer à frente</button><button onClick={()=>moveLayer(false)} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><SendToBack size={15}/> Enviar para trás</button></div>
-          <div className="grid grid-cols-2 gap-2 border-t pt-4"><button onClick={duplicate} className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"><Copy size={15}/> Duplicar</button><button onClick={hideOrDelete} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 p-2 text-xs font-bold text-red-600"><Trash2 size={15}/> Excluir</button></div>
-        </div>}
-      </aside>}
-    </div>
-  </main>;
+        {rightOpen && (
+          <aside className="border-l bg-white p-4">
+            <h2 className="font-bold">Propriedades</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selected.length
+                ? `${selected.length} elemento(s) selecionado(s)`
+                : "Selecione algo na página."}
+            </p>
+            {first && (
+              <div className="mt-4 space-y-4">
+                {(!("kind" in first) || first.kind !== "image") && (
+                  <label className="block text-xs font-bold">
+                    Texto
+                    <textarea
+                      value={first.text || ""}
+                      onChange={(e) => patchSelected({}, e.target.value)}
+                      rows={4}
+                      className="mt-1 w-full rounded-xl border p-2 font-normal"
+                    />
+                  </label>
+                )}
+                {"src" in first && first.kind === "image" && (
+                  <label className="block text-xs font-bold">
+                    Imagem
+                    <input
+                      value={first.src || ""}
+                      onChange={(e) =>
+                        updateLayout((v) => {
+                          const x = v.added.find((a) => a.id === first.id);
+                          if (x) x.src = e.target.value;
+                        })
+                      }
+                      className="mt-1 w-full rounded-xl border p-2 font-normal"
+                    />
+                  </label>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      ["x", "X"],
+                      ["y", "Y"],
+                      ["width", "Largura"],
+                      ["height", "Altura"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key} className="text-xs font-bold">
+                      {label}
+                      <input
+                        type="number"
+                        value={first.style[key] ?? ""}
+                        onChange={(e) => patchSelected({ [key]: number(e.target.value) })}
+                        className="mt-1 w-full rounded-lg border p-2 font-normal"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-bold">
+                    Fonte
+                    <input
+                      type="number"
+                      min={6}
+                      max={220}
+                      value={first.style.fontSize ?? ""}
+                      onChange={(e) => patchSelected({ fontSize: number(e.target.value) })}
+                      className="mt-1 w-full rounded-lg border p-2 font-normal"
+                    />
+                  </label>
+                  <label className="text-xs font-bold">
+                    Peso
+                    <select
+                      value={first.style.fontWeight || 400}
+                      onChange={(e) => patchSelected({ fontWeight: number(e.target.value) })}
+                      className="mt-1 w-full rounded-lg border p-2 font-normal"
+                    >
+                      <option value={400}>Normal</option>
+                      <option value={500}>Médio</option>
+                      <option value={600}>Semibold</option>
+                      <option value={700}>Negrito</option>
+                      <option value={900}>Black</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-bold">
+                    Texto
+                    <input
+                      type="color"
+                      value={first.style.color || "#4A1826"}
+                      onChange={(e) => patchSelected({ color: e.target.value })}
+                      className="mt-1 h-10 w-full rounded border"
+                    />
+                  </label>
+                  <label className="text-xs font-bold">
+                    Fundo
+                    <input
+                      type="color"
+                      value={first.style.backgroundColor || "#FFFFFF"}
+                      onChange={(e) => patchSelected({ backgroundColor: e.target.value })}
+                      className="mt-1 h-10 w-full rounded border"
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-bold">
+                    Borda
+                    <input
+                      type="color"
+                      value={first.style.borderColor || "#303842"}
+                      onChange={(e) => patchSelected({ borderColor: e.target.value })}
+                      className="mt-1 h-10 w-full rounded border"
+                    />
+                  </label>
+                  <label className="text-xs font-bold">
+                    Espessura
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      value={first.style.borderWidth ?? 0}
+                      onChange={(e) => patchSelected({ borderWidth: number(e.target.value) })}
+                      className="mt-1 h-10 w-full rounded border px-2 font-normal"
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-bold">
+                    Preenchimento / ícone
+                    <input
+                      type="color"
+                      value={first.style.fill || first.style.color || "#303842"}
+                      onChange={(e) => patchSelected({ fill: e.target.value })}
+                      className="mt-1 h-10 w-full rounded border"
+                    />
+                  </label>
+                  <label className="text-xs font-bold">
+                    Traço / ícone
+                    <input
+                      type="color"
+                      value={first.style.stroke || first.style.color || "#303842"}
+                      onChange={(e) => patchSelected({ stroke: e.target.value })}
+                      className="mt-1 h-10 w-full rounded border"
+                    />
+                  </label>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => patchSelected({ textAlign: "left" })}
+                    className="rounded-lg border p-2"
+                  >
+                    <AlignLeft size={17} />
+                  </button>
+                  <button
+                    onClick={() => patchSelected({ textAlign: "center" })}
+                    className="rounded-lg border p-2"
+                  >
+                    <AlignCenter size={17} />
+                  </button>
+                  <button
+                    onClick={() => patchSelected({ textAlign: "right" })}
+                    className="rounded-lg border p-2"
+                  >
+                    <AlignRight size={17} />
+                  </button>
+                  <label className="ml-auto flex items-center gap-2 text-xs font-bold">
+                    Opacidade
+                    <input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={first.style.opacity ?? 1}
+                      onChange={(e) => patchSelected({ opacity: number(e.target.value, 1) })}
+                      className="w-16 rounded-lg border p-2"
+                    />
+                  </label>
+                </div>
+                <label className="block text-xs font-bold">
+                  Nível da camada
+                  <input
+                    type="number"
+                    value={first.style.zIndex ?? 0}
+                    onChange={(e) => patchSelected({ zIndex: number(e.target.value) })}
+                    className="mt-1 w-full rounded-lg border p-2 font-normal"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => moveLayer(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"
+                  >
+                    <BringToFront size={15} /> Trazer à frente
+                  </button>
+                  <button
+                    onClick={() => moveLayer(false)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"
+                  >
+                    <SendToBack size={15} /> Enviar para trás
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 border-t pt-4">
+                  <button
+                    onClick={duplicate}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border p-2 text-xs font-bold"
+                  >
+                    <Copy size={15} /> Duplicar
+                  </button>
+                  <button
+                    onClick={hideOrDelete}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 p-2 text-xs font-bold text-red-600"
+                  >
+                    <Trash2 size={15} /> Excluir
+                  </button>
+                </div>
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+    </main>
+  );
 }

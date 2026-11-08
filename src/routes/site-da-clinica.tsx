@@ -47,20 +47,18 @@ function SiteDaClinica() {
     if (!clinicaId || !slug.trim()) return toast.error("Informe um slug para o endereço público.");
     setSaving(true);
     const nextStatus = publish ? "publicado" : status;
-    const { error } = await (supabaseBanco as any)
-      .from("clinic_sites")
-      .upsert(
-        {
-          clinica_id: clinicaId,
-          slug: slug.trim().toLowerCase(),
-          status: nextStatus,
-          template,
-          config,
-          publicado_em: nextStatus === "publicado" ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "clinica_id" },
-      );
+    const { error } = await (supabaseBanco as any).from("clinic_sites").upsert(
+      {
+        clinica_id: clinicaId,
+        slug: slug.trim().toLowerCase(),
+        status: nextStatus,
+        template,
+        config,
+        publicado_em: nextStatus === "publicado" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "clinica_id" },
+    );
     setSaving(false);
     if (error) return toast.error(error.message);
     setStatus(nextStatus);
@@ -127,16 +125,29 @@ function SiteDaClinica() {
                     className={`rounded-xl border px-3 py-2 text-left text-sm font-bold capitalize ${template === item ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}
                   >
                     <span className="block">{clinicSiteTemplateLabels[item]}</span>
-                    <span className="mt-1 block text-xs font-normal opacity-80">{clinicSiteTemplateDescriptions[item]}</span>
+                    <span className="mt-1 block text-xs font-normal opacity-80">
+                      {clinicSiteTemplateDescriptions[item]}
+                    </span>
                   </button>
                 ))}
               </div>
             </fieldset>
             <fieldset>
               <legend className="mb-2 text-sm font-semibold">Tom principal</legend>
-              <p className="mb-2 text-xs text-muted-foreground">Até 10 tons prontos para cada página.</p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Até 10 tons prontos para cada página.
+              </p>
               <div className="flex flex-wrap gap-2">
-                {clinicSiteTones.map((tone) => <button key={tone} type="button" aria-label={`Usar tom ${tone}`} onClick={() => change("primaryColor", tone)} className={`h-9 w-9 rounded-full border-2 ${config.primaryColor === tone ? "border-foreground" : "border-transparent"}`} style={{ backgroundColor: tone }} />)}
+                {clinicSiteTones.map((tone) => (
+                  <button
+                    key={tone}
+                    type="button"
+                    aria-label={`Usar tom ${tone}`}
+                    onClick={() => change("primaryColor", tone)}
+                    className={`h-9 w-9 rounded-full border-2 ${config.primaryColor === tone ? "border-foreground" : "border-transparent"}`}
+                    style={{ backgroundColor: tone }}
+                  />
+                ))}
               </div>
             </fieldset>
             {(
