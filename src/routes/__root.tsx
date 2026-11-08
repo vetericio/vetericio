@@ -4,13 +4,12 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
   useLocation,
   useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import premiumCss from "../themes-premium.css?url";
@@ -33,6 +32,7 @@ import {
 } from "@/lib/tenant-context";
 import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -44,6 +44,15 @@ const VisualPageRuntime = lazy(() =>
     default: module.VisualPageRuntime,
   })),
 );
+
+// A customização visual é opcional: uma falha num chunk dela não pode derrubar
+// login, início, navegação clínica ou administração.
+class OptionalRuntimeBoundary extends Component<{children: ReactNode; fallback?: ReactNode},{failed:boolean}> {
+  override state = { failed: false };
+  static getDerivedStateFromError(){return {failed:true};}
+  override componentDidCatch(error: Error) { console.error("ORICSE optional runtime failed:", error); }
+  override render() { return this.state.failed ? (this.props.fallback ?? null) : this.props.children; }
+}
 
 function NotFoundComponent() {
   return (
@@ -64,9 +73,8 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
+function ErrorComponent({ error }: { error: unknown; reset: () => void }) {
   console.error(error);
-  const router = useRouter();
   useEffect(() => {
     const erro = error instanceof Error ? error : new Error(String(error));
     reportLovableError(erro, { boundary: "tanstack_root_error_component" });
@@ -99,18 +107,30 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">Esta página não carregou</h1>
         <div className="mt-6">
-          <button
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.delete("oricse_recovery");
-              window.history.replaceState(null, "", url.toString());
-              router.invalidate();
-              reset();
-            }}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Tentar novamente
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.delete("oricse_recovery");
+                url.searchParams.delete("oricse_module_retry");
+                url.searchParams.set("oricse_build", String(Date.now()));
+                // Navegação completa descarta a árvore React que falhou e baixa a versão atual.
+                window.location.replace(url.toString());
+              }}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Recarregar sistema
+            </button>
+            <a href="/admin" className="rounded-md border px-4 py-2 text-sm font-medium">
+              Abrir administração
+            </a>
+            <a href="/login" className="rounded-md border px-4 py-2 text-sm font-medium">
+              Voltar ao login
+            </a>
+          </div>
+          <p className="mt-5 break-words text-xs text-muted-foreground">
+            Diagnóstico: {error instanceof Error ? error.message : String(error)}
+          </p>
         </div>
       </div>
     </div>
@@ -434,7 +454,8 @@ function RootComponent() {
       ["/", "/login", "/modelos", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
-    const rotaAdmin = location.pathname.startsWith("/admin");
+    const rotaAdmin = location.pathname.startsWith("/admin") ||
+    (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
     if (autenticado === false && !rotaPublica && !rotaAdmin) navigate({ to: "/login" });
     if (autenticado && acessoPortalNegado) return;
     if (
@@ -612,7 +633,8 @@ function RootComponent() {
     };
   }, []);
 
-  const rotaAdmin = location.pathname.startsWith("/admin");
+  const rotaAdmin = location.pathname.startsWith("/admin") ||
+    (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
   const rotaPublica =
     ["/", "/login", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
@@ -660,17 +682,21 @@ function RootComponent() {
       <ClinicasAtivasContext.Provider value={{ quantidade: quantidadeClinicasAtivas }}>
       <TenantContext.Provider value={contextoPortal}>
         {mostrarRuntimeVisual && (
-          <Suspense fallback={null}>
-            <VisualPageRuntime />
-          </Suspense>
+          <OptionalRuntimeBoundary>
+            <Suspense fallback={null}>
+              <VisualPageRuntime />
+            </Suspense>
+          </OptionalRuntimeBoundary>
         )}
         {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && <RockDecoracao />}
         {mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
-            <Suspense fallback={null}>
-              <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
-            </Suspense>
+            <OptionalRuntimeBoundary fallback={<div className="border-b bg-background p-3 text-sm"><a className="font-semibold underline" href="/inicio">Início</a><span className="mx-3">·</span><a className="font-semibold underline" href="/admin">Administração</a></div>}>
+              <Suspense fallback={null}>
+                <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
+              </Suspense>
+            </OptionalRuntimeBoundary>
           </div>
         )}
         {mostrarClinico && (
@@ -758,6 +784,8 @@ function RootComponent() {
               </Link>
             </section>
           </main>
+        ) : rotaAdmin && autenticado && role === "admin" ? (
+          <AdminShell><Outlet /></AdminShell>
         ) : (
           <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
             <Outlet />

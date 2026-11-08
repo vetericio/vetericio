@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Building2, CalendarClock, ClipboardList, CreditCard, Instagram, LockKeyhole, RefreshCw, Settings, ShieldCheck, Users, Activity } from "lucide-react";
+import { ArrowLeft, Building2, CalendarClock, ClipboardList, CreditCard, Instagram, LockKeyhole, RefreshCw, Settings, ShieldCheck, Users, Activity, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
+import { diagnosticarHomologacaoOricStudio } from "@/lib/oricstudio-homologacao.functions";
 
 export const Route = createFileRoute("/admin-oricstudio")({ component: OricStudioAdmin });
 
@@ -21,6 +22,7 @@ const ABAS = [
   {id:"comercial",nome:"Comercialização",icon:CreditCard},
   {id:"contas",nome:"Contas conectadas",icon:Users},
   {id:"monitoramento",nome:"Monitoramento",icon:CalendarClock},
+  {id:"homologacao",nome:"Homologação",icon:ListChecks},
   {id:"auditoria",nome:"Auditoria",icon:ShieldCheck},
   {id:"config",nome:"Configurações",icon:Settings}
 ] as const;
@@ -38,6 +40,18 @@ function OricStudioAdmin() {
     id:string;clinica_id:string;quantidade_contas:number;valor_mensal_centavos:number;
     status:string;criado_em:string;referencia_pagamento:string|null;
   }>>([]);
+  const [cobrancas,setCobrancas] = useState<Array<{id:number;clinica_id:string;tipo:string;criado_em:string;referencia:string|null}>>([]);
+  const [pagamentos,setPagamentos] = useState<Array<{id:number;clinica_id:string;valor_centavos:number;status_mp:string;aprovado_em:string}>>([]);
+  const [homologacao,setHomologacao]=useState<{
+    meta_instagram_configurada:boolean;meta_facebook_configurada:boolean;
+    segredo_agendador_configurado:boolean;gateway_midia_configurado:boolean;
+    publicacao_liberada:boolean;coleta_liberada:boolean;
+    clinicas_ativas:number;licencas_ativas:number;contas_ig:number;envios:number;
+  }|null>(null);
+  const [statusPagamento,setStatusPagamento] = useState<{
+    mercado_pago_configurado:boolean;webhook_exclusivo_configurado:boolean;
+    conciliacao_programada_configurada:boolean;precos_configurados:boolean;comercializacao_ativa:boolean
+  }|null>(null);
   const [busca,setBusca] = useState("");
   const [alterando,setAlterando] = useState<string|null>(null);
   const [precoBase,setPrecoBase] = useState("");
@@ -69,15 +83,27 @@ function OricStudioAdmin() {
         }
         throw new Error("Limite de consulta atingido; confirme a listagem no banco.");
       };
-      const [cs,ls,hs,ps,sol]=await Promise.all([
+      const [cs,ls,hs,ps,sol,ce,pg]=await Promise.all([
         buscarTudo("clinicas","id,nome,status,plano","nome"),
         buscarTudo("oricstudio_licencas","clinica_id,status,motivo,atualizado_em,expira_em,quantidade_contas_contratadas","atualizado_em"),
         buscarTudo("oricstudio_auditoria","id,acao,clinica_id,criado_em,usuario_id,antes,depois","criado_em"),
         (supabaseBanco as any).from("oricstudio_produto").select("nome,descricao,preco_centavos,preco_conta_adicional_centavos,comercializacao_ativa,disponivel_nos_planos").eq("codigo","oricstudio").single(),
-        buscarTudo("oricstudio_solicitacoes","id,clinica_id,quantidade_contas,valor_mensal_centavos,status,criado_em,referencia_pagamento","criado_em")
+        buscarTudo("oricstudio_solicitacoes","id,clinica_id,quantidade_contas,valor_mensal_centavos,status,criado_em,referencia_pagamento","criado_em"),
+        buscarTudo("oricstudio_eventos_cobranca","id,clinica_id,tipo,criado_em,referencia","criado_em"),
+        buscarTudo("oricstudio_pagamentos","id,clinica_id,valor_centavos,status_mp,aprovado_em","aprovado_em")
       ]);
       if (ps.error)throw ps.error;
-      setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);setSolicitacoes(sol);
+      setClinicas(cs);setLicencas(ls);setHistorico(hs);setProduto(ps.data);setSolicitacoes(sol);setCobrancas(ce);setPagamentos(pg);
+      const status=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{acao:"status_configuracao"},
+        headers:{"Authorization":"Bearer "+session.access_token},
+      });
+      setStatusPagamento(status.error?null:(status.data||null));
+      try{
+        setHomologacao(await diagnosticarHomologacaoOricStudio({
+          data:{accessToken:session.access_token},
+        }));
+      }catch{setHomologacao(null);}
       setPrecoBase(ps.data.preco_centavos==null?"":(ps.data.preco_centavos/100).toFixed(2).replace(".",","));
       setPrecoAdicional(ps.data.preco_conta_adicional_centavos==null?"":(ps.data.preco_conta_adicional_centavos/100).toFixed(2).replace(".",","));
     } catch(e) {
@@ -112,7 +138,7 @@ function OricStudioAdmin() {
   }
   function emCentavos(raw:string) {
     const normalized=raw.trim().replaceAll(".","").replace(",",".");
-    if(!/^\\d+(?:\\.\\d{1,2})?$/.test(normalized))return null;
+    if(!/^\d+(?:\.\d{1,2})?$/.test(normalized))return null;
     const result=Math.round(Number(normalized)*100);
     return Number.isSafeInteger(result)&&result>=0?result:null;
   }
@@ -168,7 +194,7 @@ function OricStudioAdmin() {
     {!carregando && !erro && <>
       {aba==="visao" && <section className="grid gap-3 sm:grid-cols-3">
         {[["Clínicas cadastradas",totalClinicas],["Licenças ativas",ativos],["Sem licença ativa",semLicencaAtiva]].map(([titulo,valor])=><div key={titulo} className="rounded-xl border bg-card p-5"><p className="text-sm text-muted-foreground">{titulo}</p><p className="mt-1 text-3xl font-bold">{valor}</p></div>)}
-        <div className="sm:col-span-3 rounded-xl border bg-card p-5"><h2 className="font-semibold">Etapa 1/5 — Administração Geral</h2><p className="mt-2 text-sm text-muted-foreground">O controle das licenças fica centralizado aqui. Nenhuma clínica obtém acesso automaticamente. A construção do aplicativo para cada clínica é a etapa 2/5.</p></div>
+        <div className="sm:col-span-3 rounded-xl border bg-card p-5"><h2 className="font-semibold">OricStudio integrado à Oricse</h2><p className="mt-2 text-sm text-muted-foreground">Os módulos principais estão no sistema. A liberação comercial e a publicação real dependem da homologação da Meta e do Mercado Pago. Consulte a aba Homologação.</p></div>
       </section>}
       {aba==="clinicas" && <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Clínicas e acessos ({totalClinicas})</h2><input className="min-w-52 rounded-lg border bg-background p-2 text-sm" placeholder="Buscar clínica" value={busca} onChange={e=>setBusca(e.target.value)} /></div>
@@ -210,10 +236,85 @@ function OricStudioAdmin() {
             </tbody></table></div>}
           <p className="text-xs text-muted-foreground">Solicitações não representam pagamentos aprovados. Ativações ficam bloqueadas até a conciliação oficial.</p>
         </div>
-        <p className="text-xs text-muted-foreground">Os valores só são uma tabela comercial. Não há checkout, cobrança recorrente, ativação automática ou desconto proporcional nesta etapa.</p>
+        <p className="text-xs text-muted-foreground">A contratação recorrente está implementada. Vendas seguem desativadas até os testes reais de pagamento e webhook serem aprovados.</p>
       </section>}
       {aba==="auditoria" && <section className="space-y-3"><h2 className="text-lg font-semibold">Auditoria ({historico.length})</h2>{historico.length===0?<p className="rounded-lg border p-4 text-sm">Ainda não há alterações de licenças.</p>:<div className="space-y-2">{historico.slice(0,100).map(h=><div key={h.id} className="rounded-lg border bg-card p-3 text-sm"><strong>{h.acao}</strong> · {new Date(h.criado_em).toLocaleString("pt-BR")}<div className="text-xs text-muted-foreground">Clínica: {clinicas.find(c=>c.id===h.clinica_id)?.nome||h.clinica_id||"Excluída"} · Usuário: {h.usuario_id||"Sistema"}</div></div>)}</div>}</section>}
-      {(aba==="contas"||aba==="monitoramento"||aba==="config") && <section className="rounded-xl border bg-card p-5"><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5"/><h2 className="text-lg font-semibold">{ABAS.find(a=>a.id===aba)?.nome}</h2></div><p className="mt-3 text-sm text-muted-foreground">Área administrativa reservada. Não existem contas Meta conectadas ao OricStúdio. Integração e operações são previstas para a etapa 3/5; configurações sensíveis permanecerão no servidor.</p></section>}
+      {aba==="homologacao" && <section className="space-y-4 rounded-xl border bg-card p-5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><ListChecks className="h-5 w-5"/> Homologação técnica</h2>
+        <p className="text-sm text-muted-foreground">
+          Este painel mostra a presença de configurações no servidor, não a aprovação do aplicativo pela Meta nem o sucesso de uma cobrança real.
+        </p>
+        {!homologacao?<p role="alert" className="text-sm text-amber-700">Diagnóstico indisponível. Não liberar vendas ou publicações.</p>:<>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              ["Instagram direto sem Facebook",homologacao.meta_instagram_configurada],
+              ["Facebook Login",homologacao.meta_facebook_configurada],
+              ["Chave do agendador",homologacao.segredo_agendador_configurado],
+              ["Link privado das mídias",homologacao.gateway_midia_configurado],
+              ["Coleta real habilitada",homologacao.coleta_liberada],
+              ["Publicação real habilitada",homologacao.publicacao_liberada],
+              ["Mercado Pago",statusPagamento?.mercado_pago_configurado===true],
+              ["Webhook de pagamento",statusPagamento?.webhook_exclusivo_configurado===true],
+              ["Conciliação recorrente",statusPagamento?.conciliacao_programada_configurada===true],
+            ] as const).map(([nome,ok])=><p key={nome} className="rounded-lg border p-3 text-sm">
+              <span className={ok?"text-emerald-600":"text-amber-600"} aria-hidden="true">{ok?"●":"○"}</span>
+              {" "}{nome}: <strong>{ok?"Configurado":"Pendente ou bloqueado"}</strong>
+            </p>)}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {([
+              ["Clínicas ativas",homologacao.clinicas_ativas],
+              ["Licenças ativas",homologacao.licencas_ativas],
+              ["Contas Instagram",homologacao.contas_ig],
+              ["Envios registrados",homologacao.envios],
+            ] as const).map(([nome,total])=><div key={nome} className="rounded-lg bg-secondary/40 p-3 text-sm">
+              <p className="text-xs text-muted-foreground">{nome}</p><strong className="text-xl">{total}</strong>
+            </div>)}
+          </div>
+        </>}
+        <p className="text-sm font-semibold">Exigido antes de liberar: login Instagram real, renovação de token, uma publicação autorizada, cobrança homologada, webhook, estorno e renovação.</p>
+        <p className="text-xs text-muted-foreground">Configure ORICSTUDIO_CRON_SECRET no GitHub Actions e no Cloudflare, sem enviar o segredo em mensagens. ORICSTUDIO_RECONCILIATION_SECRET deve coincidir no GitHub e no Supabase.</p>
+        <a className="inline-block text-sm font-semibold text-primary underline" href="/oricstudio?ambiente=plataforma">Abrir OricStudio interno</a>
+      </section>}
+      {aba==="monitoramento" && <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Monitoramento financeiro OricStúdio</h2>
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="font-semibold">Preparação para comercialização</h3>
+          {statusPagamento? <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            {([
+              ["Credencial Mercado Pago",statusPagamento.mercado_pago_configurado],
+              ["Webhook exclusivo OricStúdio",statusPagamento.webhook_exclusivo_configurado],
+              ["Segredo da conciliação automática",statusPagamento.conciliacao_programada_configurada],
+              ["Tabela de preços",statusPagamento.precos_configurados],
+              ["Vendas ativadas",statusPagamento.comercializacao_ativa],
+            ] as const).map(([nome,ok])=><p key={nome} className="flex items-center gap-2">
+              <span aria-hidden="true" className={ok?"text-emerald-600":"text-amber-600"}>{ok?"●":"○"}</span>
+              {nome}: <strong>{ok?"Configurado":"Pendente"}</strong>
+            </p>)}
+          </div>:<p className="mt-2 text-sm text-muted-foreground">Não foi possível consultar a configuração do servidor. Não interprete como integração liberada.</p>}
+          <p className="mt-3 text-xs text-muted-foreground">Esta verificação confirma a presença das configurações, não a aprovação dos webhooks ou o sucesso de uma cobrança de teste. A rotina agendada também precisa da mesma chave no GitHub Actions.</p>
+        </div>
+        <p className="text-xs text-muted-foreground">Dados de cobranças conciliadas, separados dos planos principais ORICSE.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Pagamentos registrados</p><p className="mt-2 text-2xl font-bold">{pagamentos.length}</p></div>
+          <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Reversões / estornos</p><p className="mt-2 text-2xl font-bold">{pagamentos.filter(p=>p.status_mp!=="approved").length}</p></div>
+          <div className="rounded-xl border bg-card p-4"><p className="text-sm text-muted-foreground">Eventos financeiros</p><p className="mt-2 text-2xl font-bold">{cobrancas.length}</p></div>
+        </div>
+        <h3 className="font-semibold">Últimos eventos de cobrança</h3>
+        {cobrancas.length===0?<p className="rounded-xl border p-4 text-sm">Nenhum evento registrado.</p>
+          :<div className="space-y-2">{cobrancas.slice(0,50).map(e=><div key={e.id} className="rounded-xl border bg-card p-3 text-sm">
+            <strong>{e.tipo.replaceAll("_"," ")}</strong> · {clinicas.find(c=>c.id===e.clinica_id)?.nome||e.clinica_id}
+            <p className="mt-1 text-xs text-muted-foreground">{new Date(e.criado_em).toLocaleString("pt-BR")}</p>
+          </div>)}</div>}
+        <h3 className="font-semibold">Pagamentos confirmados no sistema</h3>
+        {pagamentos.length===0?<p className="rounded-xl border p-4 text-sm">Nenhum pagamento registrado.</p>
+          :<div className="space-y-2">{pagamentos.slice(0,50).map(p=><div key={p.id} className="rounded-xl border bg-card p-3 text-sm">
+            <strong>{moeda(p.valor_centavos)}</strong> · {clinicas.find(c=>c.id===p.clinica_id)?.nome||p.clinica_id} · {p.status_mp}
+            <p className="mt-1 text-xs text-muted-foreground">{new Date(p.aprovado_em).toLocaleString("pt-BR")}</p>
+          </div>)}</div>}
+        <p className="text-xs text-muted-foreground">Esta tela não executa cobranças nem substitui a conciliação periódica com o Mercado Pago.</p>
+      </section>}
+      {(aba==="contas"||aba==="config") && <section className="rounded-xl border bg-card p-5"><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5"/><h2 className="text-lg font-semibold">{ABAS.find(a=>a.id===aba)?.nome}</h2></div><p className="mt-3 text-sm text-muted-foreground">Área administrativa reservada. Não existem contas Meta conectadas ao OricStúdio. As contas e operações ficam segregadas por clínica. Verifique as credenciais na aba Homologação; segredos nunca aparecem no painel.</p></section>}
     </>}
   </main>;
 }

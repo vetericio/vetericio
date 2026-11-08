@@ -14,6 +14,25 @@ export const listarContasMetaOricStudio=createServerFn({method:"POST"})
     return metaListForClinic(supabaseAdmin,data.accessToken,data.clinicaId);
   });
 
+export const iniciarConexaoInstagramDiretoOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>base.parse(i))
+  .handler(async({data})=>{
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {autorizarInstagramDireto}=await import("@/lib/oricstudio-instagram.server");
+    return {url:await autorizarInstagramDireto(supabaseAdmin,data.accessToken,data.clinicaId)};
+  });
+
+export const statusInstagramDiretoOricStudio=createServerFn({method:"POST"})
+  .validator((i:unknown)=>base.parse(i))
+  .handler(async({data})=>{
+    const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
+    const {requireMetaEditor}=await import("@/lib/oricstudio-meta.server");
+    await requireMetaEditor(supabaseAdmin,data.accessToken,data.clinicaId,false);
+    const {instagramDiretoConfig}=await import("@/lib/oricstudio-instagram.server");
+    const cfg=instagramDiretoConfig();
+    return {configurada:cfg.configured,callback:cfg.callback};
+  });
+
 export const iniciarConexaoMetaOricStudio=createServerFn({method:"POST"})
   .validator((i:unknown)=>base.parse(i))
   .handler(async({data})=>{
@@ -35,9 +54,27 @@ export const statusIntegracaoMetaOricStudio=createServerFn({method:"POST"})
   .handler(async({data})=>{
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const {requireMetaEditor,metaConfig}=await import("@/lib/oricstudio-meta.server");
-    await requireMetaEditor(supabaseAdmin,data.accessToken,data.clinicaId,false);
+    const editor=await requireMetaEditor(supabaseAdmin,data.accessToken,data.clinicaId,false);
     const cfg=metaConfig();
-    return {configurada:cfg.configured};
+    const {instagramDiretoConfig}=await import("@/lib/oricstudio-instagram.server");
+    const direto=instagramDiretoConfig();
+    // O identificador e o callback OAuth são públicos; a secret jamais sai do servidor.
+    // Mesmo com credenciais preenchidas, a Meta deve aprovar o app e o redirect URI.
+    return {
+      configurada:cfg.configured||direto.configured,
+      instagramDiretoConfigurada:direto.configured,
+      facebookConfigurada:cfg.configured,
+      instagramDiretoCallback:direto.callback,
+      diagnostico:editor.isPlatformAdmin ? {
+        instagramAppId:cfg.clientId,
+        callback:cfg.redirectUri,
+        formatoIdValido:cfg.clientIdFormatoValido,
+        configurationIdConfigurado:cfg.configIdFormatoValido,
+        configurationId:cfg.configId,
+        appSecretConfigurado:cfg.temAppSecret,
+        chaveCriptografiaValida:cfg.temChaveCriptografiaValida,
+      } : null,
+    };
   });
 
 export const verificarContaMetaOricStudio=createServerFn({method:"POST"})

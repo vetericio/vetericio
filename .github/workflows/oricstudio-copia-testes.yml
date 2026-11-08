@@ -1,0 +1,65 @@
+name: OricStudio independente - testes da copia
+on:
+  push:
+    branches:
+      - feat/oricstudio-copia-independente-gestor
+    paths:
+      - "oricstudio-independente/**"
+      - "src/lib/oricstudio-*.ts"
+      - "src/routes/oricstudio.tsx"
+      - "src/routes/api/oricstudio/**"
+      - "src/components/oricstudio/**"
+      - "supabase/migrations/*oricstudio*.sql"
+      - ".github/workflows/oricstudio-copia-testes.yml"
+  pull_request:
+    paths:
+      - "oricstudio-independente/**"
+      - "src/lib/oricstudio-*.ts"
+      - "src/routes/oricstudio.tsx"
+      - "src/routes/api/oricstudio/**"
+      - "src/components/oricstudio/**"
+      - "supabase/migrations/*oricstudio*.sql"
+      - ".github/workflows/oricstudio-copia-testes.yml"
+  workflow_dispatch:
+
+jobs:
+  validar-oricse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências Oricse
+        run: npm install --no-audit --no-fund
+      - name: Compilar integração nativa OricStudio na Oricse
+        run: npm run build
+      - name: Verificar tipagem integral da plataforma
+        run: npx tsc --noEmit
+
+  validar-copia:
+    runs-on: ubuntu-latest
+    env:
+      # Valores fictícios: nenhum segredo ou banco de produção é usado por testes.
+      ORICSTUDIO_INSTANCE_ID: oricstudio
+      # Somente CI com dados e chamadas simuladas, jamais ativar em produção antes da revisão.
+      ORICSTUDIO_PUBLICACAO_HOMOLOGADA: "true"
+      SUPABASE_URL: https://oricstudio-ci.example.invalid
+      APP_BASE_URL: https://oricstudio-ci.example.invalid
+      META_GRAPH_VERSION: v24.0
+    defaults:
+      run:
+        working-directory: oricstudio-independente
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Instalar dependencias sem usar o ambiente do Gestor
+        run: bun install --frozen-lockfile
+      - name: Conferir independencia e impedir segredos do Gestor
+        run: bun scripts/validar-independencia.mjs
+      - name: Compilar copia sem publicar e gerar tipagem das rotas
+        run: bun run build
+      - name: Checar tipos
+        run: bunx tsc --noEmit
+      - name: Testes automatizados
+        run: bun run test

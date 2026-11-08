@@ -38,6 +38,7 @@ import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
+import { useAdminNavigation } from "@/components/admin/AdminShell";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin")({ component: Admin });
@@ -160,30 +161,6 @@ type SiteConfig = {
   logo_url?: string;
 };
 
-type GrupoAba = "Operação" | "Produto e conteúdo" | "Controle";
-type ItemMenuAdmin = {
-  id: string;
-  nome: string;
-  icone: typeof Gauge;
-  grupo: GrupoAba;
-  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio" | "/oricstudio";
-};
-const ABAS: ItemMenuAdmin[] = [
-  { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
-  { id: "novas", nome: "Clínicas novas", icone: ClipboardCheck, grupo: "Operação" },
-  { id: "lixeira", nome: "Lixeira · 360 dias", icone: Trash2, grupo: "Operação" },
-  { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
-  { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
-  { id: "pagamentos", nome: "OricsePay", icone: CreditCard, grupo: "Operação" },
-  { id: "oricstudio-geral", nome: "OricStúdio Geral", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
-  { id: "meu-oricstudio", nome: "Meu OricStúdio", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio" },
-  { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
-  { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
-  { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
-  { id: "auditoria", nome: "Controle e auditoria", icone: ShieldCheck, grupo: "Controle" },
-  { id: "sistema", nome: "Sistema e integrações", icone: Settings, grupo: "Controle" },
-];
-
 const PERFIS: Record<PapelClinica, { nome: string; resumo: string; acessos: string[]; bloqueios: string[] }> = {
   rt: {
     nome: "RT",
@@ -275,11 +252,12 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function Admin() {
   const quantidadeClinicasAtivas = useQuantidadeClinicasAtivas();
-  const [aba, setAba] = useState<Aba>("dashboard");
+  const { aba, setAba } = useAdminNavigation();
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoClinica[]>([]);
+  const [assinaturasClinicas,setAssinaturasClinicas]=useState<Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>>({});
   const [clinicasLixeira, setClinicasLixeira] = useState<Clinica[]>([]);
   const [processandoLixeira,setProcessandoLixeira]=useState<string|null>(null);
   const [exclusaoPermanente,setExclusaoPermanente]=useState<{tipo:"solicitacao"|"clinica";id:string;nome:string}|null>(null);
@@ -326,6 +304,8 @@ function Admin() {
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
   const [gradeTaxas, setGradeTaxas] = useState<{ modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] }>({ modalidades: [], segmentos: [], comissoes: [] });
   const [salvandoTaxas, setSalvandoTaxas] = useState(false);
+  const [erroTaxas, setErroTaxas] = useState<string | null>(null);
+  const [carregandoTaxas, setCarregandoTaxas] = useState(true);
   const [dominiosClinica, setDominiosClinica] = useState<DominioClinica[]>([]);
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
@@ -373,7 +353,8 @@ function Admin() {
   }
 
   async function carregarTudo() {
-    const [c, clinicasNaLixeira, u, v, p, cfg, arqs, taxas, dom] = await Promise.all([
+    setCarregandoTaxas(true);
+    const [c, clinicasNaLixeira, u, v, p, cfg, arqs, taxas, dom, assinaturas] = await Promise.all([
       semClinicasNaLixeira((supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA)).order("nome"),
       (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).not("excluido_em", "is", null).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
@@ -383,6 +364,7 @@ function Admin() {
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
       (supabaseBanco as any).rpc("oricse_listar_grade_taxas_pagamento"),
       (supabase as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
+      (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
@@ -390,6 +372,10 @@ function Admin() {
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
     setClinicas(c.data || []);
     setClinicasLixeira(clinicasNaLixeira.data || []);
+    if(assinaturas.error) toast.error("Não foi possível carregar a vigência das assinaturas: "+assinaturas.error.message);
+    const porClinica:Record<string,{ciclo:string;inicio_em:string;proximo_vencimento_em:string;ultimo_pagamento_em:string|null;status:string;plano_codigo:string}>={};
+    for(const assinatura of assinaturas.data||[]){if(!porClinica[assinatura.clinica_id])porClinica[assinatura.clinica_id]=assinatura;}
+    setAssinaturasClinicas(porClinica);
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
@@ -402,9 +388,11 @@ function Admin() {
     setSite({ ...SITE_PADRAO, ...(cfg.data?.valor || {}) });
     setArquivosDrive(arqs.count || 0);
     if (taxas.error) {
+      setErroTaxas(`Não foi possível carregar os valores salvos: ${taxas.error.message}`);
       toast.error("Não foi possível carregar a grade de pagamentos.");
     } else {
       const dados = taxas.data || {};
+      setErroTaxas(Array.isArray(dados.modalidades) && dados.modalidades.length > 0 ? null : "O banco não retornou condições de pagamento. Os dados existentes foram preservados.");
       setGradeTaxas({
         modalidades: Array.isArray(dados.modalidades) ? dados.modalidades.map((item: any) => ({
           ...item,
@@ -431,6 +419,7 @@ function Admin() {
       if (atual) setSelecionada(atual);
     }
     setUltimaAtualizacao(new Date().toISOString());
+    setCarregandoTaxas(false);
   }
 
   async function salvarGradeTaxas(clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[]) {
@@ -686,29 +675,18 @@ function Admin() {
   }
 
   async function autorizarFuncionamento(item: SolicitacaoClinica) {
-    const clinica = clinicas.find((atual) => atual.id === item.clinica_criada_id);
-    if (!clinica) return toast.error("Prepare o espaço da clínica antes de autorizar.");
-    if (!window.confirm(`Autorizar o funcionamento de ${clinica.nome}? A clínica passará a ter acesso ao sistema.`)) return;
+    if(!item.clinica_criada_id) return toast.error("Prepare o espaço da clínica antes de autorizar.");
+    if (!window.confirm(`Autorizar o funcionamento de ${item.clinica_nome}? O período contratado começa na ativação e o vencimento será calculado automaticamente.`)) return;
     setAtivandoSolicitacao(item.id);
     try {
-      const financeira = pedidoIsentoValido(item) ? "isento" : item.pagamento_aprovado_em ? "em_dia" : "teste";
-      const { error: clinicaError } = await (supabaseBanco as any)
-        .from("clinicas")
-        .update({ status: "ativa", status_financeiro: financeira, updated_at: new Date().toISOString() })
-        .eq("id", clinica.id);
-      if (clinicaError) throw clinicaError;
-      const { error: solicitacaoError } = await (supabaseBanco as any)
-        .from("oricse_contratacoes")
-        .update({ status: "ativada", updated_at: new Date().toISOString() })
-        .eq("id", item.id);
-      if (solicitacaoError) throw solicitacaoError;
-      toast.success("Funcionamento autorizado.");
-      await Promise.all([carregarTudo(), carregarSolicitacoes()]);
-    } catch (error) {
-      toast.error((error as Error).message || "Não foi possível autorizar a clínica.");
-    } finally {
-      setAtivandoSolicitacao(null);
-    }
+      const {data,error}=await (supabaseBanco as any).rpc("oricse_admin_ativar_contratacao",{p_contratacao:item.id});
+      if(error)throw error;
+      if(!data?.ok)throw new Error("Ativação não confirmada pelo servidor.");
+      toast.success("Clínica ativada. Vigência e cobrança calculadas automaticamente.");
+      await Promise.all([carregarTudo(),carregarSolicitacoes()]);
+    } catch(error) {
+      toast.error((error as Error).message||"Não foi possível autorizar a clínica.");
+    }finally{setAtivandoSolicitacao(null);}
   }
 
   useEffect(() => { void carregarTudo(); void carregarSolicitacoes(); }, []);
@@ -845,10 +823,6 @@ function Admin() {
         limite_usuarios: Math.max(1, Number(selecionada.limite_usuarios) || 1),
         observacoes: selecionada.observacoes?.trim() || null,
         logo_url: selecionada.logo_url?.trim() || null,
-        ultimo_pagamento_em: selecionada.ultimo_pagamento_em || null,
-        proximo_pagamento_em: selecionada.proximo_pagamento_em || null,
-        acesso_ate: selecionada.acesso_ate || null,
-        status_financeiro: selecionada.status_financeiro,
         updated_at: new Date().toISOString(),
       }).eq("id", selecionada.id);
       if (error) throw error;
@@ -1185,14 +1159,32 @@ function Admin() {
        <div className="flex justify-end gap-2"><button type="button" disabled={ocupado} onClick={() => { setExcluindoClinica(false); setConfirmacaoExclusao(""); }} className="rounded-xl border px-4 py-2.5 font-semibold">Cancelar</button><button type="button" disabled={ocupado || confirmacaoExclusao !== "APAGAR"} onClick={() => void confirmarExclusaoClinica()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white disabled:opacity-40"><Trash2 size={17}/> Enviar à Lixeira</button></div>
      </DialogContent></Dialog></Card>;
 
-  const renderSituacao = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div><p className="mt-1 text-sm text-muted-foreground">Controle administrativo, pagamentos e período de acesso.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conta criada em</p><p className="mt-2 text-lg font-bold">{dataBR(selecionada.created_at)}</p></div>
-    <label className="text-sm font-semibold">Situação financeira<select value={selecionada.status_financeiro} onChange={(e) => setSelecionada({ ...selecionada, status_financeiro: e.target.value as StatusFinanceiro })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="em_dia">Em dia</option><option value="pendente">Pendente</option><option value="atrasado">Atrasado</option><option value="isento">Isento</option><option value="teste">Período de teste</option></select></label>
-    <label className="text-sm font-semibold">Último pagamento<input type="date" value={dataInput(selecionada.ultimo_pagamento_em)} onChange={(e) => setSelecionada({ ...selecionada, ultimo_pagamento_em: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <label className="text-sm font-semibold">Próximo pagamento<input type="date" value={dataInput(selecionada.proximo_pagamento_em)} onChange={(e) => setSelecionada({ ...selecionada, proximo_pagamento_em: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <label className="text-sm font-semibold md:col-span-2">Acesso liberado até<input type="date" value={dataInput(selecionada.acesso_ate)} onChange={(e) => setSelecionada({ ...selecionada, acesso_ate: e.target.value || null })} className="mt-2 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
-    <div className="rounded-xl border p-4 md:col-span-2"><p className="text-sm font-semibold">Resumo</p><p className="mt-2 text-sm text-muted-foreground">Plano: <strong className="text-foreground">{selecionada.plano}</strong> · Status: <strong className="text-foreground">{selecionada.status}</strong> · Acesso até: <strong className="text-foreground">{dataBR(selecionada.acesso_ate)}</strong></p></div>
-  </div></Card>;
+  const renderSituacao = () => {
+    if(!selecionada)return null;
+    const assinatura=assinaturasClinicas[selecionada.id];
+    const contratacao=solicitacoes.find(item=>item.clinica_criada_id===selecionada.id && !item.excluido_em);
+    const ciclo=assinatura?.ciclo||contratacao?.ciclo;
+    const nomesCiclo:Record<string,string>={mensal:"Mensal",trimestral:"Trimestral",semestral:"Semestral",anual:"Anual · 365 dias",bienal:"Dois anos",teste:"Teste"};
+    const isento=Boolean(contratacao && pedidoIsentoValido(contratacao));
+    const status=assinatura?(isento?"Isento por cupom":selecionada.status_financeiro==="atrasado"?"Em atraso":selecionada.status_financeiro==="pendente"?"Pendente":"Em dia"):"Aguardando ativação";
+    const campo=(titulo:string,valor:string)=><div className="rounded-xl border bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p><p className="mt-2 text-lg font-bold">{valor}</p></div>;
+    return <Card>
+      <div className="flex items-center gap-2"><CreditCard size={20}/><h2 className="text-xl font-bold">Situação da conta</h2></div>
+      <p className="mt-1 text-sm text-muted-foreground">Informações automáticas da contratação e do plano selecionado. Datas e situação financeira não podem ser alteradas manualmente nesta tela.</p>
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {campo("Conta criada em",dataBR(selecionada.created_at))}
+        {campo("Plano contratado",selecionada.plano)}
+        {campo("Período contratado",ciclo?nomesCiclo[ciclo]||ciclo:"Sem contratação vinculada")}
+        {campo("Situação financeira",status)}
+        {campo("Último pagamento",assinatura?.ultimo_pagamento_em?dataBR(assinatura.ultimo_pagamento_em):"Nenhum pagamento registrado")}
+        {campo("Próximo vencimento",assinatura?.proximo_vencimento_em?dataBR(assinatura.proximo_vencimento_em):"Será calculado na ativação")}
+        {campo("Acesso liberado até",assinatura?.proximo_vencimento_em?dataBR(assinatura.proximo_vencimento_em):"Aguardando ativação")}
+        {campo("Situação da clínica",selecionada.status)}
+        {campo("Origem do benefício",isento?`Cupom integral: ${contratacao?.promo_codigo}`:"Conforme a contratação")}
+      </div>
+      {!assinatura&&<p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">A vigência começa na autorização de funcionamento. A clínica não recebe uma data de pagamento fictícia por ter usado cupom.</p>}
+    </Card>;
+  };
 
   const renderUsuariosClinica = () => !selecionada ? null : <ClinicUsersPanel clinica={{ id: selecionada.id, nome: selecionada.nome, limite_usuarios: selecionada.limite_usuarios }} usuariosDaClinica={usuariosDaClinica as any} perfis={PERFIS} onAtualizarVinculo={atualizarVinculo} onRefresh={carregarTudo} />;
 
@@ -1994,6 +1986,9 @@ function Admin() {
         clinicas={clinicas}
         grade={gradeTaxas}
         salvando={salvandoTaxas}
+        carregando={carregandoTaxas}
+        erro={erroTaxas}
+        onRestaurar={() => carregarTudo()}
         onSalvarTudo={async (clinicaId, modalidades, segmentos, comissoes) => {
           await salvarGradeTaxas(clinicaId, modalidades, segmentos);
           await salvarComissoesOricse(clinicaId, comissoes);
@@ -2028,41 +2023,7 @@ function Admin() {
           </div>
         </header>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[270px_minmax(0,1fr)]">
-          <aside className="xl:sticky xl:top-4 xl:self-start">
-            <nav aria-label="Navegação administrativa" className="rounded-2xl border bg-white p-3 shadow-sm">
-              <div className="border-b px-2 pb-4 pt-1">
-                <p className="text-sm font-black">Administração ORICSE</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Comece pelas clínicas novas e siga o fluxo de aprovação.</p>
-              </div>
-
-              {(["Operação", "Produto e conteúdo", "Controle"] as GrupoAba[]).map((grupo) => (
-                <div key={grupo} className="mt-4">
-                  <p className="px-2 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">{grupo}</p>
-                  <div className="mt-1 grid gap-1">
-                    {ABAS.filter((item) => item.grupo === grupo).map(({ id, nome, icone: Icone, rota }) => {
-                      const ativa = !rota && aba === id;
-                      return <button key={id} type="button" onClick={() => {
-                        if (rota) { window.location.assign(rota); return; }
-                        abrirPainel(id as Aba);
-                      }} aria-current={ativa ? "page" : undefined} className={"flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition " + (ativa ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-700 hover:bg-slate-100")}>
-                        <Icone size={18}/>
-                        <span className="min-w-0 flex-1">{nome}</span>
-                        {id === "novas" && solicitacoesEmAberto.length > 0 && <span className={"rounded-full px-2 py-0.5 text-xs " + (ativa ? "bg-white/20 text-white" : "bg-primary/10 text-primary")}>{solicitacoesEmAberto.length}</span>}
-                      </button>;
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              <button type="button" onClick={() => setAba("novas")} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-primary/20 bg-[#fff8f4] p-3 text-left hover:bg-[#fff3eb]">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"><ClipboardCheck size={18}/></span>
-                <span className="min-w-0 flex-1"><span className="block text-xs font-bold text-primary">Próxima ação</span><span className="block text-xs text-slate-600">Liberar clínicas prontas</span></span>
-                <span className="rounded-full bg-white px-2 py-1 text-sm font-black text-primary">{solicitacoesProntas.length}</span>
-              </button>
-            </nav>
-          </aside>
-
+        <div className="mt-6">
           <section className="min-w-0">
             {aba === "dashboard" && renderDashboard()}
             {aba === "novas" && renderClinicasNovas()}
@@ -2119,10 +2080,22 @@ function chaveTaxa(linha: Pick<TaxaModalidade, "modalidade" | "prazo_recebimento
   return [linha.modalidade, linha.prazo_recebimento_dias, linha.parcelas].join(":");
 }
 
-function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
+function rotuloPagamentoSimulador(linha: TaxaModalidade) {
+  if (linha.modalidade !== "cartao_credito") return linha.descricao;
+  const parcelas = Math.max(1, Number(linha.parcelas) || 1);
+  const quando = linha.prazo_recebimento_dias === 0
+    ? "na hora"
+    : `em ${linha.prazo_recebimento_dias} dias`;
+  return `${parcelas} ${parcelas === 1 ? "parcela" : "parcelas"} (${quando})`;
+}
+
+function PainelTaxasPagamento({ clinicas, grade, salvando, carregando, erro, onRestaurar, onSalvarTudo }: {
   clinicas: Clinica[];
   grade: { modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] };
   salvando: boolean;
+  carregando: boolean;
+  erro: string | null;
+  onRestaurar: () => Promise<void>;
   onSalvarTudo: (clinicaId: string | null, modalidades: TaxaModalidade[], segmentos: TaxaSegmento[], comissoes: TaxaComissao[]) => Promise<void>;
 }) {
   const [clinicaId, setClinicaId] = useState<string>("");
@@ -2220,9 +2193,10 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
       return [...atuais, segmento];
     });
   }
-  function restaurarTudo() {
-    setLinhas(globais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
-    setComissoes(comissoesGlobais.map((linha) => ({ ...linha, clinica_id: clinicaId || null })));
+  async function restaurarTudo() {
+    // Reconsulta o banco: restaura também as exceções da clínica selecionada,
+    // não os valores gerais e nem versões desatualizadas mantidas em memória.
+    await onRestaurar();
   }
   function regrasSelecionadas(chave: string) {
     return comissoes.filter((linha) => segmentosSelecionados.includes(linha.segmento) && chaveTaxa(linha) === chave);
@@ -2294,8 +2268,10 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h3 className="font-black">Taxas e comissão por condição</h3><p className="mt-1 text-sm text-muted-foreground">A edição de Comissão ORICSE afeta apenas as áreas marcadas acima. A coluna ao lado mostra, com clareza, como cada regra ficará distribuída.</p></div>
-        <button type="button" onClick={restaurarTudo} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50">Restaurar valores salvos</button>
+        <button type="button" disabled={carregando || salvando} onClick={() => void restaurarTudo()} className="rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50 disabled:opacity-50">{carregando ? "Carregando valores..." : "Restaurar valores salvos"}</button>
       </div>
+      {erro && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{erro} <button type="button" className="font-bold underline" onClick={() => void onRestaurar()}>Tentar novamente</button></p>}
+      {!erro && carregando && !linhas.length && <p role="status" className="mt-4 text-sm text-muted-foreground">Carregando as taxas e comissões salvas...</p>}
       <div className="mt-4 overflow-x-auto rounded-xl border">
         <table className="min-w-[1120px] w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr>
@@ -2369,16 +2345,19 @@ function PainelTaxasPagamento({ clinicas, grade, salvando, onSalvarTudo }: {
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)]">
         <div className="grid content-start gap-3">
           <label className="text-sm font-bold">{modoTaxasSimulacao === "reter" ? "Valor final do serviço" : "Valor líquido desejado pela clínica"}<input inputMode="decimal" value={valorSimulacao} onChange={(event) => setValorSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-bold"/></label>
-          <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{linha.descricao}</option>)}</select></label>
+          <label className="text-sm font-bold">Como o cliente paga<select value={chaveSimulacao} onChange={(event) => setChaveSimulacao(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{linhasVisiveis.filter((linha) => linha.ativo).map((linha) => <option key={chaveTaxa(linha)} value={chaveTaxa(linha)}>{rotuloPagamentoSimulador(linha)}</option>)}</select></label>
           <label className="text-sm font-bold">Área da venda<select value={segmentoSimulacao} onChange={(event) => setSegmentoSimulacao(event.target.value as TaxaSegmento["segmento"])} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal">{SEGMENTOS_DISPONIVEIS.map((segmento) => <option key={segmento} value={segmento}>{SEGMENTOS_TAXAS[segmento]}</option>)}</select></label>
         </div>
-        <dl className="space-y-2 rounded-2xl bg-white p-5 text-sm shadow-sm">
+        <dl className="space-y-3 rounded-2xl bg-white p-5 text-sm shadow-sm">
+          <div className="rounded-xl bg-primary px-4 py-5 text-primary-foreground sm:px-5">
+            <dt className="text-sm font-bold">{modoTaxasSimulacao === "reter" ? "Líquido da clínica" : "Tutor pagará"}</dt>
+            <dd className="mt-1 break-words text-4xl font-black leading-tight tracking-tight tabular-nums sm:text-5xl" aria-live="polite">{moedaCentavos(modoTaxasSimulacao === "reter" ? liquido : valorCobradoTutor)}</dd>
+          </div>
           <div className="flex justify-between gap-3"><dt>{modoTaxasSimulacao === "reter" ? "Valor final para o tutor" : "Líquido desejado pela clínica"}</dt><dd className="font-bold">{moedaCentavos(valorInformado)}</dd></div>
-          <div className="flex justify-between gap-3"><dt>Tutor pagará</dt><dd className="font-black">{moedaCentavos(valorCobradoTutor)}</dd></div>
           {modoTaxasSimulacao === "repassar" && <div className="flex justify-between gap-3 rounded-lg bg-amber-50 px-2 py-1 text-amber-900"><dt>Repasse das taxas</dt><dd className="font-black">+ {moedaCentavos(taxaRepassada)}</dd></div>}
           <div className="flex justify-between gap-3"><dt>Mercado Pago ({percentual(linhaSimulada?.mp_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(descontoMp)}</dd></div>
           <div className="flex justify-between gap-3"><dt>ORICSE ({percentual(comissaoSimulada?.oricse_percentual || 0)})</dt><dd className="font-bold text-rose-700">− {moedaCentavos(comissaoOricse)}</dd></div>
-          <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-black">Líquido da clínica</dt><dd className="font-black text-emerald-700">{moedaCentavos(liquido)}</dd></div>
+          {modoTaxasSimulacao === "repassar" && <div className="mt-2 flex justify-between gap-3 border-t pt-3 text-base"><dt className="font-semibold">Líquido da clínica</dt><dd className="font-bold text-emerald-700">{moedaCentavos(liquido)}</dd></div>}
           <div className="flex justify-between gap-3 text-xs text-muted-foreground"><dt>Taxa efetiva final</dt><dd className="font-bold">{percentual(taxaFinal)}</dd></div>
         </dl>
       </div>

@@ -3,22 +3,26 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import {
   AlertCircle, ArrowLeft, BarChart3, Bell, CalendarDays, CheckCircle2,
   Clock3, FileImage, FolderOpen, Instagram, LayoutDashboard, LockKeyhole,
-  MessageCircle, Pencil, Plus, RefreshCw, Save, Settings2, ShieldCheck, Trash2, Users,
+  MessageCircle, Pencil, Plus, RefreshCw, Save, Settings2, ShieldCheck, ScrollText, Trash2, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
+import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
+import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
 import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
-import { iniciarConexaoMetaOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
+import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio,prepararEnvioOricStudio,gerarRelatorioOricStudio} from "@/lib/oricstudio-operacao.functions";
+import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
 export const Route = createFileRoute("/oricstudio")({
+  validateSearch: (search: Record<string, unknown>) => ({ ambiente: search.ambiente === "plataforma" ? "plataforma" as const : undefined }),
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
   component: OricStudio,
 });
 
 type Status = "rascunho" | "aguardando_aprovacao" | "aprovado";
 type Tipo = "imagem" | "carrossel" | "reels" | "story";
-type Aba = "inicio" | "contas" | "publicacoes" | "calendario" | "biblioteca" | "aprovacoes" | "comentarios" | "metricas" | "alertas" | "configuracoes";
+type Aba = "inicio" | "contas" | "publicacoes" | "calendario" | "biblioteca" | "aprovacoes" | "comentarios" | "metricas" | "relatorios" | "alertas" | "configuracoes";
 type Contexto = {
   clinica_id: string; clinica_nome: string; clinica_status: string;
   licenca_status: string; licenca_expira_em: string | null; tem_acesso: boolean; pode_editar: boolean;
@@ -43,6 +47,7 @@ const ABAS = [
   { id: "aprovacoes", rotulo: "Aprovações", Icone: ShieldCheck },
   { id: "comentarios", rotulo: "Comentários", Icone: MessageCircle },
   { id: "metricas", rotulo: "Métricas", Icone: BarChart3 },
+  { id: "relatorios", rotulo: "Relatórios", Icone: ScrollText },
   { id: "alertas", rotulo: "Alertas", Icone: Bell },
   { id: "configuracoes", rotulo: "Configurações", Icone: Settings2 },
 ] as const;
@@ -65,6 +70,14 @@ function chaveDia(data: Date) {
 }
 
 function OricStudio() {
+  const { ambiente } = Route.useSearch();
+  const modoPlataforma = ambiente === "plataforma";
+  // A interface é única: apenas o provedor de dados muda entre a clínica e a ORICSE.
+  const tabelaPublicacoes = modoPlataforma ? "oricstudio_sistema_publicacoes" : "oricstudio_publicacoes";
+  const tabelaVersoes = modoPlataforma ? "oricstudio_sistema_versoes" : "oricstudio_publicacoes_versoes";
+  const tabelaMidias = modoPlataforma ? "oricstudio_sistema_midias" : "oricstudio_midias";
+  const tabelaPreferencias = modoPlataforma ? "oricstudio_sistema_preferencias" : "oricstudio_preferencias";
+  const filtrarClinica = (consulta: any, id: string) => modoPlataforma ? consulta : consulta.eq("clinica_id", id);
   const [aba, setAba] = useState<Aba>("inicio");
   const [modoCalendario, setModoCalendario] = useState<"mes"|"semana"|"dia">("mes");
   const [referenciaCalendario, setReferenciaCalendario] = useState(() => new Date());
@@ -72,10 +85,29 @@ function OricStudio() {
   const [comercial, setComercial] = useState<{preco_base_centavos:number|null;preco_adicional_centavos:number|null;comercializacao_ativa:boolean}|null>(null);
   const [quantidadeContratacao,setQuantidadeContratacao] = useState(1);
   const [solicitando,setSolicitando] = useState(false);
+  const [pedidoAberto,setPedidoAberto] = useState<{id:string;status:string;quantidade_contas:number;valor_mensal_centavos:number}|null>(null);
+  const [assinatura,setAssinatura] = useState<{
+    id:string;status:string;quantidade_contas:number;valor_mensal_centavos:number;
+    mp_assinatura_status:string|null;cancelamento_em:string|null;ultima_conciliacao_em:string|null;
+  }|null>(null);
+  const [cancelandoAssinatura,setCancelandoAssinatura]=useState(false);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [midias, setMidias] = useState<Midia[]>([]);
   const [contasMeta, setContasMeta] = useState<ContaMeta[]>([]);
+  const [operacao,setOperacao]=useState<Record<string,any[]>>({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});
+  const [erroOperacao,setErroOperacao]=useState("");
+  const [periodoInicio,setPeriodoInicio]=useState(()=>{
+    const d=new Date();d.setDate(d.getDate()-30);return d.toISOString().slice(0,10);
+  });
+  const [periodoFim,setPeriodoFim]=useState(()=>new Date().toISOString().slice(0,10));
+  const [gerandoRelatorio,setGerandoRelatorio]=useState(false);
   const [metaConfigurada, setMetaConfigurada] = useState(false);
+  const [instagramDiretoConfigurado,setInstagramDiretoConfigurado]=useState(false);
+  const [metaDiagnostico, setMetaDiagnostico] = useState<{
+    instagramAppId:string; callback:string; formatoIdValido:boolean;
+    configurationIdConfigurado:boolean; configurationId:string;
+    appSecretConfigurado:boolean; chaveCriptografiaValida:boolean;
+  } | null>(null);
   const [metaCarregando, setMetaCarregando] = useState(false);
   const [metaOcupada, setMetaOcupada] = useState(false);
   const [metaErro, setMetaErro] = useState("");
@@ -95,43 +127,84 @@ function OricStudio() {
   const [status, setStatus] = useState<"rascunho" | "aguardando_aprovacao">("rascunho");
   const [versoes, setVersoes] = useState<Versao[]>([]);
   const [versoesId, setVersoesId] = useState<string | null>(null);
+  const [agendandoId,setAgendandoId]=useState<string|null>(null);
+  const [agendandoConta,setAgendandoConta]=useState("");
+  const [agendandoMidias,setAgendandoMidias]=useState<string[]>([]);
+  const [agendando,setAgendando]=useState(false);
 
   const carregar = useCallback(async () => {
     const seq = ++requisicao.current;
     setCarregando(true); setErro("");
-    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]); setMetaErro("");
+    setContexto(null); setPublicacoes([]); setMidias([]); setPreferencias(null); setContasMeta([]);
+    setOperacao({envios:[],insights:[],comentarios:[],alertas:[],regras:[],relatorios:[]});setErroOperacao(""); setMetaErro(""); setMetaDiagnostico(null); setPedidoAberto(null); setAssinatura(null); setComercial(null);
     try {
       const { data: auth, error: authErro } = await supabase.auth.getUser();
       if (authErro || !auth.user?.id) throw new Error("Entre na sua conta para consultar o OricStúdio.");
-      // A clínica é escolhida no servidor, nunca por um ID recebido do navegador.
-      const { data, error } = await (supabaseBanco as any).rpc("oricstudio_meu_contexto");
-      if (error) throw error;
-      const c = data as Contexto | null;
+      // O modo interno não depende da clínica selecionada. A autorização é confirmada no banco,
+      // e todas as tabelas do sistema têm RLS exclusivo para administradores da plataforma.
+      let c: Contexto | null;
+      if (modoPlataforma) {
+        const {data:admin, error} = await (supabaseBanco as any).rpc("oricstudio_eh_admin");
+        if (error) throw error;
+        if (admin !== true) throw new Error("Acesso exclusivo da Administração Geral do ORICSE.");
+        c = {
+          clinica_id: ORICSTUDIO_PLATAFORMA_ID, clinica_nome:"ORICSE",
+          clinica_status:"ativa", licenca_status:"interno", licenca_expira_em:null,
+          tem_acesso:true, pode_editar:true,
+        };
+      } else {
+        // A clínica é resolvida pelo servidor; nenhum ID fornecido pelo navegador autoriza acesso.
+        const {data, error} = await (supabaseBanco as any).rpc("oricstudio_meu_contexto");
+        if (error) throw error;
+        c = data as Contexto | null;
+      }
       if (seq !== requisicao.current) return;
       setContexto(c);
-      if (c) {
+      if (c && !modoPlataforma) {
         const catalogo=await (supabaseBanco as any).rpc("oricstudio_catalogo_comercial");
         if (catalogo.error) throw catalogo.error;
         if (seq!==requisicao.current) return;
         setComercial(catalogo.data || null);
+        const solicitacao=await (supabaseBanco as any).from("oricstudio_solicitacoes")
+          .select("id,status,quantidade_contas,valor_mensal_centavos")
+          .eq("clinica_id",c.clinica_id)
+          .in("status",["aguardando_checkout","pagamento_pendente"])
+          .order("criado_em",{ascending:false}).limit(1).maybeSingle();
+        if(solicitacao.error) throw solicitacao.error;
+        if(seq!==requisicao.current)return;
+        setPedidoAberto(solicitacao.data||null);
+        if(c.pode_editar){
+          const contrato=await (supabaseBanco as any).from("oricstudio_solicitacoes")
+            .select("id,status,quantidade_contas,valor_mensal_centavos,mp_assinatura_status,cancelamento_em,ultima_conciliacao_em")
+            .eq("clinica_id",c.clinica_id).eq("status","pago")
+            .order("criado_em",{ascending:false}).limit(1).maybeSingle();
+          if(contrato.error)throw contrato.error;
+          if(seq!==requisicao.current)return;
+          setAssinatura(contrato.data||null);
+        }
       }
       if (!c?.tem_acesso) return;
       const [posts, arquivos, pref] = await Promise.all([
-        (supabaseBanco as any).from("oricstudio_publicacoes")
-          .select("id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em")
-          .eq("clinica_id", c.clinica_id).order("criado_em", { ascending: false }),
-        (supabaseBanco as any).from("oricstudio_midias")
-          .select("id,nome,tipo,criado_em,caminho_privado").eq("clinica_id", c.clinica_id)
+        filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
+          .select(modoPlataforma
+            ? "id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em"
+            : "id,clinica_id,titulo,legenda,tipo,status,planejado_para,criado_em,atualizado_em"),
+          c.clinica_id).order("criado_em", { ascending: false }),
+        filtrarClinica((supabaseBanco as any).from(tabelaMidias)
+          .select("id,nome,tipo,criado_em,caminho_privado"), c.clinica_id)
           .order("criado_em", { ascending: false }),
-        (supabaseBanco as any).from("oricstudio_preferencias")
-          .select("clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario")
-          .eq("clinica_id", c.clinica_id).maybeSingle(),
+        modoPlataforma
+          ? (supabaseBanco as any).from(tabelaPreferencias)
+            .select("nome_publico,tom_de_voz,hashtags_padrao,fuso_horario").eq("id","oricse").maybeSingle()
+          : (supabaseBanco as any).from(tabelaPreferencias)
+            .select("clinica_id,nome_publico,tom_de_voz,hashtags_padrao,fuso_horario")
+            .eq("clinica_id", c.clinica_id).maybeSingle(),
       ]);
       for (const response of [posts, arquivos, pref]) if (response.error) throw response.error;
       if (seq !== requisicao.current) return;
-      setPublicacoes((posts.data || []) as Publicacao[]);
+      setPublicacoes(((posts.data || []) as Publicacao[]).map(p=>({...p,clinica_id:c.clinica_id})));
       setMidias((arquivos.data || []) as Midia[]);
-      setPreferencias(pref.data || {
+      setPreferencias(pref.data ? {...pref.data,clinica_id:c.clinica_id} : {
         clinica_id: c.clinica_id, nome_publico: c.clinica_nome,
         tom_de_voz: "Profissional e acolhedor", hashtags_padrao: "",
         fuso_horario: "America/Sao_Paulo",
@@ -142,13 +215,22 @@ function OricStudio() {
           const {data:authSession}=await supabase.auth.getSession();
           const token=authSession.session?.access_token;
           if(!token)throw new Error("Sessão expirada.");
-          const [accounts,configuration]=await Promise.all([
+          const [accounts,configuration,instagramDireto]=await Promise.all([
             listarContasMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
             statusIntegracaoMetaOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
+            statusInstagramDiretoOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}}),
           ]);
           if(seq===requisicao.current) {
             setContasMeta(accounts as ContaMeta[]);
             setMetaConfigurada(configuration.configurada);
+             setInstagramDiretoConfigurado(instagramDireto.configurada);
+            setMetaDiagnostico(configuration.diagnostico ?? null);
+          }
+          try {
+            const result=await consultarOperacaoOricStudio({data:{accessToken:token,clinicaId:c.clinica_id}});
+            if(seq===requisicao.current)setOperacao(result);
+          }catch(error){
+            if(seq===requisicao.current)setErroOperacao(error instanceof Error?error.message:"Não foi possível carregar a operação.");
           }
         } catch(e) {
           if(seq===requisicao.current) setMetaErro(e instanceof Error?e.message:"Erro ao consultar a Meta.");
@@ -161,7 +243,7 @@ function OricStudio() {
     } finally {
       if (seq === requisicao.current) setCarregando(false);
     }
-  }, []);
+  }, [modoPlataforma]);
 
   useEffect(() => {
     void carregar();
@@ -233,10 +315,10 @@ function OricStudio() {
         planejado_para: planejado ? new Date(planejado).toISOString() : null,
       };
       const query = editandoId
-        ? (supabaseBanco as any).from("oricstudio_publicacoes").update(dados)
-            .eq("id",editandoId).eq("clinica_id", contexto.clinica_id)
-        : (supabaseBanco as any).from("oricstudio_publicacoes")
-            .insert({ ...dados, clinica_id: contexto.clinica_id });
+        ? filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes).update(dados)
+            .eq("id",editandoId), contexto.clinica_id)
+        : (supabaseBanco as any).from(tabelaPublicacoes)
+            .insert(modoPlataforma ? dados : { ...dados, clinica_id: contexto.clinica_id });
       const { error } = await query;
       if (error) throw error;
       toast.success(editandoId ? "Rascunho atualizado." : "Rascunho salvo.");
@@ -246,27 +328,47 @@ function OricStudio() {
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao salvar."); }
     finally { setSalvando(false); }
   }
+  async function registrarEnvio(p:Publicacao) {
+    if(!contexto?.pode_editar||agendando)return;
+    if(!agendandoConta)return toast.error("Selecione a conta Instagram.");
+    if(!agendandoMidias.length)return toast.error("Selecione pelo menos uma mídia.");
+    if(!window.confirm("Registrar este agendamento no motor do OricStudio? A publicação externa continua protegida até homologação."))return;
+    setAgendando(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      const result=await prepararEnvioOricStudio({data:{
+        accessToken:auth.session.access_token,clinicaId:contexto.clinica_id,
+        publicacaoId:p.id,contaId:agendandoConta,midias:agendandoMidias,
+      }});
+      toast.success(result.publicacaoHabilitada?"Envio agendado na fila.":"Agendado. Publicação real aguardando homologação.");
+      setAgendandoId(null);setAgendandoConta("");setAgendandoMidias([]);
+      await carregar();setAba("publicacoes");
+    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível agendar.");}
+    finally{setAgendando(false);}
+  }
+
   async function alterarStatus(p: Publicacao, proximo: Status) {
     if (!contexto?.pode_editar || !window.confirm(`Alterar "${p.titulo}" para "${STATUS[proximo]}"? Esta ação não publica no Instagram.`)) return;
-    const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
-      .update({ status: proximo }).eq("id", p.id).eq("clinica_id", contexto.clinica_id);
+    const { error } = await filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
+      .update({ status: proximo }).eq("id", p.id), contexto.clinica_id);
     if (error) return toast.error(error.message);
     toast.success("Etapa editorial atualizada. Nada foi publicado.");
     void carregar();
   }
   async function excluir(p: Publicacao) {
     if (!contexto?.pode_editar || !window.confirm(`Excluir definitivamente o rascunho "${p.titulo}"?`)) return;
-    const { error } = await (supabaseBanco as any).from("oricstudio_publicacoes")
-      .delete().eq("id", p.id).eq("clinica_id", contexto.clinica_id);
+    const { error } = await filtrarClinica((supabaseBanco as any).from(tabelaPublicacoes)
+      .delete().eq("id", p.id), contexto.clinica_id);
     if (error) return toast.error(error.message);
     toast.success("Rascunho excluído; o evento fica na auditoria.");
     setEditorAberto(false);
     void carregar();
   }
   async function carregarVersoes(p: Publicacao) {
-    const { data, error } = await (supabaseBanco as any).from("oricstudio_publicacoes_versoes")
+    const { data, error } = await filtrarClinica((supabaseBanco as any).from(tabelaVersoes)
       .select("id,evento,criado_em,autor_id")
-      .eq("publicacao_id",p.id).eq("clinica_id",p.clinica_id)
+      .eq("publicacao_id",p.id), p.clinica_id)
       .order("criado_em",{ascending:false}).limit(30);
     if (error) return toast.error(error.message);
     setVersoes((data||[]) as Versao[]);
@@ -279,12 +381,19 @@ function OricStudio() {
     if (!auth.user?.id) return toast.error("Faça login novamente.");
     setSalvando(true);
     try {
-      const {error} = await (supabaseBanco as any).from("oricstudio_preferencias").upsert({
-        ...preferencias, clinica_id: contexto.clinica_id, atualizado_por: auth.user.id,
+      const valores = {
+        nome_publico: preferencias.nome_publico,
+        tom_de_voz: preferencias.tom_de_voz,
+        hashtags_padrao: preferencias.hashtags_padrao,
+        fuso_horario: preferencias.fuso_horario,
+        atualizado_por: auth.user.id,
         atualizado_em: new Date().toISOString(),
-      },{onConflict:"clinica_id"});
+      };
+      const {error} = await (supabaseBanco as any).from(tabelaPreferencias).upsert(
+        modoPlataforma ? {...valores,id:"oricse"} : {...valores,clinica_id:contexto.clinica_id},
+        {onConflict:modoPlataforma?"id":"clinica_id"});
       if(error)throw error;
-      toast.success("Preferências da clínica salvas.");
+      toast.success(modoPlataforma?"Preferências da ORICSE salvas.":"Preferências da clínica salvas.");
     } catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}
     finally{setSalvando(false);}
   }
@@ -296,23 +405,135 @@ function OricStudio() {
   function precoBRL(centavos:number) {
     return (centavos/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   }
+  async function abrirCheckoutOricstudio(id:string) {
+    const {data:auth}=await supabase.auth.getSession();
+    const token=auth.session?.access_token;
+    if(!token)throw new Error("Sua sessão expirou. Faça login novamente.");
+    const checkout=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+      body:{acao:"checkout",solicitacao_id:id},
+      headers:{"Authorization":"Bearer "+token},
+    });
+    if(checkout.error)throw new Error("O checkout não está disponível. Sua solicitação foi preservada.");
+    const url=String(checkout.data?.checkout_url||"");
+    const parsed=new URL(url);
+    if(parsed.protocol!=="https:" ||
+      !(parsed.hostname==="mercadopago.com.br"||parsed.hostname==="mercadopago.com"||
+        parsed.hostname.endsWith(".mercadopago.com.br")||
+        parsed.hostname.endsWith(".mercadopago.com")))
+      throw new Error("O Mercado Pago não retornou um endereço seguro.");
+    window.location.assign(url);
+  }
   async function solicitarOricstudio() {
-    if (!contexto || !comercial?.comercializacao_ativa || mensalidadeOricstudio===null) return;
-    if(!window.confirm(`Solicitar OricStúdio para ${contexto.clinica_nome}, com ${quantidadeContratacao} conta(s), por ${precoBRL(mensalidadeOricstudio)}/mês? Este pedido não efetua pagamento nem ativa o módulo.`))return;
+    if(!contexto||!comercial?.comercializacao_ativa||mensalidadeOricstudio===null||pedidoAberto)return;
+    if(!window.confirm(`Contratar OricStúdio para ${contexto.clinica_nome}, com ${quantidadeContratacao} conta(s), por ${precoBRL(mensalidadeOricstudio)}/mês? Você será encaminhado ao Mercado Pago. O acesso só será liberado após a confirmação do pagamento.`))return;
     setSolicitando(true);
-    try {
-      const {data,error}=await (supabaseBanco as any).rpc("oricstudio_solicitar_contratacao",{
-        p_quantidade:quantidadeContratacao,
-      });
+    try{
+      const {data,error}=await (supabaseBanco as any).rpc("oricstudio_solicitar_contratacao",{p_quantidade:quantidadeContratacao});
       if(error)throw error;
-      toast.success("Solicitação registrada, aguardando disponibilidade do checkout.");
+      if(!data?.id)throw new Error("Solicitação não foi criada.");
+      await abrirCheckoutOricstudio(data.id);
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Não foi possível abrir o checkout.");
       await carregar();
-    } catch(e) {toast.error(e instanceof Error?e.message:"Não foi possível registrar a solicitação.");}
-    finally {setSolicitando(false);}
+    }finally{setSolicitando(false);}
+  }
+  async function retomarCheckoutOricstudio() {
+    if(!pedidoAberto||solicitando)return;
+    setSolicitando(true);
+    try{await abrirCheckoutOricstudio(pedidoAberto.id);}
+    catch(e){toast.error(e instanceof Error?e.message:"Não foi possível retomar o checkout.");}
+    finally{setSolicitando(false);}
+  }
+
+  async function verificarPagamentoOricstudio(solicitacaoId:string){
+    if(solicitando)return;
+    setSolicitando(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Faça login novamente.");
+      const {data,error}=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{acao:"verificar_assinatura",solicitacao_id:solicitacaoId},
+        headers:{"Authorization":"Bearer "+token},
+      });
+      if(error||!data?.ok)throw new Error("Não foi possível verificar a assinatura. Consulte o suporte caso já tenha pago.");
+      toast.success("Situação conferida diretamente com o Mercado Pago.");
+      await carregar();
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível conciliar.");}
+    finally{setSolicitando(false);}
+  }
+
+  async function cancelarRenovacaoOricstudio(){
+    if(!assinatura || !contexto?.pode_editar || cancelandoAssinatura)return;
+    if(!window.confirm("Cancelar as próximas cobranças do OricStúdio nesta clínica? O acesso já pago permanece até o vencimento e a assinatura deixará de renovar automaticamente."))return;
+    setCancelandoAssinatura(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Entre novamente no ORICSE.");
+      const {data,error}=await supabaseBanco.functions.invoke("oricstudio-checkout",{
+        body:{acao:"cancelar",solicitacao_id:assinatura.id},
+        headers:{"Authorization":"Bearer "+token},
+      });
+      if(error)throw new Error("Não foi possível confirmar o cancelamento no Mercado Pago.");
+      if(!data?.ok)throw new Error(String(data?.error||"Cancelamento não confirmado."));
+      toast.success("Renovação cancelada. O acesso já pago continua até a data de vencimento.");
+      await carregar();
+    }catch(e){toast.error(e instanceof Error?e.message:"Falha ao cancelar renovação.");}
+    finally{setCancelandoAssinatura(false);}
+  }
+
+  async function resolverAlerta(id:string) {
+    if(!contexto?.pode_editar)return;
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      await resolverAlertaOricStudio({data:{accessToken:auth.session.access_token,
+        clinicaId:contexto.clinica_id,alertaId:id}});
+      toast.success("Alerta resolvido.");await carregar();setAba("alertas");
+    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível resolver o alerta.");}
+  }
+
+  async function alterarRegra(regra:any,ativo:boolean) {
+    if(!contexto?.pode_editar)return;
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      if(!auth.session?.access_token)throw new Error("Sessão expirada.");
+      await salvarRegraOricStudio({data:{
+        accessToken:auth.session.access_token,clinicaId:contexto.clinica_id,
+        contaId:regra.conta_id,modo:regra.modo,maxPorDia:regra.max_por_dia,
+        maxPorSemana:regra.max_por_semana,ativa:ativo,
+        precisaAprovacao:regra.precisa_aprovacao,
+      }});
+      toast.success(ativo?"Regra ativada.":"Regra suspensa.");
+      await carregar();setAba("configuracoes");
+    }catch(error){toast.error(error instanceof Error?error.message:"Falha ao alterar a regra.");}
+  }
+
+  async function conectarInstagramDireto() {
+    if(!contexto?.pode_editar||metaOcupada)return;
+    setMetaOcupada(true);
+    try {
+      const {data:auth}=await supabase.auth.getSession();
+      const token=auth.session?.access_token;
+      if(!token)throw new Error("Sessão expirada.");
+      const result=await iniciarConexaoInstagramDiretoOricStudio({data:{
+        accessToken:token,clinicaId:contexto.clinica_id,
+      }});
+      const url=new URL(result.url);
+      if(url.protocol!=="https:"||url.hostname!=="www.instagram.com"||
+        url.pathname!=="/oauth/authorize")
+        throw new Error("A Meta não forneceu a URL oficial do Instagram.");
+      window.location.assign(url.toString());
+    }catch(e){
+      toast.error(e instanceof Error?e.message:"Falha na conexão Instagram.");
+      setMetaOcupada(false);
+    }
   }
 
   async function conectarMeta() {
     if (!contexto?.pode_editar || metaOcupada) return;
+    setMetaErro("");
     setMetaOcupada(true);
     try {
       const {data:auth}=await supabase.auth.getSession();
@@ -321,10 +542,25 @@ function OricStudio() {
       const result=await iniciarConexaoMetaOricStudio({data:{
         accessToken:token,clinicaId:contexto.clinica_id,
       }});
-      if(!result.url.startsWith("https://www.instagram.com/oauth/authorize?"))throw new Error("Endereço de autorização inválido.");
-      window.location.assign(result.url);
+      const authorizeUrl=new URL(result.url);
+      // O servidor pode emitir o dialog OAuth versionado (ex.: /v26.0/dialog/oauth)
+      // ou não versionado. Aceitar apenas a origem oficial e os parâmetros
+      // obrigatórios, sem liberar redirecionamento para hosts externos.
+      const validMetaPath=new RegExp("^/(?:v[0-9]+(?:[.][0-9]+)?/)?dialog/oauth/?$");
+      if(authorizeUrl.protocol!=="https:" ||
+         authorizeUrl.hostname!=="www.facebook.com" ||
+         !validMetaPath.test(authorizeUrl.pathname) ||
+         !["client_id","config_id","redirect_uri","state"].every(
+           key=>Boolean(authorizeUrl.searchParams.get(key))
+         ) ||
+         authorizeUrl.searchParams.get("response_type")!=="code") {
+        throw new Error("Endereço de autorização da Meta inválido. Atualize a página e tente novamente.");
+      }
+      window.location.assign(authorizeUrl.toString());
     } catch(e) {
-      toast.error(e instanceof Error?e.message:"Falha ao iniciar conexão.");
+      const motivo=e instanceof Error?e.message:"Falha ao iniciar conexão.";
+      setMetaErro("Falha ao abrir autorização Meta: "+motivo);
+      toast.error(motivo);
       setMetaOcupada(false);
     }
   }
@@ -351,7 +587,7 @@ function OricStudio() {
 
   async function desconectarMeta(conta: ContaMeta) {
     if (!contexto?.pode_editar || metaOcupada ||
-        !window.confirm(`Desconectar @${conta.username} desta clínica? O histórico editorial permanecerá intacto.`)) return;
+        !window.confirm(`Desconectar @${conta.username} ${modoPlataforma?"da ORICSE":"desta clínica"}? O histórico editorial permanecerá intacto.`)) return;
     setMetaOcupada(true);
     try {
       const {data:auth}=await supabase.auth.getSession();
@@ -393,9 +629,9 @@ function OricStudio() {
         metadata:{modulo:"oricstudio",uso:"biblioteca_privada"},
       }});
       if (!arquivo?.registroId) throw new Error("Upload não retornou identificação.");
-      const {error} = await (supabaseBanco as any).from("oricstudio_midias").insert({
-        clinica_id:contexto.clinica_id,nome:file.name,
-        tipo:file.type.startsWith("video/")?"video":"imagem",
+      const {error} = await (supabaseBanco as any).from(tabelaMidias).insert({
+        ...(modoPlataforma ? {} : {clinica_id:contexto.clinica_id}),
+        nome:file.name, tipo:file.type.startsWith("video/")?"video":"imagem",
         caminho_privado:arquivo.registroId,
       });
       if(error) {
@@ -404,12 +640,30 @@ function OricStudio() {
         }}); } catch {}
         throw error;
       }
-      toast.success("Arquivo salvo na biblioteca privada da clínica.");
+      toast.success(modoPlataforma?"Arquivo salvo na biblioteca privada da ORICSE.":"Arquivo salvo na biblioteca privada da clínica.");
       await carregar();
       setAba("biblioteca");
     } catch(e) {
       toast.error(e instanceof Error?e.message:"Falha ao enviar arquivo.");
     } finally {setEnviandoMidia(false);}
+  }
+
+  async function criarRelatorio() {
+    if(!contexto?.pode_editar || gerandoRelatorio)return;
+    setGerandoRelatorio(true);
+    try{
+      const {data:auth}=await supabase.auth.getSession();
+      const accessToken=auth.session?.access_token;
+      if(!accessToken)throw new Error("Sessão expirada. Entre novamente.");
+      await gerarRelatorioOricStudio({data:{
+        accessToken,clinicaId:contexto.clinica_id,
+        inicio:periodoInicio,fim:periodoFim,contaId:null,
+      }});
+      toast.success("Relatório salvo no ambiente desta clínica.");
+      await carregar();
+      setAba("relatorios");
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível gerar o relatório.");}
+    finally{setGerandoRelatorio(false);}
   }
 
   async function visualizarMidia(m: Midia) {
@@ -434,8 +688,8 @@ function OricStudio() {
       await excluirArquivoDrive({data:{
         accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
       }});
-      const {error}=await (supabaseBanco as any).from("oricstudio_midias")
-        .delete().eq("id",m.id).eq("clinica_id",contexto.clinica_id);
+      const {error}=await filtrarClinica((supabaseBanco as any).from(tabelaMidias)
+        .delete().eq("id",m.id), contexto.clinica_id);
       if(error)throw error;
       toast.success("Mídia excluída.");
       setPrevias(atual=>{const n={...atual};delete n[m.id];return n;});
@@ -445,23 +699,34 @@ function OricStudio() {
 
   return <main className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-16 pt-6 text-foreground sm:px-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <div><Link to="/inicio" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> Voltar ao ORICSE</Link>
+      <div><Link to={modoPlataforma?"/admin":"/inicio"} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"><ArrowLeft className="h-4 w-4"/> {modoPlataforma?"Voltar à Administração Geral":"Voltar ao ORICSE"}</Link>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-extrabold sm:text-3xl"><img src={ORICSTUDIO_LOGO} alt="Logo oficial OricStúdio" className="h-14 w-14 rounded-xl object-contain" /> OricStúdio</h1>
         <p className="mt-1 text-sm text-muted-foreground">Gestão de Redes Sociais para o Mercado Pet</p>
       </div>
       <button type="button" disabled={carregando} onClick={()=>void carregar()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm"><RefreshCw className="h-4 w-4"/> Atualizar</button>
     </header>
-    {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">Carregando a clínica e verificando a licença...</p>}
+    {carregando && <p role="status" className="rounded-xl border bg-card p-6 text-sm">{modoPlataforma?"Carregando OricStúdio da ORICSE...":"Carregando a clínica e verificando a licença..."}</p>}
     {!carregando && erro && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/60 bg-card p-5 text-sm text-destructive"><AlertCircle className="h-5 w-5 shrink-0"/>{erro}</div>}
     {!carregando && !erro && !contexto && <div className="rounded-xl border bg-card p-6"><p className="font-semibold">Nenhuma clínica selecionada</p><p className="mt-2 text-sm text-muted-foreground">Entre em uma clínica autorizada no ORICSE para consultar o OricStúdio.</p></div>}
     {!carregando && !erro && contexto && !contexto.tem_acesso && <section className="rounded-2xl border bg-card p-6 sm:p-8">
       <div className="flex items-center gap-2 text-primary"><LockKeyhole className="h-6 w-6"/><span className="font-semibold">Produto adicional</span></div>
       <h2 className="mt-3 text-2xl font-bold">OricStúdio para {contexto.clinica_nome}</h2>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">O OricStúdio reúne criação de rascunhos, planejamento, calendário editorial e, futuramente, gestão de publicações, comentários e métricas do Instagram.</p>
-      <p className="mt-4 text-sm"><strong>Licença:</strong> {contexto.licenca_status.replaceAll("_"," ")}. A contratação ainda não está disponível; a liberação é administrada pela plataforma ORICSE.</p>
+      <p className="mt-4 text-sm"><strong>Licença:</strong> {contexto.licenca_status.replaceAll("_"," ")}. O acesso depende de contratação e confirmação do pagamento.</p>
       <p className="mt-3 text-sm text-muted-foreground">Nenhum acesso foi concedido automaticamente pelo plano da clínica.</p>
       <div className="mt-6 space-y-3 rounded-xl border bg-background p-4">
         <h3 className="font-semibold">Contratar OricStúdio</h3>
+        {pedidoAberto && <div className="space-y-2 rounded-lg border p-3 text-sm">
+          <strong>Solicitação em andamento</strong>
+          <p>{pedidoAberto.quantidade_contas} conta(s) — {precoBRL(pedidoAberto.valor_mensal_centavos)}/mês</p>
+          <p>Situação: {pedidoAberto.status==="pagamento_pendente"?"Aguardando confirmação do Mercado Pago":"Checkout ainda não iniciado"}.</p>
+          <p className="text-xs text-muted-foreground">O retorno ao site não comprova o pagamento. A licença só será liberada após confirmação oficial.</p>
+          <button type="button" onClick={()=>void retomarCheckoutOricstudio()} disabled={solicitando||!comercial?.comercializacao_ativa}
+             className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">Continuar pagamento</button>
+          <button type="button" onClick={()=>void verificarPagamentoOricstudio(pedidoAberto.id)}
+            disabled={solicitando||pedidoAberto.status!=="pagamento_pendente"}
+            className="ml-2 rounded-lg border px-3 py-2 text-sm disabled:opacity-50">Verificar pagamento</button>
+        </div>}
         <p className="text-sm text-muted-foreground">Uma conta Instagram incluída. Contas adicionais têm cobrança mensal por unidade.</p>
         <label className="block text-sm">Total de contas
           <input type="number" min={1} max={100} value={quantidadeContratacao}
@@ -471,16 +736,31 @@ function OricStudio() {
         <p className="text-sm">1 conta inclusa + {quantidadeContratacao-1} adicionais</p>
         <p className="text-xl font-bold">Mensalidade: {mensalidadeOricstudio===null?"A definir":precoBRL(mensalidadeOricstudio)}</p>
         <button type="button" onClick={()=>void solicitarOricstudio()}
-          disabled={!comercial?.comercializacao_ativa || mensalidadeOricstudio===null || solicitando}
+          disabled={!comercial?.comercializacao_ativa || mensalidadeOricstudio===null || solicitando || !!pedidoAberto}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
-          {solicitando?"Registrando...":"Solicitar contratação"}
+          {solicitando?"Registrando...":"Assinar pelo Mercado Pago"}
         </button>
         {(!comercial?.comercializacao_ativa || mensalidadeOricstudio===null) &&
           <p className="text-xs text-muted-foreground">Contratações ainda indisponíveis. O OricStúdio não gera cobranças nem libera contas sem confirmação.</p>}
       </div>
     </section>}
     {!carregando && !erro && contexto?.tem_acesso && <>
-      <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">Licença ativa · Ambiente exclusivo da clínica</span></div>
+      <div className="rounded-xl border bg-card px-4 py-3 text-sm"><strong>{contexto.clinica_nome}</strong><span className="ml-3 text-muted-foreground">{modoPlataforma?"Uso interno da plataforma · Sem assinatura ou cobranças":"Licença ativa · Ambiente exclusivo da clínica"}</span></div>
+      {assinatura && contexto.pode_editar && <section className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+        <h2 className="font-semibold">Sua assinatura OricStúdio</h2>
+        <p>{assinatura.quantidade_contas} conta(s) · {precoBRL(assinatura.valor_mensal_centavos)}/mês</p>
+        <p>Renovação: {assinatura.cancelamento_em?"Cancelada — sem futuras cobranças":assinatura.mp_assinatura_status==="authorized"?"Automática":assinatura.mp_assinatura_status||"Aguardando conciliação"}</p>
+        <p className="text-muted-foreground">Acesso já pago até: {textoData(contexto.licenca_expira_em)}</p>
+        <button type="button" onClick={()=>void verificarPagamentoOricstudio(assinatura.id)}
+          disabled={solicitando} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">
+          Verificar situação com o Mercado Pago
+        </button>
+        {!assinatura.cancelamento_em && <button type="button" onClick={()=>void cancelarRenovacaoOricstudio()}
+          disabled={cancelandoAssinatura}
+          className="rounded-lg border px-3 py-2 text-sm text-destructive disabled:opacity-50">
+          {cancelandoAssinatura?"Cancelando...":"Cancelar renovação"}
+        </button>}
+      </section>}
       <div className="grid items-start gap-5 lg:grid-cols-[210px_minmax(0,1fr)]">
         <nav aria-label="Navegação do OricStúdio" className="flex gap-2 overflow-x-auto pb-2 lg:sticky lg:top-4 lg:block lg:space-y-4 lg:overflow-visible lg:rounded-xl lg:border lg:bg-card lg:p-3">
           {[
@@ -507,7 +787,7 @@ function OricStudio() {
         <div className="rounded-xl border bg-card p-5"><h3 className="font-bold">Próximas datas do calendário editorial</h3>
           {planejadas.length===0?<p className="mt-2 text-sm text-muted-foreground">Nenhuma data foi planejada.</p>:planejadas.slice(0,5).map(p=><p key={p.id} className="mt-3 border-t pt-3 text-sm">{textoData(p.planejado_para)} · {p.titulo}</p>)}
         </div>
-        <p className="text-xs text-muted-foreground">Sem integração com o Instagram nesta etapa: os indicadores acima mostram apenas dados internos do OricStúdio.</p>
+        <p className="text-xs text-muted-foreground">Os números mostram apenas registros reais. Publicação automática exige credenciais Meta e homologação.</p>
       </section>}
       {aba==="publicacoes" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">Publicações e rascunhos</h2>{contexto.pode_editar && <button onClick={novo} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4"/> Criar publicação</button>}</div>
@@ -522,21 +802,61 @@ function OricStudio() {
             <label className="space-y-1 text-sm font-medium">Data planejada (opcional)<input type="datetime-local" value={planejado} onChange={e=>setPlanejado(e.target.value)} className="w-full rounded-lg border bg-background p-3"/></label>
             <label className="space-y-1 text-sm font-medium">Fluxo editorial<select value={status} onChange={e=>setStatus(e.target.value as typeof status)} className="w-full rounded-lg border bg-background p-3"><option value="rascunho">Salvar rascunho</option><option value="aguardando_aprovacao">Enviar para aprovação interna</option></select></label>
           </div>
-          <p className="text-xs text-muted-foreground">A data é apenas planejamento. Nenhuma publicação será enviada ou agendada no Instagram.</p>
+          <p className="text-xs text-muted-foreground">A data é planejamento editorial. Após aprovação, selecione a conta e a mídia para registrar o agendamento no motor independente.</p>
           <div className="flex flex-wrap gap-2"><button disabled={salvando} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"><Save className="h-4 w-4"/>{salvando?"Salvando...":"Salvar"}</button><button type="button" onClick={()=>setEditorAberto(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button></div>
         </form>}
+        <AgendamentoOricStudio
+          clinicaId={contexto.clinica_id}
+          posts={publicacoes}
+          midias={midias}
+          contas={contasMeta}
+          envios={operacao.envios||[]}
+          podeEditar={contexto.pode_editar}
+          onUpdated={()=>{void carregar();}}
+        />
         {publicacoes.length===0?<p className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Nenhum rascunho. Use “Criar publicação” para começar.</p>:
           <div className="grid gap-3">{publicacoes.map(p=><article key={p.id} className="rounded-xl border bg-card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-bold">{p.titulo}</h3><p className="mt-1 text-xs text-muted-foreground">{p.tipo} · {STATUS[p.status]} · {textoData(p.planejado_para)}</p></div><div className="flex flex-wrap gap-2">
               {contexto.pode_editar && <button onClick={()=>editar(p)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs"><Pencil className="h-3.5 w-3.5"/> Editar</button>}
               <button onClick={()=>void carregarVersoes(p)} className="rounded-lg border px-3 py-2 text-xs">Versões</button>
+               {contexto.pode_editar&&p.status==="aprovado"&&
+                 <button type="button" onClick={()=>{setAgendandoId(agendandoId===p.id?null:p.id);setAgendandoConta("");setAgendandoMidias([]);}}
+                   className="rounded-lg border px-3 py-2 text-xs font-semibold">Agendar no Instagram</button>}
               {contexto.pode_editar && <button onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>}
             </div></div><p className="mt-3 whitespace-pre-line text-sm">{p.legenda||"Sem legenda."}</p>
-            {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
+            {agendandoId===p.id&&<div className="mt-3 space-y-3 rounded-xl border bg-secondary/30 p-4">
+               <h4 className="text-sm font-semibold">Programar publicação — {p.titulo}</h4>
+               <p className="text-xs text-muted-foreground">Conta profissional, mídia e data aprovada são obrigatórias. Arquivos continuam privados; a Meta recebe link assinado temporário.</p>
+               <label className="block text-xs font-semibold">Conta Instagram
+                 <select value={agendandoConta} onChange={e=>setAgendandoConta(e.target.value)}
+                   className="mt-1 w-full rounded-lg border bg-background p-2 text-sm">
+                   <option value="">Selecionar uma conta</option>
+                   {contasMeta.filter(c=>c.status==="ativa").map(c=><option key={c.id} value={c.id}>@{c.username}</option>)}
+                 </select>
+               </label>
+               <fieldset className="space-y-2">
+                 <legend className="text-xs font-semibold">Mídias ({agendandoMidias.length} selecionadas)</legend>
+                 {midias.length===0?<p className="text-xs text-muted-foreground">Adicione arquivos JPEG ou MP4 na Biblioteca.</p>:
+                   midias.map(m=><label key={m.id} className="flex items-center gap-2 text-xs">
+                     <input type="checkbox" checked={agendandoMidias.includes(m.id)}
+                       onChange={e=>setAgendandoMidias(ids=>e.target.checked?[...ids,m.id]:ids.filter(x=>x!==m.id))}/>
+                     {m.nome} — {m.tipo}
+                   </label>)}
+               </fieldset>
+               <div className="flex gap-2">
+                 <button type="button" disabled={agendando||!agendandoConta||agendandoMidias.length===0}
+                   onClick={()=>void registrarEnvio(p)}
+                   className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                   {agendando?"Registrando...":"Confirmar agendamento"}
+                 </button>
+                 <button type="button" onClick={()=>setAgendandoId(null)} className="rounded-lg border px-4 py-2 text-xs">Cancelar</button>
+               </div>
+             </div>}
+             {versoesId===p.id && <div className="mt-3 rounded-lg bg-secondary/40 p-3 text-xs"><strong>Histórico de versões</strong>{versoes.map(v=><p key={v.id} className="mt-2">{textoData(v.criado_em)} — {v.evento}</p>)}</div>}
           </article>)}</div>}
       </section>}
       {aba==="calendario" && <section className="space-y-4">
-        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento interno. A publicação automática será disponibilizada na etapa 3/5.</p></div>
+        <div><h2 className="text-xl font-bold">Calendário editorial</h2><p className="mt-1 text-sm text-muted-foreground">Planejamento editorial e envios agendados. Publicações reais dependem da autorização da Meta e da ativação da fila.</p></div>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
           <div className="flex items-center gap-2">
             <button type="button" onClick={()=>navegarCalendario(-1)} aria-label="Período anterior" className="min-h-10 rounded-lg border px-3">‹</button>
@@ -570,11 +890,11 @@ function OricStudio() {
       </section>}
       {aba==="aprovacoes" && <section className="space-y-3"><h2 className="text-xl font-bold">Aprovações editoriais</h2>
         {pendentes.length===0?<p className="rounded-xl border bg-card p-6 text-sm">Nenhuma publicação aguardando aprovação.</p>:pendentes.map(p=><div key={p.id} className="space-y-3 rounded-xl border bg-card p-4"><h3 className="font-semibold">{p.titulo}</h3><p className="whitespace-pre-line text-sm">{p.legenda}</p><div className="flex flex-wrap gap-2">{contexto.pode_editar && <><button onClick={()=>void alterarStatus(p,"aprovado")} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"><CheckCircle2 className="h-4 w-4"/> Aprovar internamente</button><button onClick={()=>void alterarStatus(p,"rascunho")} className="rounded-lg border px-3 py-2 text-sm">Voltar para rascunho</button></>}</div></div>)}
-        <p className="text-xs text-muted-foreground">Aprovação interna não publica nem agenda o conteúdo nas redes sociais.</p>
+        <p className="text-xs text-muted-foreground">Após aprovar, abra Publicações, selecione a conta e as mídias para programar o envio. Não há publicação automática sem homologação.</p>
       </section>}
       {aba==="biblioteca" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados da clínica no Google Drive do ORICSE.</p></div>
+          <div><h2 className="text-xl font-bold">Biblioteca de mídias</h2><p className="mt-1 text-sm text-muted-foreground">Arquivos privados {modoPlataforma?"da própria ORICSE":"da clínica"} no Google Drive do ORICSE.</p></div>
           {contexto.pode_editar && <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
             <Plus className="h-4 w-4"/>{enviandoMidia?"Enviando...":"Adicionar mídia"}
             <input type="file" className="sr-only" disabled={enviandoMidia}
@@ -586,7 +906,7 @@ function OricStudio() {
         {midias.length===0
           ? <div className="rounded-xl border bg-card p-7"><FolderOpen className="h-9 w-9 text-muted-foreground"/>
               <h3 className="mt-3 font-semibold">Sua biblioteca está vazia</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo da clínica.</p></div>
+              <p className="mt-2 text-sm text-muted-foreground">Adicione imagens e vídeos para organizar o conteúdo {modoPlataforma?"da ORICSE":"da clínica"}.</p></div>
           : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {midias.map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
                 <div className="flex min-h-32 items-center justify-center overflow-hidden rounded-lg bg-secondary/40">
@@ -605,7 +925,7 @@ function OricStudio() {
               </article>)}
             </div>}
       </section>}
-      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz da clínica</h2>
+      {aba==="configuracoes" && preferencias && <form onSubmit={e=>void salvarPreferencias(e)} className="space-y-4 rounded-xl border bg-card p-5"><h2 className="text-xl font-bold">Identidade e tom de voz {modoPlataforma?"da ORICSE":"da clínica"}</h2>
         <label className="block space-y-1 text-sm font-semibold">Nome público<input value={preferencias.nome_publico} onChange={e=>setPreferencias({...preferencias,nome_publico:e.target.value})} maxLength={150} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Tom de voz<textarea rows={3} maxLength={600} value={preferencias.tom_de_voz} onChange={e=>setPreferencias({...preferencias,tom_de_voz:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
         <label className="block space-y-1 text-sm font-semibold">Hashtags padrão<textarea rows={2} maxLength={1000} value={preferencias.hashtags_padrao} onChange={e=>setPreferencias({...preferencias,hashtags_padrao:e.target.value})} className="w-full rounded-lg border bg-background p-3"/></label>
@@ -615,18 +935,71 @@ function OricStudio() {
       {aba==="contas" && <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold">Contas Instagram da clínica</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas.</p>
+            <h2 className="text-xl font-bold">Contas Instagram {modoPlataforma?"da ORICSE":"da clínica"}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{modoPlataforma?"Conecte apenas as contas oficiais da ORICSE, separadas das contas de clientes.":"Cada clínica autoriza suas próprias contas profissionais, sem compartilhamento com outras clínicas."}</p>
           </div>
-          {contexto.pode_editar && <button type="button" onClick={()=>void conectarMeta()}
-            disabled={!metaConfigurada || metaCarregando || metaOcupada}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
-            <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram"}
-          </button>}
+          {contexto.pode_editar && <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={()=>void conectarInstagramDireto()}
+              disabled={!instagramDiretoConfigurado||metaCarregando||metaOcupada}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
+              <Instagram className="h-4 w-4"/>{metaOcupada?"Conectando...":"Conectar Instagram — login direto"}
+            </button>
+            <button type="button" onClick={()=>void conectarMeta()}
+              disabled={!metaConfigurada||metaCarregando||metaOcupada}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-50">
+              Conectar com a Meta — Login Unificado
+            </button>
+          </div>}
         </div>
         {!contexto.pode_editar && <p className="rounded-xl border p-4 text-sm">A conexão é administrada pelo responsável, RT ou administrador da clínica.</p>}
-        {contexto.pode_editar && !metaConfigurada && !metaCarregando &&
+        {contexto.pode_editar && !instagramDiretoConfigurado && !metaCarregando &&
+           <p className="rounded-xl border bg-card p-3 text-sm text-muted-foreground">
+             O login direto com Instagram ainda não foi configurado neste aplicativo.
+             Para entrar agora use <strong>Conectar com a Meta — Login Unificado</strong>.
+             O botão de login direto requer Instagram App ID e Secret específicos do produto.
+           </p>}
+         {contexto.pode_editar && !metaConfigurada && !instagramDiretoConfigurado && !metaCarregando &&
           <p className="rounded-xl border bg-card p-4 text-sm">A integração Meta do OricStúdio está aguardando configuração central. Nenhuma clínica precisa fornecer sua senha ao ORICSE.</p>}
+        {modoPlataforma && metaDiagnostico &&
+          <details className="rounded-xl border bg-card p-4 text-sm">
+            <summary className="cursor-pointer font-semibold">Diagnóstico da conexão Instagram (Administração ORICSE)</summary>
+            <p className="mt-3 text-muted-foreground">
+              Este aplicativo utiliza <strong>Instagram API with Unified Login</strong>.
+              Versão de conexão OricStudio 07/11/2026: endereço estável
+              <code> facebook.com/dialog/oauth </code> com <code>response_type=code</code>.
+              Se a Meta disser “config_id é obrigatório” mesmo com o parâmetro na URL,
+              confirme se o Configuration ID foi criado e ativado no mesmo App ID.
+            </p>
+            <dl className="mt-3 space-y-2">
+              <div><dt className="font-semibold">App ID utilizado</dt>
+                <dd className="break-all font-mono">{metaDiagnostico.instagramAppId || "Não configurado"}</dd></div>
+              <div><dt className="font-semibold">Redirect URI cadastrado na Meta</dt>
+                <dd className="break-all font-mono">{metaDiagnostico.callback}</dd></div>
+              <div><dt className="font-semibold">Formato do App ID</dt>
+                <dd>{metaDiagnostico.formatoIdValido ? "Numérico válido" : "Ausente ou inválido no Cloudflare"}</dd></div>
+              <div><dt className="font-semibold">Configuration ID do Login Unificado</dt>
+                <dd>{metaDiagnostico.configurationIdConfigurado
+                   ? "Formato válido; vínculo Meta não verificado"
+                   : "Ausente ou inválido no Cloudflare"}
+                   {" · ID: "}{metaDiagnostico.configurationId || "não configurado"}</dd></div>
+              <div><dt className="font-semibold">App Secret</dt>
+                <dd>{metaDiagnostico.appSecretConfigurado ? "Configurado" : "Ausente no Cloudflare"}</dd></div>
+              <div><dt className="font-semibold">Chave de criptografia</dt>
+                <dd>{metaDiagnostico.chaveCriptografiaValida ? "Válida" : "Ausente ou inválida (deve ser Base64 de 32 bytes)"}</dd></div>
+            </dl>
+            <p className="mt-3 text-muted-foreground">
+              No Cloudflare, confira os nomes exatos: ORICSTUDIO_META_CLIENT_ID,
+              ORICSTUDIO_META_CLIENT_SECRET, ORICSTUDIO_META_CONFIG_ID,
+              ORICSTUDIO_META_REDIRECT_URI e ORICSTUDIO_META_ENCRYPTION_KEY.
+              No painel Meta, abra o aplicativo com o App ID acima.
+               Entre em Casos de uso → Gerenciar mensagens e conteúdo do Instagram →
+               API setup with Unified Login. Selecione a configuração e clique
+               em <strong>Use this configuration</strong>. Copie o Configuration ID
+               desse mesmo aplicativo e confirme o callback exato registrado.
+            </p>
+            <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer"
+              className="mt-2 inline-block font-semibold text-primary underline">Abrir Meta for Developers</a>
+          </details>}
         {metaErro && <p role="alert" className="rounded-xl border border-destructive/60 p-4 text-sm text-destructive">{metaErro}</p>}
         {metaCarregando && <p className="text-sm text-muted-foreground">Verificando conexões Meta...</p>}
         {contexto.pode_editar && contasMeta.length===0 && !metaCarregando &&
@@ -647,14 +1020,112 @@ function OricStudio() {
         </article>)}
         <p className="text-xs text-muted-foreground">A conexão não autoriza publicações automáticas por si só. A fila de publicação e as permissões aprovadas pela Meta serão validadas separadamente.</p>
       </section>}
-      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="rounded-xl border bg-card p-6">
+      {(["comentarios","metricas","alertas"] as Aba[]).includes(aba) && <section className="space-y-3">
         <h2 className="text-xl font-bold">{ABAS.find(a=>a.id===aba)?.rotulo}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {aba==="comentarios"?"Comentários e respostas serão sincronizados após a conexão Meta, respeitando as permissões concedidas.":
-           aba==="metricas"?"Métricas reais de alcance e interações serão apresentadas após a conexão das contas. Nenhum número será simulado.":
-           "Não há alertas de publicação porque a integração com Instagram ainda não está ativa. Erros de conexão e envio serão acompanhados na etapa 3/5."}
-        </p>
+        {erroOperacao&&<p role="alert" className="rounded-xl border border-destructive/50 p-3 text-sm text-destructive">{erroOperacao}</p>}
+        {aba==="comentarios" && <>
+          {(operacao.comentarios||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhum comentário sincronizado nesta clínica. As respostas reais dependem da conexão Meta autorizada.</p>
+            :(operacao.comentarios||[]).map(c=><article key={c.id} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>@{c.autor||"Usuário"} · {textoData(c.publicado_em)}</span>
+                <span>{c.respondido?"Respondido":c.requer_humano?"Precisa de revisão":"Pendente"}</span>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{c.texto}</p>
+              {c.resposta_sugerida&&<p className="mt-3 rounded-lg bg-secondary p-3 text-xs">Sugestão (não enviada): {c.resposta_sugerida}</p>}
+            </article>)}
+        </>}
+        {aba==="metricas" && <>
+          {(operacao.insights||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sem métricas coletadas nesta clínica. Nenhum número será inventado.</p>
+            :(operacao.insights||[]).map(m=><article key={m.id} className="rounded-xl border bg-card p-4">
+              <p className="text-sm font-semibold">{m.tipo} · {new Date(m.referencia+"T12:00:00").toLocaleDateString("pt-BR")}</p>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(m.dados||{}).filter(([,v])=>typeof v==="string"||typeof v==="number")
+                  .slice(0,12).map(([k,v])=><div key={k} className="rounded-lg bg-secondary/50 p-3">
+                    <dt className="text-xs text-muted-foreground">{k.replaceAll("_"," ")}</dt>
+                    <dd className="font-semibold">{String(v)}</dd>
+                  </div>)}
+              </dl>
+            </article>)}
+        </>}
+        {aba==="alertas" && <>
+          {(operacao.alertas||[]).length===0
+            ?<p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Nenhum alerta registrado para esta clínica.</p>
+            :(operacao.alertas||[]).map(a=><article key={a.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border bg-card p-4">
+              <div><p className="text-sm font-semibold">{a.tipo} · {textoData(a.criado_em)}</p>
+                <p className="mt-1 text-sm">{a.mensagem}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{a.resolvido?"Resolvido":"Pendente"}</p></div>
+              {contexto.pode_editar&&!a.resolvido&&
+                <button type="button" onClick={()=>void resolverAlerta(a.id)} className="rounded-lg border px-3 py-2 text-xs">Resolver alerta</button>}
+            </article>)}
+        </>}
       </section>}
+      {aba==="relatorios" && <section className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold">Relatórios da clínica</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Resultados registrados pelo OricStudio, sem estimativas ou dados de outras clínicas.
+            </p>
+          </div>
+          {contexto.pode_editar && <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs">De
+              <input type="date" value={periodoInicio} max={periodoFim}
+                onChange={e=>setPeriodoInicio(e.target.value)}
+                className="mt-1 block rounded-lg border bg-background px-3 py-2 text-sm"/>
+            </label>
+            <label className="text-xs">Até
+              <input type="date" value={periodoFim} min={periodoInicio}
+                onChange={e=>setPeriodoFim(e.target.value)}
+                className="mt-1 block rounded-lg border bg-background px-3 py-2 text-sm"/>
+            </label>
+            <button type="button" disabled={gerandoRelatorio||!periodoInicio||!periodoFim}
+              onClick={()=>void criarRelatorio()}
+              className="min-h-10 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+              {gerandoRelatorio?"Gerando...":"Gerar relatório"}
+            </button>
+          </div>}
+        </div>
+        {erroOperacao&&<p role="alert" className="text-sm text-destructive">{erroOperacao}</p>}
+        {(operacao.relatorios||[]).length===0?
+          <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+            Nenhum relatório registrado. Gere o primeiro a partir dos dados reais disponíveis.
+          </p>:(operacao.relatorios||[]).map((rel:any)=>{
+            const c=rel.conteudo||{};
+            return <article key={rel.id} className="rounded-xl border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <strong className="text-sm">{rel.tipo.replaceAll("_"," ")} · {rel.periodo_inicio} a {rel.periodo_fim}</strong>
+                <span className="text-xs text-muted-foreground">Gerado em {textoData(rel.gerado_em)}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                <p className="rounded-lg bg-secondary/40 p-3">Métricas registradas: <strong>{c.total_registros_metricas??"—"}</strong></p>
+                <p className="rounded-lg bg-secondary/40 p-3">Comentários: <strong>{c.comentarios_recebidos??"—"}</strong></p>
+                <p className="rounded-lg bg-secondary/40 p-3">Respondidos: <strong>{c.comentarios_respondidos??"—"}</strong></p>
+              </div>
+              {c.aviso&&<p className="mt-3 text-xs text-muted-foreground">{c.aviso}</p>}
+            </article>;
+          })}
+      </section>}
+      {aba==="configuracoes" && (operacao.regras||[]).length>0 &&
+        <section className="space-y-3 rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Regras e autonomia das contas</h2>
+          {(operacao.regras||[]).map(r=><article key={r.id} className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+            <div><p className="text-sm font-semibold">{r.modo.replaceAll("_"," ")}</p>
+              <p className="text-xs text-muted-foreground">Até {r.max_por_dia}/dia e {r.max_por_semana}/semana · {r.precisa_aprovacao?"Aprovação humana":"Automação permitida"}</p></div>
+            <button type="button" disabled={!contexto.pode_editar} onClick={()=>void alterarRegra(r,!r.ativa)}
+              className="rounded-lg border px-3 py-2 text-xs">{r.ativa?"Suspender":"Ativar"}</button>
+          </article>)}
+        </section>}
+      {aba==="publicacoes" && (operacao.envios||[]).length>0 &&
+        <section className="space-y-3 rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-bold">Fila de publicação</h2>
+          {(operacao.envios||[]).map(e=><div key={e.id} className="flex flex-wrap justify-between gap-3 border-t pt-3 text-sm">
+            <span>{textoData(e.planejado_para)} · {e.formato} · <strong>{e.status}</strong></span>
+            <span>{e.tentativas} tentativa(s)</span>
+            {e.erro_resumido&&<p className="w-full text-xs text-destructive">{e.erro_resumido}</p>}
+          </div>)}
+        </section>}
         </div>
       </div>
     </>}

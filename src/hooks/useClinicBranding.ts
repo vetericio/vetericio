@@ -9,13 +9,22 @@ export function useClinicBranding() {
   const [branding, setBranding] = useState<ClinicBranding>(VAZIO);
   useEffect(() => {
     let ativo = true;
-    void (async () => {
+    let requisicao = 0;
+    const carregar = async () => {
+      const atual = ++requisicao;
+      // Trocar de clínica não pode manter o logo da clínica anterior.
+      setBranding(VAZIO);
       const { data, error } = await supabase.rpc("oricse_contexto_clinica_atual");
-      if (!ativo || error || !data?.[0]) return;
+      if (!ativo || atual !== requisicao) return;
+      if (error || !data?.[0]) return;
       setBranding({ nome: data[0].clinica_nome || "", logoUrl: data[0].clinica_logo_url || null });
-    })();
+    };
+    void carregar();
+    const atualizar = () => { void carregar(); };
+    window.addEventListener("oricse:clinica-alterada", atualizar);
     return () => {
       ativo = false;
+      window.removeEventListener("oricse:clinica-alterada", atualizar);
     };
   }, []);
   return branding;

@@ -23,7 +23,8 @@ Criar **novo aplicativo Meta** para o produto OricStúdio, em Meta for Developer
 Configurar os quatro secrets **somente no servidor/Cloudflare Worker**:
 
 - `ORICSTUDIO_META_CLIENT_ID`: Instagram App ID da integração (não ID do Facebook Login).
-- `ORICSTUDIO_META_CLIENT_SECRET`: Instagram App Secret (secreto).
+- `ORICSTUDIO_META_CLIENT_SECRET`: App Secret (secreto) do aplicativo Meta.
+- `ORICSTUDIO_META_CONFIG_ID`: Configuration ID do Login Unificado, extraído da URL de login gerada pela Meta.
 - `ORICSTUDIO_META_REDIRECT_URI`: `https://oricse.vetericio.workers.dev/api/oricstudio/meta/callback`.
 - `ORICSTUDIO_META_ENCRYPTION_KEY`: chave aleatória de 32 bytes codificada em base64; não é senha nem token Meta.
 
