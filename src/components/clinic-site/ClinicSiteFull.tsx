@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight, CalendarDays, Check, Clock3, Heart, Instagram,
   MapPin, MessageCircle, PawPrint, Phone, ShieldCheck, Sparkles,
@@ -78,7 +78,7 @@ export function ClinicSiteFull({template, config}: Props) {
     </div>
   );
 
-  const sections: Record<ClinicSiteSection, React.ReactNode> = {
+  const sections: Record<ClinicSiteSection, ReactNode> = {
     servicos: config.services.length ? (
       <section key="servicos" id="servicos" data-clinic-section="servicos" className={"px-5 sm:px-8 " + sectionPad}>
         <div className="mx-auto max-w-7xl">
