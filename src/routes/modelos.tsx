@@ -5,6 +5,7 @@ import {
   clinicSiteTemplateDescriptions,
   clinicSiteTemplateLabels,
   clinicSiteTemplates,
+  clinicSitePresets,
   prestigeDefault,
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
@@ -15,9 +16,10 @@ function ModelosDeSite() {
   const [template, setTemplate] = useState<ClinicSiteTemplate>("prestige");
   const config = {
     ...prestigeDefault,
+    ...clinicSitePresets[template],
     name: "Aurora Pet",
     slogan: "Cuidado veterinário que acompanha cada história.",
-    description: "Uma clínica fictícia para demonstrar os cinco estilos disponíveis no Oricse.",
+    description: "Exemplo fictício para conhecer os seis sites completos disponíveis na ORICSE.",
     phone: "(31) 3333-2222",
     whatsapp: "5531999999999",
     address: "Av. das Palmeiras, 180 · Belo Horizonte",
