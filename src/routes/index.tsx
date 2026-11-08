@@ -65,18 +65,6 @@ function PaginaInicial() {
       </header>
 
       <section className="relative border-t border-[#f0e3de] bg-[#fffdfa] after:absolute after:inset-x-0 after:bottom-0 after:z-20 after:h-[3px] after:bg-[linear-gradient(90deg,#7f341d_0%,#d8882a_22%,#ffd86a_50%,#d8882a_78%,#7f341d_100%)] after:shadow-[0_-1px_7px_rgba(163,88,28,.45)]">
-        {/* Marca principal: centralizada na área superior da capa, sem duplicá-la no cabeçalho. */}
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center sm:top-5 lg:top-7">
-          <img
-            src="/oricse-logo-oryx.svg?v=15"
-            alt="ORICSE — Soluções para o mercado pet"
-            width={216}
-            height={216}
-            className="h-[152px] w-[152px] object-contain sm:h-[184px] sm:w-[184px] lg:h-[216px] lg:w-[216px]"
-            loading="eager"
-            fetchPriority="high"
-          />
-        </div>
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
@@ -99,8 +87,20 @@ function PaginaInicial() {
               loading="eager"
               decoding="async"
             />
-            <div className="relative mx-auto flex max-w-7xl items-center px-5 pb-12 pt-6 sm:px-8 lg:aspect-[1672/941] lg:min-h-[575px] lg:py-12 lg:px-10">
+            <div className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:aspect-[1672/941] lg:min-h-[760px] lg:py-8 lg:px-10">
               <div className="max-w-xl">
+            {/* Logo centralizada sobre o selo, dentro da coluna de conteúdo. */}
+            <div className="mb-6 flex w-full justify-center sm:mb-8">
+              <img
+                src="/oricse-logo-oryx.svg?v=15"
+                alt="ORICSE — Soluções para o mercado pet"
+                width={200}
+                height={200}
+                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[200px] lg:w-[200px]"
+                loading="eager"
+                fetchPriority="high"
+              />
+            </div>
 
             <p className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
             <h1 className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
@@ -114,6 +114,19 @@ function PaginaInicial() {
         ) : (
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:px-10 lg:py-24">
           <div>
+            {/* Logo centralizada sobre o selo, dentro da coluna de conteúdo. */}
+            <div className="mb-6 flex w-full justify-center sm:mb-8">
+              <img
+                src="/oricse-logo-oryx.svg?v=15"
+                alt="ORICSE — Soluções para o mercado pet"
+                width={200}
+                height={200}
+                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[200px] lg:w-[200px]"
+                loading="eager"
+                fetchPriority="high"
+              />
+            </div>
+
             <p className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
             <h1 className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
             <p className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867]">Uma plataforma completa para manter a rotina organizada, o time alinhado e os tutores por perto.</p>
