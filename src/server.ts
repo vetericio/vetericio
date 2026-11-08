@@ -137,6 +137,18 @@ export default {
         return securityHeaders(Response.redirect(new URL("/oricse-logo-oryx.svg?v=15", url), 302), url.pathname);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
+      // Um chunk removido não pode cair no fallback HTML da aplicação,
+      // pois o navegador tentaria interpretar a página como JavaScript.
+      if (url.pathname.startsWith("/assets/") &&
+          /\.(?:m?js|css)$/i.test(url.pathname) &&
+          (response.headers.get("content-type") || "").includes("text/html")) {
+        return securityHeaders(new Response("Arquivo desta versão não disponível.", {
+          status: 404, headers: {
+            "content-type": "text/plain; charset=utf-8",
+            "cache-control": "no-store",
+          },
+        }), url.pathname);
+      }
       return securityHeaders(await normalizeCatastrophicSsrResponse(response), url.pathname);
     } catch (error) {
       console.error(error);
