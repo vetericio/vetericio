@@ -91,7 +91,11 @@ export function SiteDaClinica({
   const { clinicaId: clinicaDaSessao, carregando, adminGlobal, pode } = usePermissoes();
   // O Admin Geral edita a clínica que selecionou no painel. A seleção
   // sozinha não concede acesso: o banco aplica RLS em todas as operações.
-  const clinicaId = adminClinicaId ? (adminGlobal ? adminClinicaId : "") : clinicaDaSessao;
+  const clinicaId = adminClinicaId
+    ? adminGlobal
+      ? adminClinicaId
+      : ""
+    : clinicaDaSessao;
   const podeEditar = adminClinicaId ? adminGlobal : pode("administracao.site");
   const [config, setConfig] = useState<ClinicSiteConfig>(prestigeDefault);
   const [template, setTemplate] = useState<ClinicSiteTemplate>("prestige");
@@ -442,7 +446,9 @@ export function SiteDaClinica({
   };
 
   if (carregando)
-    return <div className="p-6 text-sm text-muted-foreground">Verificando acesso ao editor...</div>;
+    return (
+      <div className="p-6 text-sm text-muted-foreground">Verificando acesso ao editor...</div>
+    );
   if (!podeEditar)
     return (
       <main className="mx-auto max-w-xl p-8">
@@ -463,10 +469,16 @@ export function SiteDaClinica({
     );
   }
   if (loading)
-    return <div className="p-6 text-sm text-muted-foreground">Carregando site da clínica...</div>;
+    return (
+      <div className="p-6 text-sm text-muted-foreground">Carregando site da clínica...</div>
+    );
 
   return (
-    <main className={embedded ? "w-full min-w-0 bg-muted/30 p-2 sm:p-4" : "min-h-screen bg-muted/30 p-3 pb-20 sm:p-5"}>
+    <main
+      className={
+        embedded ? "w-full min-w-0 bg-muted/30 p-2 sm:p-4" : "min-h-screen bg-muted/30 p-3 pb-20 sm:p-5"
+      }
+    >
       <div className={embedded ? "w-full min-w-0" : "mx-auto max-w-[1750px]"}>
         <header className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-4">
           <div>
