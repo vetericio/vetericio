@@ -11,7 +11,7 @@ export const Route = createFileRoute("/planos")({
       { title: "Planos e preços — ORICSE" },
       { name: "description", content: "Compare os 98 benefícios do ORICSE nos planos Solo, Essencial, Profissional e Master." },
       { property: "og:title", content: "Planos ORICSE — compare todas as funcionalidades" },
-      { property: "og:url", content: "https://oricse.vetericio.workers.dev/planos" },
+      { property: "og:url", content: "https://oricse.com.br/planos" },
     ],
   }),
   component: Planos,
