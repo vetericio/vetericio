@@ -321,31 +321,60 @@ function SiteDaClinica() {
       const now = new Date().toISOString();
       if (publish) {
         const payload = {
-          clinica_id: clinicaId, slug, updated_at: now,
-          status: "publicado", config, template, publicado_em: now,
+          clinica_id: clinicaId,
+          slug,
+          updated_at: now,
+          status: "publicado",
+          config,
+          template,
+          publicado_em: now,
         };
         const result = hasRecord
-          ? await (supabaseBanco as any).from("clinic_sites").update(payload)
-            .eq("clinica_id", clinicaId).select("id").maybeSingle()
-          : await (supabaseBanco as any).from("clinic_sites").insert(payload)
-            .select("id").maybeSingle();
+          ? await (supabaseBanco as any)
+              .from("clinic_sites")
+              .update(payload)
+              .eq("clinica_id", clinicaId)
+              .select("id")
+              .maybeSingle()
+          : await (supabaseBanco as any)
+              .from("clinic_sites")
+              .insert(payload)
+              .select("id")
+              .maybeSingle();
         if (result.error || !result.data)
           throw new Error(result.error?.message || "Não foi possível publicar o site.");
-        const clearDraft = await (supabaseBanco as any).from("clinic_site_drafts")
-          .delete().eq("clinica_id", clinicaId);
-        if (clearDraft.error) toast.error("Site publicado; o rascunho anterior precisa ser revisado.");
+        const clearDraft = await (supabaseBanco as any)
+          .from("clinic_site_drafts")
+          .delete()
+          .eq("clinica_id", clinicaId);
+        if (clearDraft.error)
+          toast.error("Site publicado; o rascunho anterior precisa ser revisado.");
       } else {
         if (!hasRecord) {
-          const initial = await (supabaseBanco as any).from("clinic_sites").insert({
-            clinica_id: clinicaId, slug, updated_at: now, status: "rascunho",
-            config, template,
-          }).select("id").maybeSingle();
+          const initial = await (supabaseBanco as any)
+            .from("clinic_sites")
+            .insert({
+              clinica_id: clinicaId,
+              slug,
+              updated_at: now,
+              status: "rascunho",
+              config,
+              template,
+            })
+            .select("id")
+            .maybeSingle();
           if (initial.error || !initial.data)
             throw new Error(initial.error?.message || "Não foi possível criar o rascunho.");
         }
-        const draft = await (supabaseBanco as any).from("clinic_site_drafts").upsert({
-          clinica_id: clinicaId,config,template,updated_at:now,
-        }, { onConflict:"clinica_id" });
+        const draft = await (supabaseBanco as any).from("clinic_site_drafts").upsert(
+          {
+            clinica_id: clinicaId,
+            config,
+            template,
+            updated_at: now,
+          },
+          { onConflict: "clinica_id" },
+        );
         if (draft.error) throw new Error(draft.error.message);
       }
       setHasRecord(true);
