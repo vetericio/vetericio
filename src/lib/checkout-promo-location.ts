@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 const BOX_ID = "oricse-promo-checkout";
 const STORAGE_KEY = "oricse-promo-aplicado-v1";
@@ -113,7 +113,7 @@ function criarBox(plano: string, section: Element) {
     result.className = "oricse-promo-result";
     result.textContent = "Validando código...";
 
-    const { data, error } = await (supabase as any).rpc("oricse_validar_codigo_promocional", {
+    const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", {
       p_codigo: codigo,
       p_plano_codigo: plano,
       p_documento: documento,
