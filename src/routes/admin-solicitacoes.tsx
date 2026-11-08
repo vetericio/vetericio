@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Clock3, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin-solicitacoes")({ component: AdminSolicitacoes });
 
@@ -15,14 +15,14 @@ function AdminSolicitacoes(){
   const [carregando,setCarregando]=useState(true);
   async function carregar(){
     setCarregando(true);
-    const {data,error}=await (supabase as any).from("oricse_contratacoes").select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_desconto,promo_valor_original,promo_valor_final,clinica_criada_id,created_at").in("status",["pagamento_aprovado","teste_aguardando_ativacao","isento_aguardando_aprovacao","em_analise","em_configuracao","ativada"]).order("created_at",{ascending:false});
+    const {data,error}=await (supabaseBanco as any).from("oricse_contratacoes").select("id,plano_nome,ciclo,valor_exibido,status,clinica_nome,cnpj,clinica_telefone,clinica_email,clinica_cidade,clinica_uf,responsavel_nome,responsavel_cpf,responsavel_crmv,responsavel_crmv_uf,responsavel_email,responsavel_telefone,pagamento_provedor,pagamento_id,pagamento_aprovado_em,valor_total,promo_codigo,promo_desconto,promo_valor_original,promo_valor_final,clinica_criada_id,created_at").in("status",["pagamento_aprovado","teste_aguardando_ativacao","isento_aguardando_aprovacao","em_analise","em_configuracao","ativada"]).order("created_at",{ascending:false});
     setCarregando(false);
     if(error){toast.error("Não foi possível carregar as solicitações.");return;}
     setItens(data||[]);
   }
   useEffect(()=>{void carregar()},[]);
   async function marcarAnalise(id:string){
-    const {error}=await (supabase as any).from("oricse_contratacoes").update({status:"em_analise",updated_at:new Date().toISOString()}).eq("id",id);
+    const {error}=await (supabaseBanco as any).from("oricse_contratacoes").update({status:"em_analise",updated_at:new Date().toISOString()}).eq("id",id);
     if(error){toast.error("Não foi possível atualizar.");return;} toast.success("Solicitação marcada como em análise."); void carregar();
   }
   const [preparando,setPreparando] = useState<string|null>(null);
@@ -32,7 +32,7 @@ function AdminSolicitacoes(){
     if (!window.confirm("Criar o espaço de " + item.clinica_nome + " bloqueado até a configuração e aprovação final?")) return;
     setPreparando(item.id);
     try {
-      const {data,error} = await (supabase as any).rpc("oricse_admin_preparar_clinica",{p_contratacao:item.id});
+      const {data,error} = await (supabaseBanco as any).rpc("oricse_admin_preparar_clinica",{p_contratacao:item.id});
       if(error) throw error;
       toast.success("Espaço criado, aguardando sua configuração e ativação.");
       await carregar();
