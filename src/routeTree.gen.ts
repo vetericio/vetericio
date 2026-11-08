@@ -71,8 +71,8 @@ import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as RhRouteImport } from './routes/rh'
 import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
-import { Route as SolucoesRouteImport } from './routes/solucoes'
 import { Route as SiteDaClinicaRouteImport } from './routes/site-da-clinica'
+import { Route as SolucoesRouteImport } from './routes/solucoes'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
@@ -400,14 +400,14 @@ const SincronizacaoRoute = SincronizacaoRouteImport.update({
   path: '/sincronizacao',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SolucoesRoute = SolucoesRouteImport.update({
-  id: '/solucoes',
-  path: '/solucoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SiteDaClinicaRoute = SiteDaClinicaRouteImport.update({
   id: '/site-da-clinica',
   path: '/site-da-clinica',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolucoesRoute = SolucoesRouteImport.update({
+  id: '/solucoes',
+  path: '/solucoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TemasRoute = TemasRouteImport.update({
@@ -560,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
+  '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
@@ -641,6 +642,7 @@ export interface FileRoutesByTo {
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
+  '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
@@ -723,6 +725,7 @@ export interface FileRoutesById {
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
+  '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
@@ -806,6 +809,7 @@ export interface FileRouteTypes {
     | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/site-da-clinica'
+    | '/solucoes'
     | '/temas'
     | '/termos'
     | '/termos-de-uso'
@@ -887,6 +891,7 @@ export interface FileRouteTypes {
     | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/site-da-clinica'
+    | '/solucoes'
     | '/temas'
     | '/termos'
     | '/termos-de-uso'
@@ -968,6 +973,7 @@ export interface FileRouteTypes {
     | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/site-da-clinica'
+    | '/solucoes'
     | '/temas'
     | '/termos'
     | '/termos-de-uso'
@@ -1050,6 +1056,7 @@ export interface RootRouteChildren {
   SimuladorPagamentosRoute: typeof SimuladorPagamentosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
   SiteDaClinicaRoute: typeof SiteDaClinicaRoute
+  SolucoesRoute: typeof SolucoesRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
@@ -1511,6 +1518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteDaClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/solucoes': {
+      id: '/solucoes'
+      path: '/solucoes'
+      fullPath: '/solucoes'
+      preLoaderRoute: typeof SolucoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/temas': {
       id: '/temas'
       path: '/temas'
@@ -1689,8 +1703,8 @@ const rootRouteChildren: RootRouteChildren = {
   RhRoute: RhRoute,
   SimuladorPagamentosRoute: SimuladorPagamentosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
-  SolucoesRoute: SolucoesRoute,
   SiteDaClinicaRoute: SiteDaClinicaRoute,
+  SolucoesRoute: SolucoesRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
