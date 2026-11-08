@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const appOrigin=Deno.env.get("ORICSE_APP_ORIGIN")||"https://oricse.vetericio.workers.dev";
+const appOrigin=Deno.env.get("ORICSE_APP_ORIGIN")||"https://oricse.com.br";
 const cors={"Access-Control-Allow-Origin":appOrigin,"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json","Vary":"Origin"};
 const resposta=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:cors});
 function normalizarUsuario(valor:unknown){return String(valor??"").trim().replace(/^@+/,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9._-]+/g,".").replace(/\.{2,}/g,".").replace(/^\.+|\.+$/g,"");}
