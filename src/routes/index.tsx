@@ -35,7 +35,7 @@ const modulos = [
 const joias = [
   ["Portal do Tutor", "Documentos, vacinas e pagamentos em um só lugar.", UserRound],
   ["Fluxo integrado", "Agenda, atendimento e caixa sem retrabalho.", CalendarCheck],
-  ["Recebimento online", "Cobrança prática para a clínica e para o tutor.", CreditCard],
+  ["Agendamento mediante pagamento", "O tutor confirma o horário após pagar online.", CalendarDays],
 ] as const;
 
 function Titulo({children, claro = false}:{children:ReactNode; claro?:boolean}) {
