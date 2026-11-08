@@ -472,7 +472,7 @@ function SiteDaClinica() {
         <h1 className="text-2xl font-bold">Clínica não disponível</h1>
         <p className="mt-2 text-muted-foreground">
           {erroClinica ||
-            "Selecione uma clínica válida em Admin Geral → Site e domínios para editar seu site."}
+            "Abra Admin Geral → Clínica → Site e domínios para selecionar o site que deseja editar."}
         </p>
         <a
           href="/admin"
