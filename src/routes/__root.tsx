@@ -162,7 +162,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
       },
-      { rel: "manifest", href: "/manifest.webmanifest?v=16" },
+      { rel: "manifest", href: "/oricse-manifest-v16.webmanifest" },
       { rel: "canonical", href: "https://oricse.com.br/" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/oricse-favicon-32.png?v=16" },
       { rel: "shortcut icon", type: "image/png", href: "/oricse-favicon-32.png?v=16" },
