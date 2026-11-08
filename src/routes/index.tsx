@@ -66,32 +66,42 @@ function PaginaInicial() {
       </header>
 
       <section className="relative border-y border-[#f0e3de] bg-[#fffdfa]">
-        {/* Capa oficial aprovada: arquivo único, sem recortes ou alterações. A capa anterior
-            permanece como fallback até public/oricse-capa-oficial.png existir. */}
+        {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis.
+            Até o PNG ser disponibilizado em /public, a versão anterior permanece no ar. */}
         <img
           src="/oricse-capa-oficial.png"
           alt=""
           aria-hidden="true"
-          loading="eager"
           className="hidden"
+          loading="eager"
           onLoad={() => setCapaOficialCarregada(true)}
           onError={() => setCapaOficialCarregada(false)}
         />
         {capaOficialCarregada ? (
-          <div className="relative w-full">
+          <div className="relative w-full bg-[#f4d5bf]">
+            {/* Em telas menores, a arte inteira fica visível antes do conteúdo. */}
             <img
               src="/oricse-capa-oficial.png"
-              alt="Oricse — Gestão fácil e conectada para quem cuida. Plataforma completa para o mercado pet, com um órix ao pôr do sol."
-              width={1671}
+              alt="Órix nas dunas ao pôr do sol"
+              width={1672}
               height={941}
+              className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-contain"
               loading="eager"
               decoding="async"
-              className="block h-auto w-full"
             />
-            <Link to="/planos" aria-label="Conhecer a Oricse" className="absolute left-[7.3%] top-[69.9%] h-[7%] w-[17.8%] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4A1826]"><span className="sr-only">Conhecer a Oricse</span></Link>
-            <Link to="/login" aria-label="Já sou cliente" className="absolute left-[25.7%] top-[69.9%] h-[7%] w-[12.6%] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4A1826]"><span className="sr-only">Já sou cliente</span></Link>
+            <div className="relative mx-auto flex max-w-7xl items-center px-5 pb-12 pt-6 sm:px-8 lg:aspect-[1672/941] lg:min-h-[575px] lg:py-12 lg:px-10">
+              <div className="max-w-xl">
+
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
+            <h1 className="mt-6 max-w-[10ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">Gestão fácil e <span className="text-[#a56a78]">conectada</span> para quem cuida.</h1>
+            <p className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867]">A Oricse conecta recepção, atendimento, serviços, financeiro e relacionamento para a sua equipe trabalhar melhor todos os dias.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Link to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
+            <p className="mt-6 flex items-center gap-2 text-sm text-[#876570]"><PawPrint size={16} className="text-[#8d4359]"/> Uma plataforma para sua operação inteira, com a sua identidade.</p>
+
+              </div>
+            </div>
           </div>
-        ) : (<>
+        ) : (
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:px-10 lg:py-24">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
@@ -106,7 +116,8 @@ function PaginaInicial() {
             <OrixHero />
           </div>
         </div>
-      </>)}
+
+        )}
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10"><div className="grid gap-3 sm:grid-cols-3">{joias.map(([titulo,texto],i)=><article key={titulo} className="rounded-2xl border border-[#ecdfd9] bg-white p-5"><span className="font-display text-2xl text-[#a56a78]">0{i+1}</span><h2 className="mt-4 text-base font-bold text-[#4A1826]">{titulo}</h2><p className="mt-2 text-sm leading-6 text-[#765c66]">{texto}</p></article>)}</div></section>
