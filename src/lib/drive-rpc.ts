@@ -18,7 +18,7 @@ type FactoryArgs = {
   fromDrive: FromFn;
   fromIdentity: FromFn;
   getSelectedClinicId: () => Promise<string | null>;
-  databaseRpc: (name: string, args: Record<string, unknown>) => Promise<any>;
+  databaseRpc?: (name: string, args: Record<string, unknown>) => Promise<any>;
 };
 
 function erro(message: string, code = "DRIVE_RPC") {
@@ -930,6 +930,10 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
         case "oricse_validar_codigo_promocional": {
           // Fluxo público: usar o RPC PostgreSQL diretamente, não importar
           // funções de servidor no navegador (chunks dinâmicos não publicados).
+          if (!databaseRpc) return {
+            data: null,
+            error: erro("RPC público não disponível neste contexto.", "DRIVE_RPC_CONTEXT"),
+          };
           return await databaseRpc(name, args);
         }
         default:
