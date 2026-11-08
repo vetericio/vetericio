@@ -71,6 +71,7 @@ import { Route as RegistrosRouteImport } from './routes/registros'
 import { Route as RhRouteImport } from './routes/rh'
 import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
+import { Route as SolucoesRouteImport } from './routes/solucoes'
 import { Route as SiteDaClinicaRouteImport } from './routes/site-da-clinica'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
@@ -397,6 +398,11 @@ const SimuladorPagamentosRoute = SimuladorPagamentosRouteImport.update({
 const SincronizacaoRoute = SincronizacaoRouteImport.update({
   id: '/sincronizacao',
   path: '/sincronizacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolucoesRoute = SolucoesRouteImport.update({
+  id: '/solucoes',
+  path: '/solucoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteDaClinicaRoute = SiteDaClinicaRouteImport.update({
@@ -1683,6 +1689,7 @@ const rootRouteChildren: RootRouteChildren = {
   RhRoute: RhRoute,
   SimuladorPagamentosRoute: SimuladorPagamentosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
+  SolucoesRoute: SolucoesRoute,
   SiteDaClinicaRoute: SiteDaClinicaRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
