@@ -1,5 +1,5 @@
-const CACHE_NAME = "oricse-pwa-v13";
-const RUNTIME_CACHE = "oricse-runtime-v13";
+const CACHE_NAME = "oricse-pwa-v14";
+const RUNTIME_CACHE = "oricse-runtime-v14";
 const APP_SHELL = ["/manifest.webmanifest?v=10", "/icon-192-v3.svg", "/icon-512-v3.svg"];
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -49,6 +49,25 @@ async function buscarEAtualizar(request, event, url) {
     // normal mantém a requisição e a autenticação originais.
     const preload = event.request.mode === "navigate" ? await event.preloadResponse : undefined;
     const resposta = preload || (await fetch(request));
+    // Um módulo antigo removido no deploy pode redirecionar para /login.
+    // HTML não é JavaScript: não devolver nem salvar esse HTML como um asset.
+    const asset = url.origin === self.location.origin && url.pathname.startsWith("/assets/");
+    const mime = (resposta.headers.get("content-type") || "").toLowerCase();
+    const modulo = /\\.(?:m?js)$/i.test(url.pathname);
+    const estilo = /\\.css$/i.test(url.pathname);
+    const invalido = asset && (resposta.redirected ||
+      (modulo && !/javascript|ecmascript/.test(mime)) ||
+      (estilo && !/text\\/css/.test(mime)));
+    if (invalido) {
+      // Se a versão antiga foi cacheada corretamente, ela ainda pode finalizar
+      // o fluxo aberto. Caso contrário, devolvemos erro e o app recarrega.
+      const cache = await caches.open(RUNTIME_CACHE);
+      return (await cache.match(request)) ||
+        new Response("Asset indisponível. Recarregue a página.", {
+          status: 404,
+          headers: { "content-type": "text/plain; charset=utf-8" },
+        });
+    }
     if (recursoCacheavel(url) && (resposta.ok || resposta.type === "opaque")) {
       event.waitUntil(
         caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, resposta.clone())),
