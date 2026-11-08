@@ -42,50 +42,6 @@ function dadosComuns(d:Record<string,unknown>){return{
 function validarBase(d:Record<string,unknown>){if(d.aceitou_termos!==true||d.aceitou_privacidade!==true)throw new Error("Revise os dados e aceite os termos e a política de privacidade.");if(!texto(d.clinica_nome)||!texto(d.responsavel_nome)||!texto(d.responsavel_email))throw new Error("Informe o nome da clínica e os dados do responsável.");}
 
 
-const validarPromoSchema=z.object({
-  codigo:z.string().trim().min(1).max(40).regex(/^[A-Za-z0-9._-]+$/i),
-  plano_codigo:z.string().trim().min(1).max(80),
-  documento:z.string().max(32).default(""),
-  valor_base:z.number().finite().min(0).max(1_000_000),
-});
-
-// Consulta pública de um código específico. A lista e as regras permanecem no servidor.
-// O valor exibido é uma prévia; o checkout recalcula o preço e o desconto ao registrar o pedido.
-export const validarCodigoPromocionalDrive=createServerFn({method:"POST"})
-  .validator((entrada:unknown)=>validarPromoSchema.parse(entrada))
-  .handler(async({data})=>{
-    try {
-      const token=await driveAccessToken();
-      const promocao=await aplicarPromocao(
-        token,
-        {promo_codigo:data.codigo,cnpj:data.documento},
-        data.plano_codigo,
-        data.valor_base,
-      );
-      return {
-        valido:true,
-        codigo:promocao.codigo,
-        valor_original:data.valor_base,
-        desconto_aplicado:Math.round(promocao.desconto*100)/100,
-        valor_final:Math.round(promocao.final*100)/100,
-        duracao:promocao.duracao,
-      };
-    } catch(erro) {
-      const mensagem=erro instanceof Error?erro.message:"";
-      const publicas=new Set([
-        "Código promocional inválido ou inativo.",
-        "Este código promocional está fora do período de validade.",
-        "Este código não é válido para o plano selecionado.",
-        "Este código promocional atingiu o limite de usos.",
-      ]);
-      if(publicas.has(mensagem))return{valido:false,mensagem};
-      if(mensagem==="Este documento já atingiu o limite de uso do código."||
-         mensagem==="Este código é válido somente para a primeira assinatura.")
-        return{valido:false,mensagem:"Este código não pode ser aplicado a esta contratação."};
-      throw new Error("Não foi possível validar o código agora. Tente novamente.");
-    }
-  });
-
 export const iniciarContratacaoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>schema.parse(i)).handler(async({data})=>{
   const d=data.dados;validarBase(d);const ciclo=texto(d.ciclo);if(!["mensal","anual"].includes(ciclo))throw new Error("Ciclo de contratação inválido.");
   const token=await driveAccessToken();const planos=await carregarTabela<Plano>(token,"oricse_planos",PLANOS_PADRAO as Plano[]);const plano=planos.find((p)=>p.codigo===texto(d.plano_codigo)&&p.ativo!==false);if(!plano)throw new Error("O plano selecionado não está disponível.");
