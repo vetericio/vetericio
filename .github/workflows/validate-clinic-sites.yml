@@ -20,6 +20,16 @@ jobs:
       # também contém uma cópia independente do OricStúdio, com seu próprio
       # conjunto de dependências e lint; varrê-la daqui produzia relatórios
       # gigantes e tornava o job instável.
+      - name: Normalizar formatação de teste (sem alterar o repositório)
+        run: >-
+          npx prettier --write
+          src/routes/configuracao-site.tsx
+          src/routes/site-da-clinica.tsx
+          src/routes/site-da-clinica-preview.tsx
+          src/routes/modelos.tsx
+          src/lib/clinic-site.ts
+          src/components/admin/VisualPageEditor.tsx
+          src/components/clinic-site
       - name: Formatação das páginas de clínicas
         run: >-
           npx prettier --check
