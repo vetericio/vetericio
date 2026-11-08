@@ -41,11 +41,18 @@ function Login() {
 
   async function entrar(event: FormEvent) {
     event.preventDefault();
-    const nome = usuario.trim().replace(/^@+/, "").toLowerCase();
-    if (!nome || !senha) {
-      toast.error("Informe o @usuário e a senha.");
+    const identificador = usuario.trim();
+    if (!identificador || !senha) {
+      toast.error("Informe o @nomedaclinica e a senha.");
       return;
     }
+
+    if (!/^@[a-z0-9][a-z0-9._-]*$/i.test(identificador)) {
+      toast.error("Use somente o @nomedaclinica. E-mail não é aceito.");
+      return;
+    }
+
+    const nome = identificador.slice(1).toLowerCase();
 
     if (!supabaseConfigurado) {
       toast.error(supabaseMensagemConfiguracao);
@@ -53,7 +60,7 @@ function Login() {
     }
 
     setEntrando(true);
-    const email = nome.includes("@") && !nome.startsWith("@") ? nome : `${nome}@vetericio.local`;
+    const email = `${nome}@vetericio.local`;
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
@@ -135,15 +142,15 @@ function Login() {
             </div>
 
             <label className="mt-8 block text-sm font-semibold text-foreground">
-              Usuário ou e-mail
+              Usuário da clínica
               <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#FBF7F2] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
                 <AtSign aria-hidden="true" size={18} className="shrink-0 text-muted-foreground" />
                 <input
                   value={usuario}
                   onChange={(e) => setUsuario(e.target.value)}
-                  placeholder="@nomedaclinica ou email@clinica.com"
-                  autoComplete="username"
-                  aria-label="@nomedaclinica ou e-mail"
+                  placeholder="@nomedaclinica"
+                  autoComplete="username" inputMode="text" autoCapitalize="none" spellCheck={false}
+                  aria-label="@nomedaclinica"
                   className="h-11 min-w-0 flex-1 bg-transparent px-2 outline-none placeholder:text-muted-foreground/60"
                 />
               </span>
