@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { supabaseBanco } from "@/integrations/supabase/client";
 
 const BOX_ID = "oricse-promo-checkout";
 const STORAGE_KEY = "oricse-promo-aplicado-v1";
