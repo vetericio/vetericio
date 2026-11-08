@@ -173,6 +173,7 @@ function Contratar() {
   const [promoAplicado, setPromoAplicado] = useState<PromoAplicado | null>(null);
   const [validandoPromo, setValidandoPromo] = useState(false);
   const [erroPromo, setErroPromo] = useState("");
+  const [erroValidacao, setErroValidacao] = useState("");
   const retornoPagamento = params.get("retorno");
   const pedidoRetorno = params.get("pedido");
   useEffect(() => {
@@ -224,7 +225,7 @@ function Contratar() {
 
   const planoConhecido = ehTesteGratis || plano in PLANOS_CONTRATACAO;
   const nomePlano = useMemo(() => configPlano?.nome || plano.charAt(0).toUpperCase()+plano.slice(1), [configPlano, plano]);
-  const salvarLocal = (novo: Dados) => { setDados(novo); oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo)); };
+  const salvarLocal = (novo: Dados) => { setDados(novo); setErroValidacao(""); oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo)); };
 
   // Consulta automática do CEP para os dois endereços do cadastro.
   // Atualiza somente se o CEP ainda corresponder à consulta realizada.
@@ -350,9 +351,27 @@ function Contratar() {
     if (ehTesteGratis) obrig1.push("cnpj");
     const obrig2 = ["responsavel_nome","responsavel_cpf","responsavel_email","responsavel_telefone","responsavel_cep","responsavel_endereco","responsavel_numero","responsavel_bairro","responsavel_cidade","responsavel_uf"];
     if (exigeCrmv(dados)) obrig2.push("responsavel_crmv", "responsavel_crmv_uf");
-    if (etapa === 1 && obterOperacoes(dados).length === 0) { toast.error("Selecione pelo menos uma área de atuação."); return false; }
-    const faltando = (etapa===1?obrig1:obrig2).some(k=>!String(dados[k]||"").trim());
-    if (faltando) { toast.error("Preencha os campos obrigatórios."); return false; }
+    if (etapa === 1 && obterOperacoes(dados).length === 0) {
+      setErroValidacao("Selecione pelo menos uma área de atuação.");
+      return false;
+    }
+    const faltando = (etapa===1?obrig1:obrig2).filter(k=>!String(dados[k]||"").trim());
+    if (faltando.length) {
+      const rotulos:Record<string,string>={
+        clinica_nome:"Nome da clínica",clinica_telefone:"Telefone da clínica",clinica_email:"E-mail da clínica",
+        clinica_cep:"CEP da clínica",clinica_endereco:"Endereço da clínica",clinica_numero:"Número da clínica",
+        clinica_bairro:"Bairro da clínica",clinica_cidade:"Cidade da clínica",clinica_uf:"UF da clínica",
+        responsavel_nome:"Nome do responsável",responsavel_cpf:"CPF",responsavel_email:"E-mail do responsável",
+        responsavel_telefone:"Telefone do responsável",responsavel_cep:"CEP do responsável",
+        responsavel_endereco:"Endereço do responsável",responsavel_numero:"Número do responsável",
+        responsavel_bairro:"Bairro do responsável",responsavel_cidade:"Cidade do responsável",
+        responsavel_uf:"UF do responsável",responsavel_crmv:"CRMV",responsavel_crmv_uf:"UF do CRMV",
+        cnpj:"CNPJ/CPF",
+      };
+      setErroValidacao("Confira os campos: "+faltando.map(k=>rotulos[k]||k).join(", ")+".");
+      return false;
+    }
+    setErroValidacao("");
     if (etapa===1 && ehTesteGratis) {
       const doc = String(dados.cnpj || "").replace(/\D/g, "");
       if (![11,14].includes(doc.length)) { toast.error("Informe um CPF ou CNPJ válido para o teste gratuito."); return false; }
@@ -487,6 +506,7 @@ function Contratar() {
 
     {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(Number(pedido?.valor_total??valorCobrado))} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>Desconto:</b> {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedido?.status==="isento_aguardando_aprovacao"?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&pedido?.status!=="isento_aguardando_aprovacao"&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedido?.status==="isento_aguardando_aprovacao"?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
 
+    {etapa<4 && erroValidacao && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm font-semibold text-destructive">{erroValidacao}</p>}
     {etapa<4 && <div className="mt-5 flex justify-between gap-3">{etapa>1?<button onClick={()=>setEtapa(etapa-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> {texto.botao_voltar}</button>:<span/>}{etapa<3?<button onClick={()=>{if(validarAtual())setEtapa(etapa+1)}} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">{texto.botao_continuar} <ChevronRight size={18}/></button>:<button disabled={enviando} onClick={continuarPagamento} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?texto.preparando_pagamento:(ehTesteGratis ? "Iniciar teste grátis" : texto.botao_pagamento)}</button>}</div>}
   </div></main>;
 }
