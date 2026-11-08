@@ -45,11 +45,9 @@ function OrixHero() {
   return (
     <div className="relative mx-auto flex min-h-[360px] items-end justify-center overflow-hidden rounded-[32px] border border-[#eadbd4] bg-[linear-gradient(145deg,#fffaf6,#f1dfdc)] px-5 pt-8 shadow-[0_25px_70px_rgba(74,24,38,.10)]">
       <div className="absolute left-7 top-7 rounded-full border border-[#d9b7bf] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8d4359]">Conexão que acompanha</div>
-      <img
-        src="https://andrewzuckerman.mo.cloudinary.net/andrewzuckerman/ORYX_0f831c5142.png?tx=w_3000%2Cc_fit%2Cf_webp"
-        alt="Órix"
-        className="relative z-10 h-[310px] w-auto max-w-full object-contain object-bottom drop-shadow-[0_18px_18px_rgba(74,24,38,.18)]"
-      />
+      <div className="relative z-10 flex h-[310px] items-center justify-center">
+        <img src="/oricse-logo-oryx.svg?v=15" alt="Órix Oricse" className="h-56 w-56 object-contain opacity-90 drop-shadow-[0_18px_18px_rgba(74,24,38,.18)]" />
+      </div>
       <div className="absolute inset-x-8 bottom-6 rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-center backdrop-blur-sm"><p className="font-display text-xl font-semibold text-[#4A1826]">Tudo conectado, sem complicar.</p><p className="mt-1 text-xs text-[#795a65]">Uma operação pet mais fácil para a equipe e para o tutor.</p></div>
     </div>
   );
