@@ -59,10 +59,9 @@ function PaginaInicial() {
     <main className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
         <Link to="/" className="flex items-center gap-2" aria-label="Oricse — início"><img src="/oricse-logo-oryx.svg?v=15" className="h-11 w-11" alt="Oricse"/><span className="text-lg font-black tracking-[.08em] text-[#4A1826]">ORICSE</span></Link>
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#solucoes">Soluções</a><a href="#diferenciais">Diferenciais</a><a href="#oricstudio">OricStúdio</a><Link to="/planos">Planos</Link></nav>
-        <Link to="/planos" className="hidden rounded-full bg-[#4A1826] px-5 py-2.5 text-sm font-bold text-white md:inline-flex">Solicitar demonstração</Link>
+        <nav className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
         <button onClick={() => setMenu(!menu)} aria-expanded={menu} className="rounded-full bg-[#4A1826] p-2.5 text-white md:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
-        {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#solucoes" onClick={()=>setMenu(false)}>Soluções</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Diferenciais</a><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><Link to="/planos">Planos</Link><Link to="/login">Entrar</Link></nav>}
+        {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
       <section className="relative border-y border-[#f0e3de] bg-[#fffdfa]">
