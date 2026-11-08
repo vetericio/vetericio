@@ -306,28 +306,38 @@ function Contratar() {
     }
     setValidandoPromo(true);
     setErroPromo("");
-    const documento = String(dados.cnpj || dados.responsavel_cpf || "");
-    const { data, error } = await (supabase as any).rpc("oricse_validar_codigo_promocional", {
-      p_codigo: codigo,
-      p_plano_codigo: plano,
-      p_documento: documento,
-      p_valor_base: valorTotal,
-    });
-    setValidandoPromo(false);
-    const validacao = Array.isArray(data) ? data[0] : data;
-    if (error || !validacao?.valido) {
+    try {
+      const documento = String(dados.cnpj || dados.responsavel_cpf || "");
+      // Consulta pública em PostgreSQL (mesma fonte do checkout), sem exigir login.
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", {
+        p_codigo: codigo,
+        p_plano_codigo: plano,
+        p_documento: documento,
+        p_valor_base: valorTotal,
+      });
+      const validacao = Array.isArray(data) ? data[0] : data;
+      if (error || !validacao?.valido) {
+        setPromoAplicado(null);
+        const mensagem = String(error?.message || validacao?.mensagem || "").trim();
+        setErroPromo(mensagem && mensagem !== "undefined" && mensagem !== "null"
+          ? mensagem
+          : "Não foi possível validar o código. Confira o plano selecionado e tente novamente.");
+        return;
+      }
+      setCodigoPromocional(String(validacao.codigo || codigo));
+      setPromoAplicado({
+        codigo: String(validacao.codigo || codigo),
+        valor_original: Number(validacao.valor_original ?? valorTotal),
+        desconto_aplicado: Number(validacao.desconto_aplicado || 0),
+        valor_final: Number(validacao.valor_final ?? valorTotal),
+        duracao: validacao.duracao === "recorrente" ? "recorrente" : "primeiro_mes",
+      });
+    } catch {
       setPromoAplicado(null);
-      setErroPromo(error?.message || validacao?.mensagem || "Código inválido.");
-      return;
+      setErroPromo("Não foi possível validar o código agora. Tente novamente.");
+    } finally {
+      setValidandoPromo(false);
     }
-    setCodigoPromocional(String(validacao.codigo || codigo));
-    setPromoAplicado({
-      codigo: String(validacao.codigo || codigo),
-      valor_original: Number(validacao.valor_original ?? valorTotal),
-      desconto_aplicado: Number(validacao.desconto_aplicado || 0),
-      valor_final: Number(validacao.valor_final ?? valorTotal),
-      duracao: validacao.duracao === "recorrente" ? "recorrente" : "primeiro_mes",
-    });
   }
 
   const mudarQuantidade = (delta: number) => {
