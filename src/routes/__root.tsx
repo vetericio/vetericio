@@ -95,7 +95,7 @@ function enderecoDeRecuperacao() {
   return "/atualizar.html?next=" + encodeURIComponent(destino);
 }
 
-async function recarregarVersaoAtual() {
+async function recarregarVersaoAtual(_forcar = false) {
   if (typeof window === "undefined" || recargaVersaoEmAndamento) return;
   recargaVersaoEmAndamento = true;
   // Esta página é estática: funciona mesmo quando o bundle atual não consegue
