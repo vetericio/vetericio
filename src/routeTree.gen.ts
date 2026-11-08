@@ -81,7 +81,11 @@ import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as VetSlugRouteImport } from './routes/vet.$slug'
 import { Route as ApiMercadopagoCallbackRouteImport } from './routes/api/mercadopago/callback'
+import { Route as ApiOricstudioMidiaRouteImport } from './routes/api/oricstudio/midia'
 import { Route as PetSlugPortalRouteImport } from './routes/pet/$slug/portal'
+import { Route as ApiOricstudioInstagramCallbackRouteImport } from './routes/api/oricstudio/instagram/callback'
+import { Route as ApiOricstudioJobsColetarRouteImport } from './routes/api/oricstudio/jobs/coletar'
+import { Route as ApiOricstudioJobsPublicarRouteImport } from './routes/api/oricstudio/jobs/publicar'
 import { Route as ApiOricstudioMetaCallbackRouteImport } from './routes/api/oricstudio/meta/callback'
 import { Route as ApiOricstudioMetaDataDeletionRouteImport } from './routes/api/oricstudio/meta/data-deletion'
 
@@ -445,11 +449,34 @@ const ApiMercadopagoCallbackRoute = ApiMercadopagoCallbackRouteImport.update({
   path: '/api/mercadopago/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOricstudioMidiaRoute = ApiOricstudioMidiaRouteImport.update({
+  id: '/api/oricstudio/midia',
+  path: '/api/oricstudio/midia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PetSlugPortalRoute = PetSlugPortalRouteImport.update({
   id: '/pet/$slug/portal',
   path: '/pet/$slug/portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOricstudioInstagramCallbackRoute =
+  ApiOricstudioInstagramCallbackRouteImport.update({
+    id: '/api/oricstudio/instagram/callback',
+    path: '/api/oricstudio/instagram/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiOricstudioJobsColetarRoute =
+  ApiOricstudioJobsColetarRouteImport.update({
+    id: '/api/oricstudio/jobs/coletar',
+    path: '/api/oricstudio/jobs/coletar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiOricstudioJobsPublicarRoute =
+  ApiOricstudioJobsPublicarRouteImport.update({
+    id: '/api/oricstudio/jobs/publicar',
+    path: '/api/oricstudio/jobs/publicar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiOricstudioMetaCallbackRoute =
   ApiOricstudioMetaCallbackRouteImport.update({
     id: '/api/oricstudio/meta/callback',
@@ -536,7 +563,11 @@ export interface FileRoutesByFullPath {
   '/c/$slug': typeof CSlugRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
+  '/api/oricstudio/midia': typeof ApiOricstudioMidiaRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
+  '/api/oricstudio/instagram/callback': typeof ApiOricstudioInstagramCallbackRoute
+  '/api/oricstudio/jobs/coletar': typeof ApiOricstudioJobsColetarRoute
+  '/api/oricstudio/jobs/publicar': typeof ApiOricstudioJobsPublicarRoute
   '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
   '/api/oricstudio/meta/data-deletion': typeof ApiOricstudioMetaDataDeletionRoute
 }
@@ -613,7 +644,11 @@ export interface FileRoutesByTo {
   '/c/$slug': typeof CSlugRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
+  '/api/oricstudio/midia': typeof ApiOricstudioMidiaRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
+  '/api/oricstudio/instagram/callback': typeof ApiOricstudioInstagramCallbackRoute
+  '/api/oricstudio/jobs/coletar': typeof ApiOricstudioJobsColetarRoute
+  '/api/oricstudio/jobs/publicar': typeof ApiOricstudioJobsPublicarRoute
   '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
   '/api/oricstudio/meta/data-deletion': typeof ApiOricstudioMetaDataDeletionRoute
 }
@@ -691,7 +726,11 @@ export interface FileRoutesById {
   '/c/$slug': typeof CSlugRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
+  '/api/oricstudio/midia': typeof ApiOricstudioMidiaRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
+  '/api/oricstudio/instagram/callback': typeof ApiOricstudioInstagramCallbackRoute
+  '/api/oricstudio/jobs/coletar': typeof ApiOricstudioJobsColetarRoute
+  '/api/oricstudio/jobs/publicar': typeof ApiOricstudioJobsPublicarRoute
   '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
   '/api/oricstudio/meta/data-deletion': typeof ApiOricstudioMetaDataDeletionRoute
 }
@@ -770,7 +809,11 @@ export interface FileRouteTypes {
     | '/c/$slug'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
+    | '/api/oricstudio/midia'
     | '/pet/$slug/portal'
+    | '/api/oricstudio/instagram/callback'
+    | '/api/oricstudio/jobs/coletar'
+    | '/api/oricstudio/jobs/publicar'
     | '/api/oricstudio/meta/callback'
     | '/api/oricstudio/meta/data-deletion'
   fileRoutesByTo: FileRoutesByTo
@@ -847,7 +890,11 @@ export interface FileRouteTypes {
     | '/c/$slug'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
+    | '/api/oricstudio/midia'
     | '/pet/$slug/portal'
+    | '/api/oricstudio/instagram/callback'
+    | '/api/oricstudio/jobs/coletar'
+    | '/api/oricstudio/jobs/publicar'
     | '/api/oricstudio/meta/callback'
     | '/api/oricstudio/meta/data-deletion'
   id:
@@ -924,7 +971,11 @@ export interface FileRouteTypes {
     | '/c/$slug'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
+    | '/api/oricstudio/midia'
     | '/pet/$slug/portal'
+    | '/api/oricstudio/instagram/callback'
+    | '/api/oricstudio/jobs/coletar'
+    | '/api/oricstudio/jobs/publicar'
     | '/api/oricstudio/meta/callback'
     | '/api/oricstudio/meta/data-deletion'
   fileRoutesById: FileRoutesById
@@ -1002,7 +1053,11 @@ export interface RootRouteChildren {
   CSlugRoute: typeof CSlugRoute
   VetSlugRoute: typeof VetSlugRoute
   ApiMercadopagoCallbackRoute: typeof ApiMercadopagoCallbackRoute
+  ApiOricstudioMidiaRoute: typeof ApiOricstudioMidiaRoute
   PetSlugPortalRoute: typeof PetSlugPortalRoute
+  ApiOricstudioInstagramCallbackRoute: typeof ApiOricstudioInstagramCallbackRoute
+  ApiOricstudioJobsColetarRoute: typeof ApiOricstudioJobsColetarRoute
+  ApiOricstudioJobsPublicarRoute: typeof ApiOricstudioJobsPublicarRoute
   ApiOricstudioMetaCallbackRoute: typeof ApiOricstudioMetaCallbackRoute
   ApiOricstudioMetaDataDeletionRoute: typeof ApiOricstudioMetaDataDeletionRoute
 }
@@ -1513,11 +1568,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMercadopagoCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oricstudio/midia': {
+      id: '/api/oricstudio/midia'
+      path: '/api/oricstudio/midia'
+      fullPath: '/api/oricstudio/midia'
+      preLoaderRoute: typeof ApiOricstudioMidiaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pet/$slug/portal': {
       id: '/pet/$slug/portal'
       path: '/pet/$slug/portal'
       fullPath: '/pet/$slug/portal'
       preLoaderRoute: typeof PetSlugPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/oricstudio/instagram/callback': {
+      id: '/api/oricstudio/instagram/callback'
+      path: '/api/oricstudio/instagram/callback'
+      fullPath: '/api/oricstudio/instagram/callback'
+      preLoaderRoute: typeof ApiOricstudioInstagramCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/oricstudio/jobs/coletar': {
+      id: '/api/oricstudio/jobs/coletar'
+      path: '/api/oricstudio/jobs/coletar'
+      fullPath: '/api/oricstudio/jobs/coletar'
+      preLoaderRoute: typeof ApiOricstudioJobsColetarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/oricstudio/jobs/publicar': {
+      id: '/api/oricstudio/jobs/publicar'
+      path: '/api/oricstudio/jobs/publicar'
+      fullPath: '/api/oricstudio/jobs/publicar'
+      preLoaderRoute: typeof ApiOricstudioJobsPublicarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/oricstudio/meta/callback': {
@@ -1610,7 +1693,11 @@ const rootRouteChildren: RootRouteChildren = {
   CSlugRoute: CSlugRoute,
   VetSlugRoute: VetSlugRoute,
   ApiMercadopagoCallbackRoute: ApiMercadopagoCallbackRoute,
+  ApiOricstudioMidiaRoute: ApiOricstudioMidiaRoute,
   PetSlugPortalRoute: PetSlugPortalRoute,
+  ApiOricstudioInstagramCallbackRoute: ApiOricstudioInstagramCallbackRoute,
+  ApiOricstudioJobsColetarRoute: ApiOricstudioJobsColetarRoute,
+  ApiOricstudioJobsPublicarRoute: ApiOricstudioJobsPublicarRoute,
   ApiOricstudioMetaCallbackRoute: ApiOricstudioMetaCallbackRoute,
   ApiOricstudioMetaDataDeletionRoute: ApiOricstudioMetaDataDeletionRoute,
 }
