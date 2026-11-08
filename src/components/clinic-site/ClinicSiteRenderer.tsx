@@ -8,5 +8,5 @@ export function ClinicSiteRenderer({
   template: ClinicSiteTemplate;
   config: ClinicSiteConfig;
 }) {
-  return <ClinicSiteFull template={template} config={config}/>;
+  return <ClinicSiteFull template={template} config={config} />;
 }

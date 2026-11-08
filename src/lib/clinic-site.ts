@@ -114,21 +114,68 @@ export const clinicSiteSchema = z.object({
   template_options: z.record(z.string(), z.unknown()),
 });
 
-export const clinicSiteSections = ["servicos", "sobre", "galeria", "equipe", "faq", "contato"] as const;
+export const clinicSiteSections = [
+  "servicos",
+  "sobre",
+  "galeria",
+  "equipe",
+  "faq",
+  "contato",
+] as const;
 export type ClinicSiteSection = (typeof clinicSiteSections)[number];
 export const clinicSiteSectionLabels: Record<ClinicSiteSection, string> = {
-  servicos: "Serviços", sobre: "Sobre nós", galeria: "Galeria",
-  equipe: "Equipe", faq: "Perguntas frequentes", contato: "Contato",
+  servicos: "Serviços",
+  sobre: "Sobre nós",
+  galeria: "Galeria",
+  equipe: "Equipe",
+  faq: "Perguntas frequentes",
+  contato: "Contato",
 };
-export const clinicSitePresets: Record<ClinicSiteTemplate, {
-  primaryColor: string; secondaryColor: string; backgroundColor: string; textColor: string;
-}> = {
-  prestige: {primaryColor:"#C9A86A",secondaryColor:"#29423C",backgroundColor:"#121A18",textColor:"#F6F1E7"},
-  atelier: {primaryColor:"#73523C",secondaryColor:"#E4D5C6",backgroundColor:"#F7F1EB",textColor:"#322920"},
-  cuidado: {primaryColor:"#307760",secondaryColor:"#D7E8DE",backgroundColor:"#F2F8F4",textColor:"#1E4036"},
-  popular: {primaryColor:"#B33C34",secondaryColor:"#FFE297",backgroundColor:"#FFFDF8",textColor:"#322523"},
-  essencial: {primaryColor:"#263C54",secondaryColor:"#E7EDF2",backgroundColor:"#FFFFFF",textColor:"#1E293B"},
-  horizonte: {primaryColor:"#537B52",secondaryColor:"#DCE8D1",backgroundColor:"#F6F8F0",textColor:"#203E30"},
+export const clinicSitePresets: Record<
+  ClinicSiteTemplate,
+  {
+    primaryColor: string;
+    secondaryColor: string;
+    backgroundColor: string;
+    textColor: string;
+  }
+> = {
+  prestige: {
+    primaryColor: "#C9A86A",
+    secondaryColor: "#29423C",
+    backgroundColor: "#121A18",
+    textColor: "#F6F1E7",
+  },
+  atelier: {
+    primaryColor: "#73523C",
+    secondaryColor: "#E4D5C6",
+    backgroundColor: "#F7F1EB",
+    textColor: "#322920",
+  },
+  cuidado: {
+    primaryColor: "#307760",
+    secondaryColor: "#D7E8DE",
+    backgroundColor: "#F2F8F4",
+    textColor: "#1E4036",
+  },
+  popular: {
+    primaryColor: "#B33C34",
+    secondaryColor: "#FFE297",
+    backgroundColor: "#FFFDF8",
+    textColor: "#322523",
+  },
+  essencial: {
+    primaryColor: "#263C54",
+    secondaryColor: "#E7EDF2",
+    backgroundColor: "#FFFFFF",
+    textColor: "#1E293B",
+  },
+  horizonte: {
+    primaryColor: "#537B52",
+    secondaryColor: "#DCE8D1",
+    backgroundColor: "#F6F8F0",
+    textColor: "#203E30",
+  },
 };
 export type ClinicSiteConfig = {
   name: string;
@@ -149,8 +196,8 @@ export type ClinicSiteConfig = {
   aboutTitle: string;
   aboutText: string;
   galleryUrls: string[];
-  team: Array<{name: string; role: string; imageUrl: string}>;
-  faqItems: Array<{question: string; answer: string}>;
+  team: Array<{ name: string; role: string; imageUrl: string }>;
+  faqItems: Array<{ question: string; answer: string }>;
   instagramUrl: string;
   bookingUrl: string;
   ctaLabel: string;
@@ -175,19 +222,26 @@ export const prestigeDefault: ClinicSiteConfig = {
   emergency24h: false,
   services: ["Consulta personalizada", "Especialidades veterinárias", "Diagnóstico e prevenção"],
   aboutTitle: "Uma equipe que cuida de quem faz parte da sua família.",
-  aboutText: "Acreditamos no atendimento responsável, na prevenção e no respeito a cada animal. Aqui você encontra orientação clara e atenção em todas as etapas do cuidado.",
+  aboutText:
+    "Acreditamos no atendimento responsável, na prevenção e no respeito a cada animal. Aqui você encontra orientação clara e atenção em todas as etapas do cuidado.",
   galleryUrls: [],
   team: [],
   faqItems: [
-    {question:"Como faço um agendamento?", answer:"Entre em contato pelo WhatsApp ou telefone para consultar os horários disponíveis."},
-    {question:"Quais serviços estão disponíveis?", answer:"Confira nossa relação de serviços nesta página ou fale com a equipe para tirar dúvidas."},
+    {
+      question: "Como faço um agendamento?",
+      answer: "Entre em contato pelo WhatsApp ou telefone para consultar os horários disponíveis.",
+    },
+    {
+      question: "Quais serviços estão disponíveis?",
+      answer:
+        "Confira nossa relação de serviços nesta página ou fale com a equipe para tirar dúvidas.",
+    },
   ],
   instagramUrl: "",
   bookingUrl: "",
   ctaLabel: "Agendar atendimento",
   sectionOrder: [...clinicSiteSections],
   hiddenSections: [],
-
 };
 
 export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
@@ -199,23 +253,42 @@ export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
       ? candidate.services.filter((item): item is string => typeof item === "string").slice(0, 24)
       : prestigeDefault.services,
     galleryUrls: Array.isArray(candidate.galleryUrls)
-      ? candidate.galleryUrls.filter((v): v is string => typeof v === "string" && /^https:\/\//i.test(v)).slice(0, 12)
+      ? candidate.galleryUrls
+          .filter((v): v is string => typeof v === "string" && /^https:\/\//i.test(v))
+          .slice(0, 12)
       : [],
     team: Array.isArray(candidate.team)
-      ? candidate.team.filter((v): v is ClinicSiteConfig["team"][number] => Boolean(v && typeof v.name === "string" && typeof v.role === "string" && typeof v.imageUrl === "string")).slice(0, 20)
+      ? candidate.team
+          .filter((v): v is ClinicSiteConfig["team"][number] =>
+            Boolean(
+              v &&
+              typeof v.name === "string" &&
+              typeof v.role === "string" &&
+              typeof v.imageUrl === "string",
+            ),
+          )
+          .slice(0, 20)
       : [],
     faqItems: Array.isArray(candidate.faqItems)
-      ? candidate.faqItems.filter((v): v is ClinicSiteConfig["faqItems"][number] => Boolean(v && typeof v.question === "string" && typeof v.answer === "string")).slice(0, 12)
+      ? candidate.faqItems
+          .filter((v): v is ClinicSiteConfig["faqItems"][number] =>
+            Boolean(v && typeof v.question === "string" && typeof v.answer === "string"),
+          )
+          .slice(0, 12)
       : prestigeDefault.faqItems,
-    sectionOrder: [...clinicSiteSections].sort((a,b) => {
-      const order = Array.isArray(candidate.sectionOrder) ? candidate.sectionOrder : [...clinicSiteSections];
-      const ai = order.indexOf(a), bi = order.indexOf(b);
+    sectionOrder: [...clinicSiteSections].sort((a, b) => {
+      const order = Array.isArray(candidate.sectionOrder)
+        ? candidate.sectionOrder
+        : [...clinicSiteSections];
+      const ai = order.indexOf(a),
+        bi = order.indexOf(b);
       return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
     }),
     hiddenSections: Array.isArray(candidate.hiddenSections)
-      ? candidate.hiddenSections.filter((v): v is ClinicSiteSection => clinicSiteSections.includes(v as ClinicSiteSection))
+      ? candidate.hiddenSections.filter((v): v is ClinicSiteSection =>
+          clinicSiteSections.includes(v as ClinicSiteSection),
+        )
       : [],
-
   };
 }
 
