@@ -23,8 +23,9 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
     if (!nome || !senha) return void toast.error("Informe o @usuário e a senha.");
     if (!supabaseConfigurado) return void toast.error(supabaseMensagemConfiguracao);
     setEntrando(true);
+    const email = nome.includes("@") && !nome.startsWith("@") ? nome : `${nome}@vetericio.local`;
     const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: `${nome}@vetericio.local`,
+      email,
       password: senha,
     });
     if (loginError) {
@@ -81,13 +82,13 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
             </p>
             <h2 className="mt-1 text-xl font-semibold text-foreground">Entrar na clínica</h2>
             <label className="mt-6 block text-sm font-semibold">
-              Usuário
+              Usuário ou e-mail
               <span className="mt-1 flex min-h-12 items-center rounded-xl border bg-[#fbfcfa] px-3 focus-within:border-primary">
                 <span className="text-muted-foreground">@</span>
                 <input
                   value={usuario}
                   onChange={(event) => setUsuario(event.target.value)}
-                  placeholder="nomedousuario"
+                  placeholder="@usuario ou email@clinica.com"
                   autoComplete="username"
                   className="h-11 min-w-0 flex-1 bg-transparent px-2 outline-none"
                 />

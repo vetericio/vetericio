@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Integração de cobrança isolada do OricStúdio. Não compartilhar pedidos nem webhooks
 // com oricse-planos-checkout; reutiliza apenas a credencial da mesma conta recebedora.
-const ORIGIN = "https://oricse.vetericio.workers.dev";
+const ORIGIN = "https://oricse.com.br";
 const API = "https://api.mercadopago.com";
 const token = () => Deno.env.get("ORICSE_MP_ACCESS_TOKEN") || Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "";
 const secret = () => Deno.env.get("ORICSTUDIO_MP_WEBHOOK_SECRET") || "";

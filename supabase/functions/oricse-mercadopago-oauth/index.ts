@@ -9,8 +9,8 @@ async function aesKey(){const secret=Deno.env.get("ORICSE_MP_ENCRYPTION_KEY");if
 async function encrypt(s:string){const iv=bytes(12),key=await aesKey();const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,encoder.encode(s)));return b64(iv)+"."+b64(ciphertext);}
 async function decrypt(s:string){const [i,c]=s.split(".");const from=(v:string)=>Uint8Array.from(atob(v.replace(/-/g,"+").replace(/_/g,"/")),x=>x.charCodeAt(0));return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:from(i)},await aesKey(),from(c)));}
 const supabase=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-const callback="https://oricse.vetericio.workers.dev/api/mercadopago/callback";
-const allowedOrigin="https://oricse.vetericio.workers.dev";
+const callback="https://oricse.com.br/api/mercadopago/callback";
+const allowedOrigin="https://oricse.com.br";
 function response(obj:unknown,status=200){return new Response(JSON.stringify(obj),{status,headers:{"content-type":"application/json","access-control-allow-origin":allowedOrigin,"access-control-allow-headers":"authorization,apikey,content-type"}})}
 function webRedirect(ok:boolean){return Response.redirect(allowedOrigin+"/mercado-pago-clinica?mp="+(ok?"conectado":"erro"),303);}
 Deno.serve(async(req)=>{

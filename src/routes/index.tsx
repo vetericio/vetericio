@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Sistema de gestão para clínicas veterinárias e petshops.",
       },
-      { property: "og:url", content: "https://oricse.vetericio.workers.dev/" },
+      { property: "og:url", content: "https://oricse.com.br/" },
     ],
   }),
   component: PaginaInicial,

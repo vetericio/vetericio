@@ -148,7 +148,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "Oricse" },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "pt_BR" },
-      { property: "og:image", content: "https://oricse.vetericio.workers.dev/oricse-logo-oryx.svg" },
+      { property: "og:image", content: "https://oricse.com.br/oricse-logo-oryx.svg" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -160,7 +160,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
       },
       { rel: "manifest", href: "/manifest.webmanifest?v=13" },
-      { rel: "canonical", href: "https://oricse.vetericio.workers.dev/" },
+      { rel: "canonical", href: "https://oricse.com.br/" },
       { rel: "icon", type: "image/svg+xml", href: "/oricse-logo-oryx.svg?v=15" },
       { rel: "shortcut icon", type: "image/svg+xml", href: "/oricse-logo-oryx.svg?v=15" },
       { rel: "apple-touch-icon", href: "/oricse-logo-oryx.svg?v=15" },

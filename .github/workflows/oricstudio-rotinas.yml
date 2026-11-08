@@ -33,7 +33,7 @@ jobs:
           fi
           curl --fail-with-body --retry 1 --retry-delay 5 --max-time 110 \
             -X POST -H "Authorization: Bearer $CRON_SECRET" \
-            "https://oricse.vetericio.workers.dev/api/oricstudio/jobs/publicar"
+            "https://oricse.com.br/api/oricstudio/jobs/publicar"
 
   coletar:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 * * * *'
@@ -55,4 +55,4 @@ jobs:
           fi
           curl --fail-with-body --retry 1 --retry-delay 5 --max-time 110 \
             -X POST -H "Authorization: Bearer $CRON_SECRET" \
-            "https://oricse.vetericio.workers.dev/api/oricstudio/jobs/coletar"
+            "https://oricse.com.br/api/oricstudio/jobs/coletar"

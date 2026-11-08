@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ORICSE_APP_ORIGIN") || "https://oricse.vetericio.workers.dev",
+  "Access-Control-Allow-Origin": Deno.env.get("ORICSE_APP_ORIGIN") || "https://oricse.com.br",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Vary": "Origin",
 };
