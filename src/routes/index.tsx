@@ -57,14 +57,25 @@ function PaginaInicial() {
   const [capaOficialCarregada, setCapaOficialCarregada] = useState(true);
   return (
     <main className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-0 sm:px-8 lg:px-10">
-        <Link to="/" aria-label="Oricse — início"><img src="/oricse-logo-oryx.svg?v=15" className="h-[53px] w-[53px]" alt="Oricse"/></Link>
+      <header className="mx-auto flex min-h-[52px] max-w-7xl items-center justify-end px-5 py-0 sm:px-8 lg:px-10">
         <nav className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
         <button onClick={() => setMenu(!menu)} aria-expanded={menu} className="rounded-full bg-[#4A1826] p-2.5 text-white md:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
         {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
       <section className="relative border-t border-[#f0e3de] bg-[#fffdfa] after:absolute after:inset-x-0 after:bottom-0 after:z-20 after:h-[3px] after:bg-[linear-gradient(90deg,#7f341d_0%,#d8882a_22%,#ffd86a_50%,#d8882a_78%,#7f341d_100%)] after:shadow-[0_-1px_7px_rgba(163,88,28,.45)]">
+        {/* Marca principal: centralizada na área superior da capa, sem duplicá-la no cabeçalho. */}
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center sm:top-5 lg:top-7">
+          <img
+            src="/oricse-logo-oryx.svg?v=15"
+            alt="ORICSE — Soluções para o mercado pet"
+            width={216}
+            height={216}
+            className="h-[152px] w-[152px] object-contain sm:h-[184px] sm:w-[184px] lg:h-[216px] lg:w-[216px]"
+            loading="eager"
+            fetchPriority="high"
+          />
+        </div>
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
