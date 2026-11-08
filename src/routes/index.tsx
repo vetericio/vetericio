@@ -54,6 +54,7 @@ function OrixHero() {
 }
 function PaginaInicial() {
   const [menu, setMenu] = useState(false);
+  const [capaOficialCarregada, setCapaOficialCarregada] = useState(false);
   return (
     <main className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
@@ -64,7 +65,33 @@ function PaginaInicial() {
         {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#solucoes" onClick={()=>setMenu(false)}>Soluções</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Diferenciais</a><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><Link to="/planos">Planos</Link><Link to="/login">Entrar</Link></nav>}
       </header>
 
-      <section className="relative border-y border-[#f0e3de] bg-[radial-gradient(circle_at_63%_45%,#f4e1df_0,transparent_24%),linear-gradient(180deg,#fffdfa_0%,#faf4f0_100%)]">
+      <section className="relative border-y border-[#f0e3de] bg-[#fffdfa]">
+        {/* Capa oficial aprovada: arquivo único, sem recortes ou alterações. A capa anterior
+            permanece como fallback até public/oricse-capa-oficial.png existir. */}
+        <img
+          src="/oricse-capa-oficial.png"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          className="hidden"
+          onLoad={() => setCapaOficialCarregada(true)}
+          onError={() => setCapaOficialCarregada(false)}
+        />
+        {capaOficialCarregada ? (
+          <div className="relative w-full">
+            <img
+              src="/oricse-capa-oficial.png"
+              alt="Oricse — Gestão fácil e conectada para quem cuida. Plataforma completa para o mercado pet, com um órix ao pôr do sol."
+              width={1671}
+              height={941}
+              loading="eager"
+              decoding="async"
+              className="block h-auto w-full"
+            />
+            <Link to="/planos" aria-label="Conhecer a Oricse" className="absolute left-[7.3%] top-[69.9%] h-[7%] w-[17.8%] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4A1826]"><span className="sr-only">Conhecer a Oricse</span></Link>
+            <Link to="/login" aria-label="Já sou cliente" className="absolute left-[25.7%] top-[69.9%] h-[7%] w-[12.6%] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4A1826]"><span className="sr-only">Já sou cliente</span></Link>
+          </div>
+        ) : (<>
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:px-10 lg:py-24">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
@@ -79,6 +106,7 @@ function PaginaInicial() {
             <OrixHero />
           </div>
         </div>
+      </>)}
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10"><div className="grid gap-3 sm:grid-cols-3">{joias.map(([titulo,texto],i)=><article key={titulo} className="rounded-2xl border border-[#ecdfd9] bg-white p-5"><span className="font-display text-2xl text-[#a56a78]">0{i+1}</span><h2 className="mt-4 text-base font-bold text-[#4A1826]">{titulo}</h2><p className="mt-2 text-sm leading-6 text-[#765c66]">{texto}</p></article>)}</div></section>
