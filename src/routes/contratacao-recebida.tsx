@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, Clock3, Mail, ArrowUpRight, ShieldCheck, CalendarCheck2, Headset } from "lucide-react";
+import { CheckCircle2, Clock3, Mail, MessageCircle, ShieldCheck, CalendarCheck2, Headset } from "lucide-react";
 
 export const Route = createFileRoute("/contratacao-recebida")({
   head: () => ({ meta: [{ title: "Solicitação recebida | ORICSE" }, { name: "description", content: "Acompanhe os próximos passos da sua contratação ORICSE." }] }),
@@ -9,23 +9,21 @@ export const Route = createFileRoute("/contratacao-recebida")({
 function ContratacaoRecebida() {
   const params = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
   const situacao = params.get("retorno");
+  const pedido = params.get("pedido");
+  const pedidoCurto = pedido && /^[0-9a-f-]{36}$/i.test(pedido) ? pedido.slice(0, 8) : null;
   const pagamentoFalhou = situacao === "falha";
   const solicitacaoIsenta = situacao === "isento";
-  const pagamentoConfirmado = situacao === "sucesso";
-  const titulo = pagamentoFalhou
-    ? "O pagamento não foi concluído"
-    : solicitacaoIsenta
-      ? "Solicitação enviada. Aguarde nossa análise."
-      : pagamentoConfirmado
-        ? "Pagamento confirmado. Aguarde nossa análise."
-        : "Recebemos sua solicitação!";
+  const pagamentoPendente = situacao === "pendente";
+  // O retorno do Mercado Pago não prova liquidação. Somente o webhook
+  // confirma o pagamento e habilita a análise administrativa.
+  const titulo = pagamentoFalhou ? "Pagamento não concluído" : "Solicitação recebida. Agora é só aguardar!";
   const mensagem = pagamentoFalhou
-    ? "Sua solicitação foi registrada, mas não recebemos a confirmação do pagamento. Você poderá entrar em contato com nossa equipe para continuar."
+    ? "Sua solicitação foi registrada, mas o pagamento não foi concluído. Fale com nossa equipe se precisar de ajuda para finalizar."
     : solicitacaoIsenta
-      ? "Seu cadastro e sua solicitação de contratação foram enviados. Nossa equipe analisará as informações e entrará em contato para orientar os próximos passos."
-      : pagamentoConfirmado
-        ? "Recebemos a confirmação do pagamento. Nossa equipe analisará as informações e preparará o acesso do seu estabelecimento."
-        : "Seu cadastro e sua solicitação de contratação foram recebidos. Aguarde a confirmação do pagamento e a análise da nossa equipe.";
+      ? "Seu cupom foi aplicado e sua contratação foi recebida sem cobrança. Nossa equipe analisará o cadastro e entrará em contato."
+      : pagamentoPendente
+        ? "Recebemos sua solicitação. O pagamento ainda está pendente; assim que for confirmado, nossa equipe dará andamento à análise."
+        : "Recebemos sua solicitação! A confirmação do pagamento será verificada pela ORICSE e, em seguida, nossa equipe analisará o cadastro. O acesso não é liberado automaticamente.";
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#F8F5F2] px-4 py-10 text-[#341421] sm:py-14"><div aria-hidden="true" className="pointer-events-none absolute -left-36 -top-44 h-80 w-[34rem] rotate-[-20deg] rounded-[100%] bg-gradient-to-r from-[#703047] via-[#B37787] to-transparent opacity-20"/><div aria-hidden="true" className="pointer-events-none absolute -bottom-44 -right-32 h-80 w-[34rem] rotate-[-20deg] rounded-[100%] bg-gradient-to-r from-transparent via-[#B37787] to-[#703047] opacity-20"/>
       <div className="relative mx-auto max-w-4xl">
@@ -45,15 +43,17 @@ function ContratacaoRecebida() {
             <p className="mx-auto mt-5 max-w-xl text-base leading-8 text-[#6B5961]">{mensagem}</p>
             {!pagamentoFalhou && <div className="mx-auto mt-9 max-w-2xl rounded-2xl border border-[#EFE3E7] bg-[#FAF2F4] px-6 py-6 text-left">
               <div className="flex items-start gap-3"><CalendarCheck2 className="mt-0.5 shrink-0 text-[#703047]" size={30}/><div><p className="font-bold">O que acontece agora?</p><p className="mt-1 text-sm leading-6 text-[#6B5961]">{solicitacaoIsenta
-                  ? "A solicitação já foi enviada. Aguarde a análise da nossa equipe; o acesso não é liberado automaticamente."
-                  : pagamentoConfirmado
-                    ? "Nossa equipe analisará as informações e preparará o espaço do seu estabelecimento. O acesso não é liberado automaticamente."
-                    : "A confirmação do pagamento será verificada automaticamente. Após essa confirmação, nossa equipe poderá analisar e preparar o espaço do seu estabelecimento. O acesso não é liberado automaticamente."}</p></div></div>
+                  ? "Não é necessário pagar nada. Sua solicitação já pode ser analisada pela equipe da ORICSE; a ativação dependerá da aprovação administrativa."
+                  : "A confirmação financeira será conferida antes da análise. Aguarde nosso contato: a ativação do estabelecimento não é automática."}</p></div></div>
             </div>}
             <div className="mx-auto mt-8 max-w-2xl border-t border-[#F0E7E9] pt-7"><Headset className="mx-auto mb-3 text-[#703047]" size={27}/>
-              <p className="text-sm font-semibold">Precisa falar com a nossa equipe?</p>
-              <p className="mt-2 text-sm text-[#6B5961]">Estamos à disposição para esclarecer qualquer dúvida.</p>
-              <a href="mailto:vetericio@gmail.com?subject=Contrata%C3%A7%C3%A3o%20ORICSE" className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#703047] px-6 py-3 font-bold text-white transition hover:bg-[#542235]"><Mail size={18}/> vetericio@gmail.com <ArrowUpRight size={17}/></a>
+              <p className="text-base font-bold">Dúvidas? Fale com a ORICSE.</p>
+              <p className="mt-2 text-sm leading-6 text-[#6B5961]">Se precisar de qualquer coisa enquanto aguarda, estamos à disposição por e-mail ou WhatsApp.</p>
+              {pedidoCurto && <p className="mt-3 text-xs font-semibold text-[#8A5668]">Solicitação: {pedidoCurto}</p>}
+              <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
+                <a href="mailto:atendimento@oricse.com.br?subject=Atendimento%20ORICSE%20-%20Contrata%C3%A7%C3%A3o" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#703047] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#542235]"><Mail size={18}/> atendimento@oricse.com.br</a>
+                <a href="https://wa.me/5531995512795?text=Ol%C3%A1%21%20Preciso%20de%20ajuda%20com%20minha%20contrata%C3%A7%C3%A3o%20na%20ORICSE." target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#703047] bg-white px-5 py-3 text-sm font-bold text-[#703047] transition hover:bg-[#FAF2F4]"><MessageCircle size={18}/> WhatsApp (31) 99551-2795</a>
+              </div>
             </div>
           </div>
         </article>
