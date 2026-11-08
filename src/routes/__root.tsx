@@ -609,7 +609,9 @@ function RootComponent() {
 
   useEffect(() => {
     const recuperarModuloExpirado = (event: Event | PromiseRejectionEvent) => {
-      const motivo = event instanceof PromiseRejectionEvent ? event.reason : event;
+      const motivo = event instanceof PromiseRejectionEvent
+        ? event.reason
+        : (event as Event & { payload?: unknown }).payload ?? event;
       const mensagem = motivo instanceof Error ? motivo.message : String(motivo ?? "");
       if (!/dynamically imported module|vite:preloaderror/i.test(mensagem)) return;
       event.preventDefault?.();
@@ -626,7 +628,7 @@ function RootComponent() {
     window.addEventListener("vite:preloadError", recuperarModuloExpirado);
     window.addEventListener("unhandledrejection", recuperarModuloExpirado);
     if ("serviceWorker" in navigator)
-      navigator.serviceWorker.register("/sw.js?v=13", { scope: "/" }).catch(() => undefined);
+      navigator.serviceWorker.register("/sw.js?v=14", { scope: "/" }).catch(() => undefined);
     return () => {
       window.removeEventListener("vite:preloadError", recuperarModuloExpirado);
       window.removeEventListener("unhandledrejection", recuperarModuloExpirado);
