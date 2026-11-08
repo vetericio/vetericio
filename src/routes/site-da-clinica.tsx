@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -82,13 +82,28 @@ const mobile = (max: number) => ({
 });
 
 function SiteDaClinica() {
-  const { clinicaId, carregando, pode } = usePermissoes();
+  const { clinicaId: clinicaIdContexto, carregando, pode, adminGlobal } = usePermissoes();
+  const pesquisa = typeof window === "undefined"
+    ? new URLSearchParams()
+    : new URLSearchParams(window.location.search);
+  const origemAdmin = pesquisa.get("origem") === "admin";
+  const clinicaSolicitada = pesquisa.get("clinica") || "";
+  const clinicaSolicitadaValida = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(clinicaSolicitada);
+  // Só administradores globais podem escolher uma clínica por URL.
+  // Para usuários de clínica, a única fonte é o contexto autenticado.
+  const clinicaId = origemAdmin
+    ? adminGlobal && clinicaSolicitadaValida ? clinicaSolicitada : ""
+    : clinicaIdContexto;
+  const voltarPara = origemAdmin
+    ? "/admin?clinica=" + encodeURIComponent(clinicaSolicitada) + "&aba=site"
+    : "/configuracao-site";
   const [config, setConfig] = useState<ClinicSiteConfig>(prestigeDefault);
   const [template, setTemplate] = useState<ClinicSiteTemplate>("prestige");
   const [slug, setSlug] = useState("");
   const [status, setStatus] = useState<"rascunho" | "publicado">("rascunho");
   const [hasRecord, setHasRecord] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [erroClinica, setErroClinica] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState("");
   const [tab, setTab] = useState<Tab>("modelos");
@@ -104,6 +119,8 @@ function SiteDaClinica() {
   useEffect(() => {
     if (!clinicaId) return;
     let active = true;
+    setLoading(true);
+    setErroClinica("");
     void (async () => {
       const [site, draft, history, clinic] = await Promise.all([
         (supabaseBanco as any)
@@ -129,7 +146,16 @@ function SiteDaClinica() {
           .maybeSingle(),
       ]);
       if (!active) return;
-      if (site.error) toast.error("Falha ao carregar o site: " + site.error.message);
+      if (clinic.error || (origemAdmin && !clinic.data)) {
+        setErroClinica("Não foi possível consultar a clínica selecionada. Confira seu acesso no Admin Geral.");
+        setLoading(false);
+        return;
+      }
+      if (site.error) {
+        setErroClinica("Não foi possível carregar os dados do site: " + site.error.message);
+        setLoading(false);
+        return;
+      }
       if (site.data) {
         const current = site.data;
         setHasRecord(true);
@@ -162,7 +188,7 @@ function SiteDaClinica() {
     return () => {
       active = false;
     };
-  }, [clinicaId]);
+  }, [clinicaId, origemAdmin]);
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -431,10 +457,18 @@ function SiteDaClinica() {
     );
   };
 
-  if (carregando || loading)
+  if (carregando || (clinicaId && loading))
     return (
       <main className="p-6 text-sm text-muted-foreground">Carregando editor da clínica...</main>
     );
+  if ((origemAdmin && (!adminGlobal || !clinicaSolicitadaValida)) || !clinicaId || erroClinica)
+    return <main className="mx-auto max-w-xl p-8">
+      <h1 className="text-2xl font-bold">Clínica não disponível</h1>
+      <p className="mt-2 text-muted-foreground">
+        {erroClinica || "Selecione uma clínica válida em Admin Geral → Site e domínios para editar seu site."}
+      </p>
+      <a href="/admin" className="mt-4 inline-flex min-h-11 items-center rounded-xl border px-4 font-semibold">Voltar ao Admin Geral</a>
+    </main>;
   if (!pode("administracao.site"))
     return (
       <main className="mx-auto max-w-xl p-8">
@@ -450,12 +484,12 @@ function SiteDaClinica() {
       <div className="mx-auto max-w-[1750px]">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-4">
           <div>
-            <Link
-              to="/configuracao-site"
+            <a
+              href={voltarPara}
               className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground"
             >
-              <ArrowLeft size={15} /> Voltar
-            </Link>
+              <ArrowLeft size={15} /> {origemAdmin ? "Voltar à clínica no Admin" : "Voltar"}
+            </a>
             <h1 className="mt-1 text-2xl font-extrabold">Editor visual do site</h1>
             <p className="mt-1 text-xs text-muted-foreground">
               {slug ? slug + ".oricse.com.br" : "Endereço não configurado"} ·{" "}
