@@ -661,7 +661,16 @@ function Admin() {
           executivo: {template:"prestige",primary:"#C9AA76",secondary:"#30383D",background:"#272B30",text:"#FFFFFF"},
           acolhedor: {template:"cuidado",primary:"#B66D67",secondary:"#F9D9CA",background:"#FFF6F0",text:"#543A37"},
         };
-        const visual = estilos[String(identidade?.estilo_site || "moderno")] || estilos.moderno;
+        const visualDireto: Record<string,{template:string;primary:string;secondary:string;background:string;text:string}> = {
+          prestige:{template:"prestige",primary:"#C9A86A",secondary:"#29423C",background:"#121A18",text:"#F6F1E7"},
+          atelier:{template:"atelier",primary:"#73523C",secondary:"#E4D5C6",background:"#F7F1EB",text:"#322920"},
+          cuidado:{template:"cuidado",primary:"#307760",secondary:"#D7E8DE",background:"#F2F8F4",text:"#1E4036"},
+          popular:{template:"popular",primary:"#B33C34",secondary:"#FFE297",background:"#FFFDF8",text:"#322523"},
+          essencial:{template:"essencial",primary:"#263C54",secondary:"#E7EDF2",background:"#FFFFFF",text:"#1E293B"},
+          horizonte:{template:"horizonte",primary:"#537B52",secondary:"#DCE8D1",background:"#F6F8F0",text:"#203E30"},
+        };
+        const escolha = String(identidade?.modelo_site || identidade?.estilo_site || "moderno");
+        const visual = visualDireto[escolha] || estilos[escolha] || estilos.moderno;
         const servicosNomes: Record<string,string> = {
           consultas:"Consultas",vacinas:"Vacinação",exames:"Exames e diagnósticos",
           cirurgias:"Cirurgias",atendimento_domiciliar:"Atendimento domiciliar",
@@ -1496,7 +1505,7 @@ function Admin() {
               <div className="min-w-0 flex-1 space-y-1">
                 <p><strong>Nome público:</strong> {implantacaoPedido.nome_publico || item.clinica_nome}</p>
                 <p><strong>Endereço:</strong> {item.slug_desejado || "Não escolhido"}.oricse.com.br</p>
-                <p><strong>Estilo:</strong> {implantacaoPedido.estilo_site || "Não informado"}</p>
+                <p><strong>Modelo de site:</strong> {implantacaoPedido.modelo_site || implantacaoPedido.estilo_site || "Não informado"}</p>
                 <p><strong>Serviços:</strong> {(implantacaoPedido.servicos_iniciais || "").split(",").filter(Boolean).join(", ") || "Não informados"}</p>
                 <p><strong>Funcionamento:</strong> {implantacaoPedido.horario_abertura || "—"} às {implantacaoPedido.horario_fechamento || "—"}</p>
                 <p><strong>Agenda online:</strong> {implantacaoPedido.agenda_online === "sim" ? "Solicitada" : "Não solicitada"}</p>
