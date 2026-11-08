@@ -1,0 +1,29 @@
+name: Format six clinic sites in PR
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/seis-sites-editor-clinicas-20261108'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/seis-sites-editor-clinicas-20261108
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: |
+          npx prettier --write src/components/clinic-site/ClinicSiteFull.tsx src/components/clinic-site/ClinicSiteRenderer.tsx src/lib/clinic-site.ts src/routes/site-da-clinica.tsx src/routes/site-da-clinica-preview.tsx src/routes/modelos.tsx
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/clinic-site/ClinicSiteFull.tsx src/components/clinic-site/ClinicSiteRenderer.tsx src/lib/clinic-site.ts src/routes/site-da-clinica.tsx src/routes/site-da-clinica-preview.tsx src/routes/modelos.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "Formatar modelos e editor visual das clínicas"
+            git push origin HEAD:feat/seis-sites-editor-clinicas-20261108
+          fi
