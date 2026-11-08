@@ -57,7 +57,7 @@ function PaginaInicial() {
   const [capaOficialCarregada, setCapaOficialCarregada] = useState(true);
   return (
     <main className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-0 sm:px-8 lg:px-10">
         <Link to="/" aria-label="Oricse — início"><img src="/oricse-logo-oryx.svg?v=15" className="h-[53px] w-[53px]" alt="Oricse"/></Link>
         <nav className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
         <button onClick={() => setMenu(!menu)} aria-expanded={menu} className="rounded-full bg-[#4A1826] p-2.5 text-white md:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
