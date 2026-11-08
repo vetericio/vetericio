@@ -29,6 +29,13 @@ Configurar os quatro secrets **somente no servidor/Cloudflare Worker**:
 
 Não versionar esses valores. Nunca usar `VITE_`, nem logar tokens.
 
+## Exclusão de dados Meta
+
+- URL pública de exclusão de dados: `https://oricse.vetericio.workers.dev/api/oricstudio/meta/data-deletion`.
+- Cadastre essa URL no campo **Data Deletion Request Callback URL** do aplicativo Meta.
+- O callback aceita o `signed_request` da Meta via POST, valida a assinatura com `ORICSTUDIO_META_CLIENT_SECRET` e remove somente a conexão Meta associada ao usuário recebido.
+- A resposta inclui `url` e `confirmation_code` para consulta do status; dados clínicos e financeiros não são apagados.
+
 Solicitar os escopos profissionais adequados aos recursos efetivamente utilizados. Conferir os requisitos de App Review/Advanced Access e verificação de empresa antes de abrir a integração para clientes externos. A conta precisa ser profissional.
 
 ## Fluxo

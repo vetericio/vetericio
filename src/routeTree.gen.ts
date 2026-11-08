@@ -83,6 +83,7 @@ import { Route as VetSlugRouteImport } from './routes/vet.$slug'
 import { Route as ApiMercadopagoCallbackRouteImport } from './routes/api/mercadopago/callback'
 import { Route as PetSlugPortalRouteImport } from './routes/pet/$slug/portal'
 import { Route as ApiOricstudioMetaCallbackRouteImport } from './routes/api/oricstudio/meta/callback'
+import { Route as ApiOricstudioMetaDataDeletionRouteImport } from './routes/api/oricstudio/meta/data-deletion'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -455,6 +456,12 @@ const ApiOricstudioMetaCallbackRoute =
     path: '/api/oricstudio/meta/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiOricstudioMetaDataDeletionRoute =
+  ApiOricstudioMetaDataDeletionRouteImport.update({
+    id: '/api/oricstudio/meta/data-deletion',
+    path: '/api/oricstudio/meta/data-deletion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -531,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
   '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
+  '/api/oricstudio/meta/data-deletion': typeof ApiOricstudioMetaDataDeletionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -607,6 +615,7 @@ export interface FileRoutesByTo {
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
   '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
+  '/api/oricstudio/meta/data-deletion': typeof ApiOricstudioMetaDataDeletionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -684,6 +693,7 @@ export interface FileRoutesById {
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/pet/$slug/portal': typeof PetSlugPortalRoute
   '/api/oricstudio/meta/callback': typeof ApiOricstudioMetaCallbackRoute
+  '/api/oricstudio/meta/data-deletion': typeof ApiOricstudioMetaDataDeletionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -762,6 +772,7 @@ export interface FileRouteTypes {
     | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
     | '/api/oricstudio/meta/callback'
+    | '/api/oricstudio/meta/data-deletion'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -838,6 +849,7 @@ export interface FileRouteTypes {
     | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
     | '/api/oricstudio/meta/callback'
+    | '/api/oricstudio/meta/data-deletion'
   id:
     | '__root__'
     | '/'
@@ -914,6 +926,7 @@ export interface FileRouteTypes {
     | '/api/mercadopago/callback'
     | '/pet/$slug/portal'
     | '/api/oricstudio/meta/callback'
+    | '/api/oricstudio/meta/data-deletion'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -991,6 +1004,7 @@ export interface RootRouteChildren {
   ApiMercadopagoCallbackRoute: typeof ApiMercadopagoCallbackRoute
   PetSlugPortalRoute: typeof PetSlugPortalRoute
   ApiOricstudioMetaCallbackRoute: typeof ApiOricstudioMetaCallbackRoute
+  ApiOricstudioMetaDataDeletionRoute: typeof ApiOricstudioMetaDataDeletionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1513,6 +1527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOricstudioMetaCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oricstudio/meta/data-deletion': {
+      id: '/api/oricstudio/meta/data-deletion'
+      path: '/api/oricstudio/meta/data-deletion'
+      fullPath: '/api/oricstudio/meta/data-deletion'
+      preLoaderRoute: typeof ApiOricstudioMetaDataDeletionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1591,6 +1612,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMercadopagoCallbackRoute: ApiMercadopagoCallbackRoute,
   PetSlugPortalRoute: PetSlugPortalRoute,
   ApiOricstudioMetaCallbackRoute: ApiOricstudioMetaCallbackRoute,
+  ApiOricstudioMetaDataDeletionRoute: ApiOricstudioMetaDataDeletionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

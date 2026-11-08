@@ -2,14 +2,19 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("ORICSE_APP_ORIGIN") || "https://oricse.vetericio.workers.dev",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Vary": "Origin",
 };
 const resposta = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+function senhaForte(senha: string) {
+  return senha.length >= 12 && senha.length <= 128 && /[a-z]/.test(senha) && /[A-Z]/.test(senha) && /\d/.test(senha) && /[^A-Za-z0-9]/.test(senha);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -18,8 +23,8 @@ Deno.serve(async (req) => {
   try {
     const { desafioId, animalId, senha } = await req.json();
     const senhaNova = String(senha ?? "");
-    if (!desafioId || !animalId || senhaNova.length < 8) {
-      return resposta({ ok: false, error: "Crie uma senha com pelo menos 8 caracteres." }, 400);
+    if (!desafioId || !animalId || !senhaForte(senhaNova)) {
+      return resposta({ ok: false, error: "Crie uma senha com pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo." }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");

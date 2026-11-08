@@ -12,7 +12,8 @@ const dadosPessoaSchema = z.object({
   telefone: z.string().trim().max(30).default(""),
   endereco: z.string().trim().max(350).default(""),
 });
-const createSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), password:z.string().min(6).max(128), email:z.string().email().max(180), papel:papelSchema, pessoa:dadosPessoaSchema });
+const senhaSegura=z.string().min(12,"Use ao menos 12 caracteres.").max(128).regex(/[a-z]/,"Inclua uma letra minúscula.").regex(/[A-Z]/,"Inclua uma letra maiúscula.").regex(/\d/,"Inclua um número.").regex(/[^A-Za-z0-9]/,"Inclua um símbolo.");
+const createSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), password:senhaSegura, email:z.string().email().max(180), papel:papelSchema, pessoa:dadosPessoaSchema });
 const lerPessoaSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid().optional() });
 const atualizarPessoaSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), pessoa:dadosPessoaSchema });
 
@@ -43,7 +44,7 @@ function normalizarPessoa(pessoa: z.infer<typeof dadosPessoaSchema>) {
     updated_at: new Date().toISOString(),
   };
 }
-const resetSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), password:z.string().min(6).max(128) });
+const resetSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), password:senhaSegura });
 const excluirClinicaSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), confirmacao:z.literal("APAGAR") });
 const atualizarUsuarioSchema = z.object({ accessToken:z.string().min(20), userId:z.string().uuid(), username:z.string().min(3).max(40).regex(/^[a-z0-9._-]+$/), email:z.string().email().max(180) });
 const removerUsuarioSchema = z.object({ accessToken:z.string().min(20), clinicaId:z.string().uuid(), userId:z.string().uuid() });

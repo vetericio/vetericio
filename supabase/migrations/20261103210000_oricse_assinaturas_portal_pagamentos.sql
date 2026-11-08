@@ -29,7 +29,8 @@ alter table public.oricse_contratacoes
   add column if not exists modo_renovacao text not null default 'manual',
   add column if not exists mp_assinatura_id text,
   add column if not exists mp_assinatura_status text,
-  add column if not exists renovacao_automatica boolean not null default false;
+  add column if not exists renovacao_automatica boolean not null default false,
+  add column if not exists clinica_criada_id uuid references public.clinicas(id) on delete set null;
 
 alter table public.oricse_contratacoes
   drop constraint if exists oricse_contratacoes_ciclo_check;

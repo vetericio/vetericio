@@ -182,21 +182,6 @@ function Contratar() {
     window.location.replace(url.toString());
   }, [retornoPagamento]);
 
-  async function finalizarPedidoIsento(id: string) {
-    if (!id || abrindoCheckout) return;
-    setAbrindoCheckout(true);
-    try {
-      const {data,error}=await (supabaseBanco as any).rpc("oricse_finalizar_contratacao_isenta",{p_contratacao:id});
-      if(error)throw error;
-      setPedido((anterior:any)=>({...anterior,...data,status:"isento_aguardando_aprovacao",valor_exibido:"R$ 0,00"}));
-      toast.success("Solicitação enviada para análise.");
-      const destino = new URL("/contratacao-recebida", window.location.origin);
-      destino.searchParams.set("retorno", "isento");
-      destino.searchParams.set("pedido", id);
-      window.location.assign(destino.toString());
-    } catch(e){toast.error(e instanceof Error?e.message:"Falha ao concluir o pedido gratuito.");}
-    finally{setAbrindoCheckout(false);}
-  }
   async function abrirCheckout(id: string) {
     if (!id || abrindoCheckout) return;
     setAbrindoCheckout(true);
@@ -396,7 +381,17 @@ function Contratar() {
     const novoPedido = Array.isArray(data) ? data[0] : data;
     setPedido(novoPedido);
     setEtapa(4);
-    if (!ehTesteGratis && novoPedido?.id) { if(valorCobrado===0&&promoAplicado?.codigo) await finalizarPedidoIsento(String(novoPedido.id)); else await abrirCheckout(String(novoPedido.id)); }
+    if (!ehTesteGratis && novoPedido?.id) {
+      if (novoPedido.status === "isento_aguardando_aprovacao") {
+        toast.success("Solicitação enviada para análise.");
+        const destino = new URL("/contratacao-recebida", window.location.origin);
+        destino.searchParams.set("retorno", "isento");
+        destino.searchParams.set("pedido", String(novoPedido.id));
+        window.location.assign(destino.toString());
+      } else {
+        await abrirCheckout(String(novoPedido.id));
+      }
+    }
   }
 
   const crmvObrigatorio = exigeCrmv(dados);
@@ -480,7 +475,7 @@ function Contratar() {
       <div className="mt-5 space-y-4 border-t pt-5 text-sm"><div className="flex items-start gap-3"><input id="aceitar-termos" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={termos} onChange={e=>setTermos(e.target.checked)}/><div><label htmlFor="aceitar-termos" className="cursor-pointer">Li e concordo com os </label><Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Termos de Uso <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div><div className="flex items-start gap-3"><input id="aceitar-privacidade" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={privacidade} onChange={e=>setPrivacidade(e.target.checked)}/><div><label htmlFor="aceitar-privacidade" className="cursor-pointer">Li e concordo com a </label><Link to="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Política de Privacidade <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1"> e tratamento de dados.</span><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div></div>
     </section>}
 
-    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(Number(pedido?.valor_total??valorCobrado))} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>Desconto:</b> {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedido?.status==="isento_aguardando_aprovacao"?"aguardando aprovação administrativa":valorCobrado===0?"isenção integral — aguardando envio":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&pedido?.status!=="isento_aguardando_aprovacao"&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void (valorCobrado===0?finalizarPedidoIsento(String(pedido.id)):abrirCheckout(String(pedido.id)))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":valorCobrado===0?"Enviar solicitação gratuita":"Pagar com Mercado Pago"}</button>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{valorCobrado===0?"O cupom cobre 100% do período. Não haverá cobrança no Mercado Pago; a clínica dependerá de aprovação e ativação pelo administrador.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
+    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : texto.etapa4_titulo}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(Number(pedido?.valor_total??valorCobrado))} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>Desconto:</b> {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedido?.status==="isento_aguardando_aprovacao"?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&pedido?.status!=="isento_aguardando_aprovacao"&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedido?.status==="isento_aguardando_aprovacao"?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
 
     {etapa<4 && <div className="mt-5 flex justify-between gap-3">{etapa>1?<button onClick={()=>setEtapa(etapa-1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> {texto.botao_voltar}</button>:<span/>}{etapa<3?<button onClick={()=>{if(validarAtual())setEtapa(etapa+1)}} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">{texto.botao_continuar} <ChevronRight size={18}/></button>:<button disabled={enviando} onClick={continuarPagamento} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?texto.preparando_pagamento:(ehTesteGratis ? "Iniciar teste grátis" : texto.botao_pagamento)}</button>}</div>}
   </div></main>;

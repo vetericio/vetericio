@@ -2,8 +2,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("ORICSE_APP_ORIGIN") || "https://oricse.vetericio.workers.dev",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Vary": "Origin",
 };
 
 const resposta = (body: Record<string, unknown>, status = 200) =>
@@ -44,6 +45,17 @@ Deno.serve(async (req) => {
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRole) throw new Error("Configuração do portal indisponível.");
     const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
+    const ip = (req.headers.get("x-forwarded-for") || "desconhecido").split(",")[0].trim();
+    const { data: permitido, error: erroLimite } = await admin.rpc("oricse_rate_limit_allow", {
+      p_escopo: "portal_reset_start",
+      p_chave: `${ip}:${clinicaSlug}:${cpfNormalizado}`,
+      p_limite: 5,
+      p_janela_segundos: 1800,
+    });
+    // A tabela de desafios já limita solicitações por portal; este limite
+    // adicional passa a ser persistente assim que a migration for aplicada.
+    if (erroLimite) console.error("Rate limit persistente indisponível", erroLimite.message);
+    else if (permitido !== true) return resposta({ ok: false, error: "Aguarde alguns minutos antes de tentar novamente." }, 429);
 
     const { data: clinica } = await admin
       .from("clinicas")

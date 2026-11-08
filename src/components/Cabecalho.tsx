@@ -5,7 +5,6 @@ import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
-import { useClinicBranding } from "@/hooks/useClinicBranding";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
@@ -33,7 +32,6 @@ export function Cabecalho({
   aoMudarMenuFixo: (fixo: boolean) => void;
 }) {
   const location = useLocation();
-  const { nome: nomeClinica, logoUrl } = useClinicBranding();
   const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
   useProtecaoDadosLocais();
   const plantaoArea = [
@@ -79,17 +77,11 @@ export function Cabecalho({
         className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-3" : "pb-1 pt-1"}`}
       >
         <div className={plantaoArea ? "mb-1 flex justify-center" : "mb-0 flex justify-center"}>
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={`Logo de ${nomeClinica || "clínica"}`}
-              className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[165px] sm:max-w-[200px]" : "max-w-[120px] sm:max-w-[145px]"}`}
-            />
-          ) : (
-            <p className="text-sm font-bold text-foreground sm:text-base">
-              {nomeClinica || "Clínica"}
-            </p>
-          )}
+          <img
+            src="/oricse-logo.png"
+            alt="Oricse — sistema veterinário e petshop"
+            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[180px] sm:max-w-[220px]" : "max-w-[90px] sm:max-w-[110px]"}`}
+          />
         </div>
 
         {plantaoArea && (

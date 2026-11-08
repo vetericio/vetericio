@@ -164,7 +164,7 @@ const areas: AreaMenu[] = [
     ],
   },
   {
-    titulo: "OricStúdio",
+    titulo: "Meu OricStúdio",
     icone: Instagram,
     itens: [{ to: "/oricstudio", rotulo: "Gestão de redes sociais" }],
   },
@@ -217,7 +217,7 @@ const areas: AreaMenu[] = [
 
 // As quatro áreas principais ficam visíveis. As demais mantêm todos os
 // mesmos links e permissões, mas são agrupadas em "Mais opções".
-const ordemPrincipal = ["Recepção", "Clínica veterinária", "Banho e tosa", "Hotelzinho", "OricStúdio"];
+const ordemPrincipal = ["Recepção", "Clínica veterinária", "Banho e tosa", "Hotelzinho", "Meu OricStúdio"];
 const titulosPrincipais = new Set(ordemPrincipal);
 const areasPrincipais = ordemPrincipal.map((titulo) => areas.find((area) => area.titulo === titulo)!)
   .filter(Boolean);

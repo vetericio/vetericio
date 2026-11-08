@@ -6,7 +6,11 @@ create unique index if not exists tutores_clinica_cpf_digitos_unico
   where cpf_digitos is not null;
 
 alter table public.oricse_portal_tutores
-  add column if not exists senha_atualizada_em timestamptz;
+  alter column auth_user_id drop not null,
+  add column if not exists senha_atualizada_em timestamptz,
+  add column if not exists clinica_slug text,
+  add column if not exists convite_token_hash text,
+  add column if not exists convite_expira_em timestamptz;
 
 create table if not exists public.oricse_portal_redefinicoes_senha (
   id uuid primary key default gen_random_uuid(),
@@ -83,7 +87,7 @@ begin
     raise exception 'Este acesso já está ativo. A redefinição deve ser feita pelo próprio Portal do Tutor.' using errcode='P0001';
   end if;
 
-  v_token:=encode(gen_random_bytes(24),'hex');
+  v_token:=encode(extensions.gen_random_bytes(24),'hex');
 
   insert into public.oricse_portal_tutores(
     clinica_id,tutor_id,usuario,usuario_chave,ativo,clinica_slug,convite_token_hash,convite_expira_em
@@ -91,7 +95,7 @@ begin
   values (
     v_clinica,p_tutor_id,'@'||v_usuario,v_usuario,true,
     (select c.slug from public.clinicas c where c.id=v_clinica),
-    encode(digest(v_token,'sha256'),'hex'),v_expira
+    encode(extensions.digest(v_token,'sha256'),'hex'),v_expira
   )
   on conflict (clinica_id,tutor_id) do update
     set usuario=excluded.usuario,
@@ -110,7 +114,7 @@ begin
   )
   values (
     v_clinica,p_tutor_id,'@'||v_usuario,v_usuario,
-    encode(digest(v_token,'sha256'),'hex'),v_expira,(select auth.uid())
+    encode(extensions.digest(v_token,'sha256'),'hex'),v_expira,(select auth.uid())
   );
 
   select c.slug into v_slug

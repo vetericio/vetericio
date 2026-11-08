@@ -11,14 +11,14 @@ begin
  or p_mp_percentual<0 or p_mp_percentual>=100 or p_oricse_percentual<0 or p_oricse_percentual>=100
  or p_mp_fixo_centavos is null or p_mp_fixo_centavos<0 then raise exception 'Tarifas inválidas'; end if;
  if p_clinica_id is null then
-  insert into public.oricse_taxas_modalidade(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual)
-  values(null,p_modalidade,p_mp_percentual,p_mp_fixo_centavos,p_oricse_percentual)
-  on conflict (modalidade) where clinica_id is null
+  insert into public.oricse_taxas_modalidade(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual,prazo_recebimento_dias,parcelas)
+  values(null,p_modalidade,p_mp_percentual,p_mp_fixo_centavos,p_oricse_percentual,0,1)
+  on conflict (modalidade,prazo_recebimento_dias,parcelas) where clinica_id is null
   do update set mp_percentual=excluded.mp_percentual,mp_fixo_centavos=excluded.mp_fixo_centavos,oricse_percentual=excluded.oricse_percentual,updated_at=now();
  else
-  insert into public.oricse_taxas_modalidade(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual)
-  values(p_clinica_id,p_modalidade,p_mp_percentual,p_mp_fixo_centavos,p_oricse_percentual)
-  on conflict (clinica_id,modalidade) where clinica_id is not null
+  insert into public.oricse_taxas_modalidade(clinica_id,modalidade,mp_percentual,mp_fixo_centavos,oricse_percentual,prazo_recebimento_dias,parcelas)
+  values(p_clinica_id,p_modalidade,p_mp_percentual,p_mp_fixo_centavos,p_oricse_percentual,0,1)
+  on conflict (clinica_id,modalidade,prazo_recebimento_dias,parcelas) where clinica_id is not null
   do update set mp_percentual=excluded.mp_percentual,mp_fixo_centavos=excluded.mp_fixo_centavos,oricse_percentual=excluded.oricse_percentual,updated_at=now();
  end if;
 end $$;

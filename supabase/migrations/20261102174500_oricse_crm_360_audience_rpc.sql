@@ -1,4 +1,42 @@
 -- Dados agregados do CRM 360, sem expor o JSON privado completo do tutor.
+-- A tabela de cobranças é consumida pelo CRM e precisa existir numa instalação limpa.
+create table if not exists public.oricse_cobrancas_tutores (
+  id uuid primary key default gen_random_uuid(),
+  clinica_id uuid not null references public.clinicas(id) on delete cascade,
+  tutor_id uuid not null,
+  animal_id uuid,
+  agenda_id uuid,
+  agendamento_id uuid,
+  descricao text not null,
+  modo_valor text not null default 'fixo',
+  valor_referencia numeric(12,2) not null default 0,
+  valor_cobrado numeric(12,2) not null default 0,
+  valor_mercado_pago_previsto numeric(12,2) not null default 0,
+  valor_oricse_previsto numeric(12,2) not null default 0,
+  valor_clinica_previsto numeric(12,2) not null default 0,
+  taxa_mercado_pago_percentual numeric(7,4) not null default 0,
+  taxa_mercado_pago_fixa numeric(12,2) not null default 0,
+  taxa_oricse_percentual numeric(7,4) not null default 0,
+  status text not null default 'pendente',
+  checkout_url text,
+  mercado_pago_preference_id text,
+  mercado_pago_payment_id text,
+  aprovado_em timestamptz,
+  webhook_recebido_em timestamptz,
+  dados_provedor jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.oricse_cobrancas_tutores enable row level security;
+
+-- Dados financeiros de tutor são acessados somente pelos fluxos autorizados.
+create policy oricse_cobrancas_tutores_sem_acesso_direto
+on public.oricse_cobrancas_tutores
+as restrictive for all to anon, authenticated
+using (false)
+with check (false);
+
 create or replace function public.oricse_crm_360_base(p_clinica_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = ''

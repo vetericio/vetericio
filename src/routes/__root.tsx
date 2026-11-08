@@ -31,6 +31,8 @@ import {
   slugDaRota,
   type ClinicPortalInfo,
 } from "@/lib/tenant-context";
+import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
+import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -179,6 +181,22 @@ function RootComponent() {
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
   const [dadosDriveProntos, setDadosDriveProntos] = useState(false);
   const [menuFixo, setMenuFixo] = useState(false);
+  const [quantidadeClinicasAtivas, setQuantidadeClinicasAtivas] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!autenticado || role !== "admin") {
+      setQuantidadeClinicasAtivas(null);
+      return;
+    }
+    let ativo = true;
+    void (async () => {
+      const { count, error } = await semClinicasNaLixeira(
+        (supabaseBanco as any).from("clinicas").select("id", { count: "exact", head: true }),
+      );
+      if (!error && ativo) setQuantidadeClinicasAtivas(count || 0);
+    })();
+    return () => { ativo = false; };
+  }, [autenticado, role]);
 
   useEffect(() => {
     let ativo = true;
@@ -639,6 +657,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ClinicasAtivasContext.Provider value={{ quantidade: quantidadeClinicasAtivas }}>
       <TenantContext.Provider value={contextoPortal}>
         {mostrarRuntimeVisual && (
           <Suspense fallback={null}>
@@ -751,6 +770,7 @@ function RootComponent() {
         )}
         <Toaster position="top-center" />
       </TenantContext.Provider>
+      </ClinicasAtivasContext.Provider>
     </QueryClientProvider>
   );
 }

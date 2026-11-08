@@ -53,9 +53,9 @@ begin
     raise exception 'Este usuário já está em uso nesta clínica.' using errcode='23505';
   end if;
   delete from public.oricse_portal_convites pc where pc.clinica_id=v_clinica and pc.tutor_id=p_tutor_id and pc.usado_em is null;
-  v_token:=encode(gen_random_bytes(24),'hex');
+  v_token:=encode(extensions.gen_random_bytes(24),'hex');
   insert into public.oricse_portal_convites(clinica_id,tutor_id,usuario,usuario_chave,token_hash,expira_em,criado_por)
-  values(v_clinica,p_tutor_id,'@'||v_usuario,v_usuario,encode(digest(v_token,'sha256'),'hex'),v_expira,(select auth.uid()));
+  values(v_clinica,p_tutor_id,'@'||v_usuario,v_usuario,encode(extensions.digest(v_token,'sha256'),'hex'),v_expira,(select auth.uid()));
   select c.slug into v_slug from public.clinicas c where c.id=v_clinica;
   return query select '@'||v_usuario,v_token,v_expira,v_slug;
 end;

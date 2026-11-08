@@ -1,10 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
+const appOrigin=Deno.env.get("ORICSE_APP_ORIGIN")||"https://oricse.vetericio.workers.dev";
+const cors={"Access-Control-Allow-Origin":appOrigin,"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json","Vary":"Origin"};
 const resposta=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:cors});
 function normalizarUsuario(valor:unknown){return String(valor??"").trim().replace(/^@+/,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9._-]+/g,".").replace(/\.{2,}/g,".").replace(/^\.+|\.+$/g,"");}
 async function sha256Hex(valor:string){const bytes=new TextEncoder().encode(valor);const hash=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+function senhaForte(senha:string){return senha.length>=12&&senha.length<=128&&/[a-z]/.test(senha)&&/[A-Z]/.test(senha)&&/\d/.test(senha)&&/[^A-Za-z0-9]/.test(senha);}
 
 Deno.serve(async(req)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
@@ -15,7 +17,7 @@ Deno.serve(async(req)=>{
     const usuarioChave=normalizarUsuario(payload?.usuario);
     const token=String(payload?.token??"").trim();
     const senha=String(payload?.senha??"");
-    if(!slug||usuarioChave.length<3||token.length<32||senha.length<8||senha.length>128)return resposta({error:"Dados de ativação inválidos."},400);
+    if(!slug||usuarioChave.length<3||token.length<32||!senhaForte(senha))return resposta({error:"Crie uma senha com pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo."},400);
 
     const url=Deno.env.get("SUPABASE_URL")!;
     const admin=createClient(url,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});

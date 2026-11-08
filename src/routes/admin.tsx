@@ -33,6 +33,8 @@ import { extrairDriveFolderId } from "@/lib/drive-storage";
 import { ROTAS_CATALOGO, ROTAS_EDITAVEIS, CAMINHOS_RESERVADOS } from "@/lib/admin-page-routes";
 import { testarEConectarPastaDrive } from "@/lib/drive.functions";
 import { garantirPastaOricse } from "@/lib/drive-default.functions";
+import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
+import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
@@ -164,7 +166,7 @@ type ItemMenuAdmin = {
   nome: string;
   icone: typeof Gauge;
   grupo: GrupoAba;
-  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio";
+  rota?: "/admin-cupons" | "/admin-conteudo" | "/admin-oricstudio" | "/oricstudio";
 };
 const ABAS: ItemMenuAdmin[] = [
   { id: "dashboard", nome: "Visão geral", icone: Gauge, grupo: "Operação" },
@@ -172,8 +174,9 @@ const ABAS: ItemMenuAdmin[] = [
   { id: "lixeira", nome: "Lixeira · 360 dias", icone: Trash2, grupo: "Operação" },
   { id: "clinicas", nome: "Clínicas e equipe", icone: Building2, grupo: "Operação" },
   { id: "planos", nome: "Planos e cupons", icone: BadgeDollarSign, grupo: "Operação" },
-  { id: "pagamentos", nome: "Financeiro, taxas e repasses", icone: CreditCard, grupo: "Operação" },
-  { id: "oricstudio", nome: "OricStúdio", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
+  { id: "pagamentos", nome: "OricsePay", icone: CreditCard, grupo: "Operação" },
+  { id: "oricstudio-geral", nome: "OricStúdio Geral", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
+  { id: "meu-oricstudio", nome: "Meu OricStúdio", icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio" },
   { id: "conteudo", nome: "Conteúdo público", icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
   { id: "site", nome: "Marca, sites e domínios", icone: PanelsTopLeft, grupo: "Produto e conteúdo" },
   { id: "paginas", nome: "Páginas e URLs", icone: Globe2, grupo: "Produto e conteúdo" },
@@ -271,6 +274,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 function Admin() {
+  const quantidadeClinicasAtivas = useQuantidadeClinicasAtivas();
   const [aba, setAba] = useState<Aba>("dashboard");
   const [abaClinica, setAbaClinica] = useState<AbaClinica>("cadastro");
   const [clinicas, setClinicas] = useState<Clinica[]>([]);
@@ -369,8 +373,9 @@ function Admin() {
   }
 
   async function carregarTudo() {
-    const [c, u, v, p, cfg, arqs, taxas, dom] = await Promise.all([
-      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).order("nome"),
+    const [c, clinicasNaLixeira, u, v, p, cfg, arqs, taxas, dom] = await Promise.all([
+      semClinicasNaLixeira((supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA)).order("nome"),
+      (supabaseBanco as any).from("clinicas").select(CAMPOS_CLINICA).not("excluido_em", "is", null).order("nome"),
       (supabase as any).from("app_users").select("user_id,username,role,email,created_at").order("username"),
       (supabase as any).from("clinica_usuarios").select("clinica_id,user_id,papel,ativo"),
       (supabase as any).from("oricse_planos").select("id,codigo,nome,publico_alvo,preco,preco_mensal,preco_anual,descricao,itens,usuarios_inclusos,dominio_incluso,ativo,ordem").order("ordem"),
@@ -383,8 +388,8 @@ function Admin() {
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
-    setClinicas((c.data || []).filter((x:Clinica)=>!x.excluido_em));
-    setClinicasLixeira((c.data || []).filter((x:Clinica)=>Boolean(x.excluido_em)));
+    setClinicas(c.data || []);
+    setClinicasLixeira(clinicasNaLixeira.data || []);
     setUsuarios(u.data || []);
     setVinculos(v.data || []);
     setDominiosClinica((dom.data || []) as DominioClinica[]);
@@ -1155,7 +1160,7 @@ function Admin() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{clinicas.length}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
+        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
         <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Assinaturas</p><p className="mt-2 text-3xl font-black">{pagas}</p><p className="text-sm text-muted-foreground">conta(s) ativa(s) e em dia · {canceladas} cancelada(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Ver situações de conta</button></Card>
         <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
       </div>
@@ -1928,7 +1933,7 @@ function Admin() {
           <div className="mt-5 space-y-3 text-sm">
             <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Clínicas e usuários</p><p className="mt-1 text-muted-foreground">Dados cadastrais, situação da conta, equipe, Drive, site, domínios e autorizações.</p></div>
             <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Planos e acessos</p><p className="mt-1 text-muted-foreground">Limites, matriz de recursos e exceções individuais por clínica.</p></div>
-            <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Financeiro da plataforma</p><p className="mt-1 text-muted-foreground">Taxas, comissões ORICSE, regras de repasse e simulador.</p></div>
+            <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">OricsePay</p><p className="mt-1 text-muted-foreground">Taxas, comissões ORICSE, regras de repasse e simulador.</p></div>
             <div className="rounded-xl border bg-slate-50 p-4"><p className="font-bold">Produto e conteúdo</p><p className="mt-1 text-muted-foreground">Conteúdo público, marca, páginas, URLs e configuração dos sites.</p></div>
           </div>
         </Card>
@@ -1946,7 +1951,7 @@ function Admin() {
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card><p className="text-sm text-muted-foreground">Clínicas cadastradas</p><p className="mt-1 text-3xl font-black">{clinicas.length}</p><p className="mt-1 text-xs text-muted-foreground">Base de clientes ORICSE</p></Card>
+        <Card><p className="text-sm text-muted-foreground">Clínicas cadastradas</p><p className="mt-1 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="mt-1 text-xs text-muted-foreground">Base de clientes ORICSE</p></Card>
         <Card><p className="text-sm text-muted-foreground">Planos configurados</p><p className="mt-1 text-3xl font-black">{planos.length}</p><p className="mt-1 text-xs text-muted-foreground">Oferta comercial ativa e histórica</p></Card>
         <Card><p className="text-sm text-muted-foreground">Páginas catalogadas</p><p className="mt-1 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="mt-1 text-xs text-muted-foreground">Rotas públicas e internas mapeadas</p></Card>
         <Card><p className="text-sm text-muted-foreground">Arquivos no Drive</p><p className="mt-1 text-3xl font-black">{arquivosDrive}</p><p className="mt-1 text-xs text-muted-foreground">Itens indexados na plataforma</p></Card>
@@ -1960,7 +1965,7 @@ function Admin() {
             <button type="button" onClick={() => abrirPainel("novas")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Entrada e ativação</p><p className="mt-1 text-sm text-muted-foreground">Contratações, testes e liberação de clínicas.</p></button>
             <button type="button" onClick={() => abrirPainel("clinicas")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Clientes e equipe</p><p className="mt-1 text-sm text-muted-foreground">Contas, usuários, acessos, marca e domínio.</p></button>
             <button type="button" onClick={() => window.location.assign("/admin-planos")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Oferta e permissões</p><p className="mt-1 text-sm text-muted-foreground">Planos, limites e matriz de funcionalidades.</p></button>
-            <button type="button" onClick={() => abrirPainel("pagamentos")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">Financeiro</p><p className="mt-1 text-sm text-muted-foreground">Taxas, comissões, repasses e simulações.</p></button>
+            <button type="button" onClick={() => abrirPainel("pagamentos")} className="rounded-xl border p-4 text-left hover:border-primary"><p className="font-bold">OricsePay</p><p className="mt-1 text-sm text-muted-foreground">Taxas, comissões, repasses e simulações.</p></button>
           </div>
         </Card>
 
@@ -1981,8 +1986,8 @@ function Admin() {
   const renderPagamentos = () => (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Financeiro da plataforma</p>
-        <h2 className="mt-1 text-2xl font-black">Financeiro, taxas e repasses</h2>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">OricsePay</p>
+        <h2 className="mt-1 text-2xl font-black">OricsePay</h2>
         <p className="mt-1 max-w-4xl text-sm text-muted-foreground">A taxa do Mercado Pago é descontada primeiro. A comissão ORICSE incide apenas sobre o saldo restante, por segmento, e o simulador mostra o líquido antes da cobrança.</p>
       </div>
       <PainelTaxasPagamento
