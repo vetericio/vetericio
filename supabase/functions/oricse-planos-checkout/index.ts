@@ -70,9 +70,9 @@ async function checkoutManual(p: any, amount: number, nome: string, access: stri
     payer: { email: p.responsavel_email },
     external_reference: p.id,
     back_urls: {
-      success: origin + "/contratar?retorno=sucesso&pedido=" + p.id,
-      pending: origin + "/contratar?retorno=pendente&pedido=" + p.id,
-      failure: origin + "/contratar?retorno=falha&pedido=" + p.id,
+      success: origin + "/contratacao-recebida?retorno=sucesso&pedido=" + p.id,
+      pending: origin + "/contratacao-recebida?retorno=pendente&pedido=" + p.id,
+      failure: origin + "/contratacao-recebida?retorno=falha&pedido=" + p.id,
     },
     notification_url: Deno.env.get("SUPABASE_URL") + "/functions/v1/oricse-planos-checkout?action=webhook",
     auto_return: "approved",
@@ -102,7 +102,7 @@ async function checkoutAssinatura(p: any, amount: number, nome: string, access: 
     reason: "ORICSE — " + nome + " (" + p.ciclo + ")",
     external_reference: p.id,
     payer_email: p.responsavel_email,
-    back_url: origin + "/contratar?retorno=sucesso&pedido=" + p.id,
+    back_url: origin + "/contratacao-recebida?retorno=sucesso&pedido=" + p.id,
     auto_recurring: { frequency: meses, frequency_type: "months", transaction_amount: amount, currency_id: "BRL" },
   };
   const response = await fetch("https://api.mercadopago.com/preapproval", {
