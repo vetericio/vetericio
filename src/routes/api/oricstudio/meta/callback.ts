@@ -12,7 +12,7 @@ export const Route=createFileRoute("/api/oricstudio/meta/callback")({
       GET:async({request})=>{
         const back=(result:"conectado"|"erro",plataforma=false)=>
           Response.redirect(
-            `https://oricse.vetericio.workers.dev/oricstudio?${plataforma?"ambiente=plataforma&":""}meta=${result}`,302);
+            `https://oricse.com.br/oricstudio?${plataforma?"ambiente=plataforma&":""}meta=${result}`,302);
         try{
           const url=new URL(request.url);
           if(url.searchParams.has("error"))return back("erro");
