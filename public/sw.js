@@ -1,5 +1,5 @@
-const CACHE_NAME = "oricse-pwa-v14";
-const RUNTIME_CACHE = "oricse-runtime-v14";
+const CACHE_NAME = "oricse-pwa-v15";
+const RUNTIME_CACHE = "oricse-runtime-v15";
 const APP_SHELL = ["/manifest.webmanifest?v=10", "/icon-192-v3.svg", "/icon-512-v3.svg"];
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -17,7 +17,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== CACHE_NAME && key !== RUNTIME_CACHE)
+            .filter((key) => key !== CACHE_NAME && key !== RUNTIME_CACHE && key !== "oricse-runtime-v14")
             .map((key) => caches.delete(key)),
         ),
       )
@@ -43,41 +43,45 @@ function recursoCacheavel(url) {
   return arquivoVersionado || imagemDoApp || imagemExterna;
 }
 
+function respostaDeAssetInvalida(resposta, url) {
+  const asset = url.origin === self.location.origin && url.pathname.startsWith("/assets/");
+  if (!asset) return false;
+  const mime = (resposta.headers.get("content-type") || "").toLowerCase();
+  const modulo = /\.(?:m?js)$/i.test(url.pathname);
+  const estilo = /\.css$/i.test(url.pathname);
+  return !resposta.ok || resposta.redirected ||
+    (modulo && !/javascript|ecmascript/.test(mime)) ||
+    (estilo && !/text\/css/.test(mime));
+}
+
+async function cacheDeAssetValido(request, url) {
+  for (const nome of [RUNTIME_CACHE, "oricse-runtime-v14"]) {
+    const resposta = await (await caches.open(nome)).match(request);
+    if (resposta && !respostaDeAssetInvalida(resposta, url)) return resposta;
+  }
+  return undefined;
+}
+
 async function buscarEAtualizar(request, event, url) {
   try {
-    // Para navegação, o preload é mais rápido; para dados e imagens, fetch
-    // normal mantém a requisição e a autenticação originais.
+    // Nunca devolve HTML do SSR no lugar de JavaScript (erro de chunk em deploy).
     const preload = event.request.mode === "navigate" ? await event.preloadResponse : undefined;
     const resposta = preload || (await fetch(request));
-    // Um módulo antigo removido no deploy pode redirecionar para /login.
-    // HTML não é JavaScript: não devolver nem salvar esse HTML como um asset.
-    const asset = url.origin === self.location.origin && url.pathname.startsWith("/assets/");
-    const mime = (resposta.headers.get("content-type") || "").toLowerCase();
-    const modulo = /\\.(?:m?js)$/i.test(url.pathname);
-    const estilo = /\\.css$/i.test(url.pathname);
-    const invalido = asset && (resposta.redirected ||
-      (modulo && !/javascript|ecmascript/.test(mime)) ||
-      (estilo && !/text\\/css/.test(mime)));
-    if (invalido) {
-      // Se a versão antiga foi cacheada corretamente, ela ainda pode finalizar
-      // o fluxo aberto. Caso contrário, devolvemos erro e o app recarrega.
-      const cache = await caches.open(RUNTIME_CACHE);
-      return (await cache.match(request)) ||
-        new Response("Asset indisponível. Recarregue a página.", {
+    if (respostaDeAssetInvalida(resposta, url)) {
+      return (await cacheDeAssetValido(request, url)) ||
+        new Response("Módulo atualizado; recarregue a página.", {
           status: 404,
-          headers: { "content-type": "text/plain; charset=utf-8" },
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
         });
     }
     if (recursoCacheavel(url) && (resposta.ok || resposta.type === "opaque")) {
-      event.waitUntil(
-        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, resposta.clone())),
-      );
+      event.waitUntil(caches.open(RUNTIME_CACHE).then((cache) =>
+        cache.put(request, resposta.clone())).catch(() => undefined));
     }
     return resposta;
   } catch (error) {
     if (recursoCacheavel(url)) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      const armazenado = await cache.match(request);
+      const armazenado = await cacheDeAssetValido(request, url);
       if (armazenado) return armazenado;
     }
     throw error;
