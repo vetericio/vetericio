@@ -54,7 +54,7 @@ function OrixHero() {
 }
 function PaginaInicial() {
   const [menu, setMenu] = useState(false);
-  const [capaOficialCarregada, setCapaOficialCarregada] = useState(false);
+  const [capaOficialCarregada, setCapaOficialCarregada] = useState(true);
   return (
     <main className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
@@ -66,8 +66,7 @@ function PaginaInicial() {
       </header>
 
       <section className="relative border-y border-[#f0e3de] bg-[#fffdfa]">
-        {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis.
-            Até o PNG ser disponibilizado em /public, a versão anterior permanece no ar. */}
+        {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
           alt=""
