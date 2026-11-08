@@ -89,6 +89,14 @@ export function SiteDaClinica({
   embedded?: boolean;
 } = {}) {
   const { clinicaId: clinicaDaSessao, carregando, adminGlobal, pode } = usePermissoes();
+  // A atualização da sessão é feita em segundo plano. Depois da primeira
+  // verificação, não desmontar o editor/iframe a cada refresh de permissões.
+  // A autorização em si continua sendo conferida por podeEditar e pelas
+  // políticas RLS do banco em cada leitura/gravação.
+  const [acessoInicialVerificado, setAcessoInicialVerificado] = useState(false);
+  useEffect(() => {
+    if (!carregando) setAcessoInicialVerificado(true);
+  }, [carregando]);
   // O Admin Geral edita a clínica que selecionou no painel. A seleção
   // sozinha não concede acesso: o banco aplica RLS em todas as operações.
   const clinicaId = adminClinicaId ? (adminGlobal ? adminClinicaId : "") : clinicaDaSessao;
@@ -441,7 +449,7 @@ export function SiteDaClinica({
     );
   };
 
-  if (carregando)
+  if (carregando && !acessoInicialVerificado)
     return <div className="p-6 text-sm text-muted-foreground">Verificando acesso ao editor...</div>;
   if (!podeEditar)
     return (
