@@ -24,7 +24,7 @@ export function metaConfig() {
   const clientId = (process.env["ORICSTUDIO_META_CLIENT_ID"] || "").trim();
   const clientSecret = (process.env["ORICSTUDIO_META_CLIENT_SECRET"] || "").trim();
   const redirectUri = (process.env["ORICSTUDIO_META_REDIRECT_URI"] ||
-    "https://oricse.vetericio.workers.dev/api/oricstudio/meta/callback").trim();
+    "https://oricse.com.br/api/oricstudio/meta/callback").trim();
   const encryptionKey = process.env["ORICSTUDIO_META_ENCRYPTION_KEY"] || "";
   const configId = (process.env["ORICSTUDIO_META_CONFIG_ID"] || "").trim();
   const u = new URL(redirectUri);
