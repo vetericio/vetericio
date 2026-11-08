@@ -1,6 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, BadgeCheck, Check, ChevronLeft, ChevronRight, CreditCard, ChevronDown, ExternalLink, Minus, Plus, TicketPercent } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Check, ChevronLeft, ChevronRight, CreditCard, ChevronDown, ExternalLink, Minus, Plus, TicketPercent, ImageUp, Globe2, Clock3, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
@@ -21,7 +21,7 @@ const VAZIO: Dados = {
   clinica_nome: "", razao_social: "", cnpj: "", clinica_telefone: "", clinica_email: "", clinica_cep: "", clinica_endereco: "", clinica_numero: "", clinica_complemento: "", clinica_bairro: "", clinica_cidade: "", clinica_uf: "",
   tipo_operacao: "clinica", operacoes_ativas: "clinica", slug_desejado: "", nome_publico: "", dominio: "", quantidade_usuarios: "1",
   responsavel_nome: "", responsavel_cpf: "", responsavel_crmv: "", responsavel_crmv_uf: "", responsavel_email: "", responsavel_telefone: "", responsavel_cep: "", responsavel_endereco: "", responsavel_numero: "", responsavel_complemento: "", responsavel_bairro: "", responsavel_cidade: "", responsavel_uf: "",
-  observacoes: "",
+  observacoes: "", estilo_site: "moderno", servicos_iniciais: "", horario_abertura: "08:00", horario_fechamento: "18:00", agenda_online: "sim",
 };
 
 
@@ -62,6 +62,28 @@ const TIPOS_OPERACAO = [
   { valor: "petshop", nome: "Pet shop / banho e tosa" },
   { valor: "misto", nome: "Operação mista (combinar serviços)" },
 ] as const;
+const ETAPAS_ABERTURA = ["Identidade", "Estrutura", "Serviços", "Configurações", "Revisão"];
+const ESTILOS_SITE = [
+  { id: "moderno", nome: "Moderno", legenda: "Discreto e atual", fundo: "bg-slate-50", barra: "bg-[#702E45]", detalhe: "bg-rose-100" },
+  { id: "natural", nome: "Natural", legenda: "Leve e acolhedor", fundo: "bg-[#F5F8F1]", barra: "bg-[#50715C]", detalhe: "bg-[#D8E4D4]" },
+  { id: "executivo", nome: "Executivo", legenda: "Sólido e profissional", fundo: "bg-[#272B30]", barra: "bg-[#C9AA76]", detalhe: "bg-[#5A6169]" },
+  { id: "acolhedor", nome: "Acolhedor", legenda: "Próximo dos tutores", fundo: "bg-[#FFF6F0]", barra: "bg-[#B66D67]", detalhe: "bg-[#F9D9CA]" },
+] as const;
+const SERVICOS_INICIAIS = [
+  { id: "consultas", nome: "Consultas", operacoes: ["clinica", "domicilio"] },
+  { id: "vacinas", nome: "Vacinação", operacoes: ["clinica", "domicilio"] },
+  { id: "exames", nome: "Exames e diagnósticos", operacoes: ["clinica"] },
+  { id: "cirurgias", nome: "Cirurgias", operacoes: ["clinica"] },
+  { id: "atendimento_domiciliar", nome: "Visitas domiciliares", operacoes: ["domicilio"] },
+  { id: "banho", nome: "Banho", operacoes: ["petshop"] },
+  { id: "tosa", nome: "Tosa", operacoes: ["petshop"] },
+  { id: "loja", nome: "Venda de produtos", operacoes: ["petshop"] },
+  { id: "hospedagem", nome: "Hospedagem", operacoes: ["hotelzinho"] },
+  { id: "creche", nome: "Creche e recreação", operacoes: ["hotelzinho"] },
+] as const;
+const normalizarSlug = (valor: string) => valor.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").slice(0, 30);
+const slugValido = (slug: string) => slug.length >= 3 && slug.length <= 30 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])$/.test(slug);
+const SLUGS_RESERVADOS = new Set(["www","admin","app","api","login","portal","tutor","suporte","mail","email","blog","sistema","oricse"]);
 const OPERACOES_BASE = TIPOS_OPERACAO.filter(tipo => tipo.valor !== "misto");
 const TIPOS_COM_ATENDIMENTO_VETERINARIO = new Set(["clinica"]);
 const obterOperacoes = (dados: Dados) => dados.tipo_operacao === "misto" ? (dados.operacoes_ativas || "").split(",").filter(valor => OPERACOES_BASE.some(tipo => tipo.valor === valor)) : [dados.tipo_operacao];
@@ -174,6 +196,68 @@ function Contratar() {
   const [validandoPromo, setValidandoPromo] = useState(false);
   const [erroPromo, setErroPromo] = useState("");
   const [erroValidacao, setErroValidacao] = useState("");
+  const [logoDataUrl, setLogoDataUrl] = useState("");
+  const [logoNome, setLogoNome] = useState("");
+  const [verificandoSlug, setVerificandoSlug] = useState(false);
+  const [situacaoSlug, setSituacaoSlug] = useState<"livre" | "ocupado" | "indefinido">("indefinido");
+
+  async function escolherLogo(arquivo?: File) {
+    if (!arquivo) return;
+    if (!["image/png","image/jpeg","image/webp"].includes(arquivo.type) || arquivo.size > 5 * 1024 * 1024) {
+      toast.error("Selecione PNG, JPG ou WebP de até 5 MB.");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(arquivo);
+    const imagem = new Image();
+    imagem.onload = () => {
+      try {
+        const largura = imagem.naturalWidth, altura = imagem.naturalHeight;
+        if (!largura || !altura) throw new Error("Imagem inválida.");
+        const escala = Math.min(1, 512 / Math.max(largura, altura));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(largura * escala));
+        canvas.height = Math.max(1, Math.round(altura * escala));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Não foi possível preparar a imagem.");
+        ctx.drawImage(imagem, 0, 0, canvas.width, canvas.height);
+        const imagemTratada = canvas.toDataURL("image/webp", 0.86);
+        if (!imagemTratada.startsWith("data:image/") || imagemTratada.length > 600_000)
+          throw new Error("A logo ficou muito grande. Use uma imagem mais leve.");
+        setLogoDataUrl(imagemTratada);
+        setLogoNome(arquivo.name.slice(0, 120));
+        setErroValidacao("");
+      } catch (error) { toast.error(error instanceof Error ? error.message : "Falha ao carregar a logo."); }
+      finally { URL.revokeObjectURL(objectUrl); }
+    };
+    imagem.onerror = () => { URL.revokeObjectURL(objectUrl); toast.error("Não foi possível abrir a imagem selecionada."); };
+    imagem.src = objectUrl;
+  }
+
+  async function conferirSlug() {
+    const slug = normalizarSlug(dados.slug_desejado || "");
+    if (!slugValido(slug) || SLUGS_RESERVADOS.has(slug)) {
+      setSituacaoSlug("ocupado");
+      setErroValidacao("Escolha um endereço válido de 3 a 30 caracteres, com letras, números ou hífen.");
+      return false;
+    }
+    setVerificandoSlug(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_slug_disponivel", { p_slug: slug });
+      if (error) throw error;
+      if (data !== true) {
+        setSituacaoSlug("ocupado");
+        setErroValidacao("Este endereço já está reservado. Escolha outro para continuar.");
+        return false;
+      }
+      setSituacaoSlug("livre");
+      return true;
+    } catch {
+      setSituacaoSlug("indefinido");
+      setErroValidacao("Não foi possível verificar o endereço agora. Tente novamente.");
+      return false;
+    } finally { setVerificandoSlug(false); }
+  }
+
   const retornoPagamento = params.get("retorno");
   const pedidoRetorno = params.get("pedido");
   useEffect(() => {
