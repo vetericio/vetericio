@@ -69,7 +69,7 @@ function PaginaInicial() {
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis.
             Até o PNG ser disponibilizado em /public, a versão anterior permanece no ar. */}
         <img
-          src="/oricse-capa-oficial.png"
+          src="/oricse-capa-paisagem.png"
           alt=""
           aria-hidden="true"
           className="hidden"
@@ -81,7 +81,7 @@ function PaginaInicial() {
           <div className="relative w-full bg-[#f4d5bf]">
             {/* Em telas menores, a arte inteira fica visível antes do conteúdo. */}
             <img
-              src="/oricse-capa-oficial.png"
+              src="/oricse-capa-paisagem.png"
               alt="Órix nas dunas ao pôr do sol"
               width={1672}
               height={941}
