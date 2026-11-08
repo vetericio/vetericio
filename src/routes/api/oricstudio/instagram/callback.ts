@@ -9,7 +9,7 @@ export const Route=createFileRoute("/api/oricstudio/instagram/callback")({
   server:{handlers:{GET:async({request})=>{
     // Redireciona sempre para a Oricse; não expõe o código nem o token em URLs.
     const origin=process.env["ORICSTUDIO_PUBLIC_ORIGIN"]||
-      "https://oricse.vetericio.workers.dev";
+      "https://oricse.com.br";
     const back=(ok:boolean,platform=false)=>Response.redirect(
       origin+"/oricstudio?"+(platform?"ambiente=plataforma&":"")+
       "meta="+(ok?"conectado":"erro"),302);
