@@ -200,6 +200,9 @@ function PaginaInicialPlataforma() {
             max-width: none;
             padding: 0;
           }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] > div {
+            display: contents;
+          }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
             position: absolute;
             top: -4%;
