@@ -19,6 +19,11 @@ export type VisualStyle = {
   opacity?: number;
   borderRadius?: number;
   zIndex?: number;
+  /** Recorte não destrutivo da imagem: porcentagem de cada lado (0 a 95). */
+  cropTop?: number;
+  cropRight?: number;
+  cropBottom?: number;
+  cropLeft?: number;
 };
 
 export type VisualPatch = {
@@ -119,6 +124,13 @@ export function applyVisualStyle(element: HTMLElement, style: VisualStyle, indep
   if (style.opacity != null) element.style.opacity = String(style.opacity);
   if (style.borderRadius != null) element.style.borderRadius = `${Math.max(0, style.borderRadius)}px`;
   if (style.zIndex != null) { element.style.position = element.style.position || "relative"; element.style.zIndex = String(style.zIndex); }
+  if (element instanceof HTMLImageElement) {
+    const { cropTop = 0, cropRight = 0, cropBottom = 0, cropLeft = 0 } = style;
+    // clip-path preserva o arquivo original, o zoom e o recorte por dispositivo.
+    if ([cropTop,cropRight,cropBottom,cropLeft].some((v) => v > 0))
+      element.style.clipPath = `inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%)`;
+    else element.style.clipPath = "";
+  }
 }
 
 export function validImageSource(src: string) {
