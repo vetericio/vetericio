@@ -39,7 +39,12 @@ jobs:
           node scripts/test-drive-journal.mjs
           node scripts/test-drive-serial-queue.mjs
           node scripts/test-drive-state-cas.mjs
+      - name: Stamp immutable release identifier
+        run: |
+          printf '{"build":"%s"}\n' "$GITHUB_SHA" > public/oricse-build.json
       - name: Build production Worker
+        env:
+          VITE_ORICSE_BUILD_ID: ${{ github.sha }}
         run: npm run build
       - name: Validate Durable Object configuration
         run: node scripts/check-worker-coordinator.mjs
