@@ -35,6 +35,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ROTAS_CATALOGO } from "@/lib/admin-page-routes";
 import {
+  imageBounds, resizedBox, croppedSide, rectOf,
+  type CropSide, type ResizeHandle, type CanvasRect,
+} from "@/lib/visual-editor-geometry";
+import {
   applyVisualLayout,
   cloneVisual,
   editableTarget,
@@ -175,11 +179,40 @@ export function VisualPageEditor() {
     if (selected.length && !modoFoco) setRightOpen(true);
   }, [selected.length, modoFoco]);
 
+  useEffect(() => {
+    cropSessionRef.current = null;
+    setCropMode(false);
+  }, [route, device]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const cleanupFrameListenersRef = useRef<(() => void) | null>(null);
   const selectedRef = useRef<SelectedItem[]>([]);
   const documentRef = useRef(documento);
   const propertiesPanelRef = useRef<HTMLElement>(null);
+  const [cropMode, setCropMode] = useState(false);
+  const cropSessionRef = useRef<{
+    item: SelectedItem;
+    before: VisualDocument;
+    recorded: boolean;
+  } | null>(null);
+  function finalizarRecorte() {
+    cropSessionRef.current = null;
+    setCropMode(false);
+  }
+  function restaurarRecorte() {
+    const current = cropSessionRef.current?.item;
+    if (!current) return;
+    updateLayout((value) => {
+      const element = current.kind === "patch"
+        ? value.patches.find((entry) => entry.id === current.id)
+        : value.added.find((entry) => entry.id === current.id);
+      if (element) {
+        element.style.cropTop = 0; element.style.cropBottom = 0;
+        element.style.cropLeft = 0; element.style.cropRight = 0;
+      }
+    });
+    finalizarRecorte();
+  }
+
   // Uma edição contínua de texto, número ou cor equivale a uma ação no histórico.
   const propertyGestureRef = useRef<{ source: Element; before: VisualDocument; recorded: boolean } | null>(null);
   selectedRef.current = selected;
@@ -297,6 +330,8 @@ export function VisualPageEditor() {
     const previous = undo.at(-1);
     if (!previous) return;
     propertyGestureRef.current = null;
+    cropSessionRef.current = null;
+    setCropMode(false);
     setRedo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
     const restored = cloneVisual(previous);
     documentRef.current = restored;
@@ -308,6 +343,8 @@ export function VisualPageEditor() {
     const next = redo.at(-1);
     if (!next) return;
     propertyGestureRef.current = null;
+    cropSessionRef.current = null;
+    setCropMode(false);
     setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
     const restored = cloneVisual(next);
     documentRef.current = restored;
@@ -338,148 +375,204 @@ export function VisualPageEditor() {
   const drawSelection = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
-    doc.querySelectorAll("[data-oricse-editor-overlay]").forEach((x) => x.remove());
+    doc.querySelectorAll("[data-oricse-editor-overlay]").forEach((node) => node.remove());
     const elements = selectedElements();
-    for (const element of elements) {
-      const rect = element.getBoundingClientRect();
+    const page = ensurePage(cloneVisual(documentRef.current), route)[device];
+
+    function getLayer(item: SelectedItem) {
+      return item.kind === "patch"
+        ? page.patches.find((p) => p.id === item.id)
+        : page.added.find((p) => p.id === item.id);
+    }
+    function addOverlay(rect: CanvasRect, opts: Record<string,string>) {
       const overlay = doc.createElement("div");
       overlay.dataset["oricseEditorOverlay"] = "1";
       Object.assign(overlay.style, {
-        position: "fixed",
-        left: `${rect.left}px`,
-        top: `${rect.top}px`,
-        width: `${rect.width}px`,
-        height: `${rect.height}px`,
-        border: "2px solid #6F293B",
-        boxSizing: "border-box",
-        pointerEvents: "none",
-        zIndex: "2147483646",
-      });
+        position:"fixed", left:`${rect.left}px`, top:`${rect.top}px`,
+        width:`${rect.width}px`, height:`${rect.height}px`,
+        boxSizing:"border-box", pointerEvents:"none", zIndex:"2147483646",
+      }, opts);
       doc.body.appendChild(overlay);
+      return overlay;
     }
-    if (elements.length) {
-      const rect = elements[0].getBoundingClientRect();
-      type ResizeMode = "horizontal" | "vertical" | "proportional";
-      const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
-        event.preventDefault();
-        event.stopPropagation();
+
+    for (const [i,element] of elements.entries()) {
+      const item = selectedRef.current[i];
+      const style = item ? getLayer(item)?.style || {} : {};
+      const image = element.tagName === "IMG";
+      const bounds = imageBounds(element,style);
+      const editingCrop = cropMode && image && item && cropSessionRef.current?.item.id === item.id;
+      if (editingCrop) {
+        // Durante o recorte a imagem original permanece visível sob máscaras,
+        // permitindo reabrir um dos lados sem perder pixels.
+        element.style.clipPath = "none";
+        const full = bounds.painted, cut = bounds.visible;
+        const masks = [
+          rectOf(full.left,full.top,full.right,cut.top),
+          rectOf(full.left,cut.bottom,full.right,full.bottom),
+          rectOf(full.left,cut.top,cut.left,cut.bottom),
+          rectOf(cut.right,cut.top,full.right,cut.bottom),
+        ];
+        for (const mask of masks) {
+          if (!mask.width || !mask.height) continue;
+          addOverlay(mask,{background:"rgba(22,10,18,.55)"});
+        }
+        addOverlay(cut,{border:"2px dashed white",outline:"1px solid #6F293B",boxShadow:"0 0 0 1px rgba(0,0,0,.20)"});
+      } else {
+        // A seleção segue os pixels visíveis, não a caixa CSS da imagem.
+        const rect = image ? bounds.visible : bounds.outer;
+        addOverlay(rect,{border:"2px solid #6F293B"});
+      }
+    }
+    if (!elements.length) return;
+    const element = elements[0];
+    const item = selectedRef.current[0];
+    if (!item) return;
+    const style = getLayer(item)?.style || {};
+    const bounds = imageBounds(element,style);
+    const cropActive = cropMode && element.tagName === "IMG" &&
+      cropSessionRef.current?.item.id === item.id;
+    const rect = element.tagName === "IMG" ? bounds.visible : bounds.outer;
+    if (rect.width < 1 || rect.height < 1) return;
+
+    function createHandle(label:string,at:CanvasRect,cursor:string,onDown:(ev:PointerEvent)=>void,
+      round = false) {
+      const handle = doc.createElement("button");
+      handle.type = "button";
+      handle.setAttribute("aria-label",label);
+      handle.title = label;
+      handle.dataset["oricseEditorOverlay"] = "1";
+      Object.assign(handle.style,{
+        position:"fixed",left:`${at.left}px`,top:`${at.top}px`,
+        width:`${at.width}px`,height:`${at.height}px`,
+        padding:"0",border:"2px solid white",outline:"1px solid #6F293B",
+        borderRadius:round?"50%":"6px",
+        background:cropActive?"#fff6de":"#6F293B",cursor,
+        pointerEvents:"auto",touchAction:"none",zIndex:"2147483647",
+        boxShadow:"0 1px 5px rgba(0,0,0,.3)",
+      });
+      handle.addEventListener("pointerdown",onDown);
+      doc.body.appendChild(handle);
+    }
+
+    function beginResize(handle:ResizeHandle) {
+      return (event: PointerEvent) => {
+        event.preventDefault();event.stopPropagation();
         propertyGestureRef.current = null;
-        const beforeResize = cloneVisual(documentRef.current);
-        let resizeRecorded = false;
-        const sx = event.clientX,
-          sy = event.clientY;
-        const starts = selectedRef.current.map((item) => {
-          const target = elements[selectedRef.current.indexOf(item)];
-          const box = target?.getBoundingClientRect();
-          const page = ensurePage(cloneVisual(documentRef.current), route)[device];
-          const layer =
-            item.kind === "patch"
-              ? page.patches.find((x) => x.id === item.id)
-              : page.added.find((x) => x.id === item.id);
+        const before = cloneVisual(documentRef.current);
+        let recorded = false;
+        const sx = event.clientX, sy = event.clientY;
+        const starts = selectedRef.current.map((entry,index) => {
+          const current = elements[index];
+          const raw = current?.getBoundingClientRect();
+          const layer = getLayer(entry);
           return {
-            item,
-            width: box?.width || 100,
-            height: box?.height || 40,
-            x: layer?.style.x || 0,
+            item:entry,
+            width:Math.max(1,layer?.style.width ?? raw?.width ?? 100),
+            height:Math.max(1,layer?.style.height ?? raw?.height ?? 40),
+            x:layer?.style.x || 0,y:layer?.style.y || 0,
           };
         });
-        const move = (ev: PointerEvent) => {
-          const dx = (ev.clientX - sx) / Math.max(zoom / 100, 0.1),
-            dy = (ev.clientY - sy) / Math.max(zoom / 100, 0.1);
-          if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
-          if (!resizeRecorded) {
-            checkpoint(beforeResize);
-            resizeRecorded = true;
-          }
-          updateLayout(
-            (value) =>
-              starts.forEach(({ item, width, height, x }) => {
-                const target =
-                  item.kind === "patch"
-                    ? value.patches.find((x) => x.id === item.id)
-                    : value.added.find((x) => x.id === item.id);
-                if (!target) return;
-                if (mode === "horizontal") {
-                  const nextWidth = Math.max(10, Math.round(width - dx));
-                  target.style.width = nextWidth;
-                  target.style.x = Math.round(x + (width - nextWidth));
-                } else if (mode === "vertical") {
-                  target.style.height = Math.max(10, Math.round(height + dy));
-                } else {
-                  const relativeX = dx / Math.max(width, 1),
-                    relativeY = dy / Math.max(height, 1);
-                  const scale = Math.max(
-                    0.05,
-                    1 + (Math.abs(relativeX) >= Math.abs(relativeY) ? relativeX : relativeY),
-                  );
-                  target.style.width = Math.max(10, Math.round(width * scale));
-                  target.style.height = Math.max(10, Math.round(height * scale));
-                }
-              }),
-            false,
-          );
+        const move = (ev:PointerEvent) => {
+          // Eventos dentro do iframe já estão em coordenadas da página;
+          // dividir pelo zoom novamente provoca a borda "solta" da imagem.
+          const dx = ev.clientX - sx, dy = ev.clientY - sy;
+          if (Math.abs(dx)<2 && Math.abs(dy)<2) return;
+          if (!recorded) {checkpoint(before);recorded=true;}
+          updateLayout((value) => starts.forEach((start) => {
+            const target = start.item.kind === "patch"
+              ? value.patches.find((entry)=>entry.id===start.item.id)
+              : value.added.find((entry)=>entry.id===start.item.id);
+            if (!target) return;
+            const change = resizedBox(handle,start.width,start.height,start.x,start.y,dx,dy);
+            target.style.x=change.x; target.style.y=change.y;
+            target.style.width=change.width; target.style.height=change.height;
+          }),false);
         };
         const stop = () => {
-          doc.defaultView?.removeEventListener("pointermove", move);
-          doc.defaultView?.removeEventListener("pointerup", stop);
+          doc.defaultView?.removeEventListener("pointermove",move);
+          doc.defaultView?.removeEventListener("pointerup",stop);
+          doc.defaultView?.removeEventListener("pointercancel",stop);
+          doc.defaultView?.removeEventListener("blur",stop);
         };
-        doc.defaultView?.addEventListener("pointermove", move);
-        doc.defaultView?.addEventListener("pointerup", stop);
+        doc.defaultView?.addEventListener("pointermove",move);
+        doc.defaultView?.addEventListener("pointerup",stop);
+        doc.defaultView?.addEventListener("pointercancel",stop);
+        doc.defaultView?.addEventListener("blur",stop);
       };
-      const createHandle = (
-        mode: ResizeMode,
-        label: string,
-        style: Partial<CSSStyleDeclaration>,
-      ) => {
-        const handle = doc.createElement("button");
-        handle.type = "button";
-        handle.setAttribute("aria-label", label);
-        handle.title = label;
-        handle.dataset["oricseEditorOverlay"] = "1";
-        Object.assign(
-          handle.style,
-          {
-            position: "fixed",
-            border: "2px solid white",
-            background: "#6F293B",
-            padding: "0",
-            pointerEvents: "auto",
-            touchAction: "none",
-            zIndex: "2147483647",
-            boxShadow: "0 1px 4px rgba(0,0,0,.28)",
-          },
-          style,
-        );
-        handle.addEventListener("pointerdown", beginResize(mode));
-        doc.body.appendChild(handle);
-      };
-      createHandle("horizontal", "Alterar somente a largura", {
-        left: `${rect.left - 5}px`,
-        top: `${rect.top + rect.height / 2 - 18}px`,
-        width: "10px",
-        height: "36px",
-        borderRadius: "6px",
-        cursor: "ew-resize",
-      });
-      createHandle("vertical", "Alterar somente a altura", {
-        left: `${rect.left + rect.width / 2 - 18}px`,
-        top: `${rect.bottom - 5}px`,
-        width: "36px",
-        height: "10px",
-        borderRadius: "6px",
-        cursor: "ns-resize",
-      });
-      createHandle("proportional", "Redimensionar mantendo a proporção", {
-        left: `${rect.right - 9}px`,
-        top: `${rect.bottom - 9}px`,
-        width: "20px",
-        height: "20px",
-        borderRadius: "50%",
-        cursor: "nwse-resize",
-      });
     }
-  }, [checkpoint, selectedElements, updateLayout, zoom, route, device]);
 
+    function beginCrop(side:CropSide) {
+      return (ev:PointerEvent) => {
+        ev.preventDefault();ev.stopPropagation();
+        const session = cropSessionRef.current;
+        if (!session) return;
+        const sx = ev.clientX, sy = ev.clientY;
+        const startBounds = imageBounds(element,getLayer(session.item)?.style||{});
+        const before = cloneVisual(documentRef.current);
+        let recorded = false;
+        const move = (pointer:PointerEvent) => {
+          const dx = pointer.clientX-sx,dy = pointer.clientY-sy;
+          if (Math.abs(dx)<1 && Math.abs(dy)<1) return;
+          if (!recorded) {checkpoint(before);recorded=true;}
+          const next = croppedSide(
+            side,getLayer(session.item)?.style||{},startBounds.outer,
+            startBounds.painted,startBounds.visible,dx,dy,
+          );
+          updateLayout((value)=>{
+            const target = session.item.kind==="patch"
+              ? value.patches.find((x)=>x.id===session.item.id)
+              : value.added.find((x)=>x.id===session.item.id);
+            if (target) Object.assign(target.style,next);
+          },false);
+        };
+        const stop=()=>{
+          doc.defaultView?.removeEventListener("pointermove",move);
+          doc.defaultView?.removeEventListener("pointerup",stop);
+          doc.defaultView?.removeEventListener("pointercancel",stop);
+          doc.defaultView?.removeEventListener("blur",stop);
+        };
+        doc.defaultView?.addEventListener("pointermove",move);
+        doc.defaultView?.addEventListener("pointerup",stop);
+        doc.defaultView?.addEventListener("pointercancel",stop);
+        doc.defaultView?.addEventListener("blur",stop);
+      };
+    }
+    const centerX=rect.left+rect.width/2, centerY=rect.top+rect.height/2;
+    if (cropActive) {
+      // Quatro barras independentes: recorte por cima, baixo, esquerda ou direita.
+      const edges:[CropSide,CanvasRect,string][]=[
+        ["top",rectOf(centerX-20,rect.top-5,centerX+20,rect.top+5),"ns-resize"],
+        ["bottom",rectOf(centerX-20,rect.bottom-5,centerX+20,rect.bottom+5),"ns-resize"],
+        ["left",rectOf(rect.left-5,centerY-20,rect.left+5,centerY+20),"ew-resize"],
+        ["right",rectOf(rect.right-5,centerY-20,rect.right+5,centerY+20),"ew-resize"],
+      ];
+      edges.forEach(([side,at,cursor])=>createHandle(`Recortar pelo lado ${side}`,at,cursor,beginCrop(side)));
+      return;
+    }
+    const corners:[ResizeHandle,number,number,string][]=[
+      ["nw",rect.left,rect.top,"nwse-resize"],
+      ["ne",rect.right,rect.top,"nesw-resize"],
+      ["sw",rect.left,rect.bottom,"nesw-resize"],
+      ["se",rect.right,rect.bottom,"nwse-resize"],
+    ];
+    corners.forEach(([handle,x,y,cursor])=>createHandle(
+      `Redimensionar pelo canto ${handle}`,rectOf(x-8,y-8,x+8,y+8),
+      cursor,beginResize(handle),true,
+    ));
+    const edges:[ResizeHandle,CanvasRect,string][]=[
+      ["n",rectOf(centerX-18,rect.top-5,centerX+18,rect.top+5),"ns-resize"],
+      ["s",rectOf(centerX-18,rect.bottom-5,centerX+18,rect.bottom+5),"ns-resize"],
+      ["w",rectOf(rect.left-5,centerY-18,rect.left+5,centerY+18),"ew-resize"],
+      ["e",rectOf(rect.right-5,centerY-18,rect.right+5,centerY+18),"ew-resize"],
+    ];
+    edges.forEach(([handle,at,cursor])=>createHandle(
+      `Ajustar ${handle==="n"||handle==="s"?"altura":"largura"}`,at,cursor,beginResize(handle),
+    ));
+  }, [checkpoint, selectedElements, updateLayout, cropMode, route, device]);
+
+  const drawSelectionRef = useRef(drawSelection);
+  drawSelectionRef.current = drawSelection;
   const applyToFrame = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
@@ -507,6 +600,7 @@ export function VisualPageEditor() {
     const win = iframeRef.current?.contentWindow;
     if (!doc || !win) return;
     applyToFrame();
+    let lastImageDown: null | { id: string; at: number; x: number; y: number } = null;
     let drag: null | {
       sx: number;
       sy: number;
@@ -517,6 +611,7 @@ export function VisualPageEditor() {
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
+      if (cropSessionRef.current) return;
       event.preventDefault();
       event.stopPropagation();
       propertyGestureRef.current = null;
@@ -549,6 +644,26 @@ export function VisualPageEditor() {
         }
         item = { id: patch.id, kind: "patch" };
       }
+      // Duplo clique (até 450ms e 12px de distância) abre recorte de imagem.
+      // Registramos no pointerdown para funcionar também dentro de iframes
+      // onde preventDefault impediria o evento DOM de dblclick.
+      const now = event.timeStamp;
+      const doubleImageClick = element.tagName === "IMG" && lastImageDown?.id === item.id &&
+        now - lastImageDown.at < 450 &&
+        Math.abs(event.clientX-lastImageDown.x)<12 && Math.abs(event.clientY-lastImageDown.y)<12;
+      if (doubleImageClick) {
+        drag = null;
+        lastImageDown = null;
+        selectedRef.current = [item];
+        setSelected([item]);
+        cropSessionRef.current = {
+          item, before: cloneVisual(documentRef.current), recorded: false,
+        };
+        setCropMode(true);
+        return;
+      }
+      lastImageDown = element.tagName === "IMG"
+        ? {id:item.id,at:now,x:event.clientX,y:event.clientY} : null;
       const multi = event.shiftKey || event.ctrlKey || event.metaKey;
       const already = selectedRef.current.some((x) => x.id === item.id && x.kind === item.kind);
       const next = multi
@@ -576,8 +691,8 @@ export function VisualPageEditor() {
       // drag inside the deferred update and crashing on drag.starts.
       const activeDrag = drag;
       if (!activeDrag) return;
-      const dx = (event.clientX - activeDrag.sx) / Math.max(zoom / 100, 0.1),
-        dy = (event.clientY - activeDrag.sy) / Math.max(zoom / 100, 0.1);
+      const dx = event.clientX - activeDrag.sx,
+        dy = event.clientY - activeDrag.sy;
       if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
       if (!activeDrag.recorded) {
         checkpoint(activeDrag.before);
@@ -621,7 +736,11 @@ export function VisualPageEditor() {
         event.stopPropagation();
       }
     };
+    const repaint = () => {win.requestAnimationFrame(() => drawSelectionRef.current());};
     doc.addEventListener("pointerdown", pointerDown, true);
+    doc.addEventListener("load", repaint, true);
+    win.addEventListener("scroll", repaint, true);
+    win.addEventListener("resize", repaint, true);
     doc.addEventListener("keydown", shortcut, true);
     win.addEventListener("pointermove", move, true);
     win.addEventListener("pointerup", stop, true);
@@ -632,6 +751,9 @@ export function VisualPageEditor() {
     cleanupFrameListenersRef.current = () => {
       drag = null;
       doc.removeEventListener("pointerdown", pointerDown, true);
+      doc.removeEventListener("load", repaint, true);
+      win.removeEventListener("scroll", repaint, true);
+      win.removeEventListener("resize", repaint, true);
       doc.removeEventListener("keydown", shortcut, true);
       win.removeEventListener("pointermove", move, true);
       win.removeEventListener("pointerup", stop, true);
@@ -988,7 +1110,10 @@ export function VisualPageEditor() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
+      if (key === "escape" && cropSessionRef.current) {
+        event.preventDefault();
+        finalizarRecorte();
+      } else if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
         event.preventDefault();
         if (event.shiftKey || key === "y") redoNow();
         else undoNow();
@@ -1118,6 +1243,21 @@ export function VisualPageEditor() {
           <option value={85}>85%</option>
           <option value={100}>100%</option>
         </select>
+        {cropMode && (
+          <div className="flex shrink-0 items-center gap-2 rounded-xl border border-[#B17B88] bg-[#fff7f2] px-2 py-1">
+            <span className="hidden text-xs font-bold text-[#6F293B] xl:inline">Recortar imagem — arraste as quatro barras</span>
+            <button
+              type="button" onClick={restaurarRecorte}
+              className="rounded-lg border border-[#d9a8b6] px-3 py-1.5 text-xs font-bold"
+              title="Restaurar a imagem inteira"
+            >Restaurar</button>
+            <button
+              type="button" onClick={finalizarRecorte}
+              className="rounded-lg bg-[#6F293B] px-3 py-1.5 text-xs font-bold text-white"
+              title="Concluir recorte sem alterar o arquivo original"
+            >Concluir corte</button>
+          </div>
+        )}
         <button
           type="button"
           onClick={ajustarPaginaNaTela}
