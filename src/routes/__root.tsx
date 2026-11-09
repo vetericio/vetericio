@@ -180,45 +180,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const ehInicioPublico = useLocation().pathname === "/";
   return (
-    <html lang="pt-BR" data-oricse-home-loading={ehInicioPublico ? "true" : undefined}>
+    <html lang="pt-BR">
       <head>
         <HeadContent />
-        {/* O SSR já entrega a proteção do primeiro paint, antes de carregar qualquer bundle. */}
-        <style>{`
-          #oricse-home-first-paint { display: none; }
-          html[data-oricse-home-loading="true"] #oricse-home-first-paint {
-            display: flex;
-            position: fixed;
-            inset: 0;
-            z-index: 2147483647;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            background: #fbf7f2;
-            color: #4a1826;
-            font-family: Inter, system-ui, sans-serif;
-            text-align: center;
-          }
-          #oricse-home-first-paint img { width: 132px; height: 132px; object-fit: contain; }
-          #oricse-home-first-paint strong { font-size: 24px; letter-spacing: .06em; }
-          #oricse-home-first-paint span { font-size: 13px; color: #765761; }
-          @media (prefers-reduced-motion: no-preference) {
-            #oricse-home-first-paint svg { animation: oricse-home-pulse 1.2s ease-in-out infinite; }
-            @keyframes oricse-home-pulse { 50% { opacity: .45; } }
-          }
-        `}</style>
       </head>
       <body>
-        {ehInicioPublico && (
-          <div id="oricse-home-first-paint" role="status" aria-label="Preparando a página inicial da Oricse">
-            <img src="/oricse-logo-oryx.svg?v=15" alt="Oricse" width={132} height={132} />
-            <strong>ORICSE</strong>
-            <span>Preparando sua experiência</span>
-          </div>
-        )}
         {children}
         <Scripts />
       </body>
@@ -242,18 +209,6 @@ function RootComponent() {
   const [dadosDriveProntos, setDadosDriveProntos] = useState(false);
   const [menuFixo, setMenuFixo] = useState(false);
   const [quantidadeClinicasAtivas, setQuantidadeClinicasAtivas] = useState<number | null>(null);
-
-  // Falha de rede ou chunk opcional nunca deve deixar a home coberta para sempre.
-  // A apresentação definitiva é liberada normalmente pelo VisualPageRuntime
-  // quando ele termina de aplicar o layout publicado.
-  useEffect(() => {
-    if (location.pathname !== "/") return;
-    const fallback = window.setTimeout(() => {
-      document.documentElement.removeAttribute("data-oricse-home-loading");
-    }, 6500);
-    return () => window.clearTimeout(fallback);
-  }, [location.pathname]);
-
 
   useEffect(() => {
     if (!autenticado || role !== "admin") {
