@@ -313,6 +313,103 @@ export function VisualPageEditor() {
     }
     if (elements.length) {
       const rect = elements[0].getBoundingClientRect();
+
+      // Duplo clique em uma imagem ativa o recorte, com oito alças visíveis.
+      // A imagem original continua salva; só a máscara é modificada.
+      const itemSelecionado = selectedRef.current[0];
+      if (croppingId && itemSelecionado?.id === croppingId
+        && elements.length === 1 && elements[0].tagName === "IMG") {
+        const page = ensurePage(cloneVisual(documentRef.current), route)[device];
+        const alvo = itemSelecionado.kind === "patch"
+          ? page.patches.find((x) => x.id === croppingId)
+          : page.added.find((x) => x.id === croppingId);
+        if (alvo) {
+          const bounded = (v: unknown) => Math.max(0, Math.min(90, Number(v) || 0));
+          const startCrop = {
+            top: bounded(alvo.style.cropTop),
+            right: bounded(alvo.style.cropRight),
+            bottom: bounded(alvo.style.cropBottom),
+            left: bounded(alvo.style.cropLeft),
+          };
+          const left = rect.left + rect.width * startCrop.left / 100;
+          const right = rect.right - rect.width * startCrop.right / 100;
+          const top = rect.top + rect.height * startCrop.top / 100;
+          const bottom = rect.bottom - rect.height * startCrop.bottom / 100;
+          const outline = doc.createElement("div");
+          outline.dataset["oricseEditorOverlay"] = "1";
+          Object.assign(outline.style, {
+            position: "fixed", left: `${left}px`, top: `${top}px`,
+            width: `${Math.max(1, right - left)}px`, height: `${Math.max(1, bottom - top)}px`,
+            border: "2px dashed #fff", outline: "2px solid #6F293B",
+            pointerEvents: "none", boxSizing: "border-box", zIndex: "2147483646",
+          });
+          doc.body.appendChild(outline);
+          type Side = "top" | "right" | "bottom" | "left";
+          const createCropHandle = (sides: Side[], x: number, y: number, cursor: string) => {
+            const handle = doc.createElement("button");
+            handle.type = "button";
+            handle.dataset["oricseEditorOverlay"] = "1";
+            handle.title = "Arraste para recortar: " + sides.join(" + ");
+            handle.setAttribute("aria-label", handle.title);
+            Object.assign(handle.style, {
+              position: "fixed", left: `${x - 8}px`, top: `${y - 8}px`,
+              width: "16px", height: "16px", borderRadius: "4px",
+              background: "#fff", border: "2px solid #6F293B",
+              boxShadow: "0 1px 5px rgba(0,0,0,.25)",
+              cursor, pointerEvents: "auto", touchAction: "none",
+              zIndex: "2147483647",
+            });
+            handle.addEventListener("pointerdown", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              const sx = ev.clientX, sy = ev.clientY;
+              let mudou = false;
+              try { doc.body.setPointerCapture(ev.pointerId); } catch { /* navegador sem captura */ }
+              const move = (current: PointerEvent) => {
+                const dx = (current.clientX - sx) * 100 / Math.max(1, rect.width);
+                const dy = (current.clientY - sy) * 100 / Math.max(1, rect.height);
+                if (!mudou && Math.abs(dx) + Math.abs(dy) < .25) return;
+                if (!mudou) { checkpoint(); mudou = true; }
+                updateLayout((layoutAtual) => {
+                  const target = itemSelecionado.kind === "patch"
+                    ? layoutAtual.patches.find((p) => p.id === itemSelecionado.id)
+                    : layoutAtual.added.find((p) => p.id === itemSelecionado.id);
+                  if (!target) return;
+                  const next = { ...startCrop };
+                  if (sides.includes("left")) next.left = Math.max(0, Math.min(95 - next.right, startCrop.left + dx));
+                  if (sides.includes("right")) next.right = Math.max(0, Math.min(95 - next.left, startCrop.right - dx));
+                  if (sides.includes("top")) next.top = Math.max(0, Math.min(95 - next.bottom, startCrop.top + dy));
+                  if (sides.includes("bottom")) next.bottom = Math.max(0, Math.min(95 - next.top, startCrop.bottom - dy));
+                  target.style.cropTop = Math.round(next.top * 10) / 10;
+                  target.style.cropRight = Math.round(next.right * 10) / 10;
+                  target.style.cropBottom = Math.round(next.bottom * 10) / 10;
+                  target.style.cropLeft = Math.round(next.left * 10) / 10;
+                }, false);
+              };
+              const stop = () => {
+                doc.defaultView?.removeEventListener("pointermove", move);
+                doc.defaultView?.removeEventListener("pointerup", stop);
+                doc.defaultView?.removeEventListener("pointercancel", stop);
+                try { doc.body.releasePointerCapture(ev.pointerId); } catch { /* sem captura */ }
+              };
+              doc.defaultView?.addEventListener("pointermove", move);
+              doc.defaultView?.addEventListener("pointerup", stop);
+              doc.defaultView?.addEventListener("pointercancel", stop);
+            });
+            doc.body.appendChild(handle);
+          };
+          createCropHandle(["top", "left"], left, top, "nwse-resize");
+          createCropHandle(["top"], (left + right) / 2, top, "ns-resize");
+          createCropHandle(["top", "right"], right, top, "nesw-resize");
+          createCropHandle(["right"], right, (top + bottom) / 2, "ew-resize");
+          createCropHandle(["bottom", "right"], right, bottom, "nwse-resize");
+          createCropHandle(["bottom"], (left + right) / 2, bottom, "ns-resize");
+          createCropHandle(["bottom", "left"], left, bottom, "nesw-resize");
+          createCropHandle(["left"], left, (top + bottom) / 2, "ew-resize");
+          return;
+        }
+      }
+
       type ResizeMode = "horizontal" | "vertical" | "proportional";
       const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
         event.preventDefault();
@@ -336,8 +433,9 @@ export function VisualPageEditor() {
           };
         });
         const move = (ev: PointerEvent) => {
-          const dx = (ev.clientX - sx) / Math.max(zoom / 100, 0.1),
-            dy = (ev.clientY - sy) / Math.max(zoom / 100, 0.1);
+          // O evento já usa as coordenadas CSS internas do iframe; não dividir pelo zoom.
+          const dx = ev.clientX - sx,
+            dy = ev.clientY - sy;
           updateLayout(
             (value) =>
               starts.forEach(({ item, width, height, x }) => {
@@ -425,7 +523,7 @@ export function VisualPageEditor() {
         cursor: "nwse-resize",
       });
     }
-  }, [checkpoint, selectedElements, updateLayout, zoom, route, device]);
+  }, [checkpoint, selectedElements, updateLayout, route, device, croppingId]);
 
   const applyToFrame = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
