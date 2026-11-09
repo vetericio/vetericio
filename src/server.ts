@@ -138,7 +138,10 @@ export default {
         try {
           const slug = await findPublicClinicSlug(hostname);
           if (!slug) return securityHeaders(publicHostNotFound(), url.pathname);
-          return securityHeaders(Response.redirect(new URL(`/c/${encodeURIComponent(slug)}${url.search}`, url), 307), url.pathname);
+          // O hostname já identifica a clínica. A vitrine é renderizada na rota "/"
+          // sem um redirect HTTP para /c/:slug, mantendo a URL original.
+          // A rota /c/:slug continua disponível para links legados.
+
         } catch (error) {
           console.error("Não foi possível resolver o domínio público da clínica:", error);
           return securityHeaders(publicHostNotFound(), url.pathname);
