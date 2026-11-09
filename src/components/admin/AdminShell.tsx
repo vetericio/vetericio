@@ -30,8 +30,7 @@ const ITENS: Item[] = [
   { id: "oricstudio-plataforma", nome: "Meu OricStúdio", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio" },
   { id: "oricstudio", nome: "OricStúdio Geral", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
   { id: "conteudo", nome: "Conteúdo público", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
-  { id: "site", nome: "Marca, sites e domínios", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", aba: "site" },
-  { id: "paginas", nome: "Páginas e URLs", Icone: Globe2, grupo: "Produto e conteúdo", aba: "paginas" },
+  { id: "site", nome: "Marca, páginas e URLs", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", aba: "site" },
   { id: "auditoria", nome: "Controle e auditoria", Icone: ShieldCheck, grupo: "Controle", aba: "auditoria" },
   { id: "sistema", nome: "Sistema e integrações", Icone: Settings, grupo: "Controle", aba: "sistema" },
 ];
