@@ -68,7 +68,7 @@ jobs:
               const version = versionResponse.ok ? await versionResponse.json() : {};
               const htmlResponse = await fetch(base + "/admin?check=" + Date.now(), { cache: "no-store" });
               const html = htmlResponse.ok ? await htmlResponse.text() : "";
-              const scripts = [...new Set(Array.from(html.matchAll(/src=["'](\\/assets\\/[^"']+\\.js)["']/g), match => match[1]))].slice(0, 5);
+              const scripts = [...new Set(Array.from(html.matchAll(/src=["'](\/assets\/[^"']+\.js)["']/g), match => match[1]))].slice(0, 5);
               if (version.build !== process.env.EXPECTED_BUILD || !htmlResponse.ok || scripts.length === 0) {
                 throw new Error("Build not yet live or HTML lacks JS assets");
               }

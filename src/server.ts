@@ -130,6 +130,17 @@ export default {
       const url = new URL(request.url);
       // Entrega os chunks existentes diretamente do pacote atual. Para chunks
       // antigos que não existem mais, deixa o fallback de recuperação agir.
+      // Imagens estáticas da vitrine precisam ser servidas como arquivos reais,
+      // sem cair no fallback HTML do roteador da aplicação.
+      if (url.pathname.startsWith("/clinic-site/")) {
+        const assets = getWorkerBindings(env)?.ASSETS;
+        if (assets) {
+          const asset = await assets.fetch(request);
+          if (asset.ok && !(asset.headers.get("content-type") || "").includes("text/html")) {
+            return securityHeaders(asset, url.pathname);
+          }
+        }
+      }
       if (url.pathname.startsWith("/assets/")) {
         const assets = getWorkerBindings(env)?.ASSETS;
         if (assets) {
