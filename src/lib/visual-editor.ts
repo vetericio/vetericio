@@ -124,7 +124,7 @@ export function applyVisualStyle(element: HTMLElement, style: VisualStyle, indep
   if (style.opacity != null) element.style.opacity = String(style.opacity);
   if (style.borderRadius != null) element.style.borderRadius = `${Math.max(0, style.borderRadius)}px`;
   if (style.zIndex != null) { element.style.position = element.style.position || "relative"; element.style.zIndex = String(style.zIndex); }
-  if (element instanceof HTMLImageElement) {
+  if (element.tagName === "IMG") {
     const { cropTop = 0, cropRight = 0, cropBottom = 0, cropLeft = 0 } = style;
     // clip-path preserva o arquivo original, o zoom e o recorte por dispositivo.
     if ([cropTop,cropRight,cropBottom,cropLeft].some((v) => v > 0))
