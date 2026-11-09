@@ -33,6 +33,7 @@ import {
 import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { isPlatformHostname } from "@/lib/public-clinic-site";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -197,6 +198,12 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
   const navigate = useNavigate();
+  // Uma clínica em seu subdomínio é uma página pública, mesmo que o visitante
+  // tenha sessão aberta no sistema administrativo da ORICSE.
+  const paginaInicialDeClinica =
+    location.pathname === "/" &&
+    Boolean(hostDaPagina()) &&
+    !isPlatformHostname(hostDaPagina());
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [acessoTeste, setAcessoTeste] = useState<any>(null);
@@ -277,7 +284,7 @@ function RootComponent() {
       // Nas telas internas do domínio da plataforma não existe portal para
       // resolver. Evitar essa RPC remove uma espera de rede de cada troca de
       // página e libera a validação de sessão imediatamente.
-      if (!slug && hostDaPlataforma) {
+      if ((!slug && hostDaPlataforma) || (location.pathname === "/" && !hostDaPlataforma)) {
         if (ativo) {
           setPortal(null);
           setPortalError(null);
@@ -471,7 +478,7 @@ function RootComponent() {
       autenticado &&
       (location.pathname === "/login" ||
         location.pathname.startsWith("/vet/") ||
-        (portal && location.pathname === "/"))
+        (portal && location.pathname === "/" && !paginaInicialDeClinica))
     ) {
       if (role === "admin") navigate({ to: "/inicio" });
       else if (slugClinicaAtual && location.pathname.startsWith("/vet/"))
@@ -487,6 +494,7 @@ function RootComponent() {
     slugClinicaAtual,
     portal,
     location.pathname,
+    paginaInicialDeClinica,
     navigate,
   ]);
 
@@ -709,12 +717,13 @@ function RootComponent() {
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
   const telaPortalRestrita = Boolean(
     !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) &&
+    !paginaInicialDeClinica &&
     autenticado &&
     role !== "admin" &&
     (acessoPortalNegado || (!portal && Boolean(portalError))),
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
-  const mostrarRuntimeVisual = location.pathname !== "/admin-canvas";
+  const mostrarRuntimeVisual = location.pathname !== "/admin-canvas" && !paginaInicialDeClinica;
 
   // Protótipos públicos são isolados do layout clínico e de suas barras de navegação.
   if (location.pathname === "/demo-portal-tutor") {
