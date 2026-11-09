@@ -156,6 +156,111 @@ function PaginaInicialPlataforma() {
   const [menu, setMenu] = useState(false);
   const [capaOficialCarregada, setCapaOficialCarregada] = useState(true);
   return (
+
+    <>
+      {/* CSS crítico entregue pelo próprio SSR: não espera JS, Tailwind ou hidratação.
+          Seletores restritos à home evitam interferir em clínicas e no Canva. */}
+      <style>{`
+        main[data-visual-id="home-fundo-bege"] {
+          background-color: #fffdfa;
+          color: #512b38;
+          overflow-x: hidden;
+        }
+        main[data-visual-id="home-fundo-bege"] [data-visual-id="home-banner"] {
+          position: relative;
+          isolation: isolate;
+          background: transparent;
+        }
+        main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] {
+          position: relative;
+          width: 100%;
+          background: transparent;
+        }
+        main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
+          display: block;
+          width: 100%;
+          height: auto;
+        }
+        @media (min-width: 1024px) {
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] {
+            aspect-ratio: 1.86 / 1;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] {
+            position: absolute;
+            inset: 0;
+            display: block;
+            width: 100%;
+            max-width: none;
+            padding: 0;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
+            position: absolute;
+            top: -4%;
+            left: 14%;
+            width: auto;
+            margin: 0;
+            z-index: 10;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-logo-oricse"] {
+            width: clamp(130px, 12vw, 200px);
+            height: clamp(130px, 12vw, 200px);
+            object-fit: contain;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
+            position: absolute;
+            top: 25%;
+            left: 5%;
+            z-index: 10;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-titulo-principal"] {
+            position: absolute;
+            top: 31%;
+            left: 5%;
+            width: 46%;
+            max-width: none;
+            margin-top: 0;
+            z-index: 10;
+            font-size: clamp(56px, 5.3vw, 98px);
+            line-height: .91;
+            letter-spacing: -.065em;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-texto-apoio"] {
+            position: absolute;
+            top: 72%;
+            left: 5%;
+            max-width: 42%;
+            margin-top: 0;
+            z-index: 10;
+            font-size: clamp(14px, 1.05vw, 18px);
+          }
+          main[data-visual-id="home-fundo-bege"] [data-home-hero-actions] {
+            position: absolute;
+            top: 85%;
+            left: 6%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 0;
+            z-index: 10;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-legenda-inferior"] {
+            position: absolute;
+            bottom: 1%;
+            left: 58%;
+            margin-top: 0;
+            z-index: 10;
+            color: white;
+            font-size: clamp(10px, .72vw, 13px);
+          }
+        }
+      `}</style>
     <main data-visual-id="home-fundo-bege" data-visual-label="Fundo bege da página" className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
       <header data-visual-id="home-cabecalho" data-visual-label="Cabeçalho" className="mx-auto flex min-h-[52px] max-w-7xl items-center justify-end px-5 py-0 sm:px-8 lg:px-10">
         <nav data-visual-id="home-menu-superior" data-visual-label="Menu superior" className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link data-visual-id="home-botao-login" data-visual-label="Botão Login" to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
@@ -189,7 +294,7 @@ function PaginaInicialPlataforma() {
             <div data-visual-id="home-conteudo-banner" data-visual-label="Coluna do banner" className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:absolute lg:inset-0 lg:block lg:max-w-none lg:p-0">
               <div className="max-w-xl lg:contents">
             {/* Logo centralizada sobre o selo, dentro da coluna de conteúdo. */}
-            <div className="mb-6 flex w-full justify-center sm:mb-8 lg:absolute lg:-top-[4%] lg:left-[14%] lg:z-10 lg:mb-0 lg:w-auto">
+            <div data-home-hero-logo-wrap className="mb-6 flex w-full justify-center sm:mb-8 lg:absolute lg:-top-[4%] lg:left-[14%] lg:z-10 lg:mb-0 lg:w-auto">
               <img
                 src="/oricse-logo-oryx.svg?v=15"
                 data-visual-id="home-logo-oricse" data-visual-label="Logo ORICSE" alt="ORICSE — Soluções para o mercado pet"
@@ -204,7 +309,7 @@ function PaginaInicialPlataforma() {
             <p data-visual-id="home-selo" data-visual-label="Selo plataforma completa" className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61] lg:absolute lg:left-[5%] lg:top-[25%] lg:z-10"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
             <h1 data-visual-id="home-titulo-principal" data-visual-label="Título principal" className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826] lg:absolute lg:left-[5%] lg:top-[31%] lg:z-10 lg:mt-0 lg:w-[46%] lg:max-w-none lg:text-[clamp(56px,5.3vw,98px)]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
             <p data-visual-id="home-texto-apoio" data-visual-label="Texto de apoio" className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867] lg:absolute lg:left-[5%] lg:top-[72%] lg:z-10 lg:mt-0 lg:max-w-[42%] lg:text-[clamp(14px,1.05vw,18px)]">Uma plataforma completa para manter a rotina organizada, o time alinhado e os tutores por perto.</p>
-            <div className="mt-8 flex flex-wrap gap-3 lg:absolute lg:left-[6%] lg:top-[85%] lg:z-10 lg:mt-0"><Link data-visual-id="home-botao-conhecer" data-visual-label="Botão Conhecer a Oricse" to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link data-visual-id="home-botao-cliente" data-visual-label="Botão Já sou cliente" to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
+            <div data-home-hero-actions className="mt-8 flex flex-wrap gap-3 lg:absolute lg:left-[6%] lg:top-[85%] lg:z-10 lg:mt-0"><Link data-visual-id="home-botao-conhecer" data-visual-label="Botão Conhecer a Oricse" to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link data-visual-id="home-botao-cliente" data-visual-label="Botão Já sou cliente" to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
             <p data-visual-id="home-legenda-inferior" data-visual-label="Legenda inferior do banner" className="mt-6 flex items-center gap-2 text-sm text-[#876570] lg:absolute lg:bottom-[1%] lg:left-[58%] lg:z-10 lg:mt-0 lg:text-[clamp(10px,.72vw,13px)] lg:text-white"><PawPrint size={16} className="text-[#8d4359]"/> Uma plataforma para sua operação inteira, com a sua identidade.</p>
 
               </div>
@@ -375,5 +480,6 @@ function PaginaInicialPlataforma() {
 
       <footer className="border-t border-[#eaded8] px-5 py-8 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-xs text-[#846873]"><span className="flex items-center gap-2 font-bold text-[#5a293b]"><img src="/oricse-logo-oryx.svg?v=15" className="h-7 w-7" alt=""/>Oricse · Soluções para o mercado pet</span><span>© 2026 Oricse. Todos os direitos reservados.</span><div className="flex gap-4"><Link to="/politica-de-privacidade">Privacidade</Link><Link to="/termos-de-uso">Termos</Link><Link to="/login">Entrar</Link></div></div></footer>
     </main>
+    </>
   );
 }
