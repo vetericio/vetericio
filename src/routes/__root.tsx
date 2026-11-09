@@ -266,6 +266,8 @@ function RootComponent() {
       const slug = slugDaRota(location.pathname);
       const host = hostDaPagina();
       const hostDaPlataforma =
+        host === "oricse.com.br" ||
+        host === "app.oricse.com.br" ||
         host === "oricse.com" ||
         host === "www.oricse.com" ||
         host === "localhost" ||
