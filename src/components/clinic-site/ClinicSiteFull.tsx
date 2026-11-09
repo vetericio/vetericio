@@ -517,30 +517,85 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
     <section
       id="inicio"
       data-clinic-section="inicio"
-      className="relative isolate overflow-hidden bg-[#082D52] px-5 py-20 text-white sm:px-8 sm:py-28"
+      className="relative isolate overflow-hidden bg-[#082D52] px-5 py-16 text-white sm:px-8 sm:py-24"
     >
-      {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" /> : null}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,45,82,.98)_0%,rgba(8,45,82,.9)_38%,rgba(8,45,82,.28)_76%,rgba(8,45,82,.2)_100%)]" />
-      <div className="relative mx-auto max-w-7xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] backdrop-blur-sm">
-          <Clock3 size={15} /> Medicina veterinária 24 horas
-        </span>
-        <div className="mt-9 max-w-3xl">
-          <h1 className="max-w-3xl text-5xl font-black leading-[.95] tracking-[-.05em] sm:text-7xl">{config.slogan}</h1>
-          <p className="mt-7 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{config.description}</p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            {action(actionLabel)}
+      {image ? (
+        <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50" />
+      ) : null}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(95deg,rgba(6,31,60,.98)_0%,rgba(8,45,82,.94)_51%,rgba(8,45,82,.62)_100%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-24 top-0 h-[440px] w-[440px] rounded-full bg-sky-400/10 blur-3xl"
+      />
+
+      {/* O Prime mantém o conteúdo e a faixa de benefícios em blocos separados:
+          nenhum elemento é absoluto nem sobrepõe as chamadas para ação. */}
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-12 sm:gap-16">
+        <div className="max-w-4xl">
+          <span
+            className="inline-flex items-center gap-2 rounded-full border border-sky-100/30 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[.16em] backdrop-blur-sm"
+            style={{ color: "#DDEFFF" }}
+          >
+            <Clock3 size={15} />
+            {config.emergency24h ? "Medicina veterinária 24 horas" : "Cuidado veterinário especializado"}
+          </span>
+
+          <h1
+            className="mt-8 max-w-[850px] text-4xl font-extrabold leading-[1.06] tracking-[-.04em] sm:text-6xl lg:text-7xl"
+            style={{ color: "#F8FBFF" }}
+          >
+            {config.slogan}
+          </h1>
+          <p
+            className="mt-6 max-w-2xl text-base leading-relaxed sm:text-lg sm:leading-8"
+            style={{ color: "#DCE8F5" }}
+          >
+            {config.description}
+          </p>
+
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <a
+              href={actionHref}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow-[0_10px_26px_rgba(0,25,67,.25)] transition hover:brightness-110"
+              style={{ backgroundColor: "#176CB9", color: "#FFFFFF" }}
+            >
+              <CalendarDays size={18} />
+              {actionLabel}
+              <ArrowRight size={16} />
+            </a>
             {config.services.length ? (
-              <a href="#servicos" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/45 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur-sm">
+              <a
+                href="#servicos"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/45 bg-white/10 px-6 py-3 text-sm font-bold backdrop-blur-sm transition hover:bg-white/20"
+                style={{ color: "#FFFFFF" }}
+              >
                 Ver especialidades <ArrowRight size={16} />
               </a>
             ) : null}
           </div>
         </div>
-        <div className="mt-12 grid max-w-4xl gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/10 text-sm font-semibold backdrop-blur-sm sm:grid-cols-3">
-          <span className="px-5 py-4"><ShieldCheck className="mb-2 text-sky-200" size={20} />Especialistas para cada necessidade</span>
-          <span className="border-y border-white/15 px-5 py-4 sm:border-x sm:border-y-0"><Heart className="mb-2 text-sky-200" size={20} />Acolhimento para toda a família</span>
-          <span className="px-5 py-4"><Clock3 className="mb-2 text-sky-200" size={20} />Prontos para cuidar, dia e noite</span>
+
+        <div
+          className="grid w-full grid-cols-1 overflow-hidden rounded-3xl border border-white/20 shadow-[0_20px_55px_rgba(1,21,43,.22)] backdrop-blur-xl sm:grid-cols-3"
+          style={{ backgroundColor: "rgba(234,245,255,0.10)", color: "#FFFFFF" }}
+        >
+          <div className="flex min-h-32 flex-col justify-center gap-3 px-6 py-6 sm:px-7">
+            <ShieldCheck size={23} className="text-sky-200" aria-hidden="true" />
+            <span className="text-sm font-semibold leading-6">Especialistas para cada necessidade</span>
+          </div>
+          <div className="flex min-h-32 flex-col justify-center gap-3 border-y border-white/15 px-6 py-6 sm:border-x sm:border-y-0 sm:px-7">
+            <Heart size={23} className="text-sky-200" aria-hidden="true" />
+            <span className="text-sm font-semibold leading-6">Acolhimento para toda a família</span>
+          </div>
+          <div className="flex min-h-32 flex-col justify-center gap-3 px-6 py-6 sm:px-7">
+            <Clock3 size={23} className="text-sky-200" aria-hidden="true" />
+            <span className="text-sm font-semibold leading-6">
+              {config.emergency24h ? "Prontos para cuidar, dia e noite" : "Atenção em cada etapa do cuidado"}
+            </span>
+          </div>
         </div>
       </div>
     </section>
