@@ -1881,6 +1881,7 @@
   z-index: 1;
   flex: 1 1 auto;
   min-width: 0;
+  margin-left: -16%;
 }
 .portal-one-screen-product-signature {
   display: flex;
@@ -1960,6 +1961,9 @@
   .portal-tutor-live.portal-tutor-login-screen[data-site-template] .portal-one-screen-logo-white {
     max-height: 155px;
     flex-basis: 47%;
+  }
+  .portal-tutor-live.portal-tutor-login-screen[data-site-template] .portal-one-screen-product-name {
+    margin-left: 0;
   }
   .portal-one-screen-brand::before {width:58%}
 }
