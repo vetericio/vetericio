@@ -660,7 +660,24 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
         }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
-          {brand}
+          {luxe ? (
+            <div className="relative isolate flex min-w-0 shrink-0 items-center">
+              {/*
+                Élan: luz marfim integrada à identidade escura.
+                O degradê fica somente atrás da marca, sem cartão,
+                contorno, fundo sólido retangular ou alteração do logotipo.
+              */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-y-4 -left-5 -right-8 -z-10 sm:-left-8 sm:-right-12"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 73% 80% at 40% 50%, rgba(249,243,231,0.98) 0%, rgba(249,241,225,0.95) 49%, rgba(244,231,207,0.67) 70%, rgba(244,231,207,0) 100%)",
+                }}
+              />
+              {brand}
+            </div>
+          ) : brand}
           <nav
             aria-label="Navegação do site"
             className="hidden items-center gap-6 text-sm font-semibold opacity-85 lg:flex"
