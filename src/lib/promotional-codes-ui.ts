@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { supabaseBanco } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "oricse-promo-aplicado-v1";
 const ADMIN_ID = "oricse-promo-admin";
@@ -69,8 +69,8 @@ async function montarAdmin(section: HTMLElement) {
   section.innerHTML = `<div class="oricse-promo-head"><div><div class="oricse-promo-title">Códigos promocionais</div><div class="oricse-promo-sub">Crie descontos para a contratação dos planos da Oricse.</div></div><button class="oricse-promo-btn" data-action="novo">+ Criar código</button></div><div data-area="form"></div><div data-area="list" class="oricse-promo-list"><div class="oricse-promo-sub">Carregando códigos...</div></div>`;
 
   const [{ data: planos }, { data: usos }] = await Promise.all([
-    (supabase as any).from("oricse_planos").select("codigo,nome,ativo").order("ordem"),
-    (supabase as any).from("oricse_codigo_promocional_usos").select("codigo_id"),
+    (supabaseBanco as any).from("oricse_planos").select("codigo,nome,ativo").order("ordem"),
+    (supabaseBanco as any).from("oricse_codigo_promocional_usos").select("codigo_id"),
   ]);
   const planosLista = (planos || []).filter((p: any) => p.codigo !== "teste-gratis");
   const usoPorCodigo = new Map<string, number>();
@@ -78,7 +78,7 @@ async function montarAdmin(section: HTMLElement) {
 
   let promos: Promo[] = [];
   async function carregar() {
-    const { data, error } = await (supabase as any).from("oricse_codigos_promocionais").select("*").order("created_at", { ascending: false });
+    const { data, error } = await (supabaseBanco as any).from("oricse_codigos_promocionais").select("*").order("created_at", { ascending: false });
     if (error) {
       const list = section.querySelector<HTMLElement>('[data-area="list"]');
       if (list) list.innerHTML = `<div class="oricse-promo-sub">Não foi possível carregar: ${esc(error.message)}</div>`;
@@ -126,7 +126,7 @@ async function montarAdmin(section: HTMLElement) {
         ativo: Boolean(fd.get("ativo")), somente_primeira_assinatura: Boolean(fd.get("primeira")),
         duracao: String(fd.get("duracao")), updated_at: new Date().toISOString(),
       };
-      const q = p ? (supabase as any).from("oricse_codigos_promocionais").update(payload).eq("id", p.id) : (supabase as any).from("oricse_codigos_promocionais").insert(payload);
+      const q = p ? (supabaseBanco as any).from("oricse_codigos_promocionais").update(payload).eq("id", p.id) : (supabaseBanco as any).from("oricse_codigos_promocionais").insert(payload);
       const { error } = await q;
       if (error) { alert(error.message); return; }
       formArea.innerHTML = "";
@@ -141,8 +141,8 @@ async function montarAdmin(section: HTMLElement) {
     const toggle = target.closest<HTMLElement>("[data-toggle]")?.dataset.toggle;
     const del = target.closest<HTMLElement>("[data-del]")?.dataset.del;
     if (edit) { const p = promos.find(x => x.id === edit); if (p) abrirForm(p); }
-    if (toggle) { const p = promos.find(x => x.id === toggle); if (!p) return; await (supabase as any).from("oricse_codigos_promocionais").update({ ativo: !p.ativo, updated_at: new Date().toISOString() }).eq("id", p.id); await carregar(); }
-    if (del) { const p = promos.find(x => x.id === del); if (!p || !confirm(`Excluir o código ${p.codigo}?`)) return; const { error } = await (supabase as any).from("oricse_codigos_promocionais").delete().eq("id", p.id); if (error) alert(error.message); else await carregar(); }
+    if (toggle) { const p = promos.find(x => x.id === toggle); if (!p) return; await (supabaseBanco as any).from("oricse_codigos_promocionais").update({ ativo: !p.ativo, updated_at: new Date().toISOString() }).eq("id", p.id); await carregar(); }
+    if (del) { const p = promos.find(x => x.id === del); if (!p || !confirm(`Excluir o código ${p.codigo}?`)) return; const { error } = await (supabaseBanco as any).from("oricse_codigos_promocionais").delete().eq("id", p.id); if (error) alert(error.message); else await carregar(); }
   });
   await carregar();
 }

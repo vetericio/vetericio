@@ -3,6 +3,7 @@ import { z } from "zod";
 import { driveAccessToken, readDriveJson, writeDriveJson } from "@/lib/drive-kv.server";
 import { PLANOS_PADRAO } from "@/lib/drive-seed";
 import { statusDaContratacao } from "@/lib/checkout-status";
+import { contratacaoConsomeCupom } from "@/lib/coupon-usage";
 
 const schema=z.object({dados:z.record(z.unknown())});
 const DB_PATH=[".oricse","database"];
@@ -29,7 +30,7 @@ async function aplicarPromocao(token:string,dados:Record<string,unknown>,planoCo
   const agora=Date.now();if(promo.valido_de&&new Date(promo.valido_de).getTime()>agora||promo.valido_ate&&new Date(promo.valido_ate).getTime()<agora)throw new Error("Este código promocional está fora do período de validade.");
   if(Array.isArray(promo.planos)&&promo.planos.length&&!promo.planos.includes(planoCodigo))throw new Error("Este código não é válido para o plano selecionado.");
   const contratosPorId=new Map(contratos.map((c)=>[String(c.id),c]));
-  const concluida=(c:Contratacao)=>Boolean(c.pagamento_aprovado_em)||(numero(c.valor_total)===0&&["pagamento_aprovado","aprovada","ativa","ativada"].includes(String(c.status)));
+  const concluida=(c:Contratacao)=>contratacaoConsomeCupom(c);
   const usosPromo=usos.filter((u)=>{const c=contratosPorId.get(String(u.contratacao_id));return String(u.codigo_id)===String(promo.id)&&!!c&&!["cancelada","recusada"].includes(String(c.status))&&concluida(c);});if(promo.limite_usos!=null&&usosPromo.length>=Number(promo.limite_usos))throw new Error("Este código promocional atingiu o limite de usos.");
   const doc=documento(dados.cnpj)||documento(dados.responsavel_cpf);if(doc&&promo.limite_por_documento!=null&&usosPromo.filter((u)=>String(u.documento_normalizado||"")===doc).length>=Number(promo.limite_por_documento))throw new Error("Este documento já atingiu o limite de uso do código.");
   if(promo.somente_primeira_assinatura&&doc&&contratos.some((c)=>!["cancelada","recusada"].includes(String(c.status))&&concluida(c)&&(documento(c.cnpj)===doc||documento(c.responsavel_cpf)===doc)))throw new Error("Este código é válido somente para a primeira assinatura.");
