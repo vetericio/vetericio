@@ -127,9 +127,11 @@ export function applyVisualStyle(element: HTMLElement, style: VisualStyle, indep
   if (element.tagName === "IMG") {
     const { cropTop = 0, cropRight = 0, cropBottom = 0, cropLeft = 0 } = style;
     // clip-path preserva o arquivo original, o zoom e o recorte por dispositivo.
+    if (!("oricseOriginalClip" in element.dataset))
+      element.dataset.oricseOriginalClip = element.style.clipPath;
     if ([cropTop,cropRight,cropBottom,cropLeft].some((v) => v > 0))
       element.style.clipPath = `inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%)`;
-    else element.style.clipPath = "";
+    else element.style.clipPath = element.dataset.oricseOriginalClip || "";
   }
 }
 
