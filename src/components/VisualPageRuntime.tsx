@@ -91,6 +91,23 @@ export function VisualPageRuntime() {
     let observer: MutationObserver | null = null;
     let frame = 0;
     let published: VisualDocument = EMPTY_PUBLISHED;
+    let liberacaoInicioAgendada = false;
+
+    // A home mantém um primeiro paint estável até o editor visual terminar.
+    // Só liberamos a página depois dos patches e das fontes, sem mostrar
+    // por alguns frames o layout original e depois uma versão diferente.
+    const liberarPrimeiroPaintInicio = () => {
+      if (location.pathname !== "/" || liberacaoInicioAgendada) return;
+      liberacaoInicioAgendada = true;
+      const fontes = document.fonts?.ready ?? Promise.resolve();
+      const limite = new Promise<void>((resolve) => window.setTimeout(resolve, 1200));
+      void Promise.race([fontes, limite]).then(() => {
+        if (!active) return;
+        requestAnimationFrame(() => {
+          if (active) document.documentElement.removeAttribute("data-oricse-home-loading");
+        });
+      });
+    };
 
     const chooseLayout = () => {
       const page = published.pages?.[location.pathname];
@@ -104,9 +121,13 @@ export function VisualPageRuntime() {
       if (!active || applying.current) return;
       applying.current = true;
       observer?.disconnect();
-      applyVisualLayout(document, chooseLayout());
-      observer?.observe(document.body, { childList: true, subtree: true });
-      applying.current = false;
+      try {
+        applyVisualLayout(document, chooseLayout());
+        observer?.observe(document.body, { childList: true, subtree: true });
+        liberarPrimeiroPaintInicio();
+      } finally {
+        applying.current = false;
+      }
     };
 
     const scheduleApply = () => {
@@ -123,6 +144,8 @@ export function VisualPageRuntime() {
         scheduleApply();
       } catch (error) {
         console.error("Não foi possível carregar o layout visual publicado:", error);
+        // Nunca manter a página invisível quando a personalização não carregar.
+        liberarPrimeiroPaintInicio();
       }
     };
 
