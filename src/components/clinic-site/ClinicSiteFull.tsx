@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -28,6 +28,14 @@ const realUrl = (value: string) => {
   const valueTrimmed = value.trim();
   return /^https:\/\/[^\s]+$/i.test(valueTrimmed) ? valueTrimmed : "";
 };
+
+function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string }) {
+  const [falhou, setFalhou] = useState(false);
+  useEffect(() => setFalhou(false), [url]);
+  if (!url || falhou) return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
+  return <img src={url} alt={nome} loading="lazy" onError={() => setFalhou(true)}
+    className="h-full w-full object-cover" />;
+}
 
 export function ClinicSiteFull({ template, config }: Props) {
   const signatura = template === "signatura";
@@ -345,16 +353,7 @@ export function ClinicSiteFull({ template, config }: Props) {
                 className={"overflow-hidden border " + ink + " " + panels}
               >
                 <div className="flex aspect-[4/3] items-center justify-center bg-[var(--site-secondary)]">
-                  {safeHttps(person.imageUrl) ? (
-                    <img
-                      src={person.imageUrl}
-                      alt={person.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <PawPrint className="opacity-35" size={50} />
-                  )}
+                  <FotoPublicaDoProfissional url={safeHttps(person.imageUrl)} nome={person.name} />
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold">{person.name}</h3>
