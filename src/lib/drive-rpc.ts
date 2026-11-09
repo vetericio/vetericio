@@ -342,6 +342,12 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
           };
         }
         case "oricse_clinica_publica_portal": {
+          // A tabela pública de domínios é a fonte de verdade: o campo
+          // `clinicas.dominio` não contém os subdomínios *.oricse.com.br.
+          // Consultar a função SQL evita a tela "Endereço ainda não configurado"
+          // quando o domínio está ativo e o site já foi publicado.
+          if (databaseRpc) return await databaseRpc(name, args);
+          // Fallback restrito para contextos legados sem acesso ao banco.
           const { data, error } = await fromDrive("clinicas").select("*");
           if (error) throw error;
           const slug = String(args.p_slug || "")
