@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, ArrowUpRight, Check, Eye, Layers3, MousePointerClick, Sparkles } from "lucide-react";
+import { ArrowUpRight, Check, Eye, Layers3, MousePointerClick, Sparkles } from "lucide-react";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 import {
   clinicSitePresets,
@@ -88,7 +88,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
               Clique para trocar
             </span>
           </div>
-          <div role="tablist" aria-label="Versões dos sites disponíveis" className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-7 lg:overflow-visible">
+          <div role="tablist" aria-label="Versões dos sites disponíveis" className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
             {clinicSiteTemplates.map((item, idx) => {
               const active = item === modelo;
               const tone = clinicSitePresets[item];
@@ -102,7 +102,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
                   aria-controls="alvorada-vitrine-site"
                   onClick={() => escolherModelo(item)}
                   className={
-                    "group relative flex min-h-[42px] w-[125px] shrink-0 snap-start items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d4a64] lg:w-full " +
+                    "group relative flex min-h-[56px] min-w-0 w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d4a64] " +
                     (active
                       ? "border-[#682d45] bg-[#fff5ef] shadow-[0_5px_18px_rgba(104,45,69,.13)]"
                       : "border-[#e8deda] bg-white hover:-translate-y-0.5 hover:border-[#cbaeba] hover:bg-[#fff9f4]")
