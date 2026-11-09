@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const clinicSiteTemplates = [
+  "signatura",
   "prestige",
   "atelier",
   "cuidado",
@@ -10,7 +11,8 @@ export const clinicSiteTemplates = [
 ] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
 export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
-  prestige: "Signature",
+  signatura: "Signature",
+  prestige: "Prestige",
   atelier: "Prime",
   cuidado: "Class",
   popular: "King",
@@ -18,7 +20,8 @@ export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
   horizonte: "Horizonte",
 };
 export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
-  prestige: "Editorial, exclusivo e sofisticado.",
+  signatura: "Editorial, exclusivo e sofisticado.",
+  prestige: "Luxuoso, clássico e refinado.",
   atelier: "Moderno, claro e alto padrão.",
   cuidado: "Acolhedor e confiável.",
   popular: "Direto, comercial e urgente.",
@@ -140,6 +143,12 @@ export const clinicSitePresets: Record<
     textColor: string;
   }
 > = {
+  signatura: {
+    primaryColor: "#173D35",
+    secondaryColor: "#C9AA6A",
+    backgroundColor: "#F7F5EF",
+    textColor: "#173D35",
+  },
   prestige: {
     primaryColor: "#C9A86A",
     secondaryColor: "#29423C",
