@@ -558,12 +558,20 @@ export function VisualPageEditor() {
       starts: Array<{ item: SelectedItem; x: number; y: number }>;
       historyRecorded: boolean;
     } = null;
+    let ultimaImagemPressionada: { element: Element; time: number } | null = null;
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
       event.preventDefault();
       event.stopPropagation();
       const element = editableTarget(raw);
+      // Reconhece dois cliques mesmo que preventDefault suprima o dblclick.
+      const agora = Date.now();
+      const doisCliquesNaImagem = element.tagName === "IMG"
+        && ultimaImagemPressionada?.element === element
+        && agora - ultimaImagemPressionada.time < 420;
+      ultimaImagemPressionada = element.tagName === "IMG"
+        ? { element, time: agora } : null;
       const addedId = element.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
       let item: SelectedItem;
       if (addedId) item = { id: addedId, kind: "added" };
@@ -600,7 +608,7 @@ export function VisualPageEditor() {
           : [item];
       setSelected(next);
       selectedRef.current = next;
-      setCroppingId(null);
+      setCroppingId(doisCliquesNaImagem && next.length === 1 ? item.id : null);
       const page = ensurePage(cloneVisual(documentRef.current), route)[device];
       const starts = next.map((entry) => {
         const target =
@@ -667,7 +675,8 @@ export function VisualPageEditor() {
     };
     const onFrameKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
-      if (target?.closest("input,textarea,select,[contenteditable='true']")) return;
+      if (typeof target?.closest === "function"
+        && target.closest("input,textarea,select,[contenteditable='true']")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         event.shiftKey ? redoNow() : undoNow();
@@ -1062,7 +1071,8 @@ export function VisualPageEditor() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
-      if (target?.closest("input,textarea,select,[contenteditable='true']")) return;
+      if (typeof target?.closest === "function"
+        && target.closest("input,textarea,select,[contenteditable='true']")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
