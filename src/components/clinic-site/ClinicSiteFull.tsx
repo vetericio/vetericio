@@ -21,7 +21,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig };
+type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string };
 const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.trim() : "");
 const waNumber = (input: string) => input.replace(/\D/g, "");
 const realUrl = (value: string) => {
@@ -37,7 +37,7 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
     className="h-full w-full object-cover" />;
 }
 
-export function ClinicSiteFull({ template, config }: Props) {
+export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
   const signatura = template === "signatura";
   const luxe = template === "prestige";
   const prime = template === "atelier";
@@ -61,9 +61,19 @@ export function ClinicSiteFull({ template, config }: Props) {
   const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
   const panels = signatura || prime ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
-  const externalBooking = realUrl(config.bookingUrl);
-  const actionHref =
-    externalBooking || (hasWhatsApp ? "https://wa.me/" + waNumber(config.whatsapp) : "#contato");
+  // Todos os modelos usam o Portal do Tutor da clínica para agendamentos.
+  // Em páginas publicadas, o slug vem do servidor; em links legados, da rota.
+  const routeSlug = typeof window === "undefined"
+    ? ""
+    : window.location.pathname.match(/^\\/c\\/([a-z0-9-]+)\\/?$/i)?.[1] || "";
+  const subdomainSlug = typeof window === "undefined"
+    ? ""
+    : window.location.hostname.toLowerCase().match(/^([a-z0-9-]+)\\.oricse\\.com\\.br$/)?.[1] || "";
+  const publishedSlug = clinicSlug || routeSlug || subdomainSlug;
+  const portalHref = publishedSlug
+    ? `/pet/${encodeURIComponent(publishedSlug)}/portal?secao=agenda`
+    : "";
+  const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
   const image =
     safeHttps(config.heroImageUrl) ||
     (prime
@@ -132,7 +142,7 @@ export function ClinicSiteFull({ template, config }: Props) {
         (inverted ? " border border-current/30" : " bg-[var(--site-primary)] text-white")
       }
     >
-      {hasWhatsApp && !externalBooking ? <MessageCircle size={18} /> : <CalendarDays size={18} />}{" "}
+      <CalendarDays size={18} />{" "}
       {label} <ArrowRight size={16} />
     </a>
   );
@@ -674,7 +684,7 @@ export function ClinicSiteFull({ template, config }: Props) {
           >
             <CalendarDays size={16} />{" "}
             <span className="hidden sm:inline">{config.ctaLabel || "Agendar"}</span>
-            <span className="sm:hidden">Contato</span>
+            <span className="sm:hidden">Portal do Tutor</span>
           </a>
         </div>
       </header>
