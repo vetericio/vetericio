@@ -314,6 +314,13 @@ const ROTAS_CADASTRADAS: readonly PaginaOricse[] = [
     "dinamica": false
   },
   {
+    "original": "/portal-tutores?portal_login_preview=1",
+    "nome": "Login padrão do Portal do Tutor",
+    "grupo": "Portal do Tutor e CRM",
+    "editavel": true,
+    "dinamica": false
+  },
+  {
     "original": "/portal-tutores",
     "nome": "Gestão do Portal do Tutor",
     "grupo": "Portal do Tutor e CRM",
