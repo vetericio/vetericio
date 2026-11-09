@@ -63,11 +63,7 @@ function sameEditorJson(a: unknown, b: unknown) {
 }
 
 /** Reconcilia páginas por dispositivo. Conflitos reais exigem decisão explícita. */
-function reconcileEditor(
-  baseline: VisualDocument,
-  local: VisualDocument,
-  remote: VisualDocument,
-) {
+function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote: VisualDocument) {
   const merged = cloneVisual(remote);
   const overlaps: string[] = [];
   const routes = new Set([
@@ -206,8 +202,7 @@ export function VisualPageEditor() {
       }
       recordIdsRef.current = Object.fromEntries(
         [draft.data, published.data, history.data]
-          .filter((row: ConfigRow | null): row is ConfigRow =>
-            Boolean(row?.id && row?.chave))
+          .filter((row: ConfigRow | null): row is ConfigRow => Boolean(row?.id && row?.chave))
           .map((row: ConfigRow) => [row.chave!, row.id!]),
       );
       const documentLoaded = cloneVisual(
@@ -694,12 +689,15 @@ export function VisualPageEditor() {
     if (!error) return;
     if (error.code === "DRIVE_CONFLICT") {
       setConflict({
-        message: "Outra edição foi registrada desde que você abriu o Canvas. Suas alterações continuam nesta tela.",
+        message:
+          "Outra edição foi registrada desde que você abriu o Canvas. Suas alterações continuam nesta tela.",
         overlaps: [],
       });
       return;
     }
-    toast.error(error.message || "Não foi possível salvar as alterações.", {id:"oricse-canvas-save"});
+    toast.error(error.message || "Não foi possível salvar as alterações.", {
+      id: "oricse-canvas-save",
+    });
   }
 
   function saveRows(rows: Array<{ chave: string; valor: unknown; updated_at: string }>) {
@@ -717,24 +715,36 @@ export function VisualPageEditor() {
     try {
       const { data, error } = await (supabase as any)
         .from("oricse_config")
-        .upsert(saveRows([{
-          chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: payload.updatedAt,
-        }]), { onConflict: "chave" })
+        .upsert(
+          saveRows([
+            {
+              chave: VISUAL_DRAFT_KEY,
+              valor: payload,
+              updated_at: payload.updatedAt,
+            },
+          ]),
+          { onConflict: "chave" },
+        )
         .select("id,chave,valor");
-      if (error) { classifySaveError(error); return; }
+      if (error) {
+        classifySaveError(error);
+        return;
+      }
       const saved = Array.isArray(data) ? data[0] : data;
       if (saved?.id) recordIdsRef.current[VISUAL_DRAFT_KEY] = String(saved.id);
       // Refresh the baseline used for optimistic concurrency on the next save.
       const latest = await (supabase as any)
-        .from("oricse_config").select("id,chave,valor")
-        .eq("chave", VISUAL_DRAFT_KEY).maybeSingle();
+        .from("oricse_config")
+        .select("id,chave,valor")
+        .eq("chave", VISUAL_DRAFT_KEY)
+        .maybeSingle();
       if (latest.error) throw latest.error;
       if (latest.data?.id) recordIdsRef.current[VISUAL_DRAFT_KEY] = String(latest.data.id);
       baselineRef.current = cloneVisual(payload);
       setDocumento(payload);
-      toast.success("Rascunho salvo.", {id:"oricse-canvas-draft"});
+      toast.success("Rascunho salvo.", { id: "oricse-canvas-draft" });
     } catch (error) {
-      classifySaveError(error as {code?:string;message?:string});
+      classifySaveError(error as { code?: string; message?: string });
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -753,16 +763,22 @@ export function VisualPageEditor() {
     try {
       // All three entries go through a single coordinated Drive journal event.
       // No partial publication of page, draft or version history.
-      const {data, error} = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("oricse_config")
-        .upsert(saveRows([
-          {chave:VISUAL_PUBLISHED_KEY, valor:payload, updated_at:payload.updatedAt},
-          {chave:VISUAL_DRAFT_KEY, valor:payload, updated_at:payload.updatedAt},
-          {chave:VISUAL_VERSIONS_KEY, valor:history, updated_at:payload.updatedAt},
-        ]), {onConflict:"chave"})
+        .upsert(
+          saveRows([
+            { chave: VISUAL_PUBLISHED_KEY, valor: payload, updated_at: payload.updatedAt },
+            { chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: payload.updatedAt },
+            { chave: VISUAL_VERSIONS_KEY, valor: history, updated_at: payload.updatedAt },
+          ]),
+          { onConflict: "chave" },
+        )
         .select("id,chave,valor");
-      if (error) { classifySaveError(error); return; }
-      for (const row of (Array.isArray(data) ? data : [])) {
+      if (error) {
+        classifySaveError(error);
+        return;
+      }
+      for (const row of Array.isArray(data) ? data : []) {
         if (row?.chave && row?.id) recordIdsRef.current[row.chave] = String(row.id);
       }
       const verification = await (supabase as any)
@@ -774,9 +790,13 @@ export function VisualPageEditor() {
       for (const row of confirmedRows) {
         if (row.id && row.chave) recordIdsRef.current[row.chave] = row.id;
       }
-      const confirmedPublished = confirmedRows.find(row => row.chave === VISUAL_PUBLISHED_KEY);
-      if ((confirmedPublished?.valor as VisualDocument | undefined)?.updatedAt !== payload.updatedAt) {
-        throw new Error("A publicação não foi confirmada no site. Revise antes de tentar novamente.");
+      const confirmedPublished = confirmedRows.find((row) => row.chave === VISUAL_PUBLISHED_KEY);
+      if (
+        (confirmedPublished?.valor as VisualDocument | undefined)?.updatedAt !== payload.updatedAt
+      ) {
+        throw new Error(
+          "A publicação não foi confirmada no site. Revise antes de tentar novamente.",
+        );
       }
       baselineRef.current = cloneVisual(payload);
       setDocumento(payload);
@@ -788,9 +808,9 @@ export function VisualPageEditor() {
         channel.close();
       }
       window.dispatchEvent(new Event("oricse:visual-published"));
-      toast.success("Publicado e confirmado no site real.", {id:"oricse-canvas-published"});
+      toast.success("Publicado e confirmado no site real.", { id: "oricse-canvas-published" });
     } catch (error) {
-      classifySaveError(error as {code?:string;message?:string});
+      classifySaveError(error as { code?: string; message?: string });
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -802,38 +822,40 @@ export function VisualPageEditor() {
     setReviewing(true);
     try {
       const latest = await (supabase as any)
-        .from("oricse_config").select("id,chave,valor")
+        .from("oricse_config")
+        .select("id,chave,valor")
         .in("chave", [...EDITOR_KEYS]);
       if (latest.error) throw latest.error;
       const rows = (latest.data || []) as ConfigRow[];
       for (const row of rows) {
         if (row.id && row.chave) recordIdsRef.current[row.chave] = row.id;
       }
-      const draft = rows.find(row => row.chave === VISUAL_DRAFT_KEY)?.valor;
-      const published = rows.find(row => row.chave === VISUAL_PUBLISHED_KEY)?.valor;
+      const draft = rows.find((row) => row.chave === VISUAL_DRAFT_KEY)?.valor;
+      const published = rows.find((row) => row.chave === VISUAL_PUBLISHED_KEY)?.valor;
       const current = cloneVisual(draft || published || EMPTY_DOCUMENT()) as VisualDocument;
       const reconciled = reconcileEditor(baselineRef.current, documento, current);
-      const remoteHistory = rows.find(row => row.chave === VISUAL_VERSIONS_KEY)?.valor;
+      const remoteHistory = rows.find((row) => row.chave === VISUAL_VERSIONS_KEY)?.valor;
       if (Array.isArray(remoteHistory)) setVersions(remoteHistory as Version[]);
       setLastPublishedAt((published as VisualDocument | undefined)?.updatedAt || "");
       baselineRef.current = cloneVisual(current);
       if (reconciled.overlaps.length) {
         setConflict({
-          message: "O mesmo trecho foi alterado em outra sessão. Escolha qual versão deve prevalecer.",
+          message:
+            "O mesmo trecho foi alterado em outra sessão. Escolha qual versão deve prevalecer.",
           remote: current,
           overlaps: reconciled.overlaps,
         });
       } else {
-        setUndo(items => [...items.slice(-39), cloneVisual(documento)]);
+        setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
         setDocumento(reconciled.merged);
         setConflict(null);
         toast.success("Versões conciliadas. Revise e publique quando desejar.", {
-          id:"oricse-canvas-reconciled",
+          id: "oricse-canvas-reconciled",
         });
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao consultar a versão atual.", {
-        id:"oricse-canvas-review",
+        id: "oricse-canvas-review",
       });
     } finally {
       setReviewing(false);
@@ -842,10 +864,15 @@ export function VisualPageEditor() {
 
   function chooseConflictVersion(useLocal: boolean) {
     if (!conflict?.remote) return;
-    if (!window.confirm(useLocal
-      ? "Sua edição substituirá as alterações feitas na outra sessão nos mesmos trechos. Confirmar?"
-      : "Descartar suas mudanças não salvas e carregar a versão atual do servidor?")) return;
-    setUndo(items => [...items.slice(-39), cloneVisual(documento)]);
+    if (
+      !window.confirm(
+        useLocal
+          ? "Sua edição substituirá as alterações feitas na outra sessão nos mesmos trechos. Confirmar?"
+          : "Descartar suas mudanças não salvas e carregar a versão atual do servidor?",
+      )
+    )
+      return;
+    setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
     if (!useLocal) setDocumento(cloneVisual(conflict.remote));
     setConflict(null);
   }
@@ -885,15 +912,19 @@ export function VisualPageEditor() {
         Carregando editor visual…
       </main>
     );
-  if (loadError) return (
-    <main className="mx-auto max-w-xl p-8">
-      <h1 className="text-2xl font-bold">Não foi possível carregar o Canvas</h1>
-      <p className="mt-3 text-sm">{loadError}</p>
-      <button className="mt-4 rounded-xl border px-4 py-2" onClick={() => window.location.reload()}>
-        Tentar carregar novamente
-      </button>
-    </main>
-  );
+  if (loadError)
+    return (
+      <main className="mx-auto max-w-xl p-8">
+        <h1 className="text-2xl font-bold">Não foi possível carregar o Canvas</h1>
+        <p className="mt-3 text-sm">{loadError}</p>
+        <button
+          className="mt-4 rounded-xl border px-4 py-2"
+          onClick={() => window.location.reload()}
+        >
+          Tentar carregar novamente
+        </button>
+      </main>
+    );
   const frameWidth = deviceWidth(device);
   const scale = zoom / 100;
 
@@ -999,32 +1030,50 @@ export function VisualPageEditor() {
         </div>
       </header>
       {conflict && (
-        <section role="alert" className="sticky top-16 z-40 mx-auto max-w-5xl rounded-b-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950 shadow-lg">
+        <section
+          role="alert"
+          className="sticky top-16 z-40 mx-auto max-w-5xl rounded-b-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950 shadow-lg"
+        >
           <h2 className="font-extrabold">Conflito de edição — suas alterações continuam aqui</h2>
           <p className="mt-1 text-sm">{conflict.message}</p>
           {conflict.overlaps.length > 0 && (
             <p className="mt-2 text-xs">Trechos afetados: {conflict.overlaps.join(", ")}</p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
-            <button disabled={reviewing} onClick={() => void reviewConflict()}
-              className="min-h-10 rounded-xl bg-amber-900 px-4 text-sm font-bold text-white disabled:opacity-50">
+            <button
+              disabled={reviewing}
+              onClick={() => void reviewConflict()}
+              className="min-h-10 rounded-xl bg-amber-900 px-4 text-sm font-bold text-white disabled:opacity-50"
+            >
               {reviewing ? "Verificando…" : "Atualizar e revisar"}
             </button>
-            {conflict.remote && <>
-              <button onClick={() => chooseConflictVersion(false)}
-                className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold">
-                Usar versão do servidor
-              </button>
-              <button onClick={() => chooseConflictVersion(true)}
-                className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold">
-                Manter minha edição
-              </button>
-            </>}
-            <button onClick={() => {
-              void navigator.clipboard.writeText(JSON.stringify(documento, null, 2))
-                .then(() => toast.success("Cópia das suas alterações salva na área de transferência."))
-                .catch(() => toast.error("Não foi possível copiar. Mantenha esta aba aberta."));
-            }} className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold">
+            {conflict.remote && (
+              <>
+                <button
+                  onClick={() => chooseConflictVersion(false)}
+                  className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
+                >
+                  Usar versão do servidor
+                </button>
+                <button
+                  onClick={() => chooseConflictVersion(true)}
+                  className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
+                >
+                  Manter minha edição
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(JSON.stringify(documento, null, 2))
+                  .then(() =>
+                    toast.success("Cópia das suas alterações salva na área de transferência."),
+                  )
+                  .catch(() => toast.error("Não foi possível copiar. Mantenha esta aba aberta."));
+              }}
+              className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
+            >
               Copiar minhas alterações
             </button>
           </div>
