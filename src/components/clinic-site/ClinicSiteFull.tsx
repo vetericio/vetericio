@@ -384,7 +384,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
                 key={person.name + index}
                 className={"overflow-hidden border " + ink + " " + panels + (luxe ? " border-[#c9a86a]/45 bg-[#21332d] shadow-2xl" : king ? " border-[#101526] bg-white shadow-[10px_10px_0_#b7183e]" : minimal ? " bg-white shadow-none" : friendly ? " border-[#f05d43]/30 bg-white shadow-lg" : prime ? " border-[#0e5ca8]/20 bg-white shadow-xl" : organic ? " border-[#537b52]/20 bg-[#fffdf6] shadow-md" : " bg-white shadow-sm")}
               >
-                <div className={"flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
+                <div className={"flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
                   <FotoPublicaDoProfissional url={safeTeamPhoto(person.imageUrl)} nome={person.name} />
                 </div>
                 <div className="p-5">
