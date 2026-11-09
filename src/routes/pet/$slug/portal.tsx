@@ -46,7 +46,17 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string}={}){
   const [telefone,setTelefone]=useState("");const [email,setEmail]=useState("");const [salvandoPerfil,setSalvandoPerfil]=useState(false);const [maisAberto,setMaisAberto]=useState(false);
 
   useEffect(()=>{if(typeof window==="undefined")return;const hash=new URLSearchParams(location.hash.replace(/^#/,""));const query=new URLSearchParams(location.search);const t=hash.get("ativar")||query.get("ativar")||"";const u=hash.get("usuario")||query.get("usuario")||"";const secaoLink=query.get("secao");const animalLink=query.get("animal");if(t){setToken(t);setModoAtivar(true);}if(query.get("recuperar")==="1"){setModoRecuperar(true);setModoAtivar(false);}if(u)setUsuario(u);if(secaoLink&&["resumo","agenda","documentos","exames","receitas","vacinas","vermifugos","comanda","perfil"].includes(secaoLink))setSecao(secaoLink as Secao);if(animalLink)setAnimalId(animalLink);},[]);
-  useEffect(()=>{let vivo=true;setCarregandoClinica(true);void(async()=>{const{data,error}=await supabase.functions.invoke("oricse-portal-public-context",{body:{slug}});if(!vivo)return;if(!error&&data?.ok&&data.clinica)setClinica(data.clinica as ClinicaPublica);else setClinica(null);setCarregandoClinica(false);})();return()=>{vivo=false};},[slug]);
+  useEffect(()=>{let vivo=true;setCarregandoClinica(true);void(async()=>{
+    // Consulta pública do próprio cadastro de domínios. Dispensa a Edge Function
+    // anterior, cujo preflight CORS podia impedir a abertura em subdomínios.
+    const{data,error}=await(supabaseBanco as any).rpc("oricse_clinica_publica_portal",{p_slug:slug});
+    if(!vivo)return;
+    const registro=Array.isArray(data)?data[0]:null;
+    if(!error&&registro?.clinica_id&&registro?.clinica_slug===slug)
+      setClinica({nome:registro.clinica_nome,slug:registro.clinica_slug,logo_url:registro.clinica_logo_url||null});
+    else setClinica(null);
+    setCarregandoClinica(false);
+  })();return()=>{vivo=false};},[slug]);
 
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_config_publica",{p_slug:slug});if(ativo&&data)setPortalConfig(data);})();return()=>{ativo=false};},[slug]);
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_extras_publicas",{p_slug:slug});if(ativo&&data)setExtrasPublicos(data);})();return()=>{ativo=false};},[slug]);
