@@ -30,6 +30,7 @@ const realUrl = (value: string) => {
 };
 
 export function ClinicSiteFull({ template, config }: Props) {
+  const signatura = template === "signatura";
   const luxe = template === "prestige";
   const editorial = template === "atelier";
   const friendly = template === "cuidado";
@@ -44,9 +45,9 @@ export function ClinicSiteFull({ template, config }: Props) {
       : minimal
         ? "rounded-lg"
         : "rounded-full";
-  const headingFont = luxe || editorial || organic ? "font-serif" : "font-sans";
-  const sectionPad = minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
-  const panels = rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
+  const headingFont = luxe || editorial || organic || signatura ? "font-serif" : "font-sans";
+  const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
+  const panels = signatura ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
   const externalBooking = realUrl(config.bookingUrl);
   const actionHref =
@@ -59,7 +60,7 @@ export function ClinicSiteFull({ template, config }: Props) {
     : "";
   const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
   const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
-  const ink = minimal ? "border-slate-200/80" : "border-current/15";
+  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : "border-current/15";
   const outer = luxe
     ? "bg-[var(--site-bg)] text-[var(--site-text)]"
     : bold
@@ -137,7 +138,7 @@ export function ClinicSiteFull({ template, config }: Props) {
           </span>
         </div>
       )}
-      {(luxe || organic) && (
+      {(luxe || organic || signatura) && (
         <div className="pointer-events-none absolute bottom-5 left-5 rounded-xl border border-white/40 bg-black/40 px-5 py-3 text-xs font-semibold tracking-wide text-white backdrop-blur-md">
           Atenção em cada detalhe
         </div>
@@ -179,7 +180,7 @@ export function ClinicSiteFull({ template, config }: Props) {
                   ink +
                   " " +
                   panels +
-                  (luxe ? " bg-white/[.04]" : bold ? " bg-[var(--site-secondary)]" : " bg-white/35")
+                  (luxe ? " bg-white/[.04]" : signatura ? " bg-white shadow-[0_18px_45px_rgba(23,61,53,.08)]" : bold ? " bg-[var(--site-secondary)]" : " bg-white/35")
                 }
               >
                 <div
@@ -462,15 +463,15 @@ export function ClinicSiteFull({ template, config }: Props) {
       style={style}
       data-clinic-template={template}
     >
-      {bold && config.emergency24h ? (
+      {(bold || signatura) && config.emergency24h ? (
         <div className="bg-[var(--site-primary)] px-4 py-2 text-center text-xs font-black uppercase tracking-widest text-white">
-          Atendimento de emergência 24h · Entre em contato
+          Atendimento de emergência 24h · Cuidado contínuo para o seu pet
         </div>
       ) : null}
       <header
         className={
           "relative z-10 border-b border-current/10 " +
-          (organic ? "bg-[var(--site-secondary)]" : "")
+          (organic || signatura ? "bg-[var(--site-secondary)]" : "")
         }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
@@ -513,13 +514,13 @@ export function ClinicSiteFull({ template, config }: Props) {
         className={
           "relative px-5 sm:px-8 " +
           (luxe ? "pb-16 pt-10 sm:pb-24" : "pb-16 pt-12 sm:pb-24") +
-          (bold ? " bg-[var(--site-secondary)]" : "")
+          (bold || signatura ? " bg-[var(--site-secondary)]" : "")
         }
       >
         <div
           className={
             "mx-auto grid max-w-7xl gap-10 md:items-center " +
-            (minimal || friendly
+            (minimal || friendly || signatura
               ? "md:grid-cols-[1fr_.85fr]"
               : organic
                 ? "md:grid-cols-[.95fr_1.05fr]"
@@ -568,6 +569,7 @@ export function ClinicSiteFull({ template, config }: Props) {
                 <ShieldCheck size={17} className="text-[var(--site-primary)]" /> Orientação
                 profissional
               </span>
+              {signatura ? <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[var(--site-primary)]" /> Estrutura preparada para urgências</span> : null}
             </div>
           </div>
           <div className={editorial ? "md:order-1" : ""}>{imagePanel}</div>

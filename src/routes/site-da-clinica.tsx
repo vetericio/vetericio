@@ -573,7 +573,7 @@ export function SiteDaClinica({
               {tab === "modelos" && (
                 <>
                   <div>
-                    <h2 className="text-lg font-extrabold">Escolha entre seis sites</h2>
+                    <h2 className="text-lg font-extrabold">Escolha entre sete sites</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Cada modelo inclui página inicial, serviços, apresentação, fotos, equipe e
                       contato.
