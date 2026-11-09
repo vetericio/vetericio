@@ -827,6 +827,9 @@ function Admin() {
   }
 
   useEffect(() => { void carregarTudo(); void carregarSolicitacoes(); }, []);
+  // A navegação principal altera a aba pelo contexto, sem passar por abrirPainel.
+  // Carrega os atalhos salvos quando a área unificada é aberta.
+  useEffect(() => { if (aba === "site" || aba === "paginas") void carregarRotas(); }, [aba]);
   useEffect(() => { if (selecionada) void carregarDrive(selecionada.id); }, [selecionada?.id]);
   useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
 
