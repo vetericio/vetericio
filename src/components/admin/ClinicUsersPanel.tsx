@@ -77,6 +77,31 @@ function limparUsuario(valor: string) {
   return valor.replace(/^@+/, "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9._-]/g, "");
 }
 
+function requisitosSenha(senha: string) {
+  return [
+    { texto: "Pelo menos 12 caracteres", valido: senha.length >= 12 && senha.length <= 128 },
+    { texto: "Uma letra minúscula", valido: /[a-z]/.test(senha) },
+    { texto: "Uma letra maiúscula", valido: /[A-Z]/.test(senha) },
+    { texto: "Um número", valido: /\\d/.test(senha) },
+    { texto: "Um símbolo", valido: /[^A-Za-z0-9]/.test(senha) },
+  ];
+}
+
+function mensagemErroUsuario(error: unknown) {
+  const mensagem = error instanceof Error ? error.message : String(error ?? "");
+  if (!mensagem) return "Não foi possível concluir a operação.";
+  // Alguns retornos do validador são serializados como JSON, nunca exibi-los crus.
+  try {
+    const objeto = JSON.parse(mensagem);
+    if (Array.isArray(objeto)) {
+      const textos = objeto.map((item: { message?: string }) => item.message).filter(Boolean);
+      if (textos.length) return [...new Set(textos)].join(" ");
+    }
+  } catch { /* já é uma mensagem normal */ }
+  if (/\["?\{|validation.*regex|too_small/i.test(mensagem)) return "Confira os campos e os requisitos da senha.";
+  return mensagem;
+}
+
 export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualizarVinculo, onRefresh }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -173,8 +198,8 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       return;
     }
     if (pessoa.nomeCompleto.trim().length < 3) { toast.error("Informe o nome completo da pessoa."); return; }
-    if (password.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres.");
+    if (requisitosSenha(password).some((regra) => !regra.valido)) {
+      toast.error("A senha precisa cumprir todos os requisitos mostrados abaixo do campo.");
       return;
     }
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
@@ -209,15 +234,15 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
           : "Usuário criado e vinculado à clínica.",
       );
     } catch (error) {
-      toast.error((error as Error).message || "Não foi possível criar o usuário.");
+      toast.error(mensagemErroUsuario(error));
     } finally {
       setSalvando(false);
     }
   }
 
   async function alterarSenha(userId: string) {
-    if (resetPassword.length < 6) {
-      toast.error("A nova senha deve ter pelo menos 6 caracteres.");
+    if (requisitosSenha(resetPassword).some((regra) => !regra.valido)) {
+      toast.error("A nova senha precisa de 12 caracteres, letras maiúscula e minúscula, número e símbolo.");
       return;
     }
     setSalvando(true);
@@ -227,7 +252,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       setResetPassword("");
       toast.success("Senha atualizada.");
     } catch (error) {
-      toast.error((error as Error).message || "Não foi possível alterar a senha.");
+      toast.error(mensagemErroUsuario(error));
     } finally {
       setSalvando(false);
     }
@@ -310,7 +335,12 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <label className="text-sm font-semibold">@usuário<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="text-muted-foreground">@</span><input value={username} onChange={(e) => setUsername(limparUsuario(e.target.value))} placeholder="usuario" className="min-w-0 flex-1 bg-transparent outline-none" autoComplete="off" /></div></label>
-        <label className="text-sm font-semibold">Senha<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha inicial" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" autoComplete="new-password" /></label>
+        <label className="text-sm font-semibold">Senha
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha inicial" maxLength={128} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" autoComplete="new-password" aria-describedby="requisitos-senha-usuario" />
+          <span id="requisitos-senha-usuario" className="mt-2 grid gap-1 text-xs font-normal">
+            {requisitosSenha(password).map((regra) => <span key={regra.texto} className={regra.valido ? "text-emerald-700" : "text-muted-foreground"}>{regra.valido ? "✓" : "○"} {regra.texto}</span>)}
+          </span>
+        </label>
         <label className="text-sm font-semibold">E-mail<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@email.com" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" /></label>
         <label className="text-sm font-semibold">Cargo<select value={papel} onChange={(e) => setPapel(e.target.value as PapelClinica)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{Object.entries(perfis).map(([id, p]) => <option key={id} value={id}>{p.nome}</option>)}</select></label>
         <CamposPessoa value={pessoa} onChange={setPessoa}/>
