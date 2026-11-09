@@ -163,9 +163,7 @@ function PaginaInicialPlataforma() {
         {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
-      <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate border-t border-[#f0e3de] bg-[#fffdfa]">
-        <div data-visual-id="home-fundo-banner" data-visual-label="Fundo bege do banner" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[#fffdfa]"/>
-        <div data-visual-id="home-linha-divisoria" data-visual-label="Linha divisória do banner" aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[3px] bg-[linear-gradient(90deg,#7f341d_0%,#d8882a_22%,#ffd86a_50%,#d8882a_78%,#7f341d_100%)] shadow-[0_-1px_7px_rgba(163,88,28,.45)]"/>
+      <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate overflow-hidden border-t border-[#f0e3de] bg-transparent">
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
@@ -177,14 +175,14 @@ function PaginaInicialPlataforma() {
           onError={() => setCapaOficialCarregada(false)}
         />
         {capaOficialCarregada ? (
-          <div data-visual-id="home-base-capa" data-visual-label="Fundo da capa" className="relative z-[1] w-full bg-[#f4d5bf]">
+          <div data-visual-id="home-base-capa" data-visual-label="Área da capa" className="relative z-[1] w-full bg-transparent">
             {/* Em telas menores, a arte inteira fica visível antes do conteúdo. */}
             <img
               src="/oricse-capa-paisagem.png"
               data-visual-id="home-imagem-oryx" data-visual-label="Imagem do órix e pôr do sol" alt="Órix nas dunas ao pôr do sol"
               width={1672}
               height={941}
-              className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-contain"
+              className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-cover"
               loading="eager"
               decoding="async"
             />
