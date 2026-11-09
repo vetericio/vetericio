@@ -79,7 +79,7 @@ function limparUsuario(valor: string) {
 
 function requisitosSenha(senha: string) {
   return [
-    { texto: "Pelo menos 12 caracteres", valido: senha.length >= 12 && senha.length <= 128 },
+    { texto: "Pelo menos 3 caracteres", valido: senha.length >= 3 && senha.length <= 128 },
     { texto: "Uma letra minúscula", valido: /[a-z]/.test(senha) },
     { texto: "Uma letra maiúscula", valido: /[A-Z]/.test(senha) },
     { texto: "Um número", valido: /\d/.test(senha) },
@@ -242,7 +242,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
 
   async function alterarSenha(userId: string) {
     if (requisitosSenha(resetPassword).some((regra) => !regra.valido)) {
-      toast.error("A nova senha precisa de 12 caracteres, letras maiúscula e minúscula, número e símbolo.");
+      toast.error("A nova senha precisa de pelo menos 3 caracteres, letras maiúscula e minúscula, número e símbolo.");
       return;
     }
     setSalvando(true);
