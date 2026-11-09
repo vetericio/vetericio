@@ -118,6 +118,7 @@ function criarBox(plano: string, section: Element) {
       p_plano_codigo: plano,
       p_documento: documento,
       p_valor_base: total,
+      p_ciclo: String(dados.ciclo || ""),
     });
 
     aplicar.disabled = false;
