@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ACOES_LEGADAS, FUNCIONALIDADES_POR_PLANO, PERMISSOES_PADRAO, PERMITIDAS_POR_PAPEL, seedTabela } from "@/lib/drive-seed";
 import { permissaoEfetiva } from "@/lib/plan-policy";
-import { appendJournal, applyJournal, loadJournals, type DriveChange } from "@/lib/drive-journal.server";
+import { appendJournal, applyJournal, loadJournals, sameJournalValue, type DriveChange } from "@/lib/drive-journal.server";
 import { executarEscritaCoordenada } from "@/lib/drive-coordinator-binding.server";
 
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
@@ -234,8 +234,8 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
         Object.keys(submitted || {}).filter((field) => field !== "updated_at");
       for (const field of changing) {
         if (!Object.prototype.hasOwnProperty.call(baseline, field)) continue;
-        if (JSON.stringify(current[field] ?? null) !== JSON.stringify(baseline[field] ?? null)
-          && JSON.stringify(current[field] ?? null) !== JSON.stringify(submitted?.[field] ?? null)) {
+        if (!sameJournalValue(current[field] ?? null, baseline[field] ?? null)
+          && !sameJournalValue(current[field] ?? null, submitted?.[field] ?? null)) {
           const conflict = new Error(`Outro profissional alterou ${field} no registro ${id}. Atualize a tela antes de salvar.`);
           Object.assign(conflict, { code: "DRIVE_CONFLICT", recordId: id, field });
           throw conflict;
