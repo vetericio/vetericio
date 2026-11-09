@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
 import { PortalFooter } from "@/components/PortalFooter";
-import { Bell, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, Menu, PawPrint, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, Bell, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, Menu, PawPrint, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
@@ -212,28 +212,56 @@ function Login(props:{
   login:boolean;ativando:boolean;recuperando:boolean;
 }){
   const p=props;
-  return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]" data-site-template={p.tema?.modelo} style={estiloTemaPortal(p.tema)}>
-    <PortalTutorBrandHeader
-      nome={p.portalConfig.nome_exibicao||p.clinica.nome}
-      logo={p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url}
-      slug={p.clinica.slug}
-      subtitulo={p.portalConfig.subtitulo_cabecalho}
-    />
-    <div className="portal-premium-login-layout">
-      <section className="portal-premium-intro">
-        <span className="portal-premium-intro-eyebrow"><HeartPulse size={17}/> MAIS PROXIMIDADE. MAIS CUIDADO.</span>
-        <h2>{p.extras.opcoes?.mostrar_banner!==false&&p.extras.opcoes?.banner_titulo?String(p.extras.opcoes.banner_titulo):<>O cuidado com seu pet, <em>sempre por perto.</em></>}</h2>
-        <p className="portal-premium-intro-description">{p.extras.opcoes?.mostrar_banner!==false&&p.extras.opcoes?.banner_subtitulo?String(p.extras.opcoes.banner_subtitulo):"Uma experiência pensada para cuidar do que mais importa. Acompanhe a rotina de saúde, consulte documentos e agende os próximos cuidados em um único lugar."}</p>
-        <div className="portal-premium-benefits">
-          <div className="portal-premium-benefit"><span><CalendarDays size={21}/></span><div><strong>Agendamentos</strong><small>Seus próximos cuidados com praticidade.</small></div></div>
-          <div className="portal-premium-benefit"><span><FileText size={21}/></span><div><strong>Documentos</strong><small>Exames, receitas e informações organizadas.</small></div></div>
-          <div className="portal-premium-benefit"><span><HeartPulse size={21}/></span><div><strong>Saúde do pet</strong><small>Vacinas e histórico sempre à mão.</small></div></div>
+  const clinicName=p.portalConfig.nome_exibicao||p.clinica.nome;
+  const clinicLogo=p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url;
+  const clinicSite=p.clinica.slug==="alvorada"
+    ? "https://alvorada.oricse.com.br/"
+    : `/c/${encodeURIComponent(p.clinica.slug)}`;
+  const acessoEstendido=p.modoAtivar||p.modoRecuperar;
+  return <main className="portal-tutor-live portal-tutor-login-screen" data-site-template={p.tema?.modelo}
+    data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>
+    <div className="portal-login-topbar">
+      <a className="portal-login-back-link" href={clinicSite}><ArrowLeft size={17}/> Retornar para o site da clínica</a>
+      <span className="portal-login-top-caption"><span className="portal-premium-live-dot"/> ÁREA EXCLUSIVA PARA TUTORES</span>
+    </div>
+    <div className="portal-one-screen-grid">
+      <div className="portal-one-screen-left">
+        <section className="portal-one-screen-brand" aria-label="Clínica e Portal do Tutor">
+          <div className="portal-one-screen-logo-white">
+            {clinicLogo
+              ? <img src={clinicLogo} alt={`Logo ${clinicName}`} className="portal-one-screen-clinic-logo"/>
+              : <strong className="portal-one-screen-fallback">{clinicName}</strong>}
+          </div>
+          <div className="portal-one-screen-product-name">
+            <span className="portal-one-screen-product-overline"><PawPrint size={19}/> SEU ESPAÇO DE CUIDADO</span>
+            <h1>Portal <em>do Tutor</em></h1>
+            <p>Uma conexão mais próxima com a sua clínica.</p>
+          </div>
+        </section>
+        <section className="portal-one-screen-about" aria-label="O que você encontra aqui">
+          <div className="portal-one-screen-about-overline"><HeartPulse size={16}/> CUIDADO EM CADA DETALHE</div>
+          <h2>O cuidado com seu pet, <em>sempre por perto.</em></h2>
+          <p className="portal-one-screen-description">
+            Agende atendimentos, consulte documentos e acompanhe a saúde do seu pet em um único lugar.
+          </p>
+          <div className="portal-one-screen-features">
+            <div><span><CalendarDays size={20}/></span><strong>Agendamentos</strong></div>
+            <div><span><FileText size={20}/></span><strong>Documentos</strong></div>
+            <div><span><HeartPulse size={20}/></span><strong>Saúde do pet</strong></div>
+          </div>
+          <p className="portal-one-screen-welcome"><PawPrint size={17}/> {p.portalConfig.mensagem_boas_vindas||"Bem-vindo ao Portal do Tutor!"}</p>
+        </section>
+      </div>
+      <section className="portal-one-screen-login-panel" aria-label="Acesso ao Portal do Tutor">
+        <div className="portal-one-screen-login-heading">
+          <span className="portal-one-screen-auth-mark"><LockKeyhole size={22}/></span>
+          <div>
+            <span className="portal-one-screen-auth-eyebrow">ACESSO PRIVATIVO</span>
+            <h2>{p.modoRecuperar?"Recuperar acesso":p.modoAtivar?"Ativar primeiro acesso":"Acesso do tutor"}</h2>
+          </div>
         </div>
-        {p.portalConfig.mensagem_boas_vindas&&<p className="portal-premium-welcome"><PawPrint size={18}/> {p.portalConfig.mensagem_boas_vindas}</p>}
-        {p.extras.opcoes?.mostrar_promocoes!==false&&Boolean(p.extras.promocoes?.length)&&<div className="mt-6 space-y-3"><h3 className="font-bold">Novidades da clínica</h3>{(p.extras.promocoes||[]).map((item,i)=><article key={i} className="rounded-xl border bg-white p-4"><strong>{item.titulo}</strong><p className="text-sm text-slate-600">{item.descricao}</p><p className="text-sm font-bold">{item.desconto_percentual}% de desconto{item.cupom?" · Cupom "+item.cupom:""}</p></article>)}</div>}
-      </section>
-      <section className="portal-premium-auth-card">
-        <div className="portal-premium-auth-eyebrow"><ShieldCheck size={15}/> ÁREA SEGURA DO TUTOR</div>
+        <p className="portal-one-screen-login-lead">Suas informações e os cuidados com seu pet, em segurança.</p>
+        <div className="portal-one-screen-form">
         {p.modoRecuperar ? (
           <><div className="flex gap-2"><ShieldCheck/><div><h2 className="text-xl font-bold">Redefinir senha</h2><p className="text-sm text-slate-500">Confirme seus dados e reconheça um pet vinculado a esta clínica.</p></div></div>
           {!p.desafioRecuperacao ? (
@@ -257,7 +285,8 @@ function Login(props:{
         ) : (
           <><div className="flex gap-2"><LockKeyhole/><h2 className="text-xl font-bold">Acesso do tutor</h2></div><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button disabled={p.login} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
-        <p className="portal-premium-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
+        </div>
+        <p className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
       </section>
     </div>
   </main>;
