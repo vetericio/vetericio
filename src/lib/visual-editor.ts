@@ -87,7 +87,7 @@ export function visualSelector(element: Element): string {
 
 export function visualLabel(element: Element): string {
   const text = (element.textContent || "").replace(/\s+/g, " ").trim();
-  const named = element.getAttribute("aria-label") || element.getAttribute("alt") || text;
+  const named = element.getAttribute("data-visual-label") || element.getAttribute("aria-label") || element.getAttribute("alt") || text;
   return named.slice(0, 54) || element.tagName.toLowerCase();
 }
 
