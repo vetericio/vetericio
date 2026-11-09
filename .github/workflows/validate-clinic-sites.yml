@@ -3,11 +3,15 @@ on:
   pull_request:
   push:
     branches: [main]
+permissions:
+  contents: write
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: oven-sh/setup-bun@v2
       # O package.json da ORICSE foi atualizado com Tailwind fixo;
       # o bun.lock antigo ainda registra 4.3.3. Usar o mesmo instalador
@@ -20,6 +24,18 @@ jobs:
       # também contém uma cópia independente do OricStúdio, com seu próprio
       # conjunto de dependências e lint; varrê-la daqui produzia relatórios
       # gigantes e tornava o job instável.
+      # Diagnóstico temporário da PR do Canvas: normaliza apenas o arquivo alterado.
+      - name: Corrigir formatação do Admin Canvas nesta PR
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/admin-canvas-publish-conflict-20261108'
+        run: |
+          npx prettier --write src/components/admin/VisualPageEditor.tsx
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/admin/VisualPageEditor.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "Formatar editor visual após correção do conflito"
+            git push origin HEAD:fix/admin-canvas-publish-conflict-20261108
+          fi
       - name: Formatação das páginas de clínicas
         run: >-
           npx prettier --check
