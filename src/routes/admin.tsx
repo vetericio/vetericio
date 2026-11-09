@@ -2085,6 +2085,7 @@ function Admin() {
                 {r.editavel?<span className="font-semibold text-emerald-700">Atalho personalizável</span>:<span className="font-semibold text-slate-500">{r.dinamica?"URL com identificador da clínica":"Endereço fixo"}</span>}
                 {!r.dinamica&&<a href={r.editavel?salvo:r.original} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 font-semibold text-[#703047] hover:underline"><ExternalLink size={13}/> Abrir página</a>}
+                {!r.dinamica && r.original !== "/admin-canvas" && <a href={"/admin-canvas?pagina="+encodeURIComponent(r.original)} className="inline-flex items-center gap-1 font-semibold text-[#703047] hover:underline"><PanelsTopLeft size={13}/> Editar visualmente</a>}
               </div>
             </div>
             {r.editavel?<div className="flex flex-wrap items-end gap-2">
