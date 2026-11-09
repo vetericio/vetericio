@@ -7,6 +7,11 @@ if (existsSync(file)) {
   // Mantém as variáveis/secrets cadastrados no painel da Cloudflare a cada deploy.
   config.keep_vars = true;
   config.name = "oricse";
+  // Arquivos versionados devem passar pelo Worker antes de qualquer fallback HTML.
+  // Assim um chunk removido em outro deploy nunca vira uma página HTML inválida.
+  config.assets ||= {};
+  config.assets.binding = "ASSETS";
+  config.assets.run_worker_first = ["/assets/*"];
   // Nitro emits a default-only main module. Cloudflare Durable Objects must
   // also be exported directly from the deployed entry module.
   // The thin entrypoint preserves Nitro's handler and exports the DO class.
