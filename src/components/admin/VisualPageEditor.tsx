@@ -556,6 +556,7 @@ export function VisualPageEditor() {
       sx: number;
       sy: number;
       starts: Array<{ item: SelectedItem; x: number; y: number }>;
+      historyRecorded: boolean;
     } = null;
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
@@ -599,7 +600,7 @@ export function VisualPageEditor() {
           : [item];
       setSelected(next);
       selectedRef.current = next;
-      checkpoint();
+      setCroppingId(null);
       const page = ensurePage(cloneVisual(documentRef.current), route)[device];
       const starts = next.map((entry) => {
         const target =
@@ -608,7 +609,7 @@ export function VisualPageEditor() {
             : page.added.find((x) => x.id === entry.id);
         return { item: entry, x: target?.style.x || 0, y: target?.style.y || 0 };
       });
-      drag = { sx: event.clientX, sy: event.clientY, starts };
+      drag = { sx: event.clientX, sy: event.clientY, starts, historyRecorded: false };
     };
     const move = (event: PointerEvent) => {
       // React may run the state updater after pointerup has cleared drag.
@@ -616,8 +617,13 @@ export function VisualPageEditor() {
       // drag inside the deferred update and crashing on drag.starts.
       const activeDrag = drag;
       if (!activeDrag) return;
-      const dx = (event.clientX - activeDrag.sx) / Math.max(zoom / 100, 0.1),
-        dy = (event.clientY - activeDrag.sy) / Math.max(zoom / 100, 0.1);
+      const dx = event.clientX - activeDrag.sx,
+        dy = event.clientY - activeDrag.sy;
+      if (!activeDrag.historyRecorded && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!activeDrag.historyRecorded) {
+        checkpoint();
+        activeDrag.historyRecorded = true;
+      }
       const starts = activeDrag.starts;
       updateLayout(
         (value) =>
@@ -637,6 +643,44 @@ export function VisualPageEditor() {
     const stop = () => {
       drag = null;
     };
+    const doubleClick = (event: MouseEvent) => {
+      const image = (event.target as Element | null)?.closest("img");
+      if (!image || image.closest("[data-oricse-editor-overlay]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const addedId = image.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
+      let target: SelectedItem | null = addedId ? { id: addedId, kind: "added" } : null;
+      if (!target) {
+        const selector = visualSelector(image);
+        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((p) => p.selector === selector);
+        if (!patch) {
+          const box = image.getBoundingClientRect();
+          patch = { id: uid("image"), selector, label: visualLabel(image),
+            style: { baseWidth: box.width, baseHeight: box.height, width: box.width, height: box.height } };
+          updateLayout((layoutAtual) => layoutAtual.patches.push(patch!), true);
+        }
+        target = { id: patch.id, kind: "patch" };
+      }
+      setSelected([target]);
+      selectedRef.current = [target];
+      setCroppingId(target.id);
+    };
+    const onFrameKey = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest("input,textarea,select,[contenteditable='true']")) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        event.shiftKey ? redoNow() : undoNow();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoNow();
+      } else if (event.key === "Delete" && selectedRef.current.length) {
+        event.preventDefault();
+        hideOrDelete();
+      } else if (event.key === "Escape") {
+        setCroppingId(null);
+      }
+    };
     const block = (event: Event) => {
       if ((event.target as Element)?.closest("a,button,form")) {
         event.preventDefault();
@@ -644,6 +688,8 @@ export function VisualPageEditor() {
       }
     };
     doc.addEventListener("pointerdown", pointerDown, true);
+    doc.addEventListener("dblclick", doubleClick, true);
+    win.addEventListener("keydown", onFrameKey, true);
     win.addEventListener("pointermove", move, true);
     win.addEventListener("pointerup", stop, true);
     win.addEventListener("pointercancel", stop, true);
@@ -653,6 +699,8 @@ export function VisualPageEditor() {
     cleanupFrameListenersRef.current = () => {
       drag = null;
       doc.removeEventListener("pointerdown", pointerDown, true);
+      doc.removeEventListener("dblclick", doubleClick, true);
+      win.removeEventListener("keydown", onFrameKey, true);
       win.removeEventListener("pointermove", move, true);
       win.removeEventListener("pointerup", stop, true);
       win.removeEventListener("pointercancel", stop, true);
@@ -756,9 +804,9 @@ export function VisualPageEditor() {
     setSelected(newSelection);
   }
   function hideOrDelete() {
-    if (!selected.length) return;
+    if (!selectedRef.current.length) return;
     updateLayout((value) =>
-      selected.forEach((item) => {
+      selectedRef.current.forEach((item) => {
         if (item.kind === "added") value.added = value.added.filter((x) => x.id !== item.id);
         else {
           const patch = value.patches.find((x) => x.id === item.id);
