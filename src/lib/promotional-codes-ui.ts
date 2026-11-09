@@ -202,7 +202,7 @@ function garantirCheckout() {
     aplicar.disabled = true;
     result.className = "oricse-promo-result";
     result.textContent = "Validando código...";
-    const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", { p_codigo: codigo, p_plano_codigo: plano, p_documento: documento, p_valor_base: total });
+    const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", { p_codigo: codigo, p_plano_codigo: plano, p_documento: documento, p_valor_base: total, p_ciclo: String(dados.ciclo || "") });
     aplicar.disabled = false;
     if (error || !data?.valido) {
       salvarPromoAplicado(null);
