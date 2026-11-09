@@ -2031,3 +2031,27 @@
   }
   .oricse-global-credits-makers { font-size: 9px; }
 }
+
+.portal-premium-product-logo {
+  display: block;
+  width: clamp(220px, 34vw, 390px);
+  height: auto;
+  max-height: 116px;
+  object-fit: contain;
+  object-position: left center;
+}
+.portal-premium-product .portal-premium-brand-subtitle {
+  margin-top: 8px;
+}
+@media (max-width: 640px) {
+  .portal-premium-product-logo {
+    width: min(100%, 330px);
+    max-height: 94px;
+  }
+}
+@media (max-width: 420px) {
+  .portal-premium-product-logo {
+    width: min(100%, 285px);
+    max-height: 82px;
+  }
+}
