@@ -9,7 +9,7 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
-type WorkerBindings = { ORICSE_WRITE_COORDINATOR?: unknown };
+type WorkerBindings = { ORICSE_WRITE_COORDINATOR?: unknown; ASSETS?: { fetch: (request: Request) => Promise<Response> } };
 
 function getWorkerBindings(env?: unknown): WorkerBindings | undefined {
   // Nitro forwards the Cloudflare bindings to the outer Worker handler and
@@ -128,6 +128,17 @@ export default {
     setDriveCoordinatorBinding(getWorkerBindings(env)?.ORICSE_WRITE_COORDINATOR);
     try {
       const url = new URL(request.url);
+      // Entrega os chunks existentes diretamente do pacote atual. Para chunks
+      // antigos que não existem mais, deixa o fallback de recuperação agir.
+      if (url.pathname.startsWith("/assets/")) {
+        const assets = getWorkerBindings(env)?.ASSETS;
+        if (assets) {
+          const asset = await assets.fetch(request);
+          if (asset.ok && !(asset.headers.get("content-type") || "").includes("text/html")) {
+            return securityHeaders(asset, url.pathname);
+          }
+        }
+      }
       if (url.pathname.startsWith("/api/cep/")) {
         if (request.method !== "GET") return securityHeaders(new Response(null, { status: 405 }), url.pathname);
         return securityHeaders(await consultarCepNoServidor(url.pathname.slice("/api/cep/".length)), url.pathname);
