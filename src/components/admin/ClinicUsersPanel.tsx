@@ -82,7 +82,7 @@ function requisitosSenha(senha: string) {
     { texto: "Pelo menos 12 caracteres", valido: senha.length >= 12 && senha.length <= 128 },
     { texto: "Uma letra minúscula", valido: /[a-z]/.test(senha) },
     { texto: "Uma letra maiúscula", valido: /[A-Z]/.test(senha) },
-    { texto: "Um número", valido: /\\d/.test(senha) },
+    { texto: "Um número", valido: /\d/.test(senha) },
     { texto: "Um símbolo", valido: /[^A-Za-z0-9]/.test(senha) },
   ];
 }
