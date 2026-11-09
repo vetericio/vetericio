@@ -196,7 +196,7 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
     if (patch.text != null && !["IMG", "INPUT", "TEXTAREA", "SELECT"].includes(element.tagName)) element.textContent = patch.text;
     applyVisualStyle(element, patch.style || {}, true);
   }
-  const host = (doc.querySelector("main") || doc.body) as HTMLElement;
+  const host = (doc.querySelector("main.portal-tutor-login-screen") || doc.querySelector("main") || doc.body) as HTMLElement;
   if (getComputedStyle(host).position === "static") host.style.position = "relative";
   for (const item of layout.added) {
     const node = item.kind === "image" ? doc.createElement("img") : doc.createElement("div");
