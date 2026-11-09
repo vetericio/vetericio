@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { useTenantContext } from "@/lib/tenant-context";
 import {
   clinicSiteSections,
   clinicSiteSectionLabels,
@@ -61,19 +62,20 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
   const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
   const panels = signatura || prime ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
-  // Todos os modelos usam o Portal do Tutor da clínica para agendamentos.
-  // Em páginas publicadas, o slug vem do servidor; em links legados, da rota.
-  const routeSlug = typeof window === "undefined"
-    ? ""
-    : window.location.pathname.match(/^\\/c\\/([a-z0-9-]+)\\/?$/i)?.[1] || "";
-  const subdomainSlug = typeof window === "undefined"
-    ? ""
-    : window.location.hostname.toLowerCase().match(/^([a-z0-9-]+)\\.oricse\\.com\\.br$/)?.[1] || "";
-  const publishedSlug = clinicSlug || routeSlug || subdomainSlug;
+  // Todos os botões de agendamento levam diretamente ao Portal do Tutor da
+  // clínica, inclusive em domínios personalizados. O contexto autenticado não
+  // é necessário: a rota identifica a clínica pelo slug público.
+  const { portal: tenantPortal } = useTenantContext();
+  const caminhoAtual = typeof window === "undefined" ? "" : window.location.pathname;
+  const hostAtual = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
+  const routeSlug = caminhoAtual.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
+  const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
+  const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
   const portalHref = publishedSlug
     ? `/pet/${encodeURIComponent(publishedSlug)}/portal?secao=agenda`
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
+  const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
   const image =
     safeHttps(config.heroImageUrl) ||
     (prime
@@ -418,7 +420,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               Entre em contato para consultar serviços, horários e informações de atendimento.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action("Portal do Tutor")}
+              {action(actionLabel)}
               {config.phone ? (
                 <a
                   href={"tel:" + waNumber(config.phone)}
@@ -525,7 +527,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           <h1 className="max-w-3xl text-5xl font-black leading-[.95] tracking-[-.05em] sm:text-7xl">{config.slogan}</h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{config.description}</p>
           <div className="mt-9 flex flex-wrap gap-3">
-            {action("Portal do Tutor")}
+            {action(actionLabel)}
             {config.services.length ? (
               <a href="#servicos" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/45 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur-sm">
                 Ver especialidades <ArrowRight size={16} />
@@ -563,7 +565,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             {config.description}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            {action("Portal do Tutor")}
+            {action(actionLabel)}
             {config.services.length ? (
               <a
                 href="#servicos"
@@ -610,7 +612,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             {config.description}
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            {action("Portal do Tutor")}
+            {action(actionLabel)}
             {config.services.length ? (
               <a
                 href="#servicos"
@@ -730,7 +732,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               {config.description}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action("Portal do Tutor")}
+              {action(actionLabel)}
               {config.services.length ? (
                 <a
                   href="#servicos"
