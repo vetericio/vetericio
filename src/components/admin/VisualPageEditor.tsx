@@ -100,6 +100,27 @@ function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote
   return { merged, overlaps };
 }
 
+
+/** Elementos reais da home, disponíveis no painel sem alterar rascunhos salvos. */
+const CAMADAS_INICIAIS_HOME = [
+  ["home-fundo-bege", "Fundo bege da página"],
+  ["home-cabecalho", "Cabeçalho"],
+  ["home-menu-superior", "Menu superior"],
+  ["home-botao-login", "Botão Login"],
+  ["home-banner", "Área do banner"],
+  ["home-fundo-banner", "Fundo bege do banner"],
+  ["home-base-capa", "Fundo da capa"],
+  ["home-imagem-oryx", "Imagem do órix e pôr do sol"],
+  ["home-logo-oricse", "Logo ORICSE"],
+  ["home-selo", "Selo plataforma completa"],
+  ["home-titulo-principal", "Título principal"],
+  ["home-texto-apoio", "Texto de apoio"],
+  ["home-botao-conhecer", "Botão Conhecer a Oricse"],
+  ["home-botao-cliente", "Botão Já sou cliente"],
+  ["home-legenda-inferior", "Legenda inferior do banner"],
+  ["home-linha-divisoria", "Linha divisória"],
+] as const;
+
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const deviceWidth = (device: VisualDevice) => (device === "desktop" ? 1440 : 390);
 
@@ -258,6 +279,48 @@ export function VisualPageEditor() {
     },
     [checkpoint, route, device],
   );
+
+  const camadasNativasHome = useMemo(() => route === "/"
+    ? CAMADAS_INICIAIS_HOME.filter(([id]) =>
+        !layout.patches.some((patch) => patch.selector === `[data-visual-id="${id}"]`))
+    : [], [route, layout.patches]);
+
+  /** Seleciona uma camada já existente no site, sem criar objetos artificiais. */
+  function abrirCamadaNativa(id: string, label: string, ocultar = false) {
+    const selector = `[data-visual-id="${id}"]`;
+    const doc = iframeRef.current?.contentDocument;
+    const element = doc?.querySelector(selector) as HTMLElement | null;
+    if (!element) {
+      toast.error("Esta camada ainda não carregou na prévia.");
+      return;
+    }
+    const existing = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
+      (item) => item.selector === selector,
+    );
+    if (existing) {
+      if (ocultar) updateLayout((value) => {
+        const alvo = value.patches.find((x) => x.id === existing.id);
+        if (alvo) alvo.hidden = true;
+      });
+      setSelected([{ id: existing.id, kind: "patch" }]);
+      return;
+    }
+    const rect = element.getBoundingClientRect();
+    const patch: VisualPatch = {
+      id: uid("element"),
+      selector,
+      label,
+      hidden: ocultar,
+      style: {
+        baseWidth: Math.max(1, Math.round(rect.width)),
+        baseHeight: Math.max(1, Math.round(rect.height)),
+        width: Math.max(1, Math.round(rect.width)),
+        height: Math.max(1, Math.round(rect.height)),
+      },
+    };
+    updateLayout((value) => value.patches.push(patch));
+    setSelected([{ id: patch.id, kind: "patch" }]);
+  }
 
   function undoNow() {
     const previous = undoRef.current.at(-1);
@@ -1416,6 +1479,11 @@ export function VisualPageEditor() {
             </div>
             <div className="mt-2 max-h-[48vh] space-y-1 overflow-auto">
               {[
+                ...camadasNativasHome.map(([id, label]) => ({
+                  item: { id, kind: "native" as const },
+                  label,
+                  hidden: false,
+                })),
                 ...layout.added.map((x) => ({
                   item: { id: x.id, kind: "added" as const },
                   label: x.text || x.kind,
@@ -1434,20 +1502,20 @@ export function VisualPageEditor() {
                     className={`flex items-center gap-1 rounded-lg border p-1 ${selected.some((x) => x.id === item.id && x.kind === item.kind) ? "border-primary bg-primary/5" : ""}`}
                   >
                     <button
-                      onClick={() => setSelected([item])}
+                      onClick={() => item.kind === "native" ? abrirCamadaNativa(item.id, label) : setSelected([item])}
                       className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs font-semibold"
                     >
                       {label}
                     </button>
                     <button
-                      onClick={() => toggleVisibility(item)}
+                      onClick={() => item.kind === "native" ? abrirCamadaNativa(item.id, label, true) : toggleVisibility(item)}
                       className="p-1 text-muted-foreground"
                     >
                       {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                 ))}
-              {!layout.added.length && !layout.patches.length && (
+              {!layout.added.length && !layout.patches.length && !camadasNativasHome.length && (
                 <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
                   Clique em qualquer objeto dentro da página para começar a editá-lo.
                 </p>
