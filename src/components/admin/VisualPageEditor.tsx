@@ -179,6 +179,9 @@ export function VisualPageEditor() {
   const cleanupFrameListenersRef = useRef<(() => void) | null>(null);
   const selectedRef = useRef<SelectedItem[]>([]);
   const documentRef = useRef(documento);
+  const propertiesPanelRef = useRef<HTMLElement>(null);
+  // Uma edição contínua de texto, número ou cor equivale a uma ação no histórico.
+  const propertyGestureRef = useRef<{ source: Element; before: VisualDocument; recorded: boolean } | null>(null);
   selectedRef.current = selected;
   documentRef.current = documento;
 
@@ -251,20 +254,41 @@ export function VisualPageEditor() {
     })();
   }, []);
 
-  const checkpoint = useCallback(() => {
-    setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
+  const checkpoint = useCallback((before?: VisualDocument) => {
+    const snapshot = cloneVisual(before ?? documentRef.current);
+    setUndo((items) => [...items.slice(-39), snapshot]);
     setRedo([]);
   }, []);
 
   const updateLayout = useCallback(
     (mutate: (layout: VisualLayout) => void, remember = true) => {
-      if (remember) checkpoint();
-      setDocumento((current) => {
-        const next = cloneVisual(current);
-        mutate(ensurePage(next, route)[device]);
-        next.updatedAt = new Date().toISOString();
-        return next;
-      });
+      if (remember) {
+        const focus = document.activeElement;
+        const editingProperty = focus instanceof HTMLElement &&
+          propertiesPanelRef.current?.contains(focus) &&
+          ["INPUT", "TEXTAREA", "SELECT"].includes(focus.tagName);
+        if (editingProperty) {
+          if (propertyGestureRef.current?.source !== focus) {
+            propertyGestureRef.current = {
+              source: focus, before: cloneVisual(documentRef.current), recorded: false,
+            };
+          }
+          if (!propertyGestureRef.current.recorded) {
+            checkpoint(propertyGestureRef.current.before);
+            propertyGestureRef.current.recorded = true;
+          }
+        } else {
+          propertyGestureRef.current = null;
+          checkpoint();
+        }
+      }
+      // O ref é atualizado no próprio evento: movimentos rápidos não dependem
+      // do momento em que o React processar a próxima renderização.
+      const next = cloneVisual(documentRef.current);
+      mutate(ensurePage(next, route)[device]);
+      next.updatedAt = new Date().toISOString();
+      documentRef.current = next;
+      setDocumento(next);
     },
     [checkpoint, route, device],
   );
@@ -272,16 +296,22 @@ export function VisualPageEditor() {
   function undoNow() {
     const previous = undo.at(-1);
     if (!previous) return;
-    setRedo((items) => [...items, cloneVisual(documento)]);
-    setDocumento(previous);
+    propertyGestureRef.current = null;
+    setRedo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
+    const restored = cloneVisual(previous);
+    documentRef.current = restored;
+    setDocumento(restored);
     setUndo((items) => items.slice(0, -1));
     setSelected([]);
   }
   function redoNow() {
     const next = redo.at(-1);
     if (!next) return;
-    setUndo((items) => [...items, cloneVisual(documento)]);
-    setDocumento(next);
+    propertyGestureRef.current = null;
+    setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
+    const restored = cloneVisual(next);
+    documentRef.current = restored;
+    setDocumento(restored);
     setRedo((items) => items.slice(0, -1));
     setSelected([]);
   }
@@ -333,7 +363,9 @@ export function VisualPageEditor() {
       const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        checkpoint();
+        propertyGestureRef.current = null;
+        const beforeResize = cloneVisual(documentRef.current);
+        let resizeRecorded = false;
         const sx = event.clientX,
           sy = event.clientY;
         const starts = selectedRef.current.map((item) => {
@@ -354,6 +386,11 @@ export function VisualPageEditor() {
         const move = (ev: PointerEvent) => {
           const dx = (ev.clientX - sx) / Math.max(zoom / 100, 0.1),
             dy = (ev.clientY - sy) / Math.max(zoom / 100, 0.1);
+          if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+          if (!resizeRecorded) {
+            checkpoint(beforeResize);
+            resizeRecorded = true;
+          }
           updateLayout(
             (value) =>
               starts.forEach(({ item, width, height, x }) => {
@@ -474,12 +511,16 @@ export function VisualPageEditor() {
       sx: number;
       sy: number;
       starts: Array<{ item: SelectedItem; x: number; y: number }>;
+      before: VisualDocument;
+      recorded: boolean;
     } = null;
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
       event.preventDefault();
       event.stopPropagation();
+      propertyGestureRef.current = null;
+      const beforeDrag = cloneVisual(documentRef.current);
       const element = editableTarget(raw);
       const addedId = element.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
       let item: SelectedItem;
@@ -502,7 +543,9 @@ export function VisualPageEditor() {
               height: Math.max(1, Math.round(rect.height)),
             },
           };
-          updateLayout((value) => value.patches.push(patch!), true);
+          // Selecionar um elemento ainda não é uma alteração para desfazer.
+          // Se ele for arrastado, o gesto inteiro entra no histórico de uma vez.
+          updateLayout((value) => value.patches.push(patch!), false);
         }
         item = { id: patch.id, kind: "patch" };
       }
@@ -517,7 +560,6 @@ export function VisualPageEditor() {
           : [item];
       setSelected(next);
       selectedRef.current = next;
-      checkpoint();
       const page = ensurePage(cloneVisual(documentRef.current), route)[device];
       const starts = next.map((entry) => {
         const target =
@@ -526,7 +568,7 @@ export function VisualPageEditor() {
             : page.added.find((x) => x.id === entry.id);
         return { item: entry, x: target?.style.x || 0, y: target?.style.y || 0 };
       });
-      drag = { sx: event.clientX, sy: event.clientY, starts };
+      drag = { sx: event.clientX, sy: event.clientY, starts, before: beforeDrag, recorded: false };
     };
     const move = (event: PointerEvent) => {
       // React may run the state updater after pointerup has cleared drag.
@@ -536,6 +578,11 @@ export function VisualPageEditor() {
       if (!activeDrag) return;
       const dx = (event.clientX - activeDrag.sx) / Math.max(zoom / 100, 0.1),
         dy = (event.clientY - activeDrag.sy) / Math.max(zoom / 100, 0.1);
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+      if (!activeDrag.recorded) {
+        checkpoint(activeDrag.before);
+        activeDrag.recorded = true;
+      }
       const starts = activeDrag.starts;
       updateLayout(
         (value) =>
@@ -1327,7 +1374,11 @@ export function VisualPageEditor() {
         </section>
 
         {rightOpen && (
-          <aside className="min-w-0 overflow-y-auto border-l bg-white p-3 lg:max-h-[calc(100dvh-64px)]">
+          <aside
+            ref={propertiesPanelRef}
+            onBlurCapture={() => { propertyGestureRef.current = null; }}
+            className="min-w-0 overflow-y-auto border-l bg-white p-3 lg:max-h-[calc(100dvh-64px)]"
+          >
             <div className="flex items-center justify-between gap-2">
               <h2 className="font-bold">Propriedades</h2>
               <button type="button" onClick={() => setRightOpen(false)} className="rounded-lg border p-1.5 hover:bg-slate-50" aria-label="Recolher painel de propriedades"><PanelRightClose size={17}/></button>
