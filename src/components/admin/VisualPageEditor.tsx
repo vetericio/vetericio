@@ -125,7 +125,14 @@ export function VisualPageEditor() {
       (r) => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
     ) ? pagina : "/";
   };
-  const [route, setRoute] = useState(paginaInicialEditor);
+  // O servidor não tem acesso ao endereço do navegador: só renderize a
+  // prévia depois de resolver a seleção no cliente, sem erro de hidratação.
+  const [route, setRoute] = useState("/");
+  const [paginaResolvida, setPaginaResolvida] = useState(false);
+  useEffect(() => {
+    setRoute(paginaInicialEditor());
+    setPaginaResolvida(true);
+  }, []);
   const [buscaPagina, setBuscaPagina] = useState("");
   const gruposPaginas = Array.from(new Set(ROTAS_CATALOGO.map((r) => r.grupo)));
   const paginasFiltradas = ROTAS_CATALOGO.filter(
@@ -1495,7 +1502,7 @@ export function VisualPageEditor() {
                 transform: `scale(${scale})`,
               }}
             >
-              <iframe
+              {paginaResolvida && <iframe
                 key={`${route}-${device}`}
                 ref={iframeRef}
                 src={`${route}${route.includes("?") ? "&" : "?"}visual_editor=1`}
@@ -1503,7 +1510,7 @@ export function VisualPageEditor() {
                 title={`Editor de ${route}`}
                 className="h-full w-full border-0 bg-white"
                 style={{ width: frameWidth }}
-              />
+              />}
             </div>
           </div>
           <p className="mt-4 text-center text-xs text-slate-600">
