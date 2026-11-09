@@ -23,7 +23,7 @@ type Props = {
  * clinic_sites / clinic_site_drafts e não depende de acesso administrativo.
  */
 export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "alvorada" }: Props) {
-  const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate);
+  const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate === "prestige" ? "signatura" : initialTemplate);
   const preset = clinicSitePresets[modelo];
   const configDeDemonstracao = useMemo<ClinicSiteConfig>(() => ({
     ...config,
