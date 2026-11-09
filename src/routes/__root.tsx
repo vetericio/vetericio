@@ -95,11 +95,15 @@ function enderecoDeRecuperacao() {
   return "/atualizar.html?next=" + encodeURIComponent(destino);
 }
 
-async function recarregarVersaoAtual(_forcar = false) {
+async function recarregarVersaoAtual(forcar = false) {
   if (typeof window === "undefined" || recargaVersaoEmAndamento) return;
+  // Sem este limite, um arquivo ausente faz a página entrar em loop infinito:
+  // tela de erro -> atualizar.html -> mesmo erro -> atualizar.html.
+  // Uma nova tentativa continua disponível pelo botão "Recarregar sistema".
+  if (!forcar && new URLSearchParams(window.location.search).has("oricse_module_retry")) return;
   recargaVersaoEmAndamento = true;
-  // Esta página é estática: funciona mesmo quando o bundle atual não consegue
-  // iniciar e remove o cache antigo antes de voltar ao endereço solicitado.
+  // Reabre o HTML atual e limpa apenas os caches antigos do app;
+  // sessão, credenciais e dados clínicos não são removidos.
   window.location.replace(enderecoDeRecuperacao());
 }
 
@@ -262,6 +266,8 @@ function RootComponent() {
       const slug = slugDaRota(location.pathname);
       const host = hostDaPagina();
       const hostDaPlataforma =
+        host === "oricse.com.br" ||
+        host === "app.oricse.com.br" ||
         host === "oricse.com" ||
         host === "www.oricse.com" ||
         host === "localhost" ||
@@ -616,6 +622,8 @@ function RootComponent() {
         ? event.reason
         : (event as Event & { payload?: unknown }).payload ?? event;
       if (event.type !== "vite:preloadError" && !ERRO_MODULO.test(mensagemDeErro(motivo))) return;
+      // Após uma recuperação, preservar a tela de erro em vez de reiniciar indefinidamente.
+      if (new URLSearchParams(window.location.search).has("oricse_module_retry")) return;
       event.preventDefault?.();
       void recarregarVersaoAtual();
     };

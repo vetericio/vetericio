@@ -14,6 +14,26 @@ export type DriveJournal = { v: 1; timestamp: string; operationId: string; chang
 type Requester = (url: string, init?: RequestInit) => Promise<Response>;
 const MAX_PAGE_SIZE = 1000;
 
+/**
+ * O journal contém JSON desserializado a cada leitura. Object.is compara
+ * referências, então dois objetos equivalentes pareciam sempre conflitantes.
+ * Compare os valores JSON estruturalmente, sem ignorar alterações reais.
+ */
+export function sameJournalValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) &&
+      a.length === b.length && a.every((value, index) => sameJournalValue(value, b[index]));
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length &&
+    keys.every((key) => Object.prototype.hasOwnProperty.call(right, key) &&
+      sameJournalValue(left[key], right[key]));
+}
+
 export function applyJournal(initial: any[], journals: DriveJournal[]): any[] {
   const byId = new Map<string, any>();
   for (const row of initial) if (row?.id != null) byId.set(String(row.id), { ...row });
@@ -32,7 +52,7 @@ export function applyJournal(initial: any[], journals: DriveJournal[]): any[] {
           // replace a value that another writer changed after its read.
           for (const [field, oldValue] of Object.entries(change.expected || {})) {
             if (field === "updated_at") continue;
-            if (!Object.is(previous[field], oldValue) && !Object.is(previous[field], change.data?.[field])) {
+            if (!sameJournalValue(previous[field], oldValue) && !sameJournalValue(previous[field], change.data?.[field])) {
               const conflict = new Error(`Conflito de edição no registro ${id}, campo ${field}. Recarregue antes de continuar.`);
               Object.assign(conflict, { code: "DRIVE_CONFLICT", recordId: id, field });
               throw conflict;

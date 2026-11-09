@@ -68,16 +68,30 @@ async function taxaOricse(clinicaId: string, valorCentavos: number) {
   const percentual = global?.ativo ? Number(global.oricse_percentual || 0) : 0;
   return Math.max(0, Math.round(valorCentavos * percentual / 100));
 }
-async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, slug: string, access: string) {
+async function validarSlugClinica(clinicaId: string, slug: string): Promise<void> {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Endereço da clínica inválido.");
+  const { data, error } = await service.from("clinicas").select("slug").eq("id",clinicaId).single();
+  if (error || data?.slug !== slug) throw new Error("Endereço não corresponde à clínica do tutor.");
+}
+async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, slug: string, access: string, req: Request) {
+  // Retornar ao mesmo host onde o tutor iniciou o pagamento, quando esse host
+  // pertence à própria clínica. Isso preserva a sessão após o checkout.
+  const hostEsperado = `${slug}.oricse.com.br`;
+  const entrada = origemPermitidaParaCors(req);
+  const hostEntrada = entrada ? new URL(entrada).hostname : "";
+  const retorno = entrada && (
+    hostEntrada === hostEsperado ||
+    ["oricse.com.br","app.oricse.com.br","www.oricse.com.br"].includes(hostEntrada)
+  ) ? entrada : origin;
   const marketplaceFee = Number(pagamento.estimativa_oricse_centavos || 0) / 100;
   const body = {
     items: [{ id: pagamento.id, title: titulo, quantity: 1, currency_id: "BRL", unit_price: Number(pagamento.bruto_centavos) / 100 }],
     external_reference: "portal:" + pagamento.id,
     marketplace_fee: marketplaceFee > 0 ? marketplaceFee : undefined,
     back_urls: {
-      success: origin + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=sucesso",
-      pending: origin + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=pendente",
-      failure: origin + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=falha",
+      success: retorno + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=sucesso",
+      pending: retorno + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=pendente",
+      failure: retorno + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=falha",
     },
     auto_return: "approved",
     notification_url: url + "/functions/v1/oricse-portal-pagamentos?action=webhook&referencia=portal:" + pagamento.id,
@@ -101,6 +115,7 @@ async function reservaAgenda(req: Request, body: any) {
   const animalId = String(body?.animal_id || "");
   const inicio = String(body?.inicio || "");
   const slug = String(body?.slug || "");
+  await validarSlugClinica(tutor.clinicaId, slug);
   if (!/^[a-f0-9-]{36}$/i.test(agendaId) || !/^[a-f0-9-]{36}$/i.test(animalId) || !inicio || !slug) throw new Error("Dados do agendamento inválidos.");
   const connection = await conexaoClinica(clinicaId);
   const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: "Bearer " + token } } });
@@ -118,12 +133,13 @@ async function reservaAgenda(req: Request, body: any) {
   }).select("*").single();
   if (paymentError || !pagamento) throw new Error("Não foi possível iniciar o pagamento.");
   await service.from("oricse_agendamentos_online").update({ pagamento_id: pagamento.id }).eq("id", reserva.agendamento_id);
-  return { checkout_url: await criarCheckout(pagamento, String(reserva.descricao || "Agendamento online"), clinicaId, slug, connection.token) };
+  return { checkout_url: await criarCheckout(pagamento, String(reserva.descricao || "Agendamento online"), clinicaId, slug, connection.token, req) };
 }
 async function checkoutComanda(req: Request, body: any) {
   const tutor = await tutorAtual(req);
   const id = String(body?.comanda_id || "");
   const slug = String(body?.slug || "");
+  await validarSlugClinica(tutor.clinicaId, slug);
   if (!/^[a-f0-9-]{36}$/i.test(id) || !slug) throw new Error("Comanda inválida.");
   const connection = await conexaoClinica(tutor.clinicaId);
   const { data: comanda, error } = await service.from("oricse_portal_comandas")
@@ -140,7 +156,7 @@ async function checkoutComanda(req: Request, body: any) {
     status: "criado", taxas_snapshot: { origem: "portal_tutor", comissao_oricse_centavos: comissao, adiantamento: valor < saldo },
   }).select("*").single();
   if (paymentError || !pagamento) throw new Error("Não foi possível iniciar o pagamento.");
-  return { checkout_url: await criarCheckout(pagamento, "Comanda #" + String(comanda.numero).padStart(5, "0"), tutor.clinicaId, slug, connection.token) };
+  return { checkout_url: await criarCheckout(pagamento, "Comanda #" + String(comanda.numero).padStart(5, "0"), tutor.clinicaId, slug, connection.token, req) };
 }
 async function processWebhook(req: Request) {
   const notification = await req.json();
@@ -176,7 +192,34 @@ async function processWebhook(req: Request) {
   return reply({ ok: true });
 }
 
-Deno.serve(async (req: Request) => {
+// Ajusta somente os cabeçalhos CORS das origens oficiais e subdomínios ORICSE.
+// Não altera os retornos de checkout, webhooks nem o processamento de pagamentos.
+function origemPermitidaParaCors(req: Request): string | null {
+  const origem = req.headers.get("origin") || "";
+  if (!origem) return null;
+  const adicional = Deno.env.get("ORICSE_APP_ORIGIN") || "";
+  if (["https://oricse.com.br","https://app.oricse.com.br",
+       "https://www.oricse.com.br","https://oricse.vetericio.workers.dev",adicional].includes(origem)) return origem;
+  try {
+    const u = new URL(origem);
+    if (u.protocol === "https:" && !u.port && u.origin === origem &&
+        /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.oricse\.com\.br$/.test(u.hostname))
+      return origem;
+  } catch {}
+  return null;
+}
+function comCorsDoDominio(req: Request, resposta: Response): Response {
+  const origem = origemPermitidaParaCors(req);
+  if (!origem) return resposta;
+  const cabecalhos = new Headers(resposta.headers);
+  cabecalhos.set("Access-Control-Allow-Origin", origem);
+  cabecalhos.set("Vary", "Origin");
+  cabecalhos.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version");
+  cabecalhos.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  return new Response(resposta.body, {status:resposta.status,statusText:resposta.statusText,headers:cabecalhos});
+}
+
+async function processarRequisicao(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return reply({ error: "Método não permitido" }, 405);
   try {
@@ -192,4 +235,5 @@ Deno.serve(async (req: Request) => {
     console.error("Portal pagamentos", error instanceof Error ? error.message : "erro");
     return reply({ error: error instanceof Error ? error.message : "Não foi possível processar o pagamento." }, 400);
   }
-});
+}
+Deno.serve(async(req: Request) => comCorsDoDominio(req, await processarRequisicao(req)));
