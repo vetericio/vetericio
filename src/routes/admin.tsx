@@ -1282,7 +1282,7 @@ function Admin() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
         <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Assinaturas</p><p className="mt-2 text-3xl font-black">{pagas}</p><p className="text-sm text-muted-foreground">conta(s) ativa(s) e em dia · {canceladas} cancelada(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Ver situações de conta</button></Card>
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
+        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("site")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
       </div>
     </div>;
   };
@@ -1955,6 +1955,22 @@ function Admin() {
   // Gestão unificada: catálogo, editor visual, URLs, marca e logo em uma área.
   const renderSite = () => <div className="space-y-5">
     {renderPaginas()}
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold">Sites e domínios das clínicas</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Selecione uma clínica para editar seu site, subdomínio, domínio próprio e publicação.</p>
+        </div>
+        <label className="text-sm font-semibold">Clínica
+          <select value={selecionada?.id || ""} onChange={e => setSelecionada(clinicas.find(c => c.id === e.target.value) || null)}
+            className="mt-1 block min-h-11 w-full min-w-[220px] rounded-xl border bg-white px-3 text-sm">
+            <option value="">Selecionar clínica</option>
+            {clinicas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </label>
+      </div>
+    </Card>
+    {selecionada && renderSiteDominiosClinica()}
     <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card>
 </div>;
 
