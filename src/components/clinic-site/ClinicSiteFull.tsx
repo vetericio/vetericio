@@ -24,6 +24,12 @@ import {
 
 type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string };
 const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.trim() : "");
+const safeTeamPhoto = (input: string) => {
+  const value = safeHttps(input);
+  if (value) return value;
+  const local = input.trim();
+  return /^\/clinic-site\/[a-z0-9/_-]+\.(?:webp|png|jpe?g)$/i.test(local) ? local : "";
+};
 const waNumber = (input: string) => input.replace(/\D/g, "");
 const realUrl = (value: string) => {
   const valueTrimmed = value.trim();
@@ -367,7 +373,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
                 className={"overflow-hidden border " + ink + " " + panels}
               >
                 <div className="flex aspect-[4/3] items-center justify-center bg-[var(--site-secondary)]">
-                  <FotoPublicaDoProfissional url={safeHttps(person.imageUrl)} nome={person.name} />
+                  <FotoPublicaDoProfissional url={safeTeamPhoto(person.imageUrl)} nome={person.name} />
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold">{person.name}</h3>
