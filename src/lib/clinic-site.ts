@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const clinicSiteTemplates = [
-  "signatura",
   "prestige",
   "atelier",
   "cuidado",
@@ -11,20 +10,18 @@ export const clinicSiteTemplates = [
 ] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
 export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
-  signatura: "Signature",
-  prestige: "Élan",
+  prestige: "Signature",
   atelier: "Prime",
   cuidado: "Class",
   popular: "King",
   essencial: "Essencial",
-  horizonte: "Pleno",
+  horizonte: "Horizonte",
 };
 export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
-  signatura: "Hospitalar, editorial e acolhedor.",
   prestige: "Editorial, exclusivo e sofisticado.",
-  atelier: "Hospitalar, técnico e acolhedor.",
-  cuidado: "Colorido, descontraído e cheio de personalidade.",
-  popular: "Autoral, editorial e impossível de ignorar.",
+  atelier: "Moderno, claro e alto padrão.",
+  cuidado: "Acolhedor e confiável.",
+  popular: "Direto, comercial e urgente.",
   essencial: "Leve, objetivo e mobile-first.",
   horizonte: "Orgânico, natureza e bem-estar animal.",
 };
@@ -143,12 +140,6 @@ export const clinicSitePresets: Record<
     textColor: string;
   }
 > = {
-  signatura: {
-    primaryColor: "#C47E3F",
-    secondaryColor: "#E9DFC9",
-    backgroundColor: "#F7F4EE",
-    textColor: "#173D35",
-  },
   prestige: {
     primaryColor: "#C9A86A",
     secondaryColor: "#29423C",
@@ -156,22 +147,22 @@ export const clinicSitePresets: Record<
     textColor: "#F6F1E7",
   },
   atelier: {
-    primaryColor: "#0E5CA8",
-    secondaryColor: "#EAF4FC",
-    backgroundColor: "#FFFFFF",
-    textColor: "#123049",
+    primaryColor: "#73523C",
+    secondaryColor: "#E4D5C6",
+    backgroundColor: "#F7F1EB",
+    textColor: "#322920",
   },
   cuidado: {
-    primaryColor: "#F05D43",
-    secondaryColor: "#DDF3E9",
-    backgroundColor: "#FFF8ED",
-    textColor: "#182752",
+    primaryColor: "#307760",
+    secondaryColor: "#D7E8DE",
+    backgroundColor: "#F2F8F4",
+    textColor: "#1E4036",
   },
   popular: {
-    primaryColor: "#B7183E",
-    secondaryColor: "#101526",
-    backgroundColor: "#F2EBE1",
-    textColor: "#101526",
+    primaryColor: "#B33C34",
+    secondaryColor: "#FFE297",
+    backgroundColor: "#FFFDF8",
+    textColor: "#322523",
   },
   essencial: {
     primaryColor: "#263C54",
@@ -253,42 +244,17 @@ export const prestigeDefault: ClinicSiteConfig = {
   hiddenSections: [],
 };
 
-/**
- * Retifica os links de visualização antigos do Google Drive sem obrigar a
- * clínica a reenviar as imagens já cadastradas.
- */
-export function normalizeClinicMediaUrl(value: unknown): string {
-  if (typeof value !== "string") return "";
-  const input = value.trim();
-  try {
-    const url = new URL(input);
-    const googleDrive = url.protocol === "https:" &&
-      (url.hostname === "drive.google.com" || url.hostname === "www.drive.google.com");
-    if (googleDrive && (url.pathname === "/uc" || url.pathname === "/open")) {
-      const fileId = url.searchParams.get("id") || "";
-      if (/^[a-zA-Z0-9_-]{12,160}$/.test(fileId))
-        return `https://oricse.com.br/api/public/clinic-image?file=${encodeURIComponent(fileId)}`;
-    }
-  } catch {
-    return "";
-  }
-  return /^https:\/\//i.test(input) ? input : "";
-}
-
 export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
   const candidate = value && typeof value === "object" ? (value as Partial<ClinicSiteConfig>) : {};
   return {
     ...prestigeDefault,
     ...candidate,
-    logoUrl: normalizeClinicMediaUrl(candidate.logoUrl),
-    heroImageUrl: normalizeClinicMediaUrl(candidate.heroImageUrl),
     services: Array.isArray(candidate.services)
       ? candidate.services.filter((item): item is string => typeof item === "string").slice(0, 24)
       : prestigeDefault.services,
     galleryUrls: Array.isArray(candidate.galleryUrls)
       ? candidate.galleryUrls
-          .map(normalizeClinicMediaUrl)
-          .filter((url) => Boolean(url))
+          .filter((v): v is string => typeof v === "string" && /^https:\/\//i.test(v))
           .slice(0, 12)
       : [],
     team: Array.isArray(candidate.team)
@@ -302,9 +268,6 @@ export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
             ),
           )
           .slice(0, 20)
-          .map((person) => ({
-            ...person, imageUrl: normalizeClinicMediaUrl(person.imageUrl),
-          }))
       : [],
     faqItems: Array.isArray(candidate.faqItems)
       ? candidate.faqItems

@@ -1,67 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
 import { PortalFooter } from "@/components/PortalFooter";
-import { ArrowLeft, Bell, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, Menu, PawPrint, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, Menu, PawPrint, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
-import { loadPublicClinicSite } from "@/lib/public-clinic-site";
-import { clinicSitePresets, clinicSiteTemplates, normalizeClinicSiteConfig, type ClinicSiteTemplate } from "@/lib/clinic-site";
 
-export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorRoute });
-
-function PortalTutorRoute() {
-  const { slug } = Route.useParams();
-  return <PortalTutorClinica slugDaClinica={slug} />;
-}
+export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorClinica });
 
 type ClinicaPublica={nome:string;slug:string;logo_url:string|null};
-type CoresPortal={primaryColor:string;secondaryColor:string;backgroundColor:string;textColor:string};
-type TemaPortal={modelo:ClinicSiteTemplate;cores:CoresPortal};
-function estiloTemaPortal(tema:TemaPortal|null):CSSProperties|undefined{
-  if(!tema)return undefined;
-  return {
-    "--portal-primary":tema.cores.primaryColor,
-    "--portal-secondary":tema.cores.secondaryColor,
-    "--portal-bg":tema.cores.backgroundColor,
-    "--portal-ink":tema.cores.textColor,
-  } as CSSProperties;
-}
-
-/** Identidade única do Portal do Tutor em todos os sete modelos de site. */
-function PortalTutorBrandHeader({
-  nome, logo, slug, subtitulo, acoes,
-}:{
-  nome:string; logo:string|null|undefined; slug:string; subtitulo?:string; acoes?:ReactNode;
-}){
-  const enderecoSite=slug==="alvorada" ? "https://alvorada.oricse.com.br/" : `/c/${encodeURIComponent(slug)}`;
-  return <header className="portal-premium-header">
-    <div className="portal-premium-topline">
-      <div className="portal-premium-topline-inner">
-        <span className="portal-premium-eyebrow"><span className="portal-premium-live-dot"/> EXPERIÊNCIA EXCLUSIVA PARA TUTORES</span>
-        <a href={enderecoSite} className="portal-premium-back">← Voltar ao site da clínica</a>
-      </div>
-    </div>
-    <div className="portal-premium-brandbar">
-      <div className="portal-premium-clinic-lockup">
-        {logo ? <img className="portal-premium-clinic-logo" src={logo} alt={`Logo ${nome}`}/> : <span className="portal-premium-fallback-name">{nome}</span>}
-      </div>
-      <span className="portal-premium-brand-divider" aria-hidden="true"/>
-      <div className="portal-premium-product">
-        <img
-          className="portal-premium-product-logo"
-          src="/portal-do-tutor.svg"
-          alt="Portal do Tutor — Seu pet, sua clínica, sempre perto."
-        />
-        <p className="portal-premium-brand-subtitle">{subtitulo||"Tudo sobre o seu pet, em um só lugar."}</p>
-      </div>
-      {acoes && <div className="portal-premium-header-actions">{acoes}</div>}
-    </div>
-  </header>;
-}
-
 type Contexto={clinica_id:string;clinica_nome:string;clinica_slug:string;clinica_logo_url:string|null;tutor_id:string;tutor_nome:string;tutor_telefone:string|null;tutor_email:string|null;usuario:string};
 type Animal={id:string;nome:string;especie:string;raca:string;sexo:string;nascimento:string|null;peso_kg:number|null;foto_url:string|null};
 type Vacina={id:string;animal_id:string;nome:string;aplicada_em:string|null;reforco_em:string|null;lote:string|null;observacoes:string|null};
@@ -85,47 +34,19 @@ function dinheiro(v:number){return Number(v||0).toLocaleString("pt-BR",{style:"c
 function emoji(especie?:string){const e=(especie||"").toLowerCase();if(e.includes("cão")||e.includes("cao")||e.includes("canin"))return"🐶";if(e.includes("gat")||e.includes("felin"))return"🐱";if(e.includes("ave"))return"🐦";return"🐾";}
 function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?"Aguardando aprovação":v==="reservado"?"Reservado":v;}
 
-export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
-  const slug=slugDaClinica;
+export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string}={}){
+  const params=Route.useParams();
+  const slug=slugDaClinica??(params as {slug?:string}).slug??"";
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string;canais_contato?:CanaisClinica}>({});
-  const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [temaPortal,setTemaPortal]=useState<TemaPortal|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);
+  const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);
   const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
   const [animais,setAnimais]=useState<Animal[]>([]);const [animalId,setAnimalId]=useState("");const [secao,setSecao]=useState<Secao>("resumo");const [vacinas,setVacinas]=useState<Vacina[]>([]);const [vermifugos,setVermifugos]=useState<Vermifugo[]>([]);const [exames,setExames]=useState<Exame[]>([]);const [documentos,setDocumentos]=useState<Documento[]>([]);const [receitas,setReceitas]=useState<Receita[]>([]);const [agendas,setAgendas]=useState<Agenda[]>([]);const [agendamentos,setAgendamentos]=useState<Agendamento[]>([]);const [comandas,setComandas]=useState<Comanda[]>([]);
   const [agendaId,setAgendaId]=useState("");const [pagando,setPagando]=useState<string|null>(null);const [adiantamentos,setAdiantamentos]=useState<Record<string,string>>({});const [dataAgenda,setDataAgenda]=useState(amanha);const [horarios,setHorarios]=useState<Horario[]>([]);const [horario,setHorario]=useState("");const [obs,setObs]=useState("");const [carregandoHorarios,setCarregandoHorarios]=useState(false);const [agendando,setAgendando]=useState(false);const [baixando,setBaixando]=useState<string|null>(null);
   const [telefone,setTelefone]=useState("");const [email,setEmail]=useState("");const [salvandoPerfil,setSalvandoPerfil]=useState(false);const [maisAberto,setMaisAberto]=useState(false);
 
   useEffect(()=>{if(typeof window==="undefined")return;const hash=new URLSearchParams(location.hash.replace(/^#/,""));const query=new URLSearchParams(location.search);const t=hash.get("ativar")||query.get("ativar")||"";const u=hash.get("usuario")||query.get("usuario")||"";const secaoLink=query.get("secao");const animalLink=query.get("animal");if(t){setToken(t);setModoAtivar(true);}if(query.get("recuperar")==="1"){setModoRecuperar(true);setModoAtivar(false);}if(u)setUsuario(u);if(secaoLink&&["resumo","agenda","documentos","exames","receitas","vacinas","vermifugos","comanda","perfil"].includes(secaoLink))setSecao(secaoLink as Secao);if(animalLink)setAnimalId(animalLink);},[]);
-  useEffect(()=>{let vivo=true;setCarregandoClinica(true);void(async()=>{
-    // O site e o portal compartilham exatamente a mesma fonte de identidade.
-    // O modelo escolhido na vitrine é transmitido explicitamente por URL,
-    // sem depender de cookies, do referer ou de dados de outra clínica.
-    const [clinicaResp,site] = await Promise.all([
-      (supabaseBanco as any).rpc("oricse_clinica_publica_portal",{p_slug:slug}),
-      loadPublicClinicSite(slug).catch(error=>{console.warn("Tema público indisponível:",error);return null;}),
-    ]);
-    if(!vivo)return;
-    const registro=Array.isArray(clinicaResp.data)?clinicaResp.data[0]:null;
-    if(!clinicaResp.error&&registro?.clinica_id&&registro?.clinica_slug===slug)
-      setClinica({nome:registro.clinica_nome,slug:registro.clinica_slug,logo_url:registro.clinica_logo_url||null});
-    else setClinica(null);
-
-    const publicado=site&&clinicSiteTemplates.includes(site.template as ClinicSiteTemplate)
-      ? site.template as ClinicSiteTemplate : "essencial";
-    const solicitado=typeof window!=="undefined" ? new URLSearchParams(window.location.search).get("modelo") : null;
-    const modelo=slug==="alvorada"&&clinicSiteTemplates.includes(solicitado as ClinicSiteTemplate)
-      ? solicitado as ClinicSiteTemplate : publicado;
-    const configuracao=site?normalizeClinicSiteConfig(site.config):null;
-    const cores:CoresPortal=slug==="alvorada"||!configuracao
-      ? clinicSitePresets[modelo]
-      : {
-          primaryColor:configuracao.primaryColor,secondaryColor:configuracao.secondaryColor,
-          backgroundColor:configuracao.backgroundColor,textColor:configuracao.textColor,
-        };
-    setTemaPortal({modelo,cores});
-    setCarregandoClinica(false);
-  })().catch(error=>{console.error("Não foi possível carregar o Portal do Tutor:",error);if(vivo){setClinica(null);setCarregandoClinica(false);}});
-  return()=>{vivo=false};},[slug]);
+  useEffect(()=>{let vivo=true;setCarregandoClinica(true);void(async()=>{const{data,error}=await supabase.functions.invoke("oricse-portal-public-context",{body:{slug}});if(!vivo)return;if(!error&&data?.ok&&data.clinica)setClinica(data.clinica as ClinicaPublica);else setClinica(null);setCarregandoClinica(false);})();return()=>{vivo=false};},[slug]);
 
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_config_publica",{p_slug:slug});if(ativo&&data)setPortalConfig(data);})();return()=>{ativo=false};},[slug]);
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_extras_publicas",{p_slug:slug});if(ativo&&data)setExtrasPublicos(data);})();return()=>{ativo=false};},[slug]);
@@ -167,18 +88,9 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   async function abrirArquivo(id:string,tipo:TipoArquivo){const chave=`${tipo}:${id}`;setBaixando(chave);try{const{data:sessao}=await supabase.auth.getSession();const accessToken=sessao.session?.access_token;if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente.");const arquivo=await baixarDocumentoPortal({data:{accessToken,documentoId:id,tipo}});const binario=atob(arquivo.base64);const bytes=new Uint8Array(binario.length);for(let i=0;i<binario.length;i++)bytes[i]=binario.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));const aba=window.open(url,"_blank","noopener,noreferrer");if(!aba){const link=document.createElement("a");link.href=url;link.download=arquivo.nome;link.click();}setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o arquivo.");}finally{setBaixando(null);}}
 
   if(carregandoClinica)return <TelaCarregando/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
-  if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
+  if(!contexto)return <Login clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
 
-  return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]" data-site-template={temaPortal?.modelo} style={estiloTemaPortal(temaPortal)}><PortalTutorBrandHeader
-  nome={portalConfig.nome_exibicao||contexto.clinica_nome}
-  logo={portalConfig.logo_clinica_url||contexto.clinica_logo_url||portalConfig.logo_cabecalho_url}
-  slug={slug}
-  subtitulo={portalConfig.subtitulo_cabecalho}
-  acoes={<div className="flex shrink-0 items-center gap-2">
-    <button onClick={()=>toast.info("Você está em dia com as notificações.")} aria-label="Notificações" className="portal-premium-action-circle"><Bell size={19}/></button>
-    <button onClick={()=>navegar("perfil")} aria-label="Abrir meu perfil" className="portal-premium-profile-circle">{contexto.tutor_nome.charAt(0).toUpperCase()}</button>
-  </div>}
-/><div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{extrasPublicos.opcoes?.mostrar_banner!==false&&Boolean(extrasPublicos.opcoes?.banner_titulo)&&<section className="mb-4 rounded-2xl border p-6" style={{backgroundColor:/^#[0-9a-fA-F]{6}$/.test(String(extrasPublicos.opcoes.cor_destaque||""))?String(extrasPublicos.opcoes.cor_destaque)+"20":"#e5f4ef"}}><h2 className="text-xl font-black">{String(extrasPublicos.opcoes.banner_titulo)}</h2><p className="mt-1">{String(extrasPublicos.opcoes.banner_subtitulo||"")}</p>{/^https:\/\//.test(String(extrasPublicos.opcoes.banner_link||""))&&<a className="mt-3 inline-block rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-white" href={String(extrasPublicos.opcoes.banner_link)} target="_blank" rel="noopener noreferrer">Saiba mais</a>}</section>}{extrasPublicos.opcoes?.mostrar_promocoes!==false&&Boolean(extrasPublicos.promocoes?.length)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="mb-3 font-bold">Promoções da clínica</h2><div className="grid gap-3 sm:grid-cols-2">{(extrasPublicos.promocoes||[]).map((p,i)=><div key={i} className="rounded-lg border p-3"><strong>{p.titulo}</strong><p className="text-sm">{p.descricao}</p><p className="mt-1 text-sm font-semibold">{p.desconto_percentual}% de desconto{p.cupom?" · Cupom: "+p.cupom:""}</p></div>)}</div></section>}{extrasPublicos.opcoes?.mostrar_avisos!==false&&Boolean(extrasPublicos.opcoes?.aviso_importante)&&<section className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><h2 className="font-bold">Aviso da clínica</h2><p className="text-sm">{String(extrasPublicos.opcoes.aviso_importante)}</p></section>}{extrasPublicos.opcoes?.mostrar_servico!==false&&Boolean(extrasPublicos.opcoes?.destaque_servico)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="font-bold">Serviço em destaque</h2><p className="text-sm">{String(extrasPublicos.opcoes.destaque_servico)}</p></section>}{Boolean(extrasPublicos.opcoes?.chamada_promocional)&&<p className="mb-4 rounded-lg bg-emerald-50 p-3 text-center font-semibold text-emerald-900">{String(extrasPublicos.opcoes.chamada_promocional)}</p>}{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{Boolean(extrasPublicos.opcoes?.politica_cancelamento)&&<p className="mb-3 rounded-lg border bg-white p-3 text-sm text-slate-700"><strong>Política de cancelamento: </strong>{String(extrasPublicos.opcoes.politica_cancelamento)}</p>}{(portalConfig.mensagem_boas_vindas||portalConfig.telefone_publico||portalConfig.whatsapp_publico)&&<div className="mb-4 rounded-xl border bg-white p-4"><p className="font-bold">{portalConfig.mensagem_boas_vindas}</p>{portalConfig.instrucoes_agendamento&&<p className="mt-1 text-sm text-slate-600">{portalConfig.instrucoes_agendamento}</p>}{(portalConfig.telefone_publico||portalConfig.whatsapp_publico)&&<p className="mt-2 text-xs text-slate-500">Contato: {extrasPublicos.opcoes?.mostrar_contato!==false?portalConfig.telefone_publico:""}{extrasPublicos.opcoes?.mostrar_whatsapp!==false&&portalConfig.whatsapp_publico&&" · WhatsApp: "+portalConfig.whatsapp_publico}</p>}</div>}
+  return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]"><header className="border-b bg-white"><div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4"><div className="flex min-w-0 items-center gap-3">{(portalConfig.logo_cabecalho_url||"/oricse-logo-oryx.svg?v=15")&&<img src={portalConfig.logo_cabecalho_url||"/oricse-logo-oryx.svg?v=15"} alt="Marca do Portal do Tutor" className="h-16 w-16 shrink-0 object-contain sm:h-20 sm:w-20"/>}<div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-wider text-[#702a43]">{portalConfig.titulo_cabecalho||"PORTAL DO TUTOR"}</p><div className="flex min-w-0 items-center gap-2">{(portalConfig.logo_clinica_url||contexto.clinica_logo_url)&&<img src={portalConfig.logo_clinica_url||contexto.clinica_logo_url||""} alt="Logo da clínica" className="h-8 w-8 shrink-0 rounded-lg object-contain"/>}<h1 className="truncate font-bold">{portalConfig.nome_exibicao||contexto.clinica_nome}</h1></div><p className="hidden text-xs text-slate-500 sm:block">{portalConfig.subtitulo_cabecalho||"Acompanhe seus pets, agende serviços e acesse documentos em um só lugar."}</p></div></div><div className="flex shrink-0 items-center gap-2"><button onClick={()=>toast.info("Você está em dia com as notificações.")} aria-label="Notificações" className="relative flex h-11 w-11 items-center justify-center rounded-xl text-[#702a43] hover:bg-[#f8e9ee]"><Bell size={20}/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#f5bd90]"/></button><button onClick={()=>navegar("perfil")} aria-label="Abrir meu perfil" className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dcb8bd] font-bold text-[#351e2b]">{contexto.tutor_nome.charAt(0).toUpperCase()}</button></div></div></header><div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{extrasPublicos.opcoes?.mostrar_banner!==false&&Boolean(extrasPublicos.opcoes?.banner_titulo)&&<section className="mb-4 rounded-2xl border p-6" style={{backgroundColor:/^#[0-9a-fA-F]{6}$/.test(String(extrasPublicos.opcoes.cor_destaque||""))?String(extrasPublicos.opcoes.cor_destaque)+"20":"#e5f4ef"}}><h2 className="text-xl font-black">{String(extrasPublicos.opcoes.banner_titulo)}</h2><p className="mt-1">{String(extrasPublicos.opcoes.banner_subtitulo||"")}</p>{/^https:\/\//.test(String(extrasPublicos.opcoes.banner_link||""))&&<a className="mt-3 inline-block rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-white" href={String(extrasPublicos.opcoes.banner_link)} target="_blank" rel="noopener noreferrer">Saiba mais</a>}</section>}{extrasPublicos.opcoes?.mostrar_promocoes!==false&&Boolean(extrasPublicos.promocoes?.length)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="mb-3 font-bold">Promoções da clínica</h2><div className="grid gap-3 sm:grid-cols-2">{(extrasPublicos.promocoes||[]).map((p,i)=><div key={i} className="rounded-lg border p-3"><strong>{p.titulo}</strong><p className="text-sm">{p.descricao}</p><p className="mt-1 text-sm font-semibold">{p.desconto_percentual}% de desconto{p.cupom?" · Cupom: "+p.cupom:""}</p></div>)}</div></section>}{extrasPublicos.opcoes?.mostrar_avisos!==false&&Boolean(extrasPublicos.opcoes?.aviso_importante)&&<section className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><h2 className="font-bold">Aviso da clínica</h2><p className="text-sm">{String(extrasPublicos.opcoes.aviso_importante)}</p></section>}{extrasPublicos.opcoes?.mostrar_servico!==false&&Boolean(extrasPublicos.opcoes?.destaque_servico)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="font-bold">Serviço em destaque</h2><p className="text-sm">{String(extrasPublicos.opcoes.destaque_servico)}</p></section>}{Boolean(extrasPublicos.opcoes?.chamada_promocional)&&<p className="mb-4 rounded-lg bg-emerald-50 p-3 text-center font-semibold text-emerald-900">{String(extrasPublicos.opcoes.chamada_promocional)}</p>}{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{Boolean(extrasPublicos.opcoes?.politica_cancelamento)&&<p className="mb-3 rounded-lg border bg-white p-3 text-sm text-slate-700"><strong>Política de cancelamento: </strong>{String(extrasPublicos.opcoes.politica_cancelamento)}</p>}{(portalConfig.mensagem_boas_vindas||portalConfig.telefone_publico||portalConfig.whatsapp_publico)&&<div className="mb-4 rounded-xl border bg-white p-4"><p className="font-bold">{portalConfig.mensagem_boas_vindas}</p>{portalConfig.instrucoes_agendamento&&<p className="mt-1 text-sm text-slate-600">{portalConfig.instrucoes_agendamento}</p>}{(portalConfig.telefone_publico||portalConfig.whatsapp_publico)&&<p className="mt-2 text-xs text-slate-500">Contato: {extrasPublicos.opcoes?.mostrar_contato!==false?portalConfig.telefone_publico:""}{extrasPublicos.opcoes?.mostrar_whatsapp!==false&&portalConfig.whatsapp_publico&&" · WhatsApp: "+portalConfig.whatsapp_publico}</p>}</div>}
   {secao==="contato"?<div className="mx-auto max-w-3xl"><PortalClinicContact canais={portalConfig.canais_contato||{}}/></div>:secao==="perfil"?<section className="mx-auto max-w-2xl rounded-2xl bg-white p-6"><button onClick={()=>navegar("resumo")} className="text-sm font-bold text-[#702a43]">← Voltar</button><div className="mt-5 flex items-center gap-3"><UserRound/><div><h2 className="text-2xl font-black">Meu perfil</h2><p className="text-sm text-slate-500">{contexto.usuario}</p></div></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><Campo rotulo="Telefone" valor={telefone} onChange={setTelefone}/><Campo rotulo="E-mail" valor={email} onChange={setEmail} type="email"/></div><div className="mt-5 flex flex-wrap gap-2"><button disabled={salvandoPerfil} onClick={salvarPerfil} className="min-h-11 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-50">{salvandoPerfil?"Salvando...":"Salvar"}</button><button onClick={sair} className="min-h-11 rounded-xl border border-[#e9dfdc] bg-white px-5 py-3 text-sm font-bold text-[#702a43]">Sair</button></div></section>:!animais.length?<section className="rounded-2xl border bg-white p-8 text-center"><PawPrint className="mx-auto"/><h2 className="mt-3 text-xl font-bold">Nenhum animal vinculado</h2></section>:<><p className="text-sm text-[#6e6268]">Olá, {contexto.tutor_nome.split(" ")[0]}! 👋</p><h2 className="mt-1 text-3xl font-black">Meus animais</h2><section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f8e9ee] p-4 text-[#4a2534]"><div><p className="font-bold">Acompanhe os próximos cuidados</p><p className="text-sm text-[#795866]">Confira vacinas, exames e horários disponíveis.</p></div><button onClick={()=>navegar("vacinas")} className="min-h-11 rounded-xl bg-white px-4 text-sm font-bold text-[#702a43]">Ver saúde</button></section><div className="mt-5 flex gap-3 overflow-x-auto pb-2">{animais.map(a=><button key={a.id} onClick={()=>{setAnimalId(a.id);if(!["documentos","exames","receitas","vacinas","vermifugos"].includes(secao))navegar("resumo")}} className={`min-w-[210px] rounded-2xl border bg-white p-4 text-left ${a.id===animalId?"border-[#702a43] ring-2 ring-[#5f7e9b]/10":""}`}><div className="flex items-center gap-3"><span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-2xl">{a.foto_url?<img src={a.foto_url} alt="" className="h-full w-full rounded-full object-cover"/>:emoji(a.especie)}</span><span><strong className="block">{a.nome}</strong><small className="text-slate-500">{a.especie||"Animal"}</small></span></div></button>)}</div>
   {animal&&<div className="mt-5 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]"><aside className="self-start rounded-2xl border bg-white p-4"><div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#f9f2ee] p-4">{(portalConfig.logo_clinica_url||contexto.clinica_logo_url)?<img src={portalConfig.logo_clinica_url||contexto.clinica_logo_url||""} alt="Logo da clínica" className="h-14 w-14 shrink-0 rounded-xl object-contain"/>:<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white text-[#702a43]"><PawPrint size={24}/></div>}<div className="min-w-0 font-bold leading-snug">{portalConfig.nome_exibicao||contexto.clinica_nome}</div></div><div className="text-center"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl">{emoji(animal.especie)}</div><h3 className="mt-2 text-xl font-black">{animal.nome}</h3><p className="text-xs text-slate-500">{[animal.especie,animal.sexo,animal.raca].filter(Boolean).join(" · ")}</p></div><nav className="mt-5 space-y-1">{([ ["resumo","Visão geral",PawPrint],["agenda","Agenda",CalendarDays],["documentos","Documentos",FileText],["exames","Exames",FlaskConical],["receitas","Receitas",ReceiptText],["vacinas","Cartão de vacinas",HeartPulse],["vermifugos","Vermífugos",ShieldCheck],["comanda","Comandas",ReceiptText],["contato","Fale com a Clínica",UserRound] ] as const).filter(([id])=>(id!=="agenda"||portalConfig.exibir_agendamento!==false)&&(id!=="documentos"||portalConfig.exibir_documentos!==false)).map(([id,nome,Icon])=><button key={id} onClick={()=>navegar(id)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold ${secao===id?"bg-[#702a43] text-white":"hover:bg-slate-50"}`}><Icon size={16}/>{nome}</button>)}</nav></aside><section>{secao==="resumo"&&<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{portalConfig.exibir_agendamento!==false&&<Resumo titulo="Agenda" valor={`${marcacoesAnimal.length} registro(s)`} Icon={CalendarDays} onClick={()=>navegar("agenda")}/>}{portalConfig.exibir_documentos!==false&&<Resumo titulo="Documentos" valor={`${docsAnimal.length} disponível(is)`} Icon={FileText} onClick={()=>navegar("documentos")}/>}<Resumo titulo="Exames" valor={`${examesAnimal.length} registro(s)`} Icon={FlaskConical} onClick={()=>navegar("exames")}/><Resumo titulo="Receitas" valor={`${receitasAnimal.length} disponível(is)`} Icon={ReceiptText} onClick={()=>navegar("receitas")}/><Resumo titulo="Cartão de vacinas" valor={`${vacinasAnimal.length} registro(s)`} Icon={HeartPulse} onClick={()=>navegar("vacinas")}/><Resumo titulo="Vermífugos" valor={`${vermifugosAnimal.length} registro(s)`} Icon={ShieldCheck} onClick={()=>navegar("vermifugos")}/><Resumo titulo="Comandas" valor={`${comandasAnimal.length} registro(s)`} Icon={ReceiptText} onClick={()=>navegar("comanda")}/></div>}
   {secao==="resumo"&&<div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -201,7 +113,6 @@ function Resumo({titulo,valor,Icon,onClick}:{titulo:string;valor:string;Icon:typ
 function Lista({titulo,vazio,children}:{titulo:string;vazio:string;children:React.ReactNode}){const tem=Array.isArray(children)?children.length>0:Boolean(children);return <section className="rounded-2xl border bg-white p-5"><h3 className="text-xl font-black">{titulo}</h3><div className="mt-4 space-y-2">{tem?children:<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">{vazio}</p>}</div></section>}
 function BotaoArquivo({id,tipo,baixando,onAbrir,rotulo="Abrir arquivo"}:{id:string;tipo:TipoArquivo;baixando:string|null;onAbrir:(id:string,tipo:TipoArquivo)=>Promise<void>;rotulo?:string}){const chave=`${tipo}:${id}`;return <button disabled={baixando===chave} onClick={()=>void onAbrir(id,tipo)} className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold text-[#702a43] disabled:opacity-50">{baixando===chave?<Loader2 size={14} className="animate-spin"/>:<Download size={14}/>} {rotulo}</button>}
 function Login(props:{
-  tema:TemaPortal|null;
   clinica:ClinicaPublica;
   extras:{opcoes?:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>};
   portalConfig:{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string};
@@ -216,63 +127,23 @@ function Login(props:{
   login:boolean;ativando:boolean;recuperando:boolean;
 }){
   const p=props;
-  const clinicName=p.portalConfig.nome_exibicao||p.clinica.nome;
-  const clinicLogo=p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url;
-  const clinicSite=p.clinica.slug==="alvorada"
-    ? "https://alvorada.oricse.com.br/"
-    : `/c/${encodeURIComponent(p.clinica.slug)}`;
-  const acessoEstendido=p.modoAtivar||p.modoRecuperar;
-  return <main className="portal-tutor-live portal-tutor-login-screen" data-site-template={p.tema?.modelo}
-    data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>
-    <div className="portal-login-topbar">
-      <a className="portal-login-back-link" href={clinicSite}><ArrowLeft size={17}/> Retornar para o site da clínica</a>
-      <span className="portal-login-top-caption"><span className="portal-premium-live-dot"/> ÁREA EXCLUSIVA PARA TUTORES</span>
-    </div>
-    <div className="portal-one-screen-grid">
-      <div className="portal-one-screen-left">
-        <section className="portal-one-screen-brand" aria-label="Clínica e Portal do Tutor">
-          <div className="portal-one-screen-logo-white">
-            {clinicLogo
-              ? <img src={clinicLogo} alt={`Logo ${clinicName}`} className="portal-one-screen-clinic-logo"/>
-              : <strong className="portal-one-screen-fallback">{clinicName}</strong>}
-          </div>
-          <div className="portal-one-screen-product-name">
-            <div className="portal-one-screen-product-signature">
-              <h1 className="sr-only">Portal do Tutor</h1>
-              <img
-                src="/portal-do-tutor-marca-limpa-cortada.png"
-                alt="Portal do Tutor — tudo do seu pet em um só lugar, e bem organizado."
-                className="portal-one-screen-product-logo"
-              />
-            </div>
-          </div>
-        </section>
-        <section className="portal-one-screen-about" aria-label="O que você encontra aqui">
-          <div className="portal-one-screen-about-overline"><HeartPulse size={16}/> CUIDADO EM CADA DETALHE</div>
-          <h2>O cuidado com seu pet, <em>sempre por perto.</em></h2>
-          <p className="portal-one-screen-description">
-            Agende atendimentos, consulte documentos e acompanhe a saúde do seu pet em um único lugar.
-          </p>
-          <div className="portal-one-screen-features">
-            <div><span><CalendarDays size={20}/></span><strong>Agendamentos</strong></div>
-            <div><span><FileText size={20}/></span><strong>Documentos</strong></div>
-            <div><span><HeartPulse size={20}/></span><strong>Saúde do pet</strong></div>
-          </div>
-          <p className="portal-one-screen-welcome"><PawPrint size={17}/> {p.portalConfig.mensagem_boas_vindas||"Bem-vindo ao Portal do Tutor!"}</p>
-        </section>
+  return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]">
+    <header className="border-b bg-white">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-5">
+        {(p.portalConfig.logo_clinica_url||p.clinica.logo_url)?<img src={p.portalConfig.logo_clinica_url||p.clinica.logo_url||""} alt="Logo da clínica" className="h-20 w-20 shrink-0 object-contain sm:h-24 sm:w-24"/>:<span className="rounded-xl bg-slate-100 p-3"><PawPrint/></span>}
+        <div><p className="text-xs font-bold uppercase tracking-wider text-[#702a43]">{p.portalConfig.titulo_cabecalho||"PORTAL DO TUTOR"}</p><h1 className="text-xl font-bold">{p.portalConfig.nome_exibicao||p.clinica.nome}</h1><p className="text-xs text-slate-500">{p.portalConfig.subtitulo_cabecalho||"Acompanhe seus pets, agende serviços e acesse documentos em um só lugar."}</p></div>
       </div>
-      <section className="portal-one-screen-login-panel" aria-label="Acesso ao Portal do Tutor">
-        <div className="portal-one-screen-login-heading">
-          <span className="portal-one-screen-auth-mark"><LockKeyhole size={22}/></span>
-          <div>
-            <span className="portal-one-screen-auth-eyebrow">ACESSO PRIVATIVO</span>
-            <h2>{p.modoRecuperar?"Recuperar acesso":p.modoAtivar?"Ativar primeiro acesso":"Acesso do tutor"}</h2>
-          </div>
-        </div>
-        <p className="portal-one-screen-login-lead">Suas informações e os cuidados com seu pet, em segurança.</p>
-        <div className="portal-one-screen-form">
+    </header>
+    <div className="mx-auto grid max-w-5xl gap-7 px-5 py-10 lg:grid-cols-[1.15fr_1fr]">
+      <section>
+        <h2 className="text-3xl font-black">{p.extras.opcoes?.mostrar_banner!==false&&p.extras.opcoes?.banner_titulo?String(p.extras.opcoes.banner_titulo):"Seus animais e cuidados em um só lugar."}</h2>
+        <p className="mt-3 text-slate-600">{p.extras.opcoes?.mostrar_banner!==false&&p.extras.opcoes?.banner_subtitulo?String(p.extras.opcoes.banner_subtitulo):"Acesse seus animais, documentos, exames, receitas, vacinas, agenda e comandas liberadas pela clínica."}</p>
+        {p.portalConfig.mensagem_boas_vindas&&<p className="mt-4 rounded-xl border bg-white p-3 text-sm">{p.portalConfig.mensagem_boas_vindas}</p>}
+        {p.extras.opcoes?.mostrar_promocoes!==false&&Boolean(p.extras.promocoes?.length)&&<div className="mt-5 space-y-3"><h3 className="font-bold">Promoções da clínica</h3>{(p.extras.promocoes||[]).map((item,i)=><article key={i} className="rounded-xl border bg-white p-4"><strong>{item.titulo}</strong><p className="text-sm text-slate-600">{item.descricao}</p><p className="text-sm font-bold">{item.desconto_percentual}% de desconto{item.cupom?" · Cupom "+item.cupom:""}</p></article>)}</div>}
+      </section>
+      <section className="bg-white p-5 sm:rounded-2xl sm:border sm:p-6">
         {p.modoRecuperar ? (
-          <><p className="text-sm text-slate-500">Confirme seus dados e reconheça um pet vinculado a esta clínica.</p>
+          <><div className="flex gap-2"><ShieldCheck/><div><h2 className="text-xl font-bold">Redefinir senha</h2><p className="text-sm text-slate-500">Confirme seus dados e reconheça um pet vinculado a esta clínica.</p></div></div>
           {!p.desafioRecuperacao ? (
             <form onSubmit={p.iniciarRecuperacao} className="mt-5 space-y-4">
               <Campo rotulo="CPF" valor={p.cpfRecuperacao} onChange={p.setCpfRecuperacao} inputMode="numeric" placeholder="Somente números"/>
@@ -290,12 +161,10 @@ function Login(props:{
           )}
           <button onClick={p.voltarRecuperacao} className="mt-4 w-full text-sm font-bold text-[#702a43]">Voltar para o acesso</button></>
         ) : p.modoAtivar ? (
-          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken}/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
+          <><div className="flex gap-2"><ShieldCheck/><h2 className="text-xl font-bold">Ativar primeiro acesso</h2></div><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken}/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
         ) : (
-          <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button disabled={p.login} className="portal-one-screen-submit w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
+          <><div className="flex gap-2"><LockKeyhole/><h2 className="text-xl font-bold">Acesso do tutor</h2></div><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button disabled={p.login} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
-        </div>
-        <p className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
       </section>
     </div>
   </main>;

@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import { RockDecoracao } from "@/components/RockDecoracao";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
-import { PortalFooter } from "@/components/PortalFooter";
 import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
@@ -34,7 +33,6 @@ import {
 import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { isPlatformHostname } from "@/lib/public-clinic-site";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -199,7 +197,6 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
   const navigate = useNavigate();
-  const dominioPublicoDaClinica = location.pathname === "/" && Boolean(hostDaPagina()) && !isPlatformHostname(hostDaPagina());
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [acessoTeste, setAcessoTeste] = useState<any>(null);
@@ -463,9 +460,8 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
-      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/portaldotutor"].includes(location.pathname) ||
+      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
-      /^\/c\/[^/]+\/?$/.test(location.pathname) ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin") ||
     (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
@@ -475,7 +471,7 @@ function RootComponent() {
       autenticado &&
       (location.pathname === "/login" ||
         location.pathname.startsWith("/vet/") ||
-        (portal && location.pathname === "/" && !dominioPublicoDaClinica))
+        (portal && location.pathname === "/"))
     ) {
       if (role === "admin") navigate({ to: "/inicio" });
       else if (slugClinicaAtual && location.pathname.startsWith("/vet/"))
@@ -491,7 +487,6 @@ function RootComponent() {
     slugClinicaAtual,
     portal,
     location.pathname,
-    dominioPublicoDaClinica,
     navigate,
   ]);
 
@@ -642,8 +637,8 @@ function RootComponent() {
       void navigator.serviceWorker
         .getRegistration("/")
         .then((registro) => {
-          if (registro && !registro.active?.scriptURL.includes("sw.js?v=17"))
-            return navigator.serviceWorker.register("/sw.js?v=17", { scope: "/" });
+          if (registro && !registro.active?.scriptURL.includes("sw.js?v=16"))
+            return navigator.serviceWorker.register("/sw.js?v=16", { scope: "/" });
           return undefined;
         })
         .catch(() => undefined);
@@ -659,7 +654,6 @@ function RootComponent() {
   const rotaPublica =
     ["/", "/login", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
-    /^\/c\/[^/]+\/?$/.test(location.pathname) ||
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
@@ -683,29 +677,6 @@ function RootComponent() {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
-        <PortalFooter />
-        <Toaster position="top-center" />
-      </QueryClientProvider>
-    );
-  }
-
-  // O subdomínio público abre a vitrine na própria raiz, sem entrar no app ORICSE.
-  if (dominioPublicoDaClinica) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <PortalFooter />
-      </QueryClientProvider>
-    );
-  }
-
-  // Os sites de clínicas são páginas públicas autônomas, sem navegação ou
-  // personalizações do sistema de gestão.
-  if (/^\/c\/[^/]+\/?$/.test(location.pathname)) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <PortalFooter />
         <Toaster position="top-center" />
       </QueryClientProvider>
     );
@@ -718,7 +689,6 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <Suspense fallback={null}><VisualPageRuntime /></Suspense>
         <Outlet />
-        <PortalFooter />
       </QueryClientProvider>
     );
   }
@@ -837,9 +807,11 @@ function RootComponent() {
             <Outlet />
           </div>
         )}
-        <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
-          {mostrarClinico ? <Rodape /> : <PortalFooter />}
-        </div>
+        {mostrarClinico && (
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
+            <Rodape />
+          </div>
+        )}
         <Toaster position="top-center" />
       </TenantContext.Provider>
       </ClinicasAtivasContext.Provider>

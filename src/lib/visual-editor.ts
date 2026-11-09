@@ -19,11 +19,6 @@ export type VisualStyle = {
   opacity?: number;
   borderRadius?: number;
   zIndex?: number;
-  /** Recorte não destrutivo da imagem: porcentagem de cada lado (0 a 95). */
-  cropTop?: number;
-  cropRight?: number;
-  cropBottom?: number;
-  cropLeft?: number;
 };
 
 export type VisualPatch = {
@@ -124,15 +119,6 @@ export function applyVisualStyle(element: HTMLElement, style: VisualStyle, indep
   if (style.opacity != null) element.style.opacity = String(style.opacity);
   if (style.borderRadius != null) element.style.borderRadius = `${Math.max(0, style.borderRadius)}px`;
   if (style.zIndex != null) { element.style.position = element.style.position || "relative"; element.style.zIndex = String(style.zIndex); }
-  if (element.tagName === "IMG") {
-    const { cropTop = 0, cropRight = 0, cropBottom = 0, cropLeft = 0 } = style;
-    // clip-path preserva o arquivo original, o zoom e o recorte por dispositivo.
-    if (!("oricseOriginalClip" in element.dataset))
-      element.dataset.oricseOriginalClip = element.style.clipPath;
-    if ([cropTop,cropRight,cropBottom,cropLeft].some((v) => v > 0))
-      element.style.clipPath = `inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%)`;
-    else element.style.clipPath = element.dataset.oricseOriginalClip || "";
-  }
 }
 
 export function validImageSource(src: string) {
@@ -140,18 +126,8 @@ export function validImageSource(src: string) {
 }
 
 export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
-  // Reaproveitar nós existentes é importante durante arrasto e recorte:
-  // recriar o IMG a cada pixel disparava novo carregamento da imagem e fazia
-  // o contorno variar até a foto terminar de carregar.
-  const existing = new Map<string, HTMLElement>();
-  doc.querySelectorAll(`[${VISUAL_NODE_ATTR}]`).forEach((node) => {
-    const id = node.getAttribute(VISUAL_NODE_ATTR);
-    if (id) existing.set(id, node as HTMLElement);
-  });
-  if (!layout) {
-    existing.forEach((node) => node.remove());
-    return;
-  }
+  doc.querySelectorAll(`[${VISUAL_NODE_ATTR}]`).forEach((node) => node.remove());
+  if (!layout) return;
   for (const patch of layout.patches) {
     let element: HTMLElement | null = null;
     try { element = doc.querySelector(patch.selector) as HTMLElement | null; } catch { continue; }
@@ -165,13 +141,7 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
   const host = (doc.querySelector("main") || doc.body) as HTMLElement;
   if (getComputedStyle(host).position === "static") host.style.position = "relative";
   for (const item of layout.added) {
-    const previous = existing.get(item.id);
-    existing.delete(item.id);
-    const tag = item.kind === "image" ? "IMG" : "DIV";
-    const reusable = previous && previous.tagName === tag;
-    if (previous && !reusable) previous.remove();
-    const node = reusable ? previous! : item.kind === "image"
-      ? doc.createElement("img") : doc.createElement("div");
+    const node = item.kind === "image" ? doc.createElement("img") : doc.createElement("div");
     node.setAttribute(VISUAL_NODE_ATTR, item.id);
     node.setAttribute("data-visual-id", item.id);
     node.style.position = "absolute";
@@ -181,14 +151,12 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
     if (item.kind === "image") {
       const image = node as HTMLImageElement;
       image.alt = item.text || "Imagem adicionada";
-      const src = item.src && validImageSource(item.src) ? item.src : "";
-      if (image.getAttribute("src") !== src) image.src = src;
+      image.src = item.src && validImageSource(item.src) ? item.src : "";
       image.style.objectFit = "contain";
-    } else if (node.textContent !== (item.text || "Novo texto")) node.textContent = item.text || "Novo texto";
+    } else node.textContent = item.text || "Novo texto";
     applyVisualStyle(node, item.style || {});
-    if (node.parentElement !== host) host.appendChild(node);
+    host.appendChild(node);
   }
-  existing.forEach((node) => node.remove());
 }
 
 export function cloneVisual<T>(value: T): T {

@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import {
   BadgeDollarSign, Building2, ClipboardCheck, CreditCard, Gauge, Globe2,
   ImageUp, LayoutDashboard, Menu, PanelsTopLeft, Settings, ShieldCheck,
-  Trash2, X, PanelLeftOpen, PanelLeftClose,
+  Trash2, X,
 } from "lucide-react";
 
 export type AdminAba =
@@ -30,7 +30,8 @@ const ITENS: Item[] = [
   { id: "oricstudio-plataforma", nome: "Meu OricStúdio", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio" },
   { id: "oricstudio", nome: "OricStúdio Geral", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/admin-oricstudio" },
   { id: "conteudo", nome: "Conteúdo público", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", rota: "/admin-conteudo" },
-  { id: "site", nome: "Marca, páginas e URLs", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", aba: "site" },
+  { id: "site", nome: "Marca, sites e domínios", Icone: PanelsTopLeft, grupo: "Produto e conteúdo", aba: "site" },
+  { id: "paginas", nome: "Páginas e URLs", Icone: Globe2, grupo: "Produto e conteúdo", aba: "paginas" },
   { id: "auditoria", nome: "Controle e auditoria", Icone: ShieldCheck, grupo: "Controle", aba: "auditoria" },
   { id: "sistema", nome: "Sistema e integrações", Icone: Settings, grupo: "Controle", aba: "sistema" },
 ];
@@ -49,9 +50,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [aba, setAba] = useState<AdminAba>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
-  // O Canvas precisa priorizar a área de edição. Não altera outros módulos.
-  const noCanvas = location.pathname === "/admin-canvas";
-  const [menuCanvasCompacto, setMenuCanvasCompacto] = useState(true);
 
   useEffect(() => {
     setMenuAberto(false);
@@ -110,48 +108,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
     </nav>
   );
 
-  const navegacaoCanvasCompacta = (
-    <nav aria-label="Navegação administrativa compacta" className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overscroll-contain pb-5">
-      {ITENS.map((item) => {
-        const Icone = item.Icone;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => abrir(item)}
-            title={item.nome}
-            aria-label={item.nome}
-            aria-current={ativo(item) ? "page" : undefined}
-            className={"flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition " + (
-              ativo(item) ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"
-            )}
-          >
-            <Icone size={19} />
-          </button>
-        );
-      })}
-    </nav>
-  );
-
   return (
     <AdminNavigationContext.Provider value={{ aba, setAba }}>
       <div className="min-h-[100dvh] bg-[#f6f4ef] text-slate-900">
-        <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-white pt-3 shadow-sm lg:flex ${noCanvas ? (menuCanvasCompacto ? "w-[64px] px-2" : "w-[240px] px-3") : "w-[280px] px-3"}`}>
-          {noCanvas && (
-            <button
-              type="button"
-              onClick={() => setMenuCanvasCompacto((compacto) => !compacto)}
-              title={menuCanvasCompacto ? "Expandir menu administrativo" : "Recolher menu administrativo"}
-              aria-label={menuCanvasCompacto ? "Expandir menu administrativo" : "Recolher menu administrativo"}
-              aria-expanded={!menuCanvasCompacto}
-              className={`mb-3 flex h-10 items-center justify-center gap-2 rounded-xl border text-sm font-semibold hover:bg-slate-50 ${menuCanvasCompacto ? "w-10" : "w-full"}`}
-            >
-              {menuCanvasCompacto ? <PanelLeftOpen size={19} /> : <><PanelLeftClose size={19} /> Recolher menu</>}
-            </button>
-          )}
-          {noCanvas && menuCanvasCompacto ? navegacaoCanvasCompacta : navegacao}
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r bg-white px-3 pt-4 shadow-sm lg:flex">
+          {navegacao}
         </aside>
-        <div className={noCanvas ? (menuCanvasCompacto ? "lg:pl-[64px]" : "lg:pl-[240px]") : "lg:pl-[280px]"}>
+        <div className="lg:pl-[280px]">
           <header className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
             <button type="button" onClick={() => setMenuAberto(true)} aria-label="Abrir menu da administração" aria-expanded={menuAberto} className="flex h-11 w-11 items-center justify-center rounded-xl border">
               <Menu size={22} />

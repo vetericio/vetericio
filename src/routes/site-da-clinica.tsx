@@ -47,28 +47,6 @@ import {
 
 export const Route = createFileRoute("/site-da-clinica")({ component: SiteDaClinica });
 
-function FotoDoProfissional({ url, nome }: { url: string; nome: string }) {
-  const [erro, setErro] = useState(false);
-  useEffect(() => setErro(false), [url]);
-  if (erro) {
-    return (
-      <div className="flex h-28 w-36 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed bg-muted/40 px-2 text-center text-xs text-muted-foreground">
-        <ImagePlus size={22} aria-hidden="true" />
-        Foto indisponível. Envie novamente.
-      </div>
-    );
-  }
-  return (
-    <img
-      src={url}
-      alt={nome}
-      loading="lazy"
-      onError={() => setErro(true)}
-      className="h-28 w-28 rounded-xl object-cover"
-    />
-  );
-}
-
 type Tab =
   "modelos" | "conteudo" | "midia" | "cores" | "secoes" | "equipe" | "duvidas" | "historico";
 type SavedVersion = {
@@ -595,7 +573,7 @@ export function SiteDaClinica({
               {tab === "modelos" && (
                 <>
                   <div>
-                    <h2 className="text-lg font-extrabold">Escolha entre sete sites</h2>
+                    <h2 className="text-lg font-extrabold">Escolha entre seis sites</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Cada modelo inclui página inicial, serviços, apresentação, fotos, equipe e
                       contato.
@@ -887,7 +865,11 @@ export function SiteDaClinica({
                     <div key={index} className="space-y-3 rounded-xl border p-3">
                       <strong className="text-sm">Profissional {index + 1}</strong>
                       {person.imageUrl && (
-                        <FotoDoProfissional url={person.imageUrl} nome={person.name} />
+                        <img
+                          src={person.imageUrl}
+                          alt={person.name}
+                          className="h-28 w-28 rounded-xl object-cover"
+                        />
                       )}
                       {fileButton("Enviar foto", "team", index)}
                       <label className="block text-xs font-bold">

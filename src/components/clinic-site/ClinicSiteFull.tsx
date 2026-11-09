@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { useTenantContext } from "@/lib/tenant-context";
 import {
   clinicSiteSections,
   clinicSiteSectionLabels,
@@ -22,7 +21,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string };
+type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig };
 const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.trim() : "");
 const waNumber = (input: string) => input.replace(/\D/g, "");
 const realUrl = (value: string) => {
@@ -30,77 +29,37 @@ const realUrl = (value: string) => {
   return /^https:\/\/[^\s]+$/i.test(valueTrimmed) ? valueTrimmed : "";
 };
 
-function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string }) {
-  const [falhou, setFalhou] = useState(false);
-  useEffect(() => setFalhou(false), [url]);
-  if (!url || falhou) return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
-  return <img src={url} alt={nome} loading="lazy" onError={() => setFalhou(true)}
-    className="h-full w-full object-cover" />;
-}
-
-export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
-  const signatura = template === "signatura";
+export function ClinicSiteFull({ template, config }: Props) {
   const luxe = template === "prestige";
-  const prime = template === "atelier";
   const editorial = template === "atelier";
   const friendly = template === "cuidado";
   const bold = template === "popular";
-  const king = template === "popular";
   const minimal = template === "essencial";
   const organic = template === "horizonte";
-  const rounded = !luxe && !bold && !minimal && !prime;
+  const rounded = !luxe && !bold && !minimal;
   const buttonShape = luxe
     ? "rounded-none"
     : bold
       ? "rounded-md"
-      : prime
-        ? "rounded-full"
       : minimal
         ? "rounded-lg"
         : "rounded-full";
-  const headingFont = luxe || organic || signatura || king ? "font-serif" : "font-sans";
-  const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
-  const panels = signatura || prime ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
+  const headingFont = luxe || editorial || organic ? "font-serif" : "font-sans";
+  const sectionPad = minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
+  const panels = rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
-  // Todos os botões de agendamento levam diretamente ao Portal do Tutor da
-  // clínica, inclusive em domínios personalizados. O contexto autenticado não
-  // é necessário: a rota identifica a clínica pelo slug público.
-  const { portal: tenantPortal } = useTenantContext();
-  const caminhoAtual = typeof window === "undefined" ? "" : window.location.pathname;
-  const hostAtual = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
-  const routeSlug = caminhoAtual.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
-  const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
-  const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
-  const portalHref = publishedSlug
-    ? `/pet/${encodeURIComponent(publishedSlug)}/portal?secao=agenda&modelo=${encodeURIComponent(template)}`
-    : "";
-  const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
-  const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
-  const image =
-    safeHttps(config.heroImageUrl) ||
-    (prime
-      ? "/clinic-site/prime/hero.png"
-      : friendly
-        ? "/clinic-site/class/hero.png"
-        : king
-          ? "/clinic-site/king/hero.png"
-          : "");
-  const configuredGallery = config.galleryUrls.filter(safeHttps);
-  const gallery =
-    configuredGallery.length || (!prime && !friendly && !king)
-      ? configuredGallery
-      : prime
-        ? ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"]
-        : friendly
-          ? ["/clinic-site/class/consulta-colorida.png"]
-          : ["/clinic-site/king/gato-editorial.png"];
+  const externalBooking = realUrl(config.bookingUrl);
+  const actionHref =
+    externalBooking || (hasWhatsApp ? "https://wa.me/" + waNumber(config.whatsapp) : "#contato");
+  const image = safeHttps(config.heroImageUrl);
+  const gallery = config.galleryUrls.filter(safeHttps);
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
     : "";
   const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
   const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
-  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : prime ? "border-[#0E5CA8]/15" : friendly ? "border-[#F05D43]/20" : "border-current/15";
+  const ink = minimal ? "border-slate-200/80" : "border-current/15";
   const outer = luxe
     ? "bg-[var(--site-bg)] text-[var(--site-text)]"
     : bold
@@ -120,21 +79,19 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
       className="flex min-w-0 items-center gap-3"
     >
       {safeHttps(config.logoUrl) ? (
-        <img
-          src={config.logoUrl}
-          className="h-[72px] w-auto max-w-[min(48vw,240px)] object-contain object-left sm:max-w-[240px]"
-          alt={config.name}
-        />
+        <img src={config.logoUrl} className="h-11 max-w-36 object-contain" alt={config.name} />
       ) : (
-        <>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-current/20">
-            <PawPrint size={20} />
-          </span>
-          <span className={"max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " + headingFont}>
-            {config.name}
-          </span>
-        </>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-current/20">
+          <PawPrint size={20} />
+        </span>
       )}
+      <span
+        className={
+          "max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " + headingFont
+        }
+      >
+        {config.name}
+      </span>
     </a>
   );
   const action = (label: string, inverted = false) => (
@@ -146,7 +103,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
         (inverted ? " border border-current/30" : " bg-[var(--site-primary)] text-white")
       }
     >
-      <CalendarDays size={18} />{" "}
+      {hasWhatsApp && !externalBooking ? <MessageCircle size={18} /> : <CalendarDays size={18} />}{" "}
       {label} <ArrowRight size={16} />
     </a>
   );
@@ -158,10 +115,6 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           ? "rounded-t-[9rem] sm:rounded-t-[12rem]"
           : bold
             ? "rounded-xl"
-            : prime
-              ? "rounded-2xl"
-              : friendly
-                ? "rounded-[2.5rem]"
             : rounded
               ? "rounded-[2rem]"
               : "rounded-2xl")
@@ -184,13 +137,9 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           </span>
         </div>
       )}
-      {(luxe || organic || signatura || prime || friendly) && (
+      {(luxe || organic) && (
         <div className="pointer-events-none absolute bottom-5 left-5 rounded-xl border border-white/40 bg-black/40 px-5 py-3 text-xs font-semibold tracking-wide text-white backdrop-blur-md">
-          {prime
-            ? "Estrutura que acolhe, cuidado que acompanha"
-            : friendly
-              ? "Todo dia pode ser uma aventura boa"
-              : "Atenção em cada detalhe"}
+          Atenção em cada detalhe
         </div>
       )}
     </div>
@@ -220,11 +169,8 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
         className={"px-5 sm:px-8 " + sectionPad}
       >
         <div className="mx-auto max-w-7xl">
-          {heading(
-            king ? "Cuidado, em capítulos" : "O que fazemos",
-            king ? "Cada encontro muda a próxima página da história." : "Cuidado para cada fase da vida.",
-          )}
-          <div className={"mt-10 grid gap-4 " + (prime ? "sm:grid-cols-2 lg:grid-cols-4" : king || minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
+          {heading("O que fazemos", "Cuidado para cada fase da vida.")}
+          <div className={"mt-10 grid gap-4 " + (minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
             {config.services.map((service, index) => (
               <article
                 key={service + "-" + index}
@@ -233,19 +179,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
                   ink +
                   " " +
                   panels +
-                  (luxe
-                    ? " bg-white/[.04]"
-                    : signatura
-                      ? " bg-white shadow-[0_18px_45px_rgba(23,61,53,.08)]"
-                      : prime
-                        ? " bg-white shadow-[0_15px_34px_rgba(14,92,168,.08)]"
-                        : king
-                          ? index % 2
-                            ? " bg-[#B7183E] text-[#F2EBE1]"
-                            : " bg-[#101526] text-[#F2EBE1]"
-                          : bold
-                            ? " bg-[var(--site-secondary)]"
-                            : " bg-white/35")
+                  (luxe ? " bg-white/[.04]" : bold ? " bg-[var(--site-secondary)]" : " bg-white/35")
                 }
               >
                 <div
@@ -367,7 +301,16 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
                 className={"overflow-hidden border " + ink + " " + panels}
               >
                 <div className="flex aspect-[4/3] items-center justify-center bg-[var(--site-secondary)]">
-                  <FotoPublicaDoProfissional url={safeHttps(person.imageUrl)} nome={person.name} />
+                  {safeHttps(person.imageUrl) ? (
+                    <img
+                      src={person.imageUrl}
+                      alt={person.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <PawPrint className="opacity-35" size={50} />
+                  )}
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold">{person.name}</h3>
@@ -422,7 +365,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               Entre em contato para consultar serviços, horários e informações de atendimento.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action(actionLabel)}
+              {action(config.ctaLabel || "Agendar atendimento")}
               {config.phone ? (
                 <a
                   href={"tel:" + waNumber(config.phone)}
@@ -513,150 +456,21 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
     ),
   };
 
-  const primeHero = (
-    <section
-      id="inicio"
-      data-clinic-section="inicio"
-      className="relative isolate overflow-hidden bg-[#082D52] px-5 py-20 text-white sm:px-8 sm:py-28"
-    >
-      {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" /> : null}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,45,82,.98)_0%,rgba(8,45,82,.9)_38%,rgba(8,45,82,.28)_76%,rgba(8,45,82,.2)_100%)]" />
-      <div className="relative mx-auto max-w-7xl">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] backdrop-blur-sm">
-          <Clock3 size={15} /> Medicina veterinária 24 horas
-        </span>
-        <div className="mt-9 max-w-3xl">
-          <h1 className="max-w-3xl text-5xl font-black leading-[.95] tracking-[-.05em] sm:text-7xl">{config.slogan}</h1>
-          <p className="mt-7 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{config.description}</p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            {action(actionLabel)}
-            {config.services.length ? (
-              <a href="#servicos" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/45 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur-sm">
-                Ver especialidades <ArrowRight size={16} />
-              </a>
-            ) : null}
-          </div>
-        </div>
-        <div className="mt-12 grid max-w-4xl gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/10 text-sm font-semibold backdrop-blur-sm sm:grid-cols-3">
-          <span className="px-5 py-4"><ShieldCheck className="mb-2 text-sky-200" size={20} />Especialistas para cada necessidade</span>
-          <span className="border-y border-white/15 px-5 py-4 sm:border-x sm:border-y-0"><Heart className="mb-2 text-sky-200" size={20} />Acolhimento para toda a família</span>
-          <span className="px-5 py-4"><Clock3 className="mb-2 text-sky-200" size={20} />Prontos para cuidar, dia e noite</span>
-        </div>
-      </div>
-    </section>
-  );
-
-  const classHero = (
-    <section
-      id="inicio"
-      data-clinic-section="inicio"
-      className="relative isolate overflow-hidden bg-[#FFF8ED] px-5 py-10 sm:px-8 sm:py-14"
-    >
-      <div className="pointer-events-none absolute -left-14 top-10 h-40 w-40 rounded-full bg-[#FFCF52] blur-[1px]" />
-      <div className="pointer-events-none absolute right-[34%] top-8 h-12 w-12 rounded-full border-[9px] border-[#35A9A0]" />
-      <div className="pointer-events-none absolute -bottom-14 right-8 h-52 w-52 rounded-full bg-[#F05D43]" />
-      <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.92fr_1.08fr] md:items-center">
-        <div className="py-7 sm:py-12">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#182752] px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] text-white shadow-sm">
-            <Sparkles size={15} className="text-[#FFCF52]" /> Seu pet no melhor roteiro
-          </span>
-          <h1 className="mt-7 max-w-2xl text-5xl font-black leading-[.91] tracking-[-.055em] text-[#182752] sm:text-7xl">
-            {config.slogan}
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-8 text-[#182752]/75 sm:text-lg">
-            {config.description}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {action(actionLabel)}
-            {config.services.length ? (
-              <a
-                href="#servicos"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-[#182752] bg-white px-5 py-3 text-sm font-extrabold text-[#182752] transition hover:-translate-y-0.5"
-              >
-                Explorar cuidados <ArrowRight size={16} />
-              </a>
-            ) : null}
-          </div>
-          <div className="mt-10 flex flex-wrap gap-3 text-sm font-bold text-[#182752]">
-            <span className="rounded-full bg-white px-4 py-2 shadow-sm"><Heart className="mr-2 inline text-[#F05D43]" size={16} />Clima leve</span>
-            <span className="rounded-full bg-white px-4 py-2 shadow-sm"><PawPrint className="mr-2 inline text-[#35A9A0]" size={16} />Cuidado de verdade</span>
-          </div>
-        </div>
-        <div className="relative min-h-[360px] overflow-hidden rounded-[3rem] border-[10px] border-white bg-[#35A9A0] shadow-[0_24px_0_#182752] sm:min-h-[500px]">
-          {image ? <img src={image} alt="Momento feliz na clínica" className="absolute inset-0 h-full w-full object-cover" /> : null}
-          <div className="absolute left-5 top-5 rounded-full bg-[#FFCF52] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#182752] shadow-sm">
-            Partiu cuidar
-          </div>
-          <div className="absolute bottom-5 right-5 max-w-[12rem] rounded-3xl bg-[#182752] p-4 text-sm font-bold leading-5 text-white shadow-xl">
-            Saúde também pode ter sorriso e vento no focinho.
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-
-  const kingHero = (
-    <section
-      id="inicio"
-      data-clinic-section="inicio"
-      className="relative overflow-hidden bg-[#F2EBE1] px-5 py-10 text-[#101526] sm:px-8 sm:py-14"
-    >
-      <div className="pointer-events-none absolute -right-16 top-0 h-64 w-64 rounded-full border-[28px] border-[#B7183E]" />
-      <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.86fr_1.14fr] md:items-end">
-        <div className="relative z-10 py-7 sm:pb-16 sm:pt-10">
-          <span className="inline-flex items-center gap-2 border-b-2 border-[#B7183E] pb-2 text-xs font-black uppercase tracking-[.25em]">
-            <Sparkles size={14} className="text-[#B7183E]" /> Cuidado em estado de arte
-          </span>
-          <h1 className="mt-7 max-w-2xl font-serif text-6xl leading-[.84] tracking-[-.075em] sm:text-8xl">
-            {config.slogan}
-          </h1>
-          <p className="mt-8 max-w-lg text-base leading-8 text-[#101526]/75 sm:text-lg">
-            {config.description}
-          </p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            {action(actionLabel)}
-            {config.services.length ? (
-              <a
-                href="#servicos"
-                className="inline-flex min-h-12 items-center justify-center gap-2 border-b-2 border-[#101526] px-2 py-3 text-sm font-black transition hover:text-[#B7183E]"
-              >
-                Ver capítulos do cuidado <ArrowRight size={16} />
-              </a>
-            ) : null}
-          </div>
-          <div className="mt-12 grid max-w-lg grid-cols-2 gap-4 border-t border-[#101526]/25 pt-5 text-xs font-bold uppercase tracking-[.12em]">
-            <span><Heart className="mb-2 text-[#B7183E]" size={20} />Escuta antes de tudo</span>
-            <span><ShieldCheck className="mb-2 text-[#B7183E]" size={20} />Técnica com presença</span>
-          </div>
-        </div>
-        <div className="relative min-h-[390px] overflow-hidden border-[7px] border-[#101526] bg-[#B7183E] shadow-[18px_18px_0_#B7183E] sm:min-h-[560px]">
-          {image ? <img src={image} alt="Retrato da relação entre equipe e pet" className="absolute inset-0 h-full w-full object-cover" /> : null}
-          <span className="absolute bottom-0 left-0 bg-[#101526] px-5 py-3 text-xs font-black uppercase tracking-[.25em] text-[#F2EBE1]">
-            King · cuidado autoral
-          </span>
-          <span className="absolute right-5 top-5 rounded-full bg-[#F2EBE1] px-4 py-3 text-xs font-black uppercase tracking-[.16em] text-[#101526]">
-            01 / 01
-          </span>
-        </div>
-      </div>
-    </section>
-  );
-
   return (
     <main
       className={"min-h-screen w-full overflow-x-clip " + outer}
       style={style}
       data-clinic-template={template}
     >
-      {(bold || signatura || prime) && config.emergency24h ? (
+      {bold && config.emergency24h ? (
         <div className="bg-[var(--site-primary)] px-4 py-2 text-center text-xs font-black uppercase tracking-widest text-white">
-          Atendimento de emergência 24h · Cuidado contínuo para o seu pet
+          Atendimento de emergência 24h · Entre em contato
         </div>
       ) : null}
       <header
         className={
           "relative z-10 border-b border-current/10 " +
-          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : friendly ? "bg-[#FFF8ED]" : king ? "bg-[#101526] text-[#F2EBE1] border-white/15" : "")
+          (organic ? "bg-[var(--site-secondary)]" : "")
         }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
@@ -687,26 +501,25 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             }
           >
             <CalendarDays size={16} />{" "}
-            <span className="hidden sm:inline">Portal do Tutor</span>
-            <span className="sm:hidden">Portal do Tutor</span>
+            <span className="hidden sm:inline">{config.ctaLabel || "Agendar"}</span>
+            <span className="sm:hidden">Contato</span>
           </a>
         </div>
       </header>
 
-      {prime ? primeHero : friendly ? classHero : king ? kingHero : (
       <section
         id="inicio"
         data-clinic-section="inicio"
         className={
           "relative px-5 sm:px-8 " +
           (luxe ? "pb-16 pt-10 sm:pb-24" : "pb-16 pt-12 sm:pb-24") +
-          (bold || signatura ? " bg-[var(--site-secondary)]" : "")
+          (bold ? " bg-[var(--site-secondary)]" : "")
         }
       >
         <div
           className={
             "mx-auto grid max-w-7xl gap-10 md:items-center " +
-            (minimal || friendly || signatura
+            (minimal || friendly
               ? "md:grid-cols-[1fr_.85fr]"
               : organic
                 ? "md:grid-cols-[.95fr_1.05fr]"
@@ -734,7 +547,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               {config.description}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action(actionLabel)}
+              {action(config.ctaLabel || "Agendar atendimento")}
               {config.services.length ? (
                 <a
                   href="#servicos"
@@ -755,13 +568,11 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
                 <ShieldCheck size={17} className="text-[var(--site-primary)]" /> Orientação
                 profissional
               </span>
-              {signatura ? <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[var(--site-primary)]" /> Estrutura preparada para urgências</span> : null}
             </div>
           </div>
           <div className={editorial ? "md:order-1" : ""}>{imagePanel}</div>
         </div>
       </section>
-      )}
 
       {sectionOrder.map((section) => (visible(section) ? sections[section] : null))}
       <footer
