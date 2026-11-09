@@ -668,6 +668,25 @@ function RootComponent() {
     };
   }, []);
 
+  // Remova o marcador do endereço quando o editor/rota estiver carregado.
+  // A proteção de recuperação vale apenas durante a navegação problemática,
+  // e não para todas as próximas páginas visitadas pelo cliente.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("oricse_module_retry") && !params.has("oricse_build")) return;
+    // A espera permite que chunks da rota atual terminem de carregar antes
+    // de permitir outra recuperação, evitando a repetição imediata do erro.
+    const cleanup = window.setTimeout(() => {
+      if (document.querySelector("main, [data-oricse-page]")) {
+        const atual = new URL(window.location.href);
+        atual.searchParams.delete("oricse_module_retry");
+        atual.searchParams.delete("oricse_build");
+        window.history.replaceState(window.history.state, "", atual.pathname + atual.search + atual.hash);
+      }
+    }, 10000);
+    return () => window.clearTimeout(cleanup);
+  }, [location.pathname]);
+
   useEffect(() => {
     const recuperarModuloExpirado = (event: Event | PromiseRejectionEvent) => {
       const motivo = event instanceof PromiseRejectionEvent
