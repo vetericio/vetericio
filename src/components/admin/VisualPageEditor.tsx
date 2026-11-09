@@ -5,6 +5,8 @@ import {
   AlignRight,
   ArrowLeft,
   BringToFront,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Crop,
   Eye,
@@ -1318,10 +1320,14 @@ export function VisualPageEditor() {
       )}
 
       <div
-        className={`grid min-h-[calc(100vh-64px)] ${leftOpen && rightOpen ? "lg:grid-cols-[260px_minmax(0,1fr)_290px]" : leftOpen ? "lg:grid-cols-[260px_minmax(0,1fr)]" : rightOpen ? "lg:grid-cols-[minmax(0,1fr)_290px]" : "grid-cols-1"}`}
+        className="grid min-h-[calc(100vh-64px)] min-w-0"
+        style={{ gridTemplateColumns: `${leftOpen ? "260px" : "64px"} minmax(0,1fr) ${rightOpen ? "290px" : "64px"}` }}
       >
-        {leftOpen && (
-          <aside className="border-r bg-white p-3">
+        {leftOpen ? (
+          <aside className="min-w-0 border-r bg-white p-3">
+            <button type="button" onClick={() => setLeftOpen(false)} aria-label="Recolher menu de páginas e camadas" title="Recolher menu" className="mb-3 flex h-9 w-full items-center justify-end gap-2 rounded-lg border px-2 text-xs font-semibold hover:bg-slate-50">
+              Recolher <ChevronLeft size={17} />
+            </button>
             <div className="space-y-2">
               <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Páginas do ORICSE
@@ -1462,6 +1468,13 @@ export function VisualPageEditor() {
               </div>
             </div>
           </aside>
+        ) : (
+          <aside className="flex min-w-0 flex-col items-center gap-3 border-r bg-white px-1 py-3" aria-label="Menu de páginas e camadas recolhido">
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Expandir menu de páginas e camadas" title="Expandir menu" className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronRight size={20} /></button>
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Páginas do ORICSE" title="Páginas do ORICSE" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"><Layers3 size={20} /></button>
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Camadas" title="Camadas" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">C</button>
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Versões" title="Versões" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">V</button>
+          </aside>
         )}
 
         <section className="min-w-0 overflow-auto p-6">
@@ -1494,9 +1507,12 @@ export function VisualPageEditor() {
           </p>
         </section>
 
-        {rightOpen && (
-          <aside className="border-l bg-white p-4">
-            <h2 className="font-bold">Propriedades</h2>
+        {rightOpen ? (
+          <aside className="min-w-0 border-l bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-bold">Propriedades</h2>
+              <button type="button" onClick={() => setRightOpen(false)} aria-label="Recolher propriedades" title="Recolher propriedades" className="flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronRight size={18} /></button>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {selected.length
                 ? `${selected.length} elemento(s) selecionado(s)`
@@ -1735,6 +1751,12 @@ export function VisualPageEditor() {
                 </div>
               </div>
             )}
+          </aside>
+        ) : (
+          <aside className="flex min-w-0 flex-col items-center gap-3 border-l bg-white px-1 py-3" aria-label="Propriedades recolhidas">
+            <button type="button" onClick={() => setRightOpen(true)} aria-label="Expandir propriedades" title="Expandir propriedades" className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronLeft size={20} /></button>
+            <button type="button" onClick={() => setRightOpen(true)} aria-label="Propriedades do elemento" title="Propriedades do elemento" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"><Move size={19} /></button>
+            <button type="button" onClick={() => setRightOpen(true)} aria-label="Editar texto e imagem" title="Texto e imagem" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">T</button>
           </aside>
         )}
       </div>
