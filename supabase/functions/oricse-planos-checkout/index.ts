@@ -123,7 +123,34 @@ async function checkoutAssinatura(p: any, amount: number, nome: string, access: 
   return String(data.init_point);
 }
 
-Deno.serve(async (req: Request) => {
+// Ajusta somente os cabeçalhos CORS das origens oficiais e subdomínios ORICSE.
+// Não altera os retornos de checkout, webhooks nem o processamento de pagamentos.
+function origemPermitidaParaCors(req: Request): string | null {
+  const origem = req.headers.get("origin") || "";
+  if (!origem) return null;
+  const adicional = Deno.env.get("ORICSE_APP_ORIGIN") || "";
+  if (["https://oricse.com.br","https://app.oricse.com.br",
+       "https://www.oricse.com.br","https://oricse.vetericio.workers.dev",adicional].includes(origem)) return origem;
+  try {
+    const u = new URL(origem);
+    if (u.protocol === "https:" && !u.port && u.origin === origem &&
+        /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.oricse\.com\.br$/.test(u.hostname))
+      return origem;
+  } catch {}
+  return null;
+}
+function comCorsDoDominio(req: Request, resposta: Response): Response {
+  const origem = origemPermitidaParaCors(req);
+  if (!origem) return resposta;
+  const cabecalhos = new Headers(resposta.headers);
+  cabecalhos.set("Access-Control-Allow-Origin", origem);
+  cabecalhos.set("Vary", "Origin");
+  cabecalhos.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version");
+  cabecalhos.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  return new Response(resposta.body, {status:resposta.status,statusText:resposta.statusText,headers:cabecalhos});
+}
+
+async function processarRequisicao(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers });
   if (req.method !== "POST") return json({ error: "Método não permitido" }, 405);
   const action = new URL(req.url).searchParams.get("action");
@@ -189,4 +216,5 @@ Deno.serve(async (req: Request) => {
     }
   }
   return json({ error: "Ação desconhecida" }, 404);
-});
+}
+Deno.serve(async(req: Request) => comCorsDoDominio(req, await processarRequisicao(req)));
