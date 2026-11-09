@@ -111,16 +111,21 @@ function number(value: string, fallback = 0) {
 export function VisualPageEditor() {
   const { adminMenuRecolhido, alternarMenuAdmin } = useAdminNavigation();
   const [device, setDevice] = useState<VisualDevice>("desktop");
-  const [route, setRoute] = useState("/");
-  useEffect(() => {
-    const pagina = new URLSearchParams(window.location.search).get("pagina") || "/";
-    if (
-      ROTAS_CATALOGO.some(
-        (r) => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
-      )
-    )
-      setRoute(pagina);
-  }, []);
+  // Resolve o destino antes do primeiro desenho. Isso impede que o Canva
+  // carregue a home '/' quando o link recebido aponta para o login do tutor.
+  const paginaInicialEditor = () => {
+    if (typeof window === "undefined") return "/";
+    const params = new URLSearchParams(window.location.search);
+    const solicitado = params.get("pagina") || "/";
+    const loginPortal = solicitado.startsWith("/portal-tutores")
+      && (solicitado.includes("portal_login_preview=1")
+        || params.get("portal_login_preview") === "1");
+    const pagina = loginPortal ? "/portal-tutores?portal_login_preview=1" : solicitado;
+    return ROTAS_CATALOGO.some(
+      (r) => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
+    ) ? pagina : "/";
+  };
+  const [route, setRoute] = useState(paginaInicialEditor);
   const [buscaPagina, setBuscaPagina] = useState("");
   const gruposPaginas = Array.from(new Set(ROTAS_CATALOGO.map((r) => r.grupo)));
   const paginasFiltradas = ROTAS_CATALOGO.filter(
