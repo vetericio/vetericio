@@ -294,8 +294,27 @@ export function VisualPageEditor() {
     if (!doc) return;
     doc.querySelectorAll("[data-oricse-editor-overlay]").forEach((x) => x.remove());
     const elements = selectedElements();
-    for (const element of elements) {
+    const selectionBounds = (element: HTMLElement, item?: SelectedItem) => {
       const rect = element.getBoundingClientRect();
+      if (element.tagName !== "IMG" || !item) return rect;
+      const current = ensurePage(cloneVisual(documentRef.current), route)[device];
+      const layer = item.kind === "patch"
+        ? current.patches.find((p) => p.id === item.id)
+        : current.added.find((p) => p.id === item.id);
+      if (!layer) return rect;
+      const bounded = (value: unknown) => Math.max(0, Math.min(90, Number(value) || 0));
+      const leftCrop = bounded(layer.style.cropLeft);
+      const rightCrop = Math.min(bounded(layer.style.cropRight), 95 - leftCrop);
+      const topCrop = bounded(layer.style.cropTop);
+      const bottomCrop = Math.min(bounded(layer.style.cropBottom), 95 - topCrop);
+      const left = rect.left + rect.width * leftCrop / 100;
+      const right = rect.right - rect.width * rightCrop / 100;
+      const top = rect.top + rect.height * topCrop / 100;
+      const bottom = rect.bottom - rect.height * bottomCrop / 100;
+      return { left, right, top, bottom, width: right - left, height: bottom - top };
+    };
+    for (const [index, element] of elements.entries()) {
+      const rect = selectionBounds(element, selectedRef.current[index]);
       const overlay = doc.createElement("div");
       overlay.dataset["oricseEditorOverlay"] = "1";
       Object.assign(overlay.style, {
@@ -498,25 +517,26 @@ export function VisualPageEditor() {
         handle.addEventListener("pointerdown", beginResize(mode));
         doc.body.appendChild(handle);
       };
+      const visible = selectionBounds(elements[0], selectedRef.current[0]);
       createHandle("horizontal", "Alterar somente a largura", {
-        left: `${rect.left - 5}px`,
-        top: `${rect.top + rect.height / 2 - 18}px`,
+        left: `${visible.left - 5}px`,
+        top: `${visible.top + visible.height / 2 - 18}px`,
         width: "10px",
         height: "36px",
         borderRadius: "6px",
         cursor: "ew-resize",
       });
       createHandle("vertical", "Alterar somente a altura", {
-        left: `${rect.left + rect.width / 2 - 18}px`,
-        top: `${rect.bottom - 5}px`,
+        left: `${visible.left + visible.width / 2 - 18}px`,
+        top: `${visible.bottom - 5}px`,
         width: "36px",
         height: "10px",
         borderRadius: "6px",
         cursor: "ns-resize",
       });
       createHandle("proportional", "Redimensionar mantendo a proporção", {
-        left: `${rect.right - 9}px`,
-        top: `${rect.bottom - 9}px`,
+        left: `${visible.right - 9}px`,
+        top: `${visible.bottom - 9}px`,
         width: "20px",
         height: "20px",
         borderRadius: "50%",
@@ -1139,7 +1159,7 @@ export function VisualPageEditor() {
           aria-expanded={!adminMenuRecolhido}
           aria-label={adminMenuRecolhido ? "Expandir menu da Administração" : "Recolher menu da Administração"}
           title={adminMenuRecolhido ? "Mostrar menu da Administração" : "Recolher menu da Administração"}
-          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
+          className="hidden items-center gap-2 rounded-xl border px-3 py-2 font-semibold lg:inline-flex"
         >
           {adminMenuRecolhido ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           <span className="hidden xl:inline">{adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}</span>
