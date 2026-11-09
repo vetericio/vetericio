@@ -713,26 +713,14 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           "relative z-10 border-b border-current/10 " +
           (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : friendly ? "bg-[#FFF8ED]" : king ? "bg-[#101526] text-[#F2EBE1] border-white/15" : "")
         }
+        // Élan: halo contínuo no cabeçalho inteiro, evitando recortes da área clara.
+        style={luxe ? {
+          backgroundImage:
+            "radial-gradient(ellipse clamp(295px, 47vw, 630px) 220px at clamp(125px, 16vw, 210px) 50%, rgba(250,245,234,0.97) 0%, rgba(250,245,234,0.94) 32%, rgba(250,245,234,0.63) 54%, rgba(250,245,234,0.16) 78%, rgba(250,245,234,0) 100%)",
+        } : undefined}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
-          {luxe ? (
-            <div className="relative isolate flex min-w-0 items-center">
-              {/*
-                Élan: luz marfim integrada à identidade escura.
-                O degradê fica somente atrás da marca, sem cartão,
-                contorno, fundo sólido retangular ou alteração do logotipo.
-              */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-y-4 -left-5 -right-8 -z-10 sm:-left-8 sm:-right-12"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 73% 80% at 40% 50%, rgba(249,243,231,0.98) 0%, rgba(249,241,225,0.95) 49%, rgba(244,231,207,0.67) 70%, rgba(244,231,207,0) 100%)",
-                }}
-              />
-              {brand}
-            </div>
-          ) : brand}
+          {brand}
           <nav
             aria-label="Navegação do site"
             className="hidden items-center gap-6 text-sm font-semibold opacity-85 lg:flex"
