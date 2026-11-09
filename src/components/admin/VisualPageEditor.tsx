@@ -433,7 +433,7 @@ export function VisualPageEditor() {
       const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        checkpoint();
+        let recorded = false;
         const sx = event.clientX,
           sy = event.clientY;
         const starts = selectedRef.current.map((item) => {
@@ -455,6 +455,8 @@ export function VisualPageEditor() {
           // O evento já usa as coordenadas CSS internas do iframe; não dividir pelo zoom.
           const dx = ev.clientX - sx,
             dy = ev.clientY - sy;
+          if (!recorded && Math.abs(dx) + Math.abs(dy) < 2) return;
+          if (!recorded) { checkpoint(); recorded = true; }
           updateLayout(
             (value) =>
               starts.forEach(({ item, width, height, x }) => {
