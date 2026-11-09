@@ -160,7 +160,7 @@ export default {
       // pois o navegador tentaria interpretar a página como JavaScript.
       if (url.pathname.startsWith("/assets/") &&
           /\.(?:m?js|css)$/i.test(url.pathname) &&
-          (response.headers.get("content-type") || "").includes("text/html")) {
+          (!response.ok || (response.headers.get("content-type") || "").includes("text/html"))) {
         if (/\.m?js$/i.test(url.pathname)) {
           let destino = "/";
           const referer = request.headers.get("referer");
