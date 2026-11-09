@@ -78,9 +78,15 @@ export const criarUsuarioClinica=createServerFn({method:"POST"}).validator((i:un
   const admin=await requirePlatformAdmin(data.accessToken);
   // Validar todos os documentos antes de criar a conta Auth, evitando cadastros parciais.
   const pessoaNormalizada=normalizarPessoa(data.pessoa);
-  const clinicaResp=await drive(data.accessToken,"clinicas","select",{columns:"id,nome,limite_usuarios",filters:[{kind:"eq",column:"id",value:data.clinicaId}],single:"maybeSingle"});
-  const clinica=clinicaResp.data;
-  if(!clinica)throw new Error("Clínica não encontrada.");
+  // A aba Administração > Clínicas lê public.clinicas do PostgreSQL.
+  // Consultar aqui a mesma fonte evita falso "Clínica não encontrada"
+  // quando o registro ainda não está espelhado no Google Drive.
+  const {data:clinica,error:erroClinica}=await admin.from("clinicas")
+    .select("id,nome,limite_usuarios,status,excluido_em")
+    .eq("id",data.clinicaId)
+    .maybeSingle();
+  if(erroClinica)throw new Error("Não foi possível consultar a clínica: "+erroClinica.message);
+  if(!clinica||clinica.excluido_em||clinica.status==="cancelada")throw new Error("Clínica não encontrada ou indisponível.");
   const username=data.username.trim().replace(/^@+/,"").toLowerCase();
   const {data:existing,error:existingError}=await admin.from("app_users").select("user_id").eq("username",username).maybeSingle();
   if(existingError)throw new Error(`Não foi possível verificar o @usuário: ${existingError.message}`);
