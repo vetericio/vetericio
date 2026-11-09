@@ -68,7 +68,17 @@ export function paintedImageRect(element: HTMLElement): CanvasRect {
 export function imageBounds(element: HTMLElement, style: VisualStyle) {
   const r = element.getBoundingClientRect();
   const outer = rectOf(r.left,r.top,r.right,r.bottom);
-  const painted = paintedImageRect(element);
+  let painted = paintedImageRect(element);
+  // Um contêiner overflow-hidden pode cortar a foto sem alterar a caixa CSS do IMG.
+  // O contorno deve acompanhar o trecho visível após todos esses recortes.
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const css = parent.ownerDocument.defaultView?.getComputedStyle(parent);
+    if (!css || !/hidden|clip|scroll|auto/.test(
+      [css.overflowX,css.overflowY].join(" ")
+    )) continue;
+    const b = parent.getBoundingClientRect();
+    painted = intersectRect(painted,rectOf(b.left,b.top,b.right,b.bottom));
+  }
   const clipping = rectOf(
     outer.left + outer.width * percentage(style.cropLeft) / 100,
     outer.top + outer.height * percentage(style.cropTop) / 100,
