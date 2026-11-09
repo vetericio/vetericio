@@ -55,3 +55,35 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4 deploy --config .output/server/wrangler.json --keep-vars
+      - name: Verify live build and client assets
+        env:
+          EXPECTED_BUILD: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          const base = "https://oricse.com.br";
+          let passed = false;
+          for (let attempt = 0; attempt < 10; attempt++) {
+            try {
+              const versionResponse = await fetch(base + "/oricse-build.json?check=" + Date.now(), { cache: "no-store" });
+              const version = versionResponse.ok ? await versionResponse.json() : {};
+              const htmlResponse = await fetch(base + "/admin?check=" + Date.now(), { cache: "no-store" });
+              const html = htmlResponse.ok ? await htmlResponse.text() : "";
+              const scripts = [...new Set(html.match(/\\/assets\\/[^"'\\s<>]+\\.js/g) || [])].slice(0, 5);
+              if (version.build !== process.env.EXPECTED_BUILD || !htmlResponse.ok || scripts.length === 0) {
+                throw new Error("Build not yet live or HTML lacks JS assets");
+              }
+              for (const script of scripts) {
+                const assetResponse = await fetch(base + script, { cache: "no-store" });
+                const type = assetResponse.headers.get("content-type") || "";
+                if (!assetResponse.ok || !/javascript/.test(type)) throw new Error("Missing JS asset " + script);
+              }
+              passed = true;
+              break;
+            } catch (error) {
+              console.log("Deployment check " + (attempt + 1) + ": " + error.message);
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+          }
+          if (!passed) process.exit(1);
+          console.log("Production build and JavaScript assets verified");
+          NODE
