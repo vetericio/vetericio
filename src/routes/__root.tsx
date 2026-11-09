@@ -33,6 +33,7 @@ import {
 import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { isPlatformHostname } from "@/lib/public-clinic-site";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -197,6 +198,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const dominioPublicoDaClinica = location.pathname === "/" && Boolean(hostDaPagina()) && !isPlatformHostname(hostDaPagina());
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [acessoTeste, setAcessoTeste] = useState<any>(null);
@@ -472,7 +474,7 @@ function RootComponent() {
       autenticado &&
       (location.pathname === "/login" ||
         location.pathname.startsWith("/vet/") ||
-        (portal && location.pathname === "/"))
+        (portal && location.pathname === "/" && !dominioPublicoDaClinica))
     ) {
       if (role === "admin") navigate({ to: "/inicio" });
       else if (slugClinicaAtual && location.pathname.startsWith("/vet/"))
@@ -488,6 +490,7 @@ function RootComponent() {
     slugClinicaAtual,
     portal,
     location.pathname,
+    dominioPublicoDaClinica,
     navigate,
   ]);
 
@@ -680,6 +683,15 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <Outlet />
         <Toaster position="top-center" />
+      </QueryClientProvider>
+    );
+  }
+
+  // O subdomínio público abre a vitrine na própria raiz, sem entrar no app ORICSE.
+  if (dominioPublicoDaClinica) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
       </QueryClientProvider>
     );
   }
