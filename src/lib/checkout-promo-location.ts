@@ -119,6 +119,7 @@ function criarBox(plano: string, section: Element) {
       p_documento: documento,
       p_valor_base: total,
       p_ciclo: String(dados.ciclo || ""),
+      p_modo_renovacao: String(dados.modo_renovacao || ""),
     });
 
     aplicar.disabled = false;
