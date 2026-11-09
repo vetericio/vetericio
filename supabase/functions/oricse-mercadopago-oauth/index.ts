@@ -13,7 +13,34 @@ const callback="https://oricse.com.br/api/mercadopago/callback";
 const allowedOrigin="https://oricse.com.br";
 function response(obj:unknown,status=200){return new Response(JSON.stringify(obj),{status,headers:{"content-type":"application/json","access-control-allow-origin":allowedOrigin,"access-control-allow-headers":"authorization,apikey,content-type"}})}
 function webRedirect(ok:boolean){return Response.redirect(allowedOrigin+"/mercado-pago-clinica?mp="+(ok?"conectado":"erro"),303);}
-Deno.serve(async(req)=>{
+// Ajusta somente os cabeçalhos CORS das origens oficiais e subdomínios ORICSE.
+// Não altera os retornos de checkout, webhooks nem o processamento de pagamentos.
+function origemPermitidaParaCors(req: Request): string | null {
+  const origem = req.headers.get("origin") || "";
+  if (!origem) return null;
+  const adicional = Deno.env.get("ORICSE_APP_ORIGIN") || "";
+  if (["https://oricse.com.br","https://app.oricse.com.br",
+       "https://www.oricse.com.br","https://oricse.vetericio.workers.dev",adicional].includes(origem)) return origem;
+  try {
+    const u = new URL(origem);
+    if (u.protocol === "https:" && !u.port && u.origin === origem &&
+        /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.oricse\.com\.br$/.test(u.hostname))
+      return origem;
+  } catch {}
+  return null;
+}
+function comCorsDoDominio(req: Request, resposta: Response): Response {
+  const origem = origemPermitidaParaCors(req);
+  if (!origem) return resposta;
+  const cabecalhos = new Headers(resposta.headers);
+  cabecalhos.set("Access-Control-Allow-Origin", origem);
+  cabecalhos.set("Vary", "Origin");
+  cabecalhos.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version");
+  cabecalhos.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  return new Response(resposta.body, {status:resposta.status,statusText:resposta.statusText,headers:cabecalhos});
+}
+
+async function processarRequisicao(req: Request): Promise<Response> {
  try{
   if(req.method==="OPTIONS")return new Response(null,{headers:{"access-control-allow-origin":allowedOrigin,"access-control-allow-methods":"GET,POST,OPTIONS","access-control-allow-headers":"authorization,apikey,content-type"}});
   const uri=new URL(req.url),action=uri.searchParams.get("action");
@@ -73,4 +100,5 @@ Deno.serve(async(req)=>{
   for(const [key,value] of Object.entries({client_id:clientId,response_type:"code",platform_id:"mp",redirect_uri:callback,state,code_challenge:challenge,code_challenge_method:"S256"}))url.searchParams.set(key,value);
   return response({authorization_url:url.toString()});
  }catch(error){console.error("Mercado Pago OAuth:",error instanceof Error?error.message:"Erro desconhecido");return response({error:"Falha na integração Mercado Pago. Confira a configuração segura do servidor."},500);}
-});
+}
+Deno.serve(async(req: Request) => comCorsDoDominio(req, await processarRequisicao(req)));
