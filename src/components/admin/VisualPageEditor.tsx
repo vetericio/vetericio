@@ -6,12 +6,15 @@ import {
   ArrowLeft,
   BringToFront,
   Copy,
+  Crop,
   Eye,
   EyeOff,
   ImagePlus,
   Layers3,
   Monitor,
   Move,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Redo2,
   RotateCcw,
@@ -27,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ROTAS_CATALOGO } from "@/lib/admin-page-routes";
+import { useAdminNavigation } from "@/components/admin/AdminShell";
 import {
   applyVisualLayout,
   cloneVisual,
@@ -103,6 +107,7 @@ function number(value: string, fallback = 0) {
 }
 
 export function VisualPageEditor() {
+  const { adminMenuRecolhido, alternarMenuAdmin } = useAdminNavigation();
   const [device, setDevice] = useState<VisualDevice>("desktop");
   const [route, setRoute] = useState("/");
   useEffect(() => {
@@ -128,6 +133,9 @@ export function VisualPageEditor() {
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [undo, setUndo] = useState<VisualDocument[]>([]);
   const [redo, setRedo] = useState<VisualDocument[]>([]);
+  const undoRef = useRef<VisualDocument[]>([]);
+  const redoRef = useRef<VisualDocument[]>([]);
+  const [croppingId, setCroppingId] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -216,39 +224,50 @@ export function VisualPageEditor() {
     })();
   }, []);
 
+  // O histórico usa referências sincronizadas, inclusive durante arrastes rápidos.
+  // Um checkpoint representa uma ação completa, não cada pixel movimentado.
   const checkpoint = useCallback(() => {
-    setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
+    undoRef.current = [...undoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    redoRef.current = [];
+    setUndo(undoRef.current);
     setRedo([]);
   }, []);
 
   const updateLayout = useCallback(
     (mutate: (layout: VisualLayout) => void, remember = true) => {
       if (remember) checkpoint();
-      setDocumento((current) => {
-        const next = cloneVisual(current);
-        mutate(ensurePage(next, route)[device]);
-        next.updatedAt = new Date().toISOString();
-        return next;
-      });
+      const next = cloneVisual(documentRef.current);
+      mutate(ensurePage(next, route)[device]);
+      next.updatedAt = new Date().toISOString();
+      documentRef.current = next;
+      setDocumento(next);
     },
     [checkpoint, route, device],
   );
 
   function undoNow() {
-    const previous = undo.at(-1);
+    const previous = undoRef.current.at(-1);
     if (!previous) return;
-    setRedo((items) => [...items, cloneVisual(documento)]);
-    setDocumento(previous);
-    setUndo((items) => items.slice(0, -1));
+    redoRef.current = [...redoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    undoRef.current = undoRef.current.slice(0, -1);
+    setRedo(redoRef.current);
+    setUndo(undoRef.current);
+    documentRef.current = cloneVisual(previous);
+    setDocumento(documentRef.current);
     setSelected([]);
+    setCroppingId(null);
   }
   function redoNow() {
-    const next = redo.at(-1);
+    const next = redoRef.current.at(-1);
     if (!next) return;
-    setUndo((items) => [...items, cloneVisual(documento)]);
-    setDocumento(next);
-    setRedo((items) => items.slice(0, -1));
+    undoRef.current = [...undoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    redoRef.current = redoRef.current.slice(0, -1);
+    setUndo(undoRef.current);
+    setRedo(redoRef.current);
+    documentRef.current = cloneVisual(next);
+    setDocumento(documentRef.current);
     setSelected([]);
+    setCroppingId(null);
   }
 
   const selectedElements = useCallback(() => {
@@ -846,8 +865,9 @@ export function VisualPageEditor() {
           overlaps: reconciled.overlaps,
         });
       } else {
-        setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
-        setDocumento(reconciled.merged);
+        checkpoint();
+        documentRef.current = cloneVisual(reconciled.merged);
+        setDocumento(documentRef.current);
         setConflict(null);
         toast.success("Versões conciliadas. Revise e publique quando desejar.", {
           id: "oricse-canvas-reconciled",
@@ -872,18 +892,23 @@ export function VisualPageEditor() {
       )
     )
       return;
-    setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
-    if (!useLocal) setDocumento(cloneVisual(conflict.remote));
+    checkpoint();
+    if (!useLocal) {
+      documentRef.current = cloneVisual(conflict.remote);
+      setDocumento(documentRef.current);
+    }
     setConflict(null);
   }
 
   function restore(version: Version) {
     checkpoint();
-    setDocumento({
-      version: 1,
+    const restored = {
+      version: 1 as const,
       updatedAt: new Date().toISOString(),
       pages: cloneVisual(version.pages),
-    });
+    };
+    documentRef.current = restored;
+    setDocumento(restored);
     setSelected([]);
     toast.success("Versão carregada como rascunho. Revise e publique.");
   }
