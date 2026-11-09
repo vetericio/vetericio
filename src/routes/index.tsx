@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
 import {
   ArrowRight, BadgeDollarSign, Bath, CalendarDays, Check, ClipboardList,
   CreditCard, FileText, HeartPulse, Hotel, Menu, PawPrint, Scissors,
