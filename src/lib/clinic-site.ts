@@ -253,17 +253,42 @@ export const prestigeDefault: ClinicSiteConfig = {
   hiddenSections: [],
 };
 
+/**
+ * Retifica os links de visualização antigos do Google Drive sem obrigar a
+ * clínica a reenviar as imagens já cadastradas.
+ */
+export function normalizeClinicMediaUrl(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const input = value.trim();
+  try {
+    const url = new URL(input);
+    const googleDrive = url.protocol === "https:" &&
+      (url.hostname === "drive.google.com" || url.hostname === "www.drive.google.com");
+    if (googleDrive && (url.pathname === "/uc" || url.pathname === "/open")) {
+      const fileId = url.searchParams.get("id") || "";
+      if (/^[a-zA-Z0-9_-]{12,160}$/.test(fileId))
+        return `https://oricse.com.br/api/public/clinic-image?file=${encodeURIComponent(fileId)}`;
+    }
+  } catch {
+    return "";
+  }
+  return /^https:\/\//i.test(input) ? input : "";
+}
+
 export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
   const candidate = value && typeof value === "object" ? (value as Partial<ClinicSiteConfig>) : {};
   return {
     ...prestigeDefault,
     ...candidate,
+    logoUrl: normalizeClinicMediaUrl(candidate.logoUrl),
+    heroImageUrl: normalizeClinicMediaUrl(candidate.heroImageUrl),
     services: Array.isArray(candidate.services)
       ? candidate.services.filter((item): item is string => typeof item === "string").slice(0, 24)
       : prestigeDefault.services,
     galleryUrls: Array.isArray(candidate.galleryUrls)
       ? candidate.galleryUrls
-          .filter((v): v is string => typeof v === "string" && /^https:\/\//i.test(v))
+          .map(normalizeClinicMediaUrl)
+          .filter((url) => Boolean(url))
           .slice(0, 12)
       : [],
     team: Array.isArray(candidate.team)
@@ -277,6 +302,9 @@ export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
             ),
           )
           .slice(0, 20)
+          .map((person) => ({
+            ...person, imageUrl: normalizeClinicMediaUrl(person.imageUrl),
+          }))
       : [],
     faqItems: Array.isArray(candidate.faqItems)
       ? candidate.faqItems
