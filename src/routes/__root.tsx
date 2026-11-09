@@ -210,7 +210,6 @@ function RootShell({ children }: { children: ReactNode }) {
             @keyframes oricse-home-pulse { 50% { opacity: .45; } }
           }
         `}</style>
-        <noscript><style>{`#oricse-home-first-paint { display: none !important; }`}</style></noscript>
       </head>
       <body>
         {ehInicioPublico && (
