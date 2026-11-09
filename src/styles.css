@@ -1954,3 +1954,252 @@
     font-size: 12px;
   }
 }
+
+/* ===== ORICSE MOBILE HOME: menu fixo e conteúdo sem corte (2026-11-09) ===== */
+/*
+ * Correção pontual da landing pública. Este bloco só vale para celular:
+ * - cabeçalho/menu permanecem ancorados em cima, sem reflow ao abrir;
+ * - nunca reutiliza o posicionamento desktop do editor visual;
+ * - a foto não cria uma coluna separada e textos não saem da viewport.
+ * Não aplicar estas regras nos portais das clínicas ou no desktop.
+ */
+@media (max-width: 767px) {
+  html:has(.oricse-home-mobile-header),
+  body:has(.oricse-home-mobile-header) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  main:has(> section#solucoes) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip !important; /* overflow:hidden impedia position:sticky */
+  }
+
+  main:has(> section#solucoes) > header.oricse-home-mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 150;
+    width: 100%;
+    max-width: 100%;
+    min-height: 64px;
+    padding: 5px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: #fffdfa;
+    border-bottom: 1px solid #eaded8;
+    box-shadow: 0 2px 12px rgb(74 24 38 / 5%);
+    isolation: isolate;
+  }
+
+  .oricse-home-mobile-header .oricse-home-mobile-brand {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    min-width: 0;
+    height: 54px;
+  }
+  .oricse-home-mobile-header .oricse-home-mobile-brand img {
+    width: auto;
+    max-width: 100%;
+    height: 54px;
+    object-fit: contain;
+    display: block;
+  }
+
+  .oricse-home-mobile-header .oricse-home-mobile-toggle {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    flex: 0 0 46px;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    min-height: 46px;
+    border-radius: 50%;
+    touch-action: manipulation;
+  }
+
+  .oricse-home-mobile-header .oricse-home-mobile-dropdown {
+    position: absolute;
+    inset: calc(100% + 4px) 12px auto auto;
+    width: min(310px, calc(100vw - 24px));
+    max-height: min(70dvh, 420px);
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid #eadbd4;
+    border-radius: 18px;
+    background: #fffdfa;
+    box-shadow: 0 18px 50px rgb(74 24 38 / 18%);
+    z-index: 3;
+  }
+  .oricse-home-mobile-header .oricse-home-mobile-dropdown a {
+    display: flex;
+    min-height: 46px;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 11px 14px;
+    border-radius: 11px;
+    white-space: normal;
+    font-size: 14px;
+    line-height: 1.35;
+    text-decoration: none;
+  }
+  .oricse-home-mobile-header .oricse-home-mobile-dropdown a:last-child {
+    justify-content: center;
+    color: #fff;
+  }
+
+  /* Hero: uma única composição, com a fotografia acima e o mesmo conteúdo
+     sobre a continuação de suas cores — sem tradução lateral, largura fixa
+     ou espaço artificial depois dos botões. */
+  main:has(> section#solucoes) > section:first-of-type {
+    width: 100%;
+    overflow: clip;
+  }
+  main:has(> section#solucoes)
+  > section:first-of-type
+  > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    overflow: clip;
+    background: linear-gradient(180deg, #f5d4bb 0%, #ffe7c8 36%, #fff0dd 66%, #fffdfa 100%);
+  }
+  main:has(> section#solucoes)
+  > section:first-of-type
+  > div:has(> img[alt="Órix nas dunas ao pôr do sol"])
+  > img[alt="Órix nas dunas ao pôr do sol"] {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 0;
+    display: block;
+    width: 100%;
+    height: clamp(210px, 61vw, 300px);
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: center top;
+    max-width: 100%;
+    transform: none;
+  }
+  main:has(> section#solucoes)
+  > section:first-of-type
+  > div:has(> img[alt="Órix nas dunas ao pôr do sol"])::after {
+    position: absolute;
+    content: "";
+    pointer-events: none;
+    z-index: 0;
+    inset: clamp(130px, 40vw, 204px) 0 auto;
+    height: clamp(110px, 32vw, 160px);
+    background: linear-gradient(180deg, transparent 0%, #fff0dd 90%);
+  }
+  main:has(> section#solucoes)
+  > section:first-of-type
+  > div:has(> img[alt="Órix nas dunas ao pôr do sol"])
+  > div {
+    position: relative;
+    z-index: 1;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    margin: 0 auto;
+    padding: clamp(200px, 58vw, 286px) 18px 30px;
+    translate: none;
+    transform: none;
+  }
+  main:has(> section#solucoes)
+  > section:first-of-type
+  > div:has(> img[alt="Órix nas dunas ao pôr do sol"])
+  > div > div {
+    position: relative;
+    width: 100%;
+    max-width: 540px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    translate: none;
+    transform: none;
+  }
+  /* A marca oficial agora fica visível e fixa no topo; não duplicá-la na foto. */
+  main:has(> section#solucoes)
+  > section:first-of-type
+  > div:has(> img[alt="Órix nas dunas ao pôr do sol"])
+  > div > div > div:first-child {
+    display: none;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type h1 {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 15px;
+    font-size: clamp(32px, 9.25vw, 48px);
+    line-height: .98;
+    letter-spacing: -.055em;
+    text-wrap: pretty;
+    overflow-wrap: break-word;
+    translate: none;
+    transform: none;
+  }
+  main:has(> section#solucoes) > section:first-of-type h1 + p {
+    width: 100%;
+    max-width: 38ch;
+    margin-top: 15px;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  main:has(> section#solucoes) > section:first-of-type p:has(> svg) {
+    max-width: 100%;
+    letter-spacing: .07em;
+    white-space: normal;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div > a {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    font-size: 13px;
+    line-height: 1.3;
+    white-space: normal;
+  }
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div + p {
+    margin-top: 17px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  main:has(> section#solucoes) > section:nth-of-type(2),
+  main:has(> section#solucoes) > section#solucoes {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: clip;
+  }
+}

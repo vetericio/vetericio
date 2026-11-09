@@ -95,9 +95,11 @@ export function VisualPageRuntime() {
     const chooseLayout = () => {
       const page = published.pages?.[location.pathname];
       if (!page) return undefined;
-      const preferred = window.innerWidth < 768 ? page.mobile : page.desktop;
-      const fallback = window.innerWidth < 768 ? page.desktop : page.mobile;
-      return hasContent(preferred) ? preferred : fallback;
+      // Nunca aplicar coordenadas salvas no desktop em uma tela mobile.
+      // Se não existir layout mobile publicado, usar o CSS responsivo nativo.
+      // O fallback de desktop deslocava elementos e quebrava o menu no celular.
+      if (window.innerWidth < 768) return hasContent(page.mobile) ? page.mobile : undefined;
+      return hasContent(page.desktop) ? page.desktop : undefined;
     };
 
     const apply = () => {
