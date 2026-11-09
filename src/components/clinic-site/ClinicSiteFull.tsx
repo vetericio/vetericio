@@ -418,7 +418,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               Entre em contato para consultar serviços, horários e informações de atendimento.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action(config.ctaLabel || "Agendar atendimento")}
+              {action("Portal do Tutor")}
               {config.phone ? (
                 <a
                   href={"tel:" + waNumber(config.phone)}
@@ -525,7 +525,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           <h1 className="max-w-3xl text-5xl font-black leading-[.95] tracking-[-.05em] sm:text-7xl">{config.slogan}</h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{config.description}</p>
           <div className="mt-9 flex flex-wrap gap-3">
-            {action(config.ctaLabel || "Agendar atendimento")}
+            {action("Portal do Tutor")}
             {config.services.length ? (
               <a href="#servicos" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/45 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur-sm">
                 Ver especialidades <ArrowRight size={16} />
@@ -563,7 +563,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             {config.description}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            {action(config.ctaLabel || "Bora agendar")}
+            {action("Portal do Tutor")}
             {config.services.length ? (
               <a
                 href="#servicos"
@@ -610,7 +610,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             {config.description}
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            {action(config.ctaLabel || "Conversar com a equipe")}
+            {action("Portal do Tutor")}
             {config.services.length ? (
               <a
                 href="#servicos"
@@ -683,7 +683,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             }
           >
             <CalendarDays size={16} />{" "}
-            <span className="hidden sm:inline">{config.ctaLabel || "Agendar"}</span>
+            <span className="hidden sm:inline">Portal do Tutor</span>
             <span className="sm:hidden">Portal do Tutor</span>
           </a>
         </div>
@@ -730,7 +730,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               {config.description}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action(config.ctaLabel || "Agendar atendimento")}
+              {action("Portal do Tutor")}
               {config.services.length ? (
                 <a
                   href="#servicos"
