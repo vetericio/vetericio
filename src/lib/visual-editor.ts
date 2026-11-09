@@ -140,8 +140,18 @@ export function validImageSource(src: string) {
 }
 
 export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
-  doc.querySelectorAll(`[${VISUAL_NODE_ATTR}]`).forEach((node) => node.remove());
-  if (!layout) return;
+  // Reaproveitar nós existentes é importante durante arrasto e recorte:
+  // recriar o IMG a cada pixel disparava novo carregamento da imagem e fazia
+  // o contorno variar até a foto terminar de carregar.
+  const existing = new Map<string, HTMLElement>();
+  doc.querySelectorAll(`[${VISUAL_NODE_ATTR}]`).forEach((node) => {
+    const id = node.getAttribute(VISUAL_NODE_ATTR);
+    if (id) existing.set(id, node as HTMLElement);
+  });
+  if (!layout) {
+    existing.forEach((node) => node.remove());
+    return;
+  }
   for (const patch of layout.patches) {
     let element: HTMLElement | null = null;
     try { element = doc.querySelector(patch.selector) as HTMLElement | null; } catch { continue; }
@@ -155,7 +165,13 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
   const host = (doc.querySelector("main") || doc.body) as HTMLElement;
   if (getComputedStyle(host).position === "static") host.style.position = "relative";
   for (const item of layout.added) {
-    const node = item.kind === "image" ? doc.createElement("img") : doc.createElement("div");
+    const previous = existing.get(item.id);
+    existing.delete(item.id);
+    const tag = item.kind === "image" ? "IMG" : "DIV";
+    const reusable = previous && previous.tagName === tag;
+    if (previous && !reusable) previous.remove();
+    const node = reusable ? previous! : item.kind === "image"
+      ? doc.createElement("img") : doc.createElement("div");
     node.setAttribute(VISUAL_NODE_ATTR, item.id);
     node.setAttribute("data-visual-id", item.id);
     node.style.position = "absolute";
@@ -165,12 +181,14 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
     if (item.kind === "image") {
       const image = node as HTMLImageElement;
       image.alt = item.text || "Imagem adicionada";
-      image.src = item.src && validImageSource(item.src) ? item.src : "";
+      const src = item.src && validImageSource(item.src) ? item.src : "";
+      if (image.getAttribute("src") !== src) image.src = src;
       image.style.objectFit = "contain";
-    } else node.textContent = item.text || "Novo texto";
+    } else if (node.textContent !== (item.text || "Novo texto")) node.textContent = item.text || "Novo texto";
     applyVisualStyle(node, item.style || {});
-    host.appendChild(node);
+    if (node.parentElement !== host) host.appendChild(node);
   }
+  existing.forEach((node) => node.remove());
 }
 
 export function cloneVisual<T>(value: T): T {
