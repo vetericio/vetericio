@@ -1,17 +1,27 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("ORICSE_APP_ORIGIN") || "https://oricse.com.br",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Permite a plataforma e subdomínios ORICSE sem abrir CORS para sites arbitrários.
+function origemAutorizada(req: Request): string {
+  const origem = req.headers.get("origin") || "";
+  const configurada = Deno.env.get("ORICSE_APP_ORIGIN") || "";
+  if (["https://oricse.com.br", "https://app.oricse.com.br",
+       "https://www.oricse.com.br", "https://oricse.vetericio.workers.dev",
+       configurada].includes(origem) && origem) return origem;
+  try {
+    const u = new URL(origem);
+    if (u.protocol === "https:" && !u.port && u.origin === origem &&
+        /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.oricse\.com\.br$/.test(u.hostname))
+      return origem;
+  } catch {}
+  return "https://oricse.com.br";
+}
+const corsBase = {
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Vary": "Origin",
 };
 
-const resposta = (body: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 
 const cpfDigitos = (valor: unknown) => String(valor ?? "").replace(/\D/g, "");
 const dataIso = (valor: unknown) => {
@@ -28,9 +38,11 @@ const embaralhar = <T,>(lista: T[]) => {
   }
   return copia;
 };
-const falha = () => resposta({ ok: false, error: "Não foi possível validar os dados informados. Confira os dados ou procure a clínica." }, 400);
 
 Deno.serve(async (req) => {
+  const corsHeaders={...corsBase,"Access-Control-Allow-Origin":origemAutorizada(req)};
+  const resposta=(body: Record<string, unknown>,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json"}});
+  const falha=()=>resposta({ ok: false, error: "Não foi possível validar os dados informados. Confira os dados ou procure a clínica." }, 400);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return resposta({ ok: false, error: "Método não permitido." }, 405);
 
