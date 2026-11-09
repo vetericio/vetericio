@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { RockDecoracao } from "@/components/RockDecoracao";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
+import { PortalFooter } from "@/components/PortalFooter";
 import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
@@ -682,6 +683,7 @@ function RootComponent() {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        <PortalFooter />
         <Toaster position="top-center" />
       </QueryClientProvider>
     );
@@ -692,6 +694,7 @@ function RootComponent() {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        <PortalFooter />
       </QueryClientProvider>
     );
   }
@@ -702,6 +705,7 @@ function RootComponent() {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        <PortalFooter />
         <Toaster position="top-center" />
       </QueryClientProvider>
     );
@@ -714,6 +718,7 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <Suspense fallback={null}><VisualPageRuntime /></Suspense>
         <Outlet />
+        <PortalFooter />
       </QueryClientProvider>
     );
   }
@@ -832,11 +837,9 @@ function RootComponent() {
             <Outlet />
           </div>
         )}
-        {mostrarClinico && (
-          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
-            <Rodape />
-          </div>
-        )}
+        <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
+          {mostrarClinico ? <Rodape /> : <PortalFooter />}
+        </div>
         <Toaster position="top-center" />
       </TenantContext.Provider>
       </ClinicasAtivasContext.Provider>
