@@ -29,6 +29,8 @@ jobs:
           src/lib/clinic-site.ts
           src/components/admin/VisualPageEditor.tsx
           src/components/clinic-site
+      - name: Regressão da publicação e conflitos do Canvas
+        run: node scripts/test-drive-journal.mjs
       - name: Lint das páginas de clínicas
         run: >-
           npx eslint --rule "@typescript-eslint/no-explicit-any: off"

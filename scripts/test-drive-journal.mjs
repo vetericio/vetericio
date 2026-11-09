@@ -4,7 +4,7 @@ import ts from "typescript";
 
 const source = fs.readFileSync("src/lib/drive-journal.server.ts", "utf8");
 const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-const { applyJournal, appendJournal, loadJournals } = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
+const { applyJournal, appendJournal, loadJournals, sameJournalValue } = await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
 
 const initial = [{ id: "animal-1", clinica_id: "clinica-1", nome: "Luna", peso: 5 }];
 const t = "2026-10-17T17:00:00.000Z";
@@ -23,6 +23,46 @@ const conflicting = [
 ];
 assert.throws(() => applyJournal(initial, conflicting), (error) => error.code === "DRIVE_CONFLICT" && error.field === "peso");
 assert.equal(applyJournal(initial, [{ ...conflicting[0] }])[0].peso, 7);
+
+// A mesma configuração JSON, desserializada novamente, não é uma edição concorrente.
+const originalConfig = {pages: {"/": {desktop: {patches: [{id:"p",style:{x:10,y:20}}],added: []},mobile: {patches:[],added:[]}}}};
+const structurallyEqual = JSON.parse(JSON.stringify(originalConfig));
+assert.notStrictEqual(originalConfig, structurallyEqual);
+assert.equal(sameJournalValue(originalConfig, structurallyEqual), true);
+assert.equal(sameJournalValue([originalConfig, 0], [structurallyEqual, 0]), true);
+assert.equal(sameJournalValue(originalConfig, {pages:{"/":{desktop:{patches:[{id:"p",style:{x:11,y:20}}],added:[]},mobile:{patches:[],added:[]}}}}), false);
+const canvasJournals = [
+  {v:1,timestamp:t,operationId:"canvas1",changes:[{
+    kind:"patch",id:"config-1",data:{valor:structurallyEqual},expected:{valor:originalConfig},
+  }]},
+  {v:1,timestamp:t,operationId:"canvas2",changes:[{
+    kind:"patch",id:"config-1",data:{valor:{...structurallyEqual,updatedAt:"2026-11-08T20:00:00.000Z"}},
+    expected:{valor:structurallyEqual},
+  }]},
+];
+const restored = applyJournal([{id:"config-1",valor:originalConfig}],canvasJournals);
+assert.equal(restored[0].valor.updatedAt,"2026-11-08T20:00:00.000Z");
+// A proteção deve continuar funcionando contra uma edição genuinamente antiga.
+assert.throws(() => applyJournal([{id:"config-1",valor:originalConfig}],[
+  {v:1,timestamp:t,operationId:"canvas-a",changes:[{
+    kind:"patch",id:"config-1",data:{valor:{...originalConfig,updatedAt:"novo"}},expected:{valor:originalConfig},
+  }]},
+  {v:1,timestamp:t,operationId:"canvas-b",changes:[{
+    kind:"patch",id:"config-1",data:{valor:{...originalConfig,updatedAt:"stale"}},expected:{valor:originalConfig},
+  }]},
+]),(error)=>error.code==="DRIVE_CONFLICT"&&error.field==="valor");
+
+// Uma publicação deve poder atualizar rascunho, publicado e histórico em um único evento.
+const bundle = {v:1,timestamp:t,operationId:"canvas-bundle",changes:[
+  {kind:"patch",id:"published",data:{valor:structurallyEqual},expected:{valor:originalConfig}},
+  {kind:"patch",id:"draft",data:{valor:structurallyEqual},expected:{valor:originalConfig}},
+  {kind:"patch",id:"history",data:{valor:[{id:"v1"}]},expected:{valor:[]}},
+]};
+const bundleOutput = applyJournal([
+  {id:"published",valor:originalConfig},{id:"draft",valor:originalConfig},{id:"history",valor:[]},
+],[bundle]);
+assert.equal(bundleOutput.length,3);
+assert.equal(bundleOutput.find(row=>row.id==="history").valor.length,1);
 
 // Two overlapping uploads must create two DIFFERENT files, not PATCH a table JSON.
 const files = new Map();

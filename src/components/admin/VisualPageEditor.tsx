@@ -1,4 +1,3 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { Link } from "@tanstack/react-router";
 import {
   AlignCenter,
@@ -52,6 +51,49 @@ import {
 type Version = { id: string; publishedAt: string; pages: VisualDocument["pages"] };
 type SelectedItem = { id: string; kind: "patch" | "added" };
 
+type ConflictReview = {
+  message: string;
+  remote?: VisualDocument;
+  overlaps: string[];
+};
+const EDITOR_KEYS = [VISUAL_PUBLISHED_KEY, VISUAL_DRAFT_KEY, VISUAL_VERSIONS_KEY] as const;
+type ConfigRow = { id?: string; chave?: string; valor?: unknown };
+function sameEditorJson(a: unknown, b: unknown) {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
+/** Reconcilia páginas por dispositivo. Conflitos reais exigem decisão explícita. */
+function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote: VisualDocument) {
+  const merged = cloneVisual(remote);
+  const overlaps: string[] = [];
+  const routes = new Set([
+    ...Object.keys(baseline.pages),
+    ...Object.keys(local.pages),
+    ...Object.keys(remote.pages),
+  ]);
+  for (const page of routes) {
+    for (const device of ["desktop", "mobile"] as const) {
+      const before = baseline.pages[page]?.[device];
+      const mine = local.pages[page]?.[device];
+      const theirs = remote.pages[page]?.[device];
+      const localChanged = !sameEditorJson(before, mine);
+      const remoteChanged = !sameEditorJson(before, theirs);
+      if (!localChanged) continue;
+      if (remoteChanged && !sameEditorJson(mine, theirs)) {
+        overlaps.push(page + " (" + (device === "desktop" ? "computador" : "celular") + ")");
+        continue;
+      }
+      if (!merged.pages[page])
+        merged.pages[page] = {
+          desktop: { patches: [], added: [] },
+          mobile: { patches: [], added: [] },
+        };
+      if (mine) merged.pages[page][device] = cloneVisual(mine);
+    }
+  }
+  return { merged, overlaps };
+}
+
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const deviceWidth = (device: VisualDevice) => (device === "desktop" ? 1440 : 390);
 
@@ -89,6 +131,12 @@ export function VisualPageEditor() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [conflict, setConflict] = useState<ConflictReview | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const savingRef = useRef(false);
+  const recordIdsRef = useRef<Record<string, string>>({});
+  const baselineRef = useRef<VisualDocument>(EMPTY_DOCUMENT());
   const [lastPublishedAt, setLastPublishedAt] = useState("");
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -132,21 +180,36 @@ export function VisualPageEditor() {
       const [draft, published, history] = await Promise.all([
         (supabase as any)
           .from("oricse_config")
-          .select("valor")
+          .select("id,chave,valor")
           .eq("chave", VISUAL_DRAFT_KEY)
           .maybeSingle(),
         (supabase as any)
           .from("oricse_config")
-          .select("valor")
+          .select("id,chave,valor")
           .eq("chave", VISUAL_PUBLISHED_KEY)
           .maybeSingle(),
         (supabase as any)
           .from("oricse_config")
-          .select("valor")
+          .select("id,chave,valor")
           .eq("chave", VISUAL_VERSIONS_KEY)
           .maybeSingle(),
       ]);
-      setDocumento(draft.data?.valor || published.data?.valor || EMPTY_DOCUMENT());
+      const error = draft.error || published.error || history.error;
+      if (error) {
+        setLoadError(error.message || "Não foi possível ler a configuração da página.");
+        setLoading(false);
+        return;
+      }
+      recordIdsRef.current = Object.fromEntries(
+        [draft.data, published.data, history.data]
+          .filter((row: ConfigRow | null): row is ConfigRow => Boolean(row?.id && row?.chave))
+          .map((row: ConfigRow) => [row.chave!, row.id!]),
+      );
+      const documentLoaded = cloneVisual(
+        draft.data?.valor || published.data?.valor || EMPTY_DOCUMENT(),
+      ) as VisualDocument;
+      baselineRef.current = cloneVisual(documentLoaded);
+      setDocumento(documentLoaded);
       setLastPublishedAt(published.data?.valor?.updatedAt || "");
       setVersions(Array.isArray(history.data?.valor) ? history.data.valor : []);
       setLoading(false);
@@ -622,18 +685,75 @@ export function VisualPageEditor() {
     setSelected([]);
   }
 
+  function classifySaveError(error: { code?: string; message?: string } | null) {
+    if (!error) return;
+    if (error.code === "DRIVE_CONFLICT") {
+      setConflict({
+        message:
+          "Outra edição foi registrada desde que você abriu o Canvas. Suas alterações continuam nesta tela.",
+        overlaps: [],
+      });
+      return;
+    }
+    toast.error(error.message || "Não foi possível salvar as alterações.", {
+      id: "oricse-canvas-save",
+    });
+  }
+
+  function saveRows(rows: Array<{ chave: string; valor: unknown; updated_at: string }>) {
+    return rows.map((row) => ({
+      ...row,
+      ...(recordIdsRef.current[row.chave] ? { id: recordIdsRef.current[row.chave] } : {}),
+    }));
+  }
+
   async function saveDraft() {
+    if (savingRef.current || conflict || loadError) return;
+    savingRef.current = true;
     setSaving(true);
     const payload = { ...documento, updatedAt: new Date().toISOString() };
-    const { error } = await (supabase as any)
-      .from("oricse_config")
-      .upsert({ chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: new Date().toISOString() });
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    setDocumento(payload);
-    toast.success("Rascunho salvo.");
+    try {
+      const { data, error } = await (supabase as any)
+        .from("oricse_config")
+        .upsert(
+          saveRows([
+            {
+              chave: VISUAL_DRAFT_KEY,
+              valor: payload,
+              updated_at: payload.updatedAt,
+            },
+          ]),
+          { onConflict: "chave" },
+        )
+        .select("id,chave,valor");
+      if (error) {
+        classifySaveError(error);
+        return;
+      }
+      const saved = Array.isArray(data) ? data[0] : data;
+      if (saved?.id) recordIdsRef.current[VISUAL_DRAFT_KEY] = String(saved.id);
+      // Refresh the baseline used for optimistic concurrency on the next save.
+      const latest = await (supabase as any)
+        .from("oricse_config")
+        .select("id,chave,valor")
+        .eq("chave", VISUAL_DRAFT_KEY)
+        .maybeSingle();
+      if (latest.error) throw latest.error;
+      if (latest.data?.id) recordIdsRef.current[VISUAL_DRAFT_KEY] = String(latest.data.id);
+      baselineRef.current = cloneVisual(payload);
+      setDocumento(payload);
+      toast.success("Rascunho salvo.", { id: "oricse-canvas-draft" });
+    } catch (error) {
+      classifySaveError(error as { code?: string; message?: string });
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   }
+
   async function publish() {
+    if (savingRef.current || conflict || loadError) return;
+    savingRef.current = true;
     setSaving(true);
     const payload = { ...documento, updatedAt: new Date().toISOString() };
     const history: Version[] = [
@@ -641,56 +761,122 @@ export function VisualPageEditor() {
       ...versions,
     ].slice(0, 12);
     try {
-      const [published, draft, savedHistory] = await Promise.all([
-        (supabase as any)
-          .from("oricse_config")
-          .upsert(
+      // All three entries go through a single coordinated Drive journal event.
+      // No partial publication of page, draft or version history.
+      const { data, error } = await (supabase as any)
+        .from("oricse_config")
+        .upsert(
+          saveRows([
             { chave: VISUAL_PUBLISHED_KEY, valor: payload, updated_at: payload.updatedAt },
-            { onConflict: "chave" },
-          ),
-        (supabase as any)
-          .from("oricse_config")
-          .upsert(
             { chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: payload.updatedAt },
-            { onConflict: "chave" },
-          ),
-        (supabase as any)
-          .from("oricse_config")
-          .upsert(
             { chave: VISUAL_VERSIONS_KEY, valor: history, updated_at: payload.updatedAt },
-            { onConflict: "chave" },
-          ),
-      ]);
-      const writeError = published.error || draft.error || savedHistory.error;
-      if (writeError) throw writeError;
-
+          ]),
+          { onConflict: "chave" },
+        )
+        .select("id,chave,valor");
+      if (error) {
+        classifySaveError(error);
+        return;
+      }
+      for (const row of Array.isArray(data) ? data : []) {
+        if (row?.chave && row?.id) recordIdsRef.current[row.chave] = String(row.id);
+      }
       const verification = await (supabase as any)
         .from("oricse_config")
-        .select("valor")
-        .eq("chave", VISUAL_PUBLISHED_KEY)
-        .maybeSingle();
+        .select("id,chave,valor")
+        .in("chave", [...EDITOR_KEYS]);
       if (verification.error) throw verification.error;
-      if (verification.data?.valor?.updatedAt !== payload.updatedAt) {
-        throw new Error("A publicação não foi confirmada pelo banco. Tente novamente.");
+      const confirmedRows = (verification.data || []) as ConfigRow[];
+      for (const row of confirmedRows) {
+        if (row.id && row.chave) recordIdsRef.current[row.chave] = row.id;
       }
-
+      const confirmedPublished = confirmedRows.find((row) => row.chave === VISUAL_PUBLISHED_KEY);
+      if (
+        (confirmedPublished?.valor as VisualDocument | undefined)?.updatedAt !== payload.updatedAt
+      ) {
+        throw new Error(
+          "A publicação não foi confirmada no site. Revise antes de tentar novamente.",
+        );
+      }
+      baselineRef.current = cloneVisual(payload);
       setDocumento(payload);
       setVersions(history);
       setLastPublishedAt(payload.updatedAt);
-      oricseStorage.setItem("oricse:visual-published-at", payload.updatedAt);
       if (typeof BroadcastChannel !== "undefined") {
         const channel = new BroadcastChannel("oricse-visual-editor");
         channel.postMessage({ type: "published", updatedAt: payload.updatedAt });
         channel.close();
       }
       window.dispatchEvent(new Event("oricse:visual-published"));
-      toast.success("Publicado e confirmado no site real.");
+      toast.success("Publicado e confirmado no site real.", { id: "oricse-canvas-published" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível publicar.");
+      classifySaveError(error as { code?: string; message?: string });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
+
+  async function reviewConflict() {
+    if (reviewing) return;
+    setReviewing(true);
+    try {
+      const latest = await (supabase as any)
+        .from("oricse_config")
+        .select("id,chave,valor")
+        .in("chave", [...EDITOR_KEYS]);
+      if (latest.error) throw latest.error;
+      const rows = (latest.data || []) as ConfigRow[];
+      for (const row of rows) {
+        if (row.id && row.chave) recordIdsRef.current[row.chave] = row.id;
+      }
+      const draft = rows.find((row) => row.chave === VISUAL_DRAFT_KEY)?.valor;
+      const published = rows.find((row) => row.chave === VISUAL_PUBLISHED_KEY)?.valor;
+      const current = cloneVisual(draft || published || EMPTY_DOCUMENT()) as VisualDocument;
+      const reconciled = reconcileEditor(baselineRef.current, documento, current);
+      const remoteHistory = rows.find((row) => row.chave === VISUAL_VERSIONS_KEY)?.valor;
+      if (Array.isArray(remoteHistory)) setVersions(remoteHistory as Version[]);
+      setLastPublishedAt((published as VisualDocument | undefined)?.updatedAt || "");
+      baselineRef.current = cloneVisual(current);
+      if (reconciled.overlaps.length) {
+        setConflict({
+          message:
+            "O mesmo trecho foi alterado em outra sessão. Escolha qual versão deve prevalecer.",
+          remote: current,
+          overlaps: reconciled.overlaps,
+        });
+      } else {
+        setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
+        setDocumento(reconciled.merged);
+        setConflict(null);
+        toast.success("Versões conciliadas. Revise e publique quando desejar.", {
+          id: "oricse-canvas-reconciled",
+        });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao consultar a versão atual.", {
+        id: "oricse-canvas-review",
+      });
+    } finally {
+      setReviewing(false);
+    }
+  }
+
+  function chooseConflictVersion(useLocal: boolean) {
+    if (!conflict?.remote) return;
+    if (
+      !window.confirm(
+        useLocal
+          ? "Sua edição substituirá as alterações feitas na outra sessão nos mesmos trechos. Confirmar?"
+          : "Descartar suas mudanças não salvas e carregar a versão atual do servidor?",
+      )
+    )
+      return;
+    setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
+    if (!useLocal) setDocumento(cloneVisual(conflict.remote));
+    setConflict(null);
+  }
+
   function restore(version: Version) {
     checkpoint();
     setDocumento({
@@ -724,6 +910,19 @@ export function VisualPageEditor() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#ece8e3]">
         Carregando editor visual…
+      </main>
+    );
+  if (loadError)
+    return (
+      <main className="mx-auto max-w-xl p-8">
+        <h1 className="text-2xl font-bold">Não foi possível carregar o Canvas</h1>
+        <p className="mt-3 text-sm">{loadError}</p>
+        <button
+          className="mt-4 rounded-xl border px-4 py-2"
+          onClick={() => window.location.reload()}
+        >
+          Tentar carregar novamente
+        </button>
       </main>
     );
   const frameWidth = deviceWidth(device);
@@ -815,14 +1014,14 @@ export function VisualPageEditor() {
             </span>
           )}
           <button
-            disabled={saving}
+            disabled={saving || Boolean(conflict)}
             onClick={saveDraft}
             className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold"
           >
             <Save size={17} /> Salvar rascunho
           </button>
           <button
-            disabled={saving}
+            disabled={saving || Boolean(conflict)}
             onClick={publish}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"
           >
@@ -830,6 +1029,56 @@ export function VisualPageEditor() {
           </button>
         </div>
       </header>
+      {conflict && (
+        <section
+          role="alert"
+          className="sticky top-16 z-40 mx-auto max-w-5xl rounded-b-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950 shadow-lg"
+        >
+          <h2 className="font-extrabold">Conflito de edição — suas alterações continuam aqui</h2>
+          <p className="mt-1 text-sm">{conflict.message}</p>
+          {conflict.overlaps.length > 0 && (
+            <p className="mt-2 text-xs">Trechos afetados: {conflict.overlaps.join(", ")}</p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              disabled={reviewing}
+              onClick={() => void reviewConflict()}
+              className="min-h-10 rounded-xl bg-amber-900 px-4 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {reviewing ? "Verificando…" : "Atualizar e revisar"}
+            </button>
+            {conflict.remote && (
+              <>
+                <button
+                  onClick={() => chooseConflictVersion(false)}
+                  className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
+                >
+                  Usar versão do servidor
+                </button>
+                <button
+                  onClick={() => chooseConflictVersion(true)}
+                  className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
+                >
+                  Manter minha edição
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(JSON.stringify(documento, null, 2))
+                  .then(() =>
+                    toast.success("Cópia das suas alterações salva na área de transferência."),
+                  )
+                  .catch(() => toast.error("Não foi possível copiar. Mantenha esta aba aberta."));
+              }}
+              className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
+            >
+              Copiar minhas alterações
+            </button>
+          </div>
+        </section>
+      )}
 
       <div
         className={`grid min-h-[calc(100vh-64px)] ${leftOpen && rightOpen ? "lg:grid-cols-[260px_minmax(0,1fr)_290px]" : leftOpen ? "lg:grid-cols-[260px_minmax(0,1fr)]" : rightOpen ? "lg:grid-cols-[minmax(0,1fr)_290px]" : "grid-cols-1"}`}

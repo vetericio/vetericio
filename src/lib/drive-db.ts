@@ -50,8 +50,12 @@ class DriveQuery implements PromiseLike<any>{
   abortSignal(_signal:AbortSignal){return this}
   returns<T>(){return this as unknown as PromiseLike<{data:T;error:any;count?:number|null}>}
   overrideTypes<T>(){return this as unknown as PromiseLike<{data:T;error:any;count?:number|null}>}
-  async execute(){try{const accessToken=await this.getToken();
-  const tracked=this.snapshots.get(this.table)||new Map<string,Record<string,unknown>>();
+  async execute(){try{
+  // Share snapshots between parallel selects of the same table.
+  // Creating the map only after await lost two of the three Canvas baselines.
+  let tracked=this.snapshots.get(this.table);
+  if(!tracked){tracked=new Map<string,Record<string,unknown>>();this.snapshots.set(this.table,tracked);}
+  const accessToken=await this.getToken();
   const candidates=this.filters.filter(f=>f.kind==="eq"&&f.column==="id").map(f=>String(f.value));
   if(this.operation==="upsert"||this.operation==="insert")for(const row of (Array.isArray(this.payload)?this.payload:[this.payload]) as any[])if(row?.id!=null)candidates.push(String(row.id));
   const expectedRows=Object.fromEntries([...new Set(candidates)].filter(id=>tracked.has(id)).map(id=>[id,tracked.get(id)]));
@@ -64,14 +68,18 @@ class DriveQuery implements PromiseLike<any>{
   if(this.operation!=="select"&&!result?.error){
     for(const id of candidates)tracked.delete(id);
   }
-  if(result?.error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined"){
+  if(result?.error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined" &&
+     window.location.pathname!=="/admin-canvas"){
     toast.error("Conflito de edição",{
+      id:"oricse-drive-conflict",
       description:result.error.message||"Outro profissional já alterou estes dados.",
       duration:Infinity,
       action:{label:"Atualizar e revisar",onClick:()=>window.location.reload()},
     });
-  }if(this.shouldThrow&&result?.error)throw Object.assign(new Error(result.error.message),result.error);return result}catch(error:any){if(error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined"){
+  }if(this.shouldThrow&&result?.error)throw Object.assign(new Error(result.error.message),result.error);return result}catch(error:any){if(error?.code==="DRIVE_CONFLICT"&&typeof window!=="undefined" &&
+     window.location.pathname!=="/admin-canvas"){
     toast.error("Conflito de edição",{
+      id:"oricse-drive-conflict",
       description:"Outro profissional alterou este campo. Recarregue para visualizar a versão mais recente antes de tentar novamente.",
       duration:Infinity,
       action:{label:"Recarregar",onClick:()=>window.location.reload()},
