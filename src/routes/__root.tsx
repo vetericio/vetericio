@@ -462,6 +462,7 @@ function RootComponent() {
     const rotaPublica =
       ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
+      /^\/c\/[^/]+\/?$/.test(location.pathname) ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin") ||
     (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
@@ -654,6 +655,7 @@ function RootComponent() {
   const rotaPublica =
     ["/", "/login", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
+    /^\/c\/[^/]+\/?$/.test(location.pathname) ||
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
@@ -674,6 +676,17 @@ function RootComponent() {
 
   // Protótipos públicos são isolados do layout clínico e de suas barras de navegação.
   if (location.pathname === "/demo-portal-tutor") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Toaster position="top-center" />
+      </QueryClientProvider>
+    );
+  }
+
+  // Os sites de clínicas são páginas públicas autônomas, sem navegação ou
+  // personalizações do sistema de gestão.
+  if (/^\/c\/[^/]+\/?$/.test(location.pathname)) {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
