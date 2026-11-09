@@ -12,6 +12,8 @@ let fila: Alteracao[] = [];
 let enviando = false;
 let conflito = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
+let falhasConsecutivas = 0;
+const AVISO_SINCRONIZACAO = "oricse-sync-status";
 
 async function tokenAtual() {
   const { data, error } = await supabase.auth.getSession();
@@ -28,20 +30,39 @@ async function enviarFila() {
     const accessToken = await tokenAtual();
     const result = await salvarEstadoOricseDrive({ data: { accessToken, alteracoes: lote } } as never) as any;
     if(result?.error)throw Object.assign(new Error(result.error.message), result.error);
+    if(result?.ok === false) throw new Error("O servidor não confirmou a gravação.");
+    falhasConsecutivas = 0;
+    toast.dismiss(AVISO_SINCRONIZACAO);
+    // Se a mesma chave foi editada enquanto o lote anterior estava em voo,
+    // a próxima gravação deve esperar a versão que acabou de ser confirmada.
+    for (const pendente of fila) {
+      const anterior = lote.find(item => item.chave === pendente.chave);
+      if (anterior && pendente.esperado === anterior.valor) continue;
+      if (anterior && pendente.esperado === anterior.esperado) pendente.esperado = anterior.valor;
+    }
   } catch (error: any) {
-    fila = [...lote, ...fila];
+    // Preserve apenas a alteração mais recente de cada chave, sem perder
+    // o valor esperado do primeiro envio que não foi confirmado.
+    for (const anterior of lote) {
+      const indice = fila.findIndex(item => item.chave === anterior.chave);
+      if (indice < 0) fila.push(anterior);
+      else fila[indice] = { ...fila[indice], esperado: anterior.esperado };
+    }
+    falhasConsecutivas++;
     console.error("Falha ao salvar estado no Google Drive:", error);
     if(error?.code==="DRIVE_CONFLICT" || /Outros usuários alteraram/.test(error?.message||"")){
       conflito = true;
       toast.error("Alterações conflitantes",{
-        description:"Os dados não foram salvos. Outro profissional alterou essas informações. Atualize para revisar a versão atual.",
+        id: AVISO_SINCRONIZACAO,
+        description:"Há alterações pendentes que conflitam com outra edição. Revise antes de continuar.",
         duration:Infinity,
         action:{label:"Atualizar e revisar",onClick:()=>window.location.reload()},
       });
     } else {
-      toast.error("Falha na sincronização",{
-        description:"Os dados ainda não foram confirmados no Google Drive. Mantenha esta janela aberta.",
-        duration:10000,
+      toast.error("Sincronização pendente",{
+        id: AVISO_SINCRONIZACAO,
+        description:"A gravação ainda não foi confirmada. O sistema fará novas tentativas automaticamente.",
+        duration:Infinity,
       });
     }
     throw error;
@@ -57,7 +78,7 @@ function agendarEnvio() {
   timer = setTimeout(() => {
     timer = null;
     void enviarFila().catch(() => undefined);
-  }, 180);
+  }, falhasConsecutivas ? Math.min(30000, 1000 * 2 ** Math.min(falhasConsecutivas - 1, 5)) : 180);
 }
 
 function enfileirar(chave: string, valor: string | null, esperado: string | null) {
@@ -127,6 +148,8 @@ export function limparMemoriaOricse() {
   sessao.clear();
   fila = [];
   conflito = false;
+  falhasConsecutivas = 0;
+  toast.dismiss(AVISO_SINCRONIZACAO);
   hidratado = false;
 }
 
