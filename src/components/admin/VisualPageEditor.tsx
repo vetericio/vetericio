@@ -108,8 +108,7 @@ const CAMADAS_INICIAIS_HOME = [
   ["home-menu-superior", "Menu superior"],
   ["home-botao-login", "Botão Login"],
   ["home-banner", "Área do banner"],
-  ["home-fundo-banner", "Fundo bege do banner"],
-  ["home-base-capa", "Fundo da capa"],
+  ["home-base-capa", "Área da capa"],
   ["home-imagem-oryx", "Imagem do órix e pôr do sol"],
   ["home-logo-oricse", "Logo ORICSE"],
   ["home-selo", "Selo plataforma completa"],
@@ -118,7 +117,6 @@ const CAMADAS_INICIAIS_HOME = [
   ["home-botao-conhecer", "Botão Conhecer a Oricse"],
   ["home-botao-cliente", "Botão Já sou cliente"],
   ["home-legenda-inferior", "Legenda inferior do banner"],
-  ["home-linha-divisoria", "Linha divisória"],
 ] as const;
 
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
