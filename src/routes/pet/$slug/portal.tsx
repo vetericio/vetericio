@@ -10,7 +10,12 @@ import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
 import { loadPublicClinicSite } from "@/lib/public-clinic-site";
 import { clinicSitePresets, clinicSiteTemplates, normalizeClinicSiteConfig, type ClinicSiteTemplate } from "@/lib/clinic-site";
 
-export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorClinica });
+export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorRoute });
+
+function PortalTutorRoute() {
+  const { slug } = Route.useParams();
+  return <PortalTutorClinica slugDaClinica={slug} />;
+}
 
 type ClinicaPublica={nome:string;slug:string;logo_url:string|null};
 type CoresPortal={primaryColor:string;secondaryColor:string;backgroundColor:string;textColor:string};
@@ -80,9 +85,8 @@ function dinheiro(v:number){return Number(v||0).toLocaleString("pt-BR",{style:"c
 function emoji(especie?:string){const e=(especie||"").toLowerCase();if(e.includes("cão")||e.includes("cao")||e.includes("canin"))return"🐶";if(e.includes("gat")||e.includes("felin"))return"🐱";if(e.includes("ave"))return"🐦";return"🐾";}
 function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?"Aguardando aprovação":v==="reservado"?"Reservado":v;}
 
-export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string}={}){
-  const params=Route.useParams();
-  const slug=slugDaClinica??(params as {slug?:string}).slug??"";
+export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
+  const slug=slugDaClinica;
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string;canais_contato?:CanaisClinica}>({});
   const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [temaPortal,setTemaPortal]=useState<TemaPortal|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);
