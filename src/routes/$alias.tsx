@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ORIGINAIS_EDITAVEIS } from "@/lib/admin-page-routes";
+import { PortalTutorClinica } from "@/routes/pet/$slug/portal";
+import { hostDaPagina } from "@/lib/tenant-context";
 
 export const Route = createFileRoute("/$alias")({ component: AliasPagina });
 
@@ -15,6 +17,11 @@ export const Route = createFileRoute("/$alias")({ component: AliasPagina });
 function AliasPagina() {
   const { alias } = Route.useParams();
   const [erro, setErro] = useState("");
+
+  // Atalho público da Alvorada: mantém o endereço amigável no próprio
+  // subdomínio, sem depender da tabela de aliases administrativos.
+  if (alias === "portaldotutor" && hostDaPagina() === "alvorada.oricse.com.br")
+    return <PortalTutorClinica slugDaClinica="alvorada" />;
 
   useEffect(() => {
     let ativo = true;

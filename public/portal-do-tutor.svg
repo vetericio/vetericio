@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 230" role="img" aria-labelledby="title desc">
+  <title id="title">Portal do Tutor</title>
+  <desc id="desc">Seu espaço de cuidado. Seu pet, sua clínica, sempre perto.</desc>
+  <text x="380" y="34" text-anchor="middle" fill="#c8782e" font-family="Arial, sans-serif" font-size="19" font-weight="700" letter-spacing="4">SEU ESPAÇO DE CUIDADO</text>
+  <text x="22" y="132" fill="#083e45" font-family="Georgia, serif" font-size="82" font-weight="700">Portal</text>
+  <text x="305" y="132" fill="#c8782e" font-family="Georgia, serif" font-size="82" font-weight="700">do Tutor</text>
+  <path d="M25 156 C190 139 430 166 730 148" fill="none" stroke="#c8782e" stroke-width="5" stroke-linecap="round"/>
+  <text x="380" y="204" text-anchor="middle" fill="#315c62" font-family="Arial, sans-serif" font-size="22">Seu pet, sua clínica, sempre perto.</text>
+</svg>
