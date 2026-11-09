@@ -70,11 +70,13 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
         entidadeId: data.categoria,
       },
     });
-    const logoUrl = upload.arquivo.publicUrl || upload.arquivo.url;
-    if (!logoUrl?.startsWith("https://")) {
-      throw new Error("Foto enviada, mas o Google Drive não retornou um endereço público.");
-    }
     const caminho = upload.arquivo.driveId;
+    if (!/^[a-zA-Z0-9_-]{12,160}$/.test(caminho) || !upload.arquivo.publicUrl) {
+      throw new Error("Foto enviada, mas não foi possível disponibilizá-la publicamente.");
+    }
+    // A URL de visualização do Drive pode servir HTML em vez de pixels.
+    // O endereço ORICSE transmite apenas fotos públicas verificadas.
+    const logoUrl = `https://oricse.com.br/api/public/clinic-image?file=${encodeURIComponent(caminho)}`;
     if (data.categoria === "logo") {
       const { error: erroClinica } = await supabaseAdmin
         .from("clinicas")
