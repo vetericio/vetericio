@@ -27,6 +27,9 @@ const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.
 const safeTeamPhoto = (input: string) => {
   const value = safeHttps(input);
   if (value) return value;
+  // Apenas imagens inline WEBP são aceitas; a vitrine importa duas fotos locais
+  // do próprio código para evitar URLs públicas de mídia quebradas.
+  if (/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(input)) return input;
   const local = input.trim();
   return /^\/clinic-site\/[a-z0-9/_-]+\.(?:webp|png|jpe?g)$/i.test(local) ? local : "";
 };

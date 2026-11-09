@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowRight, ArrowUpRight, Check, Eye, Layers3, MousePointerClick, Sparkles } from "lucide-react";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
+import { fotoDraAlvorada, fotoDrAlvorada } from "./alvorada-photos";
 import {
   clinicSitePresets,
   clinicSiteTemplateDescriptions,
@@ -37,12 +38,12 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
       const feminina = /\b(dra\.?|doutora|médica|veterinária)\b/i.test(identificacao);
       const masculina = /\b(dr\.?|doutor|médico|veterinário)\b/i.test(identificacao);
       const foto = feminina
-        ? "/clinic-site/alvorada/dra-veterinaria.webp"
+        ? fotoDraAlvorada
         : masculina
-          ? "/clinic-site/alvorada/dr-veterinario.webp"
+          ? fotoDrAlvorada
           : index % 2 === 0
-            ? "/clinic-site/alvorada/dra-veterinaria.webp"
-            : "/clinic-site/alvorada/dr-veterinario.webp";
+            ? fotoDraAlvorada
+            : fotoDrAlvorada;
       return { ...person, imageUrl: foto };
     });
   }, [config.team]);
