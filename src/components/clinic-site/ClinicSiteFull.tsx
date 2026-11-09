@@ -94,7 +94,10 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
   const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
+  // Fotos editoriais da vitrine comercial: exclusivas do tema Class da Alvorada.
+  const classAlvorada = friendly && publishedSlug === "alvorada";
   const image =
+    (classAlvorada ? "/clinic-site/class/intro-veterinaria-gato.webp" : "") ||
     safeHttps(config.heroImageUrl) ||
     (prime
       ? "/clinic-site/prime/hero.png"
@@ -105,7 +108,9 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           : "");
   const configuredGallery = config.galleryUrls.filter(safeHttps);
   const gallery =
-    configuredGallery.length || (!prime && !friendly && !king)
+    classAlvorada
+      ? ["/clinic-site/class/intro-veterinaria-gato.webp", "/clinic-site/class/chegada-cachorro.webp", ...configuredGallery.filter((url) => url !== "/clinic-site/class/intro-veterinaria-gato.webp" && url !== "/clinic-site/class/chegada-cachorro.webp")]
+      : configuredGallery.length || (!prime && !friendly && !king)
       ? configuredGallery
       : prime
         ? ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"]
@@ -311,9 +316,9 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               }
               style={{ backgroundColor: "var(--site-bg)" }}
             >
-              {gallery[0] ? (
+              {(classAlvorada ? gallery[1] : gallery[0]) ? (
                 <img
-                  src={gallery[0]}
+                  src={classAlvorada ? gallery[1] : gallery[0]}
                   alt={"Nossa estrutura - " + config.name}
                   className="h-full w-full object-cover"
                 />
