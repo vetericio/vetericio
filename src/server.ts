@@ -1,6 +1,7 @@
 export { OricseWriteCoordinator } from "./lib/drive-write-coordinator.server";
 import "./lib/error-capture";
 import { setDriveCoordinatorBinding } from "./lib/drive-coordinator-binding.server";
+import { findPublicClinicSlug, isPlatformHostname, normalizeHostname } from "./lib/public-clinic-site";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -88,6 +89,10 @@ function sitemap(origin: string): Response {
   );
 }
 
+function publicHostNotFound(): Response {
+  return new Response("<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Site indisponível</title></head><body><main style=\"min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;text-align:center;padding:2rem\"><div><h1>Site indisponível</h1><p>Este endereço não está vinculado a uma clínica publicada.</p></div></main></body></html>", { status: 404, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store, max-age=0" } });
+}
+
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
@@ -128,6 +133,17 @@ export default {
     setDriveCoordinatorBinding(getWorkerBindings(env)?.ORICSE_WRITE_COORDINATOR);
     try {
       const url = new URL(request.url);
+      const hostname = normalizeHostname(request.headers.get("host") || url.hostname);
+      if (request.method === "GET" && url.pathname === "/" && !isPlatformHostname(hostname)) {
+        try {
+          const slug = await findPublicClinicSlug(hostname);
+          if (!slug) return securityHeaders(publicHostNotFound(), url.pathname);
+          return securityHeaders(Response.redirect(new URL(`/c/${encodeURIComponent(slug)}${url.search}`, url), 307), url.pathname);
+        } catch (error) {
+          console.error("Não foi possível resolver o domínio público da clínica:", error);
+          return securityHeaders(publicHostNotFound(), url.pathname);
+        }
+      }
       if (url.pathname.startsWith("/api/cep/")) {
         if (request.method !== "GET") return securityHeaders(new Response(null, { status: 405 }), url.pathname);
         return securityHeaders(await consultarCepNoServidor(url.pathname.slice("/api/cep/".length)), url.pathname);
