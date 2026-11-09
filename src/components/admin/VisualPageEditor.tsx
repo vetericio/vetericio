@@ -663,7 +663,11 @@ export function VisualPageEditor() {
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
       event.preventDefault();
       event.stopPropagation();
-      const element = editableTarget(raw);
+      // Dentro do banner, um clique no texto ou ícone seleciona a camada
+      // nomeada correspondente, e não um span filho ou bloco gigante.
+      const nomeado = raw.closest("[data-visual-id]") as HTMLElement | null;
+      const element = nomeado && nomeado.dataset.visualId !== "home-fundo-bege"
+        ? nomeado : editableTarget(raw);
       // Reconhece dois cliques mesmo que preventDefault suprima o dblclick.
       const agora = Date.now();
       const doisCliquesNaImagem = element.tagName === "IMG"
