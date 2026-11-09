@@ -22,7 +22,7 @@ export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
 export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
   signatura: "Hospitalar, editorial e acolhedor.",
   prestige: "Editorial, exclusivo e sofisticado.",
-  atelier: "Moderno, claro e alto padrão.",
+  atelier: "Hospitalar, técnico e acolhedor.",
   cuidado: "Acolhedor e confiável.",
   popular: "Direto, comercial e urgente.",
   essencial: "Leve, objetivo e mobile-first.",
@@ -156,10 +156,10 @@ export const clinicSitePresets: Record<
     textColor: "#F6F1E7",
   },
   atelier: {
-    primaryColor: "#73523C",
-    secondaryColor: "#E4D5C6",
-    backgroundColor: "#F7F1EB",
-    textColor: "#322920",
+    primaryColor: "#0E5CA8",
+    secondaryColor: "#EAF4FC",
+    backgroundColor: "#FFFFFF",
+    textColor: "#123049",
   },
   cuidado: {
     primaryColor: "#307760",

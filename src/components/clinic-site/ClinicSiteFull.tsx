@@ -32,35 +32,42 @@ const realUrl = (value: string) => {
 export function ClinicSiteFull({ template, config }: Props) {
   const signatura = template === "signatura";
   const luxe = template === "prestige";
+  const prime = template === "atelier";
   const editorial = template === "atelier";
   const friendly = template === "cuidado";
   const bold = template === "popular";
   const minimal = template === "essencial";
   const organic = template === "horizonte";
-  const rounded = !luxe && !bold && !minimal;
+  const rounded = !luxe && !bold && !minimal && !prime;
   const buttonShape = luxe
     ? "rounded-none"
     : bold
       ? "rounded-md"
+      : prime
+        ? "rounded-full"
       : minimal
         ? "rounded-lg"
         : "rounded-full";
-  const headingFont = luxe || editorial || organic || signatura ? "font-serif" : "font-sans";
+  const headingFont = luxe || organic || signatura ? "font-serif" : "font-sans";
   const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
-  const panels = signatura ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
+  const panels = signatura || prime ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
   const externalBooking = realUrl(config.bookingUrl);
   const actionHref =
     externalBooking || (hasWhatsApp ? "https://wa.me/" + waNumber(config.whatsapp) : "#contato");
-  const image = safeHttps(config.heroImageUrl);
-  const gallery = config.galleryUrls.filter(safeHttps);
+  const image = safeHttps(config.heroImageUrl) || (prime ? "/clinic-site/prime/hero.png" : "");
+  const configuredGallery = config.galleryUrls.filter(safeHttps);
+  const gallery =
+    configuredGallery.length || !prime
+      ? configuredGallery
+      : ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"];
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
     : "";
   const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
   const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
-  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : "border-current/15";
+  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : prime ? "border-[#0E5CA8]/15" : "border-current/15";
   const outer = luxe
     ? "bg-[var(--site-bg)] text-[var(--site-text)]"
     : bold
@@ -116,6 +123,8 @@ export function ClinicSiteFull({ template, config }: Props) {
           ? "rounded-t-[9rem] sm:rounded-t-[12rem]"
           : bold
             ? "rounded-xl"
+            : prime
+              ? "rounded-2xl"
             : rounded
               ? "rounded-[2rem]"
               : "rounded-2xl")
@@ -138,9 +147,9 @@ export function ClinicSiteFull({ template, config }: Props) {
           </span>
         </div>
       )}
-      {(luxe || organic || signatura) && (
+      {(luxe || organic || signatura || prime) && (
         <div className="pointer-events-none absolute bottom-5 left-5 rounded-xl border border-white/40 bg-black/40 px-5 py-3 text-xs font-semibold tracking-wide text-white backdrop-blur-md">
-          Atenção em cada detalhe
+          {prime ? "Estrutura que acolhe, cuidado que acompanha" : "Atenção em cada detalhe"}
         </div>
       )}
     </div>
@@ -171,7 +180,7 @@ export function ClinicSiteFull({ template, config }: Props) {
       >
         <div className="mx-auto max-w-7xl">
           {heading("O que fazemos", "Cuidado para cada fase da vida.")}
-          <div className={"mt-10 grid gap-4 " + (minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
+          <div className={"mt-10 grid gap-4 " + (prime ? "sm:grid-cols-2 lg:grid-cols-4" : minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
             {config.services.map((service, index) => (
               <article
                 key={service + "-" + index}
@@ -180,7 +189,7 @@ export function ClinicSiteFull({ template, config }: Props) {
                   ink +
                   " " +
                   panels +
-                  (luxe ? " bg-white/[.04]" : signatura ? " bg-white shadow-[0_18px_45px_rgba(23,61,53,.08)]" : bold ? " bg-[var(--site-secondary)]" : " bg-white/35")
+                  (luxe ? " bg-white/[.04]" : signatura ? " bg-white shadow-[0_18px_45px_rgba(23,61,53,.08)]" : prime ? " bg-white shadow-[0_15px_34px_rgba(14,92,168,.08)]" : bold ? " bg-[var(--site-secondary)]" : " bg-white/35")
                 }
               >
                 <div
@@ -457,13 +466,46 @@ export function ClinicSiteFull({ template, config }: Props) {
     ),
   };
 
+  const primeHero = (
+    <section
+      id="inicio"
+      data-clinic-section="inicio"
+      className="relative isolate overflow-hidden bg-[#082D52] px-5 py-20 text-white sm:px-8 sm:py-28"
+    >
+      {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" /> : null}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,45,82,.98)_0%,rgba(8,45,82,.9)_38%,rgba(8,45,82,.28)_76%,rgba(8,45,82,.2)_100%)]" />
+      <div className="relative mx-auto max-w-7xl">
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] backdrop-blur-sm">
+          <Clock3 size={15} /> Medicina veterinária 24 horas
+        </span>
+        <div className="mt-9 max-w-3xl">
+          <h1 className="max-w-3xl text-5xl font-black leading-[.95] tracking-[-.05em] sm:text-7xl">{config.slogan}</h1>
+          <p className="mt-7 max-w-2xl text-base leading-8 text-white/85 sm:text-lg">{config.description}</p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            {action(config.ctaLabel || "Agendar atendimento")}
+            {config.services.length ? (
+              <a href="#servicos" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/45 bg-white/10 px-5 py-3 text-sm font-bold backdrop-blur-sm">
+                Ver especialidades <ArrowRight size={16} />
+              </a>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-12 grid max-w-4xl gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/10 text-sm font-semibold backdrop-blur-sm sm:grid-cols-3">
+          <span className="px-5 py-4"><ShieldCheck className="mb-2 text-sky-200" size={20} />Especialistas para cada necessidade</span>
+          <span className="border-y border-white/15 px-5 py-4 sm:border-x sm:border-y-0"><Heart className="mb-2 text-sky-200" size={20} />Acolhimento para toda a família</span>
+          <span className="px-5 py-4"><Clock3 className="mb-2 text-sky-200" size={20} />Prontos para cuidar, dia e noite</span>
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <main
       className={"min-h-screen w-full overflow-x-clip " + outer}
       style={style}
       data-clinic-template={template}
     >
-      {(bold || signatura) && config.emergency24h ? (
+      {(bold || signatura || prime) && config.emergency24h ? (
         <div className="bg-[var(--site-primary)] px-4 py-2 text-center text-xs font-black uppercase tracking-widest text-white">
           Atendimento de emergência 24h · Cuidado contínuo para o seu pet
         </div>
@@ -471,7 +513,7 @@ export function ClinicSiteFull({ template, config }: Props) {
       <header
         className={
           "relative z-10 border-b border-current/10 " +
-          (organic || signatura ? "bg-[var(--site-secondary)]" : "")
+          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : "")
         }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
@@ -508,6 +550,7 @@ export function ClinicSiteFull({ template, config }: Props) {
         </div>
       </header>
 
+      {prime ? primeHero : (
       <section
         id="inicio"
         data-clinic-section="inicio"
@@ -575,6 +618,7 @@ export function ClinicSiteFull({ template, config }: Props) {
           <div className={editorial ? "md:order-1" : ""}>{imagePanel}</div>
         </div>
       </section>
+      )}
 
       {sectionOrder.map((section) => (visible(section) ? sections[section] : null))}
       <footer
