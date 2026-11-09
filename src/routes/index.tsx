@@ -156,14 +156,16 @@ function PaginaInicialPlataforma() {
   const [menu, setMenu] = useState(false);
   const [capaOficialCarregada, setCapaOficialCarregada] = useState(true);
   return (
-    <main className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
-      <header className="mx-auto flex min-h-[52px] max-w-7xl items-center justify-end px-5 py-0 sm:px-8 lg:px-10">
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
+    <main data-visual-id="home-fundo-bege" data-visual-label="Fundo bege da página" className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
+      <header data-visual-id="home-cabecalho" data-visual-label="Cabeçalho" className="mx-auto flex min-h-[52px] max-w-7xl items-center justify-end px-5 py-0 sm:px-8 lg:px-10">
+        <nav data-visual-id="home-menu-superior" data-visual-label="Menu superior" className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link data-visual-id="home-botao-login" data-visual-label="Botão Login" to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
         <button onClick={() => setMenu(!menu)} aria-expanded={menu} className="rounded-full bg-[#4A1826] p-2.5 text-white md:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
         {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
-      <section className="relative border-t border-[#f0e3de] bg-[#fffdfa] after:absolute after:inset-x-0 after:bottom-0 after:z-20 after:h-[3px] after:bg-[linear-gradient(90deg,#7f341d_0%,#d8882a_22%,#ffd86a_50%,#d8882a_78%,#7f341d_100%)] after:shadow-[0_-1px_7px_rgba(163,88,28,.45)]">
+      <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate border-t border-[#f0e3de] bg-[#fffdfa]">
+        <div data-visual-id="home-fundo-banner" data-visual-label="Fundo bege do banner" aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[#fffdfa]"/>
+        <div data-visual-id="home-linha-divisoria" data-visual-label="Linha divisória do banner" aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[3px] bg-[linear-gradient(90deg,#7f341d_0%,#d8882a_22%,#ffd86a_50%,#d8882a_78%,#7f341d_100%)] shadow-[0_-1px_7px_rgba(163,88,28,.45)]"/>
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
@@ -175,24 +177,24 @@ function PaginaInicialPlataforma() {
           onError={() => setCapaOficialCarregada(false)}
         />
         {capaOficialCarregada ? (
-          <div className="relative w-full bg-[#f4d5bf]">
+          <div data-visual-id="home-base-capa" data-visual-label="Fundo da capa" className="relative z-[1] w-full bg-[#f4d5bf]">
             {/* Em telas menores, a arte inteira fica visível antes do conteúdo. */}
             <img
               src="/oricse-capa-paisagem.png"
-              alt="Órix nas dunas ao pôr do sol"
+              data-visual-id="home-imagem-oryx" data-visual-label="Imagem do órix e pôr do sol" alt="Órix nas dunas ao pôr do sol"
               width={1672}
               height={941}
               className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-contain"
               loading="eager"
               decoding="async"
             />
-            <div className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:aspect-[1672/941] lg:min-h-[760px] lg:py-8 lg:px-10">
+            <div data-visual-id="home-conteudo-banner" data-visual-label="Coluna do banner" className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:aspect-[1672/941] lg:min-h-[760px] lg:py-8 lg:px-10">
               <div className="max-w-xl">
             {/* Logo centralizada sobre o selo, dentro da coluna de conteúdo. */}
             <div className="mb-6 flex w-full justify-center sm:mb-8">
               <img
                 src="/oricse-logo-oryx.svg?v=15"
-                alt="ORICSE — Soluções para o mercado pet"
+                data-visual-id="home-logo-oricse" data-visual-label="Logo ORICSE" alt="ORICSE — Soluções para o mercado pet"
                 width={200}
                 height={200}
                 className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[200px] lg:w-[200px]"
@@ -201,11 +203,11 @@ function PaginaInicialPlataforma() {
               />
             </div>
 
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
-            <h1 className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
-            <p className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867]">Uma plataforma completa para manter a rotina organizada, o time alinhado e os tutores por perto.</p>
-            <div className="mt-8 flex flex-wrap gap-3"><Link to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
-            <p className="mt-6 flex items-center gap-2 text-sm text-[#876570]"><PawPrint size={16} className="text-[#8d4359]"/> Uma plataforma para sua operação inteira, com a sua identidade.</p>
+            <p data-visual-id="home-selo" data-visual-label="Selo plataforma completa" className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
+            <h1 data-visual-id="home-titulo-principal" data-visual-label="Título principal" className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
+            <p data-visual-id="home-texto-apoio" data-visual-label="Texto de apoio" className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867]">Uma plataforma completa para manter a rotina organizada, o time alinhado e os tutores por perto.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Link data-visual-id="home-botao-conhecer" data-visual-label="Botão Conhecer a Oricse" to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link data-visual-id="home-botao-cliente" data-visual-label="Botão Já sou cliente" to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
+            <p data-visual-id="home-legenda-inferior" data-visual-label="Legenda inferior do banner" className="mt-6 flex items-center gap-2 text-sm text-[#876570]"><PawPrint size={16} className="text-[#8d4359]"/> Uma plataforma para sua operação inteira, com a sua identidade.</p>
 
               </div>
             </div>
