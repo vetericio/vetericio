@@ -723,7 +723,12 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           {brand}
           <nav
             aria-label="Navegação do site"
-            className="hidden items-center gap-6 text-sm font-semibold opacity-85 lg:flex"
+            className={
+              "hidden items-center text-sm font-semibold lg:flex " +
+              (luxe
+                ? "gap-4 rounded-full border border-white/10 bg-[#15251F]/80 px-4 py-2.5 text-[#FFF9EE] shadow-[0_4px_16px_rgba(0,0,0,0.14)] backdrop-blur-sm"
+                : "gap-6 opacity-85")
+            }
           >
             {sectionOrder
               .filter(
