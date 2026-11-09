@@ -642,8 +642,8 @@ function RootComponent() {
       void navigator.serviceWorker
         .getRegistration("/")
         .then((registro) => {
-          if (registro && !registro.active?.scriptURL.includes("sw.js?v=16"))
-            return navigator.serviceWorker.register("/sw.js?v=16", { scope: "/" });
+          if (registro && !registro.active?.scriptURL.includes("sw.js?v=17"))
+            return navigator.serviceWorker.register("/sw.js?v=17", { scope: "/" });
           return undefined;
         })
         .catch(() => undefined);
