@@ -25,13 +25,37 @@ type Props = {
 export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "alvorada" }: Props) {
   const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate);
   const preset = clinicSitePresets[modelo];
+  // Fotografias da equipe são exclusivas da vitrine Alvorada; outras clínicas
+  // continuam usando suas próprias imagens cadastradas.
+  const equipeDeDemonstracao = useMemo(() => {
+    const equipe = config.team.length ? config.team : [
+      { name: "Dra. Veterinária", role: "Médica Veterinária", imageUrl: "" },
+      { name: "Dr. Veterinário", role: "Médico Veterinário", imageUrl: "" },
+    ];
+    return equipe.map((person, index) => {
+      const identificacao = `${person.name} ${person.role}`.toLocaleLowerCase("pt-BR");
+      const feminina = /\b(dra\.?|doutora|médica|veterinária)\b/i.test(identificacao);
+      const masculina = /\b(dr\.?|doutor|médico|veterinário)\b/i.test(identificacao);
+      const foto = feminina
+        ? "/clinic-site/alvorada/dra-veterinaria.webp"
+        : masculina
+          ? "/clinic-site/alvorada/dr-veterinario.webp"
+          : index % 2 === 0
+            ? "/clinic-site/alvorada/dra-veterinaria.webp"
+            : "/clinic-site/alvorada/dr-veterinario.webp";
+      return { ...person, imageUrl: foto };
+    });
+  }, [config.team]);
+
   const configDeDemonstracao = useMemo<ClinicSiteConfig>(() => ({
     ...config,
+    team: equipeDeDemonstracao,
+    hiddenSections: config.hiddenSections.filter((section) => section !== "equipe"),
     primaryColor: preset.primaryColor,
     secondaryColor: preset.secondaryColor,
     backgroundColor: preset.backgroundColor,
     textColor: preset.textColor,
-  }), [config, preset]);
+  }), [config, preset, equipeDeDemonstracao]);
 
   function escolherModelo(novo: ClinicSiteTemplate) {
     if (novo === modelo) return;
