@@ -14,6 +14,10 @@ type Cupom = {
   tipo_desconto: "percentual" | "fixo";
   valor: number;
   planos: string[];
+  ciclos: string[];
+  modos_renovacao: string[];
+  valor_minimo: number | null;
+  teto_desconto: number | null;
   valido_de: string | null;
   valido_ate: string | null;
   limite_usos: number | null;
@@ -51,6 +55,10 @@ type RascunhoCupom = {
   tipo_desconto: "percentual" | "fixo";
   valor: number;
   planos: string[];
+  ciclos: string[];
+  modos_renovacao: string[];
+  valor_minimo: number | null;
+  teto_desconto: number | null;
   valido_de: string;
   valido_ate: string;
   limite_usos: number | null;
@@ -65,6 +73,10 @@ const RASCUNHO_VAZIO: RascunhoCupom = {
   tipo_desconto: "percentual",
   valor: 10,
   planos: [],
+  ciclos: [],
+  modos_renovacao: [],
+  valor_minimo: null,
+  teto_desconto: null,
   valido_de: "",
   valido_ate: "",
   limite_usos: null,
@@ -73,6 +85,18 @@ const RASCUNHO_VAZIO: RascunhoCupom = {
   somente_primeira_assinatura: false,
   duracao: "primeiro_mes",
 };
+
+const CICLOS_CUPOM = [
+  { codigo: "mensal", nome: "Mensal" },
+  { codigo: "trimestral", nome: "Trimestral" },
+  { codigo: "semestral", nome: "Semestral" },
+  { codigo: "anual", nome: "Anual (365 dias)" },
+  { codigo: "bienal", nome: "Dois anos" },
+] as const;
+const MODOS_CUPOM = [
+  { codigo: "automatica_cartao", nome: "Cartão / automática" },
+  { codigo: "manual", nome: "PIX, boleto / manual" },
+] as const;
 
 function normalizarCodigo(valor: string) {
   return valor.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 40);
@@ -229,6 +253,10 @@ function AdminCupons() {
       tipo_desconto: cupom.tipo_desconto,
       valor: Number(cupom.valor),
       planos: cupom.planos || [],
+      ciclos: cupom.ciclos || [],
+      modos_renovacao: cupom.modos_renovacao || [],
+      valor_minimo: cupom.valor_minimo == null ? null : Number(cupom.valor_minimo),
+      teto_desconto: cupom.teto_desconto == null ? null : Number(cupom.teto_desconto),
       valido_de: paraInputData(cupom.valido_de),
       valido_ate: paraInputData(cupom.valido_ate),
       limite_usos: cupom.limite_usos,
@@ -251,6 +279,13 @@ function AdminCupons() {
     if (rascunho.tipo_desconto === "fixo" && rascunho.valor <= 0) {
       return void toast.error("Informe um valor fixo maior que zero.");
     }
+    if (rascunho.valor_minimo != null && (!Number.isFinite(rascunho.valor_minimo) || rascunho.valor_minimo < 0)) {
+      return void toast.error("O valor mínimo deve ser zero ou positivo.");
+    }
+    if (rascunho.tipo_desconto === "percentual" && rascunho.teto_desconto != null &&
+        (!Number.isFinite(rascunho.teto_desconto) || rascunho.teto_desconto <= 0)) {
+      return void toast.error("O teto do desconto deve ser maior que zero.");
+    }
     const inicio = paraIso(rascunho.valido_de);
     const fim = paraIso(rascunho.valido_ate);
     if (inicio && fim && new Date(inicio).getTime() > new Date(fim).getTime()) {
@@ -269,6 +304,10 @@ function AdminCupons() {
         tipo_desconto: rascunho.tipo_desconto,
         valor: Number(rascunho.valor),
         planos: rascunho.planos,
+        ciclos: rascunho.ciclos,
+        modos_renovacao: rascunho.modos_renovacao,
+        valor_minimo: rascunho.valor_minimo,
+        teto_desconto: rascunho.tipo_desconto === "percentual" ? rascunho.teto_desconto : null,
         valido_de: inicio,
         valido_ate: fim,
         limite_usos: rascunho.limite_usos,
@@ -278,11 +317,9 @@ function AdminCupons() {
         duracao: rascunho.duracao,
         updated_at: new Date().toISOString(),
       };
-      const [drive, banco] = await Promise.all([
-        (supabaseBanco as any).from("oricse_codigos_promocionais").upsert(payload, { onConflict: "id" }),
-        (supabaseBanco as any).from("oricse_codigos_promocionais").upsert(payload, { onConflict: "id" }),
-      ]);
-      if (drive.error || banco.error) throw new Error(drive.error?.message || banco.error?.message);
+      const { error } = await (supabaseBanco as any)
+        .from("oricse_codigos_promocionais").upsert(payload, { onConflict: "id" });
+      if (error) throw new Error(error.message);
       setRascunho(null);
       setSelecionadoId(id);
       toast.success(rascunho.id ? "Cupom atualizado." : "Cupom criado e pronto para o checkout.");
@@ -298,11 +335,9 @@ function AdminCupons() {
     setAlterandoStatus(cupom.id);
     try {
       const atualizacao = { ativo, updated_at: new Date().toISOString() };
-      const [drive, banco] = await Promise.all([
-        (supabaseBanco as any).from("oricse_codigos_promocionais").update(atualizacao).eq("id", cupom.id),
-        (supabaseBanco as any).from("oricse_codigos_promocionais").update(atualizacao).eq("id", cupom.id),
-      ]);
-      if (drive.error || banco.error) throw new Error(drive.error?.message || banco.error?.message);
+      const { error } = await (supabaseBanco as any)
+        .from("oricse_codigos_promocionais").update(atualizacao).eq("id", cupom.id);
+      if (error) throw new Error(error.message);
       toast.success(ativo ? "Cupom reativado." : "Cupom pausado. Ele não poderá mais ser aplicado.");
       await carregar();
     } catch (erro) {
@@ -398,6 +433,56 @@ function AdminCupons() {
             </div>
           </div>
 
+          <div className="mt-4 rounded-xl border bg-secondary/25 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold">Períodos de contratação elegíveis</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Escolha somente Anual para restringir o cupom à compra de 365 dias. Nenhum marcado = todos os períodos.</p>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" checked={!rascunho.ciclos.length} onChange={() => setRascunho({ ...rascunho, ciclos: [] })}/>
+                Todos os períodos
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {CICLOS_CUPOM.map((opcao) => {
+                const marcado = rascunho.ciclos.includes(opcao.codigo);
+                return <label key={opcao.codigo} className={marcado ? "inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground" : "inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm font-bold"}>
+                  <input className="sr-only" type="checkbox" checked={marcado} onChange={() => setRascunho({ ...rascunho, ciclos: marcado ? rascunho.ciclos.filter((c) => c !== opcao.codigo) : [...rascunho.ciclos, opcao.codigo] })}/>
+                  {opcao.nome}
+                </label>;
+              })}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border bg-secondary/25 p-4">
+              <h3 className="font-bold">Condições financeiras</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Valores calculados sobre a contratação antes do desconto, incluindo perfis adicionais.</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-bold">Compra mínima (R$)
+                  <input type="number" min="0" step="0.01" value={rascunho.valor_minimo ?? ""} placeholder="Sem mínimo" onChange={(e) => setRascunho({ ...rascunho, valor_minimo: e.target.value === "" ? null : Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"/>
+                </label>
+                <label className="text-xs font-bold">Teto do desconto (R$)
+                  <input type="number" min="0.01" step="0.01" disabled={rascunho.tipo_desconto !== "percentual"} value={rascunho.tipo_desconto === "percentual" ? rascunho.teto_desconto ?? "" : ""} placeholder="Sem teto" onChange={(e) => setRascunho({ ...rascunho, teto_desconto: e.target.value === "" ? null : Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal disabled:opacity-50"/>
+                </label>
+              </div>
+            </div>
+            <div className="rounded-xl border bg-secondary/25 p-4">
+              <h3 className="font-bold">Modalidades de renovação</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Restringe o cupom à modalidade de pagamento/renovação escolhida. Nenhuma marcada = ambas.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {MODOS_CUPOM.map((opcao) => {
+                  const marcado = rascunho.modos_renovacao.includes(opcao.codigo);
+                  return <label key={opcao.codigo} className={marcado ? "inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground" : "inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm font-bold"}>
+                    <input className="sr-only" type="checkbox" checked={marcado} onChange={() => setRascunho({ ...rascunho, modos_renovacao: marcado ? rascunho.modos_renovacao.filter((m) => m !== opcao.codigo) : [...rascunho.modos_renovacao, opcao.codigo] })}/>
+                    {opcao.nome}
+                  </label>;
+                })}
+              </div>
+            </div>
+          </div>
+
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3">
             <label className="inline-flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={rascunho.ativo} onChange={(e) => setRascunho({ ...rascunho, ativo: e.target.checked })}/> Ativo ao salvar</label>
             <label className="inline-flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={rascunho.somente_primeira_assinatura} onChange={(e) => setRascunho({ ...rascunho, somente_primeira_assinatura: e.target.checked })}/> Apenas primeira assinatura deste CPF/CNPJ</label>
@@ -423,8 +508,8 @@ function AdminCupons() {
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-secondary"><tr><th className="px-4 py-3">Código</th><th className="px-4 py-3">Regra</th><th className="px-4 py-3">Uso</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
                 <tbody>{cuponsVisiveis.map((cupom) => { const usosDoCupom = usosPorCupom.get(cupom.id) || []; const status = rotuloStatus(cupom, usosDoCupom.length); const desconto = cupom.tipo_desconto === "percentual" ? String(cupom.valor) + "%" : dinheiro(cupom.valor); return <tr key={cupom.id} className={cupom.id === cupomSelecionado?.id ? "border-t bg-primary/5" : "border-t"}>
-                  <td className="px-4 py-3"><button type="button" onClick={() => setSelecionadoId(cupom.id)} className="text-left"><span className="block font-black tracking-wide">{cupom.codigo}</span><span className="mt-1 block text-[11px] text-muted-foreground">{cupom.planos.length ? cupom.planos.join(" · ") : "Todos os planos"}</span></button></td>
-                  <td className="px-4 py-3"><span className="font-bold">{desconto}</span><span className="mt-1 block text-[11px] text-muted-foreground">{cupom.duracao === "recorrente" ? "Recorrente" : "Primeira cobrança"}{cupom.somente_primeira_assinatura ? " · nova assinatura" : ""}</span></td>
+                  <td className="px-4 py-3"><button type="button" onClick={() => setSelecionadoId(cupom.id)} className="text-left"><span className="block font-black tracking-wide">{cupom.codigo}</span><span className="mt-1 block text-[11px] text-muted-foreground">{cupom.planos.length ? cupom.planos.join(" · ") : "Todos os planos"} · {cupom.ciclos?.length ? cupom.ciclos.map((c) => textoCiclo(c)).join(", ") : "Todos os períodos"}</span></button></td>
+                  <td className="px-4 py-3"><span className="font-bold">{desconto}</span><span className="mt-1 block text-[11px] text-muted-foreground">{cupom.duracao === "recorrente" ? "Recorrente" : "Primeira cobrança"}{cupom.somente_primeira_assinatura ? " · nova assinatura" : ""}{cupom.valor_minimo != null ? " · mínimo " + dinheiro(cupom.valor_minimo) : ""}{cupom.teto_desconto != null ? " · teto " + dinheiro(cupom.teto_desconto) : ""}</span></td>
                   <td className="px-4 py-3"><span className="font-bold">{usosDoCupom.length}{cupom.limite_usos !== null ? " / " + cupom.limite_usos : ""}</span><span className="mt-1 block text-[11px] text-muted-foreground">usos concluídos</span></td>
                   <td className="px-4 py-3"><span className={"inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase " + classeStatus(status)}>{status}</span></td>
                   <td className="px-4 py-3"><div className="flex justify-end gap-2"><button type="button" onClick={() => void copiarCodigo(cupom.codigo)} className="rounded-lg border p-2" title="Copiar código" aria-label={"Copiar " + cupom.codigo}><Copy size={15}/></button><button type="button" onClick={() => abrirEdicao(cupom)} className="rounded-lg border p-2" title="Editar cupom" aria-label={"Editar " + cupom.codigo}><Pencil size={15}/></button><button type="button" disabled={alterandoStatus === cupom.id} onClick={() => void alterarStatus(cupom, !cupom.ativo)} className="rounded-lg border p-2 disabled:opacity-50" title={cupom.ativo ? "Pausar cupom" : "Reativar cupom"} aria-label={cupom.ativo ? "Pausar " + cupom.codigo : "Reativar " + cupom.codigo}><PauseCircle size={15}/></button></div></td>
