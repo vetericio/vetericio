@@ -120,19 +120,21 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
       className="flex min-w-0 items-center gap-3"
     >
       {safeHttps(config.logoUrl) ? (
-        <img src={config.logoUrl} className="h-11 max-w-36 object-contain" alt={config.name} />
+        <img
+          src={config.logoUrl}
+          className="h-[72px] w-auto max-w-[min(48vw,240px)] object-contain object-left sm:max-w-[240px]"
+          alt={config.name}
+        />
       ) : (
-        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-current/20">
-          <PawPrint size={20} />
-        </span>
-      )}
-      <span
-        className={
-          "max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " + headingFont
-        }
-      >
-        {config.name}
-      </span>
+        <>
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-current/20">
+            <PawPrint size={20} />
+          </span>
+          <span className={"max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " + headingFont}>
+            {config.name}
+          </span>
+        </>
+      )>
     </a>
   );
   const action = (label: string, inverted = false) => (
