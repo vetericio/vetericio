@@ -463,7 +463,7 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
-      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
+      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/portaldotutor"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/c\/[^/]+\/?$/.test(location.pathname) ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
