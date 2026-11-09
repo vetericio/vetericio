@@ -293,8 +293,8 @@ function Admin() {
   const [salvandoRotas, setSalvandoRotas] = useState(false);
   const [rotasSalvas, setRotasSalvas] = useState<Record<string,string>>({});
   const [buscaRotas, setBuscaRotas] = useState("");
-  const [buscaPaginasSite, setBuscaPaginasSite] = useState("");
-  const [grupoPaginasSite, setGrupoPaginasSite] = useState("todas");
+  
+  
   const [grupoRotas, setGrupoRotas] = useState("todas");
   const [somenteEditaveis, setSomenteEditaveis] = useState(false);
   const [carregandoRotas, setCarregandoRotas] = useState(false);
@@ -1188,7 +1188,7 @@ function Admin() {
 
   const abrirPainel = (destino: Aba) => {
     setAba(destino);
-    if (destino === "paginas") void carregarRotas();
+    if (destino === "site" || destino === "paginas") void carregarRotas();
     if (destino === "clinicas") setFiltroClinica("todas");
   };
 
@@ -1227,7 +1227,7 @@ function Admin() {
     const atalhos = [
       { titulo: "Planos e autorizações", descricao: "Matriz de recursos, limites e exceções por clínica.", Icone: BadgeDollarSign, acao: () => window.location.assign("/admin-planos") },
       { titulo: "Conteúdo público", descricao: "Ajuste textos, planos e a jornada de contratação.", Icone: PanelsTopLeft, acao: () => window.location.assign("/admin-conteudo") },
-      { titulo: "Páginas e URLs", descricao: "Consulte e mantenha o catálogo de rotas da plataforma.", Icone: Globe2, acao: () => abrirPainel("paginas") },
+      { titulo: "Marca, páginas e URLs", descricao: "Editor visual, endereços, marca, sites e domínios em um só lugar.", Icone: Globe2, acao: () => abrirPainel("site") },
     ];
 
     return <div className="space-y-5">
@@ -1952,65 +1952,10 @@ function Admin() {
     </div>
   </Card>;
 
+  // Gestão unificada: catálogo, editor visual, URLs, marca e logo em uma área.
   const renderSite = () => <div className="space-y-5">
-    <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2"><PanelsTopLeft size={20}/><h3 className="text-xl font-bold">Páginas do sistema · Editor visual</h3></div>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Todas as páginas reais do ORICSE ficam aqui e em Páginas e URLs, usando o mesmo catálogo automático. Novas páginas criadas no código aparecem nas duas áreas assim que a atualização do sistema é publicada.</p>
-        </div>
-        <a href="/admin-canvas" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">
-          <PanelsTopLeft size={17}/> Abrir editor visual
-        </a>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-3 rounded-xl border bg-[#FBF8F6] p-4 text-sm">
-        <div><strong className="text-lg">{ROTAS_CATALOGO.length}</strong><span className="ml-2 text-muted-foreground">páginas identificadas</span></div>
-        <span className="hidden text-muted-foreground sm:inline">·</span>
-        <span className="text-muted-foreground">Lista sincronizada com Páginas e URLs</span>
-        <button type="button" onClick={()=>window.location.reload()} className="ml-auto inline-flex items-center gap-1 font-semibold text-[#703047] hover:underline"><RefreshCcw size={15}/> Atualizar lista</button>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
-        <label className="relative block">
-          <Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/>
-          <input value={buscaPaginasSite} onChange={e=>setBuscaPaginasSite(e.target.value)}
-            aria-label="Pesquisar páginas do site e sistema" placeholder="Pesquisar por página, módulo ou endereço…"
-            className="min-h-11 w-full rounded-xl border bg-white pl-10 pr-3 text-sm"/>
-        </label>
-        <select value={grupoPaginasSite} onChange={e=>setGrupoPaginasSite(e.target.value)}
-          aria-label="Filtrar grupo de páginas" className="min-h-11 rounded-xl border bg-white px-3 text-sm">
-          <option value="todas">Todas as áreas</option>
-          {Array.from(new Set(ROTAS_CATALOGO.map(r=>r.grupo))).map(g=><option key={g} value={g}>{g}</option>)}
-        </select>
-      </div>
-      <div className="mt-5 max-h-[640px] space-y-2 overflow-y-auto pr-1">
-        {ROTAS_CATALOGO.filter(r=>(grupoPaginasSite==="todas"||r.grupo===grupoPaginasSite) &&
-          (!buscaPaginasSite.trim()||([r.nome,r.original,r.grupo].join(" ").toLocaleLowerCase("pt-BR")).includes(buscaPaginasSite.trim().toLocaleLowerCase("pt-BR"))))
-          .map(r=><div key={r.original} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 hover:border-[#D6AEBE]">
-            <div className="min-w-0">
-              <p className="font-bold text-[#381724]">{r.nome}</p>
-              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{r.original}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{r.grupo}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {r.dinamica?<span className="rounded-lg border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted-foreground">Link específico por clínica</span>:r.original==="/admin-canvas"?<span className="rounded-lg border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted-foreground">Você já está no editor visual desta área</span>:<>
-                <a href={r.original} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-semibold hover:bg-slate-50"><ExternalLink size={15}/> Abrir</a>
-                <a href={"/admin-canvas?pagina="+encodeURIComponent(r.original)}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#703047] px-3 text-xs font-bold text-white hover:bg-[#552037]">
-                  <PanelsTopLeft size={15}/> Editar visualmente
-                </a>
-              </>}
-            </div>
-          </div>)}
-        {!ROTAS_CATALOGO.some(r=>(grupoPaginasSite==="todas"||r.grupo===grupoPaginasSite) &&
-          (!buscaPaginasSite.trim()||([r.nome,r.original,r.grupo].join(" ").toLocaleLowerCase("pt-BR")).includes(buscaPaginasSite.trim().toLocaleLowerCase("pt-BR"))))&&
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhuma página encontrada. Altere a pesquisa.</div>}
-      </div>
-      <div className="mt-5 border-t pt-4">
-        <button type="button" onClick={()=>{setAba("paginas");void carregarRotas();}} className="inline-flex items-center gap-2 text-sm font-semibold text-[#703047] hover:underline"><Globe2 size={16}/> Gerenciar endereços em Páginas e URLs</button>
-      </div>
-    </Card>
-<Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card>
+    {renderPaginas()}
+    <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Globe2 size={21}/><h2 className="text-xl font-bold">Site e marca</h2></div><p className="mt-1 text-sm text-muted-foreground">Textos gerais usados nas páginas públicas da Oricse.</p></div><button onClick={salvarSite} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4"><label className="text-sm font-semibold">Marca<input value={site.marca} onChange={(e) => setSite({ ...site, marca: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Título da página de planos<input value={site.titulo_planos} onChange={(e) => setSite({ ...site, titulo_planos: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Subtítulo<textarea value={site.subtitulo_planos} onChange={(e) => setSite({ ...site, subtitulo_planos: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-semibold">Texto do botão<input value={site.cta_plano} onChange={(e) => setSite({ ...site, cta_plano: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><label className="text-sm font-semibold">Contato comercial<input value={site.contato} onChange={(e) => setSite({ ...site, contato: e.target.value })} placeholder="WhatsApp, e-mail ou link" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label></div></div></Card><Card><h3 className="font-bold">Logo usada no site</h3><div className="mt-4 flex flex-wrap items-center gap-5 rounded-xl bg-[#f6f4ef] p-4"><img src={logoPreview || site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="max-h-32 max-w-[260px] object-contain"/><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ImageUp size={17}/> Escolher logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(e) => escolherLogo(e.target.files?.[0])}/></label><button disabled={!logoArquivo || salvandoLogo} onClick={salvarLogoSite} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-50">Salvar logo</button><button onClick={restaurarLogoPadrao} className="rounded-xl border bg-white px-4 py-2.5 font-semibold">Restaurar padrão</button></div></div></Card>
 </div>;
 
   // O catálogo é compartilhado com o resolvedor de URLs personalizadas:
@@ -2076,9 +2021,9 @@ function Admin() {
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2"><Globe2 size={22}/><h2 className="text-2xl font-bold tracking-tight">Páginas e URLs</h2></div>
+          <div className="flex items-center gap-2"><Globe2 size={22}/><h2 className="text-2xl font-bold tracking-tight">Marca, páginas e URLs</h2></div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Consulte todas as páginas do ORICSE e crie atalhos para as telas internas. O endereço original continua funcionando.
+            Gerencie todas as páginas do ORICSE: abra, edite visualmente no Canvas e personalize os endereços permitidos. O endereço original continua funcionando.
             A personalização é global, mas os dados e as permissões permanecem separados por clínica.
           </p>
         </div>
@@ -2129,6 +2074,10 @@ function Admin() {
                 {r.editavel?<span className="font-semibold text-emerald-700">Atalho personalizável</span>:<span className="font-semibold text-slate-500">{r.dinamica?"URL com identificador da clínica":"Endereço fixo"}</span>}
                 {!r.dinamica&&<a href={r.editavel?salvo:r.original} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 font-semibold text-[#703047] hover:underline"><ExternalLink size={13}/> Abrir página</a>}
+                {!r.dinamica && r.original !== "/admin-canvas" && <a
+                  href={"/admin-canvas?pagina=" + encodeURIComponent(r.original)}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#703047] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#552037]"
+                ><PanelsTopLeft size={14}/> Editar no Canvas</a>}
               </div>
             </div>
             {r.editavel?<div className="flex flex-wrap items-end gap-2">
@@ -2308,7 +2257,7 @@ function Admin() {
             {aba === "planos" && renderPlanos()}
             {aba === "site" && renderSite()}
             {aba === "sistema" && renderSistema()}
-            {aba === "paginas" && renderPaginas()}
+            {aba === "paginas" && renderSite()}
             {aba === "pagamentos" && renderPagamentos()}
             {aba === "auditoria" && renderAuditoria()}
           </section>
