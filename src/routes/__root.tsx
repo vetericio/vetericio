@@ -644,11 +644,14 @@ function RootComponent() {
         if (!resposta.ok || !(resposta.headers.get("content-type") || "").includes("json")) return;
         const versaoPublicada = (await resposta.json() as {build?: string}).build;
         if (!ativo || !versaoPublicada || versaoPublicada === versaoDestaAba) return;
-        const chave = "oricse-auto-update";
-        if (sessionStorage.getItem(chave) === versaoPublicada) return;
-        sessionStorage.setItem(chave, versaoPublicada);
-        // Reabre exatamente a URL atual, sem apagar cache de dados ou login.
-        window.location.reload();
+        // Use o estado da URL durante a atualização, sem persistir dados
+        // no armazenamento do navegador.
+        const atual = new URL(window.location.href);
+        if (atual.searchParams.get("oricse_build") === versaoPublicada) return;
+        atual.searchParams.set("oricse_build", versaoPublicada);
+        window.location.replace(atual.pathname + atual.search + atual.hash);
+        return;
+
       } catch {
         // Uma queda de rede temporária não pode interromper o trabalho.
       } finally {
