@@ -6,12 +6,15 @@ import {
   ArrowLeft,
   BringToFront,
   Copy,
+  Crop,
   Eye,
   EyeOff,
   ImagePlus,
   Layers3,
   Monitor,
   Move,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Redo2,
   RotateCcw,
@@ -27,6 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ROTAS_CATALOGO } from "@/lib/admin-page-routes";
+import { useAdminNavigation } from "@/components/admin/AdminShell";
 import {
   applyVisualLayout,
   cloneVisual,
@@ -103,6 +107,7 @@ function number(value: string, fallback = 0) {
 }
 
 export function VisualPageEditor() {
+  const { adminMenuRecolhido, alternarMenuAdmin } = useAdminNavigation();
   const [device, setDevice] = useState<VisualDevice>("desktop");
   const [route, setRoute] = useState("/");
   useEffect(() => {
@@ -128,6 +133,9 @@ export function VisualPageEditor() {
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [undo, setUndo] = useState<VisualDocument[]>([]);
   const [redo, setRedo] = useState<VisualDocument[]>([]);
+  const undoRef = useRef<VisualDocument[]>([]);
+  const redoRef = useRef<VisualDocument[]>([]);
+  const [croppingId, setCroppingId] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -216,39 +224,50 @@ export function VisualPageEditor() {
     })();
   }, []);
 
+  // O histórico usa referências sincronizadas, inclusive durante arrastes rápidos.
+  // Um checkpoint representa uma ação completa, não cada pixel movimentado.
   const checkpoint = useCallback(() => {
-    setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
+    undoRef.current = [...undoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    redoRef.current = [];
+    setUndo(undoRef.current);
     setRedo([]);
   }, []);
 
   const updateLayout = useCallback(
     (mutate: (layout: VisualLayout) => void, remember = true) => {
       if (remember) checkpoint();
-      setDocumento((current) => {
-        const next = cloneVisual(current);
-        mutate(ensurePage(next, route)[device]);
-        next.updatedAt = new Date().toISOString();
-        return next;
-      });
+      const next = cloneVisual(documentRef.current);
+      mutate(ensurePage(next, route)[device]);
+      next.updatedAt = new Date().toISOString();
+      documentRef.current = next;
+      setDocumento(next);
     },
     [checkpoint, route, device],
   );
 
   function undoNow() {
-    const previous = undo.at(-1);
+    const previous = undoRef.current.at(-1);
     if (!previous) return;
-    setRedo((items) => [...items, cloneVisual(documento)]);
-    setDocumento(previous);
-    setUndo((items) => items.slice(0, -1));
+    redoRef.current = [...redoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    undoRef.current = undoRef.current.slice(0, -1);
+    setRedo(redoRef.current);
+    setUndo(undoRef.current);
+    documentRef.current = cloneVisual(previous);
+    setDocumento(documentRef.current);
     setSelected([]);
+    setCroppingId(null);
   }
   function redoNow() {
-    const next = redo.at(-1);
+    const next = redoRef.current.at(-1);
     if (!next) return;
-    setUndo((items) => [...items, cloneVisual(documento)]);
-    setDocumento(next);
-    setRedo((items) => items.slice(0, -1));
+    undoRef.current = [...undoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    redoRef.current = redoRef.current.slice(0, -1);
+    setUndo(undoRef.current);
+    setRedo(redoRef.current);
+    documentRef.current = cloneVisual(next);
+    setDocumento(documentRef.current);
     setSelected([]);
+    setCroppingId(null);
   }
 
   const selectedElements = useCallback(() => {
@@ -275,8 +294,27 @@ export function VisualPageEditor() {
     if (!doc) return;
     doc.querySelectorAll("[data-oricse-editor-overlay]").forEach((x) => x.remove());
     const elements = selectedElements();
-    for (const element of elements) {
+    const selectionBounds = (element: HTMLElement, item?: SelectedItem) => {
       const rect = element.getBoundingClientRect();
+      if (element.tagName !== "IMG" || !item) return rect;
+      const current = ensurePage(cloneVisual(documentRef.current), route)[device];
+      const layer = item.kind === "patch"
+        ? current.patches.find((p) => p.id === item.id)
+        : current.added.find((p) => p.id === item.id);
+      if (!layer) return rect;
+      const bounded = (value: unknown) => Math.max(0, Math.min(90, Number(value) || 0));
+      const leftCrop = bounded(layer.style.cropLeft);
+      const rightCrop = Math.min(bounded(layer.style.cropRight), 95 - leftCrop);
+      const topCrop = bounded(layer.style.cropTop);
+      const bottomCrop = Math.min(bounded(layer.style.cropBottom), 95 - topCrop);
+      const left = rect.left + rect.width * leftCrop / 100;
+      const right = rect.right - rect.width * rightCrop / 100;
+      const top = rect.top + rect.height * topCrop / 100;
+      const bottom = rect.bottom - rect.height * bottomCrop / 100;
+      return { left, right, top, bottom, width: right - left, height: bottom - top };
+    };
+    for (const [index, element] of elements.entries()) {
+      const rect = selectionBounds(element, selectedRef.current[index]);
       const overlay = doc.createElement("div");
       overlay.dataset["oricseEditorOverlay"] = "1";
       Object.assign(overlay.style, {
@@ -294,11 +332,108 @@ export function VisualPageEditor() {
     }
     if (elements.length) {
       const rect = elements[0].getBoundingClientRect();
+
+      // Duplo clique em uma imagem ativa o recorte, com oito alças visíveis.
+      // A imagem original continua salva; só a máscara é modificada.
+      const itemSelecionado = selectedRef.current[0];
+      if (croppingId && itemSelecionado?.id === croppingId
+        && elements.length === 1 && elements[0].tagName === "IMG") {
+        const page = ensurePage(cloneVisual(documentRef.current), route)[device];
+        const alvo = itemSelecionado.kind === "patch"
+          ? page.patches.find((x) => x.id === croppingId)
+          : page.added.find((x) => x.id === croppingId);
+        if (alvo) {
+          const bounded = (v: unknown) => Math.max(0, Math.min(90, Number(v) || 0));
+          const startCrop = {
+            top: bounded(alvo.style.cropTop),
+            right: bounded(alvo.style.cropRight),
+            bottom: bounded(alvo.style.cropBottom),
+            left: bounded(alvo.style.cropLeft),
+          };
+          const left = rect.left + rect.width * startCrop.left / 100;
+          const right = rect.right - rect.width * startCrop.right / 100;
+          const top = rect.top + rect.height * startCrop.top / 100;
+          const bottom = rect.bottom - rect.height * startCrop.bottom / 100;
+          const outline = doc.createElement("div");
+          outline.dataset["oricseEditorOverlay"] = "1";
+          Object.assign(outline.style, {
+            position: "fixed", left: `${left}px`, top: `${top}px`,
+            width: `${Math.max(1, right - left)}px`, height: `${Math.max(1, bottom - top)}px`,
+            border: "2px dashed #fff", outline: "2px solid #6F293B",
+            pointerEvents: "none", boxSizing: "border-box", zIndex: "2147483646",
+          });
+          doc.body.appendChild(outline);
+          type Side = "top" | "right" | "bottom" | "left";
+          const createCropHandle = (sides: Side[], x: number, y: number, cursor: string) => {
+            const handle = doc.createElement("button");
+            handle.type = "button";
+            handle.dataset["oricseEditorOverlay"] = "1";
+            handle.title = "Arraste para recortar: " + sides.join(" + ");
+            handle.setAttribute("aria-label", handle.title);
+            Object.assign(handle.style, {
+              position: "fixed", left: `${x - 8}px`, top: `${y - 8}px`,
+              width: "16px", height: "16px", borderRadius: "4px",
+              background: "#fff", border: "2px solid #6F293B",
+              boxShadow: "0 1px 5px rgba(0,0,0,.25)",
+              cursor, pointerEvents: "auto", touchAction: "none",
+              zIndex: "2147483647",
+            });
+            handle.addEventListener("pointerdown", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              const sx = ev.clientX, sy = ev.clientY;
+              let mudou = false;
+              try { doc.body.setPointerCapture(ev.pointerId); } catch { /* navegador sem captura */ }
+              const move = (current: PointerEvent) => {
+                const dx = (current.clientX - sx) * 100 / Math.max(1, rect.width);
+                const dy = (current.clientY - sy) * 100 / Math.max(1, rect.height);
+                if (!mudou && Math.abs(dx) + Math.abs(dy) < .25) return;
+                if (!mudou) { checkpoint(); mudou = true; }
+                updateLayout((layoutAtual) => {
+                  const target = itemSelecionado.kind === "patch"
+                    ? layoutAtual.patches.find((p) => p.id === itemSelecionado.id)
+                    : layoutAtual.added.find((p) => p.id === itemSelecionado.id);
+                  if (!target) return;
+                  const next = { ...startCrop };
+                  if (sides.includes("left")) next.left = Math.max(0, Math.min(95 - next.right, startCrop.left + dx));
+                  if (sides.includes("right")) next.right = Math.max(0, Math.min(95 - next.left, startCrop.right - dx));
+                  if (sides.includes("top")) next.top = Math.max(0, Math.min(95 - next.bottom, startCrop.top + dy));
+                  if (sides.includes("bottom")) next.bottom = Math.max(0, Math.min(95 - next.top, startCrop.bottom - dy));
+                  target.style.cropTop = Math.round(next.top * 10) / 10;
+                  target.style.cropRight = Math.round(next.right * 10) / 10;
+                  target.style.cropBottom = Math.round(next.bottom * 10) / 10;
+                  target.style.cropLeft = Math.round(next.left * 10) / 10;
+                }, false);
+              };
+              const stop = () => {
+                doc.defaultView?.removeEventListener("pointermove", move);
+                doc.defaultView?.removeEventListener("pointerup", stop);
+                doc.defaultView?.removeEventListener("pointercancel", stop);
+                try { doc.body.releasePointerCapture(ev.pointerId); } catch { /* sem captura */ }
+              };
+              doc.defaultView?.addEventListener("pointermove", move);
+              doc.defaultView?.addEventListener("pointerup", stop);
+              doc.defaultView?.addEventListener("pointercancel", stop);
+            });
+            doc.body.appendChild(handle);
+          };
+          createCropHandle(["top", "left"], left, top, "nwse-resize");
+          createCropHandle(["top"], (left + right) / 2, top, "ns-resize");
+          createCropHandle(["top", "right"], right, top, "nesw-resize");
+          createCropHandle(["right"], right, (top + bottom) / 2, "ew-resize");
+          createCropHandle(["bottom", "right"], right, bottom, "nwse-resize");
+          createCropHandle(["bottom"], (left + right) / 2, bottom, "ns-resize");
+          createCropHandle(["bottom", "left"], left, bottom, "nesw-resize");
+          createCropHandle(["left"], left, (top + bottom) / 2, "ew-resize");
+          return;
+        }
+      }
+
       type ResizeMode = "horizontal" | "vertical" | "proportional";
       const beginResize = (mode: ResizeMode) => (event: PointerEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        checkpoint();
+        let recorded = false;
         const sx = event.clientX,
           sy = event.clientY;
         const starts = selectedRef.current.map((item) => {
@@ -317,8 +452,11 @@ export function VisualPageEditor() {
           };
         });
         const move = (ev: PointerEvent) => {
-          const dx = (ev.clientX - sx) / Math.max(zoom / 100, 0.1),
-            dy = (ev.clientY - sy) / Math.max(zoom / 100, 0.1);
+          // O evento já usa as coordenadas CSS internas do iframe; não dividir pelo zoom.
+          const dx = ev.clientX - sx,
+            dy = ev.clientY - sy;
+          if (!recorded && Math.abs(dx) + Math.abs(dy) < 2) return;
+          if (!recorded) { checkpoint(); recorded = true; }
           updateLayout(
             (value) =>
               starts.forEach(({ item, width, height, x }) => {
@@ -381,32 +519,33 @@ export function VisualPageEditor() {
         handle.addEventListener("pointerdown", beginResize(mode));
         doc.body.appendChild(handle);
       };
+      const visible = selectionBounds(elements[0], selectedRef.current[0]);
       createHandle("horizontal", "Alterar somente a largura", {
-        left: `${rect.left - 5}px`,
-        top: `${rect.top + rect.height / 2 - 18}px`,
+        left: `${visible.left - 5}px`,
+        top: `${visible.top + visible.height / 2 - 18}px`,
         width: "10px",
         height: "36px",
         borderRadius: "6px",
         cursor: "ew-resize",
       });
       createHandle("vertical", "Alterar somente a altura", {
-        left: `${rect.left + rect.width / 2 - 18}px`,
-        top: `${rect.bottom - 5}px`,
+        left: `${visible.left + visible.width / 2 - 18}px`,
+        top: `${visible.bottom - 5}px`,
         width: "36px",
         height: "10px",
         borderRadius: "6px",
         cursor: "ns-resize",
       });
       createHandle("proportional", "Redimensionar mantendo a proporção", {
-        left: `${rect.right - 9}px`,
-        top: `${rect.bottom - 9}px`,
+        left: `${visible.right - 9}px`,
+        top: `${visible.bottom - 9}px`,
         width: "20px",
         height: "20px",
         borderRadius: "50%",
         cursor: "nwse-resize",
       });
     }
-  }, [checkpoint, selectedElements, updateLayout, zoom, route, device]);
+  }, [checkpoint, selectedElements, updateLayout, route, device, croppingId]);
 
   const applyToFrame = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
@@ -439,13 +578,22 @@ export function VisualPageEditor() {
       sx: number;
       sy: number;
       starts: Array<{ item: SelectedItem; x: number; y: number }>;
+      historyRecorded: boolean;
     } = null;
+    let ultimaImagemPressionada: { element: Element; time: number } | null = null;
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
       event.preventDefault();
       event.stopPropagation();
       const element = editableTarget(raw);
+      // Reconhece dois cliques mesmo que preventDefault suprima o dblclick.
+      const agora = Date.now();
+      const doisCliquesNaImagem = element.tagName === "IMG"
+        && ultimaImagemPressionada?.element === element
+        && agora - ultimaImagemPressionada.time < 420;
+      ultimaImagemPressionada = element.tagName === "IMG"
+        ? { element, time: agora } : null;
       const addedId = element.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
       let item: SelectedItem;
       if (addedId) item = { id: addedId, kind: "added" };
@@ -482,7 +630,7 @@ export function VisualPageEditor() {
           : [item];
       setSelected(next);
       selectedRef.current = next;
-      checkpoint();
+      setCroppingId(doisCliquesNaImagem && next.length === 1 ? item.id : null);
       const page = ensurePage(cloneVisual(documentRef.current), route)[device];
       const starts = next.map((entry) => {
         const target =
@@ -491,7 +639,7 @@ export function VisualPageEditor() {
             : page.added.find((x) => x.id === entry.id);
         return { item: entry, x: target?.style.x || 0, y: target?.style.y || 0 };
       });
-      drag = { sx: event.clientX, sy: event.clientY, starts };
+      drag = { sx: event.clientX, sy: event.clientY, starts, historyRecorded: false };
     };
     const move = (event: PointerEvent) => {
       // React may run the state updater after pointerup has cleared drag.
@@ -499,8 +647,13 @@ export function VisualPageEditor() {
       // drag inside the deferred update and crashing on drag.starts.
       const activeDrag = drag;
       if (!activeDrag) return;
-      const dx = (event.clientX - activeDrag.sx) / Math.max(zoom / 100, 0.1),
-        dy = (event.clientY - activeDrag.sy) / Math.max(zoom / 100, 0.1);
+      const dx = event.clientX - activeDrag.sx,
+        dy = event.clientY - activeDrag.sy;
+      if (!activeDrag.historyRecorded && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!activeDrag.historyRecorded) {
+        checkpoint();
+        activeDrag.historyRecorded = true;
+      }
       const starts = activeDrag.starts;
       updateLayout(
         (value) =>
@@ -520,6 +673,45 @@ export function VisualPageEditor() {
     const stop = () => {
       drag = null;
     };
+    const doubleClick = (event: MouseEvent) => {
+      const image = (event.target as Element | null)?.closest("img");
+      if (!image || image.closest("[data-oricse-editor-overlay]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const addedId = image.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
+      let target: SelectedItem | null = addedId ? { id: addedId, kind: "added" } : null;
+      if (!target) {
+        const selector = visualSelector(image);
+        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((p) => p.selector === selector);
+        if (!patch) {
+          const box = image.getBoundingClientRect();
+          patch = { id: uid("image"), selector, label: visualLabel(image),
+            style: { baseWidth: box.width, baseHeight: box.height, width: box.width, height: box.height } };
+          updateLayout((layoutAtual) => layoutAtual.patches.push(patch!), true);
+        }
+        target = { id: patch.id, kind: "patch" };
+      }
+      setSelected([target]);
+      selectedRef.current = [target];
+      setCroppingId(target.id);
+    };
+    const onFrameKey = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (typeof target?.closest === "function"
+        && target.closest("input,textarea,select,[contenteditable='true']")) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        event.shiftKey ? redoNow() : undoNow();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoNow();
+      } else if (event.key === "Delete" && selectedRef.current.length) {
+        event.preventDefault();
+        hideOrDelete();
+      } else if (event.key === "Escape") {
+        setCroppingId(null);
+      }
+    };
     const block = (event: Event) => {
       if ((event.target as Element)?.closest("a,button,form")) {
         event.preventDefault();
@@ -527,6 +719,8 @@ export function VisualPageEditor() {
       }
     };
     doc.addEventListener("pointerdown", pointerDown, true);
+    doc.addEventListener("dblclick", doubleClick, true);
+    win.addEventListener("keydown", onFrameKey, true);
     win.addEventListener("pointermove", move, true);
     win.addEventListener("pointerup", stop, true);
     win.addEventListener("pointercancel", stop, true);
@@ -536,6 +730,8 @@ export function VisualPageEditor() {
     cleanupFrameListenersRef.current = () => {
       drag = null;
       doc.removeEventListener("pointerdown", pointerDown, true);
+      doc.removeEventListener("dblclick", doubleClick, true);
+      win.removeEventListener("keydown", onFrameKey, true);
       win.removeEventListener("pointermove", move, true);
       win.removeEventListener("pointerup", stop, true);
       win.removeEventListener("pointercancel", stop, true);
@@ -639,9 +835,9 @@ export function VisualPageEditor() {
     setSelected(newSelection);
   }
   function hideOrDelete() {
-    if (!selected.length) return;
+    if (!selectedRef.current.length) return;
     updateLayout((value) =>
-      selected.forEach((item) => {
+      selectedRef.current.forEach((item) => {
         if (item.kind === "added") value.added = value.added.filter((x) => x.id !== item.id);
         else {
           const patch = value.patches.find((x) => x.id === item.id);
@@ -846,8 +1042,9 @@ export function VisualPageEditor() {
           overlaps: reconciled.overlaps,
         });
       } else {
-        setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
-        setDocumento(reconciled.merged);
+        checkpoint();
+        documentRef.current = cloneVisual(reconciled.merged);
+        setDocumento(documentRef.current);
         setConflict(null);
         toast.success("Versões conciliadas. Revise e publique quando desejar.", {
           id: "oricse-canvas-reconciled",
@@ -872,24 +1069,32 @@ export function VisualPageEditor() {
       )
     )
       return;
-    setUndo((items) => [...items.slice(-39), cloneVisual(documento)]);
-    if (!useLocal) setDocumento(cloneVisual(conflict.remote));
+    checkpoint();
+    if (!useLocal) {
+      documentRef.current = cloneVisual(conflict.remote);
+      setDocumento(documentRef.current);
+    }
     setConflict(null);
   }
 
   function restore(version: Version) {
     checkpoint();
-    setDocumento({
-      version: 1,
+    const restored = {
+      version: 1 as const,
       updatedAt: new Date().toISOString(),
       pages: cloneVisual(version.pages),
-    });
+    };
+    documentRef.current = restored;
+    setDocumento(restored);
     setSelected([]);
     toast.success("Versão carregada como rascunho. Revise e publique.");
   }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (typeof target?.closest === "function"
+        && target.closest("input,textarea,select,[contenteditable='true']")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
@@ -897,9 +1102,14 @@ export function VisualPageEditor() {
         } else {
           undoNow();
         }
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoNow();
       } else if (event.key === "Delete" && selectedRef.current.length) {
         event.preventDefault();
         hideOrDelete();
+      } else if (event.key === "Escape") {
+        setCroppingId(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -927,20 +1137,41 @@ export function VisualPageEditor() {
     );
   const frameWidth = deviceWidth(device);
   const scale = zoom / 100;
+  const isImageSelected = Boolean(first && selected.length === 1
+    && selectedElements()[0]?.tagName === "IMG");
 
   return (
     <main className="min-h-screen bg-[#ded9d3] text-slate-900">
       <header className="sticky top-0 z-50 flex min-h-16 flex-wrap items-center gap-2 border-b bg-white px-3 py-2 shadow-sm">
         <Link
           to="/admin"
+          onClick={(event) => {
+            const mudou = !sameEditorJson(documento.pages, baselineRef.current.pages);
+            if (mudou && !window.confirm("Há alterações não salvas. Voltar ao Admin sem salvar?")) {
+              event.preventDefault();
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
         >
-          <ArrowLeft size={17} /> Admin
+          <ArrowLeft size={17} /> Voltar ao Admin
         </Link>
         <button
+          type="button"
+          onClick={alternarMenuAdmin}
+          aria-expanded={!adminMenuRecolhido}
+          aria-label={adminMenuRecolhido ? "Expandir menu da Administração" : "Recolher menu da Administração"}
+          title={adminMenuRecolhido ? "Mostrar menu da Administração" : "Recolher menu da Administração"}
+          className="hidden items-center gap-2 rounded-xl border px-3 py-2 font-semibold lg:inline-flex"
+        >
+          {adminMenuRecolhido ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          <span className="hidden xl:inline">{adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}</span>
+        </button>
+        <button
           onClick={() => setLeftOpen((x) => !x)}
+          aria-label={leftOpen ? "Recolher páginas e camadas" : "Mostrar páginas e camadas"}
+          aria-expanded={leftOpen}
           className="rounded-xl border p-2"
-          title="Páginas e elementos"
+          title={leftOpen ? "Recolher páginas e camadas" : "Mostrar páginas e camadas"}
         >
           <Layers3 size={18} />
         </button>
@@ -959,6 +1190,8 @@ export function VisualPageEditor() {
         <button
           disabled={!undo.length}
           onClick={undoNow}
+          aria-label="Desfazer (Ctrl+Z)"
+          title="Desfazer (Ctrl+Z)"
           className="rounded-xl border p-2 disabled:opacity-30"
         >
           <Undo2 size={18} />
@@ -966,6 +1199,8 @@ export function VisualPageEditor() {
         <button
           disabled={!redo.length}
           onClick={redoNow}
+          aria-label="Refazer (Ctrl+Shift+Z)"
+          title="Refazer (Ctrl+Shift+Z)"
           className="rounded-xl border p-2 disabled:opacity-30"
         >
           <Redo2 size={18} />
@@ -975,6 +1210,7 @@ export function VisualPageEditor() {
           onClick={() => {
             setDevice("desktop");
             setSelected([]);
+            setCroppingId(null);
           }}
           className={`rounded-xl p-2 ${device === "desktop" ? "bg-primary text-white" : "border"}`}
         >
@@ -984,6 +1220,7 @@ export function VisualPageEditor() {
           onClick={() => {
             setDevice("mobile");
             setSelected([]);
+            setCroppingId(null);
           }}
           className={`rounded-xl p-2 ${device === "mobile" ? "bg-primary text-white" : "border"}`}
         >
@@ -1101,6 +1338,7 @@ export function VisualPageEditor() {
                 onChange={(e) => {
                   setRoute(e.target.value);
                   setSelected([]);
+                  setCroppingId(null);
                   window.history.replaceState(
                     window.history.state,
                     "",
@@ -1252,7 +1490,7 @@ export function VisualPageEditor() {
           </div>
           <p className="mt-4 text-center text-xs text-slate-600">
             Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça
-            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção.
+            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção. Dê dois cliques em uma imagem para recortar.
           </p>
         </section>
 
@@ -1291,6 +1529,31 @@ export function VisualPageEditor() {
                       className="mt-1 w-full rounded-xl border p-2 font-normal"
                     />
                   </label>
+                )}
+                {isImageSelected && (
+                  <div className="rounded-xl border border-[#e2cbd0] bg-[#fff8f8] p-3">
+                    <p className="flex items-center gap-2 text-sm font-bold text-[#6F293B]">
+                      <Crop size={17} /> Recorte da imagem
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      Dê dois cliques na imagem ou clique em Recortar. Arraste os quatro lados ou cantos para definir o corte.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button"
+                        onClick={() => setCroppingId(croppingId === first?.id ? null : first?.id || null)}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white">
+                        <Crop size={15} /> {croppingId === first?.id ? "Concluir recorte" : "Recortar imagem"}
+                      </button>
+                      <button type="button"
+                        onClick={() => patchSelected({ cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-bold">
+                        <RotateCcw size={15} /> Restaurar original
+                      </button>
+                    </div>
+                    {croppingId === first?.id && (
+                      <p className="mt-2 text-xs font-medium text-primary">Arraste as alças. O recorte é salvo sem apagar a imagem original.</p>
+                    )}
+                  </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   {(
