@@ -35,7 +35,12 @@ const ITENS: Item[] = [
   { id: "sistema", nome: "Sistema e integrações", Icone: Settings, grupo: "Controle", aba: "sistema" },
 ];
 
-type Contexto = { aba: AdminAba; setAba: (aba: AdminAba) => void };
+type Contexto = {
+  aba: AdminAba;
+  setAba: (aba: AdminAba) => void;
+  adminMenuRecolhido: boolean;
+  alternarMenuAdmin: () => void;
+};
 const AdminNavigationContext = createContext<Contexto | null>(null);
 
 export function useAdminNavigation(): Contexto {
@@ -49,6 +54,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [aba, setAba] = useState<AdminAba>("dashboard");
   const [menuAberto, setMenuAberto] = useState(false);
+  // Somente o Canva administrativo usa a versão expandida da área de trabalho.
+  const [adminMenuRecolhido, setAdminMenuRecolhido] = useState(true);
+  const noCanvasAdmin = location.pathname === "/admin-canvas";
+  const menuLateralOculto = noCanvasAdmin && adminMenuRecolhido;
 
   useEffect(() => {
     setMenuAberto(false);
@@ -108,12 +117,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AdminNavigationContext.Provider value={{ aba, setAba }}>
+    <AdminNavigationContext.Provider value={{ aba, setAba, adminMenuRecolhido: menuLateralOculto, alternarMenuAdmin: () => setAdminMenuRecolhido((valor) => !valor) }}>
       <div className="min-h-[100dvh] bg-[#f6f4ef] text-slate-900">
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r bg-white px-3 pt-4 shadow-sm lg:flex">
+        <aside className={`fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r bg-white px-3 pt-4 shadow-sm ${menuLateralOculto ? "" : "lg:flex"}`}>
           {navegacao}
         </aside>
-        <div className="lg:pl-[280px]">
+        <div className={menuLateralOculto ? "lg:pl-0" : "lg:pl-[280px]"}>
           <header className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
             <button type="button" onClick={() => setMenuAberto(true)} aria-label="Abrir menu da administração" aria-expanded={menuAberto} className="flex h-11 w-11 items-center justify-center rounded-xl border">
               <Menu size={22} />
