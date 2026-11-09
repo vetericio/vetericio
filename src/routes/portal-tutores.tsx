@@ -1,6 +1,6 @@
 import { PortalTutorLoginPreview } from "./pet/$slug/portal";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { CheckCircle2, Copy, ExternalLink, KeyRound, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -12,7 +12,8 @@ export const Route = createFileRoute("/portal-tutores")({ component: PortalTutor
 
 function PortalTutoresComPrevia() {
   // A prévia do Canva não exige escolher clínica ou aguardar dados de tutores.
-  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("portal_login_preview")) {
+  const location = useLocation();
+  if (new URLSearchParams(location.searchStr).has("portal_login_preview")) {
     return <PortalTutorLoginPreview />;
   }
   return <PortalTutores />;
