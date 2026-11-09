@@ -602,6 +602,19 @@ export function VisualPageEditor() {
     const stop = () => {
       drag = null;
     };
+    const shortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key !== "z" && key !== "y") return;
+      event.preventDefault();
+      event.stopPropagation();
+      // O iframe tem seu próprio contexto de teclado. Encaminhar apenas
+      // os atalhos para o histórico do Canvas, sem mexer no conteúdo.
+      window.dispatchEvent(new KeyboardEvent("keydown", {
+        key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey,
+        shiftKey: event.shiftKey, bubbles: true,
+      }));
+    };
     const block = (event: Event) => {
       if ((event.target as Element)?.closest("a,button,form")) {
         event.preventDefault();
@@ -609,6 +622,7 @@ export function VisualPageEditor() {
       }
     };
     doc.addEventListener("pointerdown", pointerDown, true);
+    doc.addEventListener("keydown", shortcut, true);
     win.addEventListener("pointermove", move, true);
     win.addEventListener("pointerup", stop, true);
     win.addEventListener("pointercancel", stop, true);
@@ -618,6 +632,7 @@ export function VisualPageEditor() {
     cleanupFrameListenersRef.current = () => {
       drag = null;
       doc.removeEventListener("pointerdown", pointerDown, true);
+      doc.removeEventListener("keydown", shortcut, true);
       win.removeEventListener("pointermove", move, true);
       win.removeEventListener("pointerup", stop, true);
       win.removeEventListener("pointercancel", stop, true);
@@ -972,14 +987,16 @@ export function VisualPageEditor() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
         event.preventDefault();
-        if (event.shiftKey) {
-          redoNow();
-        } else {
-          undoNow();
-        }
-      } else if (event.key === "Delete" && selectedRef.current.length) {
+        if (event.shiftKey || key === "y") redoNow();
+        else undoNow();
+      } else if ((key === "delete" || key === "backspace") && selectedRef.current.length) {
+        const target = event.target;
+        // Backspace em campos de texto nunca deve excluir o elemento selecionado.
+        if (target instanceof HTMLElement &&
+          (target.matches("input,textarea,select") || target.isContentEditable)) return;
         event.preventDefault();
         hideOrDelete();
       }
