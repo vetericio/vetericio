@@ -179,6 +179,10 @@ export function VisualPageEditor() {
     if (selected.length && !modoFoco) setRightOpen(true);
   }, [selected.length, modoFoco]);
 
+  useEffect(() => {
+    cropSessionRef.current = null;
+    setCropMode(false);
+  }, [route, device]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const cleanupFrameListenersRef = useRef<(() => void) | null>(null);
   const selectedRef = useRef<SelectedItem[]>([]);
@@ -326,6 +330,8 @@ export function VisualPageEditor() {
     const previous = undo.at(-1);
     if (!previous) return;
     propertyGestureRef.current = null;
+    cropSessionRef.current = null;
+    setCropMode(false);
     setRedo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
     const restored = cloneVisual(previous);
     documentRef.current = restored;
@@ -337,6 +343,8 @@ export function VisualPageEditor() {
     const next = redo.at(-1);
     if (!next) return;
     propertyGestureRef.current = null;
+    cropSessionRef.current = null;
+    setCropMode(false);
     setUndo((items) => [...items.slice(-39), cloneVisual(documentRef.current)]);
     const restored = cloneVisual(next);
     documentRef.current = restored;
@@ -563,6 +571,8 @@ export function VisualPageEditor() {
     ));
   }, [checkpoint, selectedElements, updateLayout, cropMode, route, device]);
 
+  const drawSelectionRef = useRef(drawSelection);
+  drawSelectionRef.current = drawSelection;
   const applyToFrame = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
@@ -590,6 +600,7 @@ export function VisualPageEditor() {
     const win = iframeRef.current?.contentWindow;
     if (!doc || !win) return;
     applyToFrame();
+    let lastImageDown: null | { id: string; at: number; x: number; y: number } = null;
     let drag: null | {
       sx: number;
       sy: number;
@@ -600,6 +611,7 @@ export function VisualPageEditor() {
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
+      if (cropSessionRef.current) return;
       event.preventDefault();
       event.stopPropagation();
       propertyGestureRef.current = null;
@@ -632,6 +644,26 @@ export function VisualPageEditor() {
         }
         item = { id: patch.id, kind: "patch" };
       }
+      // Duplo clique (até 450ms e 12px de distância) abre recorte de imagem.
+      // Registramos no pointerdown para funcionar também dentro de iframes
+      // onde preventDefault impediria o evento DOM de dblclick.
+      const now = event.timeStamp;
+      const doubleImageClick = element.tagName === "IMG" && lastImageDown?.id === item.id &&
+        now - lastImageDown.at < 450 &&
+        Math.abs(event.clientX-lastImageDown.x)<12 && Math.abs(event.clientY-lastImageDown.y)<12;
+      if (doubleImageClick) {
+        drag = null;
+        lastImageDown = null;
+        selectedRef.current = [item];
+        setSelected([item]);
+        cropSessionRef.current = {
+          item, before: cloneVisual(documentRef.current), recorded: false,
+        };
+        setCropMode(true);
+        return;
+      }
+      lastImageDown = element.tagName === "IMG"
+        ? {id:item.id,at:now,x:event.clientX,y:event.clientY} : null;
       const multi = event.shiftKey || event.ctrlKey || event.metaKey;
       const already = selectedRef.current.some((x) => x.id === item.id && x.kind === item.kind);
       const next = multi
@@ -659,8 +691,8 @@ export function VisualPageEditor() {
       // drag inside the deferred update and crashing on drag.starts.
       const activeDrag = drag;
       if (!activeDrag) return;
-      const dx = (event.clientX - activeDrag.sx) / Math.max(zoom / 100, 0.1),
-        dy = (event.clientY - activeDrag.sy) / Math.max(zoom / 100, 0.1);
+      const dx = event.clientX - activeDrag.sx,
+        dy = event.clientY - activeDrag.sy;
       if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
       if (!activeDrag.recorded) {
         checkpoint(activeDrag.before);
@@ -704,7 +736,11 @@ export function VisualPageEditor() {
         event.stopPropagation();
       }
     };
+    const repaint = () => {win.requestAnimationFrame(() => drawSelectionRef.current());};
     doc.addEventListener("pointerdown", pointerDown, true);
+    doc.addEventListener("load", repaint, true);
+    win.addEventListener("scroll", repaint, true);
+    win.addEventListener("resize", repaint, true);
     doc.addEventListener("keydown", shortcut, true);
     win.addEventListener("pointermove", move, true);
     win.addEventListener("pointerup", stop, true);
@@ -715,6 +751,9 @@ export function VisualPageEditor() {
     cleanupFrameListenersRef.current = () => {
       drag = null;
       doc.removeEventListener("pointerdown", pointerDown, true);
+      doc.removeEventListener("load", repaint, true);
+      win.removeEventListener("scroll", repaint, true);
+      win.removeEventListener("resize", repaint, true);
       doc.removeEventListener("keydown", shortcut, true);
       win.removeEventListener("pointermove", move, true);
       win.removeEventListener("pointerup", stop, true);
@@ -1071,7 +1110,10 @@ export function VisualPageEditor() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
+      if (key === "escape" && cropSessionRef.current) {
+        event.preventDefault();
+        finalizarRecorte();
+      } else if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
         event.preventDefault();
         if (event.shiftKey || key === "y") redoNow();
         else undoNow();
@@ -1201,6 +1243,21 @@ export function VisualPageEditor() {
           <option value={85}>85%</option>
           <option value={100}>100%</option>
         </select>
+        {cropMode && (
+          <div className="flex shrink-0 items-center gap-2 rounded-xl border border-[#B17B88] bg-[#fff7f2] px-2 py-1">
+            <span className="hidden text-xs font-bold text-[#6F293B] xl:inline">Recortar imagem — arraste as quatro barras</span>
+            <button
+              type="button" onClick={restaurarRecorte}
+              className="rounded-lg border border-[#d9a8b6] px-3 py-1.5 text-xs font-bold"
+              title="Restaurar a imagem inteira"
+            >Restaurar</button>
+            <button
+              type="button" onClick={finalizarRecorte}
+              className="rounded-lg bg-[#6F293B] px-3 py-1.5 text-xs font-bold text-white"
+              title="Concluir recorte sem alterar o arquivo original"
+            >Concluir corte</button>
+          </div>
+        )}
         <button
           type="button"
           onClick={ajustarPaginaNaTela}
