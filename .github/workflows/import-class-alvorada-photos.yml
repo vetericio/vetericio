@@ -1,0 +1,46 @@
+name: Importar imagens originais da vitrine Class
+on:
+  push:
+    paths:
+      - '.github/workflows/import-class-alvorada-photos.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Baixar imagens do Class em alta qualidade
+        env:
+          FOTO_GATO: 'https://media.canva.com/v2/image-resize/format:PNG/height:750/quality:100/uri:ifs%3A%2F%2FM%2Fb09473c7-4d32-4113-9b4f-f78445397b88/watermark:F/width:1000?csig=AAAAAAAAAAAAAAAAAAAAAKZSA-uu22VV_DTppHYIlj2Kl070omWcRNkZL1Q8ldQc&exp=1794282873&osig=AAAAAAAAAAAAAAAAAAAAABBNtjFha_uFuYWiI2FihbSuRMpZ8FAuefgv9Vo-Ni6a&signer=media-rpc&token=AAIAAU0AJGIwOTQ3M2M3LTRkMzItNDExMy05YjRmLWY3ODQ0NTM5N2I4OAAAAAABocOX4KjffZF--Tt5wqNRkv6-IUUtnWOSGeEoJZqW15aDMRnm5g&x-canva-quality=thumbnail'
+          FOTO_CACHORRO: 'https://media.canva.com/v2/image-resize/format:PNG/height:563/quality:100/uri:ifs%3A%2F%2FM%2F57e555fc-a048-4cc8-a11d-010c92f73eac/watermark:F/width:1000?csig=AAAAAAAAAAAAAAAAAAAAAMY2q9aYIpKvipM86Ve5-YRpbW0a1P67QEwAO7-ud4Im&exp=1794284869&osig=AAAAAAAAAAAAAAAAAAAAAEK4WXlkJz865qool5pFBmsdPHAzCucwFI9Ttlyqp-nB&signer=media-rpc&token=AAIAAU0AJDU3ZTU1NWZjLWEwNDgtNGNjOC1hMTFkLTAxMGM5MmY3M2VhYwAAAAABocO2VYifIxpYHX-hP4ZW9MKjXqOe6zp4A1YVBdpplLp19xLnLQ&x-canva-quality=thumbnail'
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, urllib.request, struct
+          fotos = [
+            ("FOTO_GATO","public/clinic-site/class/intro-veterinaria-gato.png"),
+            ("FOTO_CACHORRO","public/clinic-site/class/chegada-cachorro.png"),
+          ]
+          for chave,caminho in fotos:
+            req=urllib.request.Request(os.environ[chave],headers={"User-Agent":"Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=25) as resp:
+              data=resp.read()
+            if data[:8]!=b"\x89PNG\r\n\x1a\n":
+              raise RuntimeError(f"{chave}: resultado não é PNG válido")
+            width,height=struct.unpack(">II",data[16:24])
+            if width<800 or height<400:
+              raise RuntimeError(f"{chave}: imagem pequena {width}x{height}")
+            pathlib.Path(caminho).parent.mkdir(parents=True,exist_ok=True)
+            pathlib.Path(caminho).write_bytes(data)
+            print(chave,width,height,len(data))
+          PY
+      - name: Guardar arquivos permanentes no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/clinic-site/class/intro-veterinaria-gato.png public/clinic-site/class/chegada-cachorro.png
+          git commit -m "assets(class): fotos originais da clínica e chegada pet"
+          git push
