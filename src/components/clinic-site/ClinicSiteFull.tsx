@@ -43,8 +43,17 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
   const [falhou, setFalhou] = useState(false);
   useEffect(() => setFalhou(false), [url]);
   if (!url || falhou) return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
-  return <img src={url} alt={nome} loading="lazy" onError={() => setFalhou(true)}
-    className="h-full w-full object-cover" />;
+  // A foto nunca é reinterpretada: só ajustamos o enquadramento.
+  // As imagens originais são verticais, portanto o topo deve permanecer visível.
+  return <img
+    src={url}
+    alt={nome}
+    loading="eager"
+    decoding="async"
+    onError={() => setFalhou(true)}
+    className="block h-full w-full object-cover object-top"
+    style={{ objectPosition: "center 0%" }}
+  />;
 }
 
 export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
@@ -365,17 +374,17 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
         key="equipe"
         id="equipe"
         data-clinic-section="equipe"
-        className={"border-t px-5 sm:px-8 " + ink + " " + sectionPad}
+        className={"border-t px-5 sm:px-8 " + ink + " " + sectionPad + (luxe ? " bg-[#101b17] text-[#f7f0e2]" : king ? " bg-[#f2ebe1]" : minimal ? " bg-white" : friendly ? " bg-[#fff4e4]" : prime ? " bg-[#eef7ff]" : organic ? " bg-[#eaf2e3]" : " bg-[#f7f4ee]")}
       >
         <div className="mx-auto max-w-7xl">
           {heading("Profissionais", "As pessoas por trás do cuidado.")}
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={"mt-10 grid gap-5 sm:grid-cols-2 " + (luxe || king ? "lg:gap-9 lg:grid-cols-2" : "lg:grid-cols-3")}>
             {config.team.map((person, index) => (
               <article
                 key={person.name + index}
-                className={"overflow-hidden border " + ink + " " + panels}
+                className={"overflow-hidden border " + ink + " " + panels + (luxe ? " border-[#c9a86a]/45 bg-[#21332d] shadow-2xl" : king ? " border-[#101526] bg-white shadow-[10px_10px_0_#b7183e]" : minimal ? " bg-white shadow-none" : friendly ? " border-[#f05d43]/30 bg-white shadow-lg" : prime ? " border-[#0e5ca8]/20 bg-white shadow-xl" : organic ? " border-[#537b52]/20 bg-[#fffdf6] shadow-md" : " bg-white shadow-sm")}
               >
-                <div className="flex aspect-[4/3] items-center justify-center bg-[var(--site-secondary)]">
+                <div className={"flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
                   <FotoPublicaDoProfissional url={safeTeamPhoto(person.imageUrl)} nome={person.name} />
                 </div>
                 <div className="p-5">
