@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const BUCKET = "oricse-branding";
 const inputSchema = z.object({
   accessToken: z.string().min(20),
   clinicaId: z.string().uuid(),
@@ -53,19 +52,29 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     if (!bytes.length || bytes.length > MAX_BYTES)
       throw new Error("A imagem deve ter no máximo 5 MB.");
 
-    const caminho = `clinicas/${data.clinicaId}/${data.categoria}/${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
-    const { error: erroUpload } = await supabaseAdmin.storage
-      .from(BUCKET)
-      .upload(caminho, bytes, {
-        contentType: data.mimeType,
-        cacheControl: "31536000",
-        upsert: false,
-      });
-    if (erroUpload)
-      throw new Error(`Não foi possível guardar a logo: ${erroUpload.message}`);
-
-    const { data: publica } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(caminho);
-    const logoUrl = publica.publicUrl;
+    // Arquivos públicos de clínicas pertencem ao Drive (pasta Imagens),
+    // inclusive fotos de profissionais e banners do site. O Supabase é
+    // reservado à identidade e aos vínculos dos usuários.
+    const { enviarArquivoDrive } = await import("@/lib/drive.functions");
+    const nome = `${data.categoria}-${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
+    const upload = await enviarArquivoDrive({
+      data: {
+        accessToken: data.accessToken,
+        clinicaId: data.clinicaId,
+        categoria: "imagens",
+        nome,
+        mimeType: data.mimeType,
+        base64: data.base64,
+        visibilidade: "publico",
+        entidadeTipo: "site-clinica",
+        entidadeId: data.categoria,
+      },
+    });
+    const logoUrl = upload.arquivo.publicUrl || upload.arquivo.url;
+    if (!logoUrl?.startsWith("https://")) {
+      throw new Error("Foto enviada, mas o Google Drive não retornou um endereço público.");
+    }
+    const caminho = upload.arquivo.driveId;
     if (data.categoria === "logo") {
       const { error: erroClinica } = await supabaseAdmin
         .from("clinicas")
