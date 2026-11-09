@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, Heart, Bookmark, Images, Instagram, Megaphone, MessageCircle, Package, Settings, Sparkles } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
