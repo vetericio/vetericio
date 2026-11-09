@@ -1061,6 +1061,8 @@ export function VisualPageEditor() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest("input,textarea,select,[contenteditable='true']")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
@@ -1068,9 +1070,14 @@ export function VisualPageEditor() {
         } else {
           undoNow();
         }
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoNow();
       } else if (event.key === "Delete" && selectedRef.current.length) {
         event.preventDefault();
         hideOrDelete();
+      } else if (event.key === "Escape") {
+        setCroppingId(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1098,20 +1105,41 @@ export function VisualPageEditor() {
     );
   const frameWidth = deviceWidth(device);
   const scale = zoom / 100;
+  const isImageSelected = Boolean(first && selected.length === 1
+    && selectedElements()[0]?.tagName === "IMG");
 
   return (
     <main className="min-h-screen bg-[#ded9d3] text-slate-900">
       <header className="sticky top-0 z-50 flex min-h-16 flex-wrap items-center gap-2 border-b bg-white px-3 py-2 shadow-sm">
         <Link
           to="/admin"
+          onClick={(event) => {
+            const mudou = !sameEditorJson(documento.pages, baselineRef.current.pages);
+            if (mudou && !window.confirm("Há alterações não salvas. Voltar ao Admin sem salvar?")) {
+              event.preventDefault();
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
         >
-          <ArrowLeft size={17} /> Admin
+          <ArrowLeft size={17} /> Voltar ao Admin
         </Link>
         <button
+          type="button"
+          onClick={alternarMenuAdmin}
+          aria-expanded={!adminMenuRecolhido}
+          aria-label={adminMenuRecolhido ? "Expandir menu da Administração" : "Recolher menu da Administração"}
+          title={adminMenuRecolhido ? "Mostrar menu da Administração" : "Recolher menu da Administração"}
+          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
+        >
+          {adminMenuRecolhido ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          <span className="hidden xl:inline">{adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}</span>
+        </button>
+        <button
           onClick={() => setLeftOpen((x) => !x)}
+          aria-label={leftOpen ? "Recolher páginas e camadas" : "Mostrar páginas e camadas"}
+          aria-expanded={leftOpen}
           className="rounded-xl border p-2"
-          title="Páginas e elementos"
+          title={leftOpen ? "Recolher páginas e camadas" : "Mostrar páginas e camadas"}
         >
           <Layers3 size={18} />
         </button>
@@ -1130,6 +1158,8 @@ export function VisualPageEditor() {
         <button
           disabled={!undo.length}
           onClick={undoNow}
+          aria-label="Desfazer (Ctrl+Z)"
+          title="Desfazer (Ctrl+Z)"
           className="rounded-xl border p-2 disabled:opacity-30"
         >
           <Undo2 size={18} />
@@ -1137,6 +1167,8 @@ export function VisualPageEditor() {
         <button
           disabled={!redo.length}
           onClick={redoNow}
+          aria-label="Refazer (Ctrl+Shift+Z)"
+          title="Refazer (Ctrl+Shift+Z)"
           className="rounded-xl border p-2 disabled:opacity-30"
         >
           <Redo2 size={18} />
@@ -1146,6 +1178,7 @@ export function VisualPageEditor() {
           onClick={() => {
             setDevice("desktop");
             setSelected([]);
+            setCroppingId(null);
           }}
           className={`rounded-xl p-2 ${device === "desktop" ? "bg-primary text-white" : "border"}`}
         >
@@ -1155,6 +1188,7 @@ export function VisualPageEditor() {
           onClick={() => {
             setDevice("mobile");
             setSelected([]);
+            setCroppingId(null);
           }}
           className={`rounded-xl p-2 ${device === "mobile" ? "bg-primary text-white" : "border"}`}
         >
@@ -1272,6 +1306,7 @@ export function VisualPageEditor() {
                 onChange={(e) => {
                   setRoute(e.target.value);
                   setSelected([]);
+                  setCroppingId(null);
                   window.history.replaceState(
                     window.history.state,
                     "",
@@ -1423,7 +1458,7 @@ export function VisualPageEditor() {
           </div>
           <p className="mt-4 text-center text-xs text-slate-600">
             Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça
-            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção.
+            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção. Dê dois cliques em uma imagem para recortar.
           </p>
         </section>
 
@@ -1462,6 +1497,31 @@ export function VisualPageEditor() {
                       className="mt-1 w-full rounded-xl border p-2 font-normal"
                     />
                   </label>
+                )}
+                {isImageSelected && (
+                  <div className="rounded-xl border border-[#e2cbd0] bg-[#fff8f8] p-3">
+                    <p className="flex items-center gap-2 text-sm font-bold text-[#6F293B]">
+                      <Crop size={17} /> Recorte da imagem
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      Dê dois cliques na imagem ou clique em Recortar. Arraste os quatro lados ou cantos para definir o corte.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button"
+                        onClick={() => setCroppingId(croppingId === first?.id ? null : first?.id || null)}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white">
+                        <Crop size={15} /> {croppingId === first?.id ? "Concluir recorte" : "Recortar imagem"}
+                      </button>
+                      <button type="button"
+                        onClick={() => patchSelected({ cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-bold">
+                        <RotateCcw size={15} /> Restaurar original
+                      </button>
+                    </div>
+                    {croppingId === first?.id && (
+                      <p className="mt-2 text-xs font-medium text-primary">Arraste as alças. O recorte é salvo sem apagar a imagem original.</p>
+                    )}
+                  </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   {(
