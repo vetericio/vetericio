@@ -13,6 +13,7 @@ import {
 type Props = {
   initialTemplate: ClinicSiteTemplate;
   config: ClinicSiteConfig;
+  clinicSlug?: string;
 };
 
 /**
@@ -21,7 +22,7 @@ type Props = {
  * A troca do modelo é uma prévia local: nunca modifica as tabelas
  * clinic_sites / clinic_site_drafts e não depende de acesso administrativo.
  */
-export function AlvoradaDemoShowcase({ initialTemplate, config }: Props) {
+export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "alvorada" }: Props) {
   const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate);
   const preset = clinicSitePresets[modelo];
   const configDeDemonstracao = useMemo<ClinicSiteConfig>(() => ({
@@ -151,7 +152,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config }: Props) {
         aria-labelledby={`modelo-alvorada-${modelo}`}
         className="scroll-mt-[165px] min-h-[65vh]"
       >
-        <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} />
+        <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug} />
       </div>
     </div>
   );
