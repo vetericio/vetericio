@@ -3,6 +3,7 @@ import { ArrowLeft, CalendarClock, Check, Copy, Eye, PauseCircle, Pencil, Plus, 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { contratacaoConsomeCupom } from "@/lib/coupon-usage";
 
 export const Route = createFileRoute("/admin-cupons")({ component: AdminCupons });
 
@@ -150,10 +151,10 @@ function AdminCupons() {
       setAutorizado(true);
 
       const [cuponsRes, usosRes, contratacoesRes, planosRes] = await Promise.all([
-        (supabase as any).from("oricse_codigos_promocionais").select("*").order("created_at", { ascending: false }),
-        (supabase as any).from("oricse_codigo_promocional_usos").select("id,codigo_id,contratacao_id,documento_normalizado,created_at").order("created_at", { ascending: false }),
-        (supabase as any).from("oricse_contratacoes").select("id,clinica_nome,plano_nome,plano_codigo,ciclo,status,pagamento_aprovado_em,valor_total,promo_codigo,promo_desconto,promo_valor_original,promo_valor_final").order("created_at", { ascending: false }),
-        (supabase as any).from("oricse_planos").select("codigo,nome,ativo").order("ordem"),
+        (supabaseBanco as any).from("oricse_codigos_promocionais").select("*").order("created_at", { ascending: false }),
+        (supabaseBanco as any).from("oricse_codigo_promocional_usos").select("id,codigo_id,contratacao_id,documento_normalizado,created_at").order("created_at", { ascending: false }),
+        (supabaseBanco as any).from("oricse_contratacoes").select("id,clinica_nome,plano_nome,plano_codigo,ciclo,status,pagamento_aprovado_em,valor_total,promo_codigo,promo_desconto,promo_valor_original,promo_valor_final").order("created_at", { ascending: false }),
+        (supabaseBanco as any).from("oricse_planos").select("codigo,nome,ativo").order("ordem"),
       ]);
       for (const resposta of [cuponsRes, usosRes, contratacoesRes, planosRes]) {
         if (resposta.error) throw resposta.error;
@@ -170,17 +171,27 @@ function AdminCupons() {
     }
   }
 
-  useEffect(() => { void carregar(); }, []);
+  useEffect(() => {
+    void carregar();
+    // O administrador pode voltar à página após aprovar uma clínica.
+    // Releia o PostgreSQL para que o contador não permaneça desatualizado.
+    const atualizarAoVoltar = () => {
+      if (document.visibilityState === "visible") void carregar();
+    };
+    window.addEventListener("focus", atualizarAoVoltar);
+    document.addEventListener("visibilitychange", atualizarAoVoltar);
+    return () => {
+      window.removeEventListener("focus", atualizarAoVoltar);
+      document.removeEventListener("visibilitychange", atualizarAoVoltar);
+    };
+  }, []);
 
   const usosPorCupom = useMemo(() => {
     const mapa = new Map<string, Uso[]>();
     const contratos = new Map(contratacoes.map(item => [item.id,item]));
     usos.forEach((uso) => {
       const contrato = uso.contratacao_id ? contratos.get(uso.contratacao_id) : null;
-      if (!contrato || ["cancelada","recusada"].includes(contrato.status)) return;
-      const concluida = Boolean(contrato.pagamento_aprovado_em) ||
-        (Number(contrato.valor_total) === 0 && ["pagamento_aprovado","aprovada","ativa","ativada"].includes(contrato.status));
-      if (!concluida) return;
+      if (!contrato || !contratacaoConsomeCupom(contrato)) return;
       mapa.set(uso.codigo_id, [...(mapa.get(uso.codigo_id) || []), uso]);
     });
     return mapa;
@@ -268,7 +279,7 @@ function AdminCupons() {
         updated_at: new Date().toISOString(),
       };
       const [drive, banco] = await Promise.all([
-        (supabase as any).from("oricse_codigos_promocionais").upsert(payload, { onConflict: "id" }),
+        (supabaseBanco as any).from("oricse_codigos_promocionais").upsert(payload, { onConflict: "id" }),
         (supabaseBanco as any).from("oricse_codigos_promocionais").upsert(payload, { onConflict: "id" }),
       ]);
       if (drive.error || banco.error) throw new Error(drive.error?.message || banco.error?.message);
@@ -288,7 +299,7 @@ function AdminCupons() {
     try {
       const atualizacao = { ativo, updated_at: new Date().toISOString() };
       const [drive, banco] = await Promise.all([
-        (supabase as any).from("oricse_codigos_promocionais").update(atualizacao).eq("id", cupom.id),
+        (supabaseBanco as any).from("oricse_codigos_promocionais").update(atualizacao).eq("id", cupom.id),
         (supabaseBanco as any).from("oricse_codigos_promocionais").update(atualizacao).eq("id", cupom.id),
       ]);
       if (drive.error || banco.error) throw new Error(drive.error?.message || banco.error?.message);
