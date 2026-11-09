@@ -74,8 +74,8 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
       </section>
 
       <div className="sticky top-0 z-50 border-b border-[#e8dfd6] bg-[#fffdfa]/95 shadow-[0_8px_30px_rgba(39,19,37,.08)] backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-8 lg:px-10">
-          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
             <p className="flex items-center gap-2 text-xs font-extrabold tracking-tight text-[#402535]">
               <Layers3 size={15} aria-hidden="true" className="text-[#9d6378]" />
               Explore os 7 modelos
@@ -88,7 +88,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
               Clique para trocar
             </span>
           </div>
-          <div role="tablist" aria-label="Versões dos sites disponíveis" className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1.5 [scrollbar-width:thin] lg:grid lg:grid-cols-7 lg:overflow-visible">
+          <div role="tablist" aria-label="Versões dos sites disponíveis" className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-7 lg:overflow-visible">
             {clinicSiteTemplates.map((item, idx) => {
               const active = item === modelo;
               const tone = clinicSitePresets[item];
@@ -102,7 +102,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
                   aria-controls="alvorada-vitrine-site"
                   onClick={() => escolherModelo(item)}
                   className={
-                    "group relative flex min-h-[62px] w-[145px] shrink-0 snap-start items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d4a64] lg:w-full " +
+                    "group relative flex min-h-[42px] w-[125px] shrink-0 snap-start items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d4a64] lg:w-full " +
                     (active
                       ? "border-[#682d45] bg-[#fff5ef] shadow-[0_5px_18px_rgba(104,45,69,.13)]"
                       : "border-[#e8deda] bg-white hover:-translate-y-0.5 hover:border-[#cbaeba] hover:bg-[#fff9f4]")
@@ -111,7 +111,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
                 >
                   <span
                     aria-hidden="true"
-                    className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-black/5"
+                    className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-black/5"
                     style={{ backgroundColor: tone.backgroundColor }}
                   >
                     <span
@@ -125,8 +125,8 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
                     <span className="absolute left-1 top-1 h-1 w-4 rounded-full bg-current/20" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-semibold text-[#a08a91]">{String(idx + 1).padStart(2, "0")}</span>
-                    <span className="block whitespace-nowrap text-xs font-extrabold text-[#442938]">
+                    <span className="block text-[9px] font-semibold text-[#a08a91]">{String(idx + 1).padStart(2, "0")}</span>
+                    <span className="block whitespace-nowrap text-[11px] font-extrabold text-[#442938]">
                       {clinicSiteTemplateLabels[item]}
                     </span>
                   </span>
@@ -135,7 +135,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
               );
             })}
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs">
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]">
             <p className="flex items-center gap-2 text-[#6a5260]">
               <Eye size={15} aria-hidden="true" className="text-[#97536b]" />
               <strong className="text-[#492b38]">{clinicSiteTemplateLabels[modelo]}</strong>
@@ -150,7 +150,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         id="alvorada-vitrine-site"
         role="tabpanel"
         aria-labelledby={`modelo-alvorada-${modelo}`}
-        className="scroll-mt-[165px] min-h-[65vh]"
+        className="scroll-mt-[110px] min-h-[65vh]"
       >
         <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug} />
       </div>
