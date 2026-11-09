@@ -427,6 +427,7 @@ function Contratar() {
         p_documento: documento,
         p_valor_base: valorTotal,
         p_ciclo: ciclo,
+        p_modo_renovacao: modoRenovacao,
       });
       const validacao = Array.isArray(data) ? data[0] : data;
       if (error || !validacao?.valido) {
