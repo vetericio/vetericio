@@ -661,7 +661,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
           {luxe ? (
-            <div className="relative isolate flex min-w-0 shrink-0 items-center">
+            <div className="relative isolate flex min-w-0 items-center">
               {/*
                 Élan: luz marfim integrada à identidade escura.
                 O degradê fica somente atrás da marca, sem cartão,
