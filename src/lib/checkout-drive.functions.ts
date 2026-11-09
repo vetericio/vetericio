@@ -29,6 +29,7 @@ async function aplicarPromocao(token:string,dados:Record<string,unknown>,planoCo
   const promo=promos.find((p)=>upper(p.codigo)===codigo&&p.ativo!==false);if(!promo)throw new Error("Código promocional inválido ou inativo.");
   const agora=Date.now();if(promo.valido_de&&new Date(promo.valido_de).getTime()>agora||promo.valido_ate&&new Date(promo.valido_ate).getTime()<agora)throw new Error("Este código promocional está fora do período de validade.");
   if(Array.isArray(promo.planos)&&promo.planos.length&&!promo.planos.includes(planoCodigo))throw new Error("Este código não é válido para o plano selecionado.");
+  if(Array.isArray(promo.ciclos_elegiveis)&&promo.ciclos_elegiveis.length&&!promo.ciclos_elegiveis.includes(texto(dados.ciclo)))throw new Error("Este cupom não é válido para a duração de assinatura selecionada.");
   const contratosPorId=new Map(contratos.map((c)=>[String(c.id),c]));
   const concluida=(c:Contratacao)=>contratacaoConsomeCupom(c);
   const usosPromo=usos.filter((u)=>{const c=contratosPorId.get(String(u.contratacao_id));return String(u.codigo_id)===String(promo.id)&&!!c&&!["cancelada","recusada"].includes(String(c.status))&&concluida(c);});if(promo.limite_usos!=null&&usosPromo.length>=Number(promo.limite_usos))throw new Error("Este código promocional atingiu o limite de usos.");
