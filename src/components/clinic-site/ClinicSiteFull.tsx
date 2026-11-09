@@ -134,7 +134,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
             {config.name}
           </span>
         </>
-      )>
+      )}
     </a>
   );
   const action = (label: string, inverted = false) => (
