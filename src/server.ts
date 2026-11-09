@@ -148,38 +148,18 @@ export default {
         return securityHeaders(Response.redirect(new URL("/oricse-favicon-32.png?v=16", url), 302), url.pathname);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      // Um navegador pode manter o HTML de uma versão anterior e pedir um
-      // chunk que já não existe após o deploy. Em vez de entregar 404/HTML ao
-      // import dinâmico, enviamos um módulo mínimo que leva à página de
-      // recuperação, a qual limpa somente o cache do app e recarrega a URL.
+      // Um arquivo JS de um deploy anterior não deve receber HTML ou um
+      // módulo vazio (isso provoca erros de exportação e impede a recuperação).
+      // Uma resposta de erro real dispara o tratamento automático no cliente.
       if (url.pathname.startsWith("/assets/") &&
-          /\.(?:m?js|css)$/i.test(url.pathname) &&
+          /\\.(?:m?js|css)$/i.test(url.pathname) &&
           (!response.ok || (response.headers.get("content-type") || "").includes("text/html"))) {
-        if (/\.m?js$/i.test(url.pathname)) {
-          let destino = "/";
-          const referer = request.headers.get("referer");
-          if (referer) {
-            try {
-              const pagina = new URL(referer);
-              if (pagina.origin === url.origin) destino = pagina.pathname + pagina.search + pagina.hash;
-            } catch {}
-          }
-          const atualizar = "/atualizar.html?next=" + encodeURIComponent(destino);
-          return securityHeaders(new Response(
-            "location.replace(" + JSON.stringify(atualizar) + "); export {};",
-            {
-              status: 200,
-              headers: {
-                "content-type": "application/javascript; charset=utf-8",
-                "cache-control": "no-store, max-age=0",
-              },
-            },
-          ), url.pathname);
-        }
-        return securityHeaders(new Response("Arquivo desta versão não disponível.", {
+        return securityHeaders(new Response("Arquivo da versão anterior indisponível.", {
           status: 404,
           headers: {
-            "content-type": "text/plain; charset=utf-8",
+            "content-type": /\\.m?js$/i.test(url.pathname)
+              ? "application/javascript; charset=utf-8"
+              : "text/css; charset=utf-8",
             "cache-control": "no-store, max-age=0",
           },
         }), url.pathname);
