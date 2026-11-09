@@ -426,6 +426,7 @@ function Contratar() {
         p_plano_codigo: plano,
         p_documento: documento,
         p_valor_base: valorTotal,
+        p_ciclo: ciclo,
       });
       const validacao = Array.isArray(data) ? data[0] : data;
       if (error || !validacao?.valido) {
