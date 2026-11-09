@@ -10,6 +10,13 @@ import {
   EyeOff,
   ImagePlus,
   Layers3,
+  Maximize2,
+  Minimize2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  ScanLine,
   Monitor,
   Move,
   Plus,
@@ -139,7 +146,35 @@ export function VisualPageEditor() {
   const baselineRef = useRef<VisualDocument>(EMPTY_DOCUMENT());
   const [lastPublishedAt, setLastPublishedAt] = useState("");
   const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(false);
+  const [modoFoco, setModoFoco] = useState(false);
+  const painesAntesDoFoco = useRef({ left: true, right: false });
+  const areaCanvasRef = useRef<HTMLElement>(null);
+
+  function alternarModoFoco() {
+    if (!modoFoco) {
+      painesAntesDoFoco.current = { left: leftOpen, right: rightOpen };
+      setLeftOpen(false);
+      setRightOpen(false);
+      setModoFoco(true);
+      return;
+    }
+    setModoFoco(false);
+    setLeftOpen(painesAntesDoFoco.current.left);
+    setRightOpen(painesAntesDoFoco.current.right);
+  }
+
+  useEffect(() => {
+    if (!modoFoco) return;
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = overflowAnterior; };
+  }, [modoFoco]);
+
+  useEffect(() => {
+    if (selected.length && !modoFoco) setRightOpen(true);
+  }, [selected.length, modoFoco]);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const cleanupFrameListenersRef = useRef<(() => void) | null>(null);
   const selectedRef = useRef<SelectedItem[]>([]);
@@ -927,10 +962,15 @@ export function VisualPageEditor() {
     );
   const frameWidth = deviceWidth(device);
   const scale = zoom / 100;
+  function ajustarPaginaNaTela() {
+    const disponivel = Math.max(250, (areaCanvasRef.current?.clientWidth ?? 1000) - 32);
+    const opcoes = [40, 55, 70, 85, 100];
+    setZoom(opcoes.filter((valor) => frameWidth * valor / 100 <= disponivel).at(-1) ?? 40);
+  }
 
   return (
-    <main className="min-h-screen bg-[#ded9d3] text-slate-900">
-      <header className="sticky top-0 z-50 flex min-h-16 flex-wrap items-center gap-2 border-b bg-white px-3 py-2 shadow-sm">
+    <main className={`${modoFoco ? "fixed inset-0 z-[70] flex h-dvh flex-col overflow-hidden" : "min-h-screen"} bg-[#ded9d3] text-slate-900`}>
+      <header className="sticky top-0 z-50 flex min-h-14 shrink-0 flex-wrap items-center gap-1.5 border-b bg-white px-2 py-2 shadow-sm lg:flex-nowrap lg:overflow-x-auto">
         <Link
           to="/admin"
           className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
@@ -938,11 +978,24 @@ export function VisualPageEditor() {
           <ArrowLeft size={17} /> Admin
         </Link>
         <button
+          type="button"
+          onClick={alternarModoFoco}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${modoFoco ? "border-primary bg-primary/5 text-primary" : "hover:bg-slate-50"}`}
+          aria-pressed={modoFoco}
+          title={modoFoco ? "Sair da visualização ampla" : "Ampliar área da página e recolher os painéis"}
+        >
+          {modoFoco ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          <span className="hidden xl:inline">{modoFoco ? "Sair do foco" : "Tela ampla"}</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setLeftOpen((x) => !x)}
           className="rounded-xl border p-2"
-          title="Páginas e elementos"
+          title={leftOpen ? "Recolher páginas e camadas" : "Expandir páginas e camadas"}
+          aria-label={leftOpen ? "Recolher páginas e camadas" : "Expandir páginas e camadas"}
+          aria-expanded={leftOpen}
         >
-          <Layers3 size={18} />
+          {leftOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
         </button>
         <button
           onClick={addText}
@@ -991,6 +1044,7 @@ export function VisualPageEditor() {
         </button>
         <select
           value={zoom}
+          aria-label="Zoom da página"
           onChange={(e) => setZoom(Number(e.target.value))}
           className="rounded-xl border px-2 py-2"
         >
@@ -1001,11 +1055,23 @@ export function VisualPageEditor() {
           <option value={100}>100%</option>
         </select>
         <button
+          type="button"
+          onClick={ajustarPaginaNaTela}
+          className="rounded-xl border p-2"
+          title="Ajustar página à largura disponível"
+          aria-label="Ajustar página à tela"
+        >
+          <ScanLine size={18} />
+        </button>
+        <button
+          type="button"
           onClick={() => setRightOpen((x) => !x)}
           className="rounded-xl border p-2"
-          title="Propriedades"
+          title={rightOpen ? "Recolher propriedades" : "Expandir propriedades"}
+          aria-label={rightOpen ? "Recolher propriedades" : "Expandir propriedades"}
+          aria-expanded={rightOpen}
         >
-          <Move size={18} />
+          {rightOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
         </button>
         <div className="ml-auto flex items-center gap-2">
           {lastPublishedAt && (
@@ -1081,10 +1147,14 @@ export function VisualPageEditor() {
       )}
 
       <div
-        className={`grid min-h-[calc(100vh-64px)] ${leftOpen && rightOpen ? "lg:grid-cols-[260px_minmax(0,1fr)_290px]" : leftOpen ? "lg:grid-cols-[260px_minmax(0,1fr)]" : rightOpen ? "lg:grid-cols-[minmax(0,1fr)_290px]" : "grid-cols-1"}`}
+        className={`grid ${modoFoco ? "min-h-0 flex-1" : "min-h-[calc(100vh-64px)]"} ${leftOpen && rightOpen ? "lg:grid-cols-[225px_minmax(0,1fr)_250px]" : leftOpen ? "lg:grid-cols-[225px_minmax(0,1fr)]" : rightOpen ? "lg:grid-cols-[minmax(0,1fr)_250px]" : "grid-cols-1"}`}
       >
         {leftOpen && (
-          <aside className="border-r bg-white p-3">
+          <aside className="min-w-0 overflow-y-auto border-r bg-white p-3 lg:max-h-[calc(100dvh-64px)]">
+            <div className="flex items-center justify-between gap-2 pb-3">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Navegar e editar</span>
+              <button type="button" onClick={() => setLeftOpen(false)} className="rounded-lg border p-1.5 hover:bg-slate-50" aria-label="Recolher painel de páginas"><PanelLeftClose size={17}/></button>
+            </div>
             <div className="space-y-2">
               <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Páginas do ORICSE
@@ -1226,10 +1296,10 @@ export function VisualPageEditor() {
           </aside>
         )}
 
-        <section className="min-w-0 overflow-auto p-6">
+        <section ref={areaCanvasRef} className={`min-w-0 overflow-auto ${modoFoco ? "p-2 sm:p-3" : "p-3 lg:p-4"}`}>
           <div
             className="mx-auto origin-top"
-            style={{ width: frameWidth * scale, minHeight: 760 * scale }}
+            style={{ width: frameWidth * scale, minHeight: (device === "desktop" ? 900 : 844) * scale }}
           >
             <div
               className="origin-top-left overflow-hidden rounded-lg bg-white shadow-2xl"
@@ -1250,15 +1320,18 @@ export function VisualPageEditor() {
               />
             </div>
           </div>
-          <p className="mt-4 text-center text-xs text-slate-600">
+          <p className={modoFoco ? "sr-only" : "mt-4 text-center text-xs text-slate-600"}>
             Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça
             esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção.
           </p>
         </section>
 
         {rightOpen && (
-          <aside className="border-l bg-white p-4">
-            <h2 className="font-bold">Propriedades</h2>
+          <aside className="min-w-0 overflow-y-auto border-l bg-white p-3 lg:max-h-[calc(100dvh-64px)]">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-bold">Propriedades</h2>
+              <button type="button" onClick={() => setRightOpen(false)} className="rounded-lg border p-1.5 hover:bg-slate-50" aria-label="Recolher painel de propriedades"><PanelRightClose size={17}/></button>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {selected.length
                 ? `${selected.length} elemento(s) selecionado(s)`
