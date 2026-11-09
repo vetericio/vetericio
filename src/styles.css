@@ -1533,9 +1533,11 @@
   width: 100%;
   max-width: 620px;
   height: auto;
-  max-height: 116px;
+  max-height: 170px;
   object-fit: contain;
   object-position: left center;
+  transform: scale(1.15);
+  transform-origin: left center;
 }
 .portal-tutor-live[data-site-template] .portal-one-screen-product-name h1 {
   margin: 14px 0 0;
