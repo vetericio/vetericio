@@ -1787,3 +1787,170 @@
   .portal-one-screen-features > div > span {flex:0 0 33px;width:33px}
   .portal-one-screen-features strong {font-size:11px}
 }
+
+
+/* ===== ORICSE HOME: paridade visual desktop/mobile (somente homepage) ===== */
+/*
+ * A landing aprovada usa a foto do órix como parte do hero no desktop.
+ * Em celular, conservar a MESMA foto, logo, cores, textos e CTAs em uma só
+ * composição: foto no alto, logo sobre o céu e texto no degradê do pôr do sol.
+ * Sem novos layouts, scripts, overlays de carregamento ou mudanças no PC.
+ */
+@media (max-width: 767px) {
+  main:has(> section#solucoes) > header {
+    position: relative;
+    z-index: 10;
+    min-height: 56px;
+    padding-inline: 16px;
+    background-color: #fffdfa;
+  }
+
+  main:has(> section#solucoes) > header > button {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Hero comercial: uma peça visual contínua em vez de "foto + outra página". */
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: linear-gradient(180deg, #f5d4bb 0%, #ffe8c8 36%, #fff1e0 64%, #fffdfa 100%);
+  }
+
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) > img[alt="Órix nas dunas ao pôr do sol"] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    z-index: 0;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1672 / 941;
+    object-fit: cover;
+    object-position: center top;
+  }
+
+  /* Integra a paisagem aos textos sem encobrir o órix. */
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"])::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+    top: 35vw;
+    left: 0;
+    right: 0;
+    height: 30vw;
+    background: linear-gradient(180deg, transparent, #fff1e0 80%, #fff1e0);
+  }
+
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) > div {
+    position: relative;
+    z-index: 1;
+    display: block;
+    min-height: 0;
+    padding: clamp(192px, 56vw, 405px) 18px 34px;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) > div > div {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* A logo passa a ocupar o canto superior esquerdo da própria paisagem. */
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) > div > div > div:first-child {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    left: 17px;
+    display: block;
+    width: 98px;
+    height: 98px;
+    margin: 0;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type > div:has(> img[alt="Órix nas dunas ao pôr do sol"]) > div > div > div:first-child > img {
+    width: 98px;
+    height: 98px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 3px rgba(255, 249, 243, .55));
+  }
+
+  main:has(> section#solucoes) > section:first-of-type h1 {
+    max-width: 15ch;
+    margin-top: 16px;
+    font-size: clamp(35px, 9.6vw, 58px);
+    line-height: .96;
+    letter-spacing: -.055em;
+    text-wrap: balance;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type h1 + p {
+    max-width: 36ch;
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div {
+    margin-top: 20px;
+    gap: 10px;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div > a {
+    min-height: 46px;
+    padding: 11px 15px;
+    font-size: 13px;
+  }
+
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div + p {
+    margin-top: 18px;
+    align-items: flex-start;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  main:has(> section#solucoes) > section:nth-of-type(2) {
+    padding: 16px 18px 22px;
+  }
+
+  main:has(> section#solucoes) > section:nth-of-type(2) article {
+    min-height: 0;
+    padding: 13px 15px;
+    border-radius: 17px;
+  }
+
+  main:has(> section#solucoes) > section#solucoes {
+    padding: 48px 18px 54px;
+  }
+
+  main:has(> section#solucoes) > section#solucoes h2 {
+    font-size: clamp(33px, 8.2vw, 47px);
+    line-height: 1;
+  }
+
+  main:has(> section#solucoes) > section#solucoes > div > div:nth-child(2) {
+    margin-top: 24px;
+    gap: 12px;
+  }
+
+  main:has(> section#solucoes) > section#solucoes article {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  main:has(> section#solucoes) > section#solucoes article > a {
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 359px) {
+  main:has(> section#solucoes) > section:first-of-type h1 {
+    font-size: 34px;
+  }
+  main:has(> section#solucoes) > section:first-of-type h1 + p + div > a {
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+}
