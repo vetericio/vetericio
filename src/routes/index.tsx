@@ -4,6 +4,7 @@ import { hostDaPagina, useTenantContext } from "@/lib/tenant-context";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 import { AlvoradaDemoShowcase } from "@/components/clinic-site/AlvoradaDemoShowcase";
+import { loadPublicClinicSite } from "@/lib/public-clinic-site";
 import { clinicSiteTemplates, normalizeClinicSiteConfig } from "@/lib/clinic-site";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {
@@ -47,6 +48,23 @@ function PaginaDaClinicaNoDominio({portal,loading,error,hostname}:{
   const [site, setSite] = useState<{template:string;config:unknown}|null>(null);
   const [consultando, setConsultando] = useState(true);
   useEffect(() => {
+    // A Alvorada é a vitrine oficial dos sete modelos. Carrega sua publicação
+    // diretamente, para que o domínio continue no ar mesmo durante a
+    // atualização assíncrona do contexto interno de clínicas.
+    if (!portal && hostname === "alvorada.oricse.com.br") {
+      let ativa = true;
+      setConsultando(true);
+      void loadPublicClinicSite("alvorada").then((publicado) => {
+        if (!ativa) return;
+        setSite(publicado);
+        setConsultando(false);
+      }).catch(() => {
+        if (!ativa) return;
+        setSite(null);
+        setConsultando(false);
+      });
+      return () => { ativa = false; };
+    }
     if (!portal) {
       setSite(null);
       setConsultando(false);
@@ -71,17 +89,17 @@ function PaginaDaClinicaNoDominio({portal,loading,error,hostname}:{
   if (loading || (portal && consultando)) {
     return <main className="grid min-h-[75dvh] place-items-center bg-[#fffaf7] px-6 text-center text-[#5c3140]">Carregando site da clínica...</main>;
   }
-  if (!portal || error) {
-    return <main className="grid min-h-[75dvh] place-items-center bg-[#fffaf7] px-6 text-center text-[#4A1826]">
-      <div><h1 className="text-2xl font-bold">Endereço ainda não configurado</h1><p className="mt-3 text-sm">Confirme o endereço com sua clínica ou entre em contato com a ORICSE.</p></div>
-    </main>;
-  }
   if (site) {
     const template=clinicSiteTemplates.includes(site.template as any) ? site.template as any : "prestige";
     const config=normalizeClinicSiteConfig(site.config);
     if (hostname === "alvorada.oricse.com.br" && portal.clinica_slug === "alvorada")
       return <AlvoradaDemoShowcase initialTemplate={template} config={config} clinicSlug="alvorada" />;
-    return <ClinicSiteRenderer template={template} config={config} clinicSlug={portal.clinica_slug || undefined} />;
+    return <ClinicSiteRenderer template={template} config={config} clinicSlug={portal?.clinica_slug || undefined} />;
+  }
+  if (!portal || error) {
+    return <main className="grid min-h-[75dvh] place-items-center bg-[#fffaf7] px-6 text-center text-[#4A1826]">
+      <div><h1 className="text-2xl font-bold">Endereço ainda não configurado</h1><p className="mt-3 text-sm">Confirme o endereço com sua clínica ou entre em contato com a ORICSE.</p></div>
+    </main>;
   }
   const slug=portal.clinica_slug || "";
   return <main className="grid min-h-[85dvh] place-items-center bg-[linear-gradient(145deg,#fffaf7,#f4e1dd)] px-5 py-12 text-[#4A1826]">
