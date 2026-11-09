@@ -24,7 +24,7 @@ export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> 
   prestige: "Editorial, exclusivo e sofisticado.",
   atelier: "Hospitalar, técnico e acolhedor.",
   cuidado: "Colorido, descontraído e cheio de personalidade.",
-  popular: "Direto, comercial e urgente.",
+  popular: "Autoral, editorial e impossível de ignorar.",
   essencial: "Leve, objetivo e mobile-first.",
   horizonte: "Orgânico, natureza e bem-estar animal.",
 };
@@ -168,10 +168,10 @@ export const clinicSitePresets: Record<
     textColor: "#182752",
   },
   popular: {
-    primaryColor: "#B33C34",
-    secondaryColor: "#FFE297",
-    backgroundColor: "#FFFDF8",
-    textColor: "#322523",
+    primaryColor: "#B7183E",
+    secondaryColor: "#101526",
+    backgroundColor: "#F2EBE1",
+    textColor: "#101526",
   },
   essencial: {
     primaryColor: "#263C54",

@@ -36,6 +36,7 @@ export function ClinicSiteFull({ template, config }: Props) {
   const editorial = template === "atelier";
   const friendly = template === "cuidado";
   const bold = template === "popular";
+  const king = template === "popular";
   const minimal = template === "essencial";
   const organic = template === "horizonte";
   const rounded = !luxe && !bold && !minimal && !prime;
@@ -48,7 +49,7 @@ export function ClinicSiteFull({ template, config }: Props) {
       : minimal
         ? "rounded-lg"
         : "rounded-full";
-  const headingFont = luxe || organic || signatura ? "font-serif" : "font-sans";
+  const headingFont = luxe || organic || signatura || king ? "font-serif" : "font-sans";
   const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
   const panels = signatura || prime ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
@@ -57,14 +58,22 @@ export function ClinicSiteFull({ template, config }: Props) {
     externalBooking || (hasWhatsApp ? "https://wa.me/" + waNumber(config.whatsapp) : "#contato");
   const image =
     safeHttps(config.heroImageUrl) ||
-    (prime ? "/clinic-site/prime/hero.png" : friendly ? "/clinic-site/class/hero.png" : "");
+    (prime
+      ? "/clinic-site/prime/hero.png"
+      : friendly
+        ? "/clinic-site/class/hero.png"
+        : king
+          ? "/clinic-site/king/hero.png"
+          : "");
   const configuredGallery = config.galleryUrls.filter(safeHttps);
   const gallery =
-    configuredGallery.length || (!prime && !friendly)
+    configuredGallery.length || (!prime && !friendly && !king)
       ? configuredGallery
       : prime
         ? ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"]
-        : ["/clinic-site/class/consulta-colorida.png"];
+        : friendly
+          ? ["/clinic-site/class/consulta-colorida.png"]
+          : ["/clinic-site/king/gato-editorial.png"];
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
@@ -189,8 +198,11 @@ export function ClinicSiteFull({ template, config }: Props) {
         className={"px-5 sm:px-8 " + sectionPad}
       >
         <div className="mx-auto max-w-7xl">
-          {heading("O que fazemos", "Cuidado para cada fase da vida.")}
-          <div className={"mt-10 grid gap-4 " + (prime ? "sm:grid-cols-2 lg:grid-cols-4" : minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
+          {heading(
+            king ? "Cuidado, em capítulos" : "O que fazemos",
+            king ? "Cada encontro muda a próxima página da história." : "Cuidado para cada fase da vida.",
+          )}
+          <div className={"mt-10 grid gap-4 " + (prime ? "sm:grid-cols-2 lg:grid-cols-4" : king || minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
             {config.services.map((service, index) => (
               <article
                 key={service + "-" + index}
@@ -199,7 +211,19 @@ export function ClinicSiteFull({ template, config }: Props) {
                   ink +
                   " " +
                   panels +
-                  (luxe ? " bg-white/[.04]" : signatura ? " bg-white shadow-[0_18px_45px_rgba(23,61,53,.08)]" : prime ? " bg-white shadow-[0_15px_34px_rgba(14,92,168,.08)]" : bold ? " bg-[var(--site-secondary)]" : " bg-white/35")
+                  (luxe
+                    ? " bg-white/[.04]"
+                    : signatura
+                      ? " bg-white shadow-[0_18px_45px_rgba(23,61,53,.08)]"
+                      : prime
+                        ? " bg-white shadow-[0_15px_34px_rgba(14,92,168,.08)]"
+                        : king
+                          ? index % 2
+                            ? " bg-[#B7183E] text-[#F2EBE1]"
+                            : " bg-[#101526] text-[#F2EBE1]"
+                          : bold
+                            ? " bg-[var(--site-secondary)]"
+                            : " bg-white/35")
                 }
               >
                 <div
@@ -558,6 +582,53 @@ export function ClinicSiteFull({ template, config }: Props) {
     </section>
   );
 
+  const kingHero = (
+    <section
+      id="inicio"
+      data-clinic-section="inicio"
+      className="relative overflow-hidden bg-[#F2EBE1] px-5 py-10 text-[#101526] sm:px-8 sm:py-14"
+    >
+      <div className="pointer-events-none absolute -right-16 top-0 h-64 w-64 rounded-full border-[28px] border-[#B7183E]" />
+      <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.86fr_1.14fr] md:items-end">
+        <div className="relative z-10 py-7 sm:pb-16 sm:pt-10">
+          <span className="inline-flex items-center gap-2 border-b-2 border-[#B7183E] pb-2 text-xs font-black uppercase tracking-[.25em]">
+            <Sparkles size={14} className="text-[#B7183E]" /> Cuidado em estado de arte
+          </span>
+          <h1 className="mt-7 max-w-2xl font-serif text-6xl leading-[.84] tracking-[-.075em] sm:text-8xl">
+            {config.slogan}
+          </h1>
+          <p className="mt-8 max-w-lg text-base leading-8 text-[#101526]/75 sm:text-lg">
+            {config.description}
+          </p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            {action(config.ctaLabel || "Conversar com a equipe")}
+            {config.services.length ? (
+              <a
+                href="#servicos"
+                className="inline-flex min-h-12 items-center justify-center gap-2 border-b-2 border-[#101526] px-2 py-3 text-sm font-black transition hover:text-[#B7183E]"
+              >
+                Ver capítulos do cuidado <ArrowRight size={16} />
+              </a>
+            ) : null}
+          </div>
+          <div className="mt-12 grid max-w-lg grid-cols-2 gap-4 border-t border-[#101526]/25 pt-5 text-xs font-bold uppercase tracking-[.12em]">
+            <span><Heart className="mb-2 text-[#B7183E]" size={20} />Escuta antes de tudo</span>
+            <span><ShieldCheck className="mb-2 text-[#B7183E]" size={20} />Técnica com presença</span>
+          </div>
+        </div>
+        <div className="relative min-h-[390px] overflow-hidden border-[7px] border-[#101526] bg-[#B7183E] shadow-[18px_18px_0_#B7183E] sm:min-h-[560px]">
+          {image ? <img src={image} alt="Retrato da relação entre equipe e pet" className="absolute inset-0 h-full w-full object-cover" /> : null}
+          <span className="absolute bottom-0 left-0 bg-[#101526] px-5 py-3 text-xs font-black uppercase tracking-[.25em] text-[#F2EBE1]">
+            King · cuidado autoral
+          </span>
+          <span className="absolute right-5 top-5 rounded-full bg-[#F2EBE1] px-4 py-3 text-xs font-black uppercase tracking-[.16em] text-[#101526]">
+            01 / 01
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <main
       className={"min-h-screen w-full overflow-x-clip " + outer}
@@ -572,7 +643,7 @@ export function ClinicSiteFull({ template, config }: Props) {
       <header
         className={
           "relative z-10 border-b border-current/10 " +
-          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : friendly ? "bg-[#FFF8ED]" : "")
+          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : friendly ? "bg-[#FFF8ED]" : king ? "bg-[#101526] text-[#F2EBE1] border-white/15" : "")
         }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
@@ -609,7 +680,7 @@ export function ClinicSiteFull({ template, config }: Props) {
         </div>
       </header>
 
-      {prime ? primeHero : friendly ? classHero : (
+      {prime ? primeHero : friendly ? classHero : king ? kingHero : (
       <section
         id="inicio"
         data-clinic-section="inicio"
