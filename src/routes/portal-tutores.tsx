@@ -1,3 +1,4 @@
+import { PortalTutorLoginPreview } from "./pet/$slug/portal";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Copy, ExternalLink, KeyRound, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
@@ -7,7 +8,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { type Comanda, lerComandas, saldoComanda, totalComanda, totalPagoComanda } from "@/lib/comandas";
 
-export const Route = createFileRoute("/portal-tutores")({ component: PortalTutores });
+export const Route = createFileRoute("/portal-tutores")({ component: PortalTutoresComPrevia });
+
+function PortalTutoresComPrevia() {
+  // A prévia do Canva não exige escolher clínica ou aguardar dados de tutores.
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("portal_login_preview")) {
+    return <PortalTutorLoginPreview />;
+  }
+  return <PortalTutores />;
+}
 
 type TutorDb = { id:string; codigo_publico:string; nome:string; cpf:string; telefone:string|null; email:string|null; dados:Record<string,unknown> };
 type PortalDb = { id:string; tutor_id:string; usuario:string; ativo:boolean; ultimo_acesso_em:string|null; created_at:string };
