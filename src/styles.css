@@ -1874,6 +1874,7 @@
   max-height: 170px;
   object-fit: contain;
   filter: drop-shadow(0 2px 2px rgba(23,38,36,.025));
+  transform: scale(1.15);
 }
 .portal-tutor-live.portal-tutor-login-screen[data-site-template] .portal-one-screen-product-name {
   position: relative;
