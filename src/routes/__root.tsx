@@ -616,6 +616,50 @@ function RootComponent() {
     return () => observer.disconnect();
   }, [location.pathname, navigate]);
 
+  // Uma aba que ficou aberta após um deploy deve reconciliar a versão sozinha.
+  // O marcador é emitido junto dos assets no mesmo deploy; não afeta os dados
+  // do paciente, a sessão ou as configurações persistidas.
+  useEffect(() => {
+    const versaoDestaAba = import.meta.env.VITE_ORICSE_BUILD_ID as string | undefined;
+    if (!versaoDestaAba || typeof window === "undefined") return;
+    let ativo = true;
+    let verificando = false;
+    async function verificarVersao() {
+      if (!ativo || verificando || document.visibilityState !== "visible") return;
+      verificando = true;
+      try {
+        const resposta = await fetch("/oricse-build.json", {
+          cache: "no-store",
+          headers: { accept: "application/json" },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!resposta.ok || !(resposta.headers.get("content-type") || "").includes("json")) return;
+        const versaoPublicada = (await resposta.json() as {build?: string}).build;
+        if (!ativo || !versaoPublicada || versaoPublicada === versaoDestaAba) return;
+        const chave = "oricse-auto-update";
+        if (sessionStorage.getItem(chave) === versaoPublicada) return;
+        sessionStorage.setItem(chave, versaoPublicada);
+        // Reabre exatamente a URL atual, sem apagar cache de dados ou login.
+        window.location.reload();
+      } catch {
+        // Uma queda de rede temporária não pode interromper o trabalho.
+      } finally {
+        verificando = false;
+      }
+    }
+    const aoFocar = () => { void verificarVersao(); };
+    document.addEventListener("visibilitychange", aoFocar);
+    window.addEventListener("focus", aoFocar);
+    const intervalo = window.setInterval(aoFocar, 120000);
+    void verificarVersao();
+    return () => {
+      ativo = false;
+      document.removeEventListener("visibilitychange", aoFocar);
+      window.removeEventListener("focus", aoFocar);
+      window.clearInterval(intervalo);
+    };
+  }, []);
+
   useEffect(() => {
     const recuperarModuloExpirado = (event: Event | PromiseRejectionEvent) => {
       const motivo = event instanceof PromiseRejectionEvent
