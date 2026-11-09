@@ -11,13 +11,13 @@ export const clinicSiteTemplates = [
 ] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
 export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
-  signatura: "Site Signatura",
-  prestige: "Signature",
+  signatura: "Signature",
+  prestige: "Élan",
   atelier: "Prime",
   cuidado: "Class",
   popular: "King",
   essencial: "Essencial",
-  horizonte: "Horizonte",
+  horizonte: "Pleno",
 };
 export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
   signatura: "Hospitalar, editorial e acolhedor.",
