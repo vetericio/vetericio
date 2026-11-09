@@ -23,7 +23,7 @@ export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> 
   signatura: "Hospitalar, editorial e acolhedor.",
   prestige: "Editorial, exclusivo e sofisticado.",
   atelier: "Hospitalar, técnico e acolhedor.",
-  cuidado: "Acolhedor e confiável.",
+  cuidado: "Colorido, descontraído e cheio de personalidade.",
   popular: "Direto, comercial e urgente.",
   essencial: "Leve, objetivo e mobile-first.",
   horizonte: "Orgânico, natureza e bem-estar animal.",
@@ -162,10 +162,10 @@ export const clinicSitePresets: Record<
     textColor: "#123049",
   },
   cuidado: {
-    primaryColor: "#307760",
-    secondaryColor: "#D7E8DE",
-    backgroundColor: "#F2F8F4",
-    textColor: "#1E4036",
+    primaryColor: "#F05D43",
+    secondaryColor: "#DDF3E9",
+    backgroundColor: "#FFF8ED",
+    textColor: "#182752",
   },
   popular: {
     primaryColor: "#B33C34",

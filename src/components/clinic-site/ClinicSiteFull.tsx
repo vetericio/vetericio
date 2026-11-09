@@ -55,19 +55,23 @@ export function ClinicSiteFull({ template, config }: Props) {
   const externalBooking = realUrl(config.bookingUrl);
   const actionHref =
     externalBooking || (hasWhatsApp ? "https://wa.me/" + waNumber(config.whatsapp) : "#contato");
-  const image = safeHttps(config.heroImageUrl) || (prime ? "/clinic-site/prime/hero.png" : "");
+  const image =
+    safeHttps(config.heroImageUrl) ||
+    (prime ? "/clinic-site/prime/hero.png" : friendly ? "/clinic-site/class/hero.png" : "");
   const configuredGallery = config.galleryUrls.filter(safeHttps);
   const gallery =
-    configuredGallery.length || !prime
+    configuredGallery.length || (!prime && !friendly)
       ? configuredGallery
-      : ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"];
+      : prime
+        ? ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"]
+        : ["/clinic-site/class/consulta-colorida.png"];
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
     : "";
   const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
   const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
-  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : prime ? "border-[#0E5CA8]/15" : "border-current/15";
+  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : prime ? "border-[#0E5CA8]/15" : friendly ? "border-[#F05D43]/20" : "border-current/15";
   const outer = luxe
     ? "bg-[var(--site-bg)] text-[var(--site-text)]"
     : bold
@@ -125,6 +129,8 @@ export function ClinicSiteFull({ template, config }: Props) {
             ? "rounded-xl"
             : prime
               ? "rounded-2xl"
+              : friendly
+                ? "rounded-[2.5rem]"
             : rounded
               ? "rounded-[2rem]"
               : "rounded-2xl")
@@ -147,9 +153,13 @@ export function ClinicSiteFull({ template, config }: Props) {
           </span>
         </div>
       )}
-      {(luxe || organic || signatura || prime) && (
+      {(luxe || organic || signatura || prime || friendly) && (
         <div className="pointer-events-none absolute bottom-5 left-5 rounded-xl border border-white/40 bg-black/40 px-5 py-3 text-xs font-semibold tracking-wide text-white backdrop-blur-md">
-          {prime ? "Estrutura que acolhe, cuidado que acompanha" : "Atenção em cada detalhe"}
+          {prime
+            ? "Estrutura que acolhe, cuidado que acompanha"
+            : friendly
+              ? "Todo dia pode ser uma aventura boa"
+              : "Atenção em cada detalhe"}
         </div>
       )}
     </div>
@@ -499,6 +509,55 @@ export function ClinicSiteFull({ template, config }: Props) {
     </section>
   );
 
+  const classHero = (
+    <section
+      id="inicio"
+      data-clinic-section="inicio"
+      className="relative isolate overflow-hidden bg-[#FFF8ED] px-5 py-10 sm:px-8 sm:py-14"
+    >
+      <div className="pointer-events-none absolute -left-14 top-10 h-40 w-40 rounded-full bg-[#FFCF52] blur-[1px]" />
+      <div className="pointer-events-none absolute right-[34%] top-8 h-12 w-12 rounded-full border-[9px] border-[#35A9A0]" />
+      <div className="pointer-events-none absolute -bottom-14 right-8 h-52 w-52 rounded-full bg-[#F05D43]" />
+      <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.92fr_1.08fr] md:items-center">
+        <div className="py-7 sm:py-12">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#182752] px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] text-white shadow-sm">
+            <Sparkles size={15} className="text-[#FFCF52]" /> Seu pet no melhor roteiro
+          </span>
+          <h1 className="mt-7 max-w-2xl text-5xl font-black leading-[.91] tracking-[-.055em] text-[#182752] sm:text-7xl">
+            {config.slogan}
+          </h1>
+          <p className="mt-6 max-w-xl text-base leading-8 text-[#182752]/75 sm:text-lg">
+            {config.description}
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            {action(config.ctaLabel || "Bora agendar")}
+            {config.services.length ? (
+              <a
+                href="#servicos"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-[#182752] bg-white px-5 py-3 text-sm font-extrabold text-[#182752] transition hover:-translate-y-0.5"
+              >
+                Explorar cuidados <ArrowRight size={16} />
+              </a>
+            ) : null}
+          </div>
+          <div className="mt-10 flex flex-wrap gap-3 text-sm font-bold text-[#182752]">
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm"><Heart className="mr-2 inline text-[#F05D43]" size={16} />Clima leve</span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm"><PawPrint className="mr-2 inline text-[#35A9A0]" size={16} />Cuidado de verdade</span>
+          </div>
+        </div>
+        <div className="relative min-h-[360px] overflow-hidden rounded-[3rem] border-[10px] border-white bg-[#35A9A0] shadow-[0_24px_0_#182752] sm:min-h-[500px]">
+          {image ? <img src={image} alt="Momento feliz na clínica" className="absolute inset-0 h-full w-full object-cover" /> : null}
+          <div className="absolute left-5 top-5 rounded-full bg-[#FFCF52] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#182752] shadow-sm">
+            Partiu cuidar
+          </div>
+          <div className="absolute bottom-5 right-5 max-w-[12rem] rounded-3xl bg-[#182752] p-4 text-sm font-bold leading-5 text-white shadow-xl">
+            Saúde também pode ter sorriso e vento no focinho.
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <main
       className={"min-h-screen w-full overflow-x-clip " + outer}
@@ -513,7 +572,7 @@ export function ClinicSiteFull({ template, config }: Props) {
       <header
         className={
           "relative z-10 border-b border-current/10 " +
-          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : "")
+          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : friendly ? "bg-[#FFF8ED]" : "")
         }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
@@ -550,7 +609,7 @@ export function ClinicSiteFull({ template, config }: Props) {
         </div>
       </header>
 
-      {prime ? primeHero : (
+      {prime ? primeHero : friendly ? classHero : (
       <section
         id="inicio"
         data-clinic-section="inicio"
