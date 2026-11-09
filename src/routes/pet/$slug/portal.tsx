@@ -222,15 +222,15 @@ function Login(props:{
     ? "https://alvorada.oricse.com.br/"
     : `/c/${encodeURIComponent(p.clinica.slug)}`;
   const acessoEstendido=p.modoAtivar||p.modoRecuperar;
-  return <main className="portal-tutor-live portal-tutor-login-screen" data-site-template={p.tema?.modelo}
+  return <main data-visual-id="portal-tutor-login" className="portal-tutor-live portal-tutor-login-screen" data-site-template={p.tema?.modelo}
     data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>
     <div className="portal-login-topbar">
       <a className="portal-login-back-link" href={clinicSite}><ArrowLeft size={17}/> Retornar para o site da clínica</a>
       <span className="portal-login-top-caption"><span className="portal-premium-live-dot"/> ÁREA EXCLUSIVA PARA TUTORES</span>
     </div>
-    <div className="portal-one-screen-grid">
+    <div data-visual-id="portal-tutor-login-grid" className="portal-one-screen-grid">
       <div className="portal-one-screen-left">
-        <section className="portal-one-screen-brand" aria-label="Clínica e Portal do Tutor">
+        <section data-visual-id="portal-tutor-login-brand" className="portal-one-screen-brand" aria-label="Clínica e Portal do Tutor">
           <div className="portal-one-screen-logo-white">
             {clinicLogo
               ? <img src={clinicLogo} alt={`Logo ${clinicName}`} className="portal-one-screen-clinic-logo"/>
@@ -240,6 +240,7 @@ function Login(props:{
             <div className="portal-one-screen-product-signature">
               <h1 className="sr-only">Portal do Tutor</h1>
               <img
+                data-visual-id="portal-tutor-login-logo"
                 src="/portal-do-tutor-marca-limpa-cortada.png"
                 alt="Portal do Tutor — tudo do seu pet em um só lugar, e bem organizado."
                 className="portal-one-screen-product-logo"
@@ -247,7 +248,7 @@ function Login(props:{
             </div>
           </div>
         </section>
-        <section className="portal-one-screen-about" aria-label="O que você encontra aqui">
+        <section data-visual-id="portal-tutor-login-about" className="portal-one-screen-about" aria-label="O que você encontra aqui">
           <div className="portal-one-screen-about-overline"><HeartPulse size={16}/> CUIDADO EM CADA DETALHE</div>
           <h2>O cuidado com seu pet, <em>sempre por perto.</em></h2>
           <p className="portal-one-screen-description">
@@ -261,15 +262,15 @@ function Login(props:{
           <p className="portal-one-screen-welcome"><PawPrint size={17}/> {p.portalConfig.mensagem_boas_vindas||"Bem-vindo ao Portal do Tutor!"}</p>
         </section>
       </div>
-      <section className="portal-one-screen-login-panel" aria-label="Acesso ao Portal do Tutor">
-        <div className="portal-one-screen-login-heading">
+      <section data-visual-id="portal-tutor-login-panel" className="portal-one-screen-login-panel" aria-label="Acesso ao Portal do Tutor">
+        <div data-visual-id="portal-tutor-login-heading" className="portal-one-screen-login-heading">
           <span className="portal-one-screen-auth-mark"><LockKeyhole size={22}/></span>
           <div>
             <span className="portal-one-screen-auth-eyebrow">ACESSO PRIVATIVO</span>
             <h2>{p.modoRecuperar?"Recuperar acesso":p.modoAtivar?"Ativar primeiro acesso":"Acesso do tutor"}</h2>
           </div>
         </div>
-        <p className="portal-one-screen-login-lead">Suas informações e os cuidados com seu pet, em segurança.</p>
+        <p data-visual-id="portal-tutor-login-description" className="portal-one-screen-login-lead">Suas informações e os cuidados com seu pet, em segurança.</p>
         <div className="portal-one-screen-form">
         {p.modoRecuperar ? (
           <><p className="text-sm text-slate-500">Confirme seus dados e reconheça um pet vinculado a esta clínica.</p>
@@ -292,11 +293,54 @@ function Login(props:{
         ) : p.modoAtivar ? (
           <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken}/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
         ) : (
-          <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
+          <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
         </div>
-        <p className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
+        <p data-visual-id="portal-tutor-login-safety" className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
       </section>
     </div>
   </main>;
+}
+
+/**
+ * Prévia segura do login padrão para o Canva administrativo.
+ * Utiliza o mesmo componente e CSS do Portal real, sem tocar em contas,
+ * autenticação, tutores ou dados de clínicas.
+ */
+export function PortalTutorLoginPreview() {
+  const [usuario, setUsuario] = useState("");
+  const [senha, setSenha] = useState("");
+  const [modoAtivar, setModoAtivar] = useState(false);
+  const [modoRecuperar, setModoRecuperar] = useState(false);
+  const [token, setToken] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [repeteSenha, setRepeteSenha] = useState("");
+  const [cpfRecuperacao, setCpfRecuperacao] = useState("");
+  const [nascimentoRecuperacao, setNascimentoRecuperacao] = useState("");
+  const [animalResposta, setAnimalResposta] = useState("");
+  const [senhaRecuperacao, setSenhaRecuperacao] = useState("");
+  const [repeteSenhaRecuperacao, setRepeteSenhaRecuperacao] = useState("");
+  const somentePrevia = (event: React.FormEvent) => {
+    event.preventDefault();
+    toast.info("Esta é a prévia visual. O acesso real é feito no site da clínica.");
+  };
+  return <Login
+    tema={null}
+    clinica={{ nome:"Clínica de demonstração", slug:"alvorada", logo_url:null }}
+    extras={{}}
+    portalConfig={{ nome_exibicao:"Clínica de demonstração", mensagem_boas_vindas:"Bem-vindo ao Portal do Tutor!" }}
+    modoAtivar={modoAtivar} setModoAtivar={setModoAtivar}
+    modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar}
+    usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha}
+    token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha}
+    cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao}
+    nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao}
+    desafioRecuperacao={null} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta}
+    senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao}
+    repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao}
+    entrar={somentePrevia} ativar={somentePrevia}
+    iniciarRecuperacao={somentePrevia} concluirRecuperacao={somentePrevia}
+    voltarRecuperacao={() => setModoRecuperar(false)}
+    login={false} ativando={false} recuperando={false}
+  />;
 }
