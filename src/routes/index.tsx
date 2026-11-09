@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { hostDaPagina, useTenantContext } from "@/lib/tenant-context";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
+import { AlvoradaDemoShowcase } from "@/components/clinic-site/AlvoradaDemoShowcase";
 import { clinicSiteTemplates, normalizeClinicSiteConfig } from "@/lib/clinic-site";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {
@@ -35,10 +36,11 @@ function EntradaDoDominio() {
       "localhost", "127.0.0.1", "oricse.vetericio.workers.dev"].includes(host) ||
     host.endsWith(".workers.dev") || host.endsWith(".lovable.app");
   if (plataforma) return <PaginaInicial />;
-  return <PaginaDaClinicaNoDominio portal={portal} loading={loading} error={error} />;
+  return <PaginaDaClinicaNoDominio host={host} portal={portal} loading={loading} error={error} />;
 }
 
-function PaginaDaClinicaNoDominio({portal,loading,error}:{
+function PaginaDaClinicaNoDominio({host,portal,loading,error}:{
+  host:string;
   portal: {clinica_id:string;clinica_nome:string;clinica_slug:string|null;clinica_logo_url:string|null}|null;
   loading:boolean; error:string|null;
 }) {
@@ -76,7 +78,13 @@ function PaginaDaClinicaNoDominio({portal,loading,error}:{
   }
   if (site) {
     const template=clinicSiteTemplates.includes(site.template as any) ? site.template as any : "prestige";
-    return <ClinicSiteRenderer template={template} config={normalizeClinicSiteConfig(site.config)} />;
+    const config=normalizeClinicSiteConfig(site.config);
+    // Apenas a vitrine pública da Alvorada permite mudar o modelo com um clique.
+    // Não grava configurações, não abre o admin e não altera nenhum outro domínio.
+    if (host === "alvorada.oricse.com.br" && portal.clinica_slug === "alvorada") {
+      return <AlvoradaDemoShowcase initialTemplate={template} config={config} />;
+    }
+    return <ClinicSiteRenderer template={template} config={config} />;
   }
   const slug=portal.clinica_slug || "";
   return <main className="grid min-h-[85dvh] place-items-center bg-[linear-gradient(145deg,#fffaf7,#f4e1dd)] px-5 py-12 text-[#4A1826]">
