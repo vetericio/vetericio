@@ -51,7 +51,7 @@ function PaginaDaClinicaNoDominio({portal,loading,error,hostname}:{
     // A Alvorada é a vitrine oficial dos sete modelos. Carrega sua publicação
     // diretamente, para que o domínio continue no ar mesmo durante a
     // atualização assíncrona do contexto interno de clínicas.
-    if (!portal && hostname === "alvorada.oricse.com.br") {
+    if (hostname === "alvorada.oricse.com.br") {
       let ativa = true;
       setConsultando(true);
       void loadPublicClinicSite("alvorada").then((publicado) => {
@@ -85,14 +85,14 @@ function PaginaDaClinicaNoDominio({portal,loading,error,hostname}:{
       setConsultando(false);
     })();
     return () => { ativa=false; };
-  },[portal?.clinica_id]);
-  if (loading || (portal && consultando)) {
+  },[portal?.clinica_id, hostname]);
+  if (hostname !== "alvorada.oricse.com.br" && (loading || (portal && consultando))) {
     return <main className="grid min-h-[75dvh] place-items-center bg-[#fffaf7] px-6 text-center text-[#5c3140]">Carregando site da clínica...</main>;
   }
   if (site) {
     const template=clinicSiteTemplates.includes(site.template as any) ? site.template as any : "prestige";
     const config=normalizeClinicSiteConfig(site.config);
-    if (hostname === "alvorada.oricse.com.br" && portal.clinica_slug === "alvorada")
+    if (hostname === "alvorada.oricse.com.br")
       return <AlvoradaDemoShowcase initialTemplate={template} config={config} clinicSlug="alvorada" />;
     return <ClinicSiteRenderer template={template} config={config} clinicSlug={portal?.clinica_slug || undefined} />;
   }
