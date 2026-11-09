@@ -234,18 +234,12 @@ function Login(props:{
           </div>
           <div className="portal-one-screen-product-name">
             <div className="portal-one-screen-product-signature">
-              <span className="portal-one-screen-product-emblem" aria-hidden="true">
-                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 51V27C12 14.5 20 7 32 7S52 14.5 52 27V51" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"/>
-                  <path d="M24 51V30C24 25 27 22 32 22S40 25 40 30V51" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"/>
-                  <circle cx="32" cy="37" r="3.5" fill="currentColor"/>
-                </svg>
-              </span>
-              <span className="portal-one-screen-product-wordmark">
-                <span className="portal-one-screen-product-overline">SEU ESPAÇO DE CUIDADO</span>
-                <h1>Portal <span>do Tutor</span></h1>
-                <span className="portal-one-screen-product-tagline">Seu pet, sua clínica, sempre perto.</span>
-              </span>
+              <h1 className="sr-only">Portal do Tutor</h1>
+              <img
+                src="/portal-do-tutor-cuidado-pet.png"
+                alt="Portal do Tutor — tudo do seu pet em um só lugar, e bem organizado."
+                className="portal-one-screen-product-logo"
+              />
             </div>
           </div>
         </section>
@@ -294,7 +288,7 @@ function Login(props:{
         ) : p.modoAtivar ? (
           <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken}/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
         ) : (
-          <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button disabled={p.login} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
+          <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button disabled={p.login} className="portal-one-screen-submit w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
         </div>
         <p className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>

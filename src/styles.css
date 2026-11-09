@@ -1522,6 +1522,21 @@
   font-weight: 800;
 }
 .portal-one-screen-product-overline svg { flex: 0 0 auto; }
+.portal-one-screen-product-signature {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+.portal-one-screen-product-logo {
+  display: block;
+  width: 100%;
+  max-width: 620px;
+  height: auto;
+  max-height: 142px;
+  object-fit: contain;
+  object-position: left center;
+}
 .portal-tutor-live[data-site-template] .portal-one-screen-product-name h1 {
   margin: 14px 0 0;
   color: var(--portal-ink);
@@ -1705,6 +1720,7 @@
   font-weight: 800;
   box-shadow: 0 8px 26px color-mix(in srgb,var(--portal-primary) 18%, transparent);
 }
+.portal-one-screen-form form .portal-one-screen-submit { margin-top: 9px; }
 .portal-one-screen-form > div button {
   min-height: 40px;
 }
