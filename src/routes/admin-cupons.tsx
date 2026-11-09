@@ -14,7 +14,7 @@ type Cupom = {
   tipo_desconto: "percentual" | "fixo";
   valor: number;
   planos: string[];
-  ciclos_elegiveis: string[];
+  ciclos: string[];
   valido_de: string | null;
   valido_ate: string | null;
   limite_usos: number | null;
@@ -52,7 +52,7 @@ type RascunhoCupom = {
   tipo_desconto: "percentual" | "fixo";
   valor: number;
   planos: string[];
-  ciclos_elegiveis: string[];
+  ciclos: string[];
   valido_de: string;
   valido_ate: string;
   limite_usos: number | null;
@@ -67,7 +67,7 @@ const RASCUNHO_VAZIO: RascunhoCupom = {
   tipo_desconto: "percentual",
   valor: 10,
   planos: [],
-  ciclos_elegiveis: [],
+  ciclos: [],
   valido_de: "",
   valido_ate: "",
   limite_usos: null,
@@ -232,7 +232,7 @@ function AdminCupons() {
       tipo_desconto: cupom.tipo_desconto,
       valor: Number(cupom.valor),
       planos: cupom.planos || [],
-      ciclos_elegiveis: cupom.ciclos_elegiveis || [],
+      ciclos: cupom.ciclos || [],
       valido_de: paraInputData(cupom.valido_de),
       valido_ate: paraInputData(cupom.valido_ate),
       limite_usos: cupom.limite_usos,
@@ -273,7 +273,7 @@ function AdminCupons() {
         tipo_desconto: rascunho.tipo_desconto,
         valor: Number(rascunho.valor),
         planos: rascunho.planos,
-        ciclos_elegiveis: rascunho.ciclos_elegiveis,
+        ciclos: rascunho.ciclos,
         valido_de: inicio,
         valido_ate: fim,
         limite_usos: rascunho.limite_usos,
@@ -409,14 +409,14 @@ function AdminCupons() {
                 <p className="mt-1 text-xs text-muted-foreground">Escolha quais períodos de contratação aceitam este cupom. Sem seleção, ele vale para qualquer duração disponível.</p>
               </div>
               <label className="inline-flex items-center gap-2 text-sm font-semibold">
-                <input type="checkbox" checked={!rascunho.ciclos_elegiveis.length} onChange={() => setRascunho({ ...rascunho, ciclos_elegiveis: [] })}/> Todas as durações
+                <input type="checkbox" checked={!rascunho.ciclos.length} onChange={() => setRascunho({ ...rascunho, ciclos: [] })}/> Todas as durações
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {([["mensal", "1 mês"], ["trimestral", "3 meses"], ["semestral", "6 meses"], ["anual", "12 meses"], ["bienal", "24 meses"]] as const).map(([codigo, nome]) => {
-                const marcado = rascunho.ciclos_elegiveis.includes(codigo);
+                const marcado = rascunho.ciclos.includes(codigo);
                 return <label key={codigo} className={marcado ? "inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground" : "inline-flex cursor-pointer items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm font-bold"}>
-                  <input type="checkbox" className="sr-only" checked={marcado} onChange={() => setRascunho({ ...rascunho, ciclos_elegiveis: marcado ? rascunho.ciclos_elegiveis.filter((x) => x !== codigo) : [...rascunho.ciclos_elegiveis, codigo] })}/>{nome}
+                  <input type="checkbox" className="sr-only" checked={marcado} onChange={() => setRascunho({ ...rascunho, ciclos: marcado ? rascunho.ciclos.filter((x) => x !== codigo) : [...rascunho.ciclos, codigo] })}/>{nome}
                 </label>;
               })}
             </div>
