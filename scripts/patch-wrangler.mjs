@@ -11,7 +11,10 @@ if (existsSync(file)) {
   // Assim um chunk removido em outro deploy nunca vira uma página HTML inválida.
   config.assets ||= {};
   config.assets.binding = "ASSETS";
-  config.assets.run_worker_first = ["/assets/*"];
+  // O HTML da página inicial depende do hostname para renderizar a clínica
+  // já na primeira resposta. Não servir um index.html estático de oricse.com.br
+  // antes de executar a rota '/' do Worker.
+  config.assets.run_worker_first = ["/assets/*", "/"];
   // Nitro emits a default-only main module. Cloudflare Durable Objects must
   // also be exported directly from the deployed entry module.
   // The thin entrypoint preserves Nitro's handler and exports the DO class.
