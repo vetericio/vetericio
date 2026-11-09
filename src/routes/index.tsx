@@ -163,7 +163,7 @@ function PaginaInicialPlataforma() {
         {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
-      <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate overflow-hidden border-t border-[#f0e3de] bg-transparent">
+      <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate border-t border-[#f0e3de] bg-transparent">
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
         <img
           src="/oricse-capa-paisagem.png"
@@ -175,37 +175,37 @@ function PaginaInicialPlataforma() {
           onError={() => setCapaOficialCarregada(false)}
         />
         {capaOficialCarregada ? (
-          <div data-visual-id="home-base-capa" data-visual-label="Área da capa" className="relative z-[1] w-full bg-transparent">
+          <div data-visual-id="home-base-capa" data-visual-label="Área da capa" className="relative z-[1] w-full bg-transparent lg:aspect-[1.86]">
             {/* Em telas menores, a arte inteira fica visível antes do conteúdo. */}
             <img
               src="/oricse-capa-paisagem.png"
               data-visual-id="home-imagem-oryx" data-visual-label="Imagem do órix e pôr do sol" alt="Órix nas dunas ao pôr do sol"
               width={1672}
               height={941}
-              className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-cover"
+              className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-fill"
               loading="eager"
               decoding="async"
             />
-            <div data-visual-id="home-conteudo-banner" data-visual-label="Coluna do banner" className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:aspect-[1672/941] lg:min-h-[760px] lg:py-8 lg:px-10">
-              <div className="max-w-xl">
+            <div data-visual-id="home-conteudo-banner" data-visual-label="Coluna do banner" className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:absolute lg:inset-0 lg:block lg:max-w-none lg:p-0">
+              <div className="max-w-xl lg:contents">
             {/* Logo centralizada sobre o selo, dentro da coluna de conteúdo. */}
-            <div className="mb-6 flex w-full justify-center sm:mb-8">
+            <div className="mb-6 flex w-full justify-center sm:mb-8 lg:absolute lg:-top-[4%] lg:left-[14%] lg:z-10 lg:mb-0 lg:w-auto">
               <img
                 src="/oricse-logo-oryx.svg?v=15"
                 data-visual-id="home-logo-oricse" data-visual-label="Logo ORICSE" alt="ORICSE — Soluções para o mercado pet"
                 width={200}
                 height={200}
-                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[200px] lg:w-[200px]"
+                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[clamp(130px,12vw,200px)] lg:w-[clamp(130px,12vw,200px)]"
                 loading="eager"
                 fetchPriority="high"
               />
             </div>
 
-            <p data-visual-id="home-selo" data-visual-label="Selo plataforma completa" className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61]"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
-            <h1 data-visual-id="home-titulo-principal" data-visual-label="Título principal" className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
-            <p data-visual-id="home-texto-apoio" data-visual-label="Texto de apoio" className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867]">Uma plataforma completa para manter a rotina organizada, o time alinhado e os tutores por perto.</p>
-            <div className="mt-8 flex flex-wrap gap-3"><Link data-visual-id="home-botao-conhecer" data-visual-label="Botão Conhecer a Oricse" to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link data-visual-id="home-botao-cliente" data-visual-label="Botão Já sou cliente" to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
-            <p data-visual-id="home-legenda-inferior" data-visual-label="Legenda inferior do banner" className="mt-6 flex items-center gap-2 text-sm text-[#876570]"><PawPrint size={16} className="text-[#8d4359]"/> Uma plataforma para sua operação inteira, com a sua identidade.</p>
+            <p data-visual-id="home-selo" data-visual-label="Selo plataforma completa" className="inline-flex items-center gap-2 rounded-full border border-[#e8d1d2] bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-[#8a4e61] lg:absolute lg:left-[5%] lg:top-[25%] lg:z-10"><Sparkles size={13}/> Plataforma completa para o mercado pet</p>
+            <h1 data-visual-id="home-titulo-principal" data-visual-label="Título principal" className="mt-6 max-w-[12ch] font-display text-[clamp(48px,6vw,84px)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826] lg:absolute lg:left-[5%] lg:top-[31%] lg:z-10 lg:mt-0 lg:w-[46%] lg:max-w-none lg:text-[clamp(56px,5.3vw,98px)]">Cuidar de pets é a sua <span className="text-[#a56a78]">missão.</span> Organizar tudo é a nossa.</h1>
+            <p data-visual-id="home-texto-apoio" data-visual-label="Texto de apoio" className="mt-6 max-w-xl text-[17px] leading-7 text-[#785867] lg:absolute lg:left-[5%] lg:top-[72%] lg:z-10 lg:mt-0 lg:max-w-[42%] lg:text-[clamp(14px,1.05vw,18px)]">Uma plataforma completa para manter a rotina organizada, o time alinhado e os tutores por perto.</p>
+            <div className="mt-8 flex flex-wrap gap-3 lg:absolute lg:left-[6%] lg:top-[85%] lg:z-10 lg:mt-0"><Link data-visual-id="home-botao-conhecer" data-visual-label="Botão Conhecer a Oricse" to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer a Oricse <ArrowRight size={17}/></Link><Link data-visual-id="home-botao-cliente" data-visual-label="Botão Já sou cliente" to="/login" className="inline-flex items-center rounded-full border border-[#ceb3bb] bg-white px-6 py-3.5 font-bold text-[#5d293c]">Já sou cliente</Link></div>
+            <p data-visual-id="home-legenda-inferior" data-visual-label="Legenda inferior do banner" className="mt-6 flex items-center gap-2 text-sm text-[#876570] lg:absolute lg:bottom-[1%] lg:left-[58%] lg:z-10 lg:mt-0 lg:text-[clamp(10px,.72vw,13px)] lg:text-white"><PawPrint size={16} className="text-[#8d4359]"/> Uma plataforma para sua operação inteira, com a sua identidade.</p>
 
               </div>
             </div>
