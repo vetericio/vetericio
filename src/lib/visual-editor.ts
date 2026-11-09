@@ -19,6 +19,11 @@ export type VisualStyle = {
   opacity?: number;
   borderRadius?: number;
   zIndex?: number;
+  // Recorte não destrutivo: percentual de cada borda da imagem original.
+  cropTop?: number;
+  cropRight?: number;
+  cropBottom?: number;
+  cropLeft?: number;
 };
 
 export type VisualPatch = {
@@ -91,6 +96,10 @@ export function editableTarget(target: Element): HTMLElement {
   return preferred || (target as HTMLElement);
 }
 
+function boundedCrop(value: unknown) {
+  return Math.min(90, Math.max(0, Number(value) || 0));
+}
+
 export function applyVisualStyle(element: HTMLElement, style: VisualStyle, independentLayer = false) {
   if (independentLayer) {
     const measured = element.getBoundingClientRect();
@@ -119,19 +128,68 @@ export function applyVisualStyle(element: HTMLElement, style: VisualStyle, indep
   if (style.opacity != null) element.style.opacity = String(style.opacity);
   if (style.borderRadius != null) element.style.borderRadius = `${Math.max(0, style.borderRadius)}px`;
   if (style.zIndex != null) { element.style.position = element.style.position || "relative"; element.style.zIndex = String(style.zIndex); }
+  // Aplicado tanto às imagens adicionadas quanto às imagens originais alteradas.
+  // Preserva os pixels de origem e permite refazer o corte a qualquer momento.
+  if (element.tagName === "IMG") {
+    const top = boundedCrop(style.cropTop), right = boundedCrop(style.cropRight);
+    const bottom = boundedCrop(style.cropBottom), left = boundedCrop(style.cropLeft);
+    if (top || right || bottom || left) {
+      element.style.clipPath = `inset(${top}% ${right}% ${bottom}% ${left}%)`;
+    } else {
+      element.style.removeProperty("clip-path");
+    }
+  }
 }
 
 export function validImageSource(src: string) {
   return /^(https?:\/\/|\/|data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,)/i.test(src.trim());
 }
 
+type OriginalPatchState = {
+  style: string | null;
+  innerHTML: string | null;
+  descendants: Array<{ node: Element; style: string | null }>;
+};
+const originalPatchState = new WeakMap<HTMLElement, OriginalPatchState>();
+
+function restoreStyle(element: Element, original: string | null) {
+  if (original === null) element.removeAttribute("style");
+  else element.setAttribute("style", original);
+}
+
 export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
+  // Fundamental para que Desfazer/Refazer funcione visualmente: os patches
+  // anteriores não podem deixar estilos inline no iframe após saírem do estado.
+  doc.querySelectorAll<HTMLElement>("[data-oricse-visual-patched]").forEach((node) => {
+    const original = originalPatchState.get(node);
+    if (original) {
+      restoreStyle(node, original.style);
+      if (original.innerHTML !== null) node.innerHTML = original.innerHTML;
+      original.descendants.forEach(({ node: child, style }) => {
+        if (child.isConnected) restoreStyle(child, style);
+      });
+    }
+    node.removeAttribute("data-oricse-visual-patched");
+  });
   doc.querySelectorAll(`[${VISUAL_NODE_ATTR}]`).forEach((node) => node.remove());
   if (!layout) return;
   for (const patch of layout.patches) {
     let element: HTMLElement | null = null;
     try { element = doc.querySelector(patch.selector) as HTMLElement | null; } catch { continue; }
     if (!element) continue;
+    if (!originalPatchState.has(element)) {
+      originalPatchState.set(element, {
+        style: element.getAttribute("style"),
+        innerHTML: null,
+        descendants: Array.from(element.querySelectorAll("path,circle,rect,line,polyline,polygon,ellipse")).map((child) => ({
+          node: child, style: child.getAttribute("style"),
+        })),
+      });
+    }
+    const original = originalPatchState.get(element)!;
+    if (patch.text != null && original.innerHTML === null && !["IMG","INPUT","TEXTAREA","SELECT"].includes(element.tagName)) {
+      original.innerHTML = element.innerHTML;
+    }
     element.dataset["oricseVisualPatched"] = patch.id;
     element.style.visibility = patch.hidden ? "hidden" : "";
     element.style.pointerEvents = patch.hidden ? "none" : "";
