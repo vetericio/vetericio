@@ -55,7 +55,7 @@ function PublicClinicHome() {
   const config = normalizeClinicSiteConfig(site.config);
 
   if (hostname === "alvorada.oricse.com.br" && slug === "alvorada") {
-    return <AlvoradaDemoShowcase initialTemplate={template} config={config} />;
+    return <AlvoradaDemoShowcase initialTemplate={template} config={config} clinicSlug={slug} />;
   }
-  return <ClinicSiteRenderer template={template} config={config} />;
+  return <ClinicSiteRenderer template={template} config={config} clinicSlug={slug} />;
 }
