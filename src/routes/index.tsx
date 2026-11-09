@@ -1,5 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { hostDaPagina, useTenantContext } from "@/lib/tenant-context";
+import { supabaseBanco } from "@/integrations/supabase/client";
+import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
+import { clinicSiteTemplates, normalizeClinicSiteConfig } from "@/lib/clinic-site";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {
   ArrowRight, Bath, CalendarCheck, CalendarDays, ChevronDown, ClipboardList, CreditCard,
@@ -15,8 +19,79 @@ export const Route = createFileRoute("/")({
     { property: "og:title", content: "Oricse — A operação pet, em perfeita harmonia." },
     { property: "og:url", content: "https://oricse.com.br/" },
   ]}),
-  component: PaginaInicial,
+  component: EntradaDoDominio,
 });
+
+
+// O domínio da clínica não deve abrir a página comercial da plataforma.
+// Apenas um site publicado é apresentado. Sem publicação, mostramos o estado real
+// da clínica e preservamos o acesso do tutor e da equipe.
+function EntradaDoDominio() {
+  const [host, setHost] = useState("");
+  const { portal, loading, error } = useTenantContext();
+  useEffect(() => { setHost(hostDaPagina()); }, []);
+  const plataforma = !host ||
+    ["oricse.com.br", "app.oricse.com.br", "oricse.com",
+      "localhost", "127.0.0.1", "oricse.vetericio.workers.dev"].includes(host) ||
+    host.endsWith(".workers.dev") || host.endsWith(".lovable.app");
+  if (plataforma) return <PaginaInicial />;
+  return <PaginaDaClinicaNoDominio portal={portal} loading={loading} error={error} />;
+}
+
+function PaginaDaClinicaNoDominio({portal,loading,error}:{
+  portal: {clinica_id:string;clinica_nome:string;clinica_slug:string|null;clinica_logo_url:string|null}|null;
+  loading:boolean; error:string|null;
+}) {
+  const [site, setSite] = useState<{template:string;config:unknown}|null>(null);
+  const [consultando, setConsultando] = useState(true);
+  useEffect(() => {
+    if (!portal) {
+      setSite(null);
+      setConsultando(false);
+      return;
+    }
+    let ativa = true;
+    setConsultando(true);
+    void (async () => {
+      const {data,error:erroSite} = await (supabaseBanco as any)
+        .from("clinic_sites")
+        .select("template,config")
+        .eq("clinica_id",portal.clinica_id)
+        .eq("status","publicado")
+        .maybeSingle();
+      if (!ativa) return;
+      if (erroSite) console.error("Falha ao consultar site público da clínica",erroSite.message);
+      setSite(!erroSite && data ? data : null);
+      setConsultando(false);
+    })();
+    return () => { ativa=false; };
+  },[portal?.clinica_id]);
+  if (loading || (portal && consultando)) {
+    return <main className="grid min-h-[75dvh] place-items-center bg-[#fffaf7] px-6 text-center text-[#5c3140]">Carregando site da clínica...</main>;
+  }
+  if (!portal || error) {
+    return <main className="grid min-h-[75dvh] place-items-center bg-[#fffaf7] px-6 text-center text-[#4A1826]">
+      <div><h1 className="text-2xl font-bold">Endereço ainda não configurado</h1><p className="mt-3 text-sm">Confirme o endereço com sua clínica ou entre em contato com a ORICSE.</p></div>
+    </main>;
+  }
+  if (site) {
+    const template=clinicSiteTemplates.includes(site.template as any) ? site.template as any : "prestige";
+    return <ClinicSiteRenderer template={template} config={normalizeClinicSiteConfig(site.config)} />;
+  }
+  const slug=portal.clinica_slug || "";
+  return <main className="grid min-h-[85dvh] place-items-center bg-[linear-gradient(145deg,#fffaf7,#f4e1dd)] px-5 py-12 text-[#4A1826]">
+    <section className="w-full max-w-xl rounded-[28px] border border-[#ead5d5] bg-white p-8 text-center shadow-[0_24px_60px_rgba(74,24,38,.08)] sm:p-12">
+      {portal.clinica_logo_url ? <img src={portal.clinica_logo_url} alt="" className="mx-auto mb-6 h-24 w-24 object-contain" /> : <PawPrint aria-hidden="true" size={38} className="mx-auto mb-6 text-[#a15e73]" />}
+      <p className="text-xs font-bold uppercase tracking-[.18em] text-[#9a6575]">Bem-vindo à clínica</p>
+      <h1 className="mt-3 text-3xl font-bold">{portal.clinica_nome}</h1>
+      <p className="mt-4 text-sm leading-6 text-[#7a5864]">O site público está sendo preparado. O endereço já está reservado para a sua clínica.</p>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        {slug && <Link to={`/pet/${slug}/portal` as never} className="rounded-full bg-[#4A1826] px-5 py-3 text-sm font-bold text-white">Portal do Tutor</Link>}
+        <Link to="/login" className="rounded-full border border-[#d6aeb8] px-5 py-3 text-sm font-bold">Entrar na clínica</Link>
+      </div>
+    </section>
+  </main>;
+}
 
 const modulos = [
   { icon: CalendarDays, titulo: "Recepção", descricao: "Organize a agenda, confirme atendimentos, acompanhe a fila de espera e tenha o cadastro do tutor e do pet sempre à mão." },
