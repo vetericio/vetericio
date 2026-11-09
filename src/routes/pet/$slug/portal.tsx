@@ -45,12 +45,12 @@ function PortalTutorBrandHeader({
       </div>
       <span className="portal-premium-brand-divider" aria-hidden="true"/>
       <div className="portal-premium-product">
-        <span className="portal-premium-product-icon" aria-hidden="true"><PawPrint size={28} strokeWidth={1.7}/></span>
-        <div className="portal-premium-product-copy">
-          <span className="portal-premium-product-kicker">SEU ESPAÇO DE CUIDADO</span>
-          <h1 className="portal-premium-wordmark">Portal <em>do Tutor</em></h1>
-          <p className="portal-premium-brand-subtitle">{subtitulo||"Tudo sobre o seu pet, em um só lugar."}</p>
-        </div>
+        <img
+          className="portal-premium-product-logo"
+          src="/portal-do-tutor.svg"
+          alt="Portal do Tutor — Seu pet, sua clínica, sempre perto."
+        />
+        <p className="portal-premium-brand-subtitle">{subtitulo||"Tudo sobre o seu pet, em um só lugar."}</p>
       </div>
       {acoes && <div className="portal-premium-header-actions">{acoes}</div>}
     </div>
