@@ -39,19 +39,21 @@ function objectPositionRatio(token: string | undefined, axis: "x"|"y"): number {
 export function paintedImageRect(element: HTMLElement): CanvasRect {
   const box = element.getBoundingClientRect();
   const outer = rectOf(box.left,box.top,box.right,box.bottom);
-  if (!(element instanceof HTMLImageElement) || !element.naturalWidth || !element.naturalHeight) return outer;
+  if (element.tagName !== "IMG") return outer;
+  const image = element as HTMLImageElement;
+  if (!image.naturalWidth || !image.naturalHeight) return outer;
   const css = element.ownerDocument.defaultView?.getComputedStyle(element);
   const fit = css?.objectFit ?? "fill";
   if (fit !== "contain" && fit !== "scale-down" && fit !== "none") return outer;
   const unscaledW = Math.max(1,element.clientWidth), unscaledH = Math.max(1,element.clientHeight);
   const factor = fit === "none" ? 1 : Math.min(
-    unscaledW / element.naturalWidth,unscaledH / element.naturalHeight,
+    unscaledW / image.naturalWidth,unscaledH / image.naturalHeight,
     fit === "scale-down" ? 1 : Infinity,
   );
   const sx = outer.width / Math.max(1,element.offsetWidth);
   const sy = outer.height / Math.max(1,element.offsetHeight);
-  const paintW = Math.min(outer.width,element.naturalWidth * factor * sx);
-  const paintH = Math.min(outer.height,element.naturalHeight * factor * sy);
+  const paintW = Math.min(outer.width,image.naturalWidth * factor * sx);
+  const paintH = Math.min(outer.height,image.naturalHeight * factor * sy);
   const position = (css?.objectPosition || "50% 50%").split(/\s+/);
   let x = position[0], y = position[1];
   if (position.length === 1) {
