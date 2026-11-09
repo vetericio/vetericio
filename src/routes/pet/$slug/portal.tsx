@@ -236,7 +236,7 @@ function Login(props:{
             <div className="portal-one-screen-product-signature">
               <h1 className="sr-only">Portal do Tutor</h1>
               <img
-                src="/portal-do-tutor-cuidado-pet.png"
+                src="/portal-do-tutor-marca-limpa-cortada.png"
                 alt="Portal do Tutor — tudo do seu pet em um só lugar, e bem organizado."
                 className="portal-one-screen-product-logo"
               />
