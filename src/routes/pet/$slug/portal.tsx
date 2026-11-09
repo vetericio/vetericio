@@ -233,9 +233,20 @@ function Login(props:{
               : <strong className="portal-one-screen-fallback">{clinicName}</strong>}
           </div>
           <div className="portal-one-screen-product-name">
-            <span className="portal-one-screen-product-overline"><PawPrint size={19}/> SEU ESPAÇO DE CUIDADO</span>
-            <h1>Portal <em>do Tutor</em></h1>
-            <p>Uma conexão mais próxima com a sua clínica.</p>
+            <div className="portal-one-screen-product-signature">
+              <span className="portal-one-screen-product-emblem" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 51V27C12 14.5 20 7 32 7S52 14.5 52 27V51" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"/>
+                  <path d="M24 51V30C24 25 27 22 32 22S40 25 40 30V51" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round"/>
+                  <circle cx="32" cy="37" r="3.5" fill="currentColor"/>
+                </svg>
+              </span>
+              <span className="portal-one-screen-product-wordmark">
+                <span className="portal-one-screen-product-overline">SEU ESPAÇO DE CUIDADO</span>
+                <h1>Portal <span>do Tutor</span></h1>
+                <span className="portal-one-screen-product-tagline">Seu pet, sua clínica, sempre perto.</span>
+              </span>
+            </div>
           </div>
         </section>
         <section className="portal-one-screen-about" aria-label="O que você encontra aqui">
