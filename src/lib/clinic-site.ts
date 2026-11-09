@@ -2,12 +2,12 @@ import { z } from "zod";
 
 export const clinicSiteTemplates = [
   "signatura",
-  "prestige",
   "atelier",
   "cuidado",
   "popular",
   "essencial",
   "horizonte",
+  "prestige",
 ] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
 export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
