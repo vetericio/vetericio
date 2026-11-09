@@ -167,7 +167,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica?:string}={}){
 
   return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]" data-site-template={temaPortal?.modelo} style={estiloTemaPortal(temaPortal)}><PortalTutorBrandHeader
   nome={portalConfig.nome_exibicao||contexto.clinica_nome}
-  logo={portalConfig.logo_cabecalho_url||portalConfig.logo_clinica_url||contexto.clinica_logo_url}
+  logo={portalConfig.logo_clinica_url||contexto.clinica_logo_url||portalConfig.logo_cabecalho_url}
   slug={slug}
   subtitulo={portalConfig.subtitulo_cabecalho}
   acoes={<div className="flex shrink-0 items-center gap-2">
@@ -215,7 +215,7 @@ function Login(props:{
   return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]" data-site-template={p.tema?.modelo} style={estiloTemaPortal(p.tema)}>
     <PortalTutorBrandHeader
       nome={p.portalConfig.nome_exibicao||p.clinica.nome}
-      logo={p.portalConfig.logo_cabecalho_url||p.portalConfig.logo_clinica_url||p.clinica.logo_url}
+      logo={p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url}
       slug={p.clinica.slug}
       subtitulo={p.portalConfig.subtitulo_cabecalho}
     />
