@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
+import { buscarFotosPublicasAlvorada, enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ArrowRight, ArrowUpRight, Check, Eye, Layers3, MousePointerClick, Sparkles } from "lucide-react";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 import {
@@ -37,10 +37,9 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const { data: current } = await (supabase as any)
-        .from("oricse_config").select("valor").eq("chave", chaveFotos).maybeSingle();
-      if (alive && current?.valor && typeof current.valor === "object" && !Array.isArray(current.valor))
-        setImagens(current.valor as Partial<Record<ClinicSiteTemplate, Record<string, string>>>);
+      const current = await buscarFotosPublicasAlvorada();
+      if (alive && current && typeof current === "object" && !Array.isArray(current))
+        setImagens(current as Partial<Record<ClinicSiteTemplate, Record<string, string>>>);
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user?.id) return;
       const { data: access } = await (supabase as any)
