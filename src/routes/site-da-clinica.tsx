@@ -10,6 +10,7 @@ import {
   FileClock,
   ImagePlus,
   Laptop,
+  Lock,
   Layers3,
   Monitor,
   Palette,
@@ -118,6 +119,7 @@ export function SiteDaClinica({
   const [versions, setVersions] = useState<SavedVersion[]>([]);
   const [dirty, setDirty] = useState(false);
   const iframe = useRef<HTMLIFrameElement>(null);
+  const alvoradaBloqueada = slug.trim().toLowerCase() === "alvorada";
 
   useEffect(() => {
     if (!clinicaId) return;
@@ -214,6 +216,7 @@ export function SiteDaClinica({
   }, [ready, template, config, selected]);
 
   const update = (patch: Partial<ClinicSiteConfig>) => {
+    if (alvoradaBloqueada) return;
     setUndo((previous) => [...previous.slice(-29), config]);
     setRedo([]);
     setConfig((current) => ({ ...current, ...patch }));
@@ -257,7 +260,7 @@ export function SiteDaClinica({
   };
 
   async function uploadImage(file: File | undefined, target: ImageTarget, index = -1) {
-    if (!file || !clinicaId) return;
+    if (!file || !clinicaId || alvoradaBloqueada) return;
     if (
       !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
       file.size > 5 * 1024 * 1024
@@ -332,7 +335,10 @@ export function SiteDaClinica({
   );
 
   async function save(publish = false) {
-    if (!clinicaId || saving) return;
+    if (!clinicaId || saving || alvoradaBloqueada) {
+      if (alvoradaBloqueada) toast.info("O site da Alvorada está protegido contra alterações.");
+      return;
+    }
     if (!slug || !config.name.trim()) return toast.error("Confira o nome e o endereço da clínica.");
     setSaving(true);
     try {
@@ -472,6 +478,33 @@ export function SiteDaClinica({
   }
   if (loading)
     return <div className="p-6 text-sm text-muted-foreground">Carregando site da clínica...</div>;
+  if (alvoradaBloqueada)
+    return (
+      <main className="mx-auto max-w-3xl p-6 sm:p-10">
+        <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm sm:p-8">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white">
+              <Lock size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-extrabold text-emerald-950">Alvorada protegida</h1>
+              <p className="mt-2 text-sm leading-6 text-emerald-900/80">
+                Este site foi aprovado e está bloqueado para evitar alterações acidentais.
+                O conteúdo publicado permanece preservado.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://alvorada.oricse.com.br/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+          >
+            <ExternalLink size={16} /> Ver site publicado
+          </a>
+        </section>
+      </main>
+    );
 
   return (
     <main
