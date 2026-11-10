@@ -411,9 +411,12 @@ function PaginaInicialPlataforma() {
       <section id="oricstudio" aria-labelledby="oricstudio-titulo" className="relative isolate overflow-hidden bg-[#35111f] px-5 py-16 text-[#fff9f4] sm:px-8 sm:py-20 lg:px-10 lg:py-24">
         <div aria-hidden="true" className="pointer-events-none absolute -right-44 -top-44 h-[540px] w-[540px] rounded-full bg-[#a45670]/20 blur-[95px]"/>
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-60 left-[18%] h-[490px] w-[590px] rounded-full bg-[#8e4c44]/20 blur-[100px]"/>
+        <p className="absolute right-[max(1.25rem,calc((100vw-80rem)/2+1.25rem))] top-5 z-20 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-[#f4bdcb]">
+          <Sparkles size={15}/> Sua marca merece aparecer
+        </p>
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.93fr_1.07fr] xl:gap-20">
           <div className="relative z-10">
-            <div className="relative inline-flex min-h-[72px] max-w-full items-center rounded-2xl border border-white/15 bg-white/[.06] py-2 pl-[164px] pr-5">
+            <div className="relative ml-[10px] inline-flex min-h-[72px] max-w-full items-center rounded-2xl border border-white/15 bg-white/[.06] py-2 pl-[164px] pr-5">
               <img src={ORICSTUDIO_LOGO} alt="" className="absolute left-2 top-1/2 z-10 -mt-2 h-[152px] w-[152px] max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-xl bg-white p-1 object-contain"/>
               <span className="block min-w-0">
                 <span className="block text-[21px] font-extrabold leading-none tracking-tight text-white">OricStúdio</span>
@@ -446,9 +449,6 @@ function PaginaInicialPlataforma() {
           </div>
 
           <div className="relative mx-auto flex w-full max-w-[640px] justify-start pb-4 pt-5 sm:min-h-[610px] sm:items-center sm:pl-5">
-            <p className="absolute left-5 top-0 z-10 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-[#f4bdcb] sm:left-10">
-              <Sparkles size={15}/> Sua marca merece aparecer
-            </p>
             <div aria-hidden="true" className="absolute left-[8%] top-[15%] h-[440px] w-[440px] rounded-full border border-[#ffdfc8]/10 bg-[#7d455b]/15 blur-[2px]"/>
             <div aria-hidden="true" className="absolute right-0 top-[8%] h-[320px] w-[320px] rounded-full border border-white/10"/>
 
