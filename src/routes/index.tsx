@@ -53,7 +53,7 @@ const resolverPaginaInicial = createServerFn({ method: "GET" }).handler(async ()
 
     const site = await loadPublicClinicSite(slug);
     if (!site) return { tipo: "nao_encontrado" as const };
-    return { tipo: "clinica" as const, slug, site };
+    return { tipo: "clinica" as const, slug, site: { ...site, config: normalizeClinicSiteConfig(site.config) } };
   } catch (error) {
     console.error("Não foi possível resolver a página pública da clínica:", error);
     return { tipo: "indisponivel" as const };
@@ -61,7 +61,7 @@ const resolverPaginaInicial = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const Route = createFileRoute("/")({
-  loader: resolverPaginaInicial,
+  loader: () => resolverPaginaInicial(),
   component: PaginaInicial,
 });
 
