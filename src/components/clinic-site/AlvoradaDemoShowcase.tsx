@@ -224,12 +224,7 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         className="scroll-mt-[110px] min-h-[65vh]"
       >
         <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug}
-          imageOverrides={imagens[modelo] || {}}
-          onUploadImage={enviarImagem}
-          uploadingSlot={uploadingSlot}
-          uploadReadySlot={uploadReadySlot === `${modelo}:hero` || uploadReadySlot === `${modelo}:about` || uploadReadySlot?.startsWith(`${modelo}:gallery-`) || uploadReadySlot?.startsWith(`${modelo}:team-`) ? uploadReadySlot.slice(modelo.length + 1) : null}
-          hiddenUploadSlots={hiddenUploadSlots.filter((key) => key.startsWith(`${modelo}:`)).map((key) => key.slice(modelo.length + 1))}
-          onConfirmUpload={confirmarUpload} />
+          imageOverrides={imagens[modelo] || {}} />
       </div>
     </div>
   );
