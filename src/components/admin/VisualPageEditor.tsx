@@ -864,7 +864,8 @@ export function VisualPageEditor() {
         return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
-        event.shiftKey ? redoNow() : undoNow();
+        if (event.shiftKey) redoNow();
+        else undoNow();
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
         event.preventDefault();
         redoNow();
