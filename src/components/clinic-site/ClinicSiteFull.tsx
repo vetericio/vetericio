@@ -25,8 +25,13 @@ import {
 
 type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string>; uploadReadySlot?: string | null; hiddenUploadSlots?: string[]; onConfirmUpload?: (slot: string) => void };
 const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
+const safeImage = (input?: string) => {
+  const value = (input || "").trim();
+  if (/^https:\/\//i.test(value)) return value;
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
+};
 const safeTeamPhoto = (input: string) => {
-  const value = safeHttps(input);
+  const value = safeImage(input);
   if (value) return value;
   // Apenas imagens inline WEBP são aceitas; a vitrine importa duas fotos locais
   // do próprio código para evitar URLs públicas de mídia quebradas.
@@ -103,7 +108,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
     "/clinic-site/alvorada/elan-mulher-cachorro.png",
   ];
   const image =
-    (publishedSlug === "alvorada" ? safeHttps(imageOverrides.hero) : "") ||
+    (publishedSlug === "alvorada" ? safeImage(imageOverrides.hero) : "") ||
     (publishedSlug === "alvorada" ? safeHttps(config.heroImageUrl) : "") ||
     (elanAlvorada ? elanFotos[0] : "") ||
     (classAlvorada ? "/clinic-site/class/intro-veterinaria-gato.webp" : "") ||
@@ -139,7 +144,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
     ) },
     (_, index) => gallery[index] || "",
   );
-  const aboutImage = safeHttps(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
+  const aboutImage = safeImage(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
     ? configuredGallery[0]
     : (classAlvorada ? gallery[1] : gallery[0]));
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
@@ -418,8 +423,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                 key={src + "-" + i}
                 className={"relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
               >
-                {(safeHttps(imageOverrides[`gallery-${i}`]) || src) ? <img
-                  src={safeHttps(imageOverrides[`gallery-${i}`]) || src}
+                {(safeImage(imageOverrides[`gallery-${i}`]) || src) ? <img
+                  src={safeImage(imageOverrides[`gallery-${i}`]) || src}
                   alt={"Foto " + (i + 1) + " de " + config.name}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"

@@ -65,15 +65,8 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         reader.readAsDataURL(file);
       });
       const { data: session } = await supabase.auth.getSession();
-      if (!podeEditar || !session.session?.access_token) {
-        setImagens((current) => ({
-          ...current,
-          [modelo]: { ...(current[modelo] || {}), [slot]: base64 },
-        }));
-        setUploadReadySlot(`${modelo}:${slot}`);
-        toast.success("Foto aplicada nesta visualização. Clique em OK para concluir.");
-        return;
-      }
+      if (!podeEditar || !session.session?.access_token)
+        throw new Error("Faça login como administrador para salvar a foto permanentemente no site.");
       const response = await enviarArquivoPublicoPlataforma({
         data: {
           accessToken: session.session.access_token,
