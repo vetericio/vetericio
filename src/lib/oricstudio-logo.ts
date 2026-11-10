@@ -1,1 +1,2 @@
-// Logo de alta qualidade do OricStúdio, preservada como asset público para renderização nítida.\nexport const ORICSTUDIO_LOGO = "/oricstudio-highres.webp?v=3";\n
+// Logo de alta qualidade do OricStúdio, preservada como asset público para renderização nítida.
+export const ORICSTUDIO_LOGO = "/oricstudio-highres.webp?v=3";
