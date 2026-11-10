@@ -46,12 +46,7 @@ export const clinicSiteSchema = z.object({
   schema_version: z.literal(1),
   template: z.enum(clinicSiteTemplates),
   theme: z.object({
-    colors: z.object({
-      primary: color,
-      secondary: color,
-      background: color,
-      text: color,
-    }),
+    colors: z.object({ primary: color, secondary: color, background: color, text: color }),
     font_pair: z.enum(["serif_editorial", "moderna_neutra", "humanista"]),
   }),
   content: z.object({
@@ -104,24 +99,15 @@ export const clinicSiteSchema = z.object({
       enabled: z.boolean(),
       items: z.array(z.object({ name: z.string(), text: z.string().max(320) })).max(6),
     }),
-    attendance: z.object({
-      hours: z.string().max(500),
-      emergency24h: z.boolean(),
-    }),
-    location: z.object({
-      address: z.string().max(300),
-      map_url: z.string().max(500),
-    }),
+    attendance: z.object({ hours: z.string().max(500), emergency24h: z.boolean() }),
+    location: z.object({ address: z.string().max(300), map_url: z.string().max(500) }),
     contact: z.object({
       phone: z.string().max(40),
       whatsapp: z.string().max(40),
       instagram: z.string().max(200),
       booking_url: z.string().max(500),
     }),
-    footer: z.object({
-      technical_responsible: z.string().max(120),
-      crmv: z.string().max(40),
-    }),
+    footer: z.object({ technical_responsible: z.string().max(120), crmv: z.string().max(40) }),
   }),
   seo: z.object({
     title: z.string().max(60),
@@ -276,8 +262,7 @@ export function normalizeClinicMediaUrl(value: unknown): string {
   const input = value.trim();
   try {
     const url = new URL(input);
-    const googleDrive =
-      url.protocol === "https:" &&
+    const googleDrive = url.protocol === "https:" &&
       (url.hostname === "drive.google.com" || url.hostname === "www.drive.google.com");
     if (googleDrive && (url.pathname === "/uc" || url.pathname === "/open")) {
       const fileId = url.searchParams.get("id") || "";
@@ -318,8 +303,7 @@ export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
           )
           .slice(0, 20)
           .map((person) => ({
-            ...person,
-            imageUrl: normalizeClinicMediaUrl(person.imageUrl),
+            ...person, imageUrl: normalizeClinicMediaUrl(person.imageUrl),
           }))
       : [],
     faqItems: Array.isArray(candidate.faqItems)
