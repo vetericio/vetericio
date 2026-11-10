@@ -33,6 +33,7 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
 import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
+import { Search } from "lucide-react";
 
 function formatarPesoKgDigitado(valor: string): string {
   const digitos = valor.replace(/\D/g, "").slice(0, 7);
@@ -336,7 +337,7 @@ export function FormAvaliacao({
             <span>{valores.especie || "Selecione a espécie"}</span><span aria-hidden="true">▾</span>
           </button>
           {especieAberto && <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-2 shadow-lg">
-            <label className="flex items-center gap-2 rounded-lg border border-input px-3 text-muted-foreground"><span aria-hidden="true">⌕</span><input autoFocus value={buscaEspecie} onChange={(e) => setBuscaEspecie(e.target.value)} placeholder="Buscar espécie" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none" /></label>
+            <label className="flex items-center gap-2 rounded-lg border border-input px-3 text-muted-foreground"><Search size={16} aria-hidden="true" /><input autoFocus value={buscaEspecie} onChange={(e) => setBuscaEspecie(e.target.value)} placeholder="Buscar espécie" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none" /></label>
             <div className="mt-2 max-h-52 overflow-y-auto">
               {ESPECIES.filter((esp) => esp.toLocaleLowerCase("pt-BR").includes(buscaEspecie.toLocaleLowerCase("pt-BR"))).map((esp) => <button key={esp} type="button" onClick={() => { onChange({ ...valores, especie: esp as Especie }); setEspecieAberto(false); }} className={["min-h-10 w-full rounded-lg px-3 text-left text-sm", valores.especie === esp ? "bg-primary font-semibold text-primary-foreground" : "text-foreground hover:bg-secondary"].join(" ")}>{esp}</button>)}
             </div>
