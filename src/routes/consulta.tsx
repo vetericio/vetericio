@@ -1,6 +1,6 @@
-import { oricseStorage } from "@/lib/oricse-storage";
+import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, ClipboardList, Stethoscope } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardList, History, Save, Stethoscope } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
@@ -16,6 +16,13 @@ type Registro = {
   data: string;
   criadoEm: string;
   subtipo?: string;
+  tutorId?: string;
+  clinicaId?: string;
+  autorId?: string;
+  atualizadoEm?: string;
+  status?: "rascunho" | "concluido" | "adendo";
+  versao?: number;
+  adendoDe?: string;
   dados?: unknown;
 };
 
@@ -58,6 +65,9 @@ function ConsultaSalva() {
   const [tutor, setTutor] = useState<Tutor | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [registrosRelacionados, setRegistrosRelacionados] = useState<Registro[]>([]);
+  const [adendoTexto, setAdendoTexto] = useState("");
+  const [salvandoAdendo, setSalvandoAdendo] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -99,6 +109,9 @@ function ConsultaSalva() {
         const encontradoLegado = ler<Registro>(PRONTUARIO_KEY).find(
           (item) => item.id === registroId && item.animalId === animalIdParam,
         );
+        const combinado = [...registrosBanco, ...ler<Registro>(PRONTUARIO_KEY).filter((item) => item.animalId === animalIdParam)];
+        const porId = new Map(combinado.map((item) => [item.id, item]));
+        const relacionado = [...porId.values()];
         const encontrado = encontradoBanco || encontradoLegado;
         if (!encontrado) throw new Error("Consulta não encontrada no histórico do animal.");
         if (!ativo) return;
@@ -108,6 +121,7 @@ function ConsultaSalva() {
           tutorId: ficha.data.animal.tutorId || ficha.data.tutor?.id || "",
         });
         setTutor(ficha.data.tutor || null);
+        setRegistrosRelacionados(relacionado);
         setRegistro(encontrado);
       } catch (error) {
         if (ativo) setErro(error instanceof Error ? error.message : "Não foi possível abrir esta consulta.");
@@ -120,6 +134,31 @@ function ConsultaSalva() {
   }, [animalIdParam, registroId]);
 
   const linhas = separarDetalhe(registro?.detalhe);
+  const adendos = registro ? registrosRelacionados.filter((item) => item.adendoDe === registro.id).sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm))) : [];
+
+  async function salvarAdendo() {
+    if (!registro || !animal || !adendoTexto.trim() || salvandoAdendo) return;
+    setSalvandoAdendo(true);
+    try {
+      const agora = new Date().toISOString();
+      const novo: Registro = {
+        id: crypto.randomUUID(), animalId: animal.id, tutorId: tutor?.id, clinicaId: registro.clinicaId,
+        autorId: registro.autorId, tipo: registro.tipo, subtipo: registro.subtipo, titulo: "Adendo — " + (registro.titulo || "Registro clínico"),
+        detalhe: "ADENDO DO PRONTUÁRIO\n\n" + adendoTexto.trim(), data: agora.slice(0, 10), criadoEm: agora, atualizadoEm: agora,
+        status: "adendo", versao: (registro.versao || 1) + adendos.length + 1, adendoDe: registro.id,
+        dados: { tipo: "adendo", texto: adendoTexto.trim(), registroOriginalId: registro.id },
+      };
+      const atual = ler<Registro>(PRONTUARIO_KEY);
+      oricseStorage.setItem(PRONTUARIO_KEY, JSON.stringify([novo, ...atual]));
+      await descarregarOricseStorage();
+      setRegistrosRelacionados((lista) => [...lista, novo]);
+      setAdendoTexto("");
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Não foi possível salvar o adendo.");
+    } finally {
+      setSalvandoAdendo(false);
+    }
+  }
 
   if (carregando || !registro || !animal) {
     return <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-8 sm:px-6">
@@ -163,6 +202,17 @@ function ConsultaSalva() {
           })}
         </div> : <div className="py-16 text-center text-muted-foreground"><ClipboardList className="mx-auto mb-3 opacity-30" size={36}/><p>Este registro não possui detalhes salvos.</p></div>}
       </div>
+    </section>
+
+    <section className="mt-4 rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
+      <div className="flex items-center gap-2"><History size={19} className="text-primary"/><h2 className="text-xl font-black">Histórico do prontuário</h2></div>
+      <p className="mt-1 text-sm text-muted-foreground">A versão original permanece preservada. Cada alteração é registrada como adendo, sem substituir o texto anterior.</p>
+      <div className="mt-4 rounded-xl border border-primary/30 bg-primary/[0.04] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><strong>Versão original</strong><span className="text-xs font-bold text-muted-foreground">v{registro.versao || 1} · {dataBR(registro.criadoEm || registro.data)}</span></div>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{registro.detalhe || "Sem texto registrado."}</p>
+      </div>
+      {adendos.map((adendo) => <article key={adendo.id} className="mt-3 rounded-xl border border-amber-300 bg-amber-50/50 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{adendo.titulo}</strong><span className="text-xs font-bold text-muted-foreground">v{adendo.versao || 2} · {dataBR(adendo.criadoEm)}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{adendo.detalhe?.replace(/^ADENDO DO PRONTUÁRIO\n\n/, "")}</p></article>)}
+      <div className="mt-5 border-t pt-4"><label className="block text-sm font-bold">Novo adendo<textarea value={adendoTexto} onChange={(e) => setAdendoTexto(e.target.value)} rows={4} placeholder="Descreva a correção, complemento ou atualização clínica." className="mt-1 w-full rounded-xl border bg-white p-3 text-sm font-normal outline-none focus:border-primary"/></label><button type="button" disabled={!adendoTexto.trim() || salvandoAdendo} onClick={() => void salvarAdendo()} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Save size={16}/>{salvandoAdendo ? "Salvando..." : "Salvar adendo"}</button></div>
     </section>
   </main>;
 }
