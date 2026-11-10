@@ -150,8 +150,8 @@ const perfisAtendidos = [
   ["Outros negócios pet", "Adapte a Oricse à sua rotina, ao seu público e ao jeito da sua empresa.", PawPrint],
 ] as const;
 
-function Titulo({children, claro = false}:{children:ReactNode; claro?:boolean}) {
-  return <h2 className={"font-display text-4xl font-semibold leading-[.96] tracking-[-.055em] sm:text-6xl " + (claro ? "text-[#fff9f4]" : "text-[#4A1826]")}>{children}</h2>;
+function Titulo({children, claro = false, id}:{children:ReactNode; claro?:boolean; id?:string}) {
+  return <h2 id={id} className={"font-display text-4xl font-semibold leading-[.96] tracking-[-.055em] sm:text-6xl " + (claro ? "text-[#fff9f4]" : "text-[#4A1826]")}>{children}</h2>;
 }
 
 function OrixHero() {
@@ -394,7 +394,7 @@ function PaginaInicialPlataforma() {
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#9c6574]">Para cada jeito de cuidar</p>
-            <Titulo>Quem a Oricse atende?</Titulo>
+            <Titulo id="quem-atendemos-titulo">Quem a Oricse atende?</Titulo>
             <p className="mt-5 text-[17px] leading-7 text-[#765c66]">Uma plataforma pensada para os diferentes negócios que fazem o mercado pet acontecer.</p>
           </div>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
