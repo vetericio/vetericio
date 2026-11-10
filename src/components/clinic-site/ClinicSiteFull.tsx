@@ -94,9 +94,15 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
   const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
-  // Fotos editoriais da vitrine comercial: exclusivas do tema Class da Alvorada.
+  // Fotos exclusivas da demonstração da Alvorada. Os outros temas e clínicas não mudam.
   const classAlvorada = friendly && publishedSlug === "alvorada";
+  const elanAlvorada = luxe && publishedSlug === "alvorada";
+  const elanFotos = [
+    "/clinic-site/alvorada/elan-gato.png",
+    "/clinic-site/alvorada/elan-mulher-cachorro.png",
+  ];
   const image =
+    (elanAlvorada ? elanFotos[0] : "") ||
     (classAlvorada ? "/clinic-site/class/intro-veterinaria-gato.webp" : "") ||
     safeHttps(config.heroImageUrl) ||
     (prime
@@ -108,7 +114,9 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           : "");
   const configuredGallery = config.galleryUrls.filter(safeHttps);
   const gallery =
-    classAlvorada
+    elanAlvorada
+      ? [...elanFotos, ...configuredGallery.filter((url) => !elanFotos.includes(url))]
+      : classAlvorada
       ? ["/clinic-site/class/intro-veterinaria-gato.webp", "/clinic-site/class/chegada-cachorro.webp", ...configuredGallery.filter((url) => url !== "/clinic-site/class/intro-veterinaria-gato.webp" && url !== "/clinic-site/class/chegada-cachorro.webp")]
       : configuredGallery.length || (!prime && !friendly && !king)
       ? configuredGallery
