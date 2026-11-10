@@ -30,11 +30,11 @@ const safeImage = (input?: string) => {
   const driveId = value.match(
     /^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i,
   )?.[1];
-  if (driveId) return `https://drive.usercontent.google.com/download?id=${encodeURIComponent(driveId)}&export=view`;
+  if (driveId) return `https://lh3.googleusercontent.com/d/${encodeURIComponent(driveId)}=w2000`;
   const googleusercontentId = value.match(
-    /^https:\/\/lh3\.googleusercontent\.com\/d\/([^/?#]+)/i,
+    /^https:\/\/lh3\.googleusercontent\.com\/d\/([^/?#=]+)/i,
   )?.[1];
-  if (googleusercontentId) return `https://drive.usercontent.google.com/download?id=${encodeURIComponent(googleusercontentId)}&export=view`;
+  if (googleusercontentId) return `https://lh3.googleusercontent.com/d/${encodeURIComponent(googleusercontentId)}=w2000`;
   if (/^https:\/\//i.test(value)) return value;
   return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
 };
