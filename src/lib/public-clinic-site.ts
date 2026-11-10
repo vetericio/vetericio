@@ -1,7 +1,9 @@
+import type { ClinicSiteConfig } from "@/lib/clinic-site";
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://mwrmfcyrdxfxssebgknz.supabase.co";
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc";
 
-export type PublicClinicSite = { slug: string; template: string; config: unknown };
+export type PublicClinicSite = { slug: string; template: string; config: ClinicSiteConfig };
 type PublicClinic = { clinica_slug?: string | null };
 
 export function normalizeHostname(value: string | null | undefined): string {
