@@ -1463,7 +1463,7 @@
 .portal-one-screen-left {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(154px,.59fr) minmax(0,1.41fr);
+  grid-template-rows: minmax(154px,.59fr) auto minmax(0,1.41fr);
   gap: clamp(12px,1.8vh,18px);
 }
 .portal-tutor-live[data-site-template] .portal-one-screen-brand {
@@ -1494,6 +1494,11 @@
   border-radius: clamp(10px,1.5vw,17px);
   border: 1px solid rgba(23,32,38,.09);
   box-shadow: 0 10px 28px rgba(0,0,0,.06);
+}
+.portal-tutor-login-screen[data-clinic-slug="alvorada"] .portal-one-screen-logo-white {
+  background: transparent !important;
+  border-color: transparent;
+  box-shadow: none;
 }
 .portal-one-screen-logo-white .portal-one-screen-clinic-logo {
   display: block;
@@ -1728,7 +1733,7 @@
 /* Ajustes de altura: em telas pequenas, preservar acesso às ações. */
 @media (min-width: 901px) and (max-height: 770px) {
   .portal-one-screen-grid {padding-top:14px;padding-bottom:14px}
-  .portal-one-screen-left {grid-template-rows:minmax(130px,.58fr) minmax(0,1.42fr);gap:11px}
+  .portal-one-screen-left {grid-template-rows:minmax(130px,.58fr) auto minmax(0,1.42fr);gap:11px}
   .portal-tutor-live[data-site-template] .portal-one-screen-brand {padding:15px}
   .portal-one-screen-logo-white {min-height:95px;padding:12px}
   .portal-tutor-live[data-site-template] .portal-one-screen-product-name h1 {font-size:clamp(1.7rem,2.5vw,2.5rem);margin-top:7px}
