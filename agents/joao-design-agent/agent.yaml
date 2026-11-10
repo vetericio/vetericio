@@ -19,6 +19,7 @@ skills:
     - frontend-implementation
     - accessibility
     - visual-regression-testing
+    - communication-and-approval
 
 tools:
   github: { enabled: true, permission: authorized_repositories }
