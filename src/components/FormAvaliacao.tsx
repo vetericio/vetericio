@@ -1,6 +1,5 @@
 import { Fragment, memo, useCallback, useRef, useState } from "react";
 import {
-  ESPECIES,
   OPCOES,
   avaliarValor,
   comLinha,
@@ -33,7 +32,6 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
 import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
-import { Search } from "lucide-react";
 
 function alternarOpcaoLista(valor: string, opcao: string): string {
   const selecionadas = valor.split(" · ").filter(Boolean);
@@ -129,7 +127,6 @@ export function FormAvaliacao({
   const [alertados, setAlertados] = useState<string[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
   const [especieAberto, setEspecieAberto] = useState(false);
-  const [buscaEspecie, setBuscaEspecie] = useState("");
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
   const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
@@ -351,16 +348,25 @@ export function FormAvaliacao({
           <label className="block text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Espécie
           </label>
-          <button type="button" aria-label="Selecionar espécie" aria-expanded={especieAberto} onClick={() => { setEspecieAberto((aberto) => !aberto); setBuscaEspecie(""); }} className="mt-1 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
-            <span>{valores.especie || "Selecione a espécie"}</span><span aria-hidden="true">▾</span>
-          </button>
-          {especieAberto && <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-2 shadow-lg">
-            <label className="flex items-center gap-2 rounded-lg border border-input px-3 text-muted-foreground"><Search size={16} aria-hidden="true" /><input autoFocus aria-label="Buscar espécie" value={buscaEspecie} onChange={(e) => setBuscaEspecie(e.target.value)} placeholder="Buscar espécie" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none" /></label>
-            <div className="mt-2 max-h-52 overflow-y-auto">
-              {ESPECIES.filter((esp) => esp.toLocaleLowerCase("pt-BR").includes(buscaEspecie.toLocaleLowerCase("pt-BR"))).map((esp) => <button key={esp} type="button" onClick={() => { onChange({ ...valores, especie: esp as Especie }); setEspecieAberto(false); }} className={["min-h-10 w-full rounded-lg px-3 text-left text-sm", valores.especie === esp ? "bg-primary font-semibold text-primary-foreground" : "text-foreground hover:bg-secondary"].join(" ")}>{esp}</button>)}
-            </div>
-            {buscaEspecie.trim() && !ESPECIES.some((esp) => esp.toLocaleLowerCase("pt-BR") === buscaEspecie.trim().toLocaleLowerCase("pt-BR")) && <button type="button" onClick={() => { onChange({ ...valores, especie: buscaEspecie.trim() }); setEspecieAberto(false); }} className="mt-2 min-h-10 w-full rounded-lg border border-dashed border-border px-3 text-left text-sm text-primary">Usar “{buscaEspecie.trim()}”</button>}
-          </div>}
+          {(() => {
+            const ehOutraEspecie = Boolean(valores.especie) && valores.especie !== "Cachorro" && valores.especie !== "Gato";
+            const rotuloEspecie = !valores.especie
+              ? "Selecione a espécie"
+              : ehOutraEspecie && valores.especie !== "Outro"
+                ? `Outro — ${valores.especie}`
+                : valores.especie;
+            return (
+              <>
+                <button type="button" aria-label="Selecionar espécie" aria-expanded={especieAberto} onClick={() => setEspecieAberto((aberto) => !aberto)} className="mt-1 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
+                  <span>{rotuloEspecie}</span><span aria-hidden="true">▾</span>
+                </button>
+                {especieAberto && <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-2 shadow-lg">
+                  {(["Cachorro", "Gato", "Outro"] as const).map((esp) => <button key={esp} type="button" onClick={() => { onChange({ ...valores, especie: esp }); setEspecieAberto(false); }} className={["min-h-10 w-full rounded-lg px-3 text-left text-sm", (esp === "Outro" ? ehOutraEspecie : valores.especie === esp) ? "bg-primary font-semibold text-primary-foreground" : "text-foreground hover:bg-secondary"].join(" ")}>{esp}</button>)}
+                </div>}
+                {ehOutraEspecie && <input aria-label="Especifique a espécie" autoFocus={valores.especie === "Outro"} value={valores.especie === "Outro" ? "" : valores.especie} onChange={(e) => onChange({ ...valores, especie: e.target.value || "Outro" })} placeholder="Qual espécie?" className="mt-2 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />}
+              </>
+            );
+          })()}
         </div>
 
         <div className="shrink-0 w-28">
@@ -396,13 +402,13 @@ export function FormAvaliacao({
               <div className={["mt-2 flex flex-wrap gap-2", chave === "fezes" ? "sm:col-start-1" : ""].join(" ")}>
                 {opcoesFixas.filter((opcao) => opcao !== "Outro").map((opcao) => {
                   const ativo = valores[chave] === opcao;
-                  return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => { if (ehAlimentacao) setOutroAberto(false); const proximo = ativo ? "" : opcao; set(chave, proximo); if (chave === "fezes" && proximo !== "Sim") set("fezesCaracteristica", ""); if (chave === "urina" && proximo !== "Sim") set("urinaObservacoes", ""); if (chave === "vomito" && proximo !== "Sim") set("vomitoCaracteristica", ""); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", ativo ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40 hover:bg-secondary/70"].join(" ")}>{opcao}</button>;
+                  return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => { if (ehAlimentacao) setOutroAberto(false); const proximo = ativo ? "" : opcao; const atualizado: Omit<Registro, "id"> = { ...valores, [chave]: proximo }; if (chave === "fezes" && proximo !== "Sim") atualizado.fezesCaracteristica = ""; if (chave === "urina" && proximo !== "Sim") atualizado.urinaObservacoes = ""; if (chave === "vomito" && proximo !== "Sim") atualizado.vomitoCaracteristica = ""; onChange(atualizado); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", ativo ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40 hover:bg-secondary/70"].join(" ")}>{opcao}</button>;
                 })}
                 {valorLegado && <span className="inline-flex min-h-10 items-center rounded-full bg-muted px-3 py-2 text-sm text-foreground">Registro anterior: {valorLegado}</span>}
                 {(ehAlimentacao || ehComportamento) && <button type="button" aria-pressed={Boolean(outroAtivo)} onClick={() => { if (ehAlimentacao) setOutroAberto(!outroAtivo); set(chave, outroAtivo ? "" : "Outro"); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", outroAtivo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40"].join(" ")}>Outro</button>}
               </div>
               {(ehAlimentacao || ehComportamento) && outroAtivo && <input value={opcoesFixas.includes(valorAtual) ? "" : valores[chave]} onChange={(e) => set(chave, e.target.value)} placeholder={ehAlimentacao ? "Descreva a alimentação" : "Descreva o comportamento"} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />}
-              {chave === "fezes" && valores.fezes === "Sim" && <div className="mt-3 sm:col-start-2 sm:row-start-2"><p className="text-xs font-medium text-muted-foreground">Características das fezes</p><div className="mt-2 flex flex-wrap gap-2">{["Firmes / Formadas", "Pastosas", "Amolecidas", "Semilíquidas", "Líquidas / Aquosas", "Mucoides", "Espumosas", "Melena"].map((opcao) => { const selecionadas = (valores.fezesCaracteristica ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("fezesCaracteristica", alternarOpcaoLista(valores.fezesCaracteristica ?? "", opcao))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground"].join(" ")}>{opcao}</button>; })}</div></div>}
+              {chave === "fezes" && <div className="mt-3 sm:col-start-2 sm:row-start-2"><p className="text-xs font-medium text-muted-foreground">Características das fezes</p><div className="mt-2 flex flex-wrap gap-2">{["Firmes / Formadas", "Pastosas", "Amolecidas", "Semilíquidas", "Líquidas / Aquosas", "Mucoides", "Espumosas", "Melena"].map((opcao) => { const selecionadas = (valores.fezesCaracteristica ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); const desabilitado = valores.fezes !== "Sim"; return <button key={opcao} type="button" disabled={desabilitado} aria-disabled={desabilitado} aria-pressed={ativo} onClick={() => set("fezesCaracteristica", alternarOpcaoLista(valores.fezesCaracteristica ?? "", opcao))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground", desabilitado ? "cursor-not-allowed opacity-50" : ""].join(" ")}>{opcao}</button>; })}</div></div>}
               {chave === "urina" && valores.urina === "Sim" && <div className="mt-3"><p className="text-xs font-medium text-muted-foreground">Observações urinárias</p><div className="mt-2 flex flex-wrap gap-2">{["Sondagem vesical", "Expressão vesical manual", "Hematúria", "Piúria"].map((opcao) => { const selecionadas = (valores.urinaObservacoes ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("urinaObservacoes", (ativo ? selecionadas.filter((x) => x !== opcao) : [...selecionadas, opcao]).join(" · "))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground"].join(" ")}>{opcao}</button>; })}</div></div>}
               {chave === "vomito" && valores.vomito === "Sim" && <div className="mt-3"><p className="text-xs font-medium text-muted-foreground">Características do vômito</p><div className="mt-2 flex flex-wrap gap-2">{["Alimentar", "Espumoso", "Bilioso", "Líquido", "Com sangue", "Fecaloide"].map((opcao) => { const selecionadas = (valores.vomitoCaracteristica ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("vomitoCaracteristica", alternarOpcaoLista(valores.vomitoCaracteristica ?? "", opcao))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground"].join(" ")}>{opcao}</button>; })}</div></div>}
             </div>
