@@ -53,7 +53,7 @@ const resolverPaginaInicial = createServerFn({ method: "GET" }).handler(async ()
 
     const site = await loadPublicClinicSite(slug);
     if (!site) return { tipo: "nao_encontrado" as const };
-    return { tipo: "clinica" as const, slug, site: { ...site, config: normalizeClinicSiteConfig(site.config) } };
+    return { tipo: "clinica" as const, slug, site };
   } catch (error) {
     console.error("Não foi possível resolver a página pública da clínica:", error);
     return { tipo: "indisponivel" as const };
@@ -404,7 +404,7 @@ function PaginaInicialPlataforma() {
               <a href="/solucoes#meu-oricstudio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#ffe2ca] px-6 py-3.5 text-sm font-extrabold text-[#4A1826] shadow-[0_12px_30px_rgba(0,0,0,.15)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
                 Conhecer o OricStúdio <ArrowRight size={18}/>
               </a>
-              <Link to="/oricstudio" search={{ ambiente: "plataforma" }} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/35 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+              <Link to="/oricstudio" search={{ ambiente: undefined }} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/35 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
                 Já tenho acesso <ArrowRight size={16}/>
               </Link>
             </div>
