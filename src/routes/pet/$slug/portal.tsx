@@ -222,7 +222,7 @@ function Login(props:{
     ? "https://alvorada.oricse.com.br/"
     : `/c/${encodeURIComponent(p.clinica.slug)}`;
   const acessoEstendido=p.modoAtivar||p.modoRecuperar;
-  return <main data-visual-id="portal-tutor-login" className="portal-tutor-live portal-tutor-login-screen" data-site-template={p.tema?.modelo}
+  return <main data-visual-id="portal-tutor-login" className="portal-tutor-live portal-tutor-login-screen" data-clinic-slug={p.clinica.slug} data-site-template={p.tema?.modelo}
     data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>
     <div className="portal-login-topbar">
       <a className="portal-login-back-link" href={clinicSite}><ArrowLeft size={17}/> Retornar para o site da clínica</a>
@@ -248,6 +248,7 @@ function Login(props:{
             </div>
           </div>
         </section>
+        <p data-visual-id="portal-tutor-login-welcome" className="portal-one-screen-welcome"><PawPrint size={17}/> {p.portalConfig.mensagem_boas_vindas||"Bem-vindo ao Portal do Tutor!"}</p>
         <section data-visual-id="portal-tutor-login-about" className="portal-one-screen-about" aria-label="O que você encontra aqui">
           <div className="portal-one-screen-about-overline"><HeartPulse size={16}/> CUIDADO EM CADA DETALHE</div>
           <h2>O cuidado com seu pet, <em>sempre por perto.</em></h2>
@@ -259,7 +260,6 @@ function Login(props:{
             <div><span><FileText size={20}/></span><strong>Documentos</strong></div>
             <div><span><HeartPulse size={20}/></span><strong>Saúde do pet</strong></div>
           </div>
-          <p className="portal-one-screen-welcome"><PawPrint size={17}/> {p.portalConfig.mensagem_boas_vindas||"Bem-vindo ao Portal do Tutor!"}</p>
         </section>
       </div>
       <section data-visual-id="portal-tutor-login-panel" className="portal-one-screen-login-panel" aria-label="Acesso ao Portal do Tutor">
