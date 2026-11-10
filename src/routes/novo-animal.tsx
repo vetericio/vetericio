@@ -42,6 +42,12 @@ type Animal = {
   observacoes?: string;
   status?: "Ativo" | "Falecido" | "Desaparecido" | "Inativo";
   dataObito?: string;
+  identificacaoExotico?: string;
+  numeroRegistroExotico?: string;
+  recintoExotico?: string;
+  temperaturaRecinto?: string;
+  umidadeRecinto?: string;
+  alimentacaoEspecifica?: string;
   criadoEm: string;
 };
 
@@ -85,7 +91,7 @@ const TIPOS_SANGUINEOS: Record<string, string[]> = {
 const TEMPERAMENTOS = ["Dócil", "Medroso", "Ansioso", "Reativo", "Agressivo", "Territorial", "Agitado", "Sociável", "Difícil contenção", "Não informado"];
 
 const FORM_VAZIO: AnimalForm = {
-  nome: "", nascimento: "", especie: "Cão", raca: SRD, sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "", status: "Ativo", dataObito: "",
+  nome: "", nascimento: "", especie: "Cão", raca: SRD, sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "", status: "Ativo", dataObito: "", identificacaoExotico: "", numeroRegistroExotico: "", recintoExotico: "", temperaturaRecinto: "", umidadeRecinto: "", alimentacaoEspecifica: "",
 };
 
 function lerTutores(): Tutor[] {
@@ -111,6 +117,8 @@ function pesoExibicao(valor?: string) {
   if (!Number.isFinite(numero)) return "";
   return numero.toFixed(3).replace(".", ",");
 }
+
+function ehExotico(especie: string) { return ["Coelho","Hamster","Rato","Porquinho-da-índia","Ave","Réptil","Quelônio","Serpente","Silvestre / exótico","Outro"].includes(especie); }
 
 function pesoPorDigitacao(valorDigitado: string) {
   const digitos = valorDigitado.replace(/\D/g, "");
@@ -147,6 +155,7 @@ function NovoAnimal() {
   finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[tutorIdParam,animalId]);
 
   const racasInternacionais = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
+  const cadastroExotico = ehExotico(form.especie);
   const racas = useMemo(() => ordenarRacas(racasInternacionais.map((r) => nomeRacaBrasil(form.especie, r))), [form.especie, racasInternacionais]);
   const pelagens = PELAGENS[form.especie] || ["Não informado", "Outro"];
   const tiposSanguineos = TIPOS_SANGUINEOS[form.especie] || ["Não se aplica / não informado"];
@@ -206,7 +215,18 @@ function NovoAnimal() {
             <label className="text-sm font-semibold">Microchip<input value={form.microchip} onChange={(e) => set("microchip", e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Status<select value={form.status || "Ativo"} onChange={(e) => set("status", e.target.value as AnimalForm["status"])} className={campo}><option>Ativo</option><option>Falecido</option><option>Desaparecido</option><option>Inativo</option></select></label>
             {form.status === "Falecido" && <label className="text-sm font-semibold">Data do óbito<input type="date" value={form.dataObito || ""} onChange={(e) => set("dataObito", e.target.value)} className={campo}/></label> }
+            {cadastroExotico && <>
+              <label className="text-sm font-semibold">Identificação individual<input value={form.identificacaoExotico || ""} onChange={(e) => set("identificacaoExotico", e.target.value)} placeholder="Anilha, brinco, marcação ou identificação" className={campo}/></label>
+              <label className="text-sm font-semibold">Número de registro / autorização<input value={form.numeroRegistroExotico || ""} onChange={(e) => set("numeroRegistroExotico", e.target.value)} placeholder="Quando aplicável" className={campo}/></label>
+            </> }
           </Bloco>
+
+          {cadastroExotico && <Bloco titulo="Manejo do animal exótico">
+            <label className="text-sm font-semibold">Recinto / alojamento<input value={form.recintoExotico || ""} onChange={(e) => set("recintoExotico", e.target.value)} placeholder="Ex.: viveiro, terrário, aquário" className={campo}/></label>
+            <label className="text-sm font-semibold">Temperatura do recinto<input value={form.temperaturaRecinto || ""} onChange={(e) => set("temperaturaRecinto", e.target.value)} placeholder="Ex.: 28 °C" className={campo}/></label>
+            <label className="text-sm font-semibold">Umidade do recinto<input value={form.umidadeRecinto || ""} onChange={(e) => set("umidadeRecinto", e.target.value)} placeholder="Ex.: 60%" className={campo}/></label>
+            <label className="text-sm font-semibold">Alimentação específica<textarea rows={3} value={form.alimentacaoEspecifica || ""} onChange={(e) => set("alimentacaoEspecifica", e.target.value)} placeholder="Dieta, frequência e suplementos" className={`${campo} py-3`}/></label>
+          </Bloco>}
 
           <Bloco titulo="Características">
             <label className="text-sm font-semibold">{form.especie === "Ave" ? "Plumagem" : form.especie === "Réptil" || form.especie === "Serpente" ? "Escamas" : form.especie === "Quelônio" ? "Carapaça" : "Pelagem"}<select value={form.pelagem} onChange={(e) => set("pelagem", e.target.value)} className={campo}><option value="">Selecione</option>{pelagens.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
