@@ -55,11 +55,7 @@ import {
   VISUAL_VERSIONS_KEY,
 } from "@/lib/visual-editor";
 
-type Version = {
-  id: string;
-  publishedAt: string;
-  pages: VisualDocument["pages"];
-};
+type Version = { id: string; publishedAt: string; pages: VisualDocument["pages"] };
 type SelectedItem = { id: string; kind: "patch" | "added" };
 
 type ConflictReview = {
@@ -105,6 +101,7 @@ function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote
   return { merged, overlaps };
 }
 
+
 /** Elementos reais da home, disponíveis no painel sem alterar rascunhos salvos. */
 const CAMADAS_INICIAIS_HOME = [
   ["home-fundo-bege", "Fundo bege da página"],
@@ -140,15 +137,13 @@ export function VisualPageEditor() {
     if (typeof window === "undefined") return "/";
     const params = new URLSearchParams(window.location.search);
     const solicitado = params.get("pagina") || "/";
-    const loginPortal =
-      solicitado.startsWith("/portal-tutores") &&
-      (solicitado.includes("portal_login_preview=1") || params.get("portal_login_preview") === "1");
+    const loginPortal = solicitado.startsWith("/portal-tutores")
+      && (solicitado.includes("portal_login_preview=1")
+        || params.get("portal_login_preview") === "1");
     const pagina = loginPortal ? "/portal-tutores?portal_login_preview=1" : solicitado;
     return ROTAS_CATALOGO.some(
       (r) => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
-    )
-      ? pagina
-      : "/";
+    ) ? pagina : "/";
   };
   // O servidor não tem acesso ao endereço do navegador: só renderize a
   // prévia depois de resolver a seleção no cliente, sem erro de hidratação.
@@ -286,16 +281,10 @@ export function VisualPageEditor() {
     [checkpoint, route, device],
   );
 
-  const camadasNativasHome = useMemo(
-    () =>
-      route === "/"
-        ? CAMADAS_INICIAIS_HOME.filter(
-            ([id]) =>
-              !layout.patches.some((patch) => patch.selector === `[data-visual-id="${id}"]`),
-          )
-        : [],
-    [route, layout.patches],
-  );
+  const camadasNativasHome = useMemo(() => route === "/"
+    ? CAMADAS_INICIAIS_HOME.filter(([id]) =>
+        !layout.patches.some((patch) => patch.selector === `[data-visual-id="${id}"]`))
+    : [], [route, layout.patches]);
 
   /** Seleciona uma camada já existente no site, sem criar objetos artificiais. */
   function abrirCamadaNativa(id: string, label: string, ocultar = false) {
@@ -310,11 +299,10 @@ export function VisualPageEditor() {
       (item) => item.selector === selector,
     );
     if (existing) {
-      if (ocultar)
-        updateLayout((value) => {
-          const alvo = value.patches.find((x) => x.id === existing.id);
-          if (alvo) alvo.hidden = true;
-        });
+      if (ocultar) updateLayout((value) => {
+        const alvo = value.patches.find((x) => x.id === existing.id);
+        if (alvo) alvo.hidden = true;
+      });
       setSelected([{ id: existing.id, kind: "patch" }]);
       return;
     }
@@ -388,28 +376,20 @@ export function VisualPageEditor() {
       const rect = element.getBoundingClientRect();
       if (element.tagName !== "IMG" || !item) return rect;
       const current = ensurePage(cloneVisual(documentRef.current), route)[device];
-      const layer =
-        item.kind === "patch"
-          ? current.patches.find((p) => p.id === item.id)
-          : current.added.find((p) => p.id === item.id);
+      const layer = item.kind === "patch"
+        ? current.patches.find((p) => p.id === item.id)
+        : current.added.find((p) => p.id === item.id);
       if (!layer) return rect;
       const bounded = (value: unknown) => Math.max(0, Math.min(90, Number(value) || 0));
       const leftCrop = bounded(layer.style.cropLeft);
       const rightCrop = Math.min(bounded(layer.style.cropRight), 95 - leftCrop);
       const topCrop = bounded(layer.style.cropTop);
       const bottomCrop = Math.min(bounded(layer.style.cropBottom), 95 - topCrop);
-      const left = rect.left + (rect.width * leftCrop) / 100;
-      const right = rect.right - (rect.width * rightCrop) / 100;
-      const top = rect.top + (rect.height * topCrop) / 100;
-      const bottom = rect.bottom - (rect.height * bottomCrop) / 100;
-      return {
-        left,
-        right,
-        top,
-        bottom,
-        width: right - left,
-        height: bottom - top,
-      };
+      const left = rect.left + rect.width * leftCrop / 100;
+      const right = rect.right - rect.width * rightCrop / 100;
+      const top = rect.top + rect.height * topCrop / 100;
+      const bottom = rect.bottom - rect.height * bottomCrop / 100;
+      return { left, right, top, bottom, width: right - left, height: bottom - top };
     };
     for (const [index, element] of elements.entries()) {
       const rect = selectionBounds(element, selectedRef.current[index]);
@@ -434,17 +414,12 @@ export function VisualPageEditor() {
       // Duplo clique em uma imagem ativa o recorte, com oito alças visíveis.
       // A imagem original continua salva; só a máscara é modificada.
       const itemSelecionado = selectedRef.current[0];
-      if (
-        croppingId &&
-        itemSelecionado?.id === croppingId &&
-        elements.length === 1 &&
-        elements[0].tagName === "IMG"
-      ) {
+      if (croppingId && itemSelecionado?.id === croppingId
+        && elements.length === 1 && elements[0].tagName === "IMG") {
         const page = ensurePage(cloneVisual(documentRef.current), route)[device];
-        const alvo =
-          itemSelecionado.kind === "patch"
-            ? page.patches.find((x) => x.id === croppingId)
-            : page.added.find((x) => x.id === croppingId);
+        const alvo = itemSelecionado.kind === "patch"
+          ? page.patches.find((x) => x.id === croppingId)
+          : page.added.find((x) => x.id === croppingId);
         if (alvo) {
           const bounded = (v: unknown) => Math.max(0, Math.min(90, Number(v) || 0));
           const startCrop = {
@@ -453,23 +428,17 @@ export function VisualPageEditor() {
             bottom: bounded(alvo.style.cropBottom),
             left: bounded(alvo.style.cropLeft),
           };
-          const left = rect.left + (rect.width * startCrop.left) / 100;
-          const right = rect.right - (rect.width * startCrop.right) / 100;
-          const top = rect.top + (rect.height * startCrop.top) / 100;
-          const bottom = rect.bottom - (rect.height * startCrop.bottom) / 100;
+          const left = rect.left + rect.width * startCrop.left / 100;
+          const right = rect.right - rect.width * startCrop.right / 100;
+          const top = rect.top + rect.height * startCrop.top / 100;
+          const bottom = rect.bottom - rect.height * startCrop.bottom / 100;
           const outline = doc.createElement("div");
           outline.dataset["oricseEditorOverlay"] = "1";
           Object.assign(outline.style, {
-            position: "fixed",
-            left: `${left}px`,
-            top: `${top}px`,
-            width: `${Math.max(1, right - left)}px`,
-            height: `${Math.max(1, bottom - top)}px`,
-            border: "2px dashed #fff",
-            outline: "2px solid #6F293B",
-            pointerEvents: "none",
-            boxSizing: "border-box",
-            zIndex: "2147483646",
+            position: "fixed", left: `${left}px`, top: `${top}px`,
+            width: `${Math.max(1, right - left)}px`, height: `${Math.max(1, bottom - top)}px`,
+            border: "2px dashed #fff", outline: "2px solid #6F293B",
+            pointerEvents: "none", boxSizing: "border-box", zIndex: "2147483646",
           });
           doc.body.appendChild(outline);
           type Side = "top" | "right" | "bottom" | "left";
@@ -480,54 +449,34 @@ export function VisualPageEditor() {
             handle.title = "Arraste para recortar: " + sides.join(" + ");
             handle.setAttribute("aria-label", handle.title);
             Object.assign(handle.style, {
-              position: "fixed",
-              left: `${x - 8}px`,
-              top: `${y - 8}px`,
-              width: "16px",
-              height: "16px",
-              borderRadius: "4px",
-              background: "#fff",
-              border: "2px solid #6F293B",
+              position: "fixed", left: `${x - 8}px`, top: `${y - 8}px`,
+              width: "16px", height: "16px", borderRadius: "4px",
+              background: "#fff", border: "2px solid #6F293B",
               boxShadow: "0 1px 5px rgba(0,0,0,.25)",
-              cursor,
-              pointerEvents: "auto",
-              touchAction: "none",
+              cursor, pointerEvents: "auto", touchAction: "none",
               zIndex: "2147483647",
             });
             handle.addEventListener("pointerdown", (ev) => {
               ev.preventDefault();
               ev.stopPropagation();
-              const sx = ev.clientX,
-                sy = ev.clientY;
+              const sx = ev.clientX, sy = ev.clientY;
               let mudou = false;
-              try {
-                doc.body.setPointerCapture(ev.pointerId);
-              } catch {
-                /* navegador sem captura */
-              }
+              try { doc.body.setPointerCapture(ev.pointerId); } catch { /* navegador sem captura */ }
               const move = (current: PointerEvent) => {
-                const dx = ((current.clientX - sx) * 100) / Math.max(1, rect.width);
-                const dy = ((current.clientY - sy) * 100) / Math.max(1, rect.height);
-                if (!mudou && Math.abs(dx) + Math.abs(dy) < 0.25) return;
-                if (!mudou) {
-                  checkpoint();
-                  mudou = true;
-                }
+                const dx = (current.clientX - sx) * 100 / Math.max(1, rect.width);
+                const dy = (current.clientY - sy) * 100 / Math.max(1, rect.height);
+                if (!mudou && Math.abs(dx) + Math.abs(dy) < .25) return;
+                if (!mudou) { checkpoint(); mudou = true; }
                 updateLayout((layoutAtual) => {
-                  const target =
-                    itemSelecionado.kind === "patch"
-                      ? layoutAtual.patches.find((p) => p.id === itemSelecionado.id)
-                      : layoutAtual.added.find((p) => p.id === itemSelecionado.id);
+                  const target = itemSelecionado.kind === "patch"
+                    ? layoutAtual.patches.find((p) => p.id === itemSelecionado.id)
+                    : layoutAtual.added.find((p) => p.id === itemSelecionado.id);
                   if (!target) return;
                   const next = { ...startCrop };
-                  if (sides.includes("left"))
-                    next.left = Math.max(0, Math.min(95 - next.right, startCrop.left + dx));
-                  if (sides.includes("right"))
-                    next.right = Math.max(0, Math.min(95 - next.left, startCrop.right - dx));
-                  if (sides.includes("top"))
-                    next.top = Math.max(0, Math.min(95 - next.bottom, startCrop.top + dy));
-                  if (sides.includes("bottom"))
-                    next.bottom = Math.max(0, Math.min(95 - next.top, startCrop.bottom - dy));
+                  if (sides.includes("left")) next.left = Math.max(0, Math.min(95 - next.right, startCrop.left + dx));
+                  if (sides.includes("right")) next.right = Math.max(0, Math.min(95 - next.left, startCrop.right - dx));
+                  if (sides.includes("top")) next.top = Math.max(0, Math.min(95 - next.bottom, startCrop.top + dy));
+                  if (sides.includes("bottom")) next.bottom = Math.max(0, Math.min(95 - next.top, startCrop.bottom - dy));
                   target.style.cropTop = Math.round(next.top * 10) / 10;
                   target.style.cropRight = Math.round(next.right * 10) / 10;
                   target.style.cropBottom = Math.round(next.bottom * 10) / 10;
@@ -538,11 +487,7 @@ export function VisualPageEditor() {
                 doc.defaultView?.removeEventListener("pointermove", move);
                 doc.defaultView?.removeEventListener("pointerup", stop);
                 doc.defaultView?.removeEventListener("pointercancel", stop);
-                try {
-                  doc.body.releasePointerCapture(ev.pointerId);
-                } catch {
-                  /* sem captura */
-                }
+                try { doc.body.releasePointerCapture(ev.pointerId); } catch { /* sem captura */ }
               };
               doc.defaultView?.addEventListener("pointermove", move);
               doc.defaultView?.addEventListener("pointerup", stop);
@@ -589,10 +534,7 @@ export function VisualPageEditor() {
           const dx = ev.clientX - sx,
             dy = ev.clientY - sy;
           if (!recorded && Math.abs(dx) + Math.abs(dy) < 2) return;
-          if (!recorded) {
-            checkpoint();
-            recorded = true;
-          }
+          if (!recorded) { checkpoint(); recorded = true; }
           updateLayout(
             (value) =>
               starts.forEach(({ item, width, height, x }) => {
@@ -725,15 +667,15 @@ export function VisualPageEditor() {
       // Dentro do banner, um clique no texto ou ícone seleciona a camada
       // nomeada correspondente, e não um span filho ou bloco gigante.
       const nomeado = raw.closest("[data-visual-id]") as HTMLElement | null;
-      const element =
-        nomeado && nomeado.dataset.visualId !== "home-fundo-bege" ? nomeado : editableTarget(raw);
+      const element = nomeado && nomeado.dataset.visualId !== "home-fundo-bege"
+        ? nomeado : editableTarget(raw);
       // Reconhece dois cliques mesmo que preventDefault suprima o dblclick.
       const agora = Date.now();
-      const doisCliquesNaImagem =
-        element.tagName === "IMG" &&
-        ultimaImagemPressionada?.element === element &&
-        agora - ultimaImagemPressionada.time < 420;
-      ultimaImagemPressionada = element.tagName === "IMG" ? { element, time: agora } : null;
+      const doisCliquesNaImagem = element.tagName === "IMG"
+        && ultimaImagemPressionada?.element === element
+        && agora - ultimaImagemPressionada.time < 420;
+      ultimaImagemPressionada = element.tagName === "IMG"
+        ? { element, time: agora } : null;
       const addedId = element.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
       let item: SelectedItem;
       if (addedId) item = { id: addedId, kind: "added" };
@@ -777,18 +719,9 @@ export function VisualPageEditor() {
           entry.kind === "patch"
             ? page.patches.find((x) => x.id === entry.id)
             : page.added.find((x) => x.id === entry.id);
-        return {
-          item: entry,
-          x: target?.style.x || 0,
-          y: target?.style.y || 0,
-        };
+        return { item: entry, x: target?.style.x || 0, y: target?.style.y || 0 };
       });
-      drag = {
-        sx: event.clientX,
-        sy: event.clientY,
-        starts,
-        historyRecorded: false,
-      };
+      drag = { sx: event.clientX, sy: event.clientY, starts, historyRecorded: false };
     };
     const move = (event: PointerEvent) => {
       // React may run the state updater after pointerup has cleared drag.
@@ -831,22 +764,11 @@ export function VisualPageEditor() {
       let target: SelectedItem | null = addedId ? { id: addedId, kind: "added" } : null;
       if (!target) {
         const selector = visualSelector(image);
-        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
-          (p) => p.selector === selector,
-        );
+        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((p) => p.selector === selector);
         if (!patch) {
           const box = image.getBoundingClientRect();
-          patch = {
-            id: uid("image"),
-            selector,
-            label: visualLabel(image),
-            style: {
-              baseWidth: box.width,
-              baseHeight: box.height,
-              width: box.width,
-              height: box.height,
-            },
-          };
+          patch = { id: uid("image"), selector, label: visualLabel(image),
+            style: { baseWidth: box.width, baseHeight: box.height, width: box.width, height: box.height } };
           updateLayout((layoutAtual) => layoutAtual.patches.push(patch!), true);
         }
         target = { id: patch.id, kind: "patch" };
@@ -857,15 +779,11 @@ export function VisualPageEditor() {
     };
     const onFrameKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
-      if (
-        typeof target?.closest === "function" &&
-        target.closest("input,textarea,select,[contenteditable='true']")
-      )
-        return;
+      if (typeof target?.closest === "function"
+        && target.closest("input,textarea,select,[contenteditable='true']")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
-        if (event.shiftKey) redoNow();
-        else undoNow();
+        event.shiftKey ? redoNow() : undoNow();
       } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
         event.preventDefault();
         redoNow();
@@ -972,8 +890,7 @@ export function VisualPageEditor() {
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
-      if (sessionError || !accessToken)
-        throw new Error("Sessão expirada. Entre novamente no sistema.");
+      if (sessionError || !accessToken) throw new Error("Sessão expirada. Entre novamente no sistema.");
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ""));
@@ -983,18 +900,12 @@ export function VisualPageEditor() {
       const upload = await enviarArquivoPublicoPlataforma({
         data: { accessToken, nome: file.name, mimeType: file.type, base64 },
       });
-      if (!upload.url || !validImageSource(upload.url))
-        throw new Error("O Google Drive não retornou uma imagem válida.");
+      if (!upload.url || !validImageSource(upload.url)) throw new Error("O Google Drive não retornou uma imagem válida.");
       const id = uid("image");
-      updateLayout((value) =>
-        value.added.push({
-          id,
-          kind: "image",
-          src: upload.url,
-          text: file.name,
-          style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
-        }),
-      );
+      updateLayout((value) => value.added.push({
+        id, kind: "image", src: upload.url, text: file.name,
+        style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
+      }));
       setSelected([{ id, kind: "added" }]);
       toast.success("Imagem enviada. Salve o rascunho ou publique para manter a alteração.");
     } catch (error) {
@@ -1165,11 +1076,7 @@ export function VisualPageEditor() {
     setSaving(true);
     const payload = { ...documento, updatedAt: new Date().toISOString() };
     const history: Version[] = [
-      {
-        id: uid("version"),
-        publishedAt: payload.updatedAt,
-        pages: cloneVisual(payload.pages),
-      },
+      { id: uid("version"), publishedAt: payload.updatedAt, pages: cloneVisual(payload.pages) },
       ...versions,
     ].slice(0, 12);
     try {
@@ -1179,21 +1086,9 @@ export function VisualPageEditor() {
         .from("oricse_config")
         .upsert(
           saveRows([
-            {
-              chave: VISUAL_PUBLISHED_KEY,
-              valor: payload,
-              updated_at: payload.updatedAt,
-            },
-            {
-              chave: VISUAL_DRAFT_KEY,
-              valor: payload,
-              updated_at: payload.updatedAt,
-            },
-            {
-              chave: VISUAL_VERSIONS_KEY,
-              valor: history,
-              updated_at: payload.updatedAt,
-            },
+            { chave: VISUAL_PUBLISHED_KEY, valor: payload, updated_at: payload.updatedAt },
+            { chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: payload.updatedAt },
+            { chave: VISUAL_VERSIONS_KEY, valor: history, updated_at: payload.updatedAt },
           ]),
           { onConflict: "chave" },
         )
@@ -1228,16 +1123,11 @@ export function VisualPageEditor() {
       setLastPublishedAt(payload.updatedAt);
       if (typeof BroadcastChannel !== "undefined") {
         const channel = new BroadcastChannel("oricse-visual-editor");
-        channel.postMessage({
-          type: "published",
-          updatedAt: payload.updatedAt,
-        });
+        channel.postMessage({ type: "published", updatedAt: payload.updatedAt });
         channel.close();
       }
       window.dispatchEvent(new Event("oricse:visual-published"));
-      toast.success("Publicado e confirmado no site real.", {
-        id: "oricse-canvas-published",
-      });
+      toast.success("Publicado e confirmado no site real.", { id: "oricse-canvas-published" });
     } catch (error) {
       classifySaveError(error as { code?: string; message?: string });
     } finally {
@@ -1326,11 +1216,8 @@ export function VisualPageEditor() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
-      if (
-        typeof target?.closest === "function" &&
-        target.closest("input,textarea,select,[contenteditable='true']")
-      )
-        return;
+      if (typeof target?.closest === "function"
+        && target.closest("input,textarea,select,[contenteditable='true']")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
@@ -1373,9 +1260,8 @@ export function VisualPageEditor() {
     );
   const frameWidth = deviceWidth(device);
   const scale = zoom / 100;
-  const isImageSelected = Boolean(
-    first && selected.length === 1 && selectedElements()[0]?.tagName === "IMG",
-  );
+  const isImageSelected = Boolean(first && selected.length === 1
+    && selectedElements()[0]?.tagName === "IMG");
 
   return (
     <main className="min-h-screen bg-[#ded9d3] text-slate-900">
@@ -1396,18 +1282,12 @@ export function VisualPageEditor() {
           type="button"
           onClick={alternarMenuAdmin}
           aria-expanded={!adminMenuRecolhido}
-          aria-label={
-            adminMenuRecolhido ? "Expandir menu da Administração" : "Recolher menu da Administração"
-          }
-          title={
-            adminMenuRecolhido ? "Mostrar menu da Administração" : "Recolher menu da Administração"
-          }
+          aria-label={adminMenuRecolhido ? "Expandir menu da Administração" : "Recolher menu da Administração"}
+          title={adminMenuRecolhido ? "Mostrar menu da Administração" : "Recolher menu da Administração"}
           className="hidden items-center gap-2 rounded-xl border px-3 py-2 font-semibold lg:inline-flex"
         >
           {adminMenuRecolhido ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          <span className="hidden xl:inline">
-            {adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}
-          </span>
+          <span className="hidden xl:inline">{adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}</span>
         </button>
         <button
           onClick={() => setLeftOpen((x) => !x)}
@@ -1430,9 +1310,7 @@ export function VisualPageEditor() {
           accept="image/png,image/jpeg,image/webp,image/gif"
           className="hidden"
           aria-label="Selecionar imagem do computador"
-          onChange={(event) => {
-            void uploadImage(event.currentTarget.files?.[0]);
-          }}
+          onChange={(event) => { void uploadImage(event.currentTarget.files?.[0]); }}
         />
         <button
           type="button"
@@ -1581,19 +1459,11 @@ export function VisualPageEditor() {
 
       <div
         className="grid min-h-[calc(100vh-64px)] min-w-0"
-        style={{
-          gridTemplateColumns: `${leftOpen ? "260px" : "64px"} minmax(0,1fr) ${rightOpen ? "290px" : "64px"}`,
-        }}
+        style={{ gridTemplateColumns: `${leftOpen ? "260px" : "64px"} minmax(0,1fr) ${rightOpen ? "290px" : "64px"}` }}
       >
         {leftOpen ? (
           <aside className="min-w-0 border-r bg-white p-3">
-            <button
-              type="button"
-              onClick={() => setLeftOpen(false)}
-              aria-label="Recolher menu de páginas e camadas"
-              title="Recolher menu"
-              className="mb-3 flex h-9 w-full items-center justify-end gap-2 rounded-lg border px-2 text-xs font-semibold hover:bg-slate-50"
-            >
+            <button type="button" onClick={() => setLeftOpen(false)} aria-label="Recolher menu de páginas e camadas" title="Recolher menu" className="mb-3 flex h-9 w-full items-center justify-end gap-2 rounded-lg border px-2 text-xs font-semibold hover:bg-slate-50">
               Recolher <ChevronLeft size={17} />
             </button>
             <div className="space-y-2">
@@ -1695,21 +1565,13 @@ export function VisualPageEditor() {
                     className={`flex items-center gap-1 rounded-lg border p-1 ${selected.some((x) => x.id === item.id && x.kind === item.kind) ? "border-primary bg-primary/5" : ""}`}
                   >
                     <button
-                      onClick={() =>
-                        item.kind === "native"
-                          ? abrirCamadaNativa(item.id, label)
-                          : setSelected([item])
-                      }
+                      onClick={() => item.kind === "native" ? abrirCamadaNativa(item.id, label) : setSelected([item])}
                       className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs font-semibold"
                     >
                       {label}
                     </button>
                     <button
-                      onClick={() =>
-                        item.kind === "native"
-                          ? abrirCamadaNativa(item.id, label, true)
-                          : toggleVisibility(item)
-                      }
+                      onClick={() => item.kind === "native" ? abrirCamadaNativa(item.id, label, true) : toggleVisibility(item)}
                       className="p-1 text-muted-foreground"
                     >
                       {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -1750,46 +1612,11 @@ export function VisualPageEditor() {
             </div>
           </aside>
         ) : (
-          <aside
-            className="flex min-w-0 flex-col items-center gap-3 border-r bg-white px-1 py-3"
-            aria-label="Menu de páginas e camadas recolhido"
-          >
-            <button
-              type="button"
-              onClick={() => setLeftOpen(true)}
-              aria-label="Expandir menu de páginas e camadas"
-              title="Expandir menu"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"
-            >
-              <ChevronRight size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setLeftOpen(true)}
-              aria-label="Páginas do ORICSE"
-              title="Páginas do ORICSE"
-              className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"
-            >
-              <Layers3 size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setLeftOpen(true)}
-              aria-label="Camadas"
-              title="Camadas"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100"
-            >
-              C
-            </button>
-            <button
-              type="button"
-              onClick={() => setLeftOpen(true)}
-              aria-label="Versões"
-              title="Versões"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100"
-            >
-              V
-            </button>
+          <aside className="flex min-w-0 flex-col items-center gap-3 border-r bg-white px-1 py-3" aria-label="Menu de páginas e camadas recolhido">
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Expandir menu de páginas e camadas" title="Expandir menu" className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronRight size={20} /></button>
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Páginas do ORICSE" title="Páginas do ORICSE" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"><Layers3 size={20} /></button>
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Camadas" title="Camadas" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">C</button>
+            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Versões" title="Versões" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">V</button>
           </aside>
         )}
 
@@ -1806,23 +1633,20 @@ export function VisualPageEditor() {
                 transform: `scale(${scale})`,
               }}
             >
-              {paginaResolvida && (
-                <iframe
-                  key={`${route}-${device}`}
-                  ref={iframeRef}
-                  src={`${route}${route.includes("?") ? "&" : "?"}visual_editor=1`}
-                  onLoad={bindFrame}
-                  title={`Editor de ${route}`}
-                  className="h-full w-full border-0 bg-white"
-                  style={{ width: frameWidth }}
-                />
-              )}
+              {paginaResolvida && <iframe
+                key={`${route}-${device}`}
+                ref={iframeRef}
+                src={`${route}${route.includes("?") ? "&" : "?"}visual_editor=1`}
+                onLoad={bindFrame}
+                title={`Editor de ${route}`}
+                className="h-full w-full border-0 bg-white"
+                style={{ width: frameWidth }}
+              />}
             </div>
           </div>
           <p className="mt-4 text-center text-xs text-slate-600">
             Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça
-            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção. Dê
-            dois cliques em uma imagem para recortar.
+            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção. Dê dois cliques em uma imagem para recortar.
           </p>
         </section>
 
@@ -1830,15 +1654,7 @@ export function VisualPageEditor() {
           <aside className="min-w-0 border-l bg-white p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="font-bold">Propriedades</h2>
-              <button
-                type="button"
-                onClick={() => setRightOpen(false)}
-                aria-label="Recolher propriedades"
-                title="Recolher propriedades"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-50"
-              >
-                <ChevronRight size={18} />
-              </button>
+              <button type="button" onClick={() => setRightOpen(false)} aria-label="Recolher propriedades" title="Recolher propriedades" className="flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronRight size={18} /></button>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {selected.length
@@ -1879,39 +1695,22 @@ export function VisualPageEditor() {
                       <Crop size={17} /> Recorte da imagem
                     </p>
                     <p className="mt-1 text-xs leading-5 text-slate-600">
-                      Dê dois cliques na imagem ou clique em Recortar. Arraste os quatro lados ou
-                      cantos para definir o corte.
+                      Dê dois cliques na imagem ou clique em Recortar. Arraste os quatro lados ou cantos para definir o corte.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCroppingId(croppingId === first?.id ? null : first?.id || null)
-                        }
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white"
-                      >
-                        <Crop size={15} />{" "}
-                        {croppingId === first?.id ? "Concluir recorte" : "Recortar imagem"}
+                      <button type="button"
+                        onClick={() => setCroppingId(croppingId === first?.id ? null : first?.id || null)}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white">
+                        <Crop size={15} /> {croppingId === first?.id ? "Concluir recorte" : "Recortar imagem"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          patchSelected({
-                            cropTop: 0,
-                            cropRight: 0,
-                            cropBottom: 0,
-                            cropLeft: 0,
-                          })
-                        }
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-bold"
-                      >
+                      <button type="button"
+                        onClick={() => patchSelected({ cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-bold">
                         <RotateCcw size={15} /> Restaurar original
                       </button>
                     </div>
                     {croppingId === first?.id && (
-                      <p className="mt-2 text-xs font-medium text-primary">
-                        Arraste as alças. O recorte é salvo sem apagar a imagem original.
-                      </p>
+                      <p className="mt-2 text-xs font-medium text-primary">Arraste as alças. O recorte é salvo sem apagar a imagem original.</p>
                     )}
                   </div>
                 )}
@@ -2097,37 +1896,10 @@ export function VisualPageEditor() {
             )}
           </aside>
         ) : (
-          <aside
-            className="flex min-w-0 flex-col items-center gap-3 border-l bg-white px-1 py-3"
-            aria-label="Propriedades recolhidas"
-          >
-            <button
-              type="button"
-              onClick={() => setRightOpen(true)}
-              aria-label="Expandir propriedades"
-              title="Expandir propriedades"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setRightOpen(true)}
-              aria-label="Propriedades do elemento"
-              title="Propriedades do elemento"
-              className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"
-            >
-              <Move size={19} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setRightOpen(true)}
-              aria-label="Editar texto e imagem"
-              title="Texto e imagem"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100"
-            >
-              T
-            </button>
+          <aside className="flex min-w-0 flex-col items-center gap-3 border-l bg-white px-1 py-3" aria-label="Propriedades recolhidas">
+            <button type="button" onClick={() => setRightOpen(true)} aria-label="Expandir propriedades" title="Expandir propriedades" className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronLeft size={20} /></button>
+            <button type="button" onClick={() => setRightOpen(true)} aria-label="Propriedades do elemento" title="Propriedades do elemento" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"><Move size={19} /></button>
+            <button type="button" onClick={() => setRightOpen(true)} aria-label="Editar texto e imagem" title="Texto e imagem" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">T</button>
           </aside>
         )}
       </div>
