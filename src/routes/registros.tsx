@@ -282,6 +282,13 @@ function Registros() {
       </h2>
 
       <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/internacao" })}
+          className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          Inserir aferições
+        </button>
         {registros.length > 0 && (
           <button
             type="button"
