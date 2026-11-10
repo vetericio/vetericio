@@ -416,15 +416,12 @@ function PaginaInicialPlataforma() {
             <div className="relative inline-flex min-h-[72px] max-w-full items-center rounded-2xl border border-white/15 bg-white/[.06] py-2 pl-[164px] pr-5">
               <img src={ORICSTUDIO_LOGO} alt="" className="absolute left-2 top-1/2 z-10 -mt-2 h-[152px] w-[152px] max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-xl bg-white p-1 object-contain"/>
               <span className="block min-w-0">
-                <span className="block text-sm font-extrabold tracking-tight text-white">OricStúdio</span>
+                <span className="block text-[21px] font-extrabold leading-none tracking-tight text-white">OricStúdio</span>
                 <span className="block text-[10px] font-semibold uppercase tracking-[.14em] text-[#e5b9c7]">Marketing pensado para o mercado pet</span>
               </span>
             </div>
 
-            <p className="mt-9 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-[#f4bdcb]">
-              <Sparkles size={15}/> Sua marca merece aparecer
-            </p>
-            <h2 id="oricstudio-titulo" className="mt-4 max-w-[640px] font-display text-[clamp(2.65rem,4.5vw,4.75rem)] font-semibold leading-[1.07] tracking-[-.06em]">
+            <h2 id="oricstudio-titulo" className="mt-9 max-w-[640px] font-display text-[clamp(2.65rem,4.5vw,4.75rem)] font-semibold leading-[1.07] tracking-[-.06em]">
               Quem cuida tão bem merece <span className="text-[#f5c6a8]">ser lembrado.</span>
             </h2>
             <p className="mt-6 max-w-[540px] text-[16px] leading-[1.8] text-[#f2d8df]/85 sm:text-[17px]">
@@ -449,6 +446,9 @@ function PaginaInicialPlataforma() {
           </div>
 
           <div className="relative mx-auto flex w-full max-w-[640px] justify-start pb-4 pt-5 sm:min-h-[610px] sm:items-center sm:pl-5">
+            <p className="absolute left-5 top-0 z-10 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-[#f4bdcb] sm:left-10">
+              <Sparkles size={15}/> Sua marca merece aparecer
+            </p>
             <div aria-hidden="true" className="absolute left-[8%] top-[15%] h-[440px] w-[440px] rounded-full border border-[#ffdfc8]/10 bg-[#7d455b]/15 blur-[2px]"/>
             <div aria-hidden="true" className="absolute right-0 top-[8%] h-[320px] w-[320px] rounded-full border border-white/10"/>
 
