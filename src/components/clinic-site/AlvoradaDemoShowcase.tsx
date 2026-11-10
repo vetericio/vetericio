@@ -1,4 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ArrowRight, ArrowUpRight, Check, Eye, Layers3, MousePointerClick, Sparkles } from "lucide-react";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 import {
@@ -24,6 +27,74 @@ type Props = {
  */
 export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "alvorada" }: Props) {
   const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate);
+  const [imagens, setImagens] = useState<Partial<Record<ClinicSiteTemplate, Record<string, string>>>>({});
+  const [podeEditar, setPodeEditar] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const chaveFotos = "alvorada_vitrine_fotos_por_tema_v1";
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const { data: current } = await (supabase as any)
+        .from("oricse_config").select("valor").eq("chave", chaveFotos).maybeSingle();
+      if (alive && current?.valor && typeof current.valor === "object" && !Array.isArray(current.valor))
+        setImagens(current.valor as Partial<Record<ClinicSiteTemplate, Record<string, string>>>);
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.id) return;
+      const { data: access } = await (supabase as any)
+        .from("app_users").select("role").eq("user_id", auth.user.id).maybeSingle();
+      if (alive) setPodeEditar(access?.role === "admin");
+    })().catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  async function enviarImagem(slot: string, file: File) {
+    if (!podeEditar || uploadingSlot) return;
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type))
+      return toast.error("Selecione PNG, JPG, WebP ou GIF.");
+    if (file.size > 10 * 1024 * 1024)
+      return toast.error("A imagem deve ter no máximo 10 MB.");
+    setUploadingSlot(slot);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) throw new Error("Sessão expirada.");
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Erro ao ler a imagem."));
+        reader.readAsDataURL(file);
+      });
+      const response = await enviarArquivoPublicoPlataforma({
+        data: {
+          accessToken: session.session.access_token,
+          nome: `alvorada-${modelo}-${slot}-${file.name}`.slice(0, 220),
+          mimeType: file.type,
+          base64,
+        },
+      });
+      if (!response.url) throw new Error("O Google Drive não retornou o endereço da imagem.");
+      // Atualiza o estado remoto primeiro para não apagar uploads de outras sessões.
+      const { data: current, error: readError } = await (supabase as any)
+        .from("oricse_config").select("id,valor").eq("chave", chaveFotos).maybeSingle();
+      if (readError) throw readError;
+      const remote = current?.valor && typeof current.valor === "object" && !Array.isArray(current.valor)
+        ? current.valor as Partial<Record<ClinicSiteTemplate, Record<string, string>>> : {};
+      const updated = {
+        ...remote,
+        [modelo]: { ...(remote[modelo] || {}), [slot]: response.url },
+      };
+      const { error } = await (supabase as any).from("oricse_config")
+        .upsert({ ...(current?.id ? { id: current.id } : {}), chave: chaveFotos, valor: updated, updated_at: new Date().toISOString() },
+          { onConflict: "chave" });
+      if (error) throw error;
+      setImagens(updated);
+      toast.success("Foto salva neste tema da Alvorada.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha no envio da foto.");
+    } finally {
+      setUploadingSlot(null);
+    }
+  }
   const preset = clinicSitePresets[modelo];
   // Use as fotos publicadas pela clínica; nunca as substitua por miniaturas.
   const configDeDemonstracao = useMemo<ClinicSiteConfig>(() => ({
@@ -154,7 +225,10 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         aria-labelledby={`modelo-alvorada-${modelo}`}
         className="scroll-mt-[110px] min-h-[65vh]"
       >
-        <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug} />
+        <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug}
+          imageOverrides={imagens[modelo] || {}}
+          onUploadImage={podeEditar ? enviarImagem : undefined}
+          uploadingSlot={uploadingSlot} />
       </div>
     </div>
   );
