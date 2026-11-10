@@ -1,3 +1,4 @@
+// Prontuário estruturado com versão original preservada e adendos.
 import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, ClipboardList, History, Save, Stethoscope } from "lucide-react";
