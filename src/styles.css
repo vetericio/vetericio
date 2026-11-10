@@ -1496,15 +1496,19 @@
   box-shadow: 0 10px 28px rgba(0,0,0,.06);
 }
 .portal-tutor-login-screen[data-clinic-slug="alvorada"] .portal-one-screen-logo-white {
+  isolation: isolate;
   background: radial-gradient(
-    ellipse at center,
+    ellipse 78% 76% at center,
     #fff 0%,
-    rgba(255, 255, 255, .98) 46%,
-    rgba(255, 255, 255, .78) 68%,
+    rgba(255, 255, 255, .98) 28%,
+    rgba(255, 255, 255, .78) 53%,
     rgba(255, 255, 255, 0) 100%
   ) !important;
   border-color: transparent;
   box-shadow: none;
+}
+.portal-tutor-login-screen[data-clinic-slug="alvorada"] .portal-one-screen-clinic-logo {
+  mix-blend-mode: darken;
 }
 .portal-one-screen-logo-white .portal-one-screen-clinic-logo {
   display: block;
