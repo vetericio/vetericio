@@ -381,7 +381,7 @@ function PaginaInicialPlataforma() {
           <div className="relative z-10">
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[.06] p-2 pr-5">
               <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5">
-                <img src={ORICSTUDIO_LOGO} alt="" className="h-full w-full object-contain scale-[1.35]"/>
+                <img src={ORICSTUDIO_LOGO} alt="" className="h-full w-full object-contain scale-[2.5]"/>
               </span>
               <span className="block">
                 <span className="block text-sm font-extrabold tracking-tight text-white">OricStúdio</span>
