@@ -88,7 +88,7 @@ export function AtualizarEmBloco({ aberto, onFechar, registros, onAplicar }: Pro
             <p className="text-sm text-muted-foreground">Nenhum animal internado.</p>
           )}
           {ordenados.map((r) => {
-            const atual = r[chave].trim();
+            const atual = String(r[chave] || "").trim();
             return (
               <div
                 key={r.id}
