@@ -1,5 +1,6 @@
 import { Fragment, memo, useCallback, useRef, useState } from "react";
 import {
+  ESPECIES,
   OPCOES,
   avaliarValor,
   comLinha,
@@ -32,6 +33,7 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
 import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
+import { Search } from "lucide-react";
 
 function alternarOpcaoLista(valor: string, opcao: string): string {
   const selecionadas = valor.split(" · ").filter(Boolean);
@@ -127,6 +129,7 @@ export function FormAvaliacao({
   const [alertados, setAlertados] = useState<string[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
   const [especieAberto, setEspecieAberto] = useState(false);
+  const [buscaEspecie, setBuscaEspecie] = useState("");
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
   const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
@@ -349,20 +352,36 @@ export function FormAvaliacao({
           </label>
           {(() => {
             const ehOutraEspecie = Boolean(valores.especie) && valores.especie !== "Cachorro" && valores.especie !== "Gato";
-            const rotuloEspecie = !valores.especie
-              ? "Selecione a espécie"
-              : ehOutraEspecie && valores.especie !== "Outro"
-                ? `Outro — ${valores.especie}`
-                : valores.especie;
+            const especiesOutras = ESPECIES.filter((esp) => !["Cachorro", "Gato", "Outro"].includes(esp));
+            const especiesFiltradas = especiesOutras.filter((esp) => esp.toLocaleLowerCase("pt-BR").includes(buscaEspecie.toLocaleLowerCase("pt-BR")));
             return (
               <>
-                <button type="button" aria-label="Selecionar espécie" aria-expanded={especieAberto} onClick={() => setEspecieAberto((aberto) => !aberto)} className="mt-1 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
-                  <span>{rotuloEspecie}</span><span aria-hidden="true">▾</span>
-                </button>
-                {especieAberto && <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-2 shadow-lg">
-                  {(["Cachorro", "Gato", "Outro"] as const).map((esp) => <button key={esp} type="button" onClick={() => { onChange({ ...valores, especie: esp }); setEspecieAberto(false); }} className={["min-h-10 w-full rounded-lg px-3 text-left text-sm", (esp === "Outro" ? ehOutraEspecie : valores.especie === esp) ? "bg-primary font-semibold text-primary-foreground" : "text-foreground hover:bg-secondary"].join(" ")}>{esp}</button>)}
-                </div>}
-                {ehOutraEspecie && <input aria-label="Especifique a espécie" autoFocus={valores.especie === "Outro"} value={valores.especie === "Outro" ? "" : valores.especie} onChange={(e) => onChange({ ...valores, especie: e.target.value || "Outro" })} placeholder="Qual espécie?" className="mt-2 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />}
+                <div role="radiogroup" aria-label="Espécie" className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                  {(["Cachorro", "Gato"] as const).map((esp) => (
+                    <label key={esp} className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+                      <input type="radio" name="especie-animal" value={esp} checked={valores.especie === esp} onChange={() => { onChange({ ...valores, especie: esp }); setEspecieAberto(false); }} className="h-4 w-4 accent-primary" />
+                      {esp}
+                    </label>
+                  ))}
+                  <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+                    <input type="radio" name="especie-animal" value="Outro" checked={ehOutraEspecie} onChange={() => { if (!ehOutraEspecie) onChange({ ...valores, especie: "Outro" }); setBuscaEspecie(""); setEspecieAberto(true); }} className="h-4 w-4 accent-primary" />
+                    Outro
+                  </label>
+                </div>
+                {ehOutraEspecie && (
+                  <div className="relative mt-2">
+                    <button type="button" aria-label="Selecionar outra espécie" aria-expanded={especieAberto} onClick={() => { setEspecieAberto((aberto) => !aberto); setBuscaEspecie(""); }} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
+                      <span>{valores.especie === "Outro" ? "Selecione outra espécie" : valores.especie}</span><span aria-hidden="true">▾</span>
+                    </button>
+                    {especieAberto && <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-2 shadow-lg">
+                      <label className="flex items-center gap-2 rounded-lg border border-input px-3 text-muted-foreground"><Search size={16} aria-hidden="true" /><input autoFocus aria-label="Buscar espécie" value={buscaEspecie} onChange={(e) => setBuscaEspecie(e.target.value)} placeholder="Buscar espécie" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none" /></label>
+                      <div className="mt-2 max-h-52 overflow-y-auto">
+                        {especiesFiltradas.map((esp) => <button key={esp} type="button" onClick={() => { onChange({ ...valores, especie: esp as Especie }); setEspecieAberto(false); }} className={["min-h-10 w-full rounded-lg px-3 text-left text-sm", valores.especie === esp ? "bg-primary font-semibold text-primary-foreground" : "text-foreground hover:bg-secondary"].join(" ")}>{esp}</button>)}
+                        {especiesFiltradas.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Nenhuma espécie encontrada.</p>}
+                      </div>
+                    </div>}
+                  </div>
+                )}
               </>
             );
           })()}
