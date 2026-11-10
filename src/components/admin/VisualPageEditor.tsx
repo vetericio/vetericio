@@ -32,6 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ROTAS_CATALOGO } from "@/lib/admin-page-routes";
+import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { useAdminNavigation } from "@/components/admin/AdminShell";
 import {
   applyVisualLayout,
@@ -887,19 +888,22 @@ export function VisualPageEditor() {
     }
     setUploadingImage(true);
     try {
-      const extension = ({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[file.type];
-      const path = `admin-canvas/${crypto.randomUUID()}.${extension}`;
-      const { error } = await supabase.storage.from("oricse-branding").upload(path, file, {
-        contentType: file.type,
-        upsert: false,
-        cacheControl: "31536000",
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (sessionError || !accessToken) throw new Error("Sessão expirada. Entre novamente no sistema.");
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Não foi possível ler a imagem."));
+        reader.readAsDataURL(file);
       });
-      if (error) throw error;
-      const { data } = supabase.storage.from("oricse-branding").getPublicUrl(path);
-      if (!data.publicUrl || !validImageSource(data.publicUrl)) throw new Error("Não foi possível obter a URL da imagem.");
+      const upload = await enviarArquivoPublicoPlataforma({
+        data: { accessToken, nome: file.name, mimeType: file.type, base64 },
+      });
+      if (!upload.url || !validImageSource(upload.url)) throw new Error("O Google Drive não retornou uma imagem válida.");
       const id = uid("image");
       updateLayout((value) => value.added.push({
-        id, kind: "image", src: data.publicUrl, text: file.name,
+        id, kind: "image", src: upload.url, text: file.name,
         style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
       }));
       setSelected([{ id, kind: "added" }]);
