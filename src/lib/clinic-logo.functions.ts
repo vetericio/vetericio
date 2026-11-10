@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { enviarArquivoDrive } from "@/lib/drive.functions";
+import { excluirArquivoDrive, enviarArquivoDrive } from "@/lib/drive.functions";
 const inputSchema = z.object({
   accessToken: z.string().min(20),
   clinicaId: z.string().uuid(),
@@ -75,8 +75,20 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
         .from("clinicas")
         .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
         .eq("id", data.clinicaId);
-      if (erroClinica)
-        throw new Error("Logo enviada, mas não foi possível vinculá-la à clínica.");
+      if (erroClinica) {
+        try {
+          await excluirArquivoDrive({
+            data: {
+              accessToken: data.accessToken,
+              clinicaId: data.clinicaId,
+              registroId: upload.registroId,
+            },
+          });
+        } catch {
+          // Preserve a falha original; a limpeza poderá ser repetida pela equipe.
+        }
+        throw new Error("Não foi possível vincular a logo à clínica.");
+      }
     }
 
     return { ok: true, logoUrl, caminho: upload.registroId };
