@@ -9,6 +9,7 @@ import {
   MapPin,
   MessageCircle,
   PawPrint,
+  ImagePlus,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -22,7 +23,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string };
+type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: "hero" | "about", file: File) => void; uploadingSlot?: "hero" | "about" | null };
 const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.trim() : "");
 const safeTeamPhoto = (input: string) => {
   const value = safeHttps(input);
@@ -56,7 +57,7 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
   />;
 }
 
-export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
+export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, uploadingSlot }: Props) {
   const signatura = template === "signatura";
   const luxe = template === "prestige";
   const prime = template === "atelier";
@@ -102,6 +103,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
     "/clinic-site/alvorada/elan-mulher-cachorro.png",
   ];
   const image =
+    (publishedSlug === "alvorada" ? safeHttps(config.heroImageUrl) : "") ||
     (elanAlvorada ? elanFotos[0] : "") ||
     (classAlvorada ? "/clinic-site/class/intro-veterinaria-gato.webp" : "") ||
     safeHttps(config.heroImageUrl) ||
@@ -125,6 +127,30 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
         : friendly
           ? ["/clinic-site/class/consulta-colorida.png"]
           : ["/clinic-site/king/gato-editorial.png"];
+  const aboutImage = publishedSlug === "alvorada" && configuredGallery[0]
+    ? configuredGallery[0]
+    : (classAlvorada ? gallery[1] : gallery[0]);
+  // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
+  const uploadButton = (slot: "hero" | "about") => onUploadImage && publishedSlug === "alvorada" ? (
+    <label
+      className="absolute bottom-3 right-3 z-30 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-xs font-bold text-slate-900 shadow-lg hover:bg-white"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <ImagePlus size={15} />
+      {uploadingSlot === slot ? "Enviando…" : "Enviar foto"}
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="sr-only"
+        disabled={!!uploadingSlot}
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) onUploadImage(slot, file);
+          event.currentTarget.value = "";
+        }}
+      />
+    </label>
+  ) : null;
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
@@ -215,6 +241,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
           </span>
         </div>
       )}
+      {uploadButton("hero")}
       {(luxe || organic || signatura || prime || friendly) && (
         <div className="pointer-events-none absolute bottom-5 left-5 rounded-xl border border-white/40 bg-black/40 px-5 py-3 text-xs font-semibold tracking-wide text-white backdrop-blur-md">
           {prime
@@ -324,9 +351,9 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
               }
               style={{ backgroundColor: "var(--site-bg)" }}
             >
-              {(classAlvorada ? gallery[1] : gallery[0]) ? (
+              {aboutImage ? (
                 <img
-                  src={classAlvorada ? gallery[1] : gallery[0]}
+                  src={aboutImage}
                   alt={"Nossa estrutura - " + config.name}
                   className="h-full w-full object-cover"
                 />
@@ -339,6 +366,7 @@ export function ClinicSiteFull({ template, config, clinicSlug }: Props) {
                 </div>
               )}
             </div>
+            {uploadButton("about")}
           </div>
           <div>
             {heading("Quem somos", config.aboutTitle || "Uma clínica feita para cuidar.")}
