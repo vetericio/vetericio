@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -57,7 +57,7 @@ export function VisualPageRuntime() {
     setRevision((value) => value + 1);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const onPublished = () => requestRefresh();
     const onStorage = (event: StorageEvent) => {
       if (event.key === SYNC_STORAGE_KEY) requestRefresh();
@@ -139,7 +139,22 @@ export function VisualPageRuntime() {
 
     const onResize = () => scheduleApply();
     window.addEventListener("resize", onResize);
-    void loadPublished();
+    // A home pública entrega o layout publicado junto do HTML. Aplicá-lo no
+    // layout effect evita que a primeira pintura mostre uma versão e, depois,
+    // a consulta do Supabase reposicione logo, textos ou botões.
+    const bootstrap = document.getElementById("oricse-visual-bootstrap");
+    if (bootstrap?.textContent) {
+      try {
+        published = JSON.parse(bootstrap.textContent) as VisualDocument;
+        observer = new MutationObserver(scheduleApply);
+        apply();
+      } catch (error) {
+        console.error("Não foi possível ler o layout visual inicial:", error);
+        void loadPublished();
+      }
+    } else {
+      void loadPublished();
+    }
 
     return () => {
       active = false;

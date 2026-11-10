@@ -4,6 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_UR
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc";
 
 export type PublicClinicSite = { slug: string; template: string; config: ClinicSiteConfig };
+export type PublicVisualDocument = { version: 1; updatedAt: string; pages: Record<string, any> };
 type PublicClinic = { clinica_slug?: string | null };
 
 export function normalizeHostname(value: string | null | undefined): string {
@@ -35,4 +36,18 @@ export async function loadPublicClinicSite(slug: string): Promise<PublicClinicSi
   const response = await fetch(`${supabaseUrl}/rest/v1/clinic_sites?${query}`, { headers: publicHeaders(), signal: AbortSignal.timeout(4000) });
   if (!response.ok) throw new Error(`Não foi possível carregar o site da clínica (${response.status}).`);
   return (await response.json() as PublicClinicSite[])[0] || null;
+}
+
+
+/** Layout publicado para a primeira pintura pública; rascunhos nunca são expostos. */
+export async function loadPublicVisualDocument(): Promise<PublicVisualDocument> {
+  const query = new URLSearchParams({ select: "valor", chave: "eq.visual_editor_published", limit: "1" });
+  const response = await fetch(`${supabaseUrl}/rest/v1/oricse_config?${query}`, {
+    headers: publicHeaders(),
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!response.ok) throw new Error(`Não foi possível carregar o layout publicado (${response.status}).`);
+  const rows = await response.json() as Array<{ valor?: unknown }>;
+  const value = rows[0]?.valor;
+  return value && typeof value === "object" ? value as PublicVisualDocument : { version: 1, updatedAt: "", pages: {} };
 }
