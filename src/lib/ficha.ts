@@ -606,7 +606,7 @@ export function aplicarAtualizacao(
   if (!novo) return registro;
   const atualizado: Registro = {
     ...registro,
-    [chave]: mesclarValores(registro[chave], novo),
+    [chave]: mesclarValores(registro[chave] || "", novo),
   };
   if (ehChaveNumerica(chave)) {
     let obs = comLinha(atualizado.observacoes, fraseAtualizacao(chave, novo, data));
