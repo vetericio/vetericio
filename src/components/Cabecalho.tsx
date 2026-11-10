@@ -79,9 +79,9 @@ export function Cabecalho({
       >
         <div className={plantaoArea ? "mb-1 flex justify-center" : "mb-0 flex justify-center"}>
           <img
-            src="/oricse-logo.png"
+            src="/oricse-logo-oryx.svg?v=15"
             alt="Oricse — sistema veterinário e petshop"
-            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[180px] sm:max-w-[220px]" : "max-w-[90px] sm:max-w-[110px]"}`}
+            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[90px] sm:max-w-[110px]" : "max-w-[90px] sm:max-w-[110px]"}`}
           />
         </div>
 
