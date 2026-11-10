@@ -230,6 +230,8 @@ function PaginaInicialPlataforma() {
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-logo-oricse"] {
             width: clamp(210px, 18vw, 300px);
             height: clamp(210px, 18vw, 300px);
+            aspect-ratio: 1 / 1;
+            display: block;
             object-fit: contain;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
