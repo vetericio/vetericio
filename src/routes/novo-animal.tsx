@@ -186,7 +186,7 @@ function NovoAnimal() {
     const nomeNormalizado = form.nome.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const homonimos = (animaisDoTutor || []).filter((item: any) => item.id !== animalId && String(item.nome || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === nomeNormalizado);
     if (homonimos.length && !window.confirm("Este tutor já possui um animal com o mesmo nome. Deseja continuar?")) return;
-    const microchip = form.microchip.trim();
+    const microchip = (form.microchip || "").trim();
     if (microchip && (animaisDoTutor || []).some((item: any) => item.id !== animalId && String(item.microchip || "").trim() === microchip)) return toast.error("Este microchip já está cadastrado para outro animal deste tutor.");
     const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
     if(error)return toast.error(error.message);
