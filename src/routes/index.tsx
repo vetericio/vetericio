@@ -276,6 +276,7 @@ function PaginaInicialPlataforma() {
             z-index: 10;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-legenda-inferior"] {
+            display: none;
             position: absolute;
             bottom: 1%;
             left: 58%;
