@@ -36,11 +36,7 @@ type Props = {
  * A troca do modelo é uma prévia local: nunca modifica as tabelas
  * clinic_sites / clinic_site_drafts e não depende de acesso administrativo.
  */
-export function AlvoradaDemoShowcase({
-  initialTemplate,
-  config,
-  clinicSlug = "alvorada",
-}: Props) {
+export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "alvorada" }: Props) {
   const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate);
   const [imagens, setImagens] = useState<
     Partial<Record<ClinicSiteTemplate, Record<string, string>>>
@@ -55,17 +51,8 @@ export function AlvoradaDemoShowcase({
     let alive = true;
     void (async () => {
       const current = await buscarFotosPublicasAlvorada();
-      if (
-        alive &&
-        current &&
-        typeof current === "object" &&
-        !Array.isArray(current)
-      )
-        setImagens(
-          current as Partial<
-            Record<ClinicSiteTemplate, Record<string, string>>
-          >,
-        );
+      if (alive && current && typeof current === "object" && !Array.isArray(current))
+        setImagens(current as Partial<Record<ClinicSiteTemplate, Record<string, string>>>);
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user?.id) return;
       const { data: access } = await (supabase as any)
@@ -82,14 +69,9 @@ export function AlvoradaDemoShowcase({
 
   async function enviarImagem(slot: string, file: File) {
     if (uploadingSlot) return;
-    if (
-      !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(
-        file.type,
-      )
-    )
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type))
       return toast.error("Selecione PNG, JPG, WebP ou GIF.");
-    if (file.size > 10 * 1024 * 1024)
-      return toast.error("A imagem deve ter no máximo 10 MB.");
+    if (file.size > 10 * 1024 * 1024) return toast.error("A imagem deve ter no máximo 10 MB.");
     setUploadingSlot(slot);
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -100,8 +82,7 @@ export function AlvoradaDemoShowcase({
       });
       const response = await enviarArquivoPublicoPlataforma({
         data: {
-          accessToken:
-            (await supabase.auth.getSession()).data.session?.access_token || "",
+          accessToken: (await supabase.auth.getSession()).data.session?.access_token || "",
           nome: `alvorada-${modelo}-${slot}-${file.name}`.slice(0, 220),
           mimeType: file.type,
           base64,
@@ -110,8 +91,7 @@ export function AlvoradaDemoShowcase({
           slot,
         },
       });
-      if (!response.url)
-        throw new Error("O Google Drive não retornou o endereço da imagem.");
+      if (!response.url) throw new Error("O Google Drive não retornou o endereço da imagem.");
       setImagens((current) => ({
         ...current,
         [modelo]: { ...(current[modelo] || {}), [slot]: response.url },
@@ -119,9 +99,7 @@ export function AlvoradaDemoShowcase({
       setUploadReadySlot(`${modelo}:${slot}`);
       toast.success("Foto salva neste tema da Alvorada.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Falha no envio da foto.",
-      );
+      toast.error(error instanceof Error ? error.message : "Falha no envio da foto.");
     } finally {
       setUploadingSlot(null);
     }
@@ -137,9 +115,7 @@ export function AlvoradaDemoShowcase({
   const configDeDemonstracao = useMemo<ClinicSiteConfig>(
     () => ({
       ...config,
-      hiddenSections: config.hiddenSections.filter(
-        (section) => section !== "equipe",
-      ),
+      hiddenSections: config.hiddenSections.filter((section) => section !== "equipe"),
       primaryColor: preset.primaryColor,
       secondaryColor: preset.secondaryColor,
       backgroundColor: preset.backgroundColor,
@@ -178,8 +154,7 @@ export function AlvoradaDemoShowcase({
         <div className="relative mx-auto flex max-w-7xl flex-col gap-5 px-5 pb-7 pt-7 sm:px-8 sm:pb-9 sm:pt-9 lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:px-10">
           <div className="max-w-3xl">
             <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.22em] text-[#efc8a8]">
-              <Sparkles size={16} aria-hidden="true" /> Oricse · Vitrine
-              interativa
+              <Sparkles size={16} aria-hidden="true" /> Oricse · Vitrine interativa
             </p>
             <h1
               id="alvorada-vitrine-titulo"
@@ -188,9 +163,8 @@ export function AlvoradaDemoShowcase({
               Versões dos sites disponíveis
             </h1>
             <p className="mt-3 max-w-[680px] text-sm leading-6 text-white/80 sm:text-base sm:leading-7">
-              Uma clínica, sete estilos para impressionar. Escolha um modelo
-              abaixo e veja o site inteiro se transformar na hora — sem sair
-              desta página.
+              Uma clínica, sete estilos para impressionar. Escolha um modelo abaixo e veja o site
+              inteiro se transformar na hora — sem sair desta página.
             </p>
           </div>
           <a
@@ -206,11 +180,7 @@ export function AlvoradaDemoShowcase({
         <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
             <p className="flex items-center gap-2 text-xs font-extrabold tracking-tight text-[#402535]">
-              <Layers3
-                size={15}
-                aria-hidden="true"
-                className="text-[#9d6378]"
-              />
+              <Layers3 size={15} aria-hidden="true" className="text-[#9d6378]" />
               Explore os 7 modelos
               <span className="ml-1 hidden text-[11px] font-medium text-[#8d7680] sm:inline">
                 · mesmo conteúdo, novas identidades
@@ -283,12 +253,8 @@ export function AlvoradaDemoShowcase({
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]">
             <p className="flex items-center gap-2 text-[#6a5260]">
               <Eye size={15} aria-hidden="true" className="text-[#97536b]" />
-              <strong className="text-[#492b38]">
-                {clinicSiteTemplateLabels[modelo]}
-              </strong>
-              <span className="hidden sm:inline">
-                · {clinicSiteTemplateDescriptions[modelo]}
-              </span>
+              <strong className="text-[#492b38]">{clinicSiteTemplateLabels[modelo]}</strong>
+              <span className="hidden sm:inline">· {clinicSiteTemplateDescriptions[modelo]}</span>
             </p>
             <span className="font-semibold tabular-nums text-[#9a7e87]">
               Modelo {String(indice).padStart(2, "0")} de 07
