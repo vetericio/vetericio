@@ -55,7 +55,11 @@ import {
   VISUAL_VERSIONS_KEY,
 } from "@/lib/visual-editor";
 
-type Version = { id: string; publishedAt: string; pages: VisualDocument["pages"] };
+type Version = {
+  id: string;
+  publishedAt: string;
+  pages: VisualDocument["pages"];
+};
 type SelectedItem = { id: string; kind: "patch" | "added" };
 
 type ConflictReview = {
@@ -63,14 +67,22 @@ type ConflictReview = {
   remote?: VisualDocument;
   overlaps: string[];
 };
-const EDITOR_KEYS = [VISUAL_PUBLISHED_KEY, VISUAL_DRAFT_KEY, VISUAL_VERSIONS_KEY] as const;
+const EDITOR_KEYS = [
+  VISUAL_PUBLISHED_KEY,
+  VISUAL_DRAFT_KEY,
+  VISUAL_VERSIONS_KEY,
+] as const;
 type ConfigRow = { id?: string; chave?: string; valor?: unknown };
 function sameEditorJson(a: unknown, b: unknown) {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
 /** Reconcilia páginas por dispositivo. Conflitos reais exigem decisão explícita. */
-function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote: VisualDocument) {
+function reconcileEditor(
+  baseline: VisualDocument,
+  local: VisualDocument,
+  remote: VisualDocument,
+) {
   const merged = cloneVisual(remote);
   const overlaps: string[] = [];
   const routes = new Set([
@@ -87,7 +99,9 @@ function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote
       const remoteChanged = !sameEditorJson(before, theirs);
       if (!localChanged) continue;
       if (remoteChanged && !sameEditorJson(mine, theirs)) {
-        overlaps.push(page + " (" + (device === "desktop" ? "computador" : "celular") + ")");
+        overlaps.push(
+          page + " (" + (device === "desktop" ? "computador" : "celular") + ")",
+        );
         continue;
       }
       if (!merged.pages[page])
@@ -100,7 +114,6 @@ function reconcileEditor(baseline: VisualDocument, local: VisualDocument, remote
   }
   return { merged, overlaps };
 }
-
 
 /** Elementos reais da home, disponíveis no painel sem alterar rascunhos salvos. */
 const CAMADAS_INICIAIS_HOME = [
@@ -120,8 +133,10 @@ const CAMADAS_INICIAIS_HOME = [
   ["home-legenda-inferior", "Legenda inferior do banner"],
 ] as const;
 
-const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-const deviceWidth = (device: VisualDevice) => (device === "desktop" ? 1440 : 390);
+const uid = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const deviceWidth = (device: VisualDevice) =>
+  device === "desktop" ? 1440 : 390;
 
 function number(value: string, fallback = 0) {
   const parsed = Number(value);
@@ -137,13 +152,19 @@ export function VisualPageEditor() {
     if (typeof window === "undefined") return "/";
     const params = new URLSearchParams(window.location.search);
     const solicitado = params.get("pagina") || "/";
-    const loginPortal = solicitado.startsWith("/portal-tutores")
-      && (solicitado.includes("portal_login_preview=1")
-        || params.get("portal_login_preview") === "1");
-    const pagina = loginPortal ? "/portal-tutores?portal_login_preview=1" : solicitado;
+    const loginPortal =
+      solicitado.startsWith("/portal-tutores") &&
+      (solicitado.includes("portal_login_preview=1") ||
+        params.get("portal_login_preview") === "1");
+    const pagina = loginPortal
+      ? "/portal-tutores?portal_login_preview=1"
+      : solicitado;
     return ROTAS_CATALOGO.some(
-      (r) => r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
-    ) ? pagina : "/";
+      (r) =>
+        r.original === pagina && !r.dinamica && r.original !== "/admin-canvas",
+    )
+      ? pagina
+      : "/";
   };
   // O servidor não tem acesso ao endereço do navegador: só renderize a
   // prévia depois de resolver a seleção no cliente, sem erro de hidratação.
@@ -217,7 +238,9 @@ export function VisualPageEditor() {
         .eq("user_id", auth.user.id)
         .maybeSingle();
       if (access?.role !== "admin") {
-        toast.error("O editor visual é exclusivo do administrador da plataforma.");
+        toast.error(
+          "O editor visual é exclusivo do administrador da plataforma.",
+        );
         window.location.replace("/inicio");
         return;
       }
@@ -240,13 +263,17 @@ export function VisualPageEditor() {
       ]);
       const error = draft.error || published.error || history.error;
       if (error) {
-        setLoadError(error.message || "Não foi possível ler a configuração da página.");
+        setLoadError(
+          error.message || "Não foi possível ler a configuração da página.",
+        );
         setLoading(false);
         return;
       }
       recordIdsRef.current = Object.fromEntries(
         [draft.data, published.data, history.data]
-          .filter((row: ConfigRow | null): row is ConfigRow => Boolean(row?.id && row?.chave))
+          .filter((row: ConfigRow | null): row is ConfigRow =>
+            Boolean(row?.id && row?.chave),
+          )
           .map((row: ConfigRow) => [row.chave!, row.id!]),
       );
       const documentLoaded = cloneVisual(
@@ -263,7 +290,10 @@ export function VisualPageEditor() {
   // O histórico usa referências sincronizadas, inclusive durante arrastes rápidos.
   // Um checkpoint representa uma ação completa, não cada pixel movimentado.
   const checkpoint = useCallback(() => {
-    undoRef.current = [...undoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    undoRef.current = [
+      ...undoRef.current.slice(-39),
+      cloneVisual(documentRef.current),
+    ];
     redoRef.current = [];
     setUndo(undoRef.current);
     setRedo([]);
@@ -281,10 +311,18 @@ export function VisualPageEditor() {
     [checkpoint, route, device],
   );
 
-  const camadasNativasHome = useMemo(() => route === "/"
-    ? CAMADAS_INICIAIS_HOME.filter(([id]) =>
-        !layout.patches.some((patch) => patch.selector === `[data-visual-id="${id}"]`))
-    : [], [route, layout.patches]);
+  const camadasNativasHome = useMemo(
+    () =>
+      route === "/"
+        ? CAMADAS_INICIAIS_HOME.filter(
+            ([id]) =>
+              !layout.patches.some(
+                (patch) => patch.selector === `[data-visual-id="${id}"]`,
+              ),
+          )
+        : [],
+    [route, layout.patches],
+  );
 
   /** Seleciona uma camada já existente no site, sem criar objetos artificiais. */
   function abrirCamadaNativa(id: string, label: string, ocultar = false) {
@@ -295,14 +333,15 @@ export function VisualPageEditor() {
       toast.error("Esta camada ainda não carregou na prévia.");
       return;
     }
-    const existing = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
-      (item) => item.selector === selector,
-    );
+    const existing = ensurePage(cloneVisual(documentRef.current), route)[
+      device
+    ].patches.find((item) => item.selector === selector);
     if (existing) {
-      if (ocultar) updateLayout((value) => {
-        const alvo = value.patches.find((x) => x.id === existing.id);
-        if (alvo) alvo.hidden = true;
-      });
+      if (ocultar)
+        updateLayout((value) => {
+          const alvo = value.patches.find((x) => x.id === existing.id);
+          if (alvo) alvo.hidden = true;
+        });
       setSelected([{ id: existing.id, kind: "patch" }]);
       return;
     }
@@ -326,7 +365,10 @@ export function VisualPageEditor() {
   function undoNow() {
     const previous = undoRef.current.at(-1);
     if (!previous) return;
-    redoRef.current = [...redoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    redoRef.current = [
+      ...redoRef.current.slice(-39),
+      cloneVisual(documentRef.current),
+    ];
     undoRef.current = undoRef.current.slice(0, -1);
     setRedo(redoRef.current);
     setUndo(undoRef.current);
@@ -338,7 +380,10 @@ export function VisualPageEditor() {
   function redoNow() {
     const next = redoRef.current.at(-1);
     if (!next) return;
-    undoRef.current = [...undoRef.current.slice(-39), cloneVisual(documentRef.current)];
+    undoRef.current = [
+      ...undoRef.current.slice(-39),
+      cloneVisual(documentRef.current),
+    ];
     redoRef.current = redoRef.current.slice(0, -1);
     setUndo(undoRef.current);
     setRedo(redoRef.current);
@@ -354,12 +399,16 @@ export function VisualPageEditor() {
     return selectedRef.current
       .map((item) => {
         if (item.kind === "added")
-          return doc.querySelector(`[${VISUAL_NODE_ATTR}="${item.id}"]`) as HTMLElement | null;
-        const patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
-          (x) => x.id === item.id,
-        );
+          return doc.querySelector(
+            `[${VISUAL_NODE_ATTR}="${item.id}"]`,
+          ) as HTMLElement | null;
+        const patch = ensurePage(cloneVisual(documentRef.current), route)[
+          device
+        ].patches.find((x) => x.id === item.id);
         try {
-          return patch ? (doc.querySelector(patch.selector) as HTMLElement | null) : null;
+          return patch
+            ? (doc.querySelector(patch.selector) as HTMLElement | null)
+            : null;
         } catch {
           return null;
         }
@@ -370,26 +419,42 @@ export function VisualPageEditor() {
   const drawSelection = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
-    doc.querySelectorAll("[data-oricse-editor-overlay]").forEach((x) => x.remove());
+    doc
+      .querySelectorAll("[data-oricse-editor-overlay]")
+      .forEach((x) => x.remove());
     const elements = selectedElements();
     const selectionBounds = (element: HTMLElement, item?: SelectedItem) => {
       const rect = element.getBoundingClientRect();
       if (element.tagName !== "IMG" || !item) return rect;
-      const current = ensurePage(cloneVisual(documentRef.current), route)[device];
-      const layer = item.kind === "patch"
-        ? current.patches.find((p) => p.id === item.id)
-        : current.added.find((p) => p.id === item.id);
+      const current = ensurePage(cloneVisual(documentRef.current), route)[
+        device
+      ];
+      const layer =
+        item.kind === "patch"
+          ? current.patches.find((p) => p.id === item.id)
+          : current.added.find((p) => p.id === item.id);
       if (!layer) return rect;
-      const bounded = (value: unknown) => Math.max(0, Math.min(90, Number(value) || 0));
+      const bounded = (value: unknown) =>
+        Math.max(0, Math.min(90, Number(value) || 0));
       const leftCrop = bounded(layer.style.cropLeft);
       const rightCrop = Math.min(bounded(layer.style.cropRight), 95 - leftCrop);
       const topCrop = bounded(layer.style.cropTop);
-      const bottomCrop = Math.min(bounded(layer.style.cropBottom), 95 - topCrop);
-      const left = rect.left + rect.width * leftCrop / 100;
-      const right = rect.right - rect.width * rightCrop / 100;
-      const top = rect.top + rect.height * topCrop / 100;
-      const bottom = rect.bottom - rect.height * bottomCrop / 100;
-      return { left, right, top, bottom, width: right - left, height: bottom - top };
+      const bottomCrop = Math.min(
+        bounded(layer.style.cropBottom),
+        95 - topCrop,
+      );
+      const left = rect.left + (rect.width * leftCrop) / 100;
+      const right = rect.right - (rect.width * rightCrop) / 100;
+      const top = rect.top + (rect.height * topCrop) / 100;
+      const bottom = rect.bottom - (rect.height * bottomCrop) / 100;
+      return {
+        left,
+        right,
+        top,
+        bottom,
+        width: right - left,
+        height: bottom - top,
+      };
     };
     for (const [index, element] of elements.entries()) {
       const rect = selectionBounds(element, selectedRef.current[index]);
@@ -414,69 +479,126 @@ export function VisualPageEditor() {
       // Duplo clique em uma imagem ativa o recorte, com oito alças visíveis.
       // A imagem original continua salva; só a máscara é modificada.
       const itemSelecionado = selectedRef.current[0];
-      if (croppingId && itemSelecionado?.id === croppingId
-        && elements.length === 1 && elements[0].tagName === "IMG") {
-        const page = ensurePage(cloneVisual(documentRef.current), route)[device];
-        const alvo = itemSelecionado.kind === "patch"
-          ? page.patches.find((x) => x.id === croppingId)
-          : page.added.find((x) => x.id === croppingId);
+      if (
+        croppingId &&
+        itemSelecionado?.id === croppingId &&
+        elements.length === 1 &&
+        elements[0].tagName === "IMG"
+      ) {
+        const page = ensurePage(cloneVisual(documentRef.current), route)[
+          device
+        ];
+        const alvo =
+          itemSelecionado.kind === "patch"
+            ? page.patches.find((x) => x.id === croppingId)
+            : page.added.find((x) => x.id === croppingId);
         if (alvo) {
-          const bounded = (v: unknown) => Math.max(0, Math.min(90, Number(v) || 0));
+          const bounded = (v: unknown) =>
+            Math.max(0, Math.min(90, Number(v) || 0));
           const startCrop = {
             top: bounded(alvo.style.cropTop),
             right: bounded(alvo.style.cropRight),
             bottom: bounded(alvo.style.cropBottom),
             left: bounded(alvo.style.cropLeft),
           };
-          const left = rect.left + rect.width * startCrop.left / 100;
-          const right = rect.right - rect.width * startCrop.right / 100;
-          const top = rect.top + rect.height * startCrop.top / 100;
-          const bottom = rect.bottom - rect.height * startCrop.bottom / 100;
+          const left = rect.left + (rect.width * startCrop.left) / 100;
+          const right = rect.right - (rect.width * startCrop.right) / 100;
+          const top = rect.top + (rect.height * startCrop.top) / 100;
+          const bottom = rect.bottom - (rect.height * startCrop.bottom) / 100;
           const outline = doc.createElement("div");
           outline.dataset["oricseEditorOverlay"] = "1";
           Object.assign(outline.style, {
-            position: "fixed", left: `${left}px`, top: `${top}px`,
-            width: `${Math.max(1, right - left)}px`, height: `${Math.max(1, bottom - top)}px`,
-            border: "2px dashed #fff", outline: "2px solid #6F293B",
-            pointerEvents: "none", boxSizing: "border-box", zIndex: "2147483646",
+            position: "fixed",
+            left: `${left}px`,
+            top: `${top}px`,
+            width: `${Math.max(1, right - left)}px`,
+            height: `${Math.max(1, bottom - top)}px`,
+            border: "2px dashed #fff",
+            outline: "2px solid #6F293B",
+            pointerEvents: "none",
+            boxSizing: "border-box",
+            zIndex: "2147483646",
           });
           doc.body.appendChild(outline);
           type Side = "top" | "right" | "bottom" | "left";
-          const createCropHandle = (sides: Side[], x: number, y: number, cursor: string) => {
+          const createCropHandle = (
+            sides: Side[],
+            x: number,
+            y: number,
+            cursor: string,
+          ) => {
             const handle = doc.createElement("button");
             handle.type = "button";
             handle.dataset["oricseEditorOverlay"] = "1";
             handle.title = "Arraste para recortar: " + sides.join(" + ");
             handle.setAttribute("aria-label", handle.title);
             Object.assign(handle.style, {
-              position: "fixed", left: `${x - 8}px`, top: `${y - 8}px`,
-              width: "16px", height: "16px", borderRadius: "4px",
-              background: "#fff", border: "2px solid #6F293B",
+              position: "fixed",
+              left: `${x - 8}px`,
+              top: `${y - 8}px`,
+              width: "16px",
+              height: "16px",
+              borderRadius: "4px",
+              background: "#fff",
+              border: "2px solid #6F293B",
               boxShadow: "0 1px 5px rgba(0,0,0,.25)",
-              cursor, pointerEvents: "auto", touchAction: "none",
+              cursor,
+              pointerEvents: "auto",
+              touchAction: "none",
               zIndex: "2147483647",
             });
             handle.addEventListener("pointerdown", (ev) => {
               ev.preventDefault();
               ev.stopPropagation();
-              const sx = ev.clientX, sy = ev.clientY;
+              const sx = ev.clientX,
+                sy = ev.clientY;
               let mudou = false;
-              try { doc.body.setPointerCapture(ev.pointerId); } catch { /* navegador sem captura */ }
+              try {
+                doc.body.setPointerCapture(ev.pointerId);
+              } catch {
+                /* navegador sem captura */
+              }
               const move = (current: PointerEvent) => {
-                const dx = (current.clientX - sx) * 100 / Math.max(1, rect.width);
-                const dy = (current.clientY - sy) * 100 / Math.max(1, rect.height);
-                if (!mudou && Math.abs(dx) + Math.abs(dy) < .25) return;
-                if (!mudou) { checkpoint(); mudou = true; }
+                const dx =
+                  ((current.clientX - sx) * 100) / Math.max(1, rect.width);
+                const dy =
+                  ((current.clientY - sy) * 100) / Math.max(1, rect.height);
+                if (!mudou && Math.abs(dx) + Math.abs(dy) < 0.25) return;
+                if (!mudou) {
+                  checkpoint();
+                  mudou = true;
+                }
                 updateLayout((layoutAtual) => {
-                  const target = itemSelecionado.kind === "patch"
-                    ? layoutAtual.patches.find((p) => p.id === itemSelecionado.id)
-                    : layoutAtual.added.find((p) => p.id === itemSelecionado.id);
+                  const target =
+                    itemSelecionado.kind === "patch"
+                      ? layoutAtual.patches.find(
+                          (p) => p.id === itemSelecionado.id,
+                        )
+                      : layoutAtual.added.find(
+                          (p) => p.id === itemSelecionado.id,
+                        );
                   if (!target) return;
                   const next = { ...startCrop };
-                  if (sides.includes("left")) next.left = Math.max(0, Math.min(95 - next.right, startCrop.left + dx));
-                  if (sides.includes("right")) next.right = Math.max(0, Math.min(95 - next.left, startCrop.right - dx));
-                  if (sides.includes("top")) next.top = Math.max(0, Math.min(95 - next.bottom, startCrop.top + dy));
-                  if (sides.includes("bottom")) next.bottom = Math.max(0, Math.min(95 - next.top, startCrop.bottom - dy));
+                  if (sides.includes("left"))
+                    next.left = Math.max(
+                      0,
+                      Math.min(95 - next.right, startCrop.left + dx),
+                    );
+                  if (sides.includes("right"))
+                    next.right = Math.max(
+                      0,
+                      Math.min(95 - next.left, startCrop.right - dx),
+                    );
+                  if (sides.includes("top"))
+                    next.top = Math.max(
+                      0,
+                      Math.min(95 - next.bottom, startCrop.top + dy),
+                    );
+                  if (sides.includes("bottom"))
+                    next.bottom = Math.max(
+                      0,
+                      Math.min(95 - next.top, startCrop.bottom - dy),
+                    );
                   target.style.cropTop = Math.round(next.top * 10) / 10;
                   target.style.cropRight = Math.round(next.right * 10) / 10;
                   target.style.cropBottom = Math.round(next.bottom * 10) / 10;
@@ -487,7 +609,11 @@ export function VisualPageEditor() {
                 doc.defaultView?.removeEventListener("pointermove", move);
                 doc.defaultView?.removeEventListener("pointerup", stop);
                 doc.defaultView?.removeEventListener("pointercancel", stop);
-                try { doc.body.releasePointerCapture(ev.pointerId); } catch { /* sem captura */ }
+                try {
+                  doc.body.releasePointerCapture(ev.pointerId);
+                } catch {
+                  /* sem captura */
+                }
               };
               doc.defaultView?.addEventListener("pointermove", move);
               doc.defaultView?.addEventListener("pointerup", stop);
@@ -517,7 +643,9 @@ export function VisualPageEditor() {
         const starts = selectedRef.current.map((item) => {
           const target = elements[selectedRef.current.indexOf(item)];
           const box = target?.getBoundingClientRect();
-          const page = ensurePage(cloneVisual(documentRef.current), route)[device];
+          const page = ensurePage(cloneVisual(documentRef.current), route)[
+            device
+          ];
           const layer =
             item.kind === "patch"
               ? page.patches.find((x) => x.id === item.id)
@@ -534,7 +662,10 @@ export function VisualPageEditor() {
           const dx = ev.clientX - sx,
             dy = ev.clientY - sy;
           if (!recorded && Math.abs(dx) + Math.abs(dy) < 2) return;
-          if (!recorded) { checkpoint(); recorded = true; }
+          if (!recorded) {
+            checkpoint();
+            recorded = true;
+          }
           updateLayout(
             (value) =>
               starts.forEach(({ item, width, height, x }) => {
@@ -554,10 +685,16 @@ export function VisualPageEditor() {
                     relativeY = dy / Math.max(height, 1);
                   const scale = Math.max(
                     0.05,
-                    1 + (Math.abs(relativeX) >= Math.abs(relativeY) ? relativeX : relativeY),
+                    1 +
+                      (Math.abs(relativeX) >= Math.abs(relativeY)
+                        ? relativeX
+                        : relativeY),
                   );
                   target.style.width = Math.max(10, Math.round(width * scale));
-                  target.style.height = Math.max(10, Math.round(height * scale));
+                  target.style.height = Math.max(
+                    10,
+                    Math.round(height * scale),
+                  );
                 }
               }),
             false,
@@ -630,9 +767,11 @@ export function VisualPageEditor() {
     if (!doc) return;
     applyVisualLayout(doc, layout);
     doc.documentElement.style.setProperty("--oricse-editor-cursor", "move");
-    doc.querySelectorAll("a,button,input,textarea,select").forEach((element) => {
-      (element as HTMLElement).style.pointerEvents = "auto";
-    });
+    doc
+      .querySelectorAll("a,button,input,textarea,select")
+      .forEach((element) => {
+        (element as HTMLElement).style.pointerEvents = "auto";
+      });
     drawSelection();
   }, [layout, drawSelection]);
 
@@ -658,7 +797,8 @@ export function VisualPageEditor() {
       starts: Array<{ item: SelectedItem; x: number; y: number }>;
       historyRecorded: boolean;
     } = null;
-    let ultimaImagemPressionada: { element: Element; time: number } | null = null;
+    let ultimaImagemPressionada: { element: Element; time: number } | null =
+      null;
     const pointerDown = (event: PointerEvent) => {
       const raw = event.target as Element | null;
       if (!raw || raw.closest("[data-oricse-editor-overlay]")) return;
@@ -667,23 +807,28 @@ export function VisualPageEditor() {
       // Dentro do banner, um clique no texto ou ícone seleciona a camada
       // nomeada correspondente, e não um span filho ou bloco gigante.
       const nomeado = raw.closest("[data-visual-id]") as HTMLElement | null;
-      const element = nomeado && nomeado.dataset.visualId !== "home-fundo-bege"
-        ? nomeado : editableTarget(raw);
+      const element =
+        nomeado && nomeado.dataset.visualId !== "home-fundo-bege"
+          ? nomeado
+          : editableTarget(raw);
       // Reconhece dois cliques mesmo que preventDefault suprima o dblclick.
       const agora = Date.now();
-      const doisCliquesNaImagem = element.tagName === "IMG"
-        && ultimaImagemPressionada?.element === element
-        && agora - ultimaImagemPressionada.time < 420;
-      ultimaImagemPressionada = element.tagName === "IMG"
-        ? { element, time: agora } : null;
-      const addedId = element.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
+      const doisCliquesNaImagem =
+        element.tagName === "IMG" &&
+        ultimaImagemPressionada?.element === element &&
+        agora - ultimaImagemPressionada.time < 420;
+      ultimaImagemPressionada =
+        element.tagName === "IMG" ? { element, time: agora } : null;
+      const addedId = element
+        .closest(`[${VISUAL_NODE_ATTR}]`)
+        ?.getAttribute(VISUAL_NODE_ATTR);
       let item: SelectedItem;
       if (addedId) item = { id: addedId, kind: "added" };
       else {
         const selector = visualSelector(element);
-        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find(
-          (x) => x.selector === selector,
-        );
+        let patch = ensurePage(cloneVisual(documentRef.current), route)[
+          device
+        ].patches.find((x) => x.selector === selector);
         if (!patch) {
           const rect = element.getBoundingClientRect();
           patch = {
@@ -702,10 +847,14 @@ export function VisualPageEditor() {
         item = { id: patch.id, kind: "patch" };
       }
       const multi = event.shiftKey || event.ctrlKey || event.metaKey;
-      const already = selectedRef.current.some((x) => x.id === item.id && x.kind === item.kind);
+      const already = selectedRef.current.some(
+        (x) => x.id === item.id && x.kind === item.kind,
+      );
       const next = multi
         ? already
-          ? selectedRef.current.filter((x) => x.id !== item.id || x.kind !== item.kind)
+          ? selectedRef.current.filter(
+              (x) => x.id !== item.id || x.kind !== item.kind,
+            )
           : [...selectedRef.current, item]
         : already && selectedRef.current.length > 1
           ? selectedRef.current
@@ -719,9 +868,18 @@ export function VisualPageEditor() {
           entry.kind === "patch"
             ? page.patches.find((x) => x.id === entry.id)
             : page.added.find((x) => x.id === entry.id);
-        return { item: entry, x: target?.style.x || 0, y: target?.style.y || 0 };
+        return {
+          item: entry,
+          x: target?.style.x || 0,
+          y: target?.style.y || 0,
+        };
       });
-      drag = { sx: event.clientX, sy: event.clientY, starts, historyRecorded: false };
+      drag = {
+        sx: event.clientX,
+        sy: event.clientY,
+        starts,
+        historyRecorded: false,
+      };
     };
     const move = (event: PointerEvent) => {
       // React may run the state updater after pointerup has cleared drag.
@@ -731,7 +889,8 @@ export function VisualPageEditor() {
       if (!activeDrag) return;
       const dx = event.clientX - activeDrag.sx,
         dy = event.clientY - activeDrag.sy;
-      if (!activeDrag.historyRecorded && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!activeDrag.historyRecorded && Math.abs(dx) + Math.abs(dy) < 2)
+        return;
       if (!activeDrag.historyRecorded) {
         checkpoint();
         activeDrag.historyRecorded = true;
@@ -760,15 +919,30 @@ export function VisualPageEditor() {
       if (!image || image.closest("[data-oricse-editor-overlay]")) return;
       event.preventDefault();
       event.stopPropagation();
-      const addedId = image.closest(`[${VISUAL_NODE_ATTR}]`)?.getAttribute(VISUAL_NODE_ATTR);
-      let target: SelectedItem | null = addedId ? { id: addedId, kind: "added" } : null;
+      const addedId = image
+        .closest(`[${VISUAL_NODE_ATTR}]`)
+        ?.getAttribute(VISUAL_NODE_ATTR);
+      let target: SelectedItem | null = addedId
+        ? { id: addedId, kind: "added" }
+        : null;
       if (!target) {
         const selector = visualSelector(image);
-        let patch = ensurePage(cloneVisual(documentRef.current), route)[device].patches.find((p) => p.selector === selector);
+        let patch = ensurePage(cloneVisual(documentRef.current), route)[
+          device
+        ].patches.find((p) => p.selector === selector);
         if (!patch) {
           const box = image.getBoundingClientRect();
-          patch = { id: uid("image"), selector, label: visualLabel(image),
-            style: { baseWidth: box.width, baseHeight: box.height, width: box.width, height: box.height } };
+          patch = {
+            id: uid("image"),
+            selector,
+            label: visualLabel(image),
+            style: {
+              baseWidth: box.width,
+              baseHeight: box.height,
+              width: box.width,
+              height: box.height,
+            },
+          };
           updateLayout((layoutAtual) => layoutAtual.patches.push(patch!), true);
         }
         target = { id: patch.id, kind: "patch" };
@@ -779,12 +953,18 @@ export function VisualPageEditor() {
     };
     const onFrameKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
-      if (typeof target?.closest === "function"
-        && target.closest("input,textarea,select,[contenteditable='true']")) return;
+      if (
+        typeof target?.closest === "function" &&
+        target.closest("input,textarea,select,[contenteditable='true']")
+      )
+        return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         event.shiftKey ? redoNow() : undoNow();
-      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "y"
+      ) {
         event.preventDefault();
         redoNow();
       } else if (event.key === "Delete" && selectedRef.current.length) {
@@ -864,7 +1044,8 @@ export function VisualPageEditor() {
       "",
     );
     if (!src) return;
-    if (!validImageSource(src)) return toast.error("Use uma URL de imagem válida.");
+    if (!validImageSource(src))
+      return toast.error("Use uma URL de imagem válida.");
     const item: VisualAdded = {
       id: uid("image"),
       kind: "image",
@@ -888,28 +1069,43 @@ export function VisualPageEditor() {
     }
     setUploadingImage(true);
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
-      if (sessionError || !accessToken) throw new Error("Sessão expirada. Entre novamente no sistema.");
+      if (sessionError || !accessToken)
+        throw new Error("Sessão expirada. Entre novamente no sistema.");
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(reader.error || new Error("Não foi possível ler a imagem."));
+        reader.onerror = () =>
+          reject(reader.error || new Error("Não foi possível ler a imagem."));
         reader.readAsDataURL(file);
       });
       const upload = await enviarArquivoPublicoPlataforma({
         data: { accessToken, nome: file.name, mimeType: file.type, base64 },
       });
-      if (!upload.url || !validImageSource(upload.url)) throw new Error("O Google Drive não retornou uma imagem válida.");
+      if (!upload.url || !validImageSource(upload.url))
+        throw new Error("O Google Drive não retornou uma imagem válida.");
       const id = uid("image");
-      updateLayout((value) => value.added.push({
-        id, kind: "image", src: upload.url, text: file.name,
-        style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
-      }));
+      updateLayout((value) =>
+        value.added.push({
+          id,
+          kind: "image",
+          src: upload.url,
+          text: file.name,
+          style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
+        }),
+      );
       setSelected([{ id, kind: "added" }]);
-      toast.success("Imagem enviada. Salve o rascunho ou publique para manter a alteração.");
+      toast.success(
+        "Imagem enviada. Salve o rascunho ou publique para manter a alteração.",
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar a imagem.",
+      );
     } finally {
       setUploadingImage(false);
       if (imageInputRef.current) imageInputRef.current.value = "";
@@ -961,7 +1157,8 @@ export function VisualPageEditor() {
     if (!selectedRef.current.length) return;
     updateLayout((value) =>
       selectedRef.current.forEach((item) => {
-        if (item.kind === "added") value.added = value.added.filter((x) => x.id !== item.id);
+        if (item.kind === "added")
+          value.added = value.added.filter((x) => x.id !== item.id);
         else {
           const patch = value.patches.find((x) => x.id === item.id);
           if (patch) patch.hidden = true;
@@ -977,7 +1174,8 @@ export function VisualPageEditor() {
           ? value.patches.find((x) => x.id === item.id)
           : value.added.find((x) => x.id === item.id);
       if (!target) return;
-      if (item.kind === "patch") (target as VisualPatch).hidden = !(target as VisualPatch).hidden;
+      if (item.kind === "patch")
+        (target as VisualPatch).hidden = !(target as VisualPatch).hidden;
       else target.style.opacity = target.style.opacity === 0 ? 1 : 0;
     });
   }
@@ -985,7 +1183,9 @@ export function VisualPageEditor() {
     updateLayout((value) => {
       const all = [...value.patches, ...value.added];
       const levels = all.map((item) => item.style.zIndex || 0);
-      const targetLevel = front ? Math.max(0, ...levels) + 1 : Math.min(0, ...levels) - 1;
+      const targetLevel = front
+        ? Math.max(0, ...levels) + 1
+        : Math.min(0, ...levels) - 1;
       selected.forEach((item) => {
         const target =
           item.kind === "patch"
@@ -1004,7 +1204,9 @@ export function VisualPageEditor() {
     setSelected([]);
   }
 
-  function classifySaveError(error: { code?: string; message?: string } | null) {
+  function classifySaveError(
+    error: { code?: string; message?: string } | null,
+  ) {
     if (!error) return;
     if (error.code === "DRIVE_CONFLICT") {
       setConflict({
@@ -1019,10 +1221,14 @@ export function VisualPageEditor() {
     });
   }
 
-  function saveRows(rows: Array<{ chave: string; valor: unknown; updated_at: string }>) {
+  function saveRows(
+    rows: Array<{ chave: string; valor: unknown; updated_at: string }>,
+  ) {
     return rows.map((row) => ({
       ...row,
-      ...(recordIdsRef.current[row.chave] ? { id: recordIdsRef.current[row.chave] } : {}),
+      ...(recordIdsRef.current[row.chave]
+        ? { id: recordIdsRef.current[row.chave] }
+        : {}),
     }));
   }
 
@@ -1058,7 +1264,8 @@ export function VisualPageEditor() {
         .eq("chave", VISUAL_DRAFT_KEY)
         .maybeSingle();
       if (latest.error) throw latest.error;
-      if (latest.data?.id) recordIdsRef.current[VISUAL_DRAFT_KEY] = String(latest.data.id);
+      if (latest.data?.id)
+        recordIdsRef.current[VISUAL_DRAFT_KEY] = String(latest.data.id);
       baselineRef.current = cloneVisual(payload);
       setDocumento(payload);
       toast.success("Rascunho salvo.", { id: "oricse-canvas-draft" });
@@ -1076,7 +1283,11 @@ export function VisualPageEditor() {
     setSaving(true);
     const payload = { ...documento, updatedAt: new Date().toISOString() };
     const history: Version[] = [
-      { id: uid("version"), publishedAt: payload.updatedAt, pages: cloneVisual(payload.pages) },
+      {
+        id: uid("version"),
+        publishedAt: payload.updatedAt,
+        pages: cloneVisual(payload.pages),
+      },
       ...versions,
     ].slice(0, 12);
     try {
@@ -1086,9 +1297,21 @@ export function VisualPageEditor() {
         .from("oricse_config")
         .upsert(
           saveRows([
-            { chave: VISUAL_PUBLISHED_KEY, valor: payload, updated_at: payload.updatedAt },
-            { chave: VISUAL_DRAFT_KEY, valor: payload, updated_at: payload.updatedAt },
-            { chave: VISUAL_VERSIONS_KEY, valor: history, updated_at: payload.updatedAt },
+            {
+              chave: VISUAL_PUBLISHED_KEY,
+              valor: payload,
+              updated_at: payload.updatedAt,
+            },
+            {
+              chave: VISUAL_DRAFT_KEY,
+              valor: payload,
+              updated_at: payload.updatedAt,
+            },
+            {
+              chave: VISUAL_VERSIONS_KEY,
+              valor: history,
+              updated_at: payload.updatedAt,
+            },
           ]),
           { onConflict: "chave" },
         )
@@ -1098,7 +1321,8 @@ export function VisualPageEditor() {
         return;
       }
       for (const row of Array.isArray(data) ? data : []) {
-        if (row?.chave && row?.id) recordIdsRef.current[row.chave] = String(row.id);
+        if (row?.chave && row?.id)
+          recordIdsRef.current[row.chave] = String(row.id);
       }
       const verification = await (supabase as any)
         .from("oricse_config")
@@ -1109,9 +1333,12 @@ export function VisualPageEditor() {
       for (const row of confirmedRows) {
         if (row.id && row.chave) recordIdsRef.current[row.chave] = row.id;
       }
-      const confirmedPublished = confirmedRows.find((row) => row.chave === VISUAL_PUBLISHED_KEY);
+      const confirmedPublished = confirmedRows.find(
+        (row) => row.chave === VISUAL_PUBLISHED_KEY,
+      );
       if (
-        (confirmedPublished?.valor as VisualDocument | undefined)?.updatedAt !== payload.updatedAt
+        (confirmedPublished?.valor as VisualDocument | undefined)?.updatedAt !==
+        payload.updatedAt
       ) {
         throw new Error(
           "A publicação não foi confirmada no site. Revise antes de tentar novamente.",
@@ -1123,11 +1350,16 @@ export function VisualPageEditor() {
       setLastPublishedAt(payload.updatedAt);
       if (typeof BroadcastChannel !== "undefined") {
         const channel = new BroadcastChannel("oricse-visual-editor");
-        channel.postMessage({ type: "published", updatedAt: payload.updatedAt });
+        channel.postMessage({
+          type: "published",
+          updatedAt: payload.updatedAt,
+        });
         channel.close();
       }
       window.dispatchEvent(new Event("oricse:visual-published"));
-      toast.success("Publicado e confirmado no site real.", { id: "oricse-canvas-published" });
+      toast.success("Publicado e confirmado no site real.", {
+        id: "oricse-canvas-published",
+      });
     } catch (error) {
       classifySaveError(error as { code?: string; message?: string });
     } finally {
@@ -1150,12 +1382,24 @@ export function VisualPageEditor() {
         if (row.id && row.chave) recordIdsRef.current[row.chave] = row.id;
       }
       const draft = rows.find((row) => row.chave === VISUAL_DRAFT_KEY)?.valor;
-      const published = rows.find((row) => row.chave === VISUAL_PUBLISHED_KEY)?.valor;
-      const current = cloneVisual(draft || published || EMPTY_DOCUMENT()) as VisualDocument;
-      const reconciled = reconcileEditor(baselineRef.current, documento, current);
-      const remoteHistory = rows.find((row) => row.chave === VISUAL_VERSIONS_KEY)?.valor;
+      const published = rows.find(
+        (row) => row.chave === VISUAL_PUBLISHED_KEY,
+      )?.valor;
+      const current = cloneVisual(
+        draft || published || EMPTY_DOCUMENT(),
+      ) as VisualDocument;
+      const reconciled = reconcileEditor(
+        baselineRef.current,
+        documento,
+        current,
+      );
+      const remoteHistory = rows.find(
+        (row) => row.chave === VISUAL_VERSIONS_KEY,
+      )?.valor;
       if (Array.isArray(remoteHistory)) setVersions(remoteHistory as Version[]);
-      setLastPublishedAt((published as VisualDocument | undefined)?.updatedAt || "");
+      setLastPublishedAt(
+        (published as VisualDocument | undefined)?.updatedAt || "",
+      );
       baselineRef.current = cloneVisual(current);
       if (reconciled.overlaps.length) {
         setConflict({
@@ -1169,14 +1413,22 @@ export function VisualPageEditor() {
         documentRef.current = cloneVisual(reconciled.merged);
         setDocumento(documentRef.current);
         setConflict(null);
-        toast.success("Versões conciliadas. Revise e publique quando desejar.", {
-          id: "oricse-canvas-reconciled",
-        });
+        toast.success(
+          "Versões conciliadas. Revise e publique quando desejar.",
+          {
+            id: "oricse-canvas-reconciled",
+          },
+        );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao consultar a versão atual.", {
-        id: "oricse-canvas-review",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Falha ao consultar a versão atual.",
+        {
+          id: "oricse-canvas-review",
+        },
+      );
     } finally {
       setReviewing(false);
     }
@@ -1216,8 +1468,11 @@ export function VisualPageEditor() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
-      if (typeof target?.closest === "function"
-        && target.closest("input,textarea,select,[contenteditable='true']")) return;
+      if (
+        typeof target?.closest === "function" &&
+        target.closest("input,textarea,select,[contenteditable='true']")
+      )
+        return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
@@ -1225,7 +1480,10 @@ export function VisualPageEditor() {
         } else {
           undoNow();
         }
-      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+      } else if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "y"
+      ) {
         event.preventDefault();
         redoNow();
       } else if (event.key === "Delete" && selectedRef.current.length) {
@@ -1248,7 +1506,9 @@ export function VisualPageEditor() {
   if (loadError)
     return (
       <main className="mx-auto max-w-xl p-8">
-        <h1 className="text-2xl font-bold">Não foi possível carregar o Canvas</h1>
+        <h1 className="text-2xl font-bold">
+          Não foi possível carregar o Canvas
+        </h1>
         <p className="mt-3 text-sm">{loadError}</p>
         <button
           className="mt-4 rounded-xl border px-4 py-2"
@@ -1260,8 +1520,9 @@ export function VisualPageEditor() {
     );
   const frameWidth = deviceWidth(device);
   const scale = zoom / 100;
-  const isImageSelected = Boolean(first && selected.length === 1
-    && selectedElements()[0]?.tagName === "IMG");
+  const isImageSelected = Boolean(
+    first && selected.length === 1 && selectedElements()[0]?.tagName === "IMG",
+  );
 
   return (
     <main className="min-h-screen bg-[#ded9d3] text-slate-900">
@@ -1269,8 +1530,16 @@ export function VisualPageEditor() {
         <Link
           to="/admin"
           onClick={(event) => {
-            const mudou = !sameEditorJson(documento.pages, baselineRef.current.pages);
-            if (mudou && !window.confirm("Há alterações não salvas. Voltar ao Admin sem salvar?")) {
+            const mudou = !sameEditorJson(
+              documento.pages,
+              baselineRef.current.pages,
+            );
+            if (
+              mudou &&
+              !window.confirm(
+                "Há alterações não salvas. Voltar ao Admin sem salvar?",
+              )
+            ) {
               event.preventDefault();
             }
           }}
@@ -1282,19 +1551,41 @@ export function VisualPageEditor() {
           type="button"
           onClick={alternarMenuAdmin}
           aria-expanded={!adminMenuRecolhido}
-          aria-label={adminMenuRecolhido ? "Expandir menu da Administração" : "Recolher menu da Administração"}
-          title={adminMenuRecolhido ? "Mostrar menu da Administração" : "Recolher menu da Administração"}
+          aria-label={
+            adminMenuRecolhido
+              ? "Expandir menu da Administração"
+              : "Recolher menu da Administração"
+          }
+          title={
+            adminMenuRecolhido
+              ? "Mostrar menu da Administração"
+              : "Recolher menu da Administração"
+          }
           className="hidden items-center gap-2 rounded-xl border px-3 py-2 font-semibold lg:inline-flex"
         >
-          {adminMenuRecolhido ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          <span className="hidden xl:inline">{adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}</span>
+          {adminMenuRecolhido ? (
+            <PanelLeftOpen size={18} />
+          ) : (
+            <PanelLeftClose size={18} />
+          )}
+          <span className="hidden xl:inline">
+            {adminMenuRecolhido ? "Mostrar menu" : "Recolher menu"}
+          </span>
         </button>
         <button
           onClick={() => setLeftOpen((x) => !x)}
-          aria-label={leftOpen ? "Recolher páginas e camadas" : "Mostrar páginas e camadas"}
+          aria-label={
+            leftOpen
+              ? "Recolher páginas e camadas"
+              : "Mostrar páginas e camadas"
+          }
           aria-expanded={leftOpen}
           className="rounded-xl border p-2"
-          title={leftOpen ? "Recolher páginas e camadas" : "Mostrar páginas e camadas"}
+          title={
+            leftOpen
+              ? "Recolher páginas e camadas"
+              : "Mostrar páginas e camadas"
+          }
         >
           <Layers3 size={18} />
         </button>
@@ -1310,7 +1601,9 @@ export function VisualPageEditor() {
           accept="image/png,image/jpeg,image/webp,image/gif"
           className="hidden"
           aria-label="Selecionar imagem do computador"
-          onChange={(event) => { void uploadImage(event.currentTarget.files?.[0]); }}
+          onChange={(event) => {
+            void uploadImage(event.currentTarget.files?.[0]);
+          }}
         />
         <button
           type="button"
@@ -1318,7 +1611,8 @@ export function VisualPageEditor() {
           onClick={() => imageInputRef.current?.click()}
           className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold disabled:opacity-50"
         >
-          <ImagePlus size={17} /> {uploadingImage ? "Enviando…" : "Enviar imagem"}
+          <ImagePlus size={17} />{" "}
+          {uploadingImage ? "Enviando…" : "Enviar imagem"}
         </button>
         <button
           type="button"
@@ -1402,7 +1696,8 @@ export function VisualPageEditor() {
             onClick={publish}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"
           >
-            <UploadCloud size={17} /> {saving ? "Publicando…" : "Publicar no site"}
+            <UploadCloud size={17} />{" "}
+            {saving ? "Publicando…" : "Publicar no site"}
           </button>
         </div>
       </header>
@@ -1411,10 +1706,14 @@ export function VisualPageEditor() {
           role="alert"
           className="sticky top-16 z-40 mx-auto max-w-5xl rounded-b-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950 shadow-lg"
         >
-          <h2 className="font-extrabold">Conflito de edição — suas alterações continuam aqui</h2>
+          <h2 className="font-extrabold">
+            Conflito de edição — suas alterações continuam aqui
+          </h2>
           <p className="mt-1 text-sm">{conflict.message}</p>
           {conflict.overlaps.length > 0 && (
-            <p className="mt-2 text-xs">Trechos afetados: {conflict.overlaps.join(", ")}</p>
+            <p className="mt-2 text-xs">
+              Trechos afetados: {conflict.overlaps.join(", ")}
+            </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -1445,9 +1744,15 @@ export function VisualPageEditor() {
                 void navigator.clipboard
                   .writeText(JSON.stringify(documento, null, 2))
                   .then(() =>
-                    toast.success("Cópia das suas alterações salva na área de transferência."),
+                    toast.success(
+                      "Cópia das suas alterações salva na área de transferência.",
+                    ),
                   )
-                  .catch(() => toast.error("Não foi possível copiar. Mantenha esta aba aberta."));
+                  .catch(() =>
+                    toast.error(
+                      "Não foi possível copiar. Mantenha esta aba aberta.",
+                    ),
+                  );
               }}
               className="min-h-10 rounded-xl border border-amber-500 px-4 text-sm font-semibold"
             >
@@ -1459,11 +1764,19 @@ export function VisualPageEditor() {
 
       <div
         className="grid min-h-[calc(100vh-64px)] min-w-0"
-        style={{ gridTemplateColumns: `${leftOpen ? "260px" : "64px"} minmax(0,1fr) ${rightOpen ? "290px" : "64px"}` }}
+        style={{
+          gridTemplateColumns: `${leftOpen ? "260px" : "64px"} minmax(0,1fr) ${rightOpen ? "290px" : "64px"}`,
+        }}
       >
         {leftOpen ? (
           <aside className="min-w-0 border-r bg-white p-3">
-            <button type="button" onClick={() => setLeftOpen(false)} aria-label="Recolher menu de páginas e camadas" title="Recolher menu" className="mb-3 flex h-9 w-full items-center justify-end gap-2 rounded-lg border px-2 text-xs font-semibold hover:bg-slate-50">
+            <button
+              type="button"
+              onClick={() => setLeftOpen(false)}
+              aria-label="Recolher menu de páginas e camadas"
+              title="Recolher menu"
+              className="mb-3 flex h-9 w-full items-center justify-end gap-2 rounded-lg border px-2 text-xs font-semibold hover:bg-slate-50"
+            >
               Recolher <ChevronLeft size={17} />
             </button>
             <div className="space-y-2">
@@ -1486,7 +1799,8 @@ export function VisualPageEditor() {
                   window.history.replaceState(
                     window.history.state,
                     "",
-                    "/admin-canvas?pagina=" + encodeURIComponent(e.target.value),
+                    "/admin-canvas?pagina=" +
+                      encodeURIComponent(e.target.value),
                   );
                 }}
                 aria-label="Selecionar página para editar"
@@ -1494,7 +1808,9 @@ export function VisualPageEditor() {
               >
                 {!paginasFiltradas.some((r) => r.original === route) && (
                   <option value={route}>
-                    {ROTAS_CATALOGO.find((r) => r.original === route)?.nome || route} — selecionada
+                    {ROTAS_CATALOGO.find((r) => r.original === route)?.nome ||
+                      route}{" "}
+                    — selecionada
                   </option>
                 )}
                 {gruposPaginas.map((grupo) => (
@@ -1505,7 +1821,9 @@ export function VisualPageEditor() {
                         <option
                           key={r.original}
                           value={r.original}
-                          disabled={r.dinamica || r.original === "/admin-canvas"}
+                          disabled={
+                            r.dinamica || r.original === "/admin-canvas"
+                          }
                         >
                           {r.nome} ({r.original})
                           {r.dinamica
@@ -1519,8 +1837,9 @@ export function VisualPageEditor() {
                 ))}
               </select>
               <p className="text-xs leading-5 text-muted-foreground">
-                {paginasFiltradas.length} páginas encontradas. Endereços que dependem da clínica são
-                listados para consulta e exigem um link real para prévia.
+                {paginasFiltradas.length} páginas encontradas. Endereços que
+                dependem da clínica são listados para consulta e exigem um link
+                real para prévia.
               </p>
               <a
                 href={route}
@@ -1565,24 +1884,35 @@ export function VisualPageEditor() {
                     className={`flex items-center gap-1 rounded-lg border p-1 ${selected.some((x) => x.id === item.id && x.kind === item.kind) ? "border-primary bg-primary/5" : ""}`}
                   >
                     <button
-                      onClick={() => item.kind === "native" ? abrirCamadaNativa(item.id, label) : setSelected([item])}
+                      onClick={() =>
+                        item.kind === "native"
+                          ? abrirCamadaNativa(item.id, label)
+                          : setSelected([item])
+                      }
                       className="min-w-0 flex-1 truncate px-2 py-1 text-left text-xs font-semibold"
                     >
                       {label}
                     </button>
                     <button
-                      onClick={() => item.kind === "native" ? abrirCamadaNativa(item.id, label, true) : toggleVisibility(item)}
+                      onClick={() =>
+                        item.kind === "native"
+                          ? abrirCamadaNativa(item.id, label, true)
+                          : toggleVisibility(item)
+                      }
                       className="p-1 text-muted-foreground"
                     >
                       {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                 ))}
-              {!layout.added.length && !layout.patches.length && !camadasNativasHome.length && (
-                <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
-                  Clique em qualquer objeto dentro da página para começar a editá-lo.
-                </p>
-              )}
+              {!layout.added.length &&
+                !layout.patches.length &&
+                !camadasNativasHome.length && (
+                  <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                    Clique em qualquer objeto dentro da página para começar a
+                    editá-lo.
+                  </p>
+                )}
             </div>
             <div className="mt-5 border-t pt-4">
               <div className="flex items-center justify-between">
@@ -1601,22 +1931,63 @@ export function VisualPageEditor() {
                     onClick={() => restore(v)}
                     className="w-full rounded-xl border p-2 text-left text-xs"
                   >
-                    <strong>{new Date(v.publishedAt).toLocaleString("pt-BR")}</strong>
-                    <span className="mt-1 block text-muted-foreground">Carregar como rascunho</span>
+                    <strong>
+                      {new Date(v.publishedAt).toLocaleString("pt-BR")}
+                    </strong>
+                    <span className="mt-1 block text-muted-foreground">
+                      Carregar como rascunho
+                    </span>
                   </button>
                 ))}
                 {!versions.length && (
-                  <p className="text-xs text-muted-foreground">Nenhuma versão publicada ainda.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Nenhuma versão publicada ainda.
+                  </p>
                 )}
               </div>
             </div>
           </aside>
         ) : (
-          <aside className="flex min-w-0 flex-col items-center gap-3 border-r bg-white px-1 py-3" aria-label="Menu de páginas e camadas recolhido">
-            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Expandir menu de páginas e camadas" title="Expandir menu" className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronRight size={20} /></button>
-            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Páginas do ORICSE" title="Páginas do ORICSE" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"><Layers3 size={20} /></button>
-            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Camadas" title="Camadas" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">C</button>
-            <button type="button" onClick={() => setLeftOpen(true)} aria-label="Versões" title="Versões" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">V</button>
+          <aside
+            className="flex min-w-0 flex-col items-center gap-3 border-r bg-white px-1 py-3"
+            aria-label="Menu de páginas e camadas recolhido"
+          >
+            <button
+              type="button"
+              onClick={() => setLeftOpen(true)}
+              aria-label="Expandir menu de páginas e camadas"
+              title="Expandir menu"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"
+            >
+              <ChevronRight size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeftOpen(true)}
+              aria-label="Páginas do ORICSE"
+              title="Páginas do ORICSE"
+              className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"
+            >
+              <Layers3 size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeftOpen(true)}
+              aria-label="Camadas"
+              title="Camadas"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100"
+            >
+              C
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeftOpen(true)}
+              aria-label="Versões"
+              title="Versões"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100"
+            >
+              V
+            </button>
           </aside>
         )}
 
@@ -1633,20 +2004,24 @@ export function VisualPageEditor() {
                 transform: `scale(${scale})`,
               }}
             >
-              {paginaResolvida && <iframe
-                key={`${route}-${device}`}
-                ref={iframeRef}
-                src={`${route}${route.includes("?") ? "&" : "?"}visual_editor=1`}
-                onLoad={bindFrame}
-                title={`Editor de ${route}`}
-                className="h-full w-full border-0 bg-white"
-                style={{ width: frameWidth }}
-              />}
+              {paginaResolvida && (
+                <iframe
+                  key={`${route}-${device}`}
+                  ref={iframeRef}
+                  src={`${route}${route.includes("?") ? "&" : "?"}visual_editor=1`}
+                  onLoad={bindFrame}
+                  title={`Editor de ${route}`}
+                  className="h-full w-full border-0 bg-white"
+                  style={{ width: frameWidth }}
+                />
+              )}
             </div>
           </div>
           <p className="mt-4 text-center text-xs text-slate-600">
-            Clique para selecionar. Shift + clique seleciona vários. Arraste para mover. A alça
-            esquerda muda a largura, a inferior muda a altura e a bolinha mantém a proporção. Dê dois cliques em uma imagem para recortar.
+            Clique para selecionar. Shift + clique seleciona vários. Arraste
+            para mover. A alça esquerda muda a largura, a inferior muda a altura
+            e a bolinha mantém a proporção. Dê dois cliques em uma imagem para
+            recortar.
           </p>
         </section>
 
@@ -1654,7 +2029,15 @@ export function VisualPageEditor() {
           <aside className="min-w-0 border-l bg-white p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="font-bold">Propriedades</h2>
-              <button type="button" onClick={() => setRightOpen(false)} aria-label="Recolher propriedades" title="Recolher propriedades" className="flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronRight size={18} /></button>
+              <button
+                type="button"
+                onClick={() => setRightOpen(false)}
+                aria-label="Recolher propriedades"
+                title="Recolher propriedades"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border hover:bg-slate-50"
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {selected.length
@@ -1695,22 +2078,44 @@ export function VisualPageEditor() {
                       <Crop size={17} /> Recorte da imagem
                     </p>
                     <p className="mt-1 text-xs leading-5 text-slate-600">
-                      Dê dois cliques na imagem ou clique em Recortar. Arraste os quatro lados ou cantos para definir o corte.
+                      Dê dois cliques na imagem ou clique em Recortar. Arraste
+                      os quatro lados ou cantos para definir o corte.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button type="button"
-                        onClick={() => setCroppingId(croppingId === first?.id ? null : first?.id || null)}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white">
-                        <Crop size={15} /> {croppingId === first?.id ? "Concluir recorte" : "Recortar imagem"}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCroppingId(
+                            croppingId === first?.id ? null : first?.id || null,
+                          )
+                        }
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white"
+                      >
+                        <Crop size={15} />{" "}
+                        {croppingId === first?.id
+                          ? "Concluir recorte"
+                          : "Recortar imagem"}
                       </button>
-                      <button type="button"
-                        onClick={() => patchSelected({ cropTop: 0, cropRight: 0, cropBottom: 0, cropLeft: 0 })}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          patchSelected({
+                            cropTop: 0,
+                            cropRight: 0,
+                            cropBottom: 0,
+                            cropLeft: 0,
+                          })
+                        }
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-bold"
+                      >
                         <RotateCcw size={15} /> Restaurar original
                       </button>
                     </div>
                     {croppingId === first?.id && (
-                      <p className="mt-2 text-xs font-medium text-primary">Arraste as alças. O recorte é salvo sem apagar a imagem original.</p>
+                      <p className="mt-2 text-xs font-medium text-primary">
+                        Arraste as alças. O recorte é salvo sem apagar a imagem
+                        original.
+                      </p>
                     )}
                   </div>
                 )}
@@ -1728,7 +2133,9 @@ export function VisualPageEditor() {
                       <input
                         type="number"
                         value={first.style[key] ?? ""}
-                        onChange={(e) => patchSelected({ [key]: number(e.target.value) })}
+                        onChange={(e) =>
+                          patchSelected({ [key]: number(e.target.value) })
+                        }
                         className="mt-1 w-full rounded-lg border p-2 font-normal"
                       />
                     </label>
@@ -1742,7 +2149,9 @@ export function VisualPageEditor() {
                       min={6}
                       max={220}
                       value={first.style.fontSize ?? ""}
-                      onChange={(e) => patchSelected({ fontSize: number(e.target.value) })}
+                      onChange={(e) =>
+                        patchSelected({ fontSize: number(e.target.value) })
+                      }
                       className="mt-1 w-full rounded-lg border p-2 font-normal"
                     />
                   </label>
@@ -1750,7 +2159,9 @@ export function VisualPageEditor() {
                     Peso
                     <select
                       value={first.style.fontWeight || 400}
-                      onChange={(e) => patchSelected({ fontWeight: number(e.target.value) })}
+                      onChange={(e) =>
+                        patchSelected({ fontWeight: number(e.target.value) })
+                      }
                       className="mt-1 w-full rounded-lg border p-2 font-normal"
                     >
                       <option value={400}>Normal</option>
@@ -1776,7 +2187,9 @@ export function VisualPageEditor() {
                     <input
                       type="color"
                       value={first.style.backgroundColor || "#FFFFFF"}
-                      onChange={(e) => patchSelected({ backgroundColor: e.target.value })}
+                      onChange={(e) =>
+                        patchSelected({ backgroundColor: e.target.value })
+                      }
                       className="mt-1 h-10 w-full rounded border"
                     />
                   </label>
@@ -1787,7 +2200,9 @@ export function VisualPageEditor() {
                     <input
                       type="color"
                       value={first.style.borderColor || "#303842"}
-                      onChange={(e) => patchSelected({ borderColor: e.target.value })}
+                      onChange={(e) =>
+                        patchSelected({ borderColor: e.target.value })
+                      }
                       className="mt-1 h-10 w-full rounded border"
                     />
                   </label>
@@ -1798,7 +2213,9 @@ export function VisualPageEditor() {
                       min={0}
                       max={30}
                       value={first.style.borderWidth ?? 0}
-                      onChange={(e) => patchSelected({ borderWidth: number(e.target.value) })}
+                      onChange={(e) =>
+                        patchSelected({ borderWidth: number(e.target.value) })
+                      }
                       className="mt-1 h-10 w-full rounded border px-2 font-normal"
                     />
                   </label>
@@ -1817,8 +2234,12 @@ export function VisualPageEditor() {
                     Traço / ícone
                     <input
                       type="color"
-                      value={first.style.stroke || first.style.color || "#303842"}
-                      onChange={(e) => patchSelected({ stroke: e.target.value })}
+                      value={
+                        first.style.stroke || first.style.color || "#303842"
+                      }
+                      onChange={(e) =>
+                        patchSelected({ stroke: e.target.value })
+                      }
                       className="mt-1 h-10 w-full rounded border"
                     />
                   </label>
@@ -1850,7 +2271,9 @@ export function VisualPageEditor() {
                       max={1}
                       step={0.1}
                       value={first.style.opacity ?? 1}
-                      onChange={(e) => patchSelected({ opacity: number(e.target.value, 1) })}
+                      onChange={(e) =>
+                        patchSelected({ opacity: number(e.target.value, 1) })
+                      }
                       className="w-16 rounded-lg border p-2"
                     />
                   </label>
@@ -1860,7 +2283,9 @@ export function VisualPageEditor() {
                   <input
                     type="number"
                     value={first.style.zIndex ?? 0}
-                    onChange={(e) => patchSelected({ zIndex: number(e.target.value) })}
+                    onChange={(e) =>
+                      patchSelected({ zIndex: number(e.target.value) })
+                    }
                     className="mt-1 w-full rounded-lg border p-2 font-normal"
                   />
                 </label>
@@ -1896,10 +2321,37 @@ export function VisualPageEditor() {
             )}
           </aside>
         ) : (
-          <aside className="flex min-w-0 flex-col items-center gap-3 border-l bg-white px-1 py-3" aria-label="Propriedades recolhidas">
-            <button type="button" onClick={() => setRightOpen(true)} aria-label="Expandir propriedades" title="Expandir propriedades" className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"><ChevronLeft size={20} /></button>
-            <button type="button" onClick={() => setRightOpen(true)} aria-label="Propriedades do elemento" title="Propriedades do elemento" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"><Move size={19} /></button>
-            <button type="button" onClick={() => setRightOpen(true)} aria-label="Editar texto e imagem" title="Texto e imagem" className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100">T</button>
+          <aside
+            className="flex min-w-0 flex-col items-center gap-3 border-l bg-white px-1 py-3"
+            aria-label="Propriedades recolhidas"
+          >
+            <button
+              type="button"
+              onClick={() => setRightOpen(true)}
+              aria-label="Expandir propriedades"
+              title="Expandir propriedades"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-slate-50"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightOpen(true)}
+              aria-label="Propriedades do elemento"
+              title="Propriedades do elemento"
+              className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"
+            >
+              <Move size={19} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightOpen(true)}
+              aria-label="Editar texto e imagem"
+              title="Texto e imagem"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border text-xs font-bold hover:bg-slate-100"
+            >
+              T
+            </button>
           </aside>
         )}
       </div>
