@@ -1508,7 +1508,7 @@
   box-shadow: none;
 }
 .portal-tutor-login-screen[data-clinic-slug="alvorada"] .portal-one-screen-clinic-logo {
-  mix-blend-mode: darken;
+  mix-blend-mode: multiply;
 }
 .portal-one-screen-logo-white .portal-one-screen-clinic-logo {
   display: block;
