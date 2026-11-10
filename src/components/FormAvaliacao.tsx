@@ -7,7 +7,7 @@ import {
   frasePorTermo,
   fraseAtualizacao,
   removerFraseDoParametro,
-  resumoFaixas,
+  faixaDe,
   ROTULOS_NUMERICOS,
   type ChaveNumerica,
   type Especie,
@@ -215,7 +215,6 @@ export function FormAvaliacao({
     setPendente(null);
   };
 
-  const faixas = resumoFaixas(valores.especie);
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -419,6 +418,7 @@ export function FormAvaliacao({
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {NUMERICOS.map(({ chave, rotulo, unidade }) => {
           const { fora } = avaliarValor(chave, valores[chave], valores.especie);
+          const faixa = faixaDe(valores.especie, chave);
           return (
             <Fragment key={chave}>
             <label className="block">
@@ -443,6 +443,11 @@ export function FormAvaliacao({
                     : "border-input text-foreground focus:border-ring",
                 ].join(" ")}
               />
+              {faixa && (
+                <span className="mt-1 block text-[0.7rem] leading-relaxed text-muted-foreground">
+                  Faixa de referência ({valores.especie}): {comVirgula(String(faixa[0]))}–{comVirgula(String(faixa[1]))} {unidade}
+                </span>
+              )}
             </label>
             {chave === "glicemia" && onFazerCurva && (
               <div className="block">
@@ -481,12 +486,6 @@ export function FormAvaliacao({
         </div>
         <fieldset><legend className="text-xs font-semibold text-muted-foreground">Escala de dor</legend><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{["0 — Sem sinais aparentes", "1 — Leve", "2 — Moderada", "3 — Intensa", "4 — Muito intensa", "NA — Não avaliável"].map((opcao) => { const ativo = valores.dor === opcao; return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("dor", ativo ? "" : opcao)} className={["min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-medium", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-background text-foreground hover:border-primary/40"].join(" ")}>{opcao}</button>; })}</div></fieldset>
       </section>
-
-      {faixas && (
-        <p className="mt-2 text-[0.7rem] leading-relaxed text-muted-foreground">
-          Faixas ({valores.especie}): {faixas}
-        </p>
-      )}
 
       <label className="mt-4 block">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
