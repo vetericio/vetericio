@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { buscarFotosPublicasAlvorada, enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
-import { ArrowRight, ArrowUpRight, Check, Eye, Layers3, MousePointerClick, Sparkles } from "lucide-react";
+import {
+  buscarFotosPublicasAlvorada,
+  enviarArquivoPublicoPlataforma,
+} from "@/lib/platform-drive.functions";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Eye,
+  Layers3,
+  MousePointerClick,
+  Sparkles,
+} from "lucide-react";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 import {
   clinicSitePresets,
@@ -25,9 +36,15 @@ type Props = {
  * A troca do modelo é uma prévia local: nunca modifica as tabelas
  * clinic_sites / clinic_site_drafts e não depende de acesso administrativo.
  */
-export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "alvorada" }: Props) {
+export function AlvoradaDemoShowcase({
+  initialTemplate,
+  config,
+  clinicSlug = "alvorada",
+}: Props) {
   const [modelo, setModelo] = useState<ClinicSiteTemplate>(initialTemplate);
-  const [imagens, setImagens] = useState<Partial<Record<ClinicSiteTemplate, Record<string, string>>>>({});
+  const [imagens, setImagens] = useState<
+    Partial<Record<ClinicSiteTemplate, Record<string, string>>>
+  >({});
   const [podeEditar, setPodeEditar] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [uploadReadySlot, setUploadReadySlot] = useState<string | null>(null);
@@ -38,20 +55,38 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
     let alive = true;
     void (async () => {
       const current = await buscarFotosPublicasAlvorada();
-      if (alive && current && typeof current === "object" && !Array.isArray(current))
-        setImagens(current as Partial<Record<ClinicSiteTemplate, Record<string, string>>>);
+      if (
+        alive &&
+        current &&
+        typeof current === "object" &&
+        !Array.isArray(current)
+      )
+        setImagens(
+          current as Partial<
+            Record<ClinicSiteTemplate, Record<string, string>>
+          >,
+        );
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user?.id) return;
       const { data: access } = await (supabase as any)
-        .from("app_users").select("role").eq("user_id", auth.user.id).maybeSingle();
+        .from("app_users")
+        .select("role")
+        .eq("user_id", auth.user.id)
+        .maybeSingle();
       if (alive) setPodeEditar(access?.role === "admin");
     })().catch(() => {});
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   async function enviarImagem(slot: string, file: File) {
     if (uploadingSlot) return;
-    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type))
+    if (
+      !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(
+        file.type,
+      )
+    )
       return toast.error("Selecione PNG, JPG, WebP ou GIF.");
     if (file.size > 10 * 1024 * 1024)
       return toast.error("A imagem deve ter no máximo 10 MB.");
@@ -65,7 +100,8 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
       });
       const response = await enviarArquivoPublicoPlataforma({
         data: {
-          accessToken: (await supabase.auth.getSession()).data.session?.access_token || "",
+          accessToken:
+            (await supabase.auth.getSession()).data.session?.access_token || "",
           nome: `alvorada-${modelo}-${slot}-${file.name}`.slice(0, 220),
           mimeType: file.type,
           base64,
@@ -74,7 +110,8 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
           slot,
         },
       });
-      if (!response.url) throw new Error("O Google Drive não retornou o endereço da imagem.");
+      if (!response.url)
+        throw new Error("O Google Drive não retornou o endereço da imagem.");
       setImagens((current) => ({
         ...current,
         [modelo]: { ...(current[modelo] || {}), [slot]: response.url },
@@ -82,7 +119,9 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
       setUploadReadySlot(`${modelo}:${slot}`);
       toast.success("Foto salva neste tema da Alvorada.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha no envio da foto.");
+      toast.error(
+        error instanceof Error ? error.message : "Falha no envio da foto.",
+      );
     } finally {
       setUploadingSlot(null);
     }
@@ -95,14 +134,19 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
   }
   const preset = clinicSitePresets[modelo];
   // Use as fotos publicadas pela clínica; nunca as substitua por miniaturas.
-  const configDeDemonstracao = useMemo<ClinicSiteConfig>(() => ({
-    ...config,
-    hiddenSections: config.hiddenSections.filter((section) => section !== "equipe"),
-    primaryColor: preset.primaryColor,
-    secondaryColor: preset.secondaryColor,
-    backgroundColor: preset.backgroundColor,
-    textColor: preset.textColor,
-  }), [config, preset]);
+  const configDeDemonstracao = useMemo<ClinicSiteConfig>(
+    () => ({
+      ...config,
+      hiddenSections: config.hiddenSections.filter(
+        (section) => section !== "equipe",
+      ),
+      primaryColor: preset.primaryColor,
+      secondaryColor: preset.secondaryColor,
+      backgroundColor: preset.backgroundColor,
+      textColor: preset.textColor,
+    }),
+    [config, preset],
+  );
 
   function escolherModelo(novo: ClinicSiteTemplate) {
     if (novo === modelo) return;
@@ -119,20 +163,34 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
 
   return (
     <div className="min-h-screen bg-[#faf7f3]">
-      <section aria-labelledby="alvorada-vitrine-titulo" className="relative isolate overflow-hidden bg-[#251729] text-white">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-28 h-80 w-80 rounded-full bg-[#a76c77]/25 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-36 left-1/3 h-72 w-96 rounded-full bg-[#b69564]/15 blur-3xl" />
+      <section
+        aria-labelledby="alvorada-vitrine-titulo"
+        className="relative isolate overflow-hidden bg-[#251729] text-white"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-12 -top-28 h-80 w-80 rounded-full bg-[#a76c77]/25 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-36 left-1/3 h-72 w-96 rounded-full bg-[#b69564]/15 blur-3xl"
+        />
         <div className="relative mx-auto flex max-w-7xl flex-col gap-5 px-5 pb-7 pt-7 sm:px-8 sm:pb-9 sm:pt-9 lg:flex-row lg:items-end lg:justify-between lg:gap-10 lg:px-10">
           <div className="max-w-3xl">
             <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.22em] text-[#efc8a8]">
-              <Sparkles size={16} aria-hidden="true" /> Oricse · Vitrine interativa
+              <Sparkles size={16} aria-hidden="true" /> Oricse · Vitrine
+              interativa
             </p>
-            <h1 id="alvorada-vitrine-titulo" className="mt-3 font-semibold tracking-[-.045em] text-[clamp(1.9rem,3.8vw,3.6rem)] leading-[1.1]">
+            <h1
+              id="alvorada-vitrine-titulo"
+              className="mt-3 font-semibold tracking-[-.045em] text-[clamp(1.9rem,3.8vw,3.6rem)] leading-[1.1]"
+            >
               Versões dos sites disponíveis
             </h1>
             <p className="mt-3 max-w-[680px] text-sm leading-6 text-white/80 sm:text-base sm:leading-7">
-              Uma clínica, sete estilos para impressionar. Escolha um modelo abaixo e veja o site
-              inteiro se transformar na hora — sem sair desta página.
+              Uma clínica, sete estilos para impressionar. Escolha um modelo
+              abaixo e veja o site inteiro se transformar na hora — sem sair
+              desta página.
             </p>
           </div>
           <a
@@ -148,7 +206,11 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1.5">
             <p className="flex items-center gap-2 text-xs font-extrabold tracking-tight text-[#402535]">
-              <Layers3 size={15} aria-hidden="true" className="text-[#9d6378]" />
+              <Layers3
+                size={15}
+                aria-hidden="true"
+                className="text-[#9d6378]"
+              />
               Explore os 7 modelos
               <span className="ml-1 hidden text-[11px] font-medium text-[#8d7680] sm:inline">
                 · mesmo conteúdo, novas identidades
@@ -159,7 +221,11 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
               Clique para trocar
             </span>
           </div>
-          <div role="tablist" aria-label="Versões dos sites disponíveis" className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-7 lg:overflow-visible">
+          <div
+            role="tablist"
+            aria-label="Versões dos sites disponíveis"
+            className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-7 lg:overflow-visible"
+          >
             {clinicSiteTemplates.map((item, idx) => {
               const active = item === modelo;
               const tone = clinicSitePresets[item];
@@ -196,12 +262,20 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
                     <span className="absolute left-1 top-1 h-1 w-4 rounded-full bg-current/20" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[9px] font-semibold text-[#a08a91]">{String(idx + 1).padStart(2, "0")}</span>
+                    <span className="block text-[9px] font-semibold text-[#a08a91]">
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
                     <span className="block whitespace-nowrap text-[11px] font-extrabold text-[#442938]">
                       {clinicSiteTemplateLabels[item]}
                     </span>
                   </span>
-                  {active && <Check size={14} aria-label="Selecionado" className="absolute right-2 top-1.5 text-[#793d54]" />}
+                  {active && (
+                    <Check
+                      size={14}
+                      aria-label="Selecionado"
+                      className="absolute right-2 top-1.5 text-[#793d54]"
+                    />
+                  )}
                 </button>
               );
             })}
@@ -209,10 +283,16 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]">
             <p className="flex items-center gap-2 text-[#6a5260]">
               <Eye size={15} aria-hidden="true" className="text-[#97536b]" />
-              <strong className="text-[#492b38]">{clinicSiteTemplateLabels[modelo]}</strong>
-              <span className="hidden sm:inline">· {clinicSiteTemplateDescriptions[modelo]}</span>
+              <strong className="text-[#492b38]">
+                {clinicSiteTemplateLabels[modelo]}
+              </strong>
+              <span className="hidden sm:inline">
+                · {clinicSiteTemplateDescriptions[modelo]}
+              </span>
             </p>
-            <span className="font-semibold tabular-nums text-[#9a7e87]">Modelo {String(indice).padStart(2, "0")} de 07</span>
+            <span className="font-semibold tabular-nums text-[#9a7e87]">
+              Modelo {String(indice).padStart(2, "0")} de 07
+            </span>
           </div>
         </div>
       </div>
@@ -223,8 +303,13 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         aria-labelledby={`modelo-alvorada-${modelo}`}
         className="scroll-mt-[110px] min-h-[65vh]"
       >
-        <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug}
-          imageOverrides={imagens[modelo] || {}} />
+        <ClinicSiteRenderer
+          key={modelo}
+          template={modelo}
+          config={configDeDemonstracao}
+          clinicSlug={clinicSlug}
+          imageOverrides={imagens[modelo] || {}}
+        />
       </div>
     </div>
   );
