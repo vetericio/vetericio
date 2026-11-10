@@ -385,6 +385,7 @@ export function FormAvaliacao({
           const valorAtual = (valores[chave] ?? "").trim();
           const ehAlimentacao = chave === "alimentacao";
           const ehComportamento = chave === "comportamento";
+          const valorLegado = !ehAlimentacao && !ehComportamento && valorAtual && !opcoesFixas.includes(valorAtual) ? valorAtual : "";
           const outroAtivo = (ehAlimentacao || ehComportamento) && (ehAlimentacao ? outroAberto || (valorAtual !== "" && !opcoesFixas.includes(valorAtual)) : valorAtual === "Outro" || (valorAtual !== "" && !opcoesFixas.includes(valorAtual)));
           return (
             <div key={chave}>
@@ -394,6 +395,7 @@ export function FormAvaliacao({
                   const ativo = valores[chave] === opcao;
                   return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => { if (ehAlimentacao) setOutroAberto(false); const proximo = ativo ? "" : opcao; set(chave, proximo); if (chave === "fezes" && proximo !== "Sim") set("fezesCaracteristica", ""); if (chave === "urina" && proximo !== "Sim") set("urinaObservacoes", ""); if (chave === "vomito" && proximo !== "Sim") set("vomitoCaracteristica", ""); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", ativo ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40 hover:bg-secondary/70"].join(" ")}>{opcao}</button>;
                 })}
+                {valorLegado && <span className="inline-flex min-h-10 items-center rounded-full bg-muted px-3 py-2 text-sm text-foreground">Registro anterior: {valorLegado}</span>}
                 {(ehAlimentacao || ehComportamento) && <button type="button" aria-pressed={Boolean(outroAtivo)} onClick={() => { if (ehAlimentacao) setOutroAberto(!outroAtivo); set(chave, outroAtivo ? "" : "Outro"); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", outroAtivo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40"].join(" ")}>Outro</button>}
               </div>
               {(ehAlimentacao || ehComportamento) && outroAtivo && <input value={opcoesFixas.includes(valorAtual) ? "" : valores[chave]} onChange={(e) => set(chave, e.target.value)} placeholder={ehAlimentacao ? "Descreva a alimentação" : "Descreva o comportamento"} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />}
