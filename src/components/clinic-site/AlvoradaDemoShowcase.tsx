@@ -30,6 +30,8 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
   const [imagens, setImagens] = useState<Partial<Record<ClinicSiteTemplate, Record<string, string>>>>({});
   const [podeEditar, setPodeEditar] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [uploadReadySlot, setUploadReadySlot] = useState<string | null>(null);
+  const [hiddenUploadSlots, setHiddenUploadSlots] = useState<string[]>([]);
   const chaveFotos = "alvorada_vitrine_fotos_por_tema_v1";
 
   useEffect(() => {
@@ -49,21 +51,29 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
   }, []);
 
   async function enviarImagem(slot: string, file: File) {
-    if (!podeEditar || uploadingSlot) return;
+    if (uploadingSlot) return;
     if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type))
       return toast.error("Selecione PNG, JPG, WebP ou GIF.");
     if (file.size > 10 * 1024 * 1024)
       return toast.error("A imagem deve ter no máximo 10 MB.");
     setUploadingSlot(slot);
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session?.access_token) throw new Error("Sessão expirada.");
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ""));
         reader.onerror = () => reject(new Error("Erro ao ler a imagem."));
         reader.readAsDataURL(file);
       });
+      const { data: session } = await supabase.auth.getSession();
+      if (!podeEditar || !session.session?.access_token) {
+        setImagens((current) => ({
+          ...current,
+          [modelo]: { ...(current[modelo] || {}), [slot]: base64 },
+        }));
+        setUploadReadySlot(`${modelo}:${slot}`);
+        toast.success("Foto aplicada nesta visualização. Clique em OK para concluir.");
+        return;
+      }
       const response = await enviarArquivoPublicoPlataforma({
         data: {
           accessToken: session.session.access_token,
@@ -88,12 +98,19 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
           { onConflict: "chave" });
       if (error) throw error;
       setImagens(updated);
+      setUploadReadySlot(`${modelo}:${slot}`);
       toast.success("Foto salva neste tema da Alvorada.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha no envio da foto.");
     } finally {
       setUploadingSlot(null);
     }
+  }
+  function confirmarUpload(slot: string) {
+    const key = `${modelo}:${slot}`;
+    if (uploadReadySlot !== key) return;
+    setHiddenUploadSlots((current) => [...new Set([...current, key])]);
+    setUploadReadySlot(null);
   }
   const preset = clinicSitePresets[modelo];
   // Use as fotos publicadas pela clínica; nunca as substitua por miniaturas.
@@ -227,8 +244,11 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
       >
         <ClinicSiteRenderer key={modelo} template={modelo} config={configDeDemonstracao} clinicSlug={clinicSlug}
           imageOverrides={imagens[modelo] || {}}
-          onUploadImage={podeEditar ? enviarImagem : undefined}
-          uploadingSlot={uploadingSlot} />
+          onUploadImage={enviarImagem}
+          uploadingSlot={uploadingSlot}
+          uploadReadySlot={uploadReadySlot === `${modelo}:hero` || uploadReadySlot === `${modelo}:about` || uploadReadySlot?.startsWith(`${modelo}:gallery-`) || uploadReadySlot?.startsWith(`${modelo}:team-`) ? uploadReadySlot.slice(modelo.length + 1) : null}
+          hiddenUploadSlots={hiddenUploadSlots.filter((key) => key.startsWith(`${modelo}:`)).map((key) => key.slice(modelo.length + 1))}
+          onConfirmUpload={confirmarUpload} />
       </div>
     </div>
   );
