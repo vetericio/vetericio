@@ -19,7 +19,10 @@ export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
   essencial: "Essencial",
   horizonte: "Pleno",
 };
-export const clinicSiteTemplateDescriptions: Record<ClinicSiteTemplate, string> = {
+export const clinicSiteTemplateDescriptions: Record<
+  ClinicSiteTemplate,
+  string
+> = {
   signatura: "Hospitalar, editorial e acolhedor.",
   prestige: "Editorial, exclusivo e sofisticado.",
   atelier: "Hospitalar, técnico e acolhedor.",
@@ -46,7 +49,12 @@ export const clinicSiteSchema = z.object({
   schema_version: z.literal(1),
   template: z.enum(clinicSiteTemplates),
   theme: z.object({
-    colors: z.object({ primary: color, secondary: color, background: color, text: color }),
+    colors: z.object({
+      primary: color,
+      secondary: color,
+      background: color,
+      text: color,
+    }),
     font_pair: z.enum(["serif_editorial", "moderna_neutra", "humanista"]),
   }),
   content: z.object({
@@ -97,17 +105,28 @@ export const clinicSiteSchema = z.object({
     ),
     testimonials: z.object({
       enabled: z.boolean(),
-      items: z.array(z.object({ name: z.string(), text: z.string().max(320) })).max(6),
+      items: z
+        .array(z.object({ name: z.string(), text: z.string().max(320) }))
+        .max(6),
     }),
-    attendance: z.object({ hours: z.string().max(500), emergency24h: z.boolean() }),
-    location: z.object({ address: z.string().max(300), map_url: z.string().max(500) }),
+    attendance: z.object({
+      hours: z.string().max(500),
+      emergency24h: z.boolean(),
+    }),
+    location: z.object({
+      address: z.string().max(300),
+      map_url: z.string().max(500),
+    }),
     contact: z.object({
       phone: z.string().max(40),
       whatsapp: z.string().max(40),
       instagram: z.string().max(200),
       booking_url: z.string().max(500),
     }),
-    footer: z.object({ technical_responsible: z.string().max(120), crmv: z.string().max(40) }),
+    footer: z.object({
+      technical_responsible: z.string().max(120),
+      crmv: z.string().max(40),
+    }),
   }),
   seo: z.object({
     title: z.string().max(60),
@@ -229,7 +248,11 @@ export const prestigeDefault: ClinicSiteConfig = {
   address: "",
   hours: "Consulte nossos horários",
   emergency24h: false,
-  services: ["Consulta personalizada", "Especialidades veterinárias", "Diagnóstico e prevenção"],
+  services: [
+    "Consulta personalizada",
+    "Especialidades veterinárias",
+    "Diagnóstico e prevenção",
+  ],
   aboutTitle: "Uma equipe que cuida de quem faz parte da sua família.",
   aboutText:
     "Acreditamos no atendimento responsável, na prevenção e no respeito a cada animal. Aqui você encontra orientação clara e atenção em todas as etapas do cuidado.",
@@ -238,7 +261,8 @@ export const prestigeDefault: ClinicSiteConfig = {
   faqItems: [
     {
       question: "Como faço um agendamento?",
-      answer: "Entre em contato pelo WhatsApp ou telefone para consultar os horários disponíveis.",
+      answer:
+        "Entre em contato pelo WhatsApp ou telefone para consultar os horários disponíveis.",
     },
     {
       question: "Quais serviços estão disponíveis?",
@@ -262,8 +286,10 @@ export function normalizeClinicMediaUrl(value: unknown): string {
   const input = value.trim();
   try {
     const url = new URL(input);
-    const googleDrive = url.protocol === "https:" &&
-      (url.hostname === "drive.google.com" || url.hostname === "www.drive.google.com");
+    const googleDrive =
+      url.protocol === "https:" &&
+      (url.hostname === "drive.google.com" ||
+        url.hostname === "www.drive.google.com");
     if (googleDrive && (url.pathname === "/uc" || url.pathname === "/open")) {
       const fileId = url.searchParams.get("id") || "";
       if (/^[a-zA-Z0-9_-]{12,160}$/.test(fileId))
@@ -276,14 +302,19 @@ export function normalizeClinicMediaUrl(value: unknown): string {
 }
 
 export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
-  const candidate = value && typeof value === "object" ? (value as Partial<ClinicSiteConfig>) : {};
+  const candidate =
+    value && typeof value === "object"
+      ? (value as Partial<ClinicSiteConfig>)
+      : {};
   return {
     ...prestigeDefault,
     ...candidate,
     logoUrl: normalizeClinicMediaUrl(candidate.logoUrl),
     heroImageUrl: normalizeClinicMediaUrl(candidate.heroImageUrl),
     services: Array.isArray(candidate.services)
-      ? candidate.services.filter((item): item is string => typeof item === "string").slice(0, 24)
+      ? candidate.services
+          .filter((item): item is string => typeof item === "string")
+          .slice(0, 24)
       : prestigeDefault.services,
     galleryUrls: Array.isArray(candidate.galleryUrls)
       ? candidate.galleryUrls
@@ -303,13 +334,18 @@ export function normalizeClinicSiteConfig(value: unknown): ClinicSiteConfig {
           )
           .slice(0, 20)
           .map((person) => ({
-            ...person, imageUrl: normalizeClinicMediaUrl(person.imageUrl),
+            ...person,
+            imageUrl: normalizeClinicMediaUrl(person.imageUrl),
           }))
       : [],
     faqItems: Array.isArray(candidate.faqItems)
       ? candidate.faqItems
           .filter((v): v is ClinicSiteConfig["faqItems"][number] =>
-            Boolean(v && typeof v.question === "string" && typeof v.answer === "string"),
+            Boolean(
+              v &&
+              typeof v.question === "string" &&
+              typeof v.answer === "string",
+            ),
           )
           .slice(0, 12)
       : prestigeDefault.faqItems,
@@ -335,8 +371,13 @@ export function isAaContrast(foreground: string, background: string) {
   const luminance = (hex: string) =>
     rgb(hex)
       .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
-      .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
-  const [a, b] = [luminance(foreground), luminance(background)].sort((x, y) => y - x);
+      .reduce(
+        (sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index],
+        0,
+      );
+  const [a, b] = [luminance(foreground), luminance(background)].sort(
+    (x, y) => y - x,
+  );
   return (a + 0.05) / (b + 0.05) >= 4.5;
 }
 
