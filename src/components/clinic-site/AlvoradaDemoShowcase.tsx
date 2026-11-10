@@ -64,33 +64,22 @@ export function AlvoradaDemoShowcase({ initialTemplate, config, clinicSlug = "al
         reader.onerror = () => reject(new Error("Erro ao ler a imagem."));
         reader.readAsDataURL(file);
       });
-      const { data: session } = await supabase.auth.getSession();
-      if (!podeEditar || !session.session?.access_token)
-        throw new Error("Faça login como administrador para salvar a foto permanentemente no site.");
       const response = await enviarArquivoPublicoPlataforma({
         data: {
-          accessToken: session.session.access_token,
+          accessToken: (await supabase.auth.getSession()).data.session?.access_token || "",
           nome: `alvorada-${modelo}-${slot}-${file.name}`.slice(0, 220),
           mimeType: file.type,
           base64,
+          publico: "alvorada-vitrine",
+          modelo,
+          slot,
         },
       });
       if (!response.url) throw new Error("O Google Drive não retornou o endereço da imagem.");
-      // Atualiza o estado remoto primeiro para não apagar uploads de outras sessões.
-      const { data: current, error: readError } = await (supabase as any)
-        .from("oricse_config").select("id,valor").eq("chave", chaveFotos).maybeSingle();
-      if (readError) throw readError;
-      const remote = current?.valor && typeof current.valor === "object" && !Array.isArray(current.valor)
-        ? current.valor as Partial<Record<ClinicSiteTemplate, Record<string, string>>> : {};
-      const updated = {
-        ...remote,
-        [modelo]: { ...(remote[modelo] || {}), [slot]: response.url },
-      };
-      const { error } = await (supabase as any).from("oricse_config")
-        .upsert({ ...(current?.id ? { id: current.id } : {}), chave: chaveFotos, valor: updated, updated_at: new Date().toISOString() },
-          { onConflict: "chave" });
-      if (error) throw error;
-      setImagens(updated);
+      setImagens((current) => ({
+        ...current,
+        [modelo]: { ...(current[modelo] || {}), [slot]: response.url },
+      }));
       setUploadReadySlot(`${modelo}:${slot}`);
       toast.success("Foto salva neste tema da Alvorada.");
     } catch (error) {
