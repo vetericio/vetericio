@@ -40,6 +40,8 @@ type Animal = {
   veterinarioReferencia?: string;
   alerta?: string;
   observacoes?: string;
+  status?: "Ativo" | "Falecido" | "Desaparecido" | "Inativo";
+  dataObito?: string;
   criadoEm: string;
 };
 
@@ -83,7 +85,7 @@ const TIPOS_SANGUINEOS: Record<string, string[]> = {
 const TEMPERAMENTOS = ["Dócil", "Medroso", "Ansioso", "Reativo", "Agressivo", "Territorial", "Agitado", "Sociável", "Difícil contenção", "Não informado"];
 
 const FORM_VAZIO: AnimalForm = {
-  nome: "", nascimento: "", especie: "Cão", raca: SRD, sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "",
+  nome: "", nascimento: "", especie: "Cão", raca: SRD, sexo: "", cor: "", pelagem: "", porte: "", peso: "", escoreCorporal: "", castrado: "Não informado", microchip: "", temperamentos: [], comportamento: "", origem: "", chegadaTutor: "", tipoSanguineo: "", alergias: "", doencasCronicas: "", medicamentosContinuos: "", dieta: "", restricoes: "", necessidadesEspeciais: "", veterinarioReferencia: "", alerta: "", observacoes: "", status: "Ativo", dataObito: "",
 };
 
 function lerTutores(): Tutor[] {
@@ -165,6 +167,17 @@ function NovoAnimal() {
   async function salvar() {
     if(!tutor||!clinicaId)return toast.error("Tutor não identificado no Supabase.");
     if(!form.nome.trim()||!form.especie)return toast.error("Nome e espécie são obrigatórios.");
+    if (form.nascimento && form.nascimento > new Date().toISOString().slice(0, 10)) return toast.error("A data de nascimento não pode estar no futuro.");
+    if (form.chegadaTutor && form.nascimento && form.chegadaTutor < form.nascimento) return toast.error("A chegada ao tutor não pode ser anterior ao nascimento.");
+    if (form.status === "Falecido" && !form.dataObito) return toast.error("Informe a data do óbito.");
+    if (form.status !== "Falecido" && form.dataObito) return toast.error("A data do óbito só pode ser preenchida para animal falecido.");
+    const { data: animaisDoTutor, error: erroDuplicidade } = await (supabaseBanco as any).from("oricse_animais").select("id,nome,microchip").eq("clinica_id",clinicaId).eq("tutor_id",tutor.id);
+    if (erroDuplicidade) return toast.error("Não foi possível verificar duplicidade do cadastro.");
+    const nomeNormalizado = form.nome.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const homonimos = (animaisDoTutor || []).filter((item: any) => item.id !== animalId && String(item.nome || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === nomeNormalizado);
+    if (homonimos.length && !window.confirm("Este tutor já possui um animal com o mesmo nome. Deseja continuar?")) return;
+    const microchip = form.microchip.trim();
+    if (microchip && (animaisDoTutor || []).some((item: any) => item.id !== animalId && String(item.microchip || "").trim() === microchip)) return toast.error("Este microchip já está cadastrado para outro animal deste tutor.");
     const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
     if(error)return toast.error(error.message);
     toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no ORICSE.");
@@ -191,6 +204,8 @@ function NovoAnimal() {
             <label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={(e) => set("sexo", e.target.value)} className={campo}><option value="">Não informado</option><option>Macho</option><option>Fêmea</option><option>Indeterminado</option></select></label>
             <label className="text-sm font-semibold">Cor<select value={form.cor} onChange={(e) => set("cor", e.target.value)} className={campo}><option value="">Selecione</option>{CORES.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
             <label className="text-sm font-semibold">Microchip<input value={form.microchip} onChange={(e) => set("microchip", e.target.value)} className={campo}/></label>
+            <label className="text-sm font-semibold">Status<select value={form.status || "Ativo"} onChange={(e) => set("status", e.target.value as AnimalForm["status"])} className={campo}><option>Ativo</option><option>Falecido</option><option>Desaparecido</option><option>Inativo</option></select></label>
+            {form.status === "Falecido" && <label className="text-sm font-semibold">Data do óbito<input type="date" value={form.dataObito || ""} onChange={(e) => set("dataObito", e.target.value)} className={campo}/></label> }
           </Bloco>
 
           <Bloco titulo="Características">
