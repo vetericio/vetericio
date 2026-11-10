@@ -21,6 +21,14 @@ jobs:
     steps:
       - name: Checkout verified source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Protect the hospitalization page
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
+        run: node scripts/check-internacao-protection.mjs
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
