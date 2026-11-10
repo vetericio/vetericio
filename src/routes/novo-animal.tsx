@@ -1,3 +1,4 @@
+// Cadastro veterinário com campos específicos para animais exóticos.
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, PawPrint, Save, Trash2 } from "lucide-react";
