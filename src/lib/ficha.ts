@@ -4,7 +4,7 @@ import { normalizarNomeMedicamento } from "./nomes";
 import { blocoCurvasDoRegistro, type Curva } from "./curva";
 import { resumoRegistro } from "./resumo";
 
-export type Especie = "Cachorro" | "Gato" | "";
+export type Especie = string;
 
 /** Uma linha da tabela de medicações do animal. */
 export type Medicacao = {
@@ -40,6 +40,15 @@ export type Registro = {
   especie?: Especie;
   /** Peso do animal em kg, ex.: "9,9". Usado no cálculo das medicações. */
   peso?: string;
+  /** Parâmetros complementares da avaliação, em unidades explícitas. */
+  spo2?: string;
+  tpc?: string;
+  dor?: string;
+  nivelConsciencia?: string;
+  fezesCaracteristica?: string;
+  urinaObservacoes?: string;
+  vomitoCaracteristica?: string;
+  salivacao?: string;
   criadoEm?: string;
   alimentacao: string;
   comportamento: string;
@@ -149,7 +158,11 @@ export function blocoAnamnese(
   ];
 }
 
-export const ESPECIES: Especie[] = ["Cachorro", "Gato"];
+export const ESPECIES: Especie[] = [
+  "Cachorro", "Gato", "Coelho", "Furão", "Porquinho-da-índia", "Hamster", "Chinchila",
+  "Rato", "Camundongo", "Gerbil", "Ouriço-pigmeu", "Aves", "Réptil", "Tartaruga",
+  "Jabuti", "Cobra", "Lagarto", "Iguana", "Peixe", "Anfíbio", "Outro",
+];
 
 export type ChaveNumerica = "temperatura" | "fc" | "fr" | "pas" | "glicemia";
 
@@ -298,33 +311,14 @@ export function proximoNomeDuplicado(nome: string, registros: Registro[]): strin
 
 
 export const OPCOES = {
-  alimentacao: [
-    "Ração",
-    "Patê",
-    "Ração + patê",
-    "Forçado",
-    "Recuperação",
-    "Jejum",
-    "Não alimentou",
-    "Comida própria",
-    "Frango",
-    "Iogurte",
-    "Sonda",
-
-  ],
-  comportamento: [
-    "Responsivo",
-    "Prostrado",
-    "Ativo",
-    "Neurológico",
-    "Decúbito",
-    "Reativo",
-    "Responsivo porém prostrado",
-  ],
-  fezes: ["Sim", "Não", "Pastoso", "Diarreia", "Melena", "Carimbo"],
-  mucosas: ["Normocoradas", "Hipocoradas", "Ictéricas", "Hiperêmicas", "Cianóticas"],
-  urina: ["Sim", "Não", "Sonda", "Compressão"],
-  vomito: ["Sim", "Não", "Sialorreia"],
+  alimentacao: ["Ração", "Patê", "Comida própria", "Sonda", "Alimentação forçada", "Jejum para procedimento", "Não quis alimentar", "Outro"],
+  comportamento: ["Calmo", "Ativo", "Agitado", "Agressivo", "Apático", "Prostrado", "Hiper-reativo", "Vocalizando excessivamente", "Estereotipado (movimentos repetitivos)", "Outro"],
+  nivelConsciencia: ["Alerta", "Responsivo a estímulos", "Deprimido", "Letárgico", "Obnubilado", "Estuporoso", "Comatoso"],
+  fezes: ["Sim", "Não"],
+  mucosas: ["Normocorada (rósea)", "Hipocorada (pálida)", "Hipercorada (avermelhada)", "Ictérica (amarelada)", "Cianótica (azulada)", "Congesta", "Marmórea"],
+  urina: ["Sim", "Não"],
+  vomito: ["Não", "Sim", "Náusea", "Ânsia improdutiva", "Regurgitação"],
+  salivacao: ["Normal", "Sialorreia (excessiva)", "Hipossalivação (reduzida)"],
 } as const;
 
 export const REGISTRO_VAZIO: Omit<Registro, "id"> = {
@@ -344,6 +338,14 @@ export const REGISTRO_VAZIO: Omit<Registro, "id"> = {
   pas: "",
   glicemia: "",
   observacoes: "",
+  spo2: "",
+  tpc: "",
+  dor: "",
+  nivelConsciencia: "",
+  fezesCaracteristica: "",
+  urinaObservacoes: "",
+  vomitoCaracteristica: "",
+  salivacao: "",
 };
 
 /** Aceita "5,3" ou "5.3" e devolve número (NaN se inválido). */
@@ -387,6 +389,14 @@ export function formatarRegistro(r: Registro, opcoes?: OpcoesFormato): string {
     linha("Vômito", r.vomito),
     linha("PAS", r.pas, "mmHg"),
     linha("Glicemia", r.glicemia, "mg/dL"),
+    linha("SpO₂", r.spo2 ?? "", "%"),
+    linha("TPC", r.tpc ?? "", "s"),
+    linha("Escala de dor", r.dor ?? ""),
+    linha("Nível de consciência", r.nivelConsciencia ?? ""),
+    linha("Características das fezes", r.fezesCaracteristica ?? ""),
+    linha("Observações urinárias", r.urinaObservacoes ?? ""),
+    linha("Características do vômito", r.vomitoCaracteristica ?? ""),
+    linha("Salivação", r.salivacao ?? ""),
   ].filter(Boolean) as string[];
 
   const titulo = opcoes?.emoji === false ? nomeAnimalTexto(r) : nomeAnimal(r);
@@ -596,11 +606,11 @@ export function aplicarAtualizacao(
   if (!novo) return registro;
   const atualizado: Registro = {
     ...registro,
-    [chave]: mesclarValores(registro[chave], novo),
+    [chave]: mesclarValores(registro[chave] || "", novo),
   };
   if (ehChaveNumerica(chave)) {
     let obs = comLinha(atualizado.observacoes, fraseAtualizacao(chave, novo, data));
-    const { fora, termo } = avaliarValor(chave, novo, registro.especie);
+    const { fora, termo } = avaliarValor(chave, novo, registro.especie || "Desconhecida");
     if (fora && termo) obs = comLinha(obs, frasePorTermo(termo, data));
     atualizado.observacoes = obs;
   }
@@ -631,7 +641,7 @@ export function alteracoesDoRegistro(r: Registro): Alteracao[] {
     const faixa = faixaDe(r.especie, chave);
     if (!faixa) continue;
     const valor = ultimoValor(r[chave]);
-    const { fora, termo } = avaliarValor(chave, valor, r.especie);
+    const { fora, termo } = avaliarValor(chave, valor, r.especie || "Desconhecida");
     if (!fora) continue;
     const n = paraNumero(valor);
     lista.push({
@@ -660,5 +670,5 @@ export function linhaEstaForaDaFaixa(r: Registro, linha: string): boolean {
   const [chave] = entrada;
   const ultimo = ultimoValor(resto);
   const numero = ultimo.match(/^([0-9]+[,.]?[0-9]*)/)?.[1] ?? ultimo;
-  return avaliarValor(chave, numero, r.especie).fora;
+  return avaliarValor(chave, numero, r.especie || "Desconhecida").fora;
 }

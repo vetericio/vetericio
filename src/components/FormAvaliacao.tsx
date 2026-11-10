@@ -33,11 +33,20 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { emojiEspecie, sugerirAnamneses } from "@/lib/anamnese";
 import { carregarRegras, regrasDisparadas, type RegraAlerta } from "@/lib/pendencias";
 import { toast } from "sonner";
+import { Search } from "lucide-react";
+
+function alternarOpcaoLista(valor: string, opcao: string): string {
+  const selecionadas = valor.split(" · ").filter(Boolean);
+  return selecionadas.includes(opcao)
+    ? selecionadas.filter((item) => item !== opcao).join(" · ")
+    : [...selecionadas, opcao].join(" · ");
+}
 
 function formatarPesoKgDigitado(valor: string): string {
-  const digitos = valor.replace(/\D/g, "").slice(-5);
-  if (!digitos) return "0,000";
-  const preenchido = digitos.padStart(4, "0");
+  const digitos = valor.replace(/\D/g, "").slice(0, 7);
+  if (!digitos) return "";
+  const limitado = String(Math.min(Number(digitos), 1000000));
+  const preenchido = limitado.padStart(4, "0");
   const inteiros = preenchido.slice(0, -3).replace(/^0+(?=\d)/, "") || "0";
   return `${inteiros},${preenchido.slice(-3)}`;
 }
@@ -63,8 +72,8 @@ const Medicacoes = memo(MedicacoesBase);
 
 const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
   { chave: "temperatura", rotulo: "Temperatura", unidade: "°C" },
-  { chave: "fc", rotulo: "FC", unidade: "bpm" },
-  { chave: "fr", rotulo: "FR", unidade: "mpm" },
+  { chave: "fc", rotulo: "Frequência cardíaca (FC)", unidade: "bpm" },
+  { chave: "fr", rotulo: "Frequência respiratória (FR)", unidade: "mpm" },
   { chave: "pas", rotulo: "PAS", unidade: "mmHg" },
   { chave: "glicemia", rotulo: "Glicemia", unidade: "mg/dL" },
 ];
@@ -72,10 +81,12 @@ const NUMERICOS: { chave: ChaveNumerica; rotulo: string; unidade: string }[] = [
 const GRUPOS: { chave: keyof typeof OPCOES; rotulo: string }[] = [
   { chave: "alimentacao", rotulo: "Alimentação" },
   { chave: "comportamento", rotulo: "Comportamento" },
-  { chave: "fezes", rotulo: "Fezes" },
+  { chave: "nivelConsciencia", rotulo: "Nível de consciência" },
   { chave: "mucosas", rotulo: "Mucosas" },
+  { chave: "fezes", rotulo: "Fezes" },
   { chave: "urina", rotulo: "Urina" },
   { chave: "vomito", rotulo: "Vômito" },
+  { chave: "salivacao", rotulo: "Salivação" },
 ];
 
 /** Acrescenta a frase automática nas observações, sem repetir e sem apagar nada. */
@@ -117,6 +128,8 @@ export function FormAvaliacao({
   const [fila, setFila] = useState<RegraAlerta[]>([]);
   const [alertados, setAlertados] = useState<string[]>([]);
   const [outroAberto, setOutroAberto] = useState(false);
+  const [especieAberto, setEspecieAberto] = useState(false);
+  const [buscaEspecie, setBuscaEspecie] = useState("");
   const [sugerindo, setSugerindo] = useState(false);
   const { anamneses } = useAnamneses();
   const { plantao, carregado: plantaoCarregado } = usePlantaoAtual();
@@ -229,6 +242,17 @@ export function FormAvaliacao({
                 </p>
               ),
             )}
+            {([
+              ["Saturação de oxigênio (SpO₂)", anterior.spo2, "%"],
+              ["Tempo de preenchimento capilar (TPC)", anterior.tpc, "s"],
+              ["Escala de dor", anterior.dor, ""],
+              ["Características das fezes", anterior.fezesCaracteristica, ""],
+              ["Observações urinárias", anterior.urinaObservacoes, ""],
+              ["Características do vômito", anterior.vomitoCaracteristica, ""],
+              ["Salivação", anterior.salivacao, ""],
+            ] as [string, string | undefined, string][]).filter(([, valor]) => (valor ?? "").trim()).map(([rotulo, valor, unidade]) => (
+              <p key={rotulo}><span className="text-muted-foreground">{rotulo}: </span><span className="font-semibold">{valor}{unidade ? ` ${unidade}` : ""}</span></p>
+            ))}
           </div>
           {anterior.observacoes.trim() && (
             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
@@ -322,31 +346,21 @@ export function FormAvaliacao({
       </div>
 
 
-      <div className="mt-3 flex flex-row items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+        <div className="relative min-w-0">
+          <label className="block text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Espécie
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {ESPECIES.map((esp) => {
-              const ativo = valores.especie === esp;
-              return (
-                <button
-                  key={esp}
-                  type="button"
-                  onClick={() => onChange({ ...valores, especie: (ativo ? "" : esp) as Especie })}
-                  className={[
-                    "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                    ativo
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-                  ].join(" ")}
-                >
-                  {esp}
-                </button>
-              );
-            })}
-          </div>
+          </label>
+          <button type="button" aria-label="Selecionar espécie" aria-expanded={especieAberto} onClick={() => { setEspecieAberto((aberto) => !aberto); setBuscaEspecie(""); }} className="mt-1 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
+            <span>{valores.especie || "Selecione a espécie"}</span><span aria-hidden="true">▾</span>
+          </button>
+          {especieAberto && <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-2 shadow-lg">
+            <label className="flex items-center gap-2 rounded-lg border border-input px-3 text-muted-foreground"><Search size={16} aria-hidden="true" /><input autoFocus aria-label="Buscar espécie" value={buscaEspecie} onChange={(e) => setBuscaEspecie(e.target.value)} placeholder="Buscar espécie" className="min-h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none" /></label>
+            <div className="mt-2 max-h-52 overflow-y-auto">
+              {ESPECIES.filter((esp) => esp.toLocaleLowerCase("pt-BR").includes(buscaEspecie.toLocaleLowerCase("pt-BR"))).map((esp) => <button key={esp} type="button" onClick={() => { onChange({ ...valores, especie: esp as Especie }); setEspecieAberto(false); }} className={["min-h-10 w-full rounded-lg px-3 text-left text-sm", valores.especie === esp ? "bg-primary font-semibold text-primary-foreground" : "text-foreground hover:bg-secondary"].join(" ")}>{esp}</button>)}
+            </div>
+            {buscaEspecie.trim() && !ESPECIES.some((esp) => esp.toLocaleLowerCase("pt-BR") === buscaEspecie.trim().toLocaleLowerCase("pt-BR")) && <button type="button" onClick={() => { onChange({ ...valores, especie: buscaEspecie.trim() }); setEspecieAberto(false); }} className="mt-2 min-h-10 w-full rounded-lg border border-dashed border-border px-3 text-left text-sm text-primary">Usar “{buscaEspecie.trim()}”</button>}
+          </div>}
         </div>
 
         <div className="shrink-0 w-28">
@@ -368,70 +382,29 @@ export function FormAvaliacao({
       <div className="mt-5 space-y-4">
         {GRUPOS.map(({ chave, rotulo }) => {
           const opcoesFixas = OPCOES[chave] as readonly string[];
-          const valorAtual = valores[chave].trim();
+          const valorAtual = (valores[chave] ?? "").trim();
           const ehAlimentacao = chave === "alimentacao";
-          const outroAtivo =
-            ehAlimentacao && (outroAberto || (valorAtual !== "" && !opcoesFixas.includes(valorAtual)));
+          const ehComportamento = chave === "comportamento";
+          const valorLegado = !ehAlimentacao && !ehComportamento && valorAtual && !opcoesFixas.includes(valorAtual) ? valorAtual : "";
+          const outroAtivo = (ehAlimentacao || ehComportamento) && (ehAlimentacao ? outroAberto || (valorAtual !== "" && !opcoesFixas.includes(valorAtual)) : valorAtual === "Outro" || (valorAtual !== "" && !opcoesFixas.includes(valorAtual)));
           return (
-            <div key={chave}>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {rotulo}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {opcoesFixas.map((opcao) => {
+            <div
+              key={chave}
+              className={chave === "fezes" ? "grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start" : ""}
+            >
+              <p className={["text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground", chave === "fezes" ? "sm:col-span-2" : ""].join(" ")}>{rotulo}</p>
+              <div className={["mt-2 flex flex-wrap gap-2", chave === "fezes" ? "sm:col-start-1" : ""].join(" ")}>
+                {opcoesFixas.filter((opcao) => opcao !== "Outro").map((opcao) => {
                   const ativo = valores[chave] === opcao;
-                  return (
-                    <button
-                      key={opcao}
-                      type="button"
-                      onClick={() => {
-                        if (ehAlimentacao) setOutroAberto(false);
-                        set(chave, ativo ? "" : opcao);
-                      }}
-                      className={[
-                        "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                        ativo
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-                      ].join(" ")}
-                    >
-                      {opcao}
-                    </button>
-                  );
+                  return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => { if (ehAlimentacao) setOutroAberto(false); const proximo = ativo ? "" : opcao; set(chave, proximo); if (chave === "fezes" && proximo !== "Sim") set("fezesCaracteristica", ""); if (chave === "urina" && proximo !== "Sim") set("urinaObservacoes", ""); if (chave === "vomito" && proximo !== "Sim") set("vomitoCaracteristica", ""); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", ativo ? "border-primary bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40 hover:bg-secondary/70"].join(" ")}>{opcao}</button>;
                 })}
-                {ehAlimentacao && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (outroAtivo) {
-                        setOutroAberto(false);
-                        set("alimentacao", "");
-                      } else {
-                        setOutroAberto(true);
-                        set("alimentacao", "");
-                      }
-                    }}
-                    className={[
-                      "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                      outroAtivo
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
-                    ].join(" ")}
-                  >
-                    Outro
-                  </button>
-                )}
+                {valorLegado && <span className="inline-flex min-h-10 items-center rounded-full bg-muted px-3 py-2 text-sm text-foreground">Registro anterior: {valorLegado}</span>}
+                {(ehAlimentacao || ehComportamento) && <button type="button" aria-pressed={Boolean(outroAtivo)} onClick={() => { if (ehAlimentacao) setOutroAberto(!outroAtivo); set(chave, outroAtivo ? "" : "Outro"); }} className={["min-h-10 rounded-full border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", outroAtivo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground hover:border-primary/40"].join(" ")}>Outro</button>}
               </div>
-              {ehAlimentacao && outroAtivo && (
-                <input
-                  type="text"
-                  autoFocus
-                  value={opcoesFixas.includes(valorAtual) ? "" : valores.alimentacao}
-                  onChange={(e) => set("alimentacao", e.target.value)}
-                  placeholder="Escreva o alimento"
-                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                />
-              )}
+              {(ehAlimentacao || ehComportamento) && outroAtivo && <input value={opcoesFixas.includes(valorAtual) ? "" : valores[chave]} onChange={(e) => set(chave, e.target.value)} placeholder={ehAlimentacao ? "Descreva a alimentação" : "Descreva o comportamento"} className="mt-2 min-h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />}
+              {chave === "fezes" && valores.fezes === "Sim" && <div className="mt-3 sm:col-start-2 sm:row-start-2"><p className="text-xs font-medium text-muted-foreground">Características das fezes</p><div className="mt-2 flex flex-wrap gap-2">{["Firmes / Formadas", "Pastosas", "Amolecidas", "Semilíquidas", "Líquidas / Aquosas", "Mucoides", "Espumosas", "Melena"].map((opcao) => { const selecionadas = (valores.fezesCaracteristica ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("fezesCaracteristica", alternarOpcaoLista(valores.fezesCaracteristica ?? "", opcao))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground"].join(" ")}>{opcao}</button>; })}</div></div>}
+              {chave === "urina" && valores.urina === "Sim" && <div className="mt-3"><p className="text-xs font-medium text-muted-foreground">Observações urinárias</p><div className="mt-2 flex flex-wrap gap-2">{["Sondagem vesical", "Expressão vesical manual", "Hematúria", "Piúria"].map((opcao) => { const selecionadas = (valores.urinaObservacoes ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("urinaObservacoes", (ativo ? selecionadas.filter((x) => x !== opcao) : [...selecionadas, opcao]).join(" · "))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground"].join(" ")}>{opcao}</button>; })}</div></div>}
+              {chave === "vomito" && valores.vomito === "Sim" && <div className="mt-3"><p className="text-xs font-medium text-muted-foreground">Características do vômito</p><div className="mt-2 flex flex-wrap gap-2">{["Alimentar", "Espumoso", "Bilioso", "Líquido", "Com sangue", "Fecaloide"].map((opcao) => { const selecionadas = (valores.vomitoCaracteristica ?? "").split(" · ").filter(Boolean); const ativo = selecionadas.includes(opcao); return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("vomitoCaracteristica", alternarOpcaoLista(valores.vomitoCaracteristica ?? "", opcao))} className={["min-h-10 rounded-full border px-3 py-2 text-sm", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-secondary text-secondary-foreground"].join(" ")}>{opcao}</button>; })}</div></div>}
             </div>
           );
         })}
@@ -468,7 +441,7 @@ export function FormAvaliacao({
             {chave === "glicemia" && onFazerCurva && (
               <div className="block">
                 <span className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Fazer curva?
+                  Fazer curva glicêmica?
                 </span>
                 <div className="mt-1 flex gap-2">
                   {[true, false].map((v) => (
@@ -493,6 +466,15 @@ export function FormAvaliacao({
           );
         })}
       </div>
+
+      <section className="mt-5 space-y-4 rounded-xl border border-border bg-secondary/20 p-3 sm:p-4" aria-label="Parâmetros complementares">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Parâmetros complementares</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block text-xs font-medium text-muted-foreground">Saturação de oxigênio (SpO₂) — %<input type="number" min="0" max="100" step="any" value={valores.spo2 ?? ""} onChange={(e) => { const value = e.target.value; if (value === "" || (Number(value) >= 0 && Number(value) <= 100)) set("spo2", value); }} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground" /></label>
+          <label className="block text-xs font-medium text-muted-foreground">Tempo de preenchimento capilar (TPC) — segundos<input type="number" min="0" step="any" value={valores.tpc ?? ""} onChange={(e) => { const value = e.target.value; if (value === "" || Number(value) >= 0) set("tpc", value); }} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground" /></label>
+        </div>
+        <fieldset><legend className="text-xs font-semibold text-muted-foreground">Escala de dor</legend><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{["0 — Sem sinais aparentes", "1 — Leve", "2 — Moderada", "3 — Intensa", "4 — Muito intensa", "NA — Não avaliável"].map((opcao) => { const ativo = valores.dor === opcao; return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("dor", ativo ? "" : opcao)} className={["min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-medium", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-background text-foreground hover:border-primary/40"].join(" ")}>{opcao}</button>; })}</div></fieldset>
+      </section>
 
       {faixas && (
         <p className="mt-2 text-[0.7rem] leading-relaxed text-muted-foreground">
