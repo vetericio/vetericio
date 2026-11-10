@@ -133,7 +133,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       gallery.length,
       onUploadImage ? 3 : 0,
       ...Object.keys(imageOverrides)
-        .filter((key) => /^gallery-\\d+$/.test(key))
+        .filter((key) => /^gallery-[0-9]+$/.test(key))
         .map((key) => Number(key.slice(8)) + 1),
       0,
     ) },
