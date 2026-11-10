@@ -1,3 +1,4 @@
+// Revisão clínica: cadastro, prontuário e exame oftalmológico vinculados ao atendimento.
 import { descarregarOricseStorage, oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BedDouble, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
