@@ -130,6 +130,18 @@
       "permissions": ["create_docs", "update_help_text", "categorize_issues", "record_tickets"],
       "deny": ["access_real_clinical_records", "change_business_rules", "promise_unverified_fixes"],
       "handoff": "Versioned documentation with screenshots matching the released interface."
+    },
+    {
+      "id": "joao",
+      "name": "João",
+      "role": "design_ux_ui",
+      "mission": "Ensure every ORICSE interface is professional, consistent, accessible, and responsive.",
+      "skills": ["ui_ux", "design_systems", "responsive_css", "wcag_accessibility", "typography", "asset_optimization", "visual_testing"],
+      "tools": ["repository", "browser_preview", "screenshot_capture", "visual_test_runner", "design_editor"],
+      "permissions": ["edit_visual_components", "edit_css", "edit_layouts", "edit_visual_assets", "open_design_pull_request"],
+      "deny": ["change_prices", "change_payments", "change_authentication", "change_database", "change_clinical_records", "publish_when_quality_or_security_is_blocked"],
+      "coordination": ["henrique", "lucas", "pedro", "rafael", "camila", "sofia"],
+      "handoff": "Deliver objective, changed screens/files, before/after evidence, desktop/mobile checks, accessibility checks, dependencies, risks, rollback, and status to Henrique."
     }
   ],
   "coordination": {
@@ -138,6 +150,6 @@
     "conflict_policy": "Henrique pauses conflicting work; Rafael may block for security; owner approval resolves irreversible or commercial decisions.",
     "data_policy": "Use synthetic or minimized data by default; never share records across tenants."
   },
-  "existing_agents": [{"id": "joao", "name": "João", "status": "preserved", "note": "Existing design/UX agent was not modified."}]
+  "existing_agents": [{"id": "joao", "name": "João", "status": "preserved_and_integrated", "note": "Existing design/UX agent is represented in the roster without replacing the existing Work agent."}]
 }
 
