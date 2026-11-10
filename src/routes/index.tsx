@@ -137,6 +137,19 @@ const joias = [
   ["Agendamento mediante pagamento", "O tutor confirma o horário após pagar online.", CalendarDays],
 ] as const;
 
+const perfisAtendidos = [
+  ["Veterinário em domicílio", "Atenda onde o pet estiver, com organização e histórico sempre à mão.", Stethoscope],
+  ["Clínicas de todos os portes", "Do consultório enxuto à operação completa, cada equipe no seu ritmo.", Store],
+  ["Hospitais veterinários", "Integre atendimento, internação, plantão, equipe e caixa em um só lugar.", HeartPulse],
+  ["Hotelzinho e creche", "Acompanhe reservas, estadias, cuidados e a rotina de cada hóspede.", Hotel],
+  ["Pet shops", "Organize produtos, clientes, serviços e oportunidades de venda.", ShoppingBag],
+  ["Banho e tosa", "Controle agenda, profissionais, serviços e observações importantes.", Scissors],
+  ["ONGs e protetores", "Cuide de muitos animais com registros claros e uma operação mais leve.", Heart],
+  ["Laboratórios e diagnóstico", "Mantenha solicitações, documentos e resultados conectados ao atendimento.", FileText],
+  ["Profissionais e equipes pet", "Tenha uma estrutura que acompanha diferentes especialidades e modelos de trabalho.", Users],
+  ["Outros negócios pet", "Adapte a Oricse à sua rotina, ao seu público e ao jeito da sua empresa.", PawPrint],
+] as const;
+
 function Titulo({children, claro = false}:{children:ReactNode; claro?:boolean}) {
   return <h2 className={"font-display text-4xl font-semibold leading-[.96] tracking-[-.055em] sm:text-6xl " + (claro ? "text-[#fff9f4]" : "text-[#4A1826]")}>{children}</h2>;
 }
@@ -370,6 +383,27 @@ function PaginaInicialPlataforma() {
           <div className="max-w-2xl"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#9c6574]">Soluções para a rotina de verdade</p><Titulo>Cada parte do seu negócio, no mesmo sistema.</Titulo><p className="mt-5 text-[17px] leading-7 text-[#765c66]">Da chegada do tutor ao pagamento, a Oricse organiza a operação e deixa sua equipe livre para cuidar melhor.</p></div>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {modulos.map(({icon:Icon,titulo,descricao})=><article key={titulo} className="group flex min-h-[230px] flex-col rounded-2xl border border-[#eaded8] bg-white p-5 text-[#4A1826] transition duration-300 hover:-translate-y-1 hover:border-[#c79ca6] hover:shadow-[0_16px_32px_rgba(74,24,38,.10)]"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f7ebea] text-[#7a344c] transition group-hover:bg-[#4A1826] group-hover:text-[#fff9f4]"><Icon size={19}/></div><h3 className="mt-4 text-base font-bold">{titulo}</h3><p className="mt-2 text-sm leading-6 text-[#765c66]">{descricao}</p><a href="/solucoes" className="mt-auto inline-flex w-fit items-center gap-1.5 rounded-full border border-[#e5cfd2] bg-[#fffaf9] px-3 py-1.5 text-xs font-bold text-[#7a344c] transition hover:border-[#7a344c] hover:bg-[#4A1826] hover:text-white">Saiba mais <ArrowRight size={14}/></a></article>)}
+          </div>
+        </div>
+      </section>
+
+
+      <section aria-labelledby="quem-atendemos-titulo" className="border-b border-[#eee0da] bg-[#fffdfa] px-5 py-20 sm:px-8 sm:py-24 lg:px-10">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#9c6574]">Para cada jeito de cuidar</p>
+            <Titulo>Quem a Oricse atende?</Titulo>
+            <p className="mt-5 text-[17px] leading-7 text-[#765c66]">Uma plataforma pensada para os diferentes negócios que fazem o mercado pet acontecer.</p>
+          </div>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {perfisAtendidos.map(([titulo, descricao, Icone]) => (
+              <article key={titulo} className="group relative overflow-hidden rounded-[24px] border border-[#eaded8] bg-white p-5 text-[#4A1826] shadow-[0_8px_28px_rgba(74,24,38,.035)] transition duration-300 hover:-translate-y-1 hover:border-[#c79ca6] hover:shadow-[0_16px_32px_rgba(74,24,38,.10)]">
+                <div aria-hidden="true" className="absolute -right-7 -top-7 h-20 w-20 rounded-full bg-[#f8eff0] transition group-hover:scale-125" />
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f7ebea] text-[#7a344c] transition group-hover:bg-[#4A1826] group-hover:text-[#fff9f4]"><Icone size={23} strokeWidth={1.7}/></div>
+                <h3 className="relative mt-5 text-base font-bold leading-5">{titulo}</h3>
+                <p className="relative mt-2 text-sm leading-6 text-[#765c66]">{descricao}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
