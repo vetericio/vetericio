@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const BUCKET = "oricse-branding";
+import { excluirArquivoDrive, enviarArquivoDrive } from "@/lib/drive.functions";
 const inputSchema = z.object({
   accessToken: z.string().min(20),
   clinicaId: z.string().uuid(),
@@ -53,27 +53,43 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     if (!bytes.length || bytes.length > MAX_BYTES)
       throw new Error("A imagem deve ter no máximo 5 MB.");
 
-    const caminho = `clinicas/${data.clinicaId}/${data.categoria}/${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
-    const { error: erroUpload } = await supabaseAdmin.storage
-      .from(BUCKET)
-      .upload(caminho, bytes, {
-        contentType: data.mimeType,
-        cacheControl: "31536000",
-        upsert: false,
-      });
-    if (erroUpload)
-      throw new Error(`Não foi possível guardar a logo: ${erroUpload.message}`);
-
-    const { data: publica } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(caminho);
-    const logoUrl = publica.publicUrl;
+    const caminho = `${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
+    const upload = await enviarArquivoDrive({
+      data: {
+        accessToken: data.accessToken,
+        clinicaId: data.clinicaId,
+        categoria: "identidade",
+        nome: caminho,
+        mimeType: data.mimeType,
+        base64: data.base64,
+        visibilidade: "publico",
+        entidadeTipo: "branding_clinica",
+        entidadeId: data.clinicaId,
+        metadata: { categoria: data.categoria },
+      },
+    });
+    const logoUrl = upload.arquivo.publicUrl;
+    if (!logoUrl) throw new Error("Não foi possível gerar o endereço público da logo.");
     if (data.categoria === "logo") {
       const { error: erroClinica } = await supabaseAdmin
         .from("clinicas")
         .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
         .eq("id", data.clinicaId);
-      if (erroClinica)
-        throw new Error("Logo enviada, mas não foi possível vinculá-la à clínica.");
+      if (erroClinica) {
+        try {
+          await excluirArquivoDrive({
+            data: {
+              accessToken: data.accessToken,
+              clinicaId: data.clinicaId,
+              registroId: upload.registroId,
+            },
+          });
+        } catch {
+          // Preserve a falha original; a limpeza poderá ser repetida pela equipe.
+        }
+        throw new Error("Não foi possível vincular a logo à clínica.");
+      }
     }
 
-    return { ok: true, logoUrl, caminho };
+    return { ok: true, logoUrl, caminho: upload.registroId };
   });
