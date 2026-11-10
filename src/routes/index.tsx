@@ -41,10 +41,9 @@ const resolverPaginaInicial = createServerFn({ method: "GET" }).handler(async ()
       : hostDaUrl;
 
   if (!hostname || isPlatformHostname(hostname)) {
-    // A página principal da ORICSE permanece com seu comportamento próprio.
-    let visual = { version: 1 as const, updatedAt: "", pages: {} as Record<string, any> };
-    try { visual = await loadPublicVisualDocument(); } catch (error) { console.error("Não foi possível carregar o layout público:", error); }
-    return { tipo: "plataforma" as const, visual };
+    // A capa institucional é uma composição estática aprovada. Ela não recebe
+    // patches do editor visual e, por isso, abre sempre no mesmo estado.
+    return { tipo: "plataforma" as const };
   }
 
   try {
@@ -177,33 +176,43 @@ function PaginaInicialPlataforma() {
       {/* CSS crítico entregue pelo próprio SSR: não espera JS, Tailwind ou hidratação.
           Seletores restritos à home evitam interferir em clínicas e no Canva. */}
       <style>{`
+        /* Capa institucional aprovada — fonte única de geometria. */
         main[data-visual-id="home-fundo-bege"] {
-          background-color: #fffdfa;
+          background: #fffdfa;
           color: #512b38;
           overflow-x: hidden;
         }
-        main[data-visual-id="home-fundo-bege"] [data-visual-id="home-banner"] {
-          position: relative;
-          isolation: isolate;
-          background: transparent;
-        }
-        main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] {
-          position: relative;
-          width: 100%;
-          background: transparent;
-        }
-        main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
-          display: block;
-          width: 100%;
-          height: auto;
-        }
         @media (min-width: 1024px) {
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-cabecalho"] {
+            min-height: 76px;
+            max-width: none;
+            margin: 0;
+            padding: 0 5.278vw;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-menu-superior"] {
+            display: flex !important;
+            gap: 32px;
+            font-size: 16px;
+            white-space: nowrap;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-cabecalho"] > button {
+            display: none !important;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-banner"] {
+            position: relative;
+            isolation: isolate;
+            background: transparent;
+          }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] {
+            position: relative;
+            width: 100%;
             aspect-ratio: 1.86 / 1;
+            background: transparent;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
             position: absolute;
             inset: 0;
+            display: block;
             width: 100%;
             height: 100%;
             object-fit: fill;
@@ -221,64 +230,60 @@ function PaginaInicialPlataforma() {
           }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
             position: absolute;
-            top: -10%;
-            left: 14%;
+            top: -8.1%;
+            left: 6.25%;
             width: auto;
             margin: 0;
             z-index: 10;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-logo-oricse"] {
-            width: clamp(190px, 17vw, 250px);
-            height: clamp(190px, 17vw, 250px);
-            aspect-ratio: 1 / 1;
             display: block;
+            width: min(298px, 20.694vw);
+            height: min(298px, 20.694vw);
+            aspect-ratio: 1 / 1;
             object-fit: contain;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
             position: absolute;
-            top: 28%;
+            top: 26%;
             left: 5%;
             z-index: 10;
+            margin: 0;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-titulo-principal"] {
             position: absolute;
-            top: 31%;
+            top: 45%;
             left: 5%;
             width: 46%;
             max-width: none;
-            margin-top: 0;
+            margin: 0;
             z-index: 10;
             font-size: clamp(56px, 5.3vw, 98px);
             line-height: .91;
             letter-spacing: -.065em;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-texto-apoio"] {
-            position: absolute;
-            top: 72%;
-            left: 5%;
-            max-width: 42%;
-            margin-top: 0;
-            z-index: 10;
-            font-size: clamp(14px, 1.05vw, 18px);
+            display: none;
           }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-actions] {
             position: absolute;
-            top: 85%;
-            left: 6%;
+            top: 84%;
+            left: 5%;
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 12px;
-            margin-top: 0;
+            margin: 0;
             z-index: 10;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-legenda-inferior"] {
             position: absolute;
             bottom: 1%;
             left: 58%;
-            margin-top: 0;
+            margin: 0;
             z-index: 10;
             color: white;
             font-size: clamp(10px, .72vw, 13px);
+            white-space: nowrap;
           }
         }
       `}</style>
