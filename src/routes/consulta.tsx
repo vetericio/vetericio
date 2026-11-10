@@ -144,7 +144,7 @@ function ConsultaSalva() {
       const novo: Registro = {
         id: crypto.randomUUID(), animalId: animal.id, tutorId: tutor?.id, clinicaId: registro.clinicaId,
         autorId: registro.autorId, tipo: registro.tipo, subtipo: registro.subtipo, titulo: "Adendo — " + (registro.titulo || "Registro clínico"),
-        detalhe: "ADENDO DO PRONTUÁRIO\\n\\n" + adendoTexto.trim(), data: agora.slice(0, 10), criadoEm: agora, atualizadoEm: agora,
+        detalhe: "ADENDO DO PRONTUÁRIO\n\n" + adendoTexto.trim(), data: agora.slice(0, 10), criadoEm: agora, atualizadoEm: agora,
         status: "adendo", versao: (registro.versao || 1) + adendos.length + 1, adendoDe: registro.id,
         dados: { tipo: "adendo", texto: adendoTexto.trim(), registroOriginalId: registro.id },
       };
