@@ -279,6 +279,22 @@ function ConfigurarPortalTutor() {
     ["whatsapp_publico", "WhatsApp de atendimento", 40],
     ["instrucoes_agendamento", "Orientações para agendamento", 1000],
   ];
+  if (!busy && !erro) {
+    return (
+      <main className="mx-auto max-w-3xl p-6 sm:p-10 text-foreground">
+        <Link to="/perfil-clinica" className="text-sm font-semibold text-primary">← Administração da clínica</Link>
+        <section className="mt-5 rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+          <h1 className="text-2xl font-extrabold">Portal do Tutor protegido</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            A configuração do Portal do Tutor está bloqueada para evitar alterações acidentais.
+            O acesso dos tutores e os dados já publicados continuam disponíveis.
+          </p>
+          {slug && <Link to="/pet/$slug/portal" params={{slug}} target="_blank" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</Link>}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-5xl space-y-5 p-5 text-foreground">
       <header className="space-y-3">
