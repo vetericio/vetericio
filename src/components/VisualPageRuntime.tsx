@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -62,33 +62,25 @@ export function VisualPageRuntime() {
     const onStorage = (event: StorageEvent) => {
       if (event.key === SYNC_STORAGE_KEY) requestRefresh();
     };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") requestRefresh();
-    };
     const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(SYNC_CHANNEL) : null;
     channel?.addEventListener("message", onPublished);
     window.addEventListener("oricse:visual-published", onPublished);
     window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", onPublished);
-    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       channel?.removeEventListener("message", onPublished);
       channel?.close();
       window.removeEventListener("oricse:visual-published", onPublished);
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", onPublished);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [requestRefresh]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
       location.pathname === "/admin-canvas" ||
       new URLSearchParams(window.location.search).has("visual_editor")
     ) return;
 
     let active = true;
-    let observer: MutationObserver | null = null;
     let frame = 0;
     let published: VisualDocument = EMPTY_PUBLISHED;
 
@@ -114,9 +106,7 @@ export function VisualPageRuntime() {
     const apply = () => {
       if (!active || applying.current) return;
       applying.current = true;
-      observer?.disconnect();
       applyVisualLayout(document, chooseLayout());
-      observer?.observe(document.body, { childList: true, subtree: true });
       applying.current = false;
     };
 
@@ -130,7 +120,6 @@ export function VisualPageRuntime() {
         const resultado = await buscarLayoutPublicado();
         if (!active) return;
         published = resultado;
-        observer = new MutationObserver(scheduleApply);
         scheduleApply();
       } catch (error) {
         console.error("Não foi possível carregar o layout visual publicado:", error);
@@ -143,10 +132,9 @@ export function VisualPageRuntime() {
     // layout effect evita que a primeira pintura mostre uma versão e, depois,
     // a consulta do Supabase reposicione logo, textos ou botões.
     const bootstrap = document.getElementById("oricse-visual-bootstrap");
-    if (bootstrap?.textContent) {
+    if (revision === 0 && bootstrap?.textContent) {
       try {
         published = JSON.parse(bootstrap.textContent) as VisualDocument;
-        observer = new MutationObserver(scheduleApply);
         apply();
       } catch (error) {
         console.error("Não foi possível ler o layout visual inicial:", error);
@@ -159,7 +147,6 @@ export function VisualPageRuntime() {
     return () => {
       active = false;
       cancelAnimationFrame(frame);
-      observer?.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, [location.pathname, revision]);
