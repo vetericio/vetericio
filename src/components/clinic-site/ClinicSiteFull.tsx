@@ -27,6 +27,8 @@ type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlu
 const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
 const safeImage = (input?: string) => {
   const value = (input || "").trim();
+  const driveId = value.match(/^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i)?.[1];
+  if (driveId) return `https://lh3.googleusercontent.com/d/${driveId}`;
   if (/^https:\/\//i.test(value)) return value;
   return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
 };
