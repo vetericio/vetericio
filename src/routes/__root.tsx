@@ -34,16 +34,12 @@ import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { isPlatformHostname } from "@/lib/public-clinic-site";
+import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
 const Cabecalho = lazy(() =>
   import("@/components/Cabecalho").then((module) => ({ default: module.Cabecalho })),
-);
-const VisualPageRuntime = lazy(() =>
-  import("@/components/VisualPageRuntime").then((module) => ({
-    default: module.VisualPageRuntime,
-  })),
 );
 
 // A customização visual é opcional: uma falha num chunk dela não pode derrubar
@@ -764,7 +760,7 @@ function RootComponent() {
   if (location.pathname === "/termos-de-uso" || location.pathname === "/politica-de-privacidade" || location.pathname === "/contratacao-recebida") {
     return (
       <QueryClientProvider client={queryClient}>
-        <Suspense fallback={null}><VisualPageRuntime /></Suspense>
+        <VisualPageRuntime />
         <Outlet />
       </QueryClientProvider>
     );
@@ -776,9 +772,7 @@ function RootComponent() {
       <TenantContext.Provider value={contextoPortal}>
         {mostrarRuntimeVisual && (
           <OptionalRuntimeBoundary>
-            <Suspense fallback={null}>
-              <VisualPageRuntime />
-            </Suspense>
+            <VisualPageRuntime />
           </OptionalRuntimeBoundary>
         )}
         {mostrarClinico && <NatalVivoDecoracao />}
