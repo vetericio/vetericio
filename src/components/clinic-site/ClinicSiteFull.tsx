@@ -27,10 +27,14 @@ type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlu
 const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
 const safeImage = (input?: string) => {
   const value = (input || "").trim();
-  const driveId = value.match(/^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i)?.[1];
-  if (driveId) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(driveId)}`;
-  const googleusercontentId = value.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([^/?#]+)/i)?.[1];
-  if (googleusercontentId) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(googleusercontentId)}`;
+  const driveId = value.match(
+    /^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i,
+  )?.[1];
+  if (driveId) return `https://drive.usercontent.google.com/download?id=${encodeURIComponent(driveId)}&export=view`;
+  const googleusercontentId = value.match(
+    /^https:\/\/lh3\.googleusercontent\.com\/d\/([^/?#]+)/i,
+  )?.[1];
+  if (googleusercontentId) return `https://drive.usercontent.google.com/download?id=${encodeURIComponent(googleusercontentId)}&export=view`;
   if (/^https:\/\//i.test(value)) return value;
   return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
 };
