@@ -313,7 +313,7 @@ function PaginaInicialPlataforma() {
             <div data-visual-id="home-conteudo-banner" data-visual-label="Coluna do banner" className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:absolute lg:inset-0 lg:block lg:max-w-none lg:p-0">
               <div className="max-w-xl lg:contents">
             {/* Logo centralizada sobre o selo, dentro da coluna de conteúdo. */}
-            <div data-home-hero-logo-wrap className="mb-6 flex w-full justify-center sm:mb-8 lg:absolute lg:-top-[10%] lg:left-[14%] lg:z-10 lg:mb-0 lg:w-auto">
+            <div data-home-hero-logo-wrap className="mb-6 flex w-full justify-center sm:mb-8 lg:absolute lg:-top-[15%] lg:left-[14%] lg:z-10 lg:mb-0 lg:w-auto">
               <img
                 src="/oricse-logo-oryx.svg?v=15"
                 data-visual-id="home-logo-oricse" data-visual-label="Logo ORICSE" alt="ORICSE — Soluções para o mercado pet"
