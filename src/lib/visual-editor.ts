@@ -141,6 +141,27 @@ export function applyVisualStyle(element: HTMLElement, style: VisualStyle, indep
   }
 }
 
+/**
+ * Converte links de compartilhamento do Google Drive para um endpoint que
+ * realmente entrega os bytes da imagem em <img>. O link /uc costuma redirecionar
+ * para uma página de confirmação e aparece quebrado dentro do Canvas/iframe.
+ */
+export function normalizeImageSource(src: string) {
+  const value = src.trim();
+  if (!value) return value;
+  const driveId = value.match(
+    /^https?:\/\/(?:www\.)?drive\.google\.com\/uc\?(?:[^#]*&)?id=([^&#]+)/i,
+  )?.[1]
+    || value.match(/^https?:\/\/(?:www\.)?drive\.google\.com\/file\/d\/([^/?#]+)/i)?.[1]
+    || value.match(/^https?:\/\/(?:www\.)?drive\.google\.com\/open\?id=([^&#]+)/i)?.[1];
+  if (driveId) return `https://lh3.googleusercontent.com/d/${encodeURIComponent(driveId)}=w2000`;
+  const contentId = value.match(
+    /^https?:\/\/lh3\.googleusercontent\.com\/d\/([^/?#=]+)/i,
+  )?.[1];
+  if (contentId) return `https://lh3.googleusercontent.com/d/${encodeURIComponent(contentId)}=w2000`;
+  return value;
+}
+
 export function validImageSource(src: string) {
   return /^(https?:\/\/|\/|data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,)/i.test(src.trim());
 }
@@ -172,6 +193,12 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
     node.removeAttribute("data-oricse-visual-patched");
   });
   doc.querySelectorAll(`[${VISUAL_NODE_ATTR}]`).forEach((node) => node.remove());
+  // Normalize também as imagens nativas da página para o preview do Canvas.
+  doc.querySelectorAll<HTMLImageElement>("img").forEach((image) => {
+    const source = image.getAttribute("src") || "";
+    const normalized = normalizeImageSource(source);
+    if (normalized && normalized !== source) image.src = normalized;
+  });
   if (!layout) return;
   for (const patch of layout.patches) {
     let element: HTMLElement | null = null;
@@ -209,7 +236,7 @@ export function applyVisualLayout(doc: Document, layout?: VisualLayout) {
     if (item.kind === "image") {
       const image = node as HTMLImageElement;
       image.alt = item.text || "Imagem adicionada";
-      image.src = item.src && validImageSource(item.src) ? item.src : "";
+      image.src = item.src && validImageSource(item.src) ? normalizeImageSource(item.src) : "";
       image.style.objectFit = "contain";
     } else node.textContent = item.text || "Novo texto";
     applyVisualStyle(node, item.style || {});

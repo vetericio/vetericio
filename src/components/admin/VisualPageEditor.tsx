@@ -40,6 +40,7 @@ import {
   editableTarget,
   EMPTY_DOCUMENT,
   ensurePage,
+  normalizeImageSource,
   validImageSource,
   visualLabel,
   visualSelector,
@@ -950,7 +951,7 @@ export function VisualPageEditor() {
     const item: VisualAdded = {
       id: uid("image"),
       kind: "image",
-      src,
+      src: normalizeImageSource(src),
       text: "Imagem",
       style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
     };
@@ -1866,7 +1867,7 @@ export function VisualPageEditor() {
                       onChange={(e) =>
                         updateLayout((v) => {
                           const x = v.added.find((a) => a.id === first.id);
-                          if (x) x.src = e.target.value;
+                          if (x) x.src = normalizeImageSource(e.target.value);
                         })
                       }
                       className="mt-1 w-full rounded-xl border p-2 font-normal"
