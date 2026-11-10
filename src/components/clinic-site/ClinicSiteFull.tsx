@@ -23,23 +23,43 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string>; uploadReadySlot?: string | null; hiddenUploadSlots?: string[]; onConfirmUpload?: (slot: string) => void };
-const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
+type Props = {
+  template: ClinicSiteTemplate;
+  config: ClinicSiteConfig;
+  clinicSlug?: string;
+  onUploadImage?: (slot: string, file: File) => void;
+  uploadingSlot?: string | null;
+  imageOverrides?: Record<string, string>;
+  uploadReadySlot?: string | null;
+  hiddenUploadSlots?: string[];
+  onConfirmUpload?: (slot: string) => void;
+};
+const safeHttps = (input?: string) =>
+  /^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "";
 const safeImage = (input?: string) => {
   const value = (input || "").trim();
-  const driveId = value.match(/^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i)?.[1];
+  const driveId = value.match(
+    /^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i,
+  )?.[1];
   if (driveId) return `https://lh3.googleusercontent.com/d/${driveId}`;
   if (/^https:\/\//i.test(value)) return value;
-  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(
+    value,
+  )
+    ? value
+    : "";
 };
 const safeTeamPhoto = (input: string) => {
   const value = safeImage(input);
   if (value) return value;
   // Apenas imagens inline WEBP são aceitas; a vitrine importa duas fotos locais
   // do próprio código para evitar URLs públicas de mídia quebradas.
-  if (/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(input)) return input;
+  if (/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(input))
+    return input;
   const local = input.trim();
-  return /^\/clinic-site\/[a-z0-9/_-]+\.(?:webp|png|jpe?g)$/i.test(local) ? local : "";
+  return /^\/clinic-site\/[a-z0-9/_-]+\.(?:webp|png|jpe?g)$/i.test(local)
+    ? local
+    : "";
 };
 const waNumber = (input: string) => input.replace(/\D/g, "");
 const realUrl = (value: string) => {
@@ -47,24 +67,43 @@ const realUrl = (value: string) => {
   return /^https:\/\/[^\s]+$/i.test(valueTrimmed) ? valueTrimmed : "";
 };
 
-function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string }) {
+function FotoPublicaDoProfissional({
+  url,
+  nome,
+}: {
+  url: string;
+  nome: string;
+}) {
   const [falhou, setFalhou] = useState(false);
   useEffect(() => setFalhou(false), [url]);
-  if (!url || falhou) return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
+  if (!url || falhou)
+    return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
   // A foto nunca é reinterpretada: só ajustamos o enquadramento.
   // As imagens originais são verticais, portanto o topo deve permanecer visível.
-  return <img
-    src={url}
-    alt={nome}
-    loading="eager"
-    decoding="async"
-    onError={() => setFalhou(true)}
-    className="block h-full w-full object-cover object-top"
-    style={{ objectPosition: "center 0%" }}
-  />;
+  return (
+    <img
+      src={url}
+      alt={nome}
+      loading="eager"
+      decoding="async"
+      onError={() => setFalhou(true)}
+      className="block h-full w-full object-cover object-top"
+      style={{ objectPosition: "center 0%" }}
+    />
+  );
 }
 
-export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, uploadingSlot, imageOverrides = {}, uploadReadySlot, hiddenUploadSlots = [], onConfirmUpload }: Props) {
+export function ClinicSiteFull({
+  template,
+  config,
+  clinicSlug,
+  onUploadImage,
+  uploadingSlot,
+  imageOverrides = {},
+  uploadReadySlot,
+  hiddenUploadSlots = [],
+  onConfirmUpload,
+}: Props) {
   const signatura = template === "signatura";
   const luxe = template === "prestige";
   const prime = template === "atelier";
@@ -81,27 +120,44 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       ? "rounded-md"
       : prime
         ? "rounded-full"
-      : minimal
-        ? "rounded-lg"
-        : "rounded-full";
-  const headingFont = luxe || organic || signatura || king ? "font-serif" : "font-sans";
-  const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
-  const panels = signatura || prime ? "rounded-2xl" : rounded ? "rounded-3xl" : bold ? "rounded-md" : "rounded-xl";
+        : minimal
+          ? "rounded-lg"
+          : "rounded-full";
+  const headingFont =
+    luxe || organic || signatura || king ? "font-serif" : "font-sans";
+  const sectionPad = signatura
+    ? "py-20 sm:py-28"
+    : minimal
+      ? "py-14 sm:py-20"
+      : "py-16 sm:py-24";
+  const panels =
+    signatura || prime
+      ? "rounded-2xl"
+      : rounded
+        ? "rounded-3xl"
+        : bold
+          ? "rounded-md"
+          : "rounded-xl";
   const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
   // Todos os botões de agendamento levam diretamente ao Portal do Tutor da
   // clínica, inclusive em domínios personalizados. O contexto autenticado não
   // é necessário: a rota identifica a clínica pelo slug público.
   const { portal: tenantPortal } = useTenantContext();
-  const caminhoAtual = typeof window === "undefined" ? "" : window.location.pathname;
-  const hostAtual = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
+  const caminhoAtual =
+    typeof window === "undefined" ? "" : window.location.pathname;
+  const hostAtual =
+    typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
   const routeSlug = caminhoAtual.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
-  const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
-  const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
+  const subdomainSlug =
+    hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
+  const publishedSlug =
+    clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
   const portalHref = publishedSlug
     ? `/pet/${encodeURIComponent(publishedSlug)}/portal?secao=agenda&modelo=${encodeURIComponent(template)}`
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
-  const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
+  const actionLabel =
+    publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
   // Fotos exclusivas da demonstração da Alvorada. Os outros temas e clínicas não mudam.
   const classAlvorada = friendly && publishedSlug === "alvorada";
   const elanAlvorada = luxe && publishedSlug === "alvorada";
@@ -123,68 +179,107 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
           ? "/clinic-site/king/hero.png"
           : "");
   const configuredGallery = config.galleryUrls.filter(safeHttps);
-  const gallery =
-    elanAlvorada
-      ? [...elanFotos, ...configuredGallery.filter((url) => !elanFotos.includes(url))]
-      : classAlvorada
-      ? ["/clinic-site/class/intro-veterinaria-gato.webp", "/clinic-site/class/chegada-cachorro.webp", ...configuredGallery.filter((url) => url !== "/clinic-site/class/intro-veterinaria-gato.webp" && url !== "/clinic-site/class/chegada-cachorro.webp")]
+  const gallery = elanAlvorada
+    ? [
+        ...elanFotos,
+        ...configuredGallery.filter((url) => !elanFotos.includes(url)),
+      ]
+    : classAlvorada
+      ? [
+          "/clinic-site/class/intro-veterinaria-gato.webp",
+          "/clinic-site/class/chegada-cachorro.webp",
+          ...configuredGallery.filter(
+            (url) =>
+              url !== "/clinic-site/class/intro-veterinaria-gato.webp" &&
+              url !== "/clinic-site/class/chegada-cachorro.webp",
+          ),
+        ]
       : configuredGallery.length || (!prime && !friendly && !king)
-      ? configuredGallery
-      : prime
-        ? ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"]
-        : friendly
-          ? ["/clinic-site/class/consulta-colorida.png"]
-          : ["/clinic-site/king/gato-editorial.png"];
+        ? configuredGallery
+        : prime
+          ? [
+              "/clinic-site/prime/consulta-felina.png",
+              "/clinic-site/prime/recuperacao-noturna.png",
+            ]
+          : friendly
+            ? ["/clinic-site/class/consulta-colorida.png"]
+            : ["/clinic-site/king/gato-editorial.png"];
   const gallerySlots = Array.from(
-    { length: Math.max(
-      gallery.length,
-      onUploadImage ? 3 : 0,
-      ...Object.keys(imageOverrides)
-        .filter((key) => /^gallery-[0-9]+$/.test(key))
-        .map((key) => Number(key.slice(8)) + 1),
-      0,
-    ) },
+    {
+      length: Math.max(
+        gallery.length,
+        onUploadImage ? 3 : 0,
+        ...Object.keys(imageOverrides)
+          .filter((key) => /^gallery-[0-9]+$/.test(key))
+          .map((key) => Number(key.slice(8)) + 1),
+        0,
+      ),
+    },
     (_, index) => gallery[index] || "",
   );
-  const aboutImage = safeImage(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
-    ? configuredGallery[0]
-    : (classAlvorada ? gallery[1] : gallery[0]));
+  const aboutImage =
+    safeImage(imageOverrides.about) ||
+    (publishedSlug === "alvorada" && configuredGallery[0]
+      ? configuredGallery[0]
+      : classAlvorada
+        ? gallery[1]
+        : gallery[0]);
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
-  const uploadButton = (slot: string) => onUploadImage && publishedSlug === "alvorada" && !hiddenUploadSlots.includes(slot) ? uploadReadySlot === slot ? (
-    <button
-      type="button"
-      className="absolute bottom-3 right-3 z-30 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-lg hover:bg-emerald-700"
-      onClick={(event) => { event.stopPropagation(); onConfirmUpload?.(slot); }}
-    >
-      <Check size={15} /> OK
-    </button>
-  ) : (
-    <label
-      className="absolute bottom-3 right-3 z-30 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-xs font-bold text-slate-900 shadow-lg hover:bg-white"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <ImagePlus size={15} />
-      {uploadingSlot === slot ? "Enviando…" : "Enviar foto"}
-      <input
-        type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
-        className="sr-only"
-        disabled={!!uploadingSlot}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) onUploadImage(slot, file);
-          event.currentTarget.value = "";
-        }}
-      />
-    </label>
-  ) : null;
+  const uploadButton = (slot: string) =>
+    onUploadImage &&
+    publishedSlug === "alvorada" &&
+    !hiddenUploadSlots.includes(slot) ? (
+      uploadReadySlot === slot ? (
+        <button
+          type="button"
+          className="absolute bottom-3 right-3 z-30 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-lg hover:bg-emerald-700"
+          onClick={(event) => {
+            event.stopPropagation();
+            onConfirmUpload?.(slot);
+          }}
+        >
+          <Check size={15} /> OK
+        </button>
+      ) : (
+        <label
+          className="absolute bottom-3 right-3 z-30 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-xs font-bold text-slate-900 shadow-lg hover:bg-white"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <ImagePlus size={15} />
+          {uploadingSlot === slot ? "Enviando…" : "Enviar foto"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="sr-only"
+            disabled={!!uploadingSlot}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) onUploadImage(slot, file);
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
+      )
+    ) : null;
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
-    ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
+    ? "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(config.address)
     : "";
-  const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
-  const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
-  const ink = minimal ? "border-slate-200/80" : signatura ? "border-[#173D35]/15" : prime ? "border-[#0E5CA8]/15" : friendly ? "border-[#F05D43]/20" : "border-current/15";
+  const sectionOrder = config.sectionOrder.length
+    ? config.sectionOrder
+    : [...clinicSiteSections];
+  const visible = (section: ClinicSiteSection) =>
+    !config.hiddenSections.includes(section);
+  const ink = minimal
+    ? "border-slate-200/80"
+    : signatura
+      ? "border-[#173D35]/15"
+      : prime
+        ? "border-[#0E5CA8]/15"
+        : friendly
+          ? "border-[#F05D43]/20"
+          : "border-current/15";
   const outer = luxe
     ? "bg-[var(--site-bg)] text-[var(--site-text)]"
     : bold
@@ -214,7 +309,12 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
           <span className="flex h-10 w-10 items-center justify-center rounded-full border border-current/20">
             <PawPrint size={20} />
           </span>
-          <span className={"max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " + headingFont}>
+          <span
+            className={
+              "max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " +
+              headingFont
+            }
+          >
             {config.name}
           </span>
         </>
@@ -227,11 +327,12 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       className={
         "inline-flex min-h-12 items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition hover:opacity-85 " +
         buttonShape +
-        (inverted ? " border border-current/30" : " bg-[var(--site-primary)] text-white")
+        (inverted
+          ? " border border-current/30"
+          : " bg-[var(--site-primary)] text-white")
       }
     >
-      <CalendarDays size={18} />{" "}
-      {label} <ArrowRight size={16} />
+      <CalendarDays size={18} /> {label} <ArrowRight size={16} />
     </a>
   );
   const imagePanel = (
@@ -246,9 +347,9 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
               ? "rounded-2xl"
               : friendly
                 ? "rounded-[2.5rem]"
-            : rounded
-              ? "rounded-[2rem]"
-              : "rounded-2xl")
+                : rounded
+                  ? "rounded-[2rem]"
+                  : "rounded-2xl")
       }
       style={{ backgroundColor: "var(--site-secondary)" }}
     >
@@ -288,7 +389,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       </span>
       <h2
         className={
-          "mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-5xl " + headingFont
+          "mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-5xl " +
+          headingFont
         }
       >
         {title}
@@ -307,9 +409,20 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         <div className="mx-auto max-w-7xl">
           {heading(
             king ? "Cuidado, em capítulos" : "O que fazemos",
-            king ? "Cada encontro muda a próxima página da história." : "Cuidado para cada fase da vida.",
+            king
+              ? "Cada encontro muda a próxima página da história."
+              : "Cuidado para cada fase da vida.",
           )}
-          <div className={"mt-10 grid gap-4 " + (prime ? "sm:grid-cols-2 lg:grid-cols-4" : king || minimal ? "md:grid-cols-2" : "md:grid-cols-3")}>
+          <div
+            className={
+              "mt-10 grid gap-4 " +
+              (prime
+                ? "sm:grid-cols-2 lg:grid-cols-4"
+                : king || minimal
+                  ? "md:grid-cols-2"
+                  : "md:grid-cols-3")
+            }
+          >
             {config.services.map((service, index) => (
               <article
                 key={service + "-" + index}
@@ -374,7 +487,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
           <div className="relative">
             <div
               className={
-                "flex aspect-[4/3] items-center justify-center border border-current/10 " + panels
+                "flex aspect-[4/3] items-center justify-center border border-current/10 " +
+                panels
               }
               style={{ backgroundColor: "var(--site-bg)" }}
             >
@@ -386,7 +500,11 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                 />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-5">
-                  <Heart size={65} strokeWidth={1.1} className="text-[var(--site-primary)]" />
+                  <Heart
+                    size={65}
+                    strokeWidth={1.1}
+                    className="text-[var(--site-primary)]"
+                  />
                   <span className="text-xs font-bold uppercase tracking-[.24em] opacity-60">
                     O nosso propósito
                   </span>
@@ -396,7 +514,10 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             {uploadButton("about")}
           </div>
           <div>
-            {heading("Quem somos", config.aboutTitle || "Uma clínica feita para cuidar.")}
+            {heading(
+              "Quem somos",
+              config.aboutTitle || "Uma clínica feita para cuidar.",
+            )}
             <p className="mt-7 max-w-xl whitespace-pre-line text-base leading-8 opacity-80">
               {config.aboutText || config.description}
             </p>
@@ -410,51 +531,118 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         </div>
       </section>
     ),
-    galeria: gallerySlots.some(Boolean) || Object.keys(imageOverrides).some((key) => key.startsWith("gallery-")) || onUploadImage ? (
-      <section
-        key="galeria"
-        id="galeria"
-        data-clinic-section="galeria"
-        className={"px-5 sm:px-8 " + sectionPad}
-      >
-        <div className="mx-auto max-w-7xl">
-          {heading("Por dentro", "Conheça nosso espaço.")}
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {gallerySlots.map((src, i) => (
-              <figure
-                key={src + "-" + i}
-                className={"relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
-              >
-                {(safeImage(imageOverrides[`gallery-${i}`]) || src) ? <img
-                  src={safeImage(imageOverrides[`gallery-${i}`]) || src}
-                  alt={"Foto " + (i + 1) + " de " + config.name}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
-                /> : <div className="flex h-full items-center justify-center opacity-50"><ImagePlus size={38} /></div>}
-                {uploadButton(`gallery-${i}`)}
-              </figure>
-            ))}
+    galeria:
+      gallerySlots.some(Boolean) ||
+      Object.keys(imageOverrides).some((key) => key.startsWith("gallery-")) ||
+      onUploadImage ? (
+        <section
+          key="galeria"
+          id="galeria"
+          data-clinic-section="galeria"
+          className={"px-5 sm:px-8 " + sectionPad}
+        >
+          <div className="mx-auto max-w-7xl">
+            {heading("Por dentro", "Conheça nosso espaço.")}
+            <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {gallerySlots.map((src, i) => (
+                <figure
+                  key={src + "-" + i}
+                  className={
+                    "relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " +
+                    panels
+                  }
+                >
+                  {safeImage(imageOverrides[`gallery-${i}`]) || src ? (
+                    <img
+                      src={safeImage(imageOverrides[`gallery-${i}`]) || src}
+                      alt={"Foto " + (i + 1) + " de " + config.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center opacity-50">
+                      <ImagePlus size={38} />
+                    </div>
+                  )}
+                  {uploadButton(`gallery-${i}`)}
+                </figure>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
-    ) : null,
+        </section>
+      ) : null,
     equipe: config.team.length ? (
       <section
         key="equipe"
         id="equipe"
         data-clinic-section="equipe"
-        className={"border-t px-5 sm:px-8 " + ink + " " + sectionPad + (luxe ? " bg-[#101b17] text-[#f7f0e2]" : king ? " bg-[#f2ebe1]" : minimal ? " bg-white" : friendly ? " bg-[#fff4e4]" : prime ? " bg-[#eef7ff]" : organic ? " bg-[#eaf2e3]" : " bg-[#f7f4ee]")}
+        className={
+          "border-t px-5 sm:px-8 " +
+          ink +
+          " " +
+          sectionPad +
+          (luxe
+            ? " bg-[#101b17] text-[#f7f0e2]"
+            : king
+              ? " bg-[#f2ebe1]"
+              : minimal
+                ? " bg-white"
+                : friendly
+                  ? " bg-[#fff4e4]"
+                  : prime
+                    ? " bg-[#eef7ff]"
+                    : organic
+                      ? " bg-[#eaf2e3]"
+                      : " bg-[#f7f4ee]")
+        }
       >
         <div className="mx-auto max-w-7xl">
           {heading("Profissionais", "As pessoas por trás do cuidado.")}
-          <div className={"mt-10 grid gap-5 sm:grid-cols-2 " + (luxe || king ? "lg:gap-9 lg:grid-cols-2" : "lg:grid-cols-3")}>
+          <div
+            className={
+              "mt-10 grid gap-5 sm:grid-cols-2 " +
+              (luxe || king ? "lg:gap-9 lg:grid-cols-2" : "lg:grid-cols-3")
+            }
+          >
             {config.team.map((person, index) => (
               <article
                 key={person.name + index}
-                className={"overflow-hidden border " + ink + " " + panels + (luxe ? " border-[#c9a86a]/45 bg-[#21332d] shadow-2xl" : king ? " border-[#101526] bg-white shadow-[10px_10px_0_#b7183e]" : minimal ? " bg-white shadow-none" : friendly ? " border-[#f05d43]/30 bg-white shadow-lg" : prime ? " border-[#0e5ca8]/20 bg-white shadow-xl" : organic ? " border-[#537b52]/20 bg-[#fffdf6] shadow-md" : " bg-white shadow-sm")}
+                className={
+                  "overflow-hidden border " +
+                  ink +
+                  " " +
+                  panels +
+                  (luxe
+                    ? " border-[#c9a86a]/45 bg-[#21332d] shadow-2xl"
+                    : king
+                      ? " border-[#101526] bg-white shadow-[10px_10px_0_#b7183e]"
+                      : minimal
+                        ? " bg-white shadow-none"
+                        : friendly
+                          ? " border-[#f05d43]/30 bg-white shadow-lg"
+                          : prime
+                            ? " border-[#0e5ca8]/20 bg-white shadow-xl"
+                            : organic
+                              ? " border-[#537b52]/20 bg-[#fffdf6] shadow-md"
+                              : " bg-white shadow-sm")
+                }
               >
-                <div className={"relative flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
-                  <FotoPublicaDoProfissional url={safeTeamPhoto(imageOverrides[`team-${index}`] || person.imageUrl)} nome={person.name} />
+                <div
+                  className={
+                    "relative flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " +
+                    (luxe
+                      ? "aspect-[3/4]"
+                      : king
+                        ? "aspect-square"
+                        : "aspect-[4/3]")
+                  }
+                >
+                  <FotoPublicaDoProfissional
+                    url={safeTeamPhoto(
+                      imageOverrides[`team-${index}`] || person.imageUrl,
+                    )}
+                    nome={person.name}
+                  />
                   {uploadButton(`team-${index}`)}
                 </div>
                 <div className="p-5">
@@ -481,10 +669,17 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             {config.faqItems.map((item, i) => (
               <details
                 key={i}
-                className={"group border border-current/15 bg-[var(--site-bg)] p-5 " + panels}
+                className={
+                  "group border border-current/15 bg-[var(--site-bg)] p-5 " +
+                  panels
+                }
               >
-                <summary className="cursor-pointer text-base font-bold">{item.question}</summary>
-                <p className="mt-3 text-sm leading-7 opacity-75">{item.answer}</p>
+                <summary className="cursor-pointer text-base font-bold">
+                  {item.question}
+                </summary>
+                <p className="mt-3 text-sm leading-7 opacity-75">
+                  {item.answer}
+                </p>
               </details>
             ))}
           </div>
@@ -507,7 +702,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
           <div>
             {heading("Vamos conversar?", "Estamos aqui por você e seu pet.")}
             <p className="mt-5 text-base leading-8 opacity-75">
-              Entre em contato para consultar serviços, horários e informações de atendimento.
+              Entre em contato para consultar serviços, horários e informações
+              de atendimento.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               {action(actionLabel)}
@@ -555,7 +751,9 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                   <strong className="block">Funcionamento</strong>
                   <p className="mt-1 text-sm leading-6">{config.hours}</p>
                   {config.emergency24h && (
-                    <p className="mt-1 text-xs font-bold">Atendimento de emergência 24h</p>
+                    <p className="mt-1 text-xs font-bold">
+                      Atendimento de emergência 24h
+                    </p>
                   )}
                 </div>
               </div>
@@ -565,7 +763,10 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                 <Phone className="mt-1 shrink-0 text-[var(--site-primary)]" />
                 <div>
                   <strong className="block">Telefone</strong>
-                  <a href={"tel:" + waNumber(config.phone)} className="mt-1 block text-sm">
+                  <a
+                    href={"tel:" + waNumber(config.phone)}
+                    className="mt-1 block text-sm"
+                  >
                     {config.phone}
                   </a>
                 </div>
@@ -608,7 +809,11 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       className="relative isolate overflow-hidden bg-[#082D52] px-5 py-16 text-white sm:px-8 sm:py-24"
     >
       {image ? (
-        <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50" />
+        <img
+          src={image}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-50"
+        />
       ) : null}
       {uploadButton("hero")}
       <div
@@ -629,7 +834,9 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             style={{ color: "#DDEFFF" }}
           >
             <Clock3 size={15} />
-            {config.emergency24h ? "Medicina veterinária 24 horas" : "Cuidado veterinário especializado"}
+            {config.emergency24h
+              ? "Medicina veterinária 24 horas"
+              : "Cuidado veterinário especializado"}
           </span>
 
           <h1
@@ -669,20 +876,33 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
 
         <div
           className="grid w-full grid-cols-1 overflow-hidden rounded-3xl border border-white/20 shadow-[0_20px_55px_rgba(1,21,43,.22)] backdrop-blur-xl sm:grid-cols-3"
-          style={{ backgroundColor: "rgba(234,245,255,0.10)", color: "#FFFFFF" }}
+          style={{
+            backgroundColor: "rgba(234,245,255,0.10)",
+            color: "#FFFFFF",
+          }}
         >
           <div className="flex min-h-32 flex-col justify-center gap-3 px-6 py-6 sm:px-7">
-            <ShieldCheck size={23} className="text-sky-200" aria-hidden="true" />
-            <span className="text-sm font-semibold leading-6">Especialistas para cada necessidade</span>
+            <ShieldCheck
+              size={23}
+              className="text-sky-200"
+              aria-hidden="true"
+            />
+            <span className="text-sm font-semibold leading-6">
+              Especialistas para cada necessidade
+            </span>
           </div>
           <div className="flex min-h-32 flex-col justify-center gap-3 border-y border-white/15 px-6 py-6 sm:border-x sm:border-y-0 sm:px-7">
             <Heart size={23} className="text-sky-200" aria-hidden="true" />
-            <span className="text-sm font-semibold leading-6">Acolhimento para toda a família</span>
+            <span className="text-sm font-semibold leading-6">
+              Acolhimento para toda a família
+            </span>
           </div>
           <div className="flex min-h-32 flex-col justify-center gap-3 px-6 py-6 sm:px-7">
             <Clock3 size={23} className="text-sky-200" aria-hidden="true" />
             <span className="text-sm font-semibold leading-6">
-              {config.emergency24h ? "Prontos para cuidar, dia e noite" : "Atenção em cada etapa do cuidado"}
+              {config.emergency24h
+                ? "Prontos para cuidar, dia e noite"
+                : "Atenção em cada etapa do cuidado"}
             </span>
           </div>
         </div>
@@ -702,7 +922,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.92fr_1.08fr] md:items-center">
         <div className="py-7 sm:py-12">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#182752] px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] text-white shadow-sm">
-            <Sparkles size={15} className="text-[#FFCF52]" /> Seu pet no melhor roteiro
+            <Sparkles size={15} className="text-[#FFCF52]" /> Seu pet no melhor
+            roteiro
           </span>
           <h1 className="mt-7 max-w-2xl text-5xl font-black leading-[.91] tracking-[-.055em] text-[#182752] sm:text-7xl">
             {config.slogan}
@@ -722,12 +943,24 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             ) : null}
           </div>
           <div className="mt-10 flex flex-wrap gap-3 text-sm font-bold text-[#182752]">
-            <span className="rounded-full bg-white px-4 py-2 shadow-sm"><Heart className="mr-2 inline text-[#F05D43]" size={16} />Clima leve</span>
-            <span className="rounded-full bg-white px-4 py-2 shadow-sm"><PawPrint className="mr-2 inline text-[#35A9A0]" size={16} />Cuidado de verdade</span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">
+              <Heart className="mr-2 inline text-[#F05D43]" size={16} />
+              Clima leve
+            </span>
+            <span className="rounded-full bg-white px-4 py-2 shadow-sm">
+              <PawPrint className="mr-2 inline text-[#35A9A0]" size={16} />
+              Cuidado de verdade
+            </span>
           </div>
         </div>
         <div className="relative min-h-[360px] overflow-hidden rounded-[3rem] border-[10px] border-white bg-[#35A9A0] shadow-[0_24px_0_#182752] sm:min-h-[500px]">
-          {image ? <img src={image} alt="Momento feliz na clínica" className="absolute inset-0 h-full w-full object-cover" /> : null}
+          {image ? (
+            <img
+              src={image}
+              alt="Momento feliz na clínica"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : null}
           {uploadButton("hero")}
           <div className="absolute left-5 top-5 rounded-full bg-[#FFCF52] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#182752] shadow-sm">
             Partiu cuidar
@@ -750,7 +983,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.86fr_1.14fr] md:items-end">
         <div className="relative z-10 py-7 sm:pb-16 sm:pt-10">
           <span className="inline-flex items-center gap-2 border-b-2 border-[#B7183E] pb-2 text-xs font-black uppercase tracking-[.25em]">
-            <Sparkles size={14} className="text-[#B7183E]" /> Cuidado em estado de arte
+            <Sparkles size={14} className="text-[#B7183E]" /> Cuidado em estado
+            de arte
           </span>
           <h1 className="mt-7 max-w-2xl font-serif text-6xl leading-[.84] tracking-[-.075em] sm:text-8xl">
             {config.slogan}
@@ -770,12 +1004,24 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             ) : null}
           </div>
           <div className="mt-12 grid max-w-lg grid-cols-2 gap-4 border-t border-[#101526]/25 pt-5 text-xs font-bold uppercase tracking-[.12em]">
-            <span><Heart className="mb-2 text-[#B7183E]" size={20} />Escuta antes de tudo</span>
-            <span><ShieldCheck className="mb-2 text-[#B7183E]" size={20} />Técnica com presença</span>
+            <span>
+              <Heart className="mb-2 text-[#B7183E]" size={20} />
+              Escuta antes de tudo
+            </span>
+            <span>
+              <ShieldCheck className="mb-2 text-[#B7183E]" size={20} />
+              Técnica com presença
+            </span>
           </div>
         </div>
         <div className="relative min-h-[390px] overflow-hidden border-[7px] border-[#101526] bg-[#B7183E] shadow-[18px_18px_0_#B7183E] sm:min-h-[560px]">
-          {image ? <img src={image} alt="Retrato da relação entre equipe e pet" className="absolute inset-0 h-full w-full object-cover" /> : null}
+          {image ? (
+            <img
+              src={image}
+              alt="Retrato da relação entre equipe e pet"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : null}
           {uploadButton("hero")}
           <span className="absolute bottom-0 left-0 bg-[#101526] px-5 py-3 text-xs font-black uppercase tracking-[.25em] text-[#F2EBE1]">
             King · cuidado autoral
@@ -802,13 +1048,25 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       <header
         className={
           "relative z-10 border-b border-current/10 " +
-          (organic || signatura ? "bg-[var(--site-secondary)]" : prime ? "bg-white" : friendly ? "bg-[#FFF8ED]" : king ? "bg-[#101526] text-[#F2EBE1] border-white/15" : "")
+          (organic || signatura
+            ? "bg-[var(--site-secondary)]"
+            : prime
+              ? "bg-white"
+              : friendly
+                ? "bg-[#FFF8ED]"
+                : king
+                  ? "bg-[#101526] text-[#F2EBE1] border-white/15"
+                  : "")
         }
         // Élan: halo contínuo no cabeçalho inteiro, evitando recortes da área clara.
-        style={luxe ? {
-          backgroundImage:
-            "radial-gradient(ellipse clamp(295px, 47vw, 630px) 220px at clamp(125px, 16vw, 210px) 50%, rgba(250,245,234,0.97) 0%, rgba(250,245,234,0.94) 32%, rgba(250,245,234,0.63) 54%, rgba(250,245,234,0.16) 78%, rgba(250,245,234,0) 100%)",
-        } : undefined}
+        style={
+          luxe
+            ? {
+                backgroundImage:
+                  "radial-gradient(ellipse clamp(295px, 47vw, 630px) 220px at clamp(125px, 16vw, 210px) 50%, rgba(250,245,234,0.97) 0%, rgba(250,245,234,0.94) 32%, rgba(250,245,234,0.63) 54%, rgba(250,245,234,0.16) 78%, rgba(250,245,234,0) 100%)",
+              }
+            : undefined
+        }
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
           {brand}
@@ -829,7 +1087,11 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                   (section !== "galeria" || gallery.length),
               )
               .map((section) => (
-                <a key={section} href={"#" + section} className="hover:text-[var(--site-primary)]">
+                <a
+                  key={section}
+                  href={"#" + section}
+                  className="hover:text-[var(--site-primary)]"
+                >
                   {clinicSiteSectionLabels[section]}
                 </a>
               ))}
@@ -839,7 +1101,9 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             className={
               "inline-flex min-h-10 shrink-0 items-center gap-2 px-3 text-xs font-extrabold sm:px-5 sm:text-sm " +
               buttonShape +
-              (bold ? " bg-[var(--site-secondary)]" : " bg-[var(--site-primary)] text-white")
+              (bold
+                ? " bg-[var(--site-secondary)]"
+                : " bg-[var(--site-primary)] text-white")
             }
           >
             <CalendarDays size={16} />{" "}
@@ -849,77 +1113,94 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         </div>
       </header>
 
-      {prime ? primeHero : friendly ? classHero : king ? kingHero : (
-      <section
-        id="inicio"
-        data-clinic-section="inicio"
-        className={
-          "relative px-5 sm:px-8 " +
-          (luxe ? "pb-16 pt-10 sm:pb-24" : "pb-16 pt-12 sm:pb-24") +
-          (bold || signatura ? " bg-[var(--site-secondary)]" : "")
-        }
-      >
-        <div
+      {prime ? (
+        primeHero
+      ) : friendly ? (
+        classHero
+      ) : king ? (
+        kingHero
+      ) : (
+        <section
+          id="inicio"
+          data-clinic-section="inicio"
           className={
-            "mx-auto grid max-w-7xl gap-10 md:items-center " +
-            (minimal || friendly || signatura
-              ? "md:grid-cols-[1fr_.85fr]"
-              : organic
-                ? "md:grid-cols-[.95fr_1.05fr]"
-                : "md:grid-cols-2")
+            "relative px-5 sm:px-8 " +
+            (luxe ? "pb-16 pt-10 sm:pb-24" : "pb-16 pt-12 sm:pb-24") +
+            (bold || signatura ? " bg-[var(--site-secondary)]" : "")
           }
         >
-          <div className={editorial ? "md:order-2" : ""}>
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.22em] text-[var(--site-primary)]">
-              <Sparkles size={15} /> Cuidado e confiança
+          <div
+            className={
+              "mx-auto grid max-w-7xl gap-10 md:items-center " +
+              (minimal || friendly || signatura
+                ? "md:grid-cols-[1fr_.85fr]"
+                : organic
+                  ? "md:grid-cols-[.95fr_1.05fr]"
+                  : "md:grid-cols-2")
+            }
+          >
+            <div className={editorial ? "md:order-2" : ""}>
+              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.22em] text-[var(--site-primary)]">
+                <Sparkles size={15} /> Cuidado e confiança
+              </div>
+              <h1
+                className={
+                  "mt-6 max-w-3xl leading-[1.05] tracking-tight " +
+                  headingFont +
+                  (bold
+                    ? " text-5xl font-black uppercase sm:text-7xl"
+                    : minimal
+                      ? " text-5xl font-semibold sm:text-6xl"
+                      : " text-5xl font-semibold sm:text-7xl")
+                }
+              >
+                {config.slogan}
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-8 opacity-75 sm:text-lg">
+                {config.description}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                {action(actionLabel)}
+                {config.services.length ? (
+                  <a
+                    href="#servicos"
+                    className={
+                      "inline-flex min-h-12 items-center justify-center gap-2 border border-current/25 px-5 py-3 text-sm font-bold " +
+                      buttonShape
+                    }
+                  >
+                    Conhecer serviços <ArrowRight size={16} />
+                  </a>
+                ) : null}
+              </div>
+              <div className="mt-10 flex flex-wrap gap-5 border-t border-current/15 pt-5 text-xs font-semibold opacity-75">
+                <span className="inline-flex items-center gap-2">
+                  <Heart size={17} className="text-[var(--site-primary)]" />{" "}
+                  Atendimento atencioso
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <ShieldCheck
+                    size={17}
+                    className="text-[var(--site-primary)]"
+                  />{" "}
+                  Orientação profissional
+                </span>
+                {signatura ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Clock3 size={17} className="text-[var(--site-primary)]" />{" "}
+                    Estrutura preparada para urgências
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <h1
-              className={
-                "mt-6 max-w-3xl leading-[1.05] tracking-tight " +
-                headingFont +
-                (bold
-                  ? " text-5xl font-black uppercase sm:text-7xl"
-                  : minimal
-                    ? " text-5xl font-semibold sm:text-6xl"
-                    : " text-5xl font-semibold sm:text-7xl")
-              }
-            >
-              {config.slogan}
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-8 opacity-75 sm:text-lg">
-              {config.description}
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              {action(actionLabel)}
-              {config.services.length ? (
-                <a
-                  href="#servicos"
-                  className={
-                    "inline-flex min-h-12 items-center justify-center gap-2 border border-current/25 px-5 py-3 text-sm font-bold " +
-                    buttonShape
-                  }
-                >
-                  Conhecer serviços <ArrowRight size={16} />
-                </a>
-              ) : null}
-            </div>
-            <div className="mt-10 flex flex-wrap gap-5 border-t border-current/15 pt-5 text-xs font-semibold opacity-75">
-              <span className="inline-flex items-center gap-2">
-                <Heart size={17} className="text-[var(--site-primary)]" /> Atendimento atencioso
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck size={17} className="text-[var(--site-primary)]" /> Orientação
-                profissional
-              </span>
-              {signatura ? <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[var(--site-primary)]" /> Estrutura preparada para urgências</span> : null}
-            </div>
+            <div className={editorial ? "md:order-1" : ""}>{imagePanel}</div>
           </div>
-          <div className={editorial ? "md:order-1" : ""}>{imagePanel}</div>
-        </div>
-      </section>
+        </section>
       )}
 
-      {sectionOrder.map((section) => (visible(section) ? sections[section] : null))}
+      {sectionOrder.map((section) =>
+        visible(section) ? sections[section] : null,
+      )}
       <footer
         data-clinic-section="rodape"
         className="border-t border-current/20 px-5 pb-24 pt-10 sm:px-8 sm:pb-12"
@@ -927,14 +1208,19 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {safeHttps(config.logoUrl) ? (
-              <img src={config.logoUrl} alt="" className="h-8 max-w-24 object-contain" />
+              <img
+                src={config.logoUrl}
+                alt=""
+                className="h-8 max-w-24 object-contain"
+              />
             ) : (
               <PawPrint size={25} />
             )}
             <span className="font-bold">{config.name}</span>
           </div>
           <p className="text-xs opacity-65">
-            © {new Date().getFullYear()} {config.name}. Todos os direitos reservados.
+            © {new Date().getFullYear()} {config.name}. Todos os direitos
+            reservados.
           </p>
         </div>
       </footer>
