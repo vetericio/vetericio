@@ -743,7 +743,7 @@ function RootComponent() {
     (acessoPortalNegado || (!portal && Boolean(portalError))),
   );
   const contextoPortal = { portal, loading: portalLoading, error: portalError };
-  const mostrarRuntimeVisual = location.pathname !== "/admin-canvas" && !paginaInicialDeClinica;
+  // A capa institucional é estática e aprovada por código; o Canva não pode alterá-la.\n  const mostrarRuntimeVisual = location.pathname !== "/admin-canvas" && location.pathname !== "/" && !paginaInicialDeClinica;
 
   // Protótipos públicos são isolados do layout clínico e de suas barras de navegação.
   if (location.pathname === "/demo-portal-tutor") {
