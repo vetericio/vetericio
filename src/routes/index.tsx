@@ -221,22 +221,22 @@ function PaginaInicialPlataforma() {
           }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
             position: absolute;
-            top: -10%;
+            top: -8%;
             left: 14%;
             width: auto;
             margin: 0;
             z-index: 10;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-logo-oricse"] {
-            width: clamp(280px, 28vw, 440px);
-            height: clamp(280px, 28vw, 440px);
+            width: clamp(240px, 22vw, 340px);
+            height: clamp(240px, 22vw, 340px);
             aspect-ratio: 1 / 1;
             display: block;
             object-fit: contain;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
             position: absolute;
-            top: 31%;
+            top: 28%;
             left: 5%;
             z-index: 10;
           }
@@ -317,9 +317,9 @@ function PaginaInicialPlataforma() {
               <img
                 src="/oricse-logo-oryx.svg?v=15"
                 data-visual-id="home-logo-oricse" data-visual-label="Logo ORICSE" alt="ORICSE — Soluções para o mercado pet"
-                width={440}
-                height={440}
-                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[clamp(280px,28vw,440px)] lg:w-[clamp(280px,28vw,440px)]"
+                width={340}
+                height={340}
+                className="h-[150px] w-[150px] object-contain sm:h-[180px] sm:w-[180px] lg:h-[clamp(240px,22vw,340px)] lg:w-[clamp(240px,22vw,340px)]"
                 loading="eager"
                 fetchPriority="high"
               />
