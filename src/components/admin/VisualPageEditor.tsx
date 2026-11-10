@@ -181,6 +181,8 @@ export function VisualPageEditor() {
   const [lastPublishedAt, setLastPublishedAt] = useState("");
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const cleanupFrameListenersRef = useRef<(() => void) | null>(null);
   const selectedRef = useRef<SelectedItem[]>([]);
@@ -855,7 +857,7 @@ export function VisualPageEditor() {
     updateLayout((value) => value.added.push(item));
     setSelected([{ id: item.id, kind: "added" }]);
   }
-  function addImage() {
+  function addImageFromUrl() {
     const src = window.prompt(
       "Cole o endereço da imagem (URL HTTPS, caminho do site ou data:image):",
       "",
@@ -872,6 +874,44 @@ export function VisualPageEditor() {
     updateLayout((value) => value.added.push(item));
     setSelected([{ id: item.id, kind: "added" }]);
   }
+  async function uploadImage(file?: File) {
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Use uma imagem PNG, JPG, WebP ou GIF.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 10 MB.");
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const extension = ({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[file.type];
+      const path = `admin-canvas/${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage.from("oricse-branding").upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+        cacheControl: "31536000",
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("oricse-branding").getPublicUrl(path);
+      if (!data.publicUrl || !validImageSource(data.publicUrl)) throw new Error("Não foi possível obter a URL da imagem.");
+      const id = uid("image");
+      updateLayout((value) => value.added.push({
+        id, kind: "image", src: data.publicUrl, text: file.name,
+        style: { x: 40, y: 80, width: 260, height: 200, zIndex: 20 },
+      }));
+      setSelected([{ id, kind: "added" }]);
+      toast.success("Imagem enviada. Salve o rascunho ou publique para manter a alteração.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
   function duplicate() {
     if (!selected.length) return;
     const newSelection: SelectedItem[] = [];
@@ -1260,11 +1300,28 @@ export function VisualPageEditor() {
         >
           <Type size={17} /> Texto
         </button>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          aria-label="Selecionar imagem do computador"
+          onChange={(event) => { void uploadImage(event.currentTarget.files?.[0]); }}
+        />
         <button
-          onClick={addImage}
+          type="button"
+          disabled={uploadingImage}
+          onClick={() => imageInputRef.current?.click()}
+          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold disabled:opacity-50"
+        >
+          <ImagePlus size={17} /> {uploadingImage ? "Enviando…" : "Enviar imagem"}
+        </button>
+        <button
+          type="button"
+          onClick={addImageFromUrl}
           className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 font-semibold"
         >
-          <ImagePlus size={17} /> Imagem
+          Imagem por URL
         </button>
         <button
           disabled={!undo.length}
