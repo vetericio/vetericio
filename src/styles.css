@@ -1496,7 +1496,13 @@
   box-shadow: 0 10px 28px rgba(0,0,0,.06);
 }
 .portal-tutor-login-screen[data-clinic-slug="alvorada"] .portal-one-screen-logo-white {
-  background: transparent !important;
+  background: radial-gradient(
+    ellipse at center,
+    #fff 0%,
+    rgba(255, 255, 255, .98) 46%,
+    rgba(255, 255, 255, .78) 68%,
+    rgba(255, 255, 255, 0) 100%
+  ) !important;
   border-color: transparent;
   box-shadow: none;
 }
