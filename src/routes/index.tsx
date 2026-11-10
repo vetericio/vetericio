@@ -221,7 +221,7 @@ function PaginaInicialPlataforma() {
           }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
             position: absolute;
-            top: -4%;
+            top: -10%;
             left: 14%;
             width: auto;
             margin: 0;
@@ -236,7 +236,7 @@ function PaginaInicialPlataforma() {
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
             position: absolute;
-            top: 25%;
+            top: 31%;
             left: 5%;
             z-index: 10;
           }
