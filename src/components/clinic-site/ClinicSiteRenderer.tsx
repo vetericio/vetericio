@@ -22,17 +22,5 @@ export function ClinicSiteRenderer({
   hiddenUploadSlots?: string[];
   onConfirmUpload?: (slot: string) => void;
 }) {
-  return (
-    <ClinicSiteFull
-      template={template}
-      config={config}
-      clinicSlug={clinicSlug}
-      onUploadImage={onUploadImage}
-      uploadingSlot={uploadingSlot}
-      imageOverrides={imageOverrides}
-      uploadReadySlot={uploadReadySlot}
-      hiddenUploadSlots={hiddenUploadSlots}
-      onConfirmUpload={onConfirmUpload}
-    />
-  );
+  return <ClinicSiteFull template={template} config={config} clinicSlug={clinicSlug} onUploadImage={onUploadImage} uploadingSlot={uploadingSlot} imageOverrides={imageOverrides} uploadReadySlot={uploadReadySlot} hiddenUploadSlots={hiddenUploadSlots} onConfirmUpload={onConfirmUpload} />;
 }
