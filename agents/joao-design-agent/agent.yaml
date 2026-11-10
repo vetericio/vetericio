@@ -20,6 +20,7 @@ skills:
     - accessibility
     - visual-regression-testing
     - communication-and-approval
+    - persistence-and-informal-tone
 
 tools:
   github: { enabled: true, permission: authorized_repositories }
