@@ -201,6 +201,9 @@ export function VisualPageEditor() {
     () => ensurePage(cloneVisual(documento), route)[device],
     [documento, route, device],
   );
+  // A home institucional é uma composição aprovada e não recebe edições pelo Canva.
+  // Ela segue disponível apenas para conferência no editor.
+  const paginaInicialProtegida = route === "/";
   const first = useMemo(() => {
     const item = selected[0];
     if (!item) return null;
@@ -277,6 +280,10 @@ export function VisualPageEditor() {
 
   const updateLayout = useCallback(
     (mutate: (layout: VisualLayout) => void, remember = true) => {
+      if (route === "/") {
+        toast.info("A página inicial está bloqueada para preservar a versão aprovada.");
+        return;
+      }
       if (remember) checkpoint();
       const next = cloneVisual(documentRef.current);
       mutate(ensurePage(next, route)[device]);
@@ -1117,6 +1124,10 @@ export function VisualPageEditor() {
   }
 
   async function saveDraft() {
+    if (paginaInicialProtegida) {
+      toast.info("A página inicial está bloqueada para preservar a versão aprovada.");
+      return;
+    }
     if (savingRef.current || conflict || loadError) return;
     savingRef.current = true;
     setSaving(true);
@@ -1161,6 +1172,10 @@ export function VisualPageEditor() {
   }
 
   async function publish() {
+    if (paginaInicialProtegida) {
+      toast.info("A página inicial está bloqueada para preservar a versão aprovada.");
+      return;
+    }
     if (savingRef.current || conflict || loadError) return;
     savingRef.current = true;
     setSaving(true);
@@ -1514,21 +1529,28 @@ export function VisualPageEditor() {
             </span>
           )}
           <button
-            disabled={saving || Boolean(conflict)}
+            disabled={saving || Boolean(conflict) || paginaInicialProtegida}
             onClick={saveDraft}
+            title={paginaInicialProtegida ? "Página inicial bloqueada" : "Salvar rascunho"}
             className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold"
           >
             <Save size={17} /> Salvar rascunho
           </button>
           <button
-            disabled={saving || Boolean(conflict)}
+            disabled={saving || Boolean(conflict) || paginaInicialProtegida}
             onClick={publish}
+            title={paginaInicialProtegida ? "Página inicial bloqueada" : "Publicar no site"}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-semibold text-white"
           >
             <UploadCloud size={17} /> {saving ? "Publicando…" : "Publicar no site"}
           </button>
         </div>
       </header>
+      {paginaInicialProtegida && (
+        <section className="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-center text-sm font-semibold text-emerald-900">
+          🔒 Página inicial bloqueada — visualização aprovada e protegida contra alterações acidentais.
+        </section>
+      )}
       {conflict && (
         <section
           role="alert"
