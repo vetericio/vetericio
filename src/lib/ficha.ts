@@ -610,7 +610,7 @@ export function aplicarAtualizacao(
   };
   if (ehChaveNumerica(chave)) {
     let obs = comLinha(atualizado.observacoes, fraseAtualizacao(chave, novo, data));
-    const { fora, termo } = avaliarValor(chave, novo, registro.especie);
+    const { fora, termo } = avaliarValor(chave, novo, registro.especie || "Desconhecida");
     if (fora && termo) obs = comLinha(obs, frasePorTermo(termo, data));
     atualizado.observacoes = obs;
   }
