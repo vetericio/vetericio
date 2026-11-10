@@ -24,7 +24,7 @@ const eventBefore = process.env.GITHUB_EVENT_BEFORE;
 let base = eventBefore && !/^0+$/.test(eventBefore) ? eventBefore : "";
 if (!base) {
   try {
-    base = execFileSync("git", ["rev-parse", "${sha}^"], { encoding: "utf8" }).trim();
+    base = execFileSync("git", ["rev-parse", `${sha}^`], { encoding: "utf8" }).trim();
   } catch {
     console.error("::error::Não foi possível identificar a versão anterior para proteger a internação.");
     process.exit(1);
