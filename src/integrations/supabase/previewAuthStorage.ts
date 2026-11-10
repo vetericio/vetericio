@@ -41,6 +41,31 @@ function readBrokerReply(data: unknown, requestId: string): BrokerReply | null {
 export function brokeredPreviewStorage(): PreviewAuthStorage | undefined {
   if (typeof window === 'undefined') return undefined;
   const host = location.hostname;
+  const isOricseSubdomain = host === 'oricse.com.br' || host.endsWith('.oricse.com.br');
+  const local = localStorage;
+  if (isOricseSubdomain) {
+    const cookieName = (key: string) => `oricse_auth_${encodeURIComponent(key)}`;
+    const readCookie = (key: string) => document.cookie.split('; ').find((item) => item.startsWith(cookieName(key) + '='))?.slice(cookieName(key).length + 1) || null;
+    return {
+      getItem: (key) => {
+        const cookieValue = readCookie(key);
+        if (cookieValue) return decodeURIComponent(cookieValue);
+        const localValue = local.getItem(key);
+        if (localValue) {
+          document.cookie = `${cookieName(key)}=${encodeURIComponent(localValue)}; Domain=.oricse.com.br; Path=/; Max-Age=2592000; SameSite=Lax; Secure`;
+        }
+        return localValue;
+      },
+      setItem: (key, value) => {
+        local.setItem(key, value);
+        document.cookie = `${cookieName(key)}=${encodeURIComponent(value)}; Domain=.oricse.com.br; Path=/; Max-Age=2592000; SameSite=Lax; Secure`;
+      },
+      removeItem: (key) => {
+        local.removeItem(key);
+        document.cookie = `${cookieName(key)}=; Domain=.oricse.com.br; Path=/; Max-Age=0; SameSite=Lax; Secure`;
+      },
+    };
+  }
   const PREVIEW_ZONES = ['lovableproject.com', 'lovableproject-dev.com', 'lovable.app', 'gpt-eng.com', 'gptengineer.run'];
   const onPreviewZone = PREVIEW_ZONES.some((z) => host === z || host.endsWith('.' + z));
   // Read the id only from non-user-controlled host positions, so a user-named
