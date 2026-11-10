@@ -235,6 +235,17 @@ export function FormAvaliacao({
                 </p>
               ),
             )}
+            {([
+              ["Saturação de oxigênio (SpO₂)", anterior.spo2, "%"],
+              ["Tempo de preenchimento capilar (TPC)", anterior.tpc, "s"],
+              ["Escala de dor", anterior.dor, ""],
+              ["Características das fezes", anterior.fezesCaracteristica, ""],
+              ["Observações urinárias", anterior.urinaObservacoes, ""],
+              ["Características do vômito", anterior.vomitoCaracteristica, ""],
+              ["Salivação", anterior.salivacao, ""],
+            ] as [string, string | undefined, string][]).filter(([, valor]) => (valor ?? "").trim()).map(([rotulo, valor, unidade]) => (
+              <p key={rotulo}><span className="text-muted-foreground">{rotulo}: </span><span className="font-semibold">{valor}{unidade ? ` ${unidade}` : ""}</span></p>
+            ))}
           </div>
           {anterior.observacoes.trim() && (
             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
@@ -447,8 +458,8 @@ export function FormAvaliacao({
       <section className="mt-5 space-y-4 rounded-xl border border-border bg-secondary/20 p-3 sm:p-4" aria-label="Parâmetros complementares">
         <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Parâmetros complementares</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block text-xs font-medium text-muted-foreground">Saturação de oxigênio (SpO₂) — %<input type="number" min="0" max="100" value={valores.spo2 ?? ""} onChange={(e) => set("spo2", e.target.value)} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground" /></label>
-          <label className="block text-xs font-medium text-muted-foreground">Tempo de preenchimento capilar (TPC) — segundos<input type="number" min="0" step="0.1" value={valores.tpc ?? ""} onChange={(e) => set("tpc", e.target.value)} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground" /></label>
+          <label className="block text-xs font-medium text-muted-foreground">Saturação de oxigênio (SpO₂) — %<input type="text" value={valores.spo2 ?? ""} onChange={(e) => set("spo2", e.target.value)} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground" /></label>
+          <label className="block text-xs font-medium text-muted-foreground">Tempo de preenchimento capilar (TPC) — segundos<input type="text" value={valores.tpc ?? ""} onChange={(e) => set("tpc", e.target.value)} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground" /></label>
         </div>
         <fieldset><legend className="text-xs font-semibold text-muted-foreground">Escala de dor</legend><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{["0 — Sem sinais aparentes", "1 — Leve", "2 — Moderada", "3 — Intensa", "4 — Muito intensa", "NA — Não avaliável"].map((opcao) => { const ativo = valores.dor === opcao; return <button key={opcao} type="button" aria-pressed={ativo} onClick={() => set("dor", ativo ? "" : opcao)} className={["min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-medium", ativo ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30" : "border-transparent bg-background text-foreground hover:border-primary/40"].join(" ")}>{opcao}</button>; })}</div></fieldset>
       </section>
