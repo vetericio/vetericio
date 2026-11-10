@@ -128,6 +128,17 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         : friendly
           ? ["/clinic-site/class/consulta-colorida.png"]
           : ["/clinic-site/king/gato-editorial.png"];
+  const gallerySlots = Array.from(
+    { length: Math.max(
+      gallery.length,
+      onUploadImage ? 3 : 0,
+      ...Object.keys(imageOverrides)
+        .filter((key) => /^gallery-\\d+$/.test(key))
+        .map((key) => Number(key.slice(8)) + 1),
+      0,
+    ) },
+    (_, index) => gallery[index] || "",
+  );
   const aboutImage = safeHttps(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
     ? configuredGallery[0]
     : (classAlvorada ? gallery[1] : gallery[0]));
@@ -384,7 +395,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         </div>
       </section>
     ),
-    galeria: gallery.length || onUploadImage ? (
+    galeria: gallerySlots.some(Boolean) || Object.keys(imageOverrides).some((key) => key.startsWith("gallery-")) || onUploadImage ? (
       <section
         key="galeria"
         id="galeria"
@@ -394,7 +405,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         <div className="mx-auto max-w-7xl">
           {heading("Por dentro", "Conheça nosso espaço.")}
           <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(gallery.length ? gallery : ["", "", ""]).map((src, i) => (
+            {gallerySlots.map((src, i) => (
               <figure
                 key={src + "-" + i}
                 className={"relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
