@@ -25,8 +25,17 @@ import {
 
 type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string>; uploadReadySlot?: string | null; hiddenUploadSlots?: string[]; onConfirmUpload?: (slot: string) => void };
 const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
+const safeImage = (input?: string) => {
+  const value = (input || "").trim();
+  const driveId = value.match(/^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i)?.[1];
+  if (driveId) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(driveId)}`;
+  const googleusercontentId = value.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([^/?#]+)/i)?.[1];
+  if (googleusercontentId) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(googleusercontentId)}`;
+  if (/^https:\/\//i.test(value)) return value;
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
+};
 const safeTeamPhoto = (input: string) => {
-  const value = safeHttps(input);
+  const value = safeImage(input);
   if (value) return value;
   // Apenas imagens inline WEBP são aceitas; a vitrine importa duas fotos locais
   // do próprio código para evitar URLs públicas de mídia quebradas.
@@ -103,7 +112,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
     "/clinic-site/alvorada/elan-mulher-cachorro.png",
   ];
   const image =
-    (publishedSlug === "alvorada" ? safeHttps(imageOverrides.hero) : "") ||
+    (publishedSlug === "alvorada" ? safeImage(imageOverrides.hero) : "") ||
     (publishedSlug === "alvorada" ? safeHttps(config.heroImageUrl) : "") ||
     (elanAlvorada ? elanFotos[0] : "") ||
     (classAlvorada ? "/clinic-site/class/intro-veterinaria-gato.webp" : "") ||
@@ -139,7 +148,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
     ) },
     (_, index) => gallery[index] || "",
   );
-  const aboutImage = safeHttps(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
+  const aboutImage = safeImage(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
     ? configuredGallery[0]
     : (classAlvorada ? gallery[1] : gallery[0]));
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
@@ -197,11 +206,16 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       className="flex min-w-0 items-center gap-3"
     >
       {safeHttps(config.logoUrl) ? (
-        <img
-          src={config.logoUrl}
-          className="h-[72px] w-auto max-w-[min(48vw,240px)] object-contain object-left sm:max-w-[240px]"
-          alt={config.name}
-        />
+        <span className="flex h-[72px] w-[min(48vw,240px)] shrink-0 items-center justify-start sm:w-[240px]">
+          <img
+            src={config.logoUrl}
+            className="h-full w-full object-contain object-left"
+            alt={config.name}
+            width={240}
+            height={72}
+            decoding="async"
+          />
+        </span>
       ) : (
         <>
           <span className="flex h-10 w-10 items-center justify-center rounded-full border border-current/20">
@@ -250,6 +264,11 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
           src={image}
           alt={"Ambiente de " + config.name}
           className="absolute inset-0 h-full w-full object-cover"
+          width={960}
+          height={720}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
         />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-gradient-to-tr from-black/10 to-transparent p-6 text-[var(--site-text)]">
@@ -418,8 +437,8 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                 key={src + "-" + i}
                 className={"relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
               >
-                {(safeHttps(imageOverrides[`gallery-${i}`]) || src) ? <img
-                  src={safeHttps(imageOverrides[`gallery-${i}`]) || src}
+                {(safeImage(imageOverrides[`gallery-${i}`]) || src) ? <img
+                  src={safeImage(imageOverrides[`gallery-${i}`]) || src}
                   alt={"Foto " + (i + 1) + " de " + config.name}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
@@ -920,7 +939,17 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {safeHttps(config.logoUrl) ? (
-              <img src={config.logoUrl} alt="" className="h-8 max-w-24 object-contain" />
+              <span className="flex h-8 w-24 shrink-0 items-center">
+                <img
+                  src={config.logoUrl}
+                  alt=""
+                  className="h-full w-full object-contain object-left"
+                  width={96}
+                  height={32}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </span>
             ) : (
               <PawPrint size={25} />
             )}
