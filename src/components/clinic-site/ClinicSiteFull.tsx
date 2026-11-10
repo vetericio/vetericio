@@ -23,7 +23,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string> };
+type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string>; uploadReadySlot?: string | null; hiddenUploadSlots?: string[]; onConfirmUpload?: (slot: string) => void };
 const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
 const safeTeamPhoto = (input: string) => {
   const value = safeHttps(input);
@@ -57,7 +57,7 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
   />;
 }
 
-export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, uploadingSlot, imageOverrides = {} }: Props) {
+export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, uploadingSlot, imageOverrides = {}, uploadReadySlot, hiddenUploadSlots = [], onConfirmUpload }: Props) {
   const signatura = template === "signatura";
   const luxe = template === "prestige";
   const prime = template === "atelier";
@@ -143,7 +143,15 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
     ? configuredGallery[0]
     : (classAlvorada ? gallery[1] : gallery[0]));
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
-  const uploadButton = (slot: string) => onUploadImage && publishedSlug === "alvorada" ? (
+  const uploadButton = (slot: string) => onUploadImage && publishedSlug === "alvorada" && !hiddenUploadSlots.includes(slot) ? uploadReadySlot === slot ? (
+    <button
+      type="button"
+      className="absolute bottom-3 right-3 z-30 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-lg hover:bg-emerald-700"
+      onClick={(event) => { event.stopPropagation(); onConfirmUpload?.(slot); }}
+    >
+      <Check size={15} /> OK
+    </button>
+  ) : (
     <label
       className="absolute bottom-3 right-3 z-30 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-xs font-bold text-slate-900 shadow-lg hover:bg-white"
       onClick={(event) => event.stopPropagation()}
