@@ -245,14 +245,14 @@ function PaginaInicialPlataforma() {
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
             position: absolute;
-            top: 26%;
+            top: calc(26% + 30px);
             left: 5%;
             z-index: 10;
             margin: 0;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-titulo-principal"] {
             position: absolute;
-            top: 45%;
+            top: 41%;
             left: 5%;
             width: 46%;
             max-width: none;
