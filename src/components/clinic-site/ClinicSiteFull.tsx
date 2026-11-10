@@ -24,7 +24,7 @@ import {
 } from "@/lib/clinic-site";
 
 type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string> };
-const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.trim() : "");
+const safeHttps = (input?: string) => (/^https:\/\//i.test((input || "").trim()) ? (input || "").trim() : "");
 const safeTeamPhoto = (input: string) => {
   const value = safeHttps(input);
   if (value) return value;
@@ -130,7 +130,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
           : ["/clinic-site/king/gato-editorial.png"];
   const aboutImage = safeHttps(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
     ? configuredGallery[0]
-    : (classAlvorada ? gallery[1] : gallery[0]);
+    : (classAlvorada ? gallery[1] : gallery[0]));
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
   const uploadButton = (slot: string) => onUploadImage && publishedSlug === "alvorada" ? (
     <label
@@ -384,7 +384,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         </div>
       </section>
     ),
-    galeria: gallery.length ? (
+    galeria: gallery.length || onUploadImage ? (
       <section
         key="galeria"
         id="galeria"
@@ -394,17 +394,17 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         <div className="mx-auto max-w-7xl">
           {heading("Por dentro", "Conheça nosso espaço.")}
           <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {gallery.map((src, i) => (
+            {(gallery.length ? gallery : ["", "", ""]).map((src, i) => (
               <figure
                 key={src + "-" + i}
                 className={"relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
               >
-                <img
+                {(safeHttps(imageOverrides[`gallery-${i}`]) || src) ? <img
                   src={safeHttps(imageOverrides[`gallery-${i}`]) || src}
                   alt={"Foto " + (i + 1) + " de " + config.name}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
-                />
+                /> : <div className="flex h-full items-center justify-center opacity-50"><ImagePlus size={38} /></div>}
                 {uploadButton(`gallery-${i}`)}
               </figure>
             ))}
@@ -427,8 +427,9 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                 key={person.name + index}
                 className={"overflow-hidden border " + ink + " " + panels + (luxe ? " border-[#c9a86a]/45 bg-[#21332d] shadow-2xl" : king ? " border-[#101526] bg-white shadow-[10px_10px_0_#b7183e]" : minimal ? " bg-white shadow-none" : friendly ? " border-[#f05d43]/30 bg-white shadow-lg" : prime ? " border-[#0e5ca8]/20 bg-white shadow-xl" : organic ? " border-[#537b52]/20 bg-[#fffdf6] shadow-md" : " bg-white shadow-sm")}
               >
-                <div className={"flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
+                <div className={"relative flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
                   <FotoPublicaDoProfissional url={safeTeamPhoto(imageOverrides[`team-${index}`] || person.imageUrl)} nome={person.name} />
+                  {uploadButton(`team-${index}`)}
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold">{person.name}</h3>
