@@ -641,7 +641,7 @@ export function alteracoesDoRegistro(r: Registro): Alteracao[] {
     const faixa = faixaDe(r.especie, chave);
     if (!faixa) continue;
     const valor = ultimoValor(r[chave]);
-    const { fora, termo } = avaliarValor(chave, valor, r.especie);
+    const { fora, termo } = avaliarValor(chave, valor, r.especie || "Desconhecida");
     if (!fora) continue;
     const n = paraNumero(valor);
     lista.push({
@@ -670,5 +670,5 @@ export function linhaEstaForaDaFaixa(r: Registro, linha: string): boolean {
   const [chave] = entrada;
   const ultimo = ultimoValor(resto);
   const numero = ultimo.match(/^([0-9]+[,.]?[0-9]*)/)?.[1] ?? ultimo;
-  return avaliarValor(chave, numero, r.especie).fora;
+  return avaliarValor(chave, numero, r.especie || "Desconhecida").fora;
 }
