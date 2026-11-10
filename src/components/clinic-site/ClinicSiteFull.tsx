@@ -23,7 +23,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: "hero" | "about", file: File) => void; uploadingSlot?: "hero" | "about" | null };
+type Props = { template: ClinicSiteTemplate; config: ClinicSiteConfig; clinicSlug?: string; onUploadImage?: (slot: string, file: File) => void; uploadingSlot?: string | null; imageOverrides?: Record<string, string> };
 const safeHttps = (input: string) => (/^https:\/\//i.test(input.trim()) ? input.trim() : "");
 const safeTeamPhoto = (input: string) => {
   const value = safeHttps(input);
@@ -57,7 +57,7 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
   />;
 }
 
-export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, uploadingSlot }: Props) {
+export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, uploadingSlot, imageOverrides = {} }: Props) {
   const signatura = template === "signatura";
   const luxe = template === "prestige";
   const prime = template === "atelier";
@@ -103,6 +103,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
     "/clinic-site/alvorada/elan-mulher-cachorro.png",
   ];
   const image =
+    (publishedSlug === "alvorada" ? safeHttps(imageOverrides.hero) : "") ||
     (publishedSlug === "alvorada" ? safeHttps(config.heroImageUrl) : "") ||
     (elanAlvorada ? elanFotos[0] : "") ||
     (classAlvorada ? "/clinic-site/class/intro-veterinaria-gato.webp" : "") ||
@@ -127,11 +128,11 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         : friendly
           ? ["/clinic-site/class/consulta-colorida.png"]
           : ["/clinic-site/king/gato-editorial.png"];
-  const aboutImage = publishedSlug === "alvorada" && configuredGallery[0]
+  const aboutImage = safeHttps(imageOverrides.about) || (publishedSlug === "alvorada" && configuredGallery[0]
     ? configuredGallery[0]
     : (classAlvorada ? gallery[1] : gallery[0]);
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
-  const uploadButton = (slot: "hero" | "about") => onUploadImage && publishedSlug === "alvorada" ? (
+  const uploadButton = (slot: string) => onUploadImage && publishedSlug === "alvorada" ? (
     <label
       className="absolute bottom-3 right-3 z-30 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-xs font-bold text-slate-900 shadow-lg hover:bg-white"
       onClick={(event) => event.stopPropagation()}
@@ -396,14 +397,15 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
             {gallery.map((src, i) => (
               <figure
                 key={src + "-" + i}
-                className={"aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
+                className={"relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels}
               >
                 <img
-                  src={src}
+                  src={safeHttps(imageOverrides[`gallery-${i}`]) || src}
                   alt={"Foto " + (i + 1) + " de " + config.name}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
                 />
+                {uploadButton(`gallery-${i}`)}
               </figure>
             ))}
           </div>
@@ -426,7 +428,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
                 className={"overflow-hidden border " + ink + " " + panels + (luxe ? " border-[#c9a86a]/45 bg-[#21332d] shadow-2xl" : king ? " border-[#101526] bg-white shadow-[10px_10px_0_#b7183e]" : minimal ? " bg-white shadow-none" : friendly ? " border-[#f05d43]/30 bg-white shadow-lg" : prime ? " border-[#0e5ca8]/20 bg-white shadow-xl" : organic ? " border-[#537b52]/20 bg-[#fffdf6] shadow-md" : " bg-white shadow-sm")}
               >
                 <div className={"flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " + (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")}>
-                  <FotoPublicaDoProfissional url={safeTeamPhoto(person.imageUrl)} nome={person.name} />
+                  <FotoPublicaDoProfissional url={safeTeamPhoto(imageOverrides[`team-${index}`] || person.imageUrl)} nome={person.name} />
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold">{person.name}</h3>
@@ -581,6 +583,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
       {image ? (
         <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50" />
       ) : null}
+      {uploadButton("hero")}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(95deg,rgba(6,31,60,.98)_0%,rgba(8,45,82,.94)_51%,rgba(8,45,82,.62)_100%)]"
@@ -698,6 +701,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         </div>
         <div className="relative min-h-[360px] overflow-hidden rounded-[3rem] border-[10px] border-white bg-[#35A9A0] shadow-[0_24px_0_#182752] sm:min-h-[500px]">
           {image ? <img src={image} alt="Momento feliz na clínica" className="absolute inset-0 h-full w-full object-cover" /> : null}
+          {uploadButton("hero")}
           <div className="absolute left-5 top-5 rounded-full bg-[#FFCF52] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#182752] shadow-sm">
             Partiu cuidar
           </div>
@@ -745,6 +749,7 @@ export function ClinicSiteFull({ template, config, clinicSlug, onUploadImage, up
         </div>
         <div className="relative min-h-[390px] overflow-hidden border-[7px] border-[#101526] bg-[#B7183E] shadow-[18px_18px_0_#B7183E] sm:min-h-[560px]">
           {image ? <img src={image} alt="Retrato da relação entre equipe e pet" className="absolute inset-0 h-full w-full object-cover" /> : null}
+          {uploadButton("hero")}
           <span className="absolute bottom-0 left-0 bg-[#101526] px-5 py-3 text-xs font-black uppercase tracking-[.25em] text-[#F2EBE1]">
             King · cuidado autoral
           </span>
