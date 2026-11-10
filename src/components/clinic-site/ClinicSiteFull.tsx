@@ -43,23 +43,16 @@ const safeImage = (input?: string) => {
   )?.[1];
   if (driveId) return `https://lh3.googleusercontent.com/d/${driveId}`;
   if (/^https:\/\//i.test(value)) return value;
-  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(
-    value,
-  )
-    ? value
-    : "";
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
 };
 const safeTeamPhoto = (input: string) => {
   const value = safeImage(input);
   if (value) return value;
   // Apenas imagens inline WEBP são aceitas; a vitrine importa duas fotos locais
   // do próprio código para evitar URLs públicas de mídia quebradas.
-  if (/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(input))
-    return input;
+  if (/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(input)) return input;
   const local = input.trim();
-  return /^\/clinic-site\/[a-z0-9/_-]+\.(?:webp|png|jpe?g)$/i.test(local)
-    ? local
-    : "";
+  return /^\/clinic-site\/[a-z0-9/_-]+\.(?:webp|png|jpe?g)$/i.test(local) ? local : "";
 };
 const waNumber = (input: string) => input.replace(/\D/g, "");
 const realUrl = (value: string) => {
@@ -67,17 +60,10 @@ const realUrl = (value: string) => {
   return /^https:\/\/[^\s]+$/i.test(valueTrimmed) ? valueTrimmed : "";
 };
 
-function FotoPublicaDoProfissional({
-  url,
-  nome,
-}: {
-  url: string;
-  nome: string;
-}) {
+function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string }) {
   const [falhou, setFalhou] = useState(false);
   useEffect(() => setFalhou(false), [url]);
-  if (!url || falhou)
-    return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
+  if (!url || falhou) return <PawPrint aria-hidden="true" className="opacity-35" size={50} />;
   // A foto nunca é reinterpretada: só ajustamos o enquadramento.
   // As imagens originais são verticais, portanto o topo deve permanecer visível.
   return (
@@ -123,13 +109,8 @@ export function ClinicSiteFull({
         : minimal
           ? "rounded-lg"
           : "rounded-full";
-  const headingFont =
-    luxe || organic || signatura || king ? "font-serif" : "font-sans";
-  const sectionPad = signatura
-    ? "py-20 sm:py-28"
-    : minimal
-      ? "py-14 sm:py-20"
-      : "py-16 sm:py-24";
+  const headingFont = luxe || organic || signatura || king ? "font-serif" : "font-sans";
+  const sectionPad = signatura ? "py-20 sm:py-28" : minimal ? "py-14 sm:py-20" : "py-16 sm:py-24";
   const panels =
     signatura || prime
       ? "rounded-2xl"
@@ -143,21 +124,16 @@ export function ClinicSiteFull({
   // clínica, inclusive em domínios personalizados. O contexto autenticado não
   // é necessário: a rota identifica a clínica pelo slug público.
   const { portal: tenantPortal } = useTenantContext();
-  const caminhoAtual =
-    typeof window === "undefined" ? "" : window.location.pathname;
-  const hostAtual =
-    typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
+  const caminhoAtual = typeof window === "undefined" ? "" : window.location.pathname;
+  const hostAtual = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
   const routeSlug = caminhoAtual.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
-  const subdomainSlug =
-    hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
-  const publishedSlug =
-    clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
+  const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
+  const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
   const portalHref = publishedSlug
     ? `/pet/${encodeURIComponent(publishedSlug)}/portal?secao=agenda&modelo=${encodeURIComponent(template)}`
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
-  const actionLabel =
-    publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
+  const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
   // Fotos exclusivas da demonstração da Alvorada. Os outros temas e clínicas não mudam.
   const classAlvorada = friendly && publishedSlug === "alvorada";
   const elanAlvorada = luxe && publishedSlug === "alvorada";
@@ -180,10 +156,7 @@ export function ClinicSiteFull({
           : "");
   const configuredGallery = config.galleryUrls.filter(safeHttps);
   const gallery = elanAlvorada
-    ? [
-        ...elanFotos,
-        ...configuredGallery.filter((url) => !elanFotos.includes(url)),
-      ]
+    ? [...elanFotos, ...configuredGallery.filter((url) => !elanFotos.includes(url))]
     : classAlvorada
       ? [
           "/clinic-site/class/intro-veterinaria-gato.webp",
@@ -197,10 +170,7 @@ export function ClinicSiteFull({
       : configuredGallery.length || (!prime && !friendly && !king)
         ? configuredGallery
         : prime
-          ? [
-              "/clinic-site/prime/consulta-felina.png",
-              "/clinic-site/prime/recuperacao-noturna.png",
-            ]
+          ? ["/clinic-site/prime/consulta-felina.png", "/clinic-site/prime/recuperacao-noturna.png"]
           : friendly
             ? ["/clinic-site/class/consulta-colorida.png"]
             : ["/clinic-site/king/gato-editorial.png"];
@@ -226,9 +196,7 @@ export function ClinicSiteFull({
         : gallery[0]);
   // Controles de upload somente na vitrine Alvorada e com sessão admin validada.
   const uploadButton = (slot: string) =>
-    onUploadImage &&
-    publishedSlug === "alvorada" &&
-    !hiddenUploadSlots.includes(slot) ? (
+    onUploadImage && publishedSlug === "alvorada" && !hiddenUploadSlots.includes(slot) ? (
       uploadReadySlot === slot ? (
         <button
           type="button"
@@ -263,14 +231,10 @@ export function ClinicSiteFull({
     ) : null;
   const social = realUrl(config.instagramUrl);
   const mapLink = config.address
-    ? "https://www.google.com/maps/search/?api=1&query=" +
-      encodeURIComponent(config.address)
+    ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
     : "";
-  const sectionOrder = config.sectionOrder.length
-    ? config.sectionOrder
-    : [...clinicSiteSections];
-  const visible = (section: ClinicSiteSection) =>
-    !config.hiddenSections.includes(section);
+  const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
+  const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
   const ink = minimal
     ? "border-slate-200/80"
     : signatura
@@ -311,8 +275,7 @@ export function ClinicSiteFull({
           </span>
           <span
             className={
-              "max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " +
-              headingFont
+              "max-w-48 truncate text-base font-extrabold tracking-tight sm:text-lg " + headingFont
             }
           >
             {config.name}
@@ -327,9 +290,7 @@ export function ClinicSiteFull({
       className={
         "inline-flex min-h-12 items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition hover:opacity-85 " +
         buttonShape +
-        (inverted
-          ? " border border-current/30"
-          : " bg-[var(--site-primary)] text-white")
+        (inverted ? " border border-current/30" : " bg-[var(--site-primary)] text-white")
       }
     >
       <CalendarDays size={18} /> {label} <ArrowRight size={16} />
@@ -389,8 +350,7 @@ export function ClinicSiteFull({
       </span>
       <h2
         className={
-          "mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-5xl " +
-          headingFont
+          "mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-5xl " + headingFont
         }
       >
         {title}
@@ -487,8 +447,7 @@ export function ClinicSiteFull({
           <div className="relative">
             <div
               className={
-                "flex aspect-[4/3] items-center justify-center border border-current/10 " +
-                panels
+                "flex aspect-[4/3] items-center justify-center border border-current/10 " + panels
               }
               style={{ backgroundColor: "var(--site-bg)" }}
             >
@@ -500,11 +459,7 @@ export function ClinicSiteFull({
                 />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-5">
-                  <Heart
-                    size={65}
-                    strokeWidth={1.1}
-                    className="text-[var(--site-primary)]"
-                  />
+                  <Heart size={65} strokeWidth={1.1} className="text-[var(--site-primary)]" />
                   <span className="text-xs font-bold uppercase tracking-[.24em] opacity-60">
                     O nosso propósito
                   </span>
@@ -514,10 +469,7 @@ export function ClinicSiteFull({
             {uploadButton("about")}
           </div>
           <div>
-            {heading(
-              "Quem somos",
-              config.aboutTitle || "Uma clínica feita para cuidar.",
-            )}
+            {heading("Quem somos", config.aboutTitle || "Uma clínica feita para cuidar.")}
             <p className="mt-7 max-w-xl whitespace-pre-line text-base leading-8 opacity-80">
               {config.aboutText || config.description}
             </p>
@@ -548,8 +500,7 @@ export function ClinicSiteFull({
                 <figure
                   key={src + "-" + i}
                   className={
-                    "relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " +
-                    panels
+                    "relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels
                   }
                 >
                   {safeImage(imageOverrides[`gallery-${i}`]) || src ? (
@@ -630,17 +581,11 @@ export function ClinicSiteFull({
                 <div
                   className={
                     "relative flex items-center justify-center overflow-hidden bg-[var(--site-secondary)] " +
-                    (luxe
-                      ? "aspect-[3/4]"
-                      : king
-                        ? "aspect-square"
-                        : "aspect-[4/3]")
+                    (luxe ? "aspect-[3/4]" : king ? "aspect-square" : "aspect-[4/3]")
                   }
                 >
                   <FotoPublicaDoProfissional
-                    url={safeTeamPhoto(
-                      imageOverrides[`team-${index}`] || person.imageUrl,
-                    )}
+                    url={safeTeamPhoto(imageOverrides[`team-${index}`] || person.imageUrl)}
                     nome={person.name}
                   />
                   {uploadButton(`team-${index}`)}
@@ -669,17 +614,10 @@ export function ClinicSiteFull({
             {config.faqItems.map((item, i) => (
               <details
                 key={i}
-                className={
-                  "group border border-current/15 bg-[var(--site-bg)] p-5 " +
-                  panels
-                }
+                className={"group border border-current/15 bg-[var(--site-bg)] p-5 " + panels}
               >
-                <summary className="cursor-pointer text-base font-bold">
-                  {item.question}
-                </summary>
-                <p className="mt-3 text-sm leading-7 opacity-75">
-                  {item.answer}
-                </p>
+                <summary className="cursor-pointer text-base font-bold">{item.question}</summary>
+                <p className="mt-3 text-sm leading-7 opacity-75">{item.answer}</p>
               </details>
             ))}
           </div>
@@ -702,8 +640,7 @@ export function ClinicSiteFull({
           <div>
             {heading("Vamos conversar?", "Estamos aqui por você e seu pet.")}
             <p className="mt-5 text-base leading-8 opacity-75">
-              Entre em contato para consultar serviços, horários e informações
-              de atendimento.
+              Entre em contato para consultar serviços, horários e informações de atendimento.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               {action(actionLabel)}
@@ -751,9 +688,7 @@ export function ClinicSiteFull({
                   <strong className="block">Funcionamento</strong>
                   <p className="mt-1 text-sm leading-6">{config.hours}</p>
                   {config.emergency24h && (
-                    <p className="mt-1 text-xs font-bold">
-                      Atendimento de emergência 24h
-                    </p>
+                    <p className="mt-1 text-xs font-bold">Atendimento de emergência 24h</p>
                   )}
                 </div>
               </div>
@@ -763,10 +698,7 @@ export function ClinicSiteFull({
                 <Phone className="mt-1 shrink-0 text-[var(--site-primary)]" />
                 <div>
                   <strong className="block">Telefone</strong>
-                  <a
-                    href={"tel:" + waNumber(config.phone)}
-                    className="mt-1 block text-sm"
-                  >
+                  <a href={"tel:" + waNumber(config.phone)} className="mt-1 block text-sm">
                     {config.phone}
                   </a>
                 </div>
@@ -882,20 +814,14 @@ export function ClinicSiteFull({
           }}
         >
           <div className="flex min-h-32 flex-col justify-center gap-3 px-6 py-6 sm:px-7">
-            <ShieldCheck
-              size={23}
-              className="text-sky-200"
-              aria-hidden="true"
-            />
+            <ShieldCheck size={23} className="text-sky-200" aria-hidden="true" />
             <span className="text-sm font-semibold leading-6">
               Especialistas para cada necessidade
             </span>
           </div>
           <div className="flex min-h-32 flex-col justify-center gap-3 border-y border-white/15 px-6 py-6 sm:border-x sm:border-y-0 sm:px-7">
             <Heart size={23} className="text-sky-200" aria-hidden="true" />
-            <span className="text-sm font-semibold leading-6">
-              Acolhimento para toda a família
-            </span>
+            <span className="text-sm font-semibold leading-6">Acolhimento para toda a família</span>
           </div>
           <div className="flex min-h-32 flex-col justify-center gap-3 px-6 py-6 sm:px-7">
             <Clock3 size={23} className="text-sky-200" aria-hidden="true" />
@@ -922,8 +848,7 @@ export function ClinicSiteFull({
       <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.92fr_1.08fr] md:items-center">
         <div className="py-7 sm:py-12">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#182752] px-4 py-2 text-xs font-extrabold uppercase tracking-[.18em] text-white shadow-sm">
-            <Sparkles size={15} className="text-[#FFCF52]" /> Seu pet no melhor
-            roteiro
+            <Sparkles size={15} className="text-[#FFCF52]" /> Seu pet no melhor roteiro
           </span>
           <h1 className="mt-7 max-w-2xl text-5xl font-black leading-[.91] tracking-[-.055em] text-[#182752] sm:text-7xl">
             {config.slogan}
@@ -983,8 +908,7 @@ export function ClinicSiteFull({
       <div className="relative mx-auto grid max-w-7xl gap-9 md:grid-cols-[.86fr_1.14fr] md:items-end">
         <div className="relative z-10 py-7 sm:pb-16 sm:pt-10">
           <span className="inline-flex items-center gap-2 border-b-2 border-[#B7183E] pb-2 text-xs font-black uppercase tracking-[.25em]">
-            <Sparkles size={14} className="text-[#B7183E]" /> Cuidado em estado
-            de arte
+            <Sparkles size={14} className="text-[#B7183E]" /> Cuidado em estado de arte
           </span>
           <h1 className="mt-7 max-w-2xl font-serif text-6xl leading-[.84] tracking-[-.075em] sm:text-8xl">
             {config.slogan}
@@ -1087,11 +1011,7 @@ export function ClinicSiteFull({
                   (section !== "galeria" || gallery.length),
               )
               .map((section) => (
-                <a
-                  key={section}
-                  href={"#" + section}
-                  className="hover:text-[var(--site-primary)]"
-                >
+                <a key={section} href={"#" + section} className="hover:text-[var(--site-primary)]">
                   {clinicSiteSectionLabels[section]}
                 </a>
               ))}
@@ -1101,13 +1021,10 @@ export function ClinicSiteFull({
             className={
               "inline-flex min-h-10 shrink-0 items-center gap-2 px-3 text-xs font-extrabold sm:px-5 sm:text-sm " +
               buttonShape +
-              (bold
-                ? " bg-[var(--site-secondary)]"
-                : " bg-[var(--site-primary)] text-white")
+              (bold ? " bg-[var(--site-secondary)]" : " bg-[var(--site-primary)] text-white")
             }
           >
-            <CalendarDays size={16} />{" "}
-            <span className="hidden sm:inline">Portal do Tutor</span>
+            <CalendarDays size={16} /> <span className="hidden sm:inline">Portal do Tutor</span>
             <span className="sm:hidden">Portal do Tutor</span>
           </a>
         </div>
@@ -1175,20 +1092,16 @@ export function ClinicSiteFull({
               </div>
               <div className="mt-10 flex flex-wrap gap-5 border-t border-current/15 pt-5 text-xs font-semibold opacity-75">
                 <span className="inline-flex items-center gap-2">
-                  <Heart size={17} className="text-[var(--site-primary)]" />{" "}
-                  Atendimento atencioso
+                  <Heart size={17} className="text-[var(--site-primary)]" /> Atendimento atencioso
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <ShieldCheck
-                    size={17}
-                    className="text-[var(--site-primary)]"
-                  />{" "}
-                  Orientação profissional
+                  <ShieldCheck size={17} className="text-[var(--site-primary)]" /> Orientação
+                  profissional
                 </span>
                 {signatura ? (
                   <span className="inline-flex items-center gap-2">
-                    <Clock3 size={17} className="text-[var(--site-primary)]" />{" "}
-                    Estrutura preparada para urgências
+                    <Clock3 size={17} className="text-[var(--site-primary)]" /> Estrutura preparada
+                    para urgências
                   </span>
                 ) : null}
               </div>
@@ -1198,9 +1111,7 @@ export function ClinicSiteFull({
         </section>
       )}
 
-      {sectionOrder.map((section) =>
-        visible(section) ? sections[section] : null,
-      )}
+      {sectionOrder.map((section) => (visible(section) ? sections[section] : null))}
       <footer
         data-clinic-section="rodape"
         className="border-t border-current/20 px-5 pb-24 pt-10 sm:px-8 sm:pb-12"
@@ -1208,19 +1119,14 @@ export function ClinicSiteFull({
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {safeHttps(config.logoUrl) ? (
-              <img
-                src={config.logoUrl}
-                alt=""
-                className="h-8 max-w-24 object-contain"
-              />
+              <img src={config.logoUrl} alt="" className="h-8 max-w-24 object-contain" />
             ) : (
               <PawPrint size={25} />
             )}
             <span className="font-bold">{config.name}</span>
           </div>
           <p className="text-xs opacity-65">
-            © {new Date().getFullYear()} {config.name}. Todos os direitos
-            reservados.
+            © {new Date().getFullYear()} {config.name}. Todos os direitos reservados.
           </p>
         </div>
       </footer>
