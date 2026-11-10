@@ -414,7 +414,7 @@ function PaginaInicialPlataforma() {
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.93fr_1.07fr] xl:gap-20">
           <div className="relative z-10">
             <div className="relative inline-flex min-h-[72px] max-w-full items-center rounded-2xl border border-white/15 bg-white/[.06] py-2 pl-[164px] pr-5">
-              <img src={ORICSTUDIO_LOGO} alt="" className="absolute left-2 top-1/2 z-10 h-[152px] w-[152px] max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-xl bg-white p-1 object-contain"/>
+              <img src={ORICSTUDIO_LOGO} alt="" className="absolute left-2 top-1/2 z-10 -mt-2 h-[152px] w-[152px] max-w-[calc(100vw-2rem)] -translate-y-1/2 rounded-xl bg-white p-1 object-contain"/>
               <span className="block min-w-0">
                 <span className="block text-sm font-extrabold tracking-tight text-white">OricStúdio</span>
                 <span className="block text-[10px] font-semibold uppercase tracking-[.14em] text-[#e5b9c7]">Marketing pensado para o mercado pet</span>
