@@ -510,9 +510,69 @@ function PaginaInicialPlataforma() {
         </div>
       </section>
 
-      <section id="diferenciais" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-24 lg:px-10"><div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#9c6574]">Por que sua clínica precisa do Portal do Tutor</p><Titulo>Menos mensagens repetidas. Mais confiança para voltar.</Titulo><p className="mt-5 text-[17px] leading-7 text-[#765c66]">Depois da consulta, o tutor não precisa procurar conversa antiga nem ligar para pedir documento. Ele encontra o que precisa no próprio acesso da clínica — e sua equipe ganha tempo para atender melhor.</p></div><div className="rounded-[28px] border border-[#ead8d5] bg-[#fffaf7] p-6 sm:p-8"><div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f3e2e2] text-[#7e334b]"><PawPrint size={23}/></div><div><h3 className="text-xl font-bold text-[#4A1826]">O tutor resolve. Sua equipe respira.</h3><p className="text-sm text-[#856973]">Um acesso seguro, com a identidade da sua clínica, para acompanhar o pet sem depender da recepção.</p></div></div><div className="mt-7 grid gap-3 sm:grid-cols-2">{["Receitas, exames, laudos e documentos sempre disponíveis","Cartão de vacina e vermífugo atualizado para o próximo retorno","Agendamento online reduzindo ligações e troca de mensagens","Comandas e pagamentos digitais com mais praticidade"].map(t=><div key={t} className="flex gap-2 rounded-xl bg-white p-3 text-sm font-semibold text-[#66404d]"><span className="mt-0.5 text-[#9d5268]">✦</span>{t}</div>)}</div></div></div></section>
+      <section id="diferenciais" aria-labelledby="portal-tutor-titulo" className="relative overflow-hidden border-t border-[#eaded8] bg-[#fffaf7] px-5 py-20 sm:px-8 sm:py-24 lg:px-10 lg:py-28">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-44 top-20 h-[520px] w-[520px] rounded-full bg-[#f1d6c2]/45 blur-[100px]"/>
+        <div aria-hidden="true" className="pointer-events-none absolute -left-56 bottom-0 h-[420px] w-[420px] rounded-full bg-[#ead4dc]/35 blur-[100px]"/>
+        <div className="relative mx-auto max-w-7xl">
+          <div className="grid items-center gap-12 lg:grid-cols-[.9fr_1.1fr] xl:gap-20">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.22em] text-[#9c6574]">Portal do Tutor ORICSE</p>
+              <h2 id="portal-tutor-titulo" className="mt-4 max-w-[12ch] font-display text-5xl font-semibold leading-[.94] tracking-[-.06em] text-[#4A1826] sm:text-7xl">Sua clínica na palma da mão do tutor.</h2>
+              <p className="mt-6 max-w-xl text-[17px] leading-7 text-[#765c66]">Um espaço exclusivo, com a identidade da sua clínica, para o tutor acompanhar o pet, encontrar documentos e resolver o que precisa sem depender da recepção.</p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/planos" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 text-sm font-extrabold text-white shadow-[0_14px_30px_rgba(74,24,38,.18)] transition hover:-translate-y-0.5 hover:bg-[#651f38]">Quero oferecer aos meus tutores <ArrowRight size={17}/></Link>
+                <Link to="/demo-portal-tutor" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[#d9b5bf] bg-white px-6 py-3.5 text-sm font-bold text-[#6e3045] transition hover:border-[#6e3045]">Ver como funciona <ArrowRight size={16}/></Link>
+              </div>
+              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-[#80606c]">
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={15} className="text-[#b4693e]"/> Personalizado para sua clínica</span>
+                <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={15} className="text-[#b4693e]"/> Feito para o celular</span>
+              </div>
+            </div>
 
-      <section className="px-5 pb-14 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 rounded-[28px] bg-[#f1e3df] px-7 py-10 text-center sm:flex-row sm:px-12 sm:text-left"><div><h2 className="font-display text-3xl font-semibold tracking-[-.04em] text-[#4A1826] sm:text-4xl">Conheça cada solução da Oricse.</h2><p className="mt-2 text-[#765c66]">Veja o que cada área faz e encontre o que funciona para sua operação.</p></div><a href="/solucoes" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Ver todas as soluções <ArrowRight size={17}/></a></div></section>
+            <div className="relative mx-auto w-full max-w-[650px]">
+              <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full border border-[#ddb8a7] opacity-70"/>
+              <div className="absolute -bottom-10 -left-8 h-36 w-36 rounded-full bg-[#e6c5c3]/60 blur-2xl"/>
+              <div className="relative overflow-hidden rounded-[32px] border border-[#ead8d5] bg-white p-5 shadow-[0_25px_70px_rgba(74,24,38,.12)] sm:p-7">
+                <div className="flex items-center justify-between gap-4 border-b border-[#f0e4e1] pb-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <img src="/portal-tutor-cuidado-pet.png?v=1" alt="Portal do Tutor — Tudo do seu pet em um só lugar, e bem organizado." className="h-16 w-auto max-w-[220px] object-contain object-left sm:h-20"/>
+                    <div className="hidden min-w-0 sm:block"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#a15a43]">Experiência exclusiva</p><p className="mt-1 text-xs text-[#856b72]">Com a identidade da sua clínica</p></div>
+                  </div>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f6e8e2] text-[#98485e]"><PawPrint size={19}/></span>
+                </div>
+                <div className="mt-6 rounded-2xl bg-[#fbf4ef] p-4 sm:p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#9c6574]">Tudo organizado por pet</p>
+                  <h3 className="mt-2 text-2xl font-extrabold tracking-[-.03em] text-[#4A1826]">O tutor resolve. Sua equipe respira.</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#765c66]">Um acesso simples, seguro e com os canais oficiais da clínica.</p>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {[
+                    [FileText, "Documentos por animal", "Receitas, exames, laudos e arquivos sempre disponíveis."],
+                    [HeartPulse, "Vacinas organizadas", "Carteira e cuidados importantes para o próximo retorno."],
+                    [CalendarDays, "Agenda online", "Horários definidos pela clínica, com confirmação após pagamento quando habilitado."],
+                    [CreditCard, "Comandas e pagamentos", "Mais praticidade para o tutor e menos retrabalho para a equipe."],
+                  ].map(([Icone, titulo, texto]) => <div key={titulo as string} className="rounded-2xl border border-[#f0e4e1] bg-white p-4"><div className="flex items-center gap-2 text-sm font-extrabold text-[#6e3045]"><Icone size={17} className="text-[#b4693e]"/>{titulo as string}</div><p className="mt-2 text-xs leading-5 text-[#806b72]">{texto as string}</p></div>)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["Menos mensagens repetidas", "O tutor encontra documentos, receitas e informações sem procurar conversas antigas."],
+              ["Mais confiança para voltar", "Uma experiência organizada e profissional mantém sua clínica presente depois da consulta."],
+              ["Sua marca em cada acesso", "Não é um aplicativo genérico: é o portal da sua clínica, com seu nome, sua logo e seus canais."],
+            ].map(([titulo, texto]) => <article key={titulo} className="rounded-2xl border border-[#eaded8] bg-white p-5"><h3 className="text-base font-extrabold text-[#4A1826]">{titulo}</h3><p className="mt-2 text-sm leading-6 text-[#765c66]">{texto}</p></article>)}
+          </div>
+
+          <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-[24px] bg-[#4A1826] px-6 py-6 text-center sm:flex-row sm:px-8 sm:text-left">
+            <div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#f5c6a8]">O diferencial ORICSE</p><p className="mt-1 text-xl font-extrabold text-white sm:text-2xl">Sua marca. Seu portal. Sua clínica.</p></div>
+            <Link to="/planos" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#ffe2ca] px-5 py-3 text-sm font-extrabold text-[#4A1826]">Quero conhecer <ArrowRight size={16}/></Link>
+          </div>
+        </div>
+      </section>
+
+<section className="px-5 pb-14 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 rounded-[28px] bg-[#f1e3df] px-7 py-10 text-center sm:flex-row sm:px-12 sm:text-left"><div><h2 className="font-display text-3xl font-semibold tracking-[-.04em] text-[#4A1826] sm:text-4xl">Conheça cada solução da Oricse.</h2><p className="mt-2 text-[#765c66]">Veja o que cada área faz e encontre o que funciona para sua operação.</p></div><a href="/solucoes" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Ver todas as soluções <ArrowRight size={17}/></a></div></section>
 
       <footer className="border-t border-[#eaded8] px-5 py-8 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-xs text-[#846873]"><span className="flex items-center gap-2 font-bold text-[#5a293b]"><img src="/oricse-logo-oryx.svg?v=15" className="h-7 w-7" alt=""/>Oricse · Soluções para o mercado pet</span><span>© 2026 Oricse. Todos os direitos reservados.</span><div className="flex gap-4"><Link to="/politica-de-privacidade">Privacidade</Link><Link to="/termos-de-uso">Termos</Link><Link to="/login">Entrar</Link></div></div></footer>
     </main>
