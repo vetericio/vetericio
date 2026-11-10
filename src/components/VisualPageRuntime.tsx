@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
