@@ -100,36 +100,63 @@ function boundedCrop(value: unknown) {
   return Math.min(90, Math.max(0, Number(value) || 0));
 }
 
+function visualCanvasScale(element: HTMLElement, style: VisualStyle) {
+  const viewport = Math.max(
+    1,
+    element.ownerDocument.documentElement.clientWidth ||
+      element.ownerDocument.defaultView?.innerWidth ||
+      1,
+  );
+  // A prancheta do Canva é sempre 1440 px no computador e 390 px no celular.
+  // Coordenadas gravadas no editor precisam acompanhar a página publicada,
+  // em vez de manter pixels absolutos de outra tela.
+  const reference = viewport < 768 ? 390 : 1440;
+  return viewport / reference;
+}
+
 export function applyVisualStyle(element: HTMLElement, style: VisualStyle, independentLayer = false) {
+  const coordinateScale = visualCanvasScale(element, style);
+  const px = (value: number | undefined) => Math.max(0, (value || 0) * coordinateScale);
+
   if (independentLayer) {
     const measured = element.getBoundingClientRect();
-    const baseWidth = Math.max(1, style.baseWidth || measured.width || style.width || 1);
-    const baseHeight = Math.max(1, style.baseHeight || measured.height || style.height || 1);
-    const scaleX = style.width != null ? Math.max(0.02, style.width / baseWidth) : 1;
-    const scaleY = style.height != null ? Math.max(0.02, style.height / baseHeight) : 1;
+    const targetWidth = style.width != null ? px(style.width) : measured.width;
+    const targetHeight = style.height != null ? px(style.height) : measured.height;
+    const scaleX = style.width != null ? Math.max(0.02, targetWidth / Math.max(1, measured.width)) : 1;
+    const scaleY = style.height != null ? Math.max(0.02, targetHeight / Math.max(1, measured.height)) : 1;
     element.style.transformOrigin = "top left";
-    element.style.translate = `${style.x || 0}px ${style.y || 0}px`;
+    element.style.translate = `${(style.x || 0) * coordinateScale}px ${(style.y || 0) * coordinateScale}px`;
     element.style.scale = `${scaleX} ${scaleY}`;
     element.style.willChange = "translate, scale";
   } else {
-    element.style.translate = `${style.x || 0}px ${style.y || 0}px`;
-    if (style.width != null) element.style.width = `${Math.max(1, style.width)}px`;
-    if (style.height != null) element.style.height = `${Math.max(1, style.height)}px`;
+    element.style.translate = `${(style.x || 0) * coordinateScale}px ${(style.y || 0) * coordinateScale}px`;
+    if (style.width != null) element.style.width = `${Math.max(1, px(style.width))}px`;
+    if (style.height != null) element.style.height = `${Math.max(1, px(style.height))}px`;
   }
-  if (style.fontSize != null) element.style.fontSize = `${Math.max(1, style.fontSize)}px`;
+  if (style.fontSize != null) element.style.fontSize = `${Math.max(1, px(style.fontSize))}px`;
   if (style.fontWeight != null) element.style.fontWeight = String(style.fontWeight);
   if (style.color) element.style.color = style.color;
   if (style.backgroundColor) element.style.backgroundColor = style.backgroundColor;
   if (style.borderColor) element.style.borderColor = style.borderColor;
-  if (style.borderWidth != null) { element.style.borderWidth = `${Math.max(0, style.borderWidth)}px`; element.style.borderStyle = element.style.borderStyle || "solid"; }
-  if (style.fill) { element.style.fill = style.fill; element.querySelectorAll("path,circle,rect,polygon,ellipse").forEach((node) => (node as SVGElement).style.fill = style.fill!); }
-  if (style.stroke) { element.style.stroke = style.stroke; element.querySelectorAll("path,circle,rect,line,polyline,polygon,ellipse").forEach((node) => (node as SVGElement).style.stroke = style.stroke!); }
+  if (style.borderWidth != null) {
+    element.style.borderWidth = `${Math.max(0, px(style.borderWidth))}px`;
+    element.style.borderStyle = element.style.borderStyle || "solid";
+  }
+  if (style.fill) {
+    element.style.fill = style.fill;
+    element.querySelectorAll("path,circle,rect,polygon,ellipse").forEach((node) => (node as SVGElement).style.fill = style.fill!);
+  }
+  if (style.stroke) {
+    element.style.stroke = style.stroke;
+    element.querySelectorAll("path,circle,rect,line,polyline,polygon,ellipse").forEach((node) => (node as SVGElement).style.stroke = style.stroke!);
+  }
   if (style.textAlign) element.style.textAlign = style.textAlign;
   if (style.opacity != null) element.style.opacity = String(style.opacity);
-  if (style.borderRadius != null) element.style.borderRadius = `${Math.max(0, style.borderRadius)}px`;
-  if (style.zIndex != null) { element.style.position = element.style.position || "relative"; element.style.zIndex = String(style.zIndex); }
-  // Aplicado tanto às imagens adicionadas quanto às imagens originais alteradas.
-  // Preserva os pixels de origem e permite refazer o corte a qualquer momento.
+  if (style.borderRadius != null) element.style.borderRadius = `${Math.max(0, px(style.borderRadius))}px`;
+  if (style.zIndex != null) {
+    element.style.position = element.style.position || "relative";
+    element.style.zIndex = String(style.zIndex);
+  }
   if (element.tagName === "IMG") {
     const top = boundedCrop(style.cropTop), right = boundedCrop(style.cropRight);
     const bottom = boundedCrop(style.cropBottom), left = boundedCrop(style.cropLeft);
