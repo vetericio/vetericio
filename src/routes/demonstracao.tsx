@@ -81,10 +81,10 @@ function Demonstracao() {
   return (
     <div className="relative min-h-screen text-[#4A1826]" style={{ fontFamily: "Manrope, sans-serif" }}>
       <FundoDeserto />
-      <header className="relative z-10 mx-auto flex max-w-[1540px] items-center gap-4 px-5 pb-4 pt-8 text-[#4A1826] sm:px-10 lg:px-14">
-        <Link to="/" className="text-5xl font-bold tracking-[-0.06em] sm:text-6xl" style={{ fontFamily: "Sora, sans-serif" }}>Oricse</Link>
-        <span className="h-11 w-px bg-[#4A1826]/20" />
-        <span className="text-sm sm:text-base">Soluções para o mercado pet</span>
+      <header className="relative z-10 mx-auto flex max-w-[1540px] items-center px-5 pb-4 pt-6 sm:px-10 lg:px-14">
+        <Link to="/" aria-label="Oricse — voltar à página inicial" className="inline-flex shrink-0 items-center">
+          <img src="/oricse-logo-full.svg" alt="Oricse — Soluções para o mercado pet" width="900" height="900" className="h-[132px] w-[132px] object-contain sm:h-[170px] sm:w-[170px]" decoding="async" />
+        </Link>
       </header>
       <main className="relative z-10 mx-auto grid max-w-[1540px] gap-10 px-5 pb-16 pt-7 sm:px-10 lg:grid-cols-[minmax(350px,0.8fr)_minmax(590px,1.2fr)] lg:items-start lg:gap-12 lg:px-14 lg:pt-10">
         <section className="text-[#4A1826] lg:pt-14">
