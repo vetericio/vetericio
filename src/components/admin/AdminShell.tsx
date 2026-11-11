@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import {
   BadgeDollarSign, Building2, ClipboardCheck, CreditCard, Gauge, Globe2,
   ImageUp, LayoutDashboard, Menu, PanelsTopLeft, Settings, ShieldCheck,
-  Presentation, Trash2, X,
+  Presentation, Trash2, X, FileText,
 } from "lucide-react";
 
 export type AdminAba =
@@ -17,13 +17,14 @@ type Item = {
   Icone: typeof Gauge;
   grupo: Grupo;
   aba?: AdminAba;
-  rota?: "/admin-oricstudio" | "/admin-conteudo" | "/admin-solicitacoes-demonstracao" | "/oricstudio";
+  rota?: "/admin-oricstudio" | "/admin-conteudo" | "/admin-solicitacoes-demonstracao" | "/admin-contratos" | "/oricstudio";
 };
 
 const ITENS: Item[] = [
   { id: "dashboard", nome: "Visão geral", Icone: Gauge, grupo: "Operação", aba: "dashboard" },
   { id: "novas", nome: "Clínicas novas", Icone: ClipboardCheck, grupo: "Operação", aba: "novas" },
   { id: "demonstracoes", nome: "Solicitações de demonstração", Icone: Presentation, grupo: "Operação", rota: "/admin-solicitacoes-demonstracao" },
+  { id: "contratos", nome: "Contratos", Icone: FileText, grupo: "Operação", rota: "/admin-contratos" },
   { id: "lixeira", nome: "Lixeira · 360 dias", Icone: Trash2, grupo: "Operação", aba: "lixeira" },
   { id: "clinicas", nome: "Clínicas e equipe", Icone: Building2, grupo: "Operação", aba: "clinicas" },
   { id: "planos", nome: "Planos e cupons", Icone: BadgeDollarSign, grupo: "Operação", aba: "planos" },

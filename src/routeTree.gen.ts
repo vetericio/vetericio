@@ -14,6 +14,7 @@ import { Route as AliasRouteImport } from './routes/$alias'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminCanvasRouteImport } from './routes/admin-canvas'
 import { Route as AdminConteudoRouteImport } from './routes/admin-conteudo'
+import { Route as AdminContratosRouteImport } from './routes/admin-contratos'
 import { Route as AdminCuponsRouteImport } from './routes/admin-cupons'
 import { Route as AdminDemonstracoesRouteImport } from './routes/admin-demonstracoes'
 import { Route as AdminOricstudioRouteImport } from './routes/admin-oricstudio'
@@ -85,6 +86,7 @@ import { Route as TodasAgendasRouteImport } from './routes/todas-agendas'
 import { Route as TutoresRouteImport } from './routes/tutores'
 import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
+import { Route as ContratoTokenRouteImport } from './routes/contrato.$token'
 import { Route as VetSlugRouteImport } from './routes/vet.$slug'
 import { Route as ApiMercadopagoCallbackRouteImport } from './routes/api/mercadopago/callback'
 import { Route as ApiOricstudioMidiaRouteImport } from './routes/api/oricstudio/midia'
@@ -120,6 +122,11 @@ const AdminConteudoRoute = AdminConteudoRouteImport.update({
   path: '/admin-conteudo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminContratosRoute = AdminContratosRouteImport.update({
+  id: '/admin-contratos',
+  path: '/admin-contratos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCuponsRoute = AdminCuponsRouteImport.update({
   id: '/admin-cupons',
   path: '/admin-cupons',
@@ -145,11 +152,12 @@ const AdminSolicitacoesRoute = AdminSolicitacoesRouteImport.update({
   path: '/admin-solicitacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminSolicitacoesDemonstracaoRoute = AdminSolicitacoesDemonstracaoRouteImport.update({
-  id: '/admin-solicitacoes-demonstracao',
-  path: '/admin-solicitacoes-demonstracao',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const AdminSolicitacoesDemonstracaoRoute =
+  AdminSolicitacoesDemonstracaoRouteImport.update({
+    id: '/admin-solicitacoes-demonstracao',
+    path: '/admin-solicitacoes-demonstracao',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AgendaHotelRoute = AgendaHotelRouteImport.update({
   id: '/agenda-hotel',
   path: '/agenda-hotel',
@@ -475,6 +483,11 @@ const CSlugRoute = CSlugRouteImport.update({
   path: '/c/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContratoTokenRoute = ContratoTokenRouteImport.update({
+  id: '/contrato/$token',
+  path: '/contrato/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VetSlugRoute = VetSlugRouteImport.update({
   id: '/vet/$slug',
   path: '/vet/$slug',
@@ -532,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
+  '/admin-contratos': typeof AdminContratosRoute
   '/admin-cupons': typeof AdminCuponsRoute
   '/admin-demonstracoes': typeof AdminDemonstracoesRoute
   '/admin-oricstudio': typeof AdminOricstudioRoute
@@ -603,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/c/$slug': typeof CSlugRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/api/oricstudio/midia': typeof ApiOricstudioMidiaRoute
@@ -619,11 +634,13 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
+  '/admin-contratos': typeof AdminContratosRoute
   '/admin-cupons': typeof AdminCuponsRoute
   '/admin-demonstracoes': typeof AdminDemonstracoesRoute
   '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
+  '/admin-solicitacoes-demonstracao': typeof AdminSolicitacoesDemonstracaoRoute
   '/agenda-hotel': typeof AgendaHotelRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
@@ -689,6 +706,7 @@ export interface FileRoutesByTo {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/c/$slug': typeof CSlugRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/api/oricstudio/midia': typeof ApiOricstudioMidiaRoute
@@ -706,11 +724,13 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
+  '/admin-contratos': typeof AdminContratosRoute
   '/admin-cupons': typeof AdminCuponsRoute
   '/admin-demonstracoes': typeof AdminDemonstracoesRoute
   '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
+  '/admin-solicitacoes-demonstracao': typeof AdminSolicitacoesDemonstracaoRoute
   '/agenda-hotel': typeof AgendaHotelRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
@@ -776,6 +796,7 @@ export interface FileRoutesById {
   '/tutores': typeof TutoresRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/c/$slug': typeof CSlugRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/vet/$slug': typeof VetSlugRoute
   '/api/mercadopago/callback': typeof ApiMercadopagoCallbackRoute
   '/api/oricstudio/midia': typeof ApiOricstudioMidiaRoute
@@ -794,11 +815,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
+    | '/admin-contratos'
     | '/admin-cupons'
     | '/admin-demonstracoes'
     | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
+    | '/admin-solicitacoes-demonstracao'
     | '/agenda-hotel'
     | '/alarmes'
     | '/anamnese'
@@ -864,6 +887,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/c/$slug'
+    | '/contrato/$token'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
     | '/api/oricstudio/midia'
@@ -880,11 +904,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
+    | '/admin-contratos'
     | '/admin-cupons'
     | '/admin-demonstracoes'
     | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
+    | '/admin-solicitacoes-demonstracao'
     | '/agenda-hotel'
     | '/alarmes'
     | '/anamnese'
@@ -950,6 +976,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/c/$slug'
+    | '/contrato/$token'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
     | '/api/oricstudio/midia'
@@ -966,11 +993,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-canvas'
     | '/admin-conteudo'
+    | '/admin-contratos'
     | '/admin-cupons'
     | '/admin-demonstracoes'
     | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
+    | '/admin-solicitacoes-demonstracao'
     | '/agenda-hotel'
     | '/alarmes'
     | '/anamnese'
@@ -1036,6 +1065,7 @@ export interface FileRouteTypes {
     | '/tutores'
     | '/$tipo/$slug'
     | '/c/$slug'
+    | '/contrato/$token'
     | '/vet/$slug'
     | '/api/mercadopago/callback'
     | '/api/oricstudio/midia'
@@ -1053,11 +1083,13 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdminCanvasRoute: typeof AdminCanvasRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
+  AdminContratosRoute: typeof AdminContratosRoute
   AdminCuponsRoute: typeof AdminCuponsRoute
   AdminDemonstracoesRoute: typeof AdminDemonstracoesRoute
   AdminOricstudioRoute: typeof AdminOricstudioRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
+  AdminSolicitacoesDemonstracaoRoute: typeof AdminSolicitacoesDemonstracaoRoute
   AgendaHotelRoute: typeof AgendaHotelRoute
   AlarmesRoute: typeof AlarmesRoute
   AnamneseRoute: typeof AnamneseRoute
@@ -1123,6 +1155,7 @@ export interface RootRouteChildren {
   TutoresRoute: typeof TutoresRoute
   TipoSlugRoute: typeof TipoSlugRoute
   CSlugRoute: typeof CSlugRoute
+  ContratoTokenRoute: typeof ContratoTokenRoute
   VetSlugRoute: typeof VetSlugRoute
   ApiMercadopagoCallbackRoute: typeof ApiMercadopagoCallbackRoute
   ApiOricstudioMidiaRoute: typeof ApiOricstudioMidiaRoute
@@ -1171,6 +1204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConteudoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin-contratos': {
+      id: '/admin-contratos'
+      path: '/admin-contratos'
+      fullPath: '/admin-contratos'
+      preLoaderRoute: typeof AdminContratosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin-cupons': {
       id: '/admin-cupons'
       path: '/admin-cupons'
@@ -1204,6 +1244,13 @@ declare module '@tanstack/react-router' {
       path: '/admin-solicitacoes'
       fullPath: '/admin-solicitacoes'
       preLoaderRoute: typeof AdminSolicitacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-solicitacoes-demonstracao': {
+      id: '/admin-solicitacoes-demonstracao'
+      path: '/admin-solicitacoes-demonstracao'
+      fullPath: '/admin-solicitacoes-demonstracao'
+      preLoaderRoute: typeof AdminSolicitacoesDemonstracaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agenda-hotel': {
@@ -1661,6 +1708,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contrato/$token': {
+      id: '/contrato/$token'
+      path: '/contrato/$token'
+      fullPath: '/contrato/$token'
+      preLoaderRoute: typeof ContratoTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vet/$slug': {
       id: '/vet/$slug'
       path: '/vet/$slug'
@@ -1733,6 +1787,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdminCanvasRoute: AdminCanvasRoute,
   AdminConteudoRoute: AdminConteudoRoute,
+  AdminContratosRoute: AdminContratosRoute,
   AdminCuponsRoute: AdminCuponsRoute,
   AdminDemonstracoesRoute: AdminDemonstracoesRoute,
   AdminOricstudioRoute: AdminOricstudioRoute,
@@ -1804,6 +1859,7 @@ const rootRouteChildren: RootRouteChildren = {
   TutoresRoute: TutoresRoute,
   TipoSlugRoute: TipoSlugRoute,
   CSlugRoute: CSlugRoute,
+  ContratoTokenRoute: ContratoTokenRoute,
   VetSlugRoute: VetSlugRoute,
   ApiMercadopagoCallbackRoute: ApiMercadopagoCallbackRoute,
   ApiOricstudioMidiaRoute: ApiOricstudioMidiaRoute,

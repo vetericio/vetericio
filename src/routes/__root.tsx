@@ -80,6 +80,7 @@ const ROTAS_PUBLICAS = new Set([
   "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade",
   "/demo-portal-tutor", "/portaldotutor", "/demonstracao", "/solicitar-demonstracao",
 ]);
+const ROTA_CONTRATO_PUBLICO = /^\/contrato\/[^/]+$/;
 
 function mensagemDeErro(error: unknown): string {
   if (error instanceof Error) return error.name + ": " + error.message;
@@ -473,7 +474,8 @@ function RootComponent() {
     const rotaPublica =
       ROTAS_PUBLICAS.has(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
-      /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
+      /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) ||
+      ROTA_CONTRATO_PUBLICO.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin") ||
     (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
     if (autenticado === false && !rotaPublica && !rotaAdmin) navigate({ to: "/login" });
@@ -732,7 +734,9 @@ function RootComponent() {
   const rotaPublica =
     ROTAS_PUBLICAS.has(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
-    /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
+    /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) ||
+    ROTA_CONTRATO_PUBLICO.test(location.pathname);
+  const rotaContratoPublico = ROTA_CONTRATO_PUBLICO.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const assinaturaBloqueada = role !== "admin" && acessoAssinatura?.situacao === "bloqueada";
@@ -754,6 +758,11 @@ function RootComponent() {
     location.pathname !== "/admin-canvas" &&
     location.pathname !== "/" &&
     !paginaInicialDeClinica;
+
+  // A demonstração é pública e isolada para preservar o layout aprovado.
+  if (rotaContratoPublico) {
+    return <QueryClientProvider client={queryClient}><Outlet /><Toaster position="top-center" /></QueryClientProvider>;
+  }
 
   // A demonstração é pública e isolada para preservar o layout aprovado.
   if (location.pathname === "/demonstracao" || location.pathname === "/solicitar-demonstracao") {
