@@ -25,6 +25,8 @@ type Contrato = {
   status: string;
   pessoaNome: string | null;
   dados: Record<string, string>;
+  templatePdfBase64: string | null;
+  templatePdfUrl: string | null;
   expiraEm: string | null;
   campos: string[];
 };
@@ -63,10 +65,10 @@ function ContratoPublico() {
   }, [token]);
 
   const campos = useMemo(
-    () => contrato?.campos || (contrato ? extrairCamposContrato(contrato.conteudo) : []),
+    () => (contrato?.campos || (contrato ? extrairCamposContrato(contrato.conteudo) : [])).filter((campo) => campo !== "data_contrato"),
     [contrato],
   );
-  const nomePessoa = dados.nome || dados.nome_completo || contrato?.pessoaNome || "Pessoa";
+  const nomePessoa = dados.representante_legal || dados.razao_social_nome || contrato?.pessoaNome || "Pessoa";
 
   async function gerarEbaixar() {
     if (!contrato) return;
@@ -81,11 +83,16 @@ function ContratoPublico() {
         data: {
           token,
           pessoaNome: nomePessoa,
-          pessoaEmail: dados.email || dados.e_mail || "",
+          pessoaEmail: dados.email || "",
           dados,
         },
       });
-      const dataUri = await gerarPdfContrato(contrato.titulo, contrato.conteudo, dados);
+      const dataUri = await gerarPdfContrato(
+        contrato.titulo,
+        contrato.conteudo,
+        dados,
+        contrato.templatePdfBase64 || contrato.templatePdfUrl,
+      );
       baixarPdfContrato(dataUri, `${nomeSeguroContrato(nomePessoa)} - Em branco.pdf`);
       await salvarArquivoContrato({
         data: { token, tipo: "em_branco", base64: dataUri, mimeType: "application/pdf" },

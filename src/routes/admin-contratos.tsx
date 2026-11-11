@@ -11,7 +11,7 @@ import {
   listarModelosContratos,
   obterDownloadContratoAdmin,
 } from "@/lib/contratos.functions";
-import { rotuloCampoContrato } from "@/lib/contratos-pdf";
+import { lerArquivoComoDataUri, rotuloCampoContrato } from "@/lib/contratos-pdf";
 
 export const Route = createFileRoute("/admin-contratos")({ component: AdminContratos });
 
@@ -51,6 +51,8 @@ function AdminContratos() {
   const [conteudo, setConteudo] = useState(
     "Eu, {{nome}}, data de nascimento {{data_nascimento}}, declaro que...\n\nAssinatura: ______________________________________",
   );
+  const [templatePdfBase64, setTemplatePdfBase64] = useState<string | null>(null);
+  const [templatePdfNome, setTemplatePdfNome] = useState("");
   const [linkGerado, setLinkGerado] = useState("");
 
   async function tokenAdmin() {
@@ -88,13 +90,17 @@ function AdminContratos() {
     setSalvando(true);
     try {
       const accessToken = await tokenAdmin();
-      await criarModeloContrato({ data: { accessToken, titulo, descricao, conteudo } });
+      await criarModeloContrato({
+        data: { accessToken, titulo, descricao, conteudo, templatePdfBase64 },
+      });
       toast.success("Modelo de contrato salvo.");
       setTitulo("");
       setDescricao("");
       setConteudo(
         "Eu, {{nome}}, data de nascimento {{data_nascimento}}, declaro que...\n\nAssinatura: ______________________________________",
       );
+      setTemplatePdfBase64(null);
+      setTemplatePdfNome("");
       await carregar();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o modelo.");
@@ -249,6 +255,27 @@ function AdminContratos() {
                     const leitor = new FileReader();
                     leitor.onload = () => setConteudo(String(leitor.result || ""));
                     leitor.readAsText(arquivo);
+                  }}
+                />
+              </label>
+              <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-bold text-primary hover:bg-primary/10">
+                <Upload size={16} />
+                {templatePdfNome ? `PDF do modelo: ${templatePdfNome}` : "Anexar PDF do modelo"}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const arquivo = e.target.files?.[0];
+                    if (!arquivo) return;
+                    if (arquivo.size > 2_500_000) {
+                      toast.error("O PDF do modelo deve ter até 2,5 MB.");
+                      return;
+                    }
+                    void lerArquivoComoDataUri(arquivo).then((dataUri) => {
+                      setTemplatePdfBase64(dataUri);
+                      setTemplatePdfNome(arquivo.name);
+                    });
                   }}
                 />
               </label>

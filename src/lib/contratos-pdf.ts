@@ -1,5 +1,17 @@
 export type DadosContrato = Record<string, string>;
 
+export const CAMPOS_CONTRATO_BETA = [
+  "razao_social_nome",
+  "cpf_cnpj",
+  "endereco_parceiro",
+  "email",
+  "telefone_whatsapp",
+  "representante_legal",
+  "cpf_representante",
+  "data_nascimento",
+  "endereco_representante",
+] as const;
+
 export function extrairCamposContrato(conteudo: string) {
   const encontrados = new Set<string>();
   const regex = /{{\s*([a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ0-9_-]{1,80})\s*}}/g;
@@ -9,6 +21,19 @@ export function extrairCamposContrato(conteudo: string) {
 }
 
 export function rotuloCampoContrato(campo: string) {
+  const rotulos: Record<string, string> = {
+    razao_social_nome: "Razão social ou nome",
+    cpf_cnpj: "CPF/CNPJ",
+    endereco_parceiro: "Endereço",
+    email: "E-mail",
+    telefone_whatsapp: "Telefone/WhatsApp",
+    representante_legal: "Representado por — nome",
+    cpf_representante: "Representado por — CPF",
+    data_nascimento: "Representado por — data de nascimento",
+    endereco_representante: "Representado por — endereço",
+    data_contrato: "Data do contrato",
+  };
+  if (rotulos[campo]) return rotulos[campo];
   return campo.replaceAll("_", " ").replace(/\b\w/g, (letra) => letra.toUpperCase());
 }
 
@@ -38,7 +63,113 @@ export function nomeSeguroContrato(nome: string) {
   );
 }
 
-export async function gerarPdfContrato(titulo: string, conteudo: string, dados: DadosContrato) {
+function dataAtualContrato() {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
+
+function textoDados(dados: DadosContrato, campo: string) {
+  return valorParaDocumento(campo, dados[campo]) || "[não informado]";
+}
+
+function linhaParceiroBeta(dados: DadosContrato) {
+  return `PARCEIRO BETA: ${textoDados(dados, "razao_social_nome")}, CPF/CNPJ nº ${textoDados(dados, "cpf_cnpj")}, endereço ${textoDados(dados, "endereco_parceiro")}, e-mail ${textoDados(dados, "email")}, telefone/WhatsApp ${textoDados(dados, "telefone_whatsapp")}, neste ato representado por ${textoDados(dados, "representante_legal")}, CPF nº ${textoDados(dados, "cpf_representante")}, data de nascimento ${textoDados(dados, "data_nascimento")}, endereço ${textoDados(dados, "endereco_representante")}.`;
+}
+
+async function asBytes(dataUriOrUrl: string) {
+  if (!dataUriOrUrl.startsWith("data:")) {
+    const resposta = await fetch(new URL(dataUriOrUrl, window.location.origin));
+    if (!resposta.ok) throw new Error("Não foi possível carregar o modelo PDF.");
+    return new Uint8Array(await resposta.arrayBuffer());
+  }
+  const base64 = dataUriOrUrl.replace(/^data:application\/pdf;base64,/, "");
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function quebrarTexto(texto: string, fonte: { widthOfTextAtSize: (texto: string, tamanho: number) => number }, tamanho: number, largura: number) {
+  const palavras = texto.split(/\s+/);
+  const linhas: string[] = [];
+  let atual = "";
+  for (const palavra of palavras) {
+    const candidato = atual ? `${atual} ${palavra}` : palavra;
+    if (atual && fonte.widthOfTextAtSize(candidato, tamanho) > largura) {
+      linhas.push(atual);
+      atual = palavra;
+    } else {
+      atual = candidato;
+    }
+  }
+  if (atual) linhas.push(atual);
+  return linhas;
+}
+
+async function gerarPdfComModelo(templatePdfBase64: string, dados: DadosContrato) {
+  const { PDFDocument, StandardFonts, beginText, endText, rgb, setCharacterSpacing, setWordSpacing } = await import("pdf-lib");
+  const pdf = await PDFDocument.load(await asBytes(templatePdfBase64));
+  const fonte = await pdf.embedFont(StandardFonts.Helvetica);
+  const fonteNegrito = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const tamanho = 9.5;
+  const paginaInicial = pdf.getPage(0);
+  const altura = paginaInicial.getHeight();
+  paginaInicial.pushOperators(beginText(), setCharacterSpacing(0), setWordSpacing(0), endText());
+  const limpar = (pagina: ReturnType<typeof pdf.getPage>, x: number, y: number, width: number, height: number) => {
+    pagina.drawRectangle({ x, y, width, height, color: rgb(1, 1, 1) });
+  };
+  const desenharLinhas = (pagina: ReturnType<typeof pdf.getPage>, linhas: string[], x: number, y: number, largura: number, espacamento = 12.5) => {
+    linhas.forEach((linha, indice) => {
+      pagina.drawText(linha, { x, y: y - indice * espacamento, size: tamanho, font: fonte, color: rgb(0.12, 0.12, 0.12) });
+    });
+  };
+
+  const parceiro = linhaParceiroBeta(dados);
+  limpar(paginaInicial, 68, altura - 399, 480, 35);
+  desenharLinhas(paginaInicial, quebrarTexto(parceiro, fonte, tamanho, 475), 73.8, altura - 379, 475);
+
+  const paginaFinal = pdf.getPage(pdf.getPageCount() - 1);
+  const alturaFinal = paginaFinal.getHeight();
+  paginaFinal.pushOperators(beginText(), setCharacterSpacing(0), setWordSpacing(0), endText());
+  limpar(paginaFinal, 70, alturaFinal - 420, 220, 24);
+  paginaFinal.drawText(`Belo Horizonte/MG, ${dataAtualContrato()}`, {
+    x: 73.8,
+    y: alturaFinal - 415,
+    size: tamanho,
+    font: fonte,
+    color: rgb(0.12, 0.12, 0.12),
+  });
+  limpar(paginaFinal, 70, alturaFinal - 661, 180, 38);
+  paginaFinal.drawText(textoDados(dados, "representante_legal"), {
+    x: 73.8,
+    y: alturaFinal - 647,
+    size: tamanho,
+    font: fonte,
+    color: rgb(0.12, 0.12, 0.12),
+  });
+  paginaFinal.drawText(`CPF ${textoDados(dados, "cpf_representante")}`, {
+    x: 73.8,
+    y: alturaFinal - 660,
+    size: tamanho,
+    font: fonte,
+    color: rgb(0.12, 0.12, 0.12),
+  });
+  void fonteNegrito;
+  const bytes = await pdf.save();
+  let binary = "";
+  for (let indice = 0; indice < bytes.length; indice += 0x8000) binary += String.fromCharCode(...bytes.subarray(indice, indice + 0x8000));
+  return `data:application/pdf;base64,${btoa(binary)}`;
+}
+
+export async function gerarPdfContrato(
+  titulo: string,
+  conteudo: string,
+  dados: DadosContrato,
+  templatePdfBase64?: string | null,
+) {
+  if (templatePdfBase64) return gerarPdfComModelo(templatePdfBase64, dados);
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const margem = 54;

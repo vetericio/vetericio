@@ -9,6 +9,7 @@ const arquivoSchema = tokenSchema.extend({
   base64: z.string().min(1).max(28_000_000),
   mimeType: z.literal("application/pdf"),
 });
+const templatePdfSchema = z.string().max(4_000_000).optional().nullable();
 
 async function carregarAdmin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -53,7 +54,7 @@ export const listarModelosContratos = createServerFn({ method: "POST" })
     const { admin } = await exigirAdministrador(data.accessToken);
     const { data: modelos, error } = await admin
       .from("oricse_contrato_modelos")
-      .select("id,titulo,descricao,conteudo,ativo,created_at,updated_at")
+      .select("id,titulo,descricao,conteudo,template_pdf_base64,template_pdf_url,ativo,created_at,updated_at")
       .order("created_at", { ascending: false });
     if (error) throw new Error("Não foi possível carregar os modelos de contrato.");
     return {
@@ -71,6 +72,8 @@ export const criarModeloContrato = createServerFn({ method: "POST" })
         titulo: z.string().trim().min(2).max(160),
         descricao: z.string().max(500).default(""),
         conteudo: z.string().min(10).max(200000),
+        templatePdfBase64: templatePdfSchema,
+        templatePdfUrl: z.string().url().max(500).optional().nullable(),
       })
       .parse(input),
   )
@@ -85,9 +88,11 @@ export const criarModeloContrato = createServerFn({ method: "POST" })
         titulo: data.titulo,
         descricao: data.descricao,
         conteudo: data.conteudo,
+        template_pdf_base64: data.templatePdfBase64 || null,
+        template_pdf_url: data.templatePdfUrl || null,
         criado_por: userId,
       })
-      .select("id,titulo,descricao,conteudo,ativo,created_at,updated_at")
+      .select("id,titulo,descricao,conteudo,template_pdf_base64,template_pdf_url,ativo,created_at,updated_at")
       .single();
     if (error || !modelo) throw new Error("Não foi possível salvar o modelo de contrato.");
     return { modelo: { ...modelo, campos } };
@@ -106,7 +111,7 @@ export const criarLinkContrato = createServerFn({ method: "POST" })
     const { admin, userId } = await exigirAdministrador(data.accessToken);
     const { data: modelo, error: modeloError } = await admin
       .from("oricse_contrato_modelos")
-      .select("id,titulo,conteudo,ativo")
+      .select("id,titulo,conteudo,template_pdf_base64,template_pdf_url,ativo")
       .eq("id", data.modeloId)
       .maybeSingle();
     if (modeloError || !modelo || !modelo.ativo)
@@ -120,6 +125,8 @@ export const criarLinkContrato = createServerFn({ method: "POST" })
         modelo_id: modelo.id,
         modelo_titulo: modelo.titulo,
         modelo_conteudo_snapshot: modelo.conteudo,
+        modelo_pdf_base64_snapshot: modelo.template_pdf_base64 || null,
+        modelo_pdf_url_snapshot: modelo.template_pdf_url || null,
         token_hash: tokenHash,
         token_prefix: token.slice(0, 12),
         expira_em: expiraEm,
@@ -153,7 +160,7 @@ export const obterContratoPublico = createServerFn({ method: "POST" })
     const { data: contrato, error } = await admin
       .from("oricse_contratos")
       .select(
-        "id,modelo_titulo,modelo_conteudo_snapshot,status,pessoa_nome,dados,expira_em,preenchido_em,assinado_em",
+        "id,modelo_titulo,modelo_conteudo_snapshot,modelo_pdf_base64_snapshot,modelo_pdf_url_snapshot,status,pessoa_nome,dados,expira_em,preenchido_em,assinado_em",
       )
       .eq("token_hash", tokenHash)
       .maybeSingle();
@@ -171,6 +178,8 @@ export const obterContratoPublico = createServerFn({ method: "POST" })
         id: contrato.id,
         titulo: contrato.modelo_titulo,
         conteudo: contrato.modelo_conteudo_snapshot,
+        templatePdfBase64: contrato.modelo_pdf_base64_snapshot,
+        templatePdfUrl: contrato.modelo_pdf_url_snapshot,
         status: contrato.status,
         pessoaNome: contrato.pessoa_nome,
         dados: contrato.dados || {},
@@ -317,4 +326,41 @@ export const obterDownloadContrato = createServerFn({ method: "POST" })
     if (signed.error || !signed.data?.signedUrl)
       throw new Error("Não foi possível preparar o download.");
     return { url: signed.data.signedUrl, mimeType: arquivo.mime_type };
+  });
+
+export const obterDownloadContratoAdmin = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    accessSchema
+      .extend({ contratoId: z.string().uuid(), tipo: z.enum(["em_branco", "assinado"]) })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { admin } = await exigirAdministrador(data.accessToken);
+    const { data: arquivo } = await admin
+      .from("oricse_contrato_arquivos")
+      .select("storage_path,mime_type")
+      .eq("contrato_id", data.contratoId)
+      .eq("tipo", data.tipo)
+      .maybeSingle();
+    if (!arquivo) throw new Error("Esta versão do contrato ainda não foi gerada.");
+    const signed = await admin.storage
+      .from("oricse-contratos")
+      .createSignedUrl(arquivo.storage_path, 600);
+    if (signed.error || !signed.data?.signedUrl)
+      throw new Error("Não foi possível preparar o download.");
+    return { url: signed.data.signedUrl, mimeType: arquivo.mime_type };
+  });
+
+export const cancelarContrato = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    accessSchema.extend({ contratoId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { admin } = await exigirAdministrador(data.accessToken);
+    const { error } = await admin
+      .from("oricse_contratos")
+      .update({ status: "cancelado", updated_at: new Date().toISOString() })
+      .eq("id", data.contratoId);
+    if (error) throw new Error("Não foi possível cancelar o link do contrato.");
+    return { ok: true };
   });
