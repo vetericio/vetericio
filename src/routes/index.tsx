@@ -290,140 +290,138 @@ function PaginaInicialPlataforma() {
         }
       `}</style>
       <style>{`
-        /* A home mobile mantém a mesma composição do desktop: a arte continua
-           como base e os elementos seguem sobre ela, em escala proporcional.
-           O ajuste é restrito à home e não altera a geometria desktop. */
+        /* Layout compacto da página inicial; a composição desktop aprovada
+           permanece isolada no breakpoint lg (1024px ou superior). */
         @media (max-width: 1023px) {
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-banner"] { overflow: hidden; }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-cabecalho"] {
+            min-height: 76px;
+            padding: 0 16px;
+            background: #fffdfa;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-menu-superior"] {
+            display: none !important;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-cabecalho"] > button {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-banner"] {
+            overflow: visible;
+            background: #fffdfa;
+          }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] {
-            aspect-ratio: 1.86 / 1;
-            min-height: clamp(420px, 125vw, 700px);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: auto;
+            min-height: 0;
+            aspect-ratio: auto;
+            background: #fffdfa;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
-            position: absolute;
-            inset: 0;
+            position: relative;
+            inset: auto;
+            order: 0;
+            display: block;
             width: 100%;
-            height: 100%;
+            height: clamp(220px, 50vw, 360px);
             object-fit: cover;
-            object-position: 72% center;
+            object-position: 70% center;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] {
-            position: absolute;
-            inset: 0;
+            position: relative;
+            inset: auto;
+            order: 1;
             display: block;
             width: 100%;
             max-width: none;
-            padding: 0;
-          }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] > div { display: contents; }
-          main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
-            position: absolute;
-            top: 1%;
-            left: 8%;
-            width: auto;
             margin: 0;
-            z-index: 10;
+            padding: 24px clamp(20px, 4vw, 40px) 32px;
+            background: #fffdfa;
           }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-logo-oricse"] {
-            width: clamp(96px, 22vw, 200px);
-            height: clamp(96px, 22vw, 200px);
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] > div {
+            display: block;
+            max-width: 650px;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] {
+            display: none;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
-            position: absolute;
-            top: 25%;
-            left: 8%;
-            z-index: 10;
+            position: static;
+            display: inline-flex;
+            max-width: 100%;
             margin: 0;
-            font-size: clamp(7px, 1.6vw, 10px);
-            padding: clamp(5px, 1vw, 6px) clamp(8px, 2vw, 12px);
-            white-space: nowrap;
+            padding: 7px 12px;
+            gap: 6px;
+            font-size: 10px;
+            line-height: 1.4;
+            letter-spacing: .08em;
+            white-space: normal;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-titulo-principal"] {
-            position: absolute;
-            top: 33%;
-            left: 8%;
-            width: 84%;
-            max-width: none;
-            margin: 0;
-            z-index: 10;
-            font-size: clamp(34px, 10.5vw, 78px);
-            line-height: .91;
+            position: static;
+            width: 100%;
+            max-width: 16ch;
+            margin: 18px 0 0;
+            font-size: clamp(35px, 5.2vw, 52px);
+            line-height: 1.05;
+            letter-spacing: -.055em;
+            overflow-wrap: normal;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-texto-apoio"] {
-            position: absolute;
-            top: 70%;
-            left: 8%;
-            max-width: 80%;
-            margin: 0;
-            z-index: 10;
-            display: block !important;
-            font-size: clamp(11px, 2.2vw, 18px);
-            line-height: 1.45;
+            position: static;
+            display: block;
+            width: 100%;
+            max-width: 570px;
+            margin: 14px 0 0;
+            font-size: clamp(14px, 1.8vw, 17px);
+            line-height: 1.5;
           }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-actions] {
-            position: absolute;
-            top: 83%;
-            left: 8%;
+            position: static;
             display: flex;
             flex-wrap: wrap;
-            gap: clamp(6px, 1.8vw, 12px);
-            margin: 0;
-            z-index: 10;
+            gap: 10px;
+            margin: 22px 0 0;
           }
           main[data-visual-id="home-fundo-bege"] [data-home-hero-actions] a {
-            padding: clamp(9px, 2.5vw, 14px) clamp(13px, 3vw, 24px);
-            font-size: clamp(11px, 2.2vw, 16px);
+            min-height: 44px;
+            max-width: 100%;
+            padding: 12px 17px;
+            font-size: 13px;
+            line-height: 1.3;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-legenda-inferior"] {
-            display: none !important;
+            display: none;
           }
         }
-        @media (max-width: 767px) {
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-cabecalho"] {
-            min-height: 52px;
-            padding: 0 16px;
+        @media (max-width: 420px) {
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
+            height: 230px;
+            object-position: 73% center;
           }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-menu-superior"] { display: none !important; }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-cabecalho"] > button { display: block !important; }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] { min-height: clamp(520px, 145vw, 680px); }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] { object-position: 76% center; }
-          main[data-visual-id="home-fundo-bege"] [data-home-hero-logo-wrap] { top: 1%; left: 7%; }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-logo-oricse"] {
-            width: clamp(96px, 30vw, 150px);
-            height: clamp(96px, 30vw, 150px);
-          }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-selo"] {
-            top: 25%;
-            left: 7%;
-            font-size: clamp(7px, 1.9vw, 10px);
-            letter-spacing: .12em;
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] {
+            padding: 22px 20px 28px;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-titulo-principal"] {
-            top: 34%;
-            left: 7%;
-            width: 86%;
-            font-size: clamp(34px, 11.5vw, 58px);
-          }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-texto-apoio"] {
-            top: 70%;
-            left: 7%;
-            max-width: 84%;
-            font-size: clamp(11px, 3.2vw, 15px);
-          }
-          main[data-visual-id="home-fundo-bege"] [data-home-hero-actions] { top: 82%; left: 7%; gap: 8px; }
-          main[data-visual-id="home-fundo-bege"] [data-home-hero-actions] a { font-size: clamp(11px, 3vw, 14px); }
-          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-legenda-inferior"] {
-            left: 7%;
-            max-width: 86%;
-            font-size: clamp(9px, 2.6vw, 12px);
+            font-size: clamp(33px, 9vw, 38px);
+            max-width: 15ch;
           }
         }
       `}</style>
     <main data-visual-id="home-fundo-bege" data-visual-label="Fundo bege da página" className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
-      <header data-visual-id="home-cabecalho" data-visual-label="Cabeçalho" className="mx-auto flex min-h-[52px] max-w-7xl items-center justify-end px-5 py-0 sm:px-8 lg:px-10">
+      <header data-visual-id="home-cabecalho" data-visual-label="Cabeçalho" className="relative z-40 mx-auto flex min-h-[52px] max-w-7xl items-center justify-between px-5 py-0 sm:px-8 lg:justify-end lg:px-10">
+        <Link to="/" aria-label="ORICSE — Página inicial" className="inline-flex shrink-0 items-center gap-1 lg:hidden">
+          <img src="/oricse-logo-oryx.svg?v=15" alt="Logo ORICSE" width={64} height={64} className="h-16 w-16 shrink-0 object-contain" loading="eager" />
+          <span className="font-display text-[23px] font-semibold tracking-[-.045em] text-[#4A1826]">ORICSE</span>
+        </Link>
         <nav data-visual-id="home-menu-superior" data-visual-label="Menu superior" className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/demonstracao" className="font-bold text-[#4A1826]">Quero uma demonstração</Link><Link data-visual-id="home-botao-login" data-visual-label="Botão Login" to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
-        <button onClick={() => setMenu(!menu)} aria-label={menu ? "Fechar menu principal" : "Abrir menu principal"} aria-expanded={menu} className="rounded-full bg-[#4A1826] p-2.5 text-white md:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
-        {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl md:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/demonstracao" onClick={()=>setMenu(false)} className="rounded-full border border-[#4A1826] px-4 py-2 text-center font-bold text-[#4A1826]">Quero uma demonstração</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
+        <button onClick={() => setMenu(!menu)} aria-label={menu ? "Fechar menu principal" : "Abrir menu principal"} aria-expanded={menu} className="inline-flex items-center justify-center rounded-full bg-[#4A1826] p-2.5 text-white lg:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
+        {menu && <nav className="absolute right-5 top-20 z-30 grid w-56 gap-3 rounded-2xl border border-[#eadbd4] bg-[#fffdfa] p-4 text-sm font-semibold text-[#5a2b3a] shadow-xl lg:hidden"><a href="#oricstudio" onClick={()=>setMenu(false)}>OricStúdio</a><a href="#diferenciais" onClick={()=>setMenu(false)}>Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/demonstracao" onClick={()=>setMenu(false)} className="rounded-full border border-[#4A1826] px-4 py-2 text-center font-bold text-[#4A1826]">Quero uma demonstração</Link><Link to="/login" className="rounded-full bg-[#4A1826] px-4 py-2 text-center font-bold text-white">Login</Link></nav>}
       </header>
 
       <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate border-t border-[#f0e3de] bg-transparent">

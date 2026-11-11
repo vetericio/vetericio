@@ -1,6 +1,35 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { driveAccessToken, writeDriveFile } from "@/lib/drive-kv.server";
+import { driveAccessToken, driveFetch, writeDriveFile } from "@/lib/drive-kv.server";
+
+const PDF_MAX_BYTES = 20_000_000;
+async function carregarPdfDoDrive(
+  contratoId: string,
+  tipo: "em_branco" | "assinado",
+  driveId: string | null,
+) {
+  if (!driveId || !/^[A-Za-z0-9_-]{10,}$/.test(driveId))
+    throw new Error("PDF não está disponível no Google Drive.");
+  const token = await driveAccessToken();
+  const endpoint = "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(driveId);
+  const respMeta = await driveFetch(token, endpoint + "?fields=id,mimeType,size,trashed,appProperties");
+  const metadata = await respMeta.json() as {
+    mimeType?: string; size?: string; trashed?: boolean;
+    appProperties?: Record<string, string>;
+  };
+  if (
+    metadata.trashed
+    || metadata.mimeType !== "application/pdf"
+    || metadata.appProperties?.oricseContratoId !== contratoId
+    || metadata.appProperties?.oricseContratoTipo !== tipo
+    || Number(metadata.size) > PDF_MAX_BYTES
+  ) throw new Error("PDF do contrato não corresponde ao registro solicitado.");
+  const resp = await driveFetch(token, endpoint + "?alt=media");
+  const bytes = Buffer.from(await resp.arrayBuffer());
+  if (!bytes.length || bytes.length > PDF_MAX_BYTES)
+    throw new Error("PDF ausente ou acima de 20 MB.");
+  return bytes.toString("base64");
+}
 
 const accessSchema = z.object({ accessToken: z.string().min(20) });
 const tokenSchema = z.object({ token: z.string().min(32).max(160) });
@@ -259,45 +288,33 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
         .replace(/\s+/g, " ")
         .slice(0, 100) || "Pessoa";
     const nomeVersao = data.tipo === "em_branco" ? "Em branco" : "Assinado";
-    const path = `${contrato.id}/${nomeSeguro} - ${nomeVersao}.pdf`;
-    const bucket = admin.storage.from("oricse-contratos");
-    const upload = await bucket.upload(path, bytes, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-    if (upload.error) throw new Error("Não foi possível guardar o PDF do contrato.");
-
-    let driveArquivo: { id: string; folderId: string; url: string };
-    try {
-      const driveToken = await driveAccessToken();
-      driveArquivo = await writeDriveFile(
-        driveToken,
-        ["contratos"],
-        `${nomeSeguro} - ${nomeVersao}.pdf`,
-        bytes,
-        "application/pdf",
-        {
-          oricseContratoId: contrato.id,
-          oricseContratoTipo: data.tipo,
-        },
-      );
-    } catch (error) {
-      await bucket.remove([path]);
-      const detalhe = error instanceof Error ? error.message : "falha desconhecida";
-      throw new Error(`Não foi possível salvar o PDF no Google Drive: ${detalhe}`);
-    }
+    // Arquivo único por versão: evita sobrescrever um contrato anterior antes
+    // que o banco confirme a substituição.
+    const nomeArquivo = nomeSeguro + " - " + nomeVersao + " - " + crypto.randomUUID().slice(0, 8) + ".pdf";
+    const tokenDrive = await driveAccessToken();
+    const driveArquivo = await writeDriveFile(
+      tokenDrive,
+      ["contratos", contrato.id],
+      nomeArquivo,
+      bytes,
+      "application/pdf",
+      {
+        oricseContratoId: contrato.id,
+        oricseContratoTipo: data.tipo,
+      },
+    );
+    const novoCaminho = "drive:" + driveArquivo.id;
     const { data: anterior } = await admin
       .from("oricse_contrato_arquivos")
-      .select("storage_path")
+      .select("storage_path,drive_file_id")
       .eq("contrato_id", contrato.id)
       .eq("tipo", data.tipo)
       .maybeSingle();
-    if (anterior?.storage_path) await bucket.remove([anterior.storage_path]);
     const { error: arquivoError } = await admin.from("oricse_contrato_arquivos").upsert(
       {
         contrato_id: contrato.id,
         tipo: data.tipo,
-        storage_path: path,
+        storage_path: novoCaminho,
         mime_type: "application/pdf",
         tamanho_bytes: bytes.length,
         drive_file_id: driveArquivo.id,
@@ -307,8 +324,28 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
       { onConflict: "contrato_id,tipo" },
     );
     if (arquivoError) {
-      await bucket.remove([path]);
+      try {
+        await driveFetch(
+          tokenDrive,
+          "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(driveArquivo.id),
+          { method: "DELETE" },
+        );
+      } catch (erroLimpeza) {
+        console.error("Falha ao limpar PDF de contrato não registrado:", erroLimpeza);
+      }
       throw new Error("Não foi possível registrar o PDF do contrato.");
+    }
+    // Preserva a versão anterior enquanto o banco não confirma a nova.
+    if (anterior?.drive_file_id && anterior.drive_file_id !== driveArquivo.id) {
+      try {
+        await driveFetch(
+          tokenDrive,
+          "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(anterior.drive_file_id),
+          { method: "DELETE" },
+        );
+      } catch (erroLimpeza) {
+        console.error("Falha ao limpar versão anterior do contrato:", erroLimpeza);
+      }
     }
     const agora = new Date().toISOString();
     if (data.tipo === "assinado")
@@ -348,17 +385,13 @@ export const obterDownloadContrato = createServerFn({ method: "POST" })
       throw new Error("Contrato indisponível.");
     const { data: arquivo } = await admin
       .from("oricse_contrato_arquivos")
-      .select("storage_path,mime_type")
+      .select("storage_path,drive_file_id,mime_type")
       .eq("contrato_id", contrato.id)
       .eq("tipo", data.tipo)
       .maybeSingle();
     if (!arquivo) throw new Error("Esta versão do contrato ainda não foi gerada.");
-    const signed = await admin.storage
-      .from("oricse-contratos")
-      .createSignedUrl(arquivo.storage_path, 600);
-    if (signed.error || !signed.data?.signedUrl)
-      throw new Error("Não foi possível preparar o download.");
-    return { url: signed.data.signedUrl, mimeType: arquivo.mime_type };
+    const base64 = await carregarPdfDoDrive(contrato.id, data.tipo, arquivo.drive_file_id);
+    return { base64, mimeType: arquivo.mime_type };
   });
 
 export const obterDownloadContratoAdmin = createServerFn({ method: "POST" })
@@ -371,17 +404,13 @@ export const obterDownloadContratoAdmin = createServerFn({ method: "POST" })
     const { admin } = await exigirAdministrador(data.accessToken);
     const { data: arquivo } = await admin
       .from("oricse_contrato_arquivos")
-      .select("storage_path,mime_type")
+      .select("storage_path,drive_file_id,mime_type")
       .eq("contrato_id", data.contratoId)
       .eq("tipo", data.tipo)
       .maybeSingle();
     if (!arquivo) throw new Error("Esta versão do contrato ainda não foi gerada.");
-    const signed = await admin.storage
-      .from("oricse-contratos")
-      .createSignedUrl(arquivo.storage_path, 600);
-    if (signed.error || !signed.data?.signedUrl)
-      throw new Error("Não foi possível preparar o download.");
-    return { url: signed.data.signedUrl, mimeType: arquivo.mime_type };
+    const base64 = await carregarPdfDoDrive(data.contratoId, data.tipo, arquivo.drive_file_id);
+    return { base64, mimeType: arquivo.mime_type };
   });
 
 export const cancelarContrato = createServerFn({ method: "POST" })
