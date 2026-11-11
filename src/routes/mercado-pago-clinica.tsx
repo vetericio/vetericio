@@ -37,7 +37,7 @@ function MercadoPagoClinica(){
  <div><p className="text-sm text-muted-foreground">Clínica</p><h2 className="text-xl font-bold">{nome||"Carregando..."}</h2></div>
  <div className="rounded-xl bg-secondary/50 p-4"><p className="font-semibold">{loading?"Verificando conexão…":connected?"Conta conectada":"Conta não conectada"}</p><p className="text-sm text-muted-foreground">{connected?"Conta Mercado Pago vinculada exclusivamente a esta clínica. ID: "+collector:"Conecte sua própria conta para preparar os recebimentos no Portal do Tutor."}</p></div>
  <button disabled={loading||busy||!clinica||!allowed} onClick={()=>void conectar()} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">{busy?"Abrindo autorização…":connected?"Reconectar Mercado Pago":"Conectar minha conta Mercado Pago"}</button>
- {!allowed&&<p className="text-sm text-muted-foreground">Somente o responsável autorizado pela clínica pode conectar a conta.</p>}
+ {!allowed&&<p className="text-sm text-muted-foreground">A conexão está disponível somente para a Administração Geral do ORICSE.</p>}
  <p className="text-xs text-muted-foreground">A autorização ocorre no site do Mercado Pago. O ORICSE não solicita sua senha. Pagamentos reais continuam desativados até homologação.</p></section>
  <Link to="/precos-portal" className="text-sm font-semibold underline text-primary">Ir para cobranças da clínica</Link></main>;
 }
