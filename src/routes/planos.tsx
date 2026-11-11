@@ -121,7 +121,7 @@ function Planos() {
 
           <div className="mx-auto mt-14 max-w-4xl text-center sm:mt-16">
             <img src="/oricse-logo-oryx.svg?v=15" alt="ORICSE — Soluções para o mercado pet" width="512" height="512" className="mx-auto block h-[161px] w-[161px] -translate-y-[90px] object-contain sm:h-[179px] sm:w-[179px] lg:h-[213px] lg:w-[213px]" />
-            <h1 className="mt-6 font-display text-[clamp(2.8rem,6.2vw,6.25rem)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">
+            <h1 className="-mt-[50px] font-display text-[clamp(2.8rem,6.2vw,6.25rem)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">
               Seu negócio cresceu.<br /><span className="text-[#a76b78]">Sua gestão também pode crescer.</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-[17px] leading-7 text-[#704b58] sm:text-lg">
