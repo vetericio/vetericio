@@ -32,6 +32,58 @@ const LIMITE_ANIMAIS: Record<string, string> = {
   "master-2026": "Animais ilimitados",
 };
 
+const PERGUNTAS_FREQUENTES = [
+  {
+    pergunta: "O que acontece ao atingir o limite de animais?",
+    resposta: "Os cadastros existentes permanecem acessíveis. Para cadastrar novos animais, será necessário ampliar o limite ou o plano.",
+  },
+  {
+    pergunta: "Posso escolher outros períodos de renovação?",
+    resposta: "Sim. Na renovação estão previstos ciclos mensal, trimestral, semestral, anual e bienal, conforme as condições vigentes.",
+  },
+  {
+    pergunta: "O plano Master tem fidelidade?",
+    resposta: "Sim. O Master possui fidelidade mínima de 12 meses, mesmo quando pago mensalmente.",
+  },
+  {
+    pergunta: "Qual plano é indicado para quem trabalha sozinho?",
+    resposta: "O Solo foi pensado para veterinários autônomos. Inclui 1 usuário, consultas, prontuários básicos e documentos clínicos, respeitando o limite de animais do plano.",
+  },
+  {
+    pergunta: "O Oricse atende pet shops, banho e tosa e hotelzinho?",
+    resposta: "Sim. O plano Profissional contempla módulos de banho e tosa, hotelzinho, estoque e gestão de serviços. Consulte a comparação para conferir a disponibilidade em cada plano.",
+  },
+  {
+    pergunta: "Quantos profissionais podem usar o sistema?",
+    resposta: "A quantidade de usuários depende do plano. Cada cartão informa o número incluído para a configuração comercial vigente.",
+  },
+  {
+    pergunta: "O Portal do Tutor está incluído?",
+    resposta: "O Portal do Tutor aparece entre os recursos de planos compatíveis, como Essencial e superiores. Confira a tabela comparativa para ver o que está disponível no plano escolhido.",
+  },
+  {
+    pergunta: "Consigo acompanhar internações e medicações?",
+    resposta: "O módulo de internação e o acompanhamento de medicações fazem parte dos recursos apresentados para o plano Profissional e níveis superiores.",
+  },
+  {
+    pergunta: "O sistema tem financeiro e caixa?",
+    resposta: "Sim. Há recursos financeiros conforme o plano contratado: opções básicas no Essencial e gestão mais completa nas modalidades superiores.",
+  },
+  {
+    pergunta: "Qual plano oferece RH e controle de ponto?",
+    resposta: "Esses recursos são previstos para o Master, que inclui RH, ponto, banco de horas e comissões.",
+  },
+  {
+    pergunta: "Posso usar minha identidade visual e meu domínio?",
+    resposta: "O Master é a modalidade indicada para personalização e domínio próprio. As condições e os recursos disponíveis devem ser conferidos na contratação.",
+  },
+  {
+    pergunta: "Posso conhecer o Oricse antes de contratar?",
+    resposta: "Sim. Você pode solicitar uma demonstração personalizada para conhecer as funcionalidades mais importantes para seu tipo de negócio.",
+    link: true,
+  },
+] as const;
+
 function Planos() {
   const [planos, setPlanos] = useState<Plano[]>(planosIniciais);
   const [ciclo, setCiclo] = useState<"mensal" | "anual">("mensal");
@@ -221,12 +273,24 @@ function Planos() {
             <p className="mt-4 text-xs leading-5 text-[#846873]">As condições refletem a configuração comercial global do Admin. Permissões individuais e exceções privadas de cada clínica podem ser diferentes.</p>
           </section>}
 
-          <section className="mx-auto mt-20 max-w-4xl pb-4">
-            <div className="text-center"><p className="text-[11px] font-extrabold uppercase tracking-[.17em] text-[#a06072]">SEM LETRAS MIÚDAS</p><h2 className="mt-3 font-display text-4xl font-semibold leading-[.95] tracking-[-.05em]">Perguntas que todo mundo faz</h2></div>
-            <div className="mt-8 divide-y divide-[#eaded8] rounded-[28px] border border-[#eaded8] bg-white px-6 sm:px-8">
-              <div className="py-5"><h3 className="font-bold">O que acontece ao atingir o limite de animais?</h3><p className="mt-2 text-sm leading-6 text-[#765c66]">Os cadastros existentes permanecem acessíveis. Para cadastrar novos animais, será necessário ampliar o limite ou o plano.</p></div>
-              <div className="py-5"><h3 className="font-bold">Posso escolher outros períodos de renovação?</h3><p className="mt-2 text-sm leading-6 text-[#765c66]">Sim. Na renovação estão previstos ciclos mensal, trimestral, semestral, anual e bienal, conforme as condições vigentes.</p></div>
-              <div className="py-5"><h3 className="font-bold">O plano Master tem fidelidade?</h3><p className="mt-2 text-sm leading-6 text-[#765c66]">Sim. O Master possui fidelidade mínima de 12 meses mesmo quando pago mensalmente.</p></div>
+          <section className="mx-auto mt-20 max-w-6xl pb-4" aria-labelledby="faq-planos-titulo">
+            <div className="text-center">
+              <p className="text-[11px] font-extrabold uppercase tracking-[.17em] text-[#a06072]">SEM LETRAS MIÚDAS</p>
+              <h2 id="faq-planos-titulo" className="mt-3 font-display text-4xl font-semibold leading-tight tracking-[-.05em] text-[#4A1826]">Perguntas que todo mundo faz</h2>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-[#765c66] sm:text-base">Respostas diretas para escolher o plano certo para o seu negócio.</p>
+            </div>
+            <div className="mt-9 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {PERGUNTAS_FREQUENTES.map((item) => (
+                <article key={item.pergunta} className="flex h-full flex-col rounded-[24px] border border-[#eaded8] bg-white p-6 shadow-[0_8px_25px_rgba(74,24,38,.04)] transition-shadow hover:shadow-[0_12px_35px_rgba(74,24,38,.08)] sm:p-7">
+                  <h3 className="text-[17px] font-extrabold leading-snug text-[#4A1826]">{item.pergunta}</h3>
+                  <p className="mt-3 flex-1 text-sm leading-6 text-[#765c66]">{item.resposta}</p>
+                  {"link" in item && item.link && (
+                    <Link to="/demonstracao" className="mt-4 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#7c344b] underline underline-offset-4 hover:text-[#4A1826]">
+                      Solicitar demonstração <span aria-hidden="true">→</span>
+                    </Link>
+                  )}
+                </article>
+              ))}
             </div>
           </section>
         </div>
