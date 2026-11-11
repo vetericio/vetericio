@@ -5,6 +5,7 @@ import { lerReceitaComIA } from "@/lib/medicacoes.functions";
 import type { Especie as EspecieFicha, Medicacao } from "@/lib/ficha";
 import { normalizarNomeMedicamento } from "@/lib/nomes";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { supabase } from "@/integrations/supabase/client";
 import {
   calcularDose,
   calcularDosePeloVolume,
@@ -623,7 +624,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       if (navigator.onLine) {
         try {
           const imagem = await lerComoDataUrl(arquivo);
-          const resultado = await lerIA({ data: { imagem } });
+          const { data: sessao } = await supabase.auth.getSession();
+          const accessToken = sessao.session?.access_token;
+          if (!accessToken) throw new Error("Sessão expirada. Entre novamente no sistema.");
+          const resultado = await lerIA({ data: { imagem, accessToken } });
           encontradas = resultado.medicacoes.map(enriquecerLeituraFoto);
           usouIA = true;
         } catch {
