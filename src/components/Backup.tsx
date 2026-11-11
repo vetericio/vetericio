@@ -1,5 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 import {
   aplicarBackup,
@@ -21,6 +22,13 @@ const CHAVE_SALA = "veterico-sala-v1";
 const FORMATO_SALA = /^[A-Z][0-9]{5}$/;
 /** Intervalo da sincronização automática. */
 const INTERVALO = 30000;
+
+async function tokenSessao(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Sessão expirada. Entre novamente no sistema.");
+  return token;
+}
 
 function salaGuardada(): string | null {
   if (typeof window === "undefined") return null;
@@ -131,13 +139,14 @@ export function Backup({
    * é adotado quando este aparelho não tem plantão em andamento.
    */
   const sincronizar = useCallback(async (cod: string) => {
-    const { json } = await puxarSala({ data: { codigo: cod } });
+    const accessToken = await tokenSessao();
+    const { json } = await puxarSala({ data: { codigo: cod, accessToken } });
     let mudou = false;
     if (json) {
       const remoto = validarBackup(JSON.parse(json));
       if (remoto) mudou = juntarSincronizacao(remoto);
     }
-    await enviarSala({ data: { codigo: cod, dados: montarBackup() } });
+    await enviarSala({ data: { codigo: cod, accessToken, dados: montarBackup() } });
     setConectado(true);
     setUltima(horaCurta(new Date()));
     return mudou;
@@ -278,8 +287,9 @@ export function Backup({
     setAviso(null);
     setOcupado(true);
     try {
-      const { codigo: nova } = await criarSala();
-      await enviarSala({ data: { codigo: nova, dados: montarBackup() } });
+      const accessToken = await tokenSessao();
+      const { codigo: nova } = await criarSala({ data: { accessToken } });
+      await enviarSala({ data: { codigo: nova, accessToken, dados: montarBackup() } });
       guardarSala(nova);
       setSala(nova);
       setConectado(true);
@@ -350,7 +360,7 @@ export function Backup({
     setQrSala(null);
     setConectado(false);
     setUltima(null);
-    if (cod) await apagarSala({ data: { codigo: cod } }).catch(() => undefined);
+    if (cod) await tokenSessao().then((accessToken) => apagarSala({ data: { codigo: cod, accessToken } })).catch(() => undefined);
     setAviso({ tipo: "ok", texto: "Desconectado. Os dados deste aparelho continuam aqui." });
   }
 
