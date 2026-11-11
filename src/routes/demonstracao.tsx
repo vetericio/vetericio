@@ -18,7 +18,7 @@ export const Route = createFileRoute("/demonstracao")({
   component: Demonstracao,
 });
 
-const TIPOS = ["Clínica veterinária", "Hospital veterinário", "Consultório veterinário", "Pet shop", "Banho e tosa", "Hotelzinho/creche", "Outro"];
+const TIPOS = ["Clínica/hospital veterinário", "Consultório veterinário", "Veterinário particular", "Pet shop", "Banho e tosa", "Hotelzinho/creche", "Casa de ração", "ONG", "Outro"];
 const INTERESSES = ["Gestão clínica e prontuário", "Internação e medicações", "Agenda e agendamento online", "Banho e tosa", "Hotelzinho", "Financeiro e caixa", "Portal do Tutor", "Outro"];
 const UFS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
 const BENEFICIOS = [
