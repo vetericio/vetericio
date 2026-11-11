@@ -119,7 +119,10 @@ function ContratoPublico() {
       const resposta = await obterDownloadContrato({
         data: { token, tipo: "em_branco" },
       });
-      window.open(resposta.url, "_blank", "noopener,noreferrer");
+      baixarPdfContrato(
+        "data:application/pdf;base64," + resposta.base64,
+        nomeSeguroContrato(nomePessoa) + " - Em branco.pdf",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível baixar o PDF.");
     }

@@ -1554,7 +1554,8 @@ export function VisualPageEditor() {
         </section>
       ) : paginaInicialProtegida ? (
         <section className="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-center text-sm font-semibold text-emerald-900">
-          🔒 Página inicial bloqueada — visualização aprovada e protegida contra alterações acidentais.
+          🔒 Página inicial bloqueada — visualização aprovada e protegida contra alterações
+          acidentais.
         </section>
       ) : null}
       {conflict && (

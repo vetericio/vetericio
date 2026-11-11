@@ -489,8 +489,8 @@ export function SiteDaClinica({
             <div>
               <h1 className="text-2xl font-extrabold text-emerald-950">Alvorada protegida</h1>
               <p className="mt-2 text-sm leading-6 text-emerald-900/80">
-                Este site foi aprovado e está bloqueado para evitar alterações acidentais.
-                O conteúdo publicado permanece preservado.
+                Este site foi aprovado e está bloqueado para evitar alterações acidentais. O
+                conteúdo publicado permanece preservado.
               </p>
             </div>
           </div>

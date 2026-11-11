@@ -148,7 +148,18 @@ function AdminContratos() {
       const resposta = await obterDownloadContratoAdmin({
         data: { accessToken, contratoId, tipo },
       });
-      window.open(resposta.url, "_blank", "noopener,noreferrer");
+      // O PDF é privado: o servidor devolve bytes somente após confirmar o admin.
+      const binario = atob(resposta.base64);
+      const bytes = Uint8Array.from(binario, (caractere) => caractere.charCodeAt(0));
+      const arquivo = new Blob([bytes], { type: resposta.mimeType || "application/pdf" });
+      const url = URL.createObjectURL(arquivo);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Contrato - " + tipo.replace("_", " ") + ".pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível preparar o download.");
     }
@@ -164,8 +175,7 @@ function AdminContratos() {
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">Contratos</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Aqui você gera o link. A pessoa abrirá o formulário, preencherá os campos, clicará em
-              “OK” para gerar o PDF, assinará no gov.br e enviará o arquivo assinado.
+              Crie um modelo com campos, envie um link e receba o documento preenchido e assinado.
             </p>
           </div>
           <button
@@ -199,13 +209,6 @@ function AdminContratos() {
               className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white"
             >
               <Clipboard size={14} /> Copiar novamente
-            </button>
-            <button
-              type="button"
-              onClick={() => window.open(linkGerado, "_blank", "noopener,noreferrer")}
-              className="ml-2 mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-900"
-            >
-              Abrir formulário de preenchimento
             </button>
           </section>
         )}
