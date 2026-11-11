@@ -19,6 +19,7 @@ import { Route as AdminDemonstracoesRouteImport } from './routes/admin-demonstra
 import { Route as AdminOricstudioRouteImport } from './routes/admin-oricstudio'
 import { Route as AdminPlanosRouteImport } from './routes/admin-planos'
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin-solicitacoes'
+import { Route as AdminSolicitacoesDemonstracaoRouteImport } from './routes/admin-solicitacoes-demonstracao'
 import { Route as AgendaHotelRouteImport } from './routes/agenda-hotel'
 import { Route as AlarmesRouteImport } from './routes/alarmes'
 import { Route as AnamneseRouteImport } from './routes/anamnese'
@@ -142,6 +143,11 @@ const AdminPlanosRoute = AdminPlanosRouteImport.update({
 const AdminSolicitacoesRoute = AdminSolicitacoesRouteImport.update({
   id: '/admin-solicitacoes',
   path: '/admin-solicitacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSolicitacoesDemonstracaoRoute = AdminSolicitacoesDemonstracaoRouteImport.update({
+  id: '/admin-solicitacoes-demonstracao',
+  path: '/admin-solicitacoes-demonstracao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgendaHotelRoute = AgendaHotelRouteImport.update({
@@ -531,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
+  '/admin-solicitacoes-demonstracao': typeof AdminSolicitacoesDemonstracaoRoute
   '/agenda-hotel': typeof AgendaHotelRoute
   '/alarmes': typeof AlarmesRoute
   '/anamnese': typeof AnamneseRoute
@@ -1731,6 +1738,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminOricstudioRoute: AdminOricstudioRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminSolicitacoesRoute: AdminSolicitacoesRoute,
+  AdminSolicitacoesDemonstracaoRoute: AdminSolicitacoesDemonstracaoRoute,
   AgendaHotelRoute: AgendaHotelRoute,
   AlarmesRoute: AlarmesRoute,
   AnamneseRoute: AnamneseRoute,
