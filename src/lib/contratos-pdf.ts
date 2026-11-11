@@ -113,7 +113,7 @@ async function gerarPdfComModelo(templatePdfBase64: string, dados: DadosContrato
   const { default: fontkit } = await import("@pdf-lib/fontkit");
   const pdf = await PDFDocument.load(await asBytes(templatePdfBase64));
   pdf.registerFontkit(fontkit);
-  const fonteResponse = await fetch(new URL("/fonts/Arial.ttf", window.location.origin));
+  const fonteResponse = await fetch(new URL("/fonts/Arial-v2.ttf", window.location.origin));
   if (!fonteResponse.ok) throw new Error("Não foi possível carregar a fonte do contrato.");
   const fonte = await pdf.embedFont(await fonteResponse.arrayBuffer(), { subset: true });
   const tamanho = 9.5;
