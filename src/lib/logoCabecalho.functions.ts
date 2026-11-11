@@ -3,6 +3,7 @@ import { z } from "zod";
 import { deleteDriveJson, driveAccessToken, readDriveJson, writeDriveJson } from "@/lib/drive-kv.server";
 
 const logoSchema = z.object({
+  accessToken: z.string().min(20),
   logo: z.string().max(2_000_000).refine((v) => v === "" || /^data:image\/(png|jpeg);base64,/.test(v), "Formato de imagem inválido"),
 });
 const PATH = [".oricse", "config"];
@@ -17,6 +18,11 @@ export const buscarLogoCabecalhoGlobal = createServerFn({ method: "GET" }).handl
 export const salvarLogoCabecalhoGlobal = createServerFn({ method: "POST" })
   .validator((input: unknown) => logoSchema.parse(input))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
+    if (authError || !authData.user) throw new Error("Sessão expirada.");
+    const { data: perfil } = await supabaseAdmin.from("app_users").select("role").eq("user_id", authData.user.id).maybeSingle();
+    if (perfil?.role !== "admin") throw new Error("Apenas a administração da plataforma pode alterar a logo global.");
     const token = await driveAccessToken();
     if (!data.logo) await deleteDriveJson(token, PATH, ARQUIVO);
     else await writeDriveJson(token, PATH, ARQUIVO, { logo: data.logo, atualizado_em: new Date().toISOString() });
