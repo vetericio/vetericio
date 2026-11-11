@@ -92,3 +92,53 @@ export async function deleteDriveJson(token: string, path: string[], nome: strin
   if (!file) return;
   await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}`, { method: "DELETE" });
 }
+
+/**
+ * Salva um arquivo binário no Drive, substituindo o arquivo de mesmo nome
+ * dentro da pasta informada. A pasta é criada automaticamente quando ainda
+ * não existir.
+ */
+export async function writeDriveFile(
+  token: string,
+  path: string[],
+  nome: string,
+  bytes: Buffer,
+  mimeType: string,
+  appProperties: Record<string, string> = {},
+) {
+  const parent = await drivePath(token, path);
+  const existente = await driveFind(token, parent, nome);
+
+  if (existente) {
+    await driveFetch(
+      token,
+      `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existente.id)}?uploadType=media`,
+      { method: "PATCH", headers: { "content-type": mimeType }, body: bytes as unknown as BodyInit },
+    );
+    return {
+      id: existente.id,
+      folderId: parent,
+      url: `https://drive.google.com/open?id=${encodeURIComponent(existente.id)}`,
+    };
+  }
+
+  const form = new FormData();
+  form.append(
+    "metadata",
+    new Blob([JSON.stringify({ name: nome, parents: [parent], appProperties })], {
+      type: "application/json",
+    }),
+  );
+  form.append("file", new Blob([bytes as unknown as BlobPart], { type: mimeType }), nome);
+  const response = await driveFetch(
+    token,
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+    { method: "POST", body: form },
+  );
+  const arquivo = (await response.json()) as { id: string };
+  return {
+    id: arquivo.id,
+    folderId: parent,
+    url: `https://drive.google.com/open?id=${encodeURIComponent(arquivo.id)}`,
+  };
+}
