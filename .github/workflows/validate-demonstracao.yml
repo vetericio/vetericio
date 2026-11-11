@@ -1,0 +1,31 @@
+name: Validate demonstracao ORICSE
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/routes/demonstracao.tsx
+      - src/components/demonstracao/FundoDeserto.tsx
+      - src/routes/__root.tsx
+      - supabase/migrations/20261111001800_oricse_solicitacoes_demonstracao.sql
+      - .github/workflows/validate-demonstracao.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Build (TanStack + Cloudflare)
+        run: npm run build
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Verify Cloudflare deploy bundle
+        run: node scripts/check-worker-coordinator.mjs

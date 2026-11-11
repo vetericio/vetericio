@@ -80,27 +80,27 @@ function Demonstracao() {
   return (
     <div className="relative min-h-screen text-[#4A1826]" style={{ fontFamily: "Manrope, sans-serif" }}>
       <FundoDeserto />
-      <header className="relative z-10 mx-auto flex max-w-7xl items-center gap-3 px-5 py-5 text-[#FBF7F2]">
-        <Link to="/" className="text-2xl font-bold tracking-wide" style={{ fontFamily: "Sora, sans-serif" }}>Oricse</Link>
-        <span className="h-6 w-px bg-[#FBF7F2]/60" />
+      <header className="relative z-10 mx-auto flex max-w-[1540px] items-center gap-4 px-5 pb-4 pt-8 text-[#4A1826] sm:px-10 lg:px-14">
+        <Link to="/" className="text-5xl font-bold tracking-[-0.06em] sm:text-6xl" style={{ fontFamily: "Sora, sans-serif" }}>Oricse</Link>
+        <span className="h-11 w-px bg-[#4A1826]/20" />
         <span className="text-sm sm:text-base">Soluções para o mercado pet</span>
       </header>
-      <main className="relative z-10 mx-auto grid max-w-7xl gap-10 px-5 pb-16 pt-6 lg:grid-cols-2 lg:items-start lg:pt-12">
-        <section className="text-[#FBF7F2] lg:pt-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#F4EBDD]">Solicitação de Demonstração</p>
-          <h1 className="mt-3 text-4xl font-bold leading-tight sm:text-5xl" style={{ fontFamily: "Sora, sans-serif" }}>Conheça o Oricse na prática</h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-[#FBF7F2]/90 sm:text-lg">Veja como o Oricse pode organizar a rotina da sua clínica, banho e tosa, hotelzinho ou centro veterinário, com uma demonstração personalizada para o seu negócio.</p>
-          <ul className="mt-8 space-y-4">
+      <main className="relative z-10 mx-auto grid max-w-[1540px] gap-10 px-5 pb-16 pt-7 sm:px-10 lg:grid-cols-[minmax(350px,0.8fr)_minmax(590px,1.2fr)] lg:items-start lg:gap-12 lg:px-14 lg:pt-10">
+        <section className="text-[#4A1826] lg:pt-14">
+          <p className="inline-flex rounded-full bg-[#fbd1a5]/80 px-5 py-3 text-sm font-bold text-[#4A1826] shadow-sm">Solicitação de Demonstração</p>
+          <h1 className="mt-8 text-[clamp(42px,4.2vw,68px)] font-bold leading-[1.1] tracking-[-0.045em]" style={{ fontFamily: "Sora, sans-serif" }}>Conheça o Oricse na prática</h1>
+          <p className="mt-5 max-w-xl text-[17px] font-medium leading-relaxed text-[#4A1826] sm:text-[20px]">Veja como o Oricse pode organizar a rotina da sua clínica, banho e tosa, hotelzinho ou centro veterinário, com uma demonstração personalizada para o seu negócio.</p>
+          <ul className="mt-12 space-y-6">
             {BENEFICIOS.map(({ Icone, t, d: desc }) => (
               <li key={t} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#C59A5C]/70 bg-[#4A1826]/30"><Icone size={18} className="text-[#F4EBDD]" /></span>
-                <div><p className="font-bold">{t}</p><p className="text-sm text-[#FBF7F2]/85">{desc}</p></div>
+                <span className="mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-[17px] border border-[#fff2d8]/80 bg-[#ffd7a4]/85"><Icone size={27} className="text-[#6F293B]" /></span>
+                <div><p className="text-[18px] font-bold">{t}</p><p className="text-sm text-[#4A1826]/90">{desc}</p></div>
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="rounded-3xl border border-[#E7D8D2] bg-[#FBF7F2]/90 p-6 shadow-sm backdrop-blur-md sm:p-8">
+        <section className="rounded-[28px] border border-white/95 bg-[#FBF7F2]/90 p-6 shadow-[0_20px_70px_rgba(111,41,59,.14)] backdrop-blur-md sm:p-8">
           {ok ? (
             <div className="py-10 text-center" role="status">
               <CheckCircle2 className="mx-auto text-[#6F293B]" size={44} />
@@ -165,7 +165,7 @@ function Demonstracao() {
               </label>
               {erro && <p role="alert" className="rounded-xl border border-[#6F293B]/30 bg-[#6F293B]/10 px-3 py-2 text-sm font-semibold text-[#6F293B]">{erro}</p>}
               <div className="flex justify-center pt-2">
-                <button type="submit" disabled={enviando} className="min-h-12 rounded-xl bg-[#6F293B] px-8 font-semibold text-[#FBF7F2] transition hover:bg-[#4A1826] disabled:opacity-60">{enviando ? "Enviando..." : "Solicitar Demonstração"}</button>
+                <button type="submit" disabled={enviando} className="min-h-14 rounded-full bg-[#6F293B] px-12 text-base font-bold text-[#FBF7F2] transition hover:bg-[#4A1826] disabled:opacity-60">{enviando ? "Enviando..." : "Solicitar Demonstração"}</button>
               </div>
             </form>
           )}
