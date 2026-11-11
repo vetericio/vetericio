@@ -35,6 +35,7 @@ import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { isPlatformHostname } from "@/lib/public-clinic-site";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
+import { ORICSE_SISTEMA_CONGELADO, rotaEditavelProtegida } from "@/lib/oricse-freeze";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
@@ -67,6 +68,35 @@ function NotFoundComponent() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SistemaCongelado() {
+  return (
+    <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10">
+      <section className="w-full max-w-xl rounded-3xl border border-emerald-200 bg-card p-8 text-center shadow-lg">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-2xl">
+          🔒
+        </div>
+        <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+          Versão aprovada protegida
+        </p>
+        <h1 className="mt-2 text-3xl font-black text-foreground">ORICSE congelado</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          As áreas de administração, edição, temas, publicação e configurações estão bloqueadas
+          para preservar exatamente a versão aprovada.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          O uso clínico, os atendimentos e o Portal do Tutor publicado continuam disponíveis.
+        </p>
+        <a
+          href="/inicio"
+          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
+        >
+          Voltar ao sistema
+        </a>
+      </section>
+    </main>
   );
 }
 
@@ -731,6 +761,8 @@ function RootComponent() {
 
   const rotaAdmin = location.pathname.startsWith("/admin") ||
     (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
+  const telaSistemaCongelado =
+    ORICSE_SISTEMA_CONGELADO && autenticado === true && rotaEditavelProtegida(location.pathname);
   const rotaPublica =
     ROTAS_PUBLICAS.has(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
@@ -741,7 +773,7 @@ function RootComponent() {
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const assinaturaBloqueada = role !== "admin" && acessoAssinatura?.situacao === "bloqueada";
   const assinaturaEmAviso = role !== "admin" && acessoAssinatura?.situacao === "aviso";
-  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !testeExpirado && !assinaturaBloqueada;
+  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !telaSistemaCongelado && !testeExpirado && !assinaturaBloqueada;
   const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const mostrarBloqueioAssinatura = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && assinaturaBloqueada;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
@@ -826,6 +858,8 @@ function RootComponent() {
         )}
         {rotaAdmin && autenticado === null ? (
           <div className="min-h-screen" />
+        ) : telaSistemaCongelado ? (
+          <SistemaCongelado />
         ) : telaAdminRestrita ? (
           <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
             <section className="w-full max-w-md rounded-2xl border bg-card p-7 text-center shadow-sm">
