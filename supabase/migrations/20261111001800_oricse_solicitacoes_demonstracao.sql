@@ -2,7 +2,7 @@
 create table if not exists public.oricse_solicitacoes_demonstracao (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
-  status text not null default 'novo',
+  status text not null default 'novo' check (status in ('novo','em_contato','agendado','concluido','descartado')),
   nome text not null,
   negocio text not null,
   tipo_negocio text not null,
@@ -17,6 +17,7 @@ create table if not exists public.oricse_solicitacoes_demonstracao (
   consentimento_lgpd boolean not null,
   consentimento_em timestamptz not null default now()
 );
+revoke all on public.oricse_solicitacoes_demonstracao from public, anon, authenticated;
 grant select, update on public.oricse_solicitacoes_demonstracao to authenticated;
 grant all on public.oricse_solicitacoes_demonstracao to service_role;
 alter table public.oricse_solicitacoes_demonstracao enable row level security;
@@ -30,7 +31,7 @@ create index if not exists oricse_demo_created_idx on public.oricse_solicitacoes
 create index if not exists oricse_demo_email_idx on public.oricse_solicitacoes_demonstracao (lower(email), created_at desc);
 
 create or replace function public.oricse_solicitar_demonstracao(p jsonb)
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = '' as $$
 declare
   v_id uuid;
   v_email text := lower(trim(coalesce(p->>'email','')));
@@ -39,7 +40,7 @@ declare
   v_possui boolean := (p->>'possui_sistema')::boolean;
 begin
   if coalesce(p->>'site','') <> '' then raise exception 'Solicitação inválida.'; end if;
-  if coalesce((p->>'consentimento')::boolean,false) is not true then raise exception 'É necessário autorizar o contato.'; end if;
+  if p->>'consentimento' is distinct from 'true' then raise exception 'É necessário autorizar o contato.'; end if;
   if length(trim(coalesce(p->>'nome',''))) not between 3 and 120 then raise exception 'Informe o nome completo.'; end if;
   if length(trim(coalesce(p->>'negocio',''))) not between 2 and 150 then raise exception 'Informe o nome do negócio.'; end if;
   if not (coalesce(p->>'tipo_negocio','') = any(v_tipos)) then raise exception 'Tipo de negócio inválido.'; end if;
@@ -49,6 +50,9 @@ begin
   if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' or length(v_email) > 255 then raise exception 'E-mail inválido.'; end if;
   if v_possui is null then raise exception 'Informe se já possui sistema.'; end if;
   if length(coalesce(p->>'mensagem','')) > 2000 then raise exception 'Mensagem muito longa.'; end if;
+  if jsonb_typeof(coalesce(p->'interesses','[]'::jsonb)) <> 'array' then raise exception 'Seleção de interesses inválida.'; end if;
+  if jsonb_array_length(coalesce(p->'interesses','[]'::jsonb)) > 8 then raise exception 'Selecione no máximo oito interesses.'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('oricse_demonstracao_global', 0));
   if (select count(*) from public.oricse_solicitacoes_demonstracao where (lower(email) = v_email or regexp_replace(telefone,'\D','','g') = v_tel) and created_at > now() - interval '1 hour') >= 3 then
     raise exception 'Recebemos suas solicitações recentes. Aguarde nosso contato.';
   end if;
