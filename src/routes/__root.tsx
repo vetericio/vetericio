@@ -75,6 +75,12 @@ function NotFoundComponent() {
 const ERRO_MODULO = /failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module|failed to load module script|chunkloaderror|vite:preloaderror/i;
 let recargaVersaoEmAndamento = false;
 
+const ROTAS_PUBLICAS = new Set([
+  "/", "/login", "/modelos", "/solucoes", "/planos", "/contratar",
+  "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade",
+  "/demo-portal-tutor", "/portaldotutor", "/demonstracao", "/solicitar-demonstracao",
+]);
+
 function mensagemDeErro(error: unknown): string {
   if (error instanceof Error) return error.name + ": " + error.message;
   if (typeof error === "string") return error;
@@ -465,7 +471,7 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
-      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/demonstracao", "/solicitar-demonstracao"].includes(location.pathname) ||
+      ROTAS_PUBLICAS.has(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin") ||
@@ -724,7 +730,7 @@ function RootComponent() {
   const rotaAdmin = location.pathname.startsWith("/admin") ||
     (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
   const rotaPublica =
-    ["/", "/login", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/portaldotutor", "/demonstracao", "/solicitar-demonstracao"].includes(location.pathname) ||
+    ROTAS_PUBLICAS.has(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
