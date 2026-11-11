@@ -1348,7 +1348,9 @@ function PortalTutorAcessoFicha({ animalId }: { animalId: string }) {
     return <p className="text-sm text-muted-foreground">Não foi possível consultar o acesso do Portal.</p>;
   }
 
-  const portalUrl = "/pet/" + acesso.clinica_slug + "/portal";
+  const portalUrl = acesso.clinica_slug === "alvorada"
+    ? "https://alvorada.oricse.com.br/portaldotutor"
+    : "/pet/" + acesso.clinica_slug + "/portal";
   if (!acesso.senha_definida) {
     return (
       <div className="space-y-3">

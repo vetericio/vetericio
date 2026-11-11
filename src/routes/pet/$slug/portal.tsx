@@ -14,6 +14,27 @@ export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTut
 
 function PortalTutorRoute() {
   const { slug } = Route.useParams();
+  // Links antigos já distribuídos em materiais ou nos sites devem continuar
+  // funcionando, mas não podem deixar a Alvorada presa na URL antiga.
+  const rotaLegadaDaAlvorada =
+    slug === "alvorada" &&
+    typeof window !== "undefined" &&
+    window.location.hostname.toLowerCase() === "alvorada.oricse.com.br";
+
+  useEffect(() => {
+    if (!rotaLegadaDaAlvorada) return;
+    const destino = new URL("/portaldotutor", window.location.origin);
+    const parametros = new URLSearchParams(window.location.search);
+    // Tema é publicado pela clínica; não é parte da URL canônica.
+    parametros.delete("modelo");
+    destino.search = parametros.toString();
+    destino.hash = window.location.hash;
+    window.location.replace(destino.pathname + destino.search + destino.hash);
+  }, [rotaLegadaDaAlvorada]);
+
+  if (rotaLegadaDaAlvorada)
+    return <main className="min-h-screen bg-[#faf7f4] p-8 text-center text-[#312530]">Abrindo o Portal do Tutor…</main>;
+
   return <PortalTutorClinica slugDaClinica={slug} />;
 }
 
