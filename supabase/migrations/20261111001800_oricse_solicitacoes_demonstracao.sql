@@ -1,0 +1,1 @@
+-- Solicitações públicas de demonstração (gravadas apenas via função validada; leitura só para admin da plataforma)
