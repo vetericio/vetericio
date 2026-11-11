@@ -465,7 +465,7 @@ function RootComponent() {
     if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
     if (/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)) return;
     const rotaPublica =
-      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor"].includes(location.pathname) ||
+      ["/", "/login", "/modelos", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/demonstracao", "/solicitar-demonstracao"].includes(location.pathname) ||
       location.pathname.startsWith("/vet/") ||
       /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
     const rotaAdmin = location.pathname.startsWith("/admin") ||
@@ -724,7 +724,7 @@ function RootComponent() {
   const rotaAdmin = location.pathname.startsWith("/admin") ||
     (location.pathname === "/oricstudio" && location.search?.ambiente === "plataforma");
   const rotaPublica =
-    ["/", "/login", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/portaldotutor"].includes(location.pathname) ||
+    ["/", "/login", "/solucoes", "/planos", "/contratar", "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade", "/demo-portal-tutor", "/portaldotutor", "/demonstracao", "/solicitar-demonstracao"].includes(location.pathname) ||
     location.pathname.startsWith("/vet/") ||
     /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname);
   const testeExpirado = Boolean(acessoTeste?.teste_expirado);
@@ -748,6 +748,11 @@ function RootComponent() {
     location.pathname !== "/admin-canvas" &&
     location.pathname !== "/" &&
     !paginaInicialDeClinica;
+
+  // A demonstração é pública e isolada para preservar o layout aprovado.
+  if (location.pathname === "/demonstracao" || location.pathname === "/solicitar-demonstracao") {
+    return <QueryClientProvider client={queryClient}><Outlet /><Toaster position="top-center" /></QueryClientProvider>;
+  }
 
   // Protótipos públicos são isolados do layout clínico e de suas barras de navegação.
   if (location.pathname === "/demo-portal-tutor") {
