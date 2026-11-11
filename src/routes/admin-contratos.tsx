@@ -1,16 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Clipboard, Eye, FilePlus2, FileText, Link2, RefreshCw, Trash2, Upload, X } from "lucide-react";
+import {
+  Check,
+  Clipboard,
+  Copy,
+  Eye,
+  FilePlus2,
+  FileText,
+  Link2,
+  RefreshCw,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   cancelarContrato,
   criarLinkContrato,
-  excluirContrato,
   criarModeloContrato,
+  excluirContrato,
   listarContratos,
   listarModelosContratos,
   obterDownloadContratoAdmin,
+  regenerarLinkContrato,
+  renomearLinkContrato,
 } from "@/lib/contratos.functions";
 import { lerArquivoComoDataUri, rotuloCampoContrato } from "@/lib/contratos-pdf";
 
@@ -30,6 +45,8 @@ type Contrato = {
   status: string;
   pessoa_nome: string | null;
   pessoa_email: string | null;
+  link_path: string | null;
+  nome_link: string;
   expira_em: string | null;
   created_at: string;
 };
@@ -55,6 +72,7 @@ function AdminContratos() {
   const [templatePdfBase64, setTemplatePdfBase64] = useState<string | null>(null);
   const [templatePdfNome, setTemplatePdfNome] = useState("");
   const [linkGerado, setLinkGerado] = useState("");
+  const [nomesLink, setNomesLink] = useState<Record<string, string>>({});
 
   async function tokenAdmin() {
     const { data } = await supabase.auth.getSession();
@@ -73,6 +91,14 @@ function AdminContratos() {
       ]);
       setModelos(modelosResp.modelos as Modelo[]);
       setContratos(contratosResp.contratos as Contrato[]);
+      setNomesLink(
+        Object.fromEntries(
+          (contratosResp.contratos as Contrato[]).map((contrato) => [
+            contrato.id,
+            contrato.nome_link || "",
+          ]),
+        ),
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Não foi possível carregar os contratos.",
@@ -131,6 +157,50 @@ function AdminContratos() {
     toast.success("Link copiado.");
   }
 
+  function caminhoDoLink(contrato: Contrato) {
+    return contrato.link_path ? `${window.location.origin}${contrato.link_path}` : "";
+  }
+
+  async function copiarLinkContrato(contrato: Contrato) {
+    const link = caminhoDoLink(contrato);
+    if (!link) {
+      if (
+        !window.confirm(
+          "Este contrato foi criado antes do recurso de cópia. Gerar um novo link para ele?",
+        )
+      )
+        return;
+      try {
+        const accessToken = await tokenAdmin();
+        const resposta = await regenerarLinkContrato({
+          data: { accessToken, contratoId: contrato.id },
+        });
+        const novoLink = `${window.location.origin}${resposta.path}`;
+        await navigator.clipboard?.writeText(novoLink);
+        toast.success("Novo link gerado e copiado.");
+        await carregar();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível gerar o link.");
+      }
+      return;
+    }
+    await copiar(link);
+  }
+
+  async function salvarNomeLink(contratoId: string) {
+    try {
+      const accessToken = await tokenAdmin();
+      await renomearLinkContrato({
+        data: { accessToken, contratoId, nomeLink: nomesLink[contratoId] || "" },
+      });
+      toast.success("Identificação salva.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível salvar a identificação.",
+      );
+    }
+  }
+
   async function cancelar(id: string) {
     if (!window.confirm("Cancelar este link de contrato?")) return;
     try {
@@ -155,47 +225,13 @@ function AdminContratos() {
     }
   }
 
-  async function visualizarAssinado(contratoId: string) {
-    const janela = window.open("", "_blank");
-    if (!janela) {
-      toast.error("Permita pop-ups para visualizar o contrato assinado.");
-      return;
-    }
-    try {
-      const accessToken = await tokenAdmin();
-      const resposta = await obterDownloadContratoAdmin({
-        data: { accessToken, contratoId, tipo: "assinado" },
-      });
-      const binario = atob(resposta.base64);
-      const bytes = Uint8Array.from(binario, (caractere) => caractere.charCodeAt(0));
-      const arquivo = new Blob([bytes], { type: resposta.mimeType || "application/pdf" });
-      const url = URL.createObjectURL(arquivo);
-      janela.location.href = url;
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) {
-      janela.close();
-      toast.error(error instanceof Error ? error.message : "Não foi possível visualizar o contrato assinado.");
-    }
-  }
-
   async function baixarVersao(contratoId: string, tipo: "em_branco" | "assinado") {
     try {
       const accessToken = await tokenAdmin();
       const resposta = await obterDownloadContratoAdmin({
         data: { accessToken, contratoId, tipo },
       });
-      // O PDF é privado: o servidor devolve bytes somente após confirmar o admin.
-      const binario = atob(resposta.base64);
-      const bytes = Uint8Array.from(binario, (caractere) => caractere.charCodeAt(0));
-      const arquivo = new Blob([bytes], { type: resposta.mimeType || "application/pdf" });
-      const url = URL.createObjectURL(arquivo);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "Contrato - " + tipo.replace("_", " ") + ".pdf";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      window.open(resposta.url, "_blank", "noopener,noreferrer");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível preparar o download.");
     }
@@ -211,7 +247,8 @@ function AdminContratos() {
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">Contratos</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Crie um modelo com campos, envie um link e receba o documento preenchido e assinado.
+              Aqui você gera o link. A pessoa abrirá o formulário, preencherá os campos, clicará em
+              “OK” para gerar o PDF, assinará no gov.br e enviará o arquivo assinado.
             </p>
           </div>
           <button
@@ -245,6 +282,13 @@ function AdminContratos() {
               className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white"
             >
               <Clipboard size={14} /> Copiar novamente
+            </button>
+            <button
+              type="button"
+              onClick={() => window.open(linkGerado, "_blank", "noopener,noreferrer")}
+              className="ml-2 mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-900"
+            >
+              Abrir formulário de preenchimento
             </button>
           </section>
         )}
@@ -425,6 +469,30 @@ function AdminContratos() {
                   {contratos.map((contrato) => (
                     <tr key={contrato.id}>
                       <td className="px-3 py-3 font-bold">
+                        <div className="mb-2 flex min-w-[240px] items-center gap-1">
+                          <input
+                            value={nomesLink[contrato.id] || ""}
+                            onChange={(event) =>
+                              setNomesLink((anterior) => ({
+                                ...anterior,
+                                [contrato.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Identificação do envio"
+                            aria-label={`Identificação do envio para ${contrato.pessoa_nome || "contrato"}`}
+                            className="min-h-8 w-full rounded-md border bg-background px-2 text-xs font-normal"
+                            maxLength={160}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void salvarNomeLink(contrato.id)}
+                            title="Salvar identificação"
+                            aria-label="Salvar identificação"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-primary hover:bg-primary/10"
+                          >
+                            <Save size={14} />
+                          </button>
+                        </div>
                         {contrato.pessoa_nome || "Aguardando preenchimento"}
                         <span className="block text-xs font-normal text-muted-foreground">
                           {contrato.pessoa_email || ""}
@@ -443,6 +511,13 @@ function AdminContratos() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
+                            onClick={() => void copiarLinkContrato(contrato)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-primary/30 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10"
+                          >
+                            <Copy size={14} /> Copiar link
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => void baixarVersao(contrato.id, "em_branco")}
                             className="rounded-lg border px-3 py-2 text-xs font-bold"
                           >
@@ -451,10 +526,12 @@ function AdminContratos() {
                           {contrato.status === "assinado" && (
                             <button
                               type="button"
-                              onClick={() => void visualizarAssinado(contrato.id)}
+                              onClick={() => void baixarVersao(contrato.id, "assinado")}
                               className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
                             >
-                              <span className="inline-flex items-center gap-1"><Eye size={14} /> Visualizar assinado</span>
+                              <span className="inline-flex items-center gap-1">
+                                <Eye size={14} /> Visualizar assinado
+                              </span>
                             </button>
                           )}
                           <button
