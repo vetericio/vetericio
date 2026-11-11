@@ -144,21 +144,27 @@ async function gerarPdfComModelo(templatePdfBase64: string, dados: DadosContrato
     font: fonte,
     color: rgb(0.12, 0.12, 0.12),
   });
-  limpar(paginaFinal, 70, alturaFinal - 661, 180, 38);
-  paginaFinal.drawText(textoDados(dados, "representante_legal"), {
-    x: 73.8,
-    y: alturaFinal - 647,
-    size: tamanho,
-    font: fonte,
-    color: rgb(0.12, 0.12, 0.12),
-  });
-  paginaFinal.drawText(`CPF ${textoDados(dados, "cpf_representante")}`, {
-    x: 73.8,
-    y: alturaFinal - 660,
-    size: tamanho,
-    font: fonte,
-    color: rgb(0.12, 0.12, 0.12),
-  });
+  limpar(paginaFinal, 70, alturaFinal - 662, 465, 28);
+  paginaFinal.drawText(
+    `Empresa: ${textoDados(dados, "razao_social_nome")} / ${textoDados(dados, "cpf_cnpj")}`,
+    {
+      x: 73.8,
+      y: alturaFinal - 647,
+      size: tamanho,
+      font: fonte,
+      color: rgb(0.12, 0.12, 0.12),
+    },
+  );
+  paginaFinal.drawText(
+    `Representante: ${textoDados(dados, "representante_legal")} / ${textoDados(dados, "cpf_representante")}`,
+    {
+      x: 73.8,
+      y: alturaFinal - 660,
+      size: tamanho,
+      font: fonte,
+      color: rgb(0.12, 0.12, 0.12),
+    },
+  );
   const bytes = await pdf.save();
   let binary = "";
   for (let indice = 0; indice < bytes.length; indice += 0x8000) binary += String.fromCharCode(...bytes.subarray(indice, indice + 0x8000));
