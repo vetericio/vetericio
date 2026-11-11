@@ -140,17 +140,17 @@ function Planos() {
     "solo-2026": {
       ideal: "Veterinário autônomo",
       chamada: "O essencial para atender com segurança e organização.",
-      destaques: ["Prontuários e consultas", "Receitas, exames e documentos", "Painel com resumo do dia", "Cadastro de tutores e animais", "Histórico completo dos animais", "Receituário veterinário em PDF", "Assinatura de documentos clínicos"],
+      destaques: ["Prontuários e consultas", "Receitas, exames e documentos", "Painel com resumo do dia", "Cadastro de tutores e animais", "Histórico completo dos animais", "Receituário veterinário em PDF", "Assinatura de documentos clínicos", "Dados completos de identificação e contato", "Documentos e encaminhamentos clínicos", "Temas e aparência básica"],
     },
     "essencial-2026": {
       ideal: "Consultórios e pequenos negócios",
       chamada: "A rotina clínica conectada, do agendamento ao tutor.",
-      destaques: ["Agenda e prontuário completo", "Financeiro e caixa básicos", "Portal do Tutor", "Anamnese completa", "Calculadora de medicações", "Cartão de vacinas e vermífugos", "Histórico clínico completo"],
+      destaques: ["Agenda e prontuário completo", "Financeiro e caixa básicos", "Portal do Tutor", "Anamnese completa", "Calculadora de medicações", "Cartão de vacinas e vermífugos", "Histórico clínico completo", "Receituário veterinário em PDF", "Assinatura de documentos clínicos", "Consulta de exames e laudos pelo portal"],
     },
     "profissional-2026": {
       ideal: "Clínicas e operações pet",
       chamada: "Quando a sua equipe precisa operar tudo no mesmo lugar.",
-      destaques: ["Internação e medicações", "Banho e Tosa e Hotelzinho", "Estoque, financeiro e comandas", "Agendamento online pelo tutor", "Painel completo da recepção", "Controle de medicações na internação", "Indicadores financeiros operacionais"],
+      destaques: ["Internação e medicações", "Banho e Tosa e Hotelzinho", "Estoque, financeiro e comandas", "Agendamento online pelo tutor", "Painel completo da recepção", "Controle de medicações na internação", "Indicadores financeiros operacionais", "Fila de espera e controle de atendimento", "Cobranças e pagamentos online"],
     },
     "master-2026": {
       ideal: "Negócios em expansão",
@@ -241,9 +241,11 @@ function Planos() {
                     {detalhe.destaques.map((item) => <li key={item} className="flex gap-2"><Check size={17} className="mt-0.5 shrink-0 text-[#9b4f66]"/><span>{item}</span></li>)}
                   </ul>
                   {p.codigo === "master-2026" && <p className="mt-5 rounded-xl bg-[#fff0c9] px-3 py-2 text-xs font-bold leading-5 text-[#79561d]">Fidelidade mínima de 12 meses, inclusive no pagamento mensal.</p>}
-                  <a href={`/contratar?plano=${encodeURIComponent(p.codigo)}&ciclo=${ciclo}`} className={`mt-auto pt-7 flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-extrabold transition ${destaque ? "bg-[#4A1826] text-white hover:bg-[#662139]" : "border border-[#8a4658] bg-white text-[#5c2739] hover:bg-[#fff3ef]"}`}>
-                    Começar com {p.nome} <span className="ml-2 text-lg">→</span>
-                  </a>
+                  <div className="mt-auto pt-6">
+                    <a href={`/contratar?plano=${encodeURIComponent(p.codigo)}&ciclo=${ciclo}`} aria-label={`Começar com ${p.nome}`} className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 px-4 text-sm font-extrabold transition hover:-translate-y-0.5 ${destaque ? "border-[#4A1826] bg-[#4A1826] text-white shadow-[0_10px_22px_rgba(74,24,38,.2)] hover:bg-[#662139]" : master ? "border-[#c28c2b] bg-white text-[#5c2739] shadow-[0_8px_18px_rgba(194,140,43,.12)] hover:bg-[#fff9ea]" : "border-[#8a4658]/60 bg-[#fffdfb] text-[#5c2739] shadow-sm hover:border-[#6b263d] hover:bg-[#fff3ef]"}`}>
+                      Começar com {p.nome} <span aria-hidden="true" className="text-lg leading-none transition-transform group-hover:translate-x-0.5">→</span>
+                    </a>
+                  </div>
                 </article>
               );
             })}
