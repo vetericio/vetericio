@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { driveAccessToken, driveFetch, writeDriveFile } from "@/lib/drive-kv.server";
+import { deleteDriveFile, driveAccessToken, driveFetch, writeDriveFile } from "@/lib/drive-kv.server";
 
 const PDF_MAX_BYTES = 20_000_000;
 async function carregarPdfDoDrive(
@@ -440,20 +440,28 @@ export const excluirContrato = createServerFn({ method: "POST" })
       .eq("contrato_id", data.contratoId);
     if (arquivosError) throw new Error("Não foi possível localizar os arquivos do contrato.");
 
-    const driveIds = (arquivos || [])
-      .map((arquivo) => arquivo.drive_file_id)
-      .filter((id): id is string => Boolean(id));
+    // Não excluir dados que ainda estejam exclusivamente em armazenamento legado.
+    // A migração precisa ser feita antes da exclusão definitiva.
+    const legados = (arquivos || []).filter(
+      (arquivo) =>
+        arquivo.storage_path &&
+        !arquivo.storage_path.startsWith("drive:") &&
+        !arquivo.drive_file_id,
+    );
+    if (legados.length) {
+      throw new Error("O contrato possui arquivos antigos que precisam ser migrados ao Drive antes da exclusão.");
+    }
+    const driveIds = [...new Set(
+      (arquivos || [])
+        .map((arquivo) =>
+          arquivo.drive_file_id ||
+          (arquivo.storage_path?.startsWith("drive:") ? arquivo.storage_path.slice(6) : null),
+        )
+        .filter((id): id is string => Boolean(id)),
+    )];
     if (driveIds.length) {
       const driveToken = await driveAccessToken();
       for (const driveId of driveIds) await deleteDriveFile(driveToken, driveId);
-    }
-
-    const storagePaths = (arquivos || [])
-      .map((arquivo) => arquivo.storage_path)
-      .filter((path): path is string => Boolean(path));
-    if (storagePaths.length) {
-      const removidos = await admin.storage.from("oricse-contratos").remove(storagePaths);
-      if (removidos.error) throw new Error("Não foi possível remover os PDFs do contrato.");
     }
 
     const { error } = await admin
