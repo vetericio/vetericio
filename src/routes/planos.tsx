@@ -257,7 +257,7 @@ function Planos() {
           </section>
 
           <div className="mt-12 text-center">
-            <button type="button" onClick={() => setComparar((v) => !v)} aria-expanded={comparar} className="inline-flex min-h-12 items-center gap-3 rounded-full border border-[#8b4b5e]/30 bg-white px-6 text-sm font-extrabold text-[#6b2d43] shadow-sm transition hover:bg-[#fff4ef]">
+            <button type="button" onClick={() => setComparar((v) => !v)} aria-label="Comparar todos os 98 benefícios" aria-expanded={comparar} className="inline-flex min-h-12 items-center gap-3 rounded-full border border-[#8b4b5e]/30 bg-white px-6 text-sm font-extrabold text-[#6b2d43] shadow-sm transition hover:bg-[#fff4ef]">
               {comparar ? "Ocultar comparação completa" : "Veja exatamente o que entra em cada plano"}<ChevronDown size={18} className={comparar ? "rotate-180" : ""}/>
             </button>
           </div>
