@@ -8,8 +8,8 @@ declare
   new_list text := $new$array['Clínica/hospital veterinário','Consultório veterinário','Veterinário particular','Pet shop','Banho e tosa','Hotelzinho/creche','Casa de ração','ONG','Outro','Clínica veterinária','Hospital veterinário']$new$;
 begin
   definition := pg_catalog.pg_get_functiondef('public.oricse_solicitar_demonstracao(jsonb)'::regprocedure);
-  if pg_catalog.position(old_list in definition) = 0 then
-    if pg_catalog.position(new_list in definition) > 0 then
+  if pg_catalog.strpos(definition, old_list) = 0 then
+    if pg_catalog.strpos(definition, new_list) > 0 then
       return; -- migration idempotente
     end if;
     raise exception 'Lista atual de tipos diverge da versao esperada; abortando sem modificar';
