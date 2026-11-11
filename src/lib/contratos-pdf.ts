@@ -109,10 +109,13 @@ function quebrarTexto(texto: string, fonte: { widthOfTextAtSize: (texto: string,
 }
 
 async function gerarPdfComModelo(templatePdfBase64: string, dados: DadosContrato) {
-  const { PDFDocument, StandardFonts, beginText, endText, rgb, setCharacterSpacing, setWordSpacing } = await import("pdf-lib");
+  const { PDFDocument, beginText, endText, rgb, setCharacterSpacing, setWordSpacing } = await import("pdf-lib");
+  const { default: fontkit } = await import("@pdf-lib/fontkit");
   const pdf = await PDFDocument.load(await asBytes(templatePdfBase64));
-  const fonte = await pdf.embedFont(StandardFonts.Helvetica);
-  const fonteNegrito = await pdf.embedFont(StandardFonts.HelveticaBold);
+  pdf.registerFontkit(fontkit);
+  const fonteResponse = await fetch(new URL("/fonts/Arial.ttf", window.location.origin));
+  if (!fonteResponse.ok) throw new Error("Não foi possível carregar a fonte do contrato.");
+  const fonte = await pdf.embedFont(await fonteResponse.arrayBuffer(), { subset: true });
   const tamanho = 9.5;
   const paginaInicial = pdf.getPage(0);
   const altura = paginaInicial.getHeight();
@@ -156,7 +159,6 @@ async function gerarPdfComModelo(templatePdfBase64: string, dados: DadosContrato
     font: fonte,
     color: rgb(0.12, 0.12, 0.12),
   });
-  void fonteNegrito;
   const bytes = await pdf.save();
   let binary = "";
   for (let indice = 0; indice < bytes.length; indice += 0x8000) binary += String.fromCharCode(...bytes.subarray(indice, indice + 0x8000));
