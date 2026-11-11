@@ -1,10 +1,9 @@
 /**
- * Congelamento explícito da versão aprovada do ORICSE.
- *
- * O bloqueio protege as superfícies de administração e edição sem interromper
- * o uso operacional das clínicas ou o Portal do Tutor já publicado.
+ * O ORICSE está liberado para edição e administração.
+ * As rotas anteriormente protegidas permanecem registradas para controle
+ * explícito caso a política de congelamento seja retomada no futuro.
  */
-export const ORICSE_SISTEMA_CONGELADO = true;
+export const ORICSE_SISTEMA_CONGELADO = false;
 
 const ROTAS_EDITAVEIS_PROTEGIDAS = new Set([
   "/admin",
