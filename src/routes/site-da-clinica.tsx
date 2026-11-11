@@ -82,6 +82,70 @@ const mobile = (max: number) => ({
   maxLength: max,
 });
 
+
+type CropRequest = { file: File; url: string; target: ImageTarget; index: number };
+
+function PhotoCropDialog({ request, onCancel, onConfirm }: {
+  request: CropRequest;
+  onCancel: () => void;
+  onConfirm: (file: File) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const photoRef = useRef<HTMLImageElement | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const ratio = request.target === "hero" ? 16 / 9 : request.target === "gallery" ? 4 / 3 : 1;
+  const width = request.target === "hero" ? 1600 : request.target === "gallery" ? 1200 : 800;
+  const height = Math.round(width / ratio);
+  useEffect(() => {
+    const image = new Image();
+    image.onload = () => { photoRef.current = image; setZoom((v) => v + 0.000001); };
+    image.src = request.url;
+    return () => { photoRef.current = null; };
+  }, [request.url]);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const image = photoRef.current;
+    if (!canvas || !image) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight) * zoom;
+    const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
+    const left = (width - w) / 2 + (w - width) * x / 200;
+    const top = (height - h) / 2 + (h - height) * y / 200;
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(image, left, top, w, h);
+  }, [zoom, x, y, width, height]);
+  function apply() {
+    if (!canvasRef.current || !photoRef.current || busy) return;
+    setBusy(true);
+    canvasRef.current.toBlob((blob) => {
+      if (!blob) { toast.error("Não foi possível preparar a foto."); setBusy(false); return; }
+      onConfirm(new File([blob], request.file.name.replace(/\.[^.]+$/, "") + "-ajustada.webp", { type: "image/webp" }));
+    }, "image/webp", 0.92);
+  }
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Ajustar foto" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-3">
+      <div className="w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-background p-5 shadow-2xl" style={{ maxHeight: "95vh" }}>
+        <h2 className="text-lg font-extrabold">Recortar e redimensionar foto</h2>
+        <p className="text-xs text-muted-foreground">Use os controles para enquadrar. O original não será alterado.</p>
+        <canvas ref={canvasRef} width={width} height={height} aria-label="Prévia do recorte" className="max-h-[50vh] w-full rounded-xl border bg-muted" style={{ aspectRatio: String(ratio) }} />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-xs font-semibold">Zoom <input className="block w-full" type="range" min="1" max="3" step="0.01" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} /></label>
+          <label className="text-xs font-semibold">Horizontal <input className="block w-full" type="range" min="-100" max="100" value={x} onChange={(e) => setX(Number(e.target.value))} /></label>
+          <label className="text-xs font-semibold">Vertical <input className="block w-full" type="range" min="-100" max="100" value={y} onChange={(e) => setY(Number(e.target.value))} /></label>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border px-5 text-sm font-bold">Cancelar</button>
+          <button type="button" disabled={busy} onClick={apply} className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">{busy ? "Preparando..." : "Usar esta foto"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SiteDaClinica({
   adminClinicaId,
   embedded = false,
@@ -110,6 +174,7 @@ export function SiteDaClinica({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState("");
+  const [cropRequest, setCropRequest] = useState<CropRequest | null>(null);
   const [tab, setTab] = useState<Tab>("modelos");
   const [device, setDevice] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const [ready, setReady] = useState(false);
@@ -327,7 +392,14 @@ export function SiteDaClinica({
         className="sr-only"
         disabled={Boolean(uploading)}
         onChange={(e) => {
-          void uploadImage(e.target.files?.[0], target, index);
+          const file = e.target.files?.[0];
+          if (file) {
+            if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+              toast.error("Use PNG, JPG ou WebP de até 5 MB.");
+            } else {
+              setCropRequest({ file, url: URL.createObjectURL(file), target, index });
+            }
+          }
           e.currentTarget.value = "";
         }}
       />
@@ -514,6 +586,17 @@ export function SiteDaClinica({
           : "min-h-screen bg-muted/30 p-3 pb-20 sm:p-5"
       }
     >
+      {cropRequest && (
+        <PhotoCropDialog
+          request={cropRequest}
+          onCancel={() => { URL.revokeObjectURL(cropRequest.url); setCropRequest(null); }}
+          onConfirm={(file) => {
+            void uploadImage(file, cropRequest.target, cropRequest.index);
+            URL.revokeObjectURL(cropRequest.url);
+            setCropRequest(null);
+          }}
+        />
+      )}
       <div className={embedded ? "w-full min-w-0" : "mx-auto max-w-[1750px]"}>
         <header className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-4">
           <div>
@@ -741,7 +824,7 @@ export function SiteDaClinica({
                         className="h-20 w-28 rounded-lg bg-white object-contain p-2"
                       />
                     )}
-                    {fileButton("Enviar ou trocar logo", "logo")}
+                    {fileButton("Enviar e ajustar logo", "logo")}
                   </div>
                   <div className="space-y-2 rounded-xl border p-3">
                     <strong className="text-sm">Imagem principal</strong>
@@ -752,7 +835,7 @@ export function SiteDaClinica({
                         className="h-32 w-full rounded-lg object-cover"
                       />
                     )}
-                    {fileButton("Enviar imagem de capa", "hero")}
+                    {fileButton("Enviar e ajustar capa", "hero")}
                     {config.heroImageUrl && (
                       <button
                         type="button"
@@ -776,7 +859,7 @@ export function SiteDaClinica({
                             className="h-24 w-full rounded-lg object-cover"
                           />
                           <div className="flex flex-wrap gap-1">
-                            {fileButton("Trocar", "gallery", index)}
+                            {fileButton("Trocar e ajustar", "gallery", index)}
                             <button
                               type="button"
                               aria-label="Remover foto"
@@ -793,7 +876,7 @@ export function SiteDaClinica({
                         </div>
                       ))}
                     </div>
-                    {config.galleryUrls.length < 12 && fileButton("Adicionar foto", "gallery")}
+                    {config.galleryUrls.length < 12 && fileButton("Adicionar e ajustar foto", "gallery")}
                   </div>
                 </>
               )}
@@ -904,7 +987,7 @@ export function SiteDaClinica({
                           className="h-28 w-28 rounded-xl object-cover"
                         />
                       )}
-                      {fileButton("Enviar foto", "team", index)}
+                      {fileButton("Enviar e ajustar foto", "team", index)}
                       <label className="block text-xs font-bold">
                         Nome
                         <input
