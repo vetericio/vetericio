@@ -242,7 +242,7 @@ function Planos() {
                   </ul>
                   {p.codigo === "master-2026" && <p className="mt-5 rounded-xl bg-[#fff0c9] px-3 py-2 text-xs font-bold leading-5 text-[#79561d]">Fidelidade mínima de 12 meses, inclusive no pagamento mensal.</p>}
                   <div className="mt-auto pt-6">
-                    <a href={`/contratar?plano=${encodeURIComponent(p.codigo)}&ciclo=${ciclo}`} aria-label={`Começar com ${p.nome}`} className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 px-4 text-sm font-extrabold transition hover:-translate-y-0.5 ${destaque ? "border-[#4A1826] bg-[#4A1826] text-white shadow-[0_10px_22px_rgba(74,24,38,.2)] hover:bg-[#662139]" : master ? "border-[#c28c2b] bg-white text-[#5c2739] shadow-[0_8px_18px_rgba(194,140,43,.12)] hover:bg-[#fff9ea]" : "border-[#8a4658]/60 bg-[#fffdfb] text-[#5c2739] shadow-sm hover:border-[#6b263d] hover:bg-[#fff3ef]"}`}>
+                    <a href={`/contratar?plano=${encodeURIComponent(p.codigo)}&ciclo=${ciclo}`} aria-label={`Começar com ${p.nome}`} className={`group flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 px-4 text-sm font-extrabold transition hover:-translate-y-0.5 ${destaque ? "border-[#4A1826] bg-[#4A1826] text-white shadow-[0_10px_22px_rgba(74,24,38,.2)] hover:bg-[#662139]" : master ? "border-[#c28c2b] bg-white text-[#5c2739] shadow-[0_8px_18px_rgba(194,140,43,.12)] hover:bg-[#fff9ea]" : "border-[#8a4658]/60 bg-[#fffdfb] text-[#5c2739] shadow-sm hover:border-[#6b263d] hover:bg-[#fff3ef]"}`}>
                       Começar com {p.nome} <span aria-hidden="true" className="text-lg leading-none transition-transform group-hover:translate-x-0.5">→</span>
                     </a>
                   </div>
