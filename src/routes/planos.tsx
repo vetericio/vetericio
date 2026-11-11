@@ -1,3 +1,4 @@
+import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, Search, Sparkles, X } from "lucide-react";
@@ -233,6 +234,7 @@ function Planos() {
           </section>
         </div>
       </section>
+      <RodapeInstitucional />
     </main>
   );
 }
