@@ -465,7 +465,7 @@ function Contratar() {
     if (etapa === 2 && obterOperacoes(dados).length === 0) {
       setErroValidacao("Selecione pelo menos uma área de atuação."); return false;
     }
-    if (exigeCrmv(dados)) obrigatoriosResponsavel.push("responsavel_crmv", "responsavel_crmv_uf");
+    if (etapa === 2 && exigeCrmv(dados)) obrigatoriosResponsavel.push("responsavel_crmv", "responsavel_crmv_uf");
     const obrig = etapa === 1 ? obrigatoriosResponsavel : etapa === 2 ? obrigatoriosClinica : [];
     const faltando = obrig.filter(k => !String(dados[k] || "").trim());
     if (faltando.length) {
@@ -547,7 +547,7 @@ function Contratar() {
     (pedido?.status === "isento_aguardando_aprovacao" ||
       (Number(pedido?.valor_total ?? valorCobrado) === 0 &&
        Boolean(promoAplicado?.codigo) && descontoPromocional > 0));
-  const crmvObrigatorio = exigeCrmv(dados);
+  const crmvObrigatorio = etapa > 1 && exigeCrmv(dados);
 
   return <main className="min-h-screen bg-background px-4 py-6 sm:px-6"><div className="mx-auto max-w-4xl">
     <Link to="/planos" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><ArrowLeft size={18}/> {texto.voltar_planos}</Link>
@@ -580,7 +580,7 @@ function Contratar() {
         {campo("Cidade","responsavel_cidade",dados,salvarLocal)}
         {campo("UF","responsavel_uf",dados,salvarLocal)}
       </div>
-      {!crmvObrigatorio && <p className="mt-3 text-xs text-muted-foreground">CRMV é opcional para operações sem atendimento clínico veterinário.</p>}
+      {etapa===1 && <p className="mt-3 text-xs text-muted-foreground">O CRMV será solicitado quando a área de atuação exigir registro profissional.</p>}
     </section>}
 
 
