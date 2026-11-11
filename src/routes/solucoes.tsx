@@ -1,3 +1,4 @@
+import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft, ArrowRight, Bath, CalendarDays, ClipboardList, CreditCard,
@@ -49,5 +50,6 @@ function Solucoes() {
       </article>)}</div>
     </section>
     <section className="px-5 pb-16 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 rounded-[28px] bg-[#f1e3df] px-8 py-10 text-center sm:flex-row sm:text-left"><div><h2 className="font-display text-3xl font-semibold text-[#4A1826]">Quer ver a Oricse funcionando na sua rotina?</h2><p className="mt-2 text-[#765c66]">Escolha seu plano e comece com a operação organizada.</p></div><Link to="/planos" className="inline-flex items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Conhecer planos <ArrowRight size={17}/></Link></div></section>
+    <RodapeInstitucional />
   </main>;
 }

@@ -1,3 +1,4 @@
+import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { CheckCircle2, ClipboardList, Sparkles, ShieldCheck } from "lucide-react";
@@ -171,6 +172,7 @@ function Demonstracao() {
           )}
         </section>
       </main>
+      <RodapeInstitucional />
     </div>
   );
 }
