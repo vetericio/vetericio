@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   obterContratoPublico,
+  obterDownloadContrato,
   salvarArquivoContrato,
   salvarDadosContrato,
 } from "@/lib/contratos.functions";
@@ -40,6 +41,7 @@ function ContratoPublico() {
   const [enviandoAssinado, setEnviandoAssinado] = useState(false);
   const [erro, setErro] = useState("");
   const [pdfGerado, setPdfGerado] = useState(false);
+  const [pdfEmBranco, setPdfEmBranco] = useState("");
 
   useEffect(() => {
     let ativo = true;
@@ -94,6 +96,7 @@ function ContratoPublico() {
         contrato.templatePdfBase64 || contrato.templatePdfUrl,
       );
       baixarPdfContrato(dataUri, `${nomeSeguroContrato(nomePessoa)} - Em branco.pdf`);
+      setPdfEmBranco(dataUri);
       await salvarArquivoContrato({
         data: { token, tipo: "em_branco", base64: dataUri, mimeType: "application/pdf" },
       });
@@ -104,6 +107,21 @@ function ContratoPublico() {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o PDF.");
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function baixarVersaoEmBranco() {
+    if (pdfEmBranco) {
+      baixarPdfContrato(pdfEmBranco, `${nomeSeguroContrato(nomePessoa)} - Em branco.pdf`);
+      return;
+    }
+    try {
+      const resposta = await obterDownloadContrato({
+        data: { token, tipo: "em_branco" },
+      });
+      window.open(resposta.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível baixar o PDF.");
     }
   }
 
@@ -202,7 +220,7 @@ function ContratoPublico() {
             className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#702a43] px-5 font-black text-white disabled:opacity-50"
           >
             <FileDown size={18} />
-            {salvando ? "Gerando PDF…" : "Gerar e baixar PDF — Em branco"}
+            {salvando ? "Gerando PDF…" : "OK — gerar PDF para assinatura"}
           </button>
 
           {pdfGerado && (
@@ -216,7 +234,14 @@ function ContratoPublico() {
                   </p>
                 </div>
               </div>
-              <label className="mt-4 inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 text-sm font-black text-emerald-900 hover:bg-emerald-50">
+              <button
+                type="button"
+                onClick={() => void baixarVersaoEmBranco()}
+                className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 text-sm font-black text-emerald-900 hover:bg-emerald-50"
+              >
+                <FileDown size={18} /> Baixar PDF em branco novamente
+              </button>
+              <label className="mt-3 inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 text-sm font-black text-emerald-900 hover:bg-emerald-50">
                 <Upload size={18} />
                 {enviandoAssinado
                   ? "Enviando PDF…"
