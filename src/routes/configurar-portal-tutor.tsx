@@ -289,7 +289,10 @@ function ConfigurarPortalTutor() {
             A configuração do Portal do Tutor está bloqueada para evitar alterações acidentais.
             O acesso dos tutores e os dados já publicados continuam disponíveis.
           </p>
-          {slug && <Link to="/pet/$slug/portal" params={{slug}} target="_blank" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</Link>}
+          {slug && (slug === "alvorada"
+            ? <a href="https://alvorada.oricse.com.br/portaldotutor" target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</a>
+            : <Link to="/pet/$slug/portal" params={{ slug }} target="_blank" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</Link>
+          )}
         </section>
       </main>
     );

@@ -231,7 +231,18 @@ function AdminContratos() {
       const resposta = await obterDownloadContratoAdmin({
         data: { accessToken, contratoId, tipo },
       });
-      window.open(resposta.url, "_blank", "noopener,noreferrer");
+      // PDFs privados são entregues apenas depois da autorização do administrador.
+      const binario = atob(resposta.base64);
+      const bytes = Uint8Array.from(binario, (caractere) => caractere.charCodeAt(0));
+      const arquivo = new Blob([bytes], { type: resposta.mimeType || "application/pdf" });
+      const url = URL.createObjectURL(arquivo);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Contrato - " + tipo.replace("_", " ") + ".pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível preparar o download.");
     }

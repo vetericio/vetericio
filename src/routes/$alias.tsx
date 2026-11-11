@@ -17,15 +17,17 @@ export const Route = createFileRoute("/$alias")({ component: AliasPagina });
 function AliasPagina() {
   const { alias } = Route.useParams();
   const [erro, setErro] = useState("");
-
-  // Atalho público da Alvorada: mantém o endereço amigável no próprio
-  // subdomínio, sem depender da tabela de aliases administrativos.
-  if (alias === "portaldotutor" && hostDaPagina() === "alvorada.oricse.com.br")
-    return <PortalTutorClinica slugDaClinica="alvorada" />;
+  const [portalAlvorada, setPortalAlvorada] = useState(false);
 
   useEffect(() => {
     let ativo = true;
     setErro("");
+    // Decidir a clínica no efeito evita diferença de HTML entre SSR e browser.
+    // O atalho não consulta aliases administrativos nem muda autenticação.
+    const rotaPublicaAlvorada =
+      alias === "portaldotutor" && hostDaPagina() === "alvorada.oricse.com.br";
+    setPortalAlvorada(rotaPublicaAlvorada);
+    if (rotaPublicaAlvorada) return;
 
     if (!/^[a-z0-9-]{1,65}$/.test(alias)) {
       setErro("Endereço inválido.");
@@ -58,6 +60,9 @@ function AliasPagina() {
 
     return () => { ativo = false; };
   }, [alias]);
+
+  if (portalAlvorada && alias === "portaldotutor")
+    return <PortalTutorClinica slugDaClinica="alvorada" />;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F8F5F2] p-6 text-center text-[#381724]">
