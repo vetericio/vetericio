@@ -57,7 +57,7 @@ function canalDrive(): PollChannel {
 
 function rotaDoPortalTutor() {
   if (typeof window === 'undefined') return false;
-  return /^\/pet\/[^/]+\/portal\/?$/.test(window.location.pathname);
+  return /^\/pet\/[^/]+\/portal\/?$/.test(window.location.pathname) || (window.location.hostname.toLowerCase() === "alvorada.oricse.com.br" && /^\/portaldotutor\/?$/.test(window.location.pathname));
 }
 function clientePrincipal() { if (!_supabase) _supabase = createSupabaseClient(); return _supabase; }
 function clientePortal() { if (!_supabasePortal) _supabasePortal = createSupabaseClient('oricse-portal-auth'); return _supabasePortal; }
