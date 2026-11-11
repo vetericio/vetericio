@@ -1,3 +1,4 @@
+import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { useState, type ReactNode } from "react";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, Heart, Bookmark, Images, Instagram, Megaphone, MessageCircle, Package, Settings, Sparkles } from "lucide-react";
@@ -582,7 +583,7 @@ function PaginaInicialPlataforma() {
 
 <section className="px-5 pb-14 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 rounded-[28px] bg-[#f1e3df] px-7 py-10 text-center sm:flex-row sm:px-12 sm:text-left"><div><h2 className="font-display text-3xl font-semibold tracking-[-.04em] text-[#4A1826] sm:text-4xl">Conheça cada solução da Oricse.</h2><p className="mt-2 text-[#765c66]">Veja o que cada área faz e encontre o que funciona para sua operação.</p></div><a href="/solucoes" className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 font-bold text-white">Ver todas as soluções <ArrowRight size={17}/></a></div></section>
 
-      <footer className="border-t border-[#eaded8] px-5 py-8 sm:px-8 lg:px-10"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 text-xs text-[#846873]"><span className="flex items-center gap-2 font-bold text-[#5a293b]"><img src="/oricse-logo-oryx.svg?v=15" className="h-7 w-7" alt=""/>Oricse · Soluções para o mercado pet</span><span>© 2026 Oricse. Todos os direitos reservados.</span><div className="flex gap-4"><Link to="/politica-de-privacidade">Privacidade</Link><Link to="/termos-de-uso">Termos</Link><Link to="/login">Entrar</Link></div></div></footer>
+      <RodapeInstitucional />
     </main>
     </>
   );
