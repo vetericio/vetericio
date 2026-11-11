@@ -413,22 +413,32 @@ function PaginaInicialPlataforma() {
           }
         }
 
-        /* Correção somente para celulares: evita imagem vazia no Instagram.
-           A fotografia original do órix fica no background (não em um <img>
-           sujeito às regras genéricas de ocultação ou dimensão). O desktop
-           e o tablet continuam utilizando sua composição atual. */
+        /* Mobile: a capa do órix é um bloco próprio na composição vertical.
+           Evita a reserva dupla de altura causada por img + ::before e deixa
+           o título imediatamente depois da foto. Regras só até 767px. */
         @media (max-width: 767px) {
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"] {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            aspect-ratio: auto !important;
+          }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"]::before {
-            content: "";
-            display: block;
-            flex: 0 0 auto;
+            content: none !important;
+            display: none !important;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-home-mobile-oryx] {
+            display: block !important;
             order: 0;
-            align-self: stretch;
+            flex: none;
+            position: relative;
+            height: clamp(245px, 64vw, 340px);
             width: 100%;
-            height: clamp(250px, 64vw, 350px);
-            background-color: #ead4c6;
+            background-color: #e9c9ad;
             background-image:
-              linear-gradient(to bottom, rgba(255, 253, 250, 0) 70%, #fffdfa 100%),
+              linear-gradient(to bottom, rgba(255, 253, 250, 0) 74%, #fffdfa 100%),
               url("/oricse-capa-paisagem.png?v=20261111-hero-mobile");
             background-repeat: no-repeat;
             background-position: center, 72% 42%;
@@ -436,9 +446,26 @@ function PaginaInicialPlataforma() {
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
             display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
           }
           main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] {
-            padding-top: 8px;
+            position: relative !important;
+            inset: auto !important;
+            order: 1;
+            display: block !important;
+            flex: none;
+            height: auto !important;
+            min-height: 0 !important;
+            margin: -12px 0 0 !important;
+            padding: 0 20px 28px !important;
+            background: #fffdfa;
+            z-index: 2;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] > div {
+            display: block !important;
+            margin: 0;
+            padding: 0;
           }
         }
       `}</style>
@@ -464,6 +491,8 @@ function PaginaInicialPlataforma() {
         />
         {capaOficialCarregada ? (
           <div data-visual-id="home-base-capa" data-visual-label="Área da capa" className="relative z-[1] w-full bg-transparent lg:aspect-[1.86]">
+            {/* Fundo responsivo: exibido apenas em celulares, sem ocupar altura dupla. */}
+            <div data-home-mobile-oryx aria-hidden="true" className="hidden" />
             {/* A mesma capa é mantida como base visual em todos os tamanhos. */}
             <img
               src="/oricse-capa-paisagem.png"
