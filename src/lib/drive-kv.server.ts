@@ -142,3 +142,14 @@ export async function writeDriveFile(
     url: `https://drive.google.com/open?id=${encodeURIComponent(arquivo.id)}`,
   };
 }
+
+
+export async function deleteDriveFile(token: string, fileId: string) {
+  try {
+    await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("Google Drive: 404")) throw error;
+  }
+}
