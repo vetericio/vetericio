@@ -183,7 +183,7 @@ function Planos() {
               <a href="#planos" className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#4A1826] px-6 text-sm font-extrabold text-white shadow-[0_14px_30px_rgba(74,24,38,.22)] transition hover:-translate-y-0.5 hover:bg-[#662139]">
                 Escolher meu plano <span className="ml-2 text-lg">→</span>
               </a>
-              <Link to="/demo-portal-tutor" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#7d3349]/30 bg-white/80 px-6 text-sm font-bold text-[#5e263b] transition hover:bg-white">
+              <a href="https://oricse.com.br/#diferenciais" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#7d3349]/30 bg-white/80 px-6 text-sm font-bold text-[#5e263b] transition hover:bg-white">
                 Quero uma demonstração <span className="ml-2 text-lg">→</span>
               </Link>
             </div>
@@ -252,7 +252,7 @@ function Planos() {
           <section className="mt-12 overflow-hidden rounded-[30px] bg-[#4A1826] px-6 py-8 text-[#fff9f6] shadow-[0_24px_55px_rgba(74,24,38,.2)] sm:px-10 sm:py-10">
             <div className="flex flex-col items-center justify-between gap-7 text-center lg:flex-row lg:text-left">
               <div className="max-w-2xl"><p className="text-[11px] font-extrabold uppercase tracking-[.18em] text-[#f2bdc9]">NÃO É SÓ UM SISTEMA DE CLÍNICA</p><h2 className="mt-3 font-display text-3xl font-semibold leading-[.95] tracking-[-.05em] sm:text-4xl">A Oricse se encaixa no jeito que o seu negócio cuida.</h2><p className="mt-4 text-sm leading-6 text-[#efdce1]">Atendimento em domicílio, clínica com equipe, pet shop, banho e tosa, hotelzinho e outros negócios pet.</p></div>
-              <Link to="/demo-portal-tutor" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-[#ffe2ca] px-6 text-sm font-extrabold text-[#4A1826] transition hover:-translate-y-0.5 hover:bg-white">Quero uma demonstração <span className="ml-2 text-lg">→</span></Link>
+              <a href="https://oricse.com.br/#diferenciais" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-[#ffe2ca] px-6 text-sm font-extrabold text-[#4A1826] transition hover:-translate-y-0.5 hover:bg-white">Quero uma demonstração <span className="ml-2 text-lg">→</span></Link>
             </div>
           </section>
 
@@ -285,7 +285,7 @@ function Planos() {
                   <h3 className="text-[17px] font-extrabold leading-snug text-[#4A1826]">{item.pergunta}</h3>
                   <p className="mt-3 flex-1 text-sm leading-6 text-[#765c66]">{item.resposta}</p>
                   {"link" in item && item.link && (
-                    <Link to="/demonstracao" className="mt-4 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#7c344b] underline underline-offset-4 hover:text-[#4A1826]">
+                    <a href="https://oricse.com.br/#diferenciais" className="mt-4 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#7c344b] underline underline-offset-4 hover:text-[#4A1826]">
                       Solicitar demonstração <span aria-hidden="true">→</span>
                     </Link>
                   )}
