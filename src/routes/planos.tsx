@@ -140,22 +140,22 @@ function Planos() {
     "solo-2026": {
       ideal: "Veterinário autônomo",
       chamada: "O essencial para atender com segurança e organização.",
-      destaques: ["Prontuários e consultas", "Receitas, exames e documentos", "Painel com resumo do dia"],
+      destaques: ["Prontuários e consultas", "Receitas, exames e documentos", "Painel com resumo do dia", "Cadastro de tutores e animais", "Histórico completo dos animais", "Receituário veterinário em PDF", "Assinatura de documentos clínicos"],
     },
     "essencial-2026": {
       ideal: "Consultórios e pequenos negócios",
       chamada: "A rotina clínica conectada, do agendamento ao tutor.",
-      destaques: ["Agenda e prontuário completo", "Financeiro e caixa básicos", "Portal do Tutor"],
+      destaques: ["Agenda e prontuário completo", "Financeiro e caixa básicos", "Portal do Tutor", "Anamnese completa", "Calculadora de medicações", "Cartão de vacinas e vermífugos", "Histórico clínico completo"],
     },
     "profissional-2026": {
       ideal: "Clínicas e operações pet",
       chamada: "Quando a sua equipe precisa operar tudo no mesmo lugar.",
-      destaques: ["Internação e medicações", "Banho e Tosa e Hotelzinho", "Estoque, financeiro e comandas", "Agendamento online pelo tutor"],
+      destaques: ["Internação e medicações", "Banho e Tosa e Hotelzinho", "Estoque, financeiro e comandas", "Agendamento online pelo tutor", "Painel completo da recepção", "Controle de medicações na internação", "Indicadores financeiros operacionais"],
     },
     "master-2026": {
       ideal: "Negócios em expansão",
       chamada: "A estrutura completa para gestão, relacionamento e identidade própria.",
-      destaques: ["RH, ponto, banco de horas e comissões", "CRM, campanhas e relacionamento", "Domínio próprio e personalização", "Relatórios gerenciais avançados"],
+      destaques: ["RH, ponto, banco de horas e comissões", "CRM, campanhas e relacionamento", "Domínio próprio e personalização", "Relatórios gerenciais avançados", "Gestão de usuários e permissões", "Análises de desempenho do negócio", "Indicadores e resultados de campanhas"],
     },
   };
 
@@ -241,7 +241,7 @@ function Planos() {
                     {detalhe.destaques.map((item) => <li key={item} className="flex gap-2"><Check size={17} className="mt-0.5 shrink-0 text-[#9b4f66]"/><span>{item}</span></li>)}
                   </ul>
                   {p.codigo === "master-2026" && <p className="mt-5 rounded-xl bg-[#fff0c9] px-3 py-2 text-xs font-bold leading-5 text-[#79561d]">Fidelidade mínima de 12 meses, inclusive no pagamento mensal.</p>}
-                  <a href={`/contratar?plano=${encodeURIComponent(p.codigo)}&ciclo=${ciclo}`} className={`mt-7 flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-extrabold transition ${destaque ? "bg-[#4A1826] text-white hover:bg-[#662139]" : "border border-[#8a4658] bg-white text-[#5c2739] hover:bg-[#fff3ef]"}`}>
+                  <a href={`/contratar?plano=${encodeURIComponent(p.codigo)}&ciclo=${ciclo}`} className={`mt-auto pt-7 flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-extrabold transition ${destaque ? "bg-[#4A1826] text-white hover:bg-[#662139]" : "border border-[#8a4658] bg-white text-[#5c2739] hover:bg-[#fff3ef]"}`}>
                     Começar com {p.nome} <span className="ml-2 text-lg">→</span>
                   </a>
                 </article>
