@@ -1,0 +1,28 @@
+name: Validar alteração visual da página de planos
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/routes/planos.tsx
+      - .github/workflows/validate-planos-layout.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Compilar projeto
+        run: npm run build
+      - name: Verificar TypeScript
+        run: npx tsc --noEmit
+      - name: Verificar pacote Cloudflare
+        run: node scripts/check-worker-coordinator.mjs

@@ -113,17 +113,14 @@ function Planos() {
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-[-10%] bottom-[-24%] h-[52%] rotate-[-4deg] rounded-[50%] bg-[#e68b35]/25 blur-[1px]" />
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-[-12%] bottom-[-34%] h-[53%] rotate-[4deg] rounded-[50%] border-t border-white/50 bg-[#b75527]/25" />
         <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-5 sm:px-8 sm:pb-20 lg:px-10 lg:pb-24">
-          <header className="flex items-center justify-between gap-4">
+          <header className="flex items-center justify-start gap-4">
             <Link to="/" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#6d2941]/20 bg-white/70 px-4 text-sm font-bold text-[#5b2337] shadow-sm backdrop-blur transition hover:bg-white">
               <ArrowLeft size={17}/> Voltar ao início
             </Link>
-            <img src="/oricse-logo-oryx.svg?v=15" alt="ORICSE — Soluções para o mercado pet" className="h-12 w-12 object-contain sm:h-14 sm:w-14" />
           </header>
 
           <div className="mx-auto mt-14 max-w-4xl text-center sm:mt-16">
-            <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#6d2941]/25 bg-white/80 px-4 py-2 text-[11px] font-extrabold uppercase tracking-[.17em] text-[#7a344c] shadow-sm">
-              <Sparkles size={14}/> ORICSE PARA NEGÓCIOS PET
-            </p>
+            <img src="/oricse-logo-oryx.svg?v=15" alt="ORICSE — Soluções para o mercado pet" width="512" height="512" className="mx-auto block h-28 w-28 object-contain sm:h-32 sm:w-32" />
             <h1 className="mt-6 font-display text-[clamp(2.8rem,6.2vw,6.25rem)] font-semibold leading-[.91] tracking-[-.065em] text-[#4A1826]">
               Seu negócio cresceu.<br /><span className="text-[#a76b78]">Sua gestão também pode crescer.</span>
             </h1>
