@@ -93,6 +93,17 @@ export async function deleteDriveJson(token: string, path: string[], nome: strin
   await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}`, { method: "DELETE" });
 }
 
+export async function deleteDriveFile(token: string, fileId: string) {
+  try {
+    await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    // A ausência do arquivo já cumpre o objetivo da exclusão.
+    if (!(error instanceof Error) || !error.message.includes("Google Drive: 404")) throw error;
+  }
+}
+
 /**
  * Salva um arquivo binário no Drive, substituindo o arquivo de mesmo nome
  * dentro da pasta informada. A pasta é criada automaticamente quando ainda
@@ -141,15 +152,4 @@ export async function writeDriveFile(
     folderId: parent,
     url: `https://drive.google.com/open?id=${encodeURIComponent(arquivo.id)}`,
   };
-}
-
-
-export async function deleteDriveFile(token: string, fileId: string) {
-  try {
-    await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, {
-      method: "DELETE",
-    });
-  } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("Google Drive: 404")) throw error;
-  }
 }
