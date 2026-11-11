@@ -164,7 +164,8 @@ function AdminContratos() {
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">Contratos</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Crie um modelo com campos, envie um link e receba o documento preenchido e assinado.
+              Aqui você gera o link. A pessoa abrirá o formulário, preencherá os campos, clicará em
+              “OK” para gerar o PDF, assinará no gov.br e enviará o arquivo assinado.
             </p>
           </div>
           <button
@@ -198,6 +199,13 @@ function AdminContratos() {
               className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white"
             >
               <Clipboard size={14} /> Copiar novamente
+            </button>
+            <button
+              type="button"
+              onClick={() => window.open(linkGerado, "_blank", "noopener,noreferrer")}
+              className="ml-2 mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-900"
+            >
+              Abrir formulário de preenchimento
             </button>
           </section>
         )}
