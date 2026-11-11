@@ -17,13 +17,17 @@ Se não conseguir ler nada, devolva {"medicacoes":[]}.`;
 type Resultado = { medicacoes: Medicacao[] };
 
 export const lerReceitaComIA = createServerFn({ method: "POST" })
-  .validator((data: { imagem: string }) => {
+  .validator((data: { imagem: string; accessToken: string }) => {
+    if (typeof data?.accessToken !== "string" || data.accessToken.length < 20) throw new Error("Sessão expirada.");
     if (typeof data?.imagem !== "string" || !data.imagem.startsWith("data:image/")) {
       throw new Error("Imagem inválida");
     }
     return data;
   })
   .handler(async ({ data }): Promise<Resultado> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
+    if (authError || !authData.user) throw new Error("Sessão expirada.");
     const chave = process.env["LOVABLE_API_KEY"];
     if (!chave) throw new Error("IA não configurada");
 
