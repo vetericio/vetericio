@@ -59,6 +59,7 @@ function AdminSolicitacoesDemonstracao() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState<string | null>(null);
+  const [filtroStatus, setFiltroStatus] = useState<Status | "todos">("todos");
 
   async function carregar() {
     setCarregando(true);
@@ -95,6 +96,8 @@ function AdminSolicitacoesDemonstracao() {
     toast.success("Status atualizado.");
   }
 
+  const itensFiltrados = filtroStatus === "todos" ? itens : itens.filter((item) => item.status === filtroStatus);
+
   return (
     <main className="min-h-screen bg-[#f6f4ef] px-4 py-6 sm:px-6">
       <div className="mx-auto max-w-7xl">
@@ -113,6 +116,33 @@ function AdminSolicitacoesDemonstracao() {
           </button>
         </header>
 
+        <div className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border bg-white p-3 shadow-sm" aria-label="Filtrar solicitações por status">
+          <span className="mr-1 text-sm font-black">Status:</span>
+          <button
+            type="button"
+            aria-pressed={filtroStatus === "todos"}
+            onClick={() => setFiltroStatus("todos")}
+            className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold transition ${filtroStatus === "todos" ? "bg-primary text-primary-foreground shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+          >
+            Todos <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs">{itens.length}</span>
+          </button>
+          {STATUS.map((status) => {
+            const quantidade = itens.filter((item) => item.status === status.value).length;
+            const ativo = filtroStatus === status.value;
+            return (
+              <button
+                key={status.value}
+                type="button"
+                aria-pressed={ativo}
+                onClick={() => setFiltroStatus(status.value)}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold transition ${ativo ? "bg-primary text-primary-foreground shadow-sm" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+              >
+                {status.label} <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs">{quantidade}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-3">
           <div className="rounded-2xl border bg-white px-4 py-3 shadow-sm"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Total</p><p className="mt-1 text-2xl font-black">{itens.length}</p></div>
           <div className="rounded-2xl border bg-white px-4 py-3 shadow-sm"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Novos</p><p className="mt-1 text-2xl font-black text-amber-700">{itens.filter((item) => item.status === "novo").length}</p></div>
@@ -123,11 +153,15 @@ function AdminSolicitacoesDemonstracao() {
 
         {carregando ? (
           <div className="mt-8 rounded-3xl border bg-white p-10 text-center text-muted-foreground"><RefreshCcw className="mx-auto animate-spin" size={22} /><p className="mt-3">Carregando solicitações...</p></div>
-        ) : !erro && itens.length === 0 ? (
-          <div className="mt-8 rounded-3xl border bg-white p-10 text-center shadow-sm"><Clock3 className="mx-auto text-muted-foreground" size={28} /><h2 className="mt-3 text-xl font-bold">Nenhuma solicitação ainda</h2><p className="mt-2 text-muted-foreground">Quando alguém preencher o formulário de demonstração, o pedido aparecerá aqui.</p></div>
+        ) : !erro && itensFiltrados.length === 0 ? (
+          <div className="mt-8 rounded-3xl border bg-white p-10 text-center shadow-sm">
+            <Clock3 className="mx-auto text-muted-foreground" size={28} />
+            <h2 className="mt-3 text-xl font-bold">{itens.length === 0 ? "Nenhuma solicitação ainda" : "Nenhuma solicitação neste status"}</h2>
+            <p className="mt-2 text-muted-foreground">{itens.length === 0 ? "Quando alguém preencher o formulário de demonstração, o pedido aparecerá aqui." : "Escolha outro status acima para visualizar outras solicitações."}</p>
+          </div>
         ) : (
           <section className="mt-8 space-y-5">
-            {itens.map((item) => (
+            {itensFiltrados.map((item) => (
               <article key={item.id} className="rounded-3xl border bg-white p-5 shadow-sm sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-5">
                   <div>
