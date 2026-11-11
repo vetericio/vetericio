@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminCanvasRouteImport } from './routes/admin-canvas'
 import { Route as AdminConteudoRouteImport } from './routes/admin-conteudo'
 import { Route as AdminCuponsRouteImport } from './routes/admin-cupons'
+import { Route as AdminDemonstracoesRouteImport } from './routes/admin-demonstracoes'
 import { Route as AdminOricstudioRouteImport } from './routes/admin-oricstudio'
 import { Route as AdminPlanosRouteImport } from './routes/admin-planos'
 import { Route as AdminSolicitacoesRouteImport } from './routes/admin-solicitacoes'
@@ -39,6 +40,7 @@ import { Route as ContratarRouteImport } from './routes/contratar'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as CurvaRouteImport } from './routes/curva'
 import { Route as DemoPortalTutorRouteImport } from './routes/demo-portal-tutor'
+import { Route as DemonstracaoRouteImport } from './routes/demonstracao'
 import { Route as EncaminharRouteImport } from './routes/encaminhar'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as FilaEsperaRouteImport } from './routes/fila-espera'
@@ -72,6 +74,8 @@ import { Route as RhRouteImport } from './routes/rh'
 import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as SiteDaClinicaRouteImport } from './routes/site-da-clinica'
+import { Route as SiteDaClinicaPreviewRouteImport } from './routes/site-da-clinica-preview'
+import { Route as SolicitarDemonstracaoRouteImport } from './routes/solicitar-demonstracao'
 import { Route as SolucoesRouteImport } from './routes/solucoes'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
@@ -118,6 +122,11 @@ const AdminConteudoRoute = AdminConteudoRouteImport.update({
 const AdminCuponsRoute = AdminCuponsRouteImport.update({
   id: '/admin-cupons',
   path: '/admin-cupons',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDemonstracoesRoute = AdminDemonstracoesRouteImport.update({
+  id: '/admin-demonstracoes',
+  path: '/admin-demonstracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminOricstudioRoute = AdminOricstudioRouteImport.update({
@@ -238,6 +247,11 @@ const CurvaRoute = CurvaRouteImport.update({
 const DemoPortalTutorRoute = DemoPortalTutorRouteImport.update({
   id: '/demo-portal-tutor',
   path: '/demo-portal-tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemonstracaoRoute = DemonstracaoRouteImport.update({
+  id: '/demonstracao',
+  path: '/demonstracao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EncaminharRoute = EncaminharRouteImport.update({
@@ -405,6 +419,16 @@ const SiteDaClinicaRoute = SiteDaClinicaRouteImport.update({
   path: '/site-da-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SiteDaClinicaPreviewRoute = SiteDaClinicaPreviewRouteImport.update({
+  id: '/site-da-clinica-preview',
+  path: '/site-da-clinica-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolicitarDemonstracaoRoute = SolicitarDemonstracaoRouteImport.update({
+  id: '/solicitar-demonstracao',
+  path: '/solicitar-demonstracao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolucoesRoute = SolucoesRouteImport.update({
   id: '/solucoes',
   path: '/solucoes',
@@ -503,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-cupons': typeof AdminCuponsRoute
+  '/admin-demonstracoes': typeof AdminDemonstracoesRoute
   '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
@@ -527,6 +552,7 @@ export interface FileRoutesByFullPath {
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/demo-portal-tutor': typeof DemoPortalTutorRoute
+  '/demonstracao': typeof DemonstracaoRoute
   '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
@@ -560,6 +586,8 @@ export interface FileRoutesByFullPath {
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
+  '/site-da-clinica-preview': typeof SiteDaClinicaPreviewRoute
+  '/solicitar-demonstracao': typeof SolicitarDemonstracaoRoute
   '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -585,6 +613,7 @@ export interface FileRoutesByTo {
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-cupons': typeof AdminCuponsRoute
+  '/admin-demonstracoes': typeof AdminDemonstracoesRoute
   '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
@@ -609,6 +638,7 @@ export interface FileRoutesByTo {
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/demo-portal-tutor': typeof DemoPortalTutorRoute
+  '/demonstracao': typeof DemonstracaoRoute
   '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
@@ -642,6 +672,8 @@ export interface FileRoutesByTo {
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
+  '/site-da-clinica-preview': typeof SiteDaClinicaPreviewRoute
+  '/solicitar-demonstracao': typeof SolicitarDemonstracaoRoute
   '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -668,6 +700,7 @@ export interface FileRoutesById {
   '/admin-canvas': typeof AdminCanvasRoute
   '/admin-conteudo': typeof AdminConteudoRoute
   '/admin-cupons': typeof AdminCuponsRoute
+  '/admin-demonstracoes': typeof AdminDemonstracoesRoute
   '/admin-oricstudio': typeof AdminOricstudioRoute
   '/admin-planos': typeof AdminPlanosRoute
   '/admin-solicitacoes': typeof AdminSolicitacoesRoute
@@ -692,6 +725,7 @@ export interface FileRoutesById {
   '/crm': typeof CrmRoute
   '/curva': typeof CurvaRoute
   '/demo-portal-tutor': typeof DemoPortalTutorRoute
+  '/demonstracao': typeof DemonstracaoRoute
   '/encaminhar': typeof EncaminharRoute
   '/estoque': typeof EstoqueRoute
   '/fila-espera': typeof FilaEsperaRoute
@@ -725,6 +759,8 @@ export interface FileRoutesById {
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
+  '/site-da-clinica-preview': typeof SiteDaClinicaPreviewRoute
+  '/solicitar-demonstracao': typeof SolicitarDemonstracaoRoute
   '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -752,6 +788,7 @@ export interface FileRouteTypes {
     | '/admin-canvas'
     | '/admin-conteudo'
     | '/admin-cupons'
+    | '/admin-demonstracoes'
     | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
@@ -776,6 +813,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/curva'
     | '/demo-portal-tutor'
+    | '/demonstracao'
     | '/encaminhar'
     | '/estoque'
     | '/fila-espera'
@@ -809,6 +847,8 @@ export interface FileRouteTypes {
     | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/site-da-clinica'
+    | '/site-da-clinica-preview'
+    | '/solicitar-demonstracao'
     | '/solucoes'
     | '/temas'
     | '/termos'
@@ -834,6 +874,7 @@ export interface FileRouteTypes {
     | '/admin-canvas'
     | '/admin-conteudo'
     | '/admin-cupons'
+    | '/admin-demonstracoes'
     | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
@@ -858,6 +899,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/curva'
     | '/demo-portal-tutor'
+    | '/demonstracao'
     | '/encaminhar'
     | '/estoque'
     | '/fila-espera'
@@ -891,6 +933,8 @@ export interface FileRouteTypes {
     | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/site-da-clinica'
+    | '/site-da-clinica-preview'
+    | '/solicitar-demonstracao'
     | '/solucoes'
     | '/temas'
     | '/termos'
@@ -916,6 +960,7 @@ export interface FileRouteTypes {
     | '/admin-canvas'
     | '/admin-conteudo'
     | '/admin-cupons'
+    | '/admin-demonstracoes'
     | '/admin-oricstudio'
     | '/admin-planos'
     | '/admin-solicitacoes'
@@ -940,6 +985,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/curva'
     | '/demo-portal-tutor'
+    | '/demonstracao'
     | '/encaminhar'
     | '/estoque'
     | '/fila-espera'
@@ -973,6 +1019,8 @@ export interface FileRouteTypes {
     | '/simulador-pagamentos'
     | '/sincronizacao'
     | '/site-da-clinica'
+    | '/site-da-clinica-preview'
+    | '/solicitar-demonstracao'
     | '/solucoes'
     | '/temas'
     | '/termos'
@@ -999,6 +1047,7 @@ export interface RootRouteChildren {
   AdminCanvasRoute: typeof AdminCanvasRoute
   AdminConteudoRoute: typeof AdminConteudoRoute
   AdminCuponsRoute: typeof AdminCuponsRoute
+  AdminDemonstracoesRoute: typeof AdminDemonstracoesRoute
   AdminOricstudioRoute: typeof AdminOricstudioRoute
   AdminPlanosRoute: typeof AdminPlanosRoute
   AdminSolicitacoesRoute: typeof AdminSolicitacoesRoute
@@ -1023,6 +1072,7 @@ export interface RootRouteChildren {
   CrmRoute: typeof CrmRoute
   CurvaRoute: typeof CurvaRoute
   DemoPortalTutorRoute: typeof DemoPortalTutorRoute
+  DemonstracaoRoute: typeof DemonstracaoRoute
   EncaminharRoute: typeof EncaminharRoute
   EstoqueRoute: typeof EstoqueRoute
   FilaEsperaRoute: typeof FilaEsperaRoute
@@ -1056,6 +1106,8 @@ export interface RootRouteChildren {
   SimuladorPagamentosRoute: typeof SimuladorPagamentosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
   SiteDaClinicaRoute: typeof SiteDaClinicaRoute
+  SiteDaClinicaPreviewRoute: typeof SiteDaClinicaPreviewRoute
+  SolicitarDemonstracaoRoute: typeof SolicitarDemonstracaoRoute
   SolucoesRoute: typeof SolucoesRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
@@ -1117,6 +1169,13 @@ declare module '@tanstack/react-router' {
       path: '/admin-cupons'
       fullPath: '/admin-cupons'
       preLoaderRoute: typeof AdminCuponsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-demonstracoes': {
+      id: '/admin-demonstracoes'
+      path: '/admin-demonstracoes'
+      fullPath: '/admin-demonstracoes'
+      preLoaderRoute: typeof AdminDemonstracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin-oricstudio': {
@@ -1285,6 +1344,13 @@ declare module '@tanstack/react-router' {
       path: '/demo-portal-tutor'
       fullPath: '/demo-portal-tutor'
       preLoaderRoute: typeof DemoPortalTutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demonstracao': {
+      id: '/demonstracao'
+      path: '/demonstracao'
+      fullPath: '/demonstracao'
+      preLoaderRoute: typeof DemonstracaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/encaminhar': {
@@ -1518,6 +1584,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteDaClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/site-da-clinica-preview': {
+      id: '/site-da-clinica-preview'
+      path: '/site-da-clinica-preview'
+      fullPath: '/site-da-clinica-preview'
+      preLoaderRoute: typeof SiteDaClinicaPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/solicitar-demonstracao': {
+      id: '/solicitar-demonstracao'
+      path: '/solicitar-demonstracao'
+      fullPath: '/solicitar-demonstracao'
+      preLoaderRoute: typeof SolicitarDemonstracaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solucoes': {
       id: '/solucoes'
       path: '/solucoes'
@@ -1647,6 +1727,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCanvasRoute: AdminCanvasRoute,
   AdminConteudoRoute: AdminConteudoRoute,
   AdminCuponsRoute: AdminCuponsRoute,
+  AdminDemonstracoesRoute: AdminDemonstracoesRoute,
   AdminOricstudioRoute: AdminOricstudioRoute,
   AdminPlanosRoute: AdminPlanosRoute,
   AdminSolicitacoesRoute: AdminSolicitacoesRoute,
@@ -1671,6 +1752,7 @@ const rootRouteChildren: RootRouteChildren = {
   CrmRoute: CrmRoute,
   CurvaRoute: CurvaRoute,
   DemoPortalTutorRoute: DemoPortalTutorRoute,
+  DemonstracaoRoute: DemonstracaoRoute,
   EncaminharRoute: EncaminharRoute,
   EstoqueRoute: EstoqueRoute,
   FilaEsperaRoute: FilaEsperaRoute,
@@ -1704,6 +1786,8 @@ const rootRouteChildren: RootRouteChildren = {
   SimuladorPagamentosRoute: SimuladorPagamentosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
   SiteDaClinicaRoute: SiteDaClinicaRoute,
+  SiteDaClinicaPreviewRoute: SiteDaClinicaPreviewRoute,
+  SolicitarDemonstracaoRoute: SolicitarDemonstracaoRoute,
   SolucoesRoute: SolucoesRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
