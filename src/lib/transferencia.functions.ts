@@ -2,15 +2,23 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { deleteDriveJson, driveAccessToken, readDriveJson, writeDriveJson } from "@/lib/drive-kv.server";
 
-const codigoSchema = z.object({ codigo: z.string().regex(/^[0-9]{6}$/) });
-const envioSchema = z.object({ dados: z.unknown().refine((v) => JSON.stringify(v ?? null).length < 2_000_000, { message: "Backup muito grande" }) });
+const authSchema = z.object({ accessToken: z.string().min(20) });
+const codigoSchema = authSchema.extend({ codigo: z.string().regex(/^[0-9]{6}$/) });
+const envioSchema = authSchema.extend({ dados: z.unknown().refine((v) => JSON.stringify(v ?? null).length < 2_000_000, { message: "Backup muito grande" }) });
 const PATH = [".oricse", "transferencias"];
 
 type Transferencia = { dados: unknown; expira_em: string };
 
+async function validarSessao(accessToken: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
+  if (error || !data.user) throw new Error("Sessão expirada.");
+}
+
 export const enviarTransferencia = createServerFn({ method: "POST" })
   .validator((input: unknown) => envioSchema.parse(input))
   .handler(async ({ data }) => {
+    await validarSessao(data.accessToken);
     const token = await driveAccessToken();
     for (let tentativa = 0; tentativa < 8; tentativa += 1) {
       const codigo = String(Math.floor(100000 + Math.random() * 900000));
@@ -25,6 +33,7 @@ export const enviarTransferencia = createServerFn({ method: "POST" })
 export const buscarTransferencia = createServerFn({ method: "POST" })
   .validator((input: unknown) => codigoSchema.parse(input))
   .handler(async ({ data }): Promise<{ json: string | null }> => {
+    await validarSessao(data.accessToken);
     const token = await driveAccessToken();
     const { value } = await readDriveJson<Transferencia | null>(token, PATH, `${data.codigo}.json`, null);
     if (!value) return { json: null };
@@ -35,6 +44,7 @@ export const buscarTransferencia = createServerFn({ method: "POST" })
 export const apagarTransferencia = createServerFn({ method: "POST" })
   .validator((input: unknown) => codigoSchema.parse(input))
   .handler(async ({ data }) => {
+    await validarSessao(data.accessToken);
     const token = await driveAccessToken();
     await deleteDriveJson(token, PATH, `${data.codigo}.json`);
     return { ok: true };
