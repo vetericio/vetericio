@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Clipboard, FilePlus2, FileText, Link2, RefreshCw, Upload, X } from "lucide-react";
+import { Check, Clipboard, Eye, FilePlus2, FileText, Link2, RefreshCw, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   cancelarContrato,
   criarLinkContrato,
+  excluirContrato,
   criarModeloContrato,
   listarContratos,
   listarModelosContratos,
@@ -139,6 +140,18 @@ function AdminContratos() {
       await carregar();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível cancelar o link.");
+    }
+  }
+
+  async function excluir(id: string) {
+    if (!window.confirm("Excluir este contrato e todos os seus arquivos permanentemente?")) return;
+    try {
+      const accessToken = await tokenAdmin();
+      await excluirContrato({ data: { accessToken, contratoId: id } });
+      toast.success("Contrato excluído.");
+      await carregar();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível excluir o contrato.");
     }
   }
 
@@ -418,7 +431,7 @@ function AdminContratos() {
                               onClick={() => void baixarVersao(contrato.id, "assinado")}
                               className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
                             >
-                              Assinado
+                              <span className="inline-flex items-center gap-1"><Eye size={14} /> Visualizar assinado</span>
                             </button>
                           )}
                           <button
@@ -428,6 +441,13 @@ function AdminContratos() {
                             className="rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40"
                           >
                             Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void excluir(contrato.id)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 size={14} /> Excluir
                           </button>
                         </div>
                       </td>
