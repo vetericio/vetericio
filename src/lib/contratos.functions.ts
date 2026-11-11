@@ -197,7 +197,7 @@ export const salvarDadosContrato = createServerFn({ method: "POST" })
     const tokenHash = await hashToken(data.token);
     const { data: contrato, error: buscaError } = await admin
       .from("oricse_contratos")
-      .select("id,status,expira_em")
+      .select("id,status,expira_em,pessoa_nome")
       .eq("token_hash", tokenHash)
       .maybeSingle();
     if (buscaError || !contrato) throw new Error("Link de contrato inválido.");
@@ -229,7 +229,7 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
     const tokenHash = await hashToken(data.token);
     const { data: contrato, error: contratoError } = await admin
       .from("oricse_contratos")
-      .select("id,status,expira_em")
+      .select("id,status,expira_em,pessoa_nome")
       .eq("token_hash", tokenHash)
       .maybeSingle();
     if (contratoError || !contrato) throw new Error("Link de contrato inválido.");
@@ -242,12 +242,18 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
       throw new Error("Preencha o contrato antes de enviar a versão assinada.");
     const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
     if (!bytes.length || bytes.length > 20_000_000) throw new Error("O PDF deve ter até 20 MB.");
-    const { randomBytes } = await import("node:crypto");
-    const path = `${contrato.id}/${data.tipo}-${randomBytes(8).toString("hex")}.pdf`;
+    const nomeSeguro =
+      String(contrato.pessoa_nome || "Pessoa")
+        .trim()
+        .replace(/[^a-zA-ZÀ-ÿ0-9 _-]/g, "")
+        .replace(/\s+/g, " ")
+        .slice(0, 100) || "Pessoa";
+    const nomeVersao = data.tipo === "em_branco" ? "Em branco" : "Assinado";
+    const path = `${contrato.id}/${nomeSeguro} - ${nomeVersao}.pdf`;
     const bucket = admin.storage.from("oricse-contratos");
     const upload = await bucket.upload(path, bytes, {
       contentType: "application/pdf",
-      upsert: false,
+      upsert: true,
     });
     if (upload.error) throw new Error("Não foi possível guardar o PDF do contrato.");
     const { data: anterior } = await admin
@@ -257,18 +263,16 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
       .eq("tipo", data.tipo)
       .maybeSingle();
     if (anterior?.storage_path) await bucket.remove([anterior.storage_path]);
-    const { error: arquivoError } = await admin
-      .from("oricse_contrato_arquivos")
-      .upsert(
-        {
-          contrato_id: contrato.id,
-          tipo: data.tipo,
-          storage_path: path,
-          mime_type: "application/pdf",
-          tamanho_bytes: bytes.length,
-        },
-        { onConflict: "contrato_id,tipo" },
-      );
+    const { error: arquivoError } = await admin.from("oricse_contrato_arquivos").upsert(
+      {
+        contrato_id: contrato.id,
+        tipo: data.tipo,
+        storage_path: path,
+        mime_type: "application/pdf",
+        tamanho_bytes: bytes.length,
+      },
+      { onConflict: "contrato_id,tipo" },
+    );
     if (arquivoError) {
       await bucket.remove([path]);
       throw new Error("Não foi possível registrar o PDF do contrato.");
@@ -313,41 +317,4 @@ export const obterDownloadContrato = createServerFn({ method: "POST" })
     if (signed.error || !signed.data?.signedUrl)
       throw new Error("Não foi possível preparar o download.");
     return { url: signed.data.signedUrl, mimeType: arquivo.mime_type };
-  });
-
-export const obterDownloadContratoAdmin = createServerFn({ method: "POST" })
-  .validator((input: unknown) =>
-    accessSchema
-      .extend({ contratoId: z.string().uuid(), tipo: z.enum(["em_branco", "assinado"]) })
-      .parse(input),
-  )
-  .handler(async ({ data }) => {
-    const { admin } = await exigirAdministrador(data.accessToken);
-    const { data: arquivo } = await admin
-      .from("oricse_contrato_arquivos")
-      .select("storage_path,mime_type")
-      .eq("contrato_id", data.contratoId)
-      .eq("tipo", data.tipo)
-      .maybeSingle();
-    if (!arquivo) throw new Error("Esta versão do contrato ainda não foi gerada.");
-    const signed = await admin.storage
-      .from("oricse-contratos")
-      .createSignedUrl(arquivo.storage_path, 600);
-    if (signed.error || !signed.data?.signedUrl)
-      throw new Error("Não foi possível preparar o download.");
-    return { url: signed.data.signedUrl, mimeType: arquivo.mime_type };
-  });
-
-export const cancelarContrato = createServerFn({ method: "POST" })
-  .validator((input: unknown) =>
-    accessSchema.extend({ contratoId: z.string().uuid() }).parse(input),
-  )
-  .handler(async ({ data }) => {
-    const { admin } = await exigirAdministrador(data.accessToken);
-    const { error } = await admin
-      .from("oricse_contratos")
-      .update({ status: "cancelado", updated_at: new Date().toISOString() })
-      .eq("id", data.contratoId);
-    if (error) throw new Error("Não foi possível cancelar o link do contrato.");
-    return { ok: true };
   });
