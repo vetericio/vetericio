@@ -42,8 +42,8 @@ const PERGUNTAS_FREQUENTES = [
     resposta: "Sim. Na renovação estão previstos ciclos mensal, trimestral, semestral, anual e bienal, conforme as condições vigentes.",
   },
   {
-    pergunta: "O plano Master tem fidelidade?",
-    resposta: "Sim. O Master possui fidelidade mínima de 12 meses, mesmo quando pago mensalmente.",
+    pergunta: "Os planos possuem fidelidade?",
+    resposta: "Somente o plano Master possui fidelidade mínima de 12 meses, inclusive para quem escolhe o pagamento mensal. Os planos Solo, Essencial e Profissional não possuem fidelidade: você pode solicitar o cancelamento sem precisar cumprir um período mínimo de permanência. Valores já pagos, períodos contratados e eventuais condições de cancelamento seguem os termos da contratação.",
   },
   {
     pergunta: "Qual plano é indicado para quem trabalha sozinho?",
