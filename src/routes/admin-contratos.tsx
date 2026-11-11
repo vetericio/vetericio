@@ -478,7 +478,7 @@ function AdminContratos() {
                                 [contrato.id]: event.target.value,
                               }))
                             }
-                            placeholder="Identificação do envio"
+                            placeholder="Nome do destinatário ou referência"
                             aria-label={`Identificação do envio para ${contrato.pessoa_nome || "contrato"}`}
                             className="min-h-8 w-full rounded-md border bg-background px-2 text-xs font-normal"
                             maxLength={160}
