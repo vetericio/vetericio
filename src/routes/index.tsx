@@ -530,7 +530,7 @@ function PaginaInicialPlataforma() {
               <p className="mt-6 max-w-xl text-[17px] leading-7 text-[#765c66]">Um espaço exclusivo, com a identidade da sua clínica, para o tutor acompanhar o pet, encontrar documentos e resolver o que precisa sem depender da recepção.</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link to="/planos" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#4A1826] px-6 py-3.5 text-sm font-extrabold text-white shadow-[0_14px_30px_rgba(74,24,38,.18)] transition hover:-translate-y-0.5 hover:bg-[#651f38]">Quero oferecer aos meus tutores <ArrowRight size={17}/></Link>
-                <Link to="/demo-portal-tutor" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[#d9b5bf] bg-white px-6 py-3.5 text-sm font-bold text-[#6e3045] transition hover:border-[#6e3045]">Quero uma demonstração <ArrowRight size={16}/></Link>
+                <Link to="/demonstracao" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[#d9b5bf] bg-white px-6 py-3.5 text-sm font-bold text-[#6e3045] transition hover:border-[#6e3045]">Quero uma demonstração <ArrowRight size={16}/></Link>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-[#80606c]">
                 <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={15} className="text-[#b4693e]"/> Personalizado para sua clínica</span>
