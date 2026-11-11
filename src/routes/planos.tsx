@@ -55,7 +55,7 @@ const PERGUNTAS_FREQUENTES = [
   },
   {
     pergunta: "Quantos profissionais podem usar o sistema?",
-    resposta: "A quantidade de usuários depende do plano. Cada cartão informa o número incluído para a configuração comercial vigente.",
+    resposta: "Cada plano já inclui uma quantidade de usuários para sua equipe. Precisa de mais profissionais? Você pode ampliar os acessos conforme seu negócio cresce, contratando usuários adicionais por um valor extra, de acordo com as condições comerciais vigentes. Assim, sua equipe tem espaço para crescer sem precisar trocar de sistema.",
   },
   {
     pergunta: "O Portal do Tutor está incluído?",
