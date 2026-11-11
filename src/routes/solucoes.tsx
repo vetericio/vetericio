@@ -32,7 +32,7 @@ function Solucoes() {
   return <main className="min-h-screen bg-[#fffdfa] text-[#512b38]">
     <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
       <Link to="/" className="inline-flex items-center gap-2 text-sm font-bold text-[#672e43]"><ArrowLeft size={17}/> Voltar à Oricse</Link>
-      <Link to="/planos" className="rounded-full bg-[#4A1826] px-5 py-2.5 text-sm font-bold text-white">Solicitar demonstração</Link>
+      <a href="https://oricse.com.br/#diferenciais" className="rounded-full bg-[#4A1826] px-5 py-2.5 text-sm font-bold text-white">Solicitar demonstração</a>
     </header>
     <section className="border-y border-[#eddfda] bg-[#f8efeb] px-5 py-16 text-center sm:px-8 sm:py-20">
       <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#9c6574]">Soluções Oricse</p>
