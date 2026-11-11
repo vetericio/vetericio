@@ -412,12 +412,41 @@ function PaginaInicialPlataforma() {
             max-width: 15ch;
           }
         }
+
+        /* Correção somente para celulares: evita imagem vazia no Instagram.
+           A fotografia original do órix fica no background (não em um <img>
+           sujeito às regras genéricas de ocultação ou dimensão). O desktop
+           e o tablet continuam utilizando sua composição atual. */
+        @media (max-width: 767px) {
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-base-capa"]::before {
+            content: "";
+            display: block;
+            flex: 0 0 auto;
+            order: 0;
+            align-self: stretch;
+            width: 100%;
+            height: clamp(250px, 64vw, 350px);
+            background-color: #ead4c6;
+            background-image:
+              linear-gradient(to bottom, rgba(255, 253, 250, 0) 70%, #fffdfa 100%),
+              url("/oricse-capa-paisagem.png?v=20261111-hero-mobile");
+            background-repeat: no-repeat;
+            background-position: center, 72% 42%;
+            background-size: cover, cover;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-imagem-oryx"] {
+            display: none !important;
+          }
+          main[data-visual-id="home-fundo-bege"] [data-visual-id="home-conteudo-banner"] {
+            padding-top: 8px;
+          }
+        }
       `}</style>
     <main data-visual-id="home-fundo-bege" data-visual-label="Fundo bege da página" className="overflow-x-hidden bg-[#fffdfa] text-[#512b38]">
       <header data-visual-id="home-cabecalho" data-visual-label="Cabeçalho" className="relative z-40 mx-auto flex min-h-[52px] max-w-7xl items-center justify-between px-5 py-0 sm:px-8 lg:justify-end lg:px-10">
         <Link to="/" aria-label="ORICSE — Página inicial" className="inline-flex shrink-0 items-center gap-1 lg:hidden">
           <img src="/oricse-logo-oryx.svg?v=15" alt="Logo ORICSE" width={64} height={64} className="h-16 w-16 shrink-0 object-contain" loading="eager" />
-          <span className="font-display text-[23px] font-semibold tracking-[-.045em] text-[#4A1826]">ORICSE</span>
+          <span className="hidden font-display text-[23px] font-semibold tracking-[-.045em] text-[#4A1826] md:inline">ORICSE</span>
         </Link>
         <nav data-visual-id="home-menu-superior" data-visual-label="Menu superior" className="hidden items-center gap-8 text-sm font-semibold text-[#6b4050] md:flex"><a href="#oricstudio">OricStúdio</a><a href="#diferenciais">Portal do Tutor</a><Link to="/planos">Planos</Link><Link to="/demonstracao" className="font-bold text-[#4A1826]">Quero uma demonstração</Link><Link data-visual-id="home-botao-login" data-visual-label="Botão Login" to="/login" className="rounded-full bg-[#4A1826] px-5 py-2.5 font-bold text-white">Login</Link></nav>
         <button onClick={() => setMenu(!menu)} aria-label={menu ? "Fechar menu principal" : "Abrir menu principal"} aria-expanded={menu} className="inline-flex items-center justify-center rounded-full bg-[#4A1826] p-2.5 text-white lg:hidden">{menu ? <X size={17}/> : <Menu size={17}/>}</button>
