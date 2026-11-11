@@ -73,6 +73,7 @@ import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-paga
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
 import { Route as SiteDaClinicaRouteImport } from './routes/site-da-clinica'
 import { Route as SiteDaClinicaPreviewRouteImport } from './routes/site-da-clinica-preview'
+import { Route as SolicitarDemonstracaoRouteImport } from './routes/solicitar-demonstracao'
 import { Route as SolucoesRouteImport } from './routes/solucoes'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as TermosRouteImport } from './routes/termos'
@@ -411,6 +412,11 @@ const SiteDaClinicaPreviewRoute = SiteDaClinicaPreviewRouteImport.update({
   path: '/site-da-clinica-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SolicitarDemonstracaoRoute = SolicitarDemonstracaoRouteImport.update({
+  id: '/solicitar-demonstracao',
+  path: '/solicitar-demonstracao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolucoesRoute = SolucoesRouteImport.update({
   id: '/solucoes',
   path: '/solucoes',
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
   '/site-da-clinica-preview': typeof SiteDaClinicaPreviewRoute
+  '/solicitar-demonstracao': typeof SolicitarDemonstracaoRoute
   '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -650,6 +657,7 @@ export interface FileRoutesByTo {
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
   '/site-da-clinica-preview': typeof SiteDaClinicaPreviewRoute
+  '/solicitar-demonstracao': typeof SolicitarDemonstracaoRoute
   '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -734,6 +742,7 @@ export interface FileRoutesById {
   '/sincronizacao': typeof SincronizacaoRoute
   '/site-da-clinica': typeof SiteDaClinicaRoute
   '/site-da-clinica-preview': typeof SiteDaClinicaPreviewRoute
+  '/solicitar-demonstracao': typeof SolicitarDemonstracaoRoute
   '/solucoes': typeof SolucoesRoute
   '/temas': typeof TemasRoute
   '/termos': typeof TermosRoute
@@ -819,6 +828,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/site-da-clinica'
     | '/site-da-clinica-preview'
+    | '/solicitar-demonstracao'
     | '/solucoes'
     | '/temas'
     | '/termos'
@@ -902,6 +912,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/site-da-clinica'
     | '/site-da-clinica-preview'
+    | '/solicitar-demonstracao'
     | '/solucoes'
     | '/temas'
     | '/termos'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/sincronizacao'
     | '/site-da-clinica'
     | '/site-da-clinica-preview'
+    | '/solicitar-demonstracao'
     | '/solucoes'
     | '/temas'
     | '/termos'
@@ -1069,6 +1081,7 @@ export interface RootRouteChildren {
   SincronizacaoRoute: typeof SincronizacaoRoute
   SiteDaClinicaRoute: typeof SiteDaClinicaRoute
   SiteDaClinicaPreviewRoute: typeof SiteDaClinicaPreviewRoute
+  SolicitarDemonstracaoRoute: typeof SolicitarDemonstracaoRoute
   SolucoesRoute: typeof SolucoesRoute
   TemasRoute: typeof TemasRoute
   TermosRoute: typeof TermosRoute
@@ -1538,6 +1551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteDaClinicaPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/solicitar-demonstracao': {
+      id: '/solicitar-demonstracao'
+      path: '/solicitar-demonstracao'
+      fullPath: '/solicitar-demonstracao'
+      preLoaderRoute: typeof SolicitarDemonstracaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solucoes': {
       id: '/solucoes'
       path: '/solucoes'
@@ -1725,6 +1745,7 @@ const rootRouteChildren: RootRouteChildren = {
   SincronizacaoRoute: SincronizacaoRoute,
   SiteDaClinicaRoute: SiteDaClinicaRoute,
   SiteDaClinicaPreviewRoute: SiteDaClinicaPreviewRoute,
+  SolicitarDemonstracaoRoute: SolicitarDemonstracaoRoute,
   SolucoesRoute: SolucoesRoute,
   TemasRoute: TemasRoute,
   TermosRoute: TermosRoute,
