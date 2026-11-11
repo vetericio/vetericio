@@ -155,6 +155,29 @@ function AdminContratos() {
     }
   }
 
+  async function visualizarAssinado(contratoId: string) {
+    const janela = window.open("", "_blank");
+    if (!janela) {
+      toast.error("Permita pop-ups para visualizar o contrato assinado.");
+      return;
+    }
+    try {
+      const accessToken = await tokenAdmin();
+      const resposta = await obterDownloadContratoAdmin({
+        data: { accessToken, contratoId, tipo: "assinado" },
+      });
+      const binario = atob(resposta.base64);
+      const bytes = Uint8Array.from(binario, (caractere) => caractere.charCodeAt(0));
+      const arquivo = new Blob([bytes], { type: resposta.mimeType || "application/pdf" });
+      const url = URL.createObjectURL(arquivo);
+      janela.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      janela.close();
+      toast.error(error instanceof Error ? error.message : "Não foi possível visualizar o contrato assinado.");
+    }
+  }
+
   async function baixarVersao(contratoId: string, tipo: "em_branco" | "assinado") {
     try {
       const accessToken = await tokenAdmin();
@@ -428,7 +451,7 @@ function AdminContratos() {
                           {contrato.status === "assinado" && (
                             <button
                               type="button"
-                              onClick={() => void baixarVersao(contrato.id, "assinado")}
+                              onClick={() => void visualizarAssinado(contrato.id)}
                               className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
                             >
                               <span className="inline-flex items-center gap-1"><Eye size={14} /> Visualizar assinado</span>
