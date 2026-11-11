@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { driveAccessToken, writeDriveFile } from "@/lib/drive-kv.server";
 
 const accessSchema = z.object({ accessToken: z.string().min(20) });
 const tokenSchema = z.object({ token: z.string().min(32).max(160) });
@@ -145,7 +146,7 @@ export const listarContratos = createServerFn({ method: "POST" })
     const { data: contratos, error } = await admin
       .from("oricse_contratos")
       .select(
-        "id,modelo_titulo,status,pessoa_nome,pessoa_email,expira_em,preenchido_em,assinado_em,created_at,oricse_contrato_arquivos(id,tipo,tamanho_bytes,created_at)",
+        "id,modelo_titulo,status,pessoa_nome,pessoa_email,expira_em,preenchido_em,assinado_em,created_at,oricse_contrato_arquivos(id,tipo,tamanho_bytes,drive_file_id,drive_file_url,created_at)",
       )
       .order("created_at", { ascending: false });
     if (error) throw new Error("Não foi possível carregar os contratos gerados.");
@@ -265,6 +266,26 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
       upsert: true,
     });
     if (upload.error) throw new Error("Não foi possível guardar o PDF do contrato.");
+
+    let driveArquivo: { id: string; folderId: string; url: string };
+    try {
+      const driveToken = await driveAccessToken();
+      driveArquivo = await writeDriveFile(
+        driveToken,
+        ["contratos"],
+        `${nomeSeguro} - ${nomeVersao}.pdf`,
+        bytes,
+        "application/pdf",
+        {
+          oricseContratoId: contrato.id,
+          oricseContratoTipo: data.tipo,
+        },
+      );
+    } catch (error) {
+      await bucket.remove([path]);
+      const detalhe = error instanceof Error ? error.message : "falha desconhecida";
+      throw new Error(`Não foi possível salvar o PDF no Google Drive: ${detalhe}`);
+    }
     const { data: anterior } = await admin
       .from("oricse_contrato_arquivos")
       .select("storage_path")
@@ -279,6 +300,9 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
         storage_path: path,
         mime_type: "application/pdf",
         tamanho_bytes: bytes.length,
+        drive_file_id: driveArquivo.id,
+        drive_file_url: driveArquivo.url,
+        drive_folder_id: driveArquivo.folderId,
       },
       { onConflict: "contrato_id,tipo" },
     );
@@ -292,7 +316,16 @@ export const salvarArquivoContrato = createServerFn({ method: "POST" })
         .from("oricse_contratos")
         .update({ status: "assinado", assinado_em: agora, updated_at: agora })
         .eq("id", contrato.id);
-    return { ok: true, tipo: data.tipo, tamanhoBytes: bytes.length };
+    return {
+      ok: true,
+      tipo: data.tipo,
+      tamanhoBytes: bytes.length,
+      drive: {
+        fileId: driveArquivo.id,
+        fileUrl: driveArquivo.url,
+        folderId: driveArquivo.folderId,
+      },
+    };
   });
 
 export const obterDownloadContrato = createServerFn({ method: "POST" })
