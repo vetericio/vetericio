@@ -185,7 +185,7 @@ function Planos() {
               </a>
               <a href="https://oricse.com.br/#diferenciais" className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#7d3349]/30 bg-white/80 px-6 text-sm font-bold text-[#5e263b] transition hover:bg-white">
                 Quero uma demonstração <span className="ml-2 text-lg">→</span>
-              </Link>
+              </a>
             </div>
           </div>
 
