@@ -1,8 +1,8 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileDown, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
 import { obterPerfilPessoa } from "@/lib/admin-users.functions";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { lerSelo, type TipoSelo } from "@/lib/assinatura";
@@ -10,7 +10,6 @@ import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import {
   criarReceituario,
-  ENDERECO_RECEITUARIO,
   FORMAS_MEDICAMENTO,
   INTERVALOS_RECEITUARIO,
   montarPosologia,
@@ -90,7 +89,10 @@ export function Receituario() {
   const [data, setData] = useState(() => new Date().toLocaleDateString("pt-BR"));
   const [itens, setItens] = useState<ItemReceituario[]>(() => [novoItem()]);
   const [observacoes, setObservacoes] = useState("");
-  const [endereco, setEndereco] = useState(ENDERECO_RECEITUARIO);
+  const [endereco, setEndereco] = useState("");
+  const [carregandoDados, setCarregandoDados] = useState(true);
+  const [mensagemDados, setMensagemDados] = useState("");
+  const [tutorIdCanonico, setTutorIdCanonico] = useState("");
   const [selos, setSelos] = useState<Record<TipoSelo, string | null>>({ assinatura: null, carimbo: null });
   const [posicoesSelos, setPosicoesSelos] = useState<Partial<Record<TipoSelo, PosicaoSeloReceituario>>>({});
   const [gerando, setGerando] = useState(false);
@@ -100,25 +102,76 @@ export function Receituario() {
   const [motivoOutro, setMotivoOutro] = useState("");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const animalId = params.get("animalId") || "";
-    const tutorId = params.get("tutorId") || "";
-    if (!animalId && !tutorId) return;
-    try {
-      const animais = JSON.parse(oricseStorage.getItem("oricse-animais-v1") || "[]") as any[];
-      const tutores = JSON.parse(oricseStorage.getItem("oricse-tutores-v1") || "[]") as any[];
-      const animal = animais.find((item) => String(item.id) === animalId);
-      const tutorEncontrado = tutores.find((item) => String(item.id) === (tutorId || animal?.tutorId));
-      if (animal) {
-        setPaciente(animal.nome || ""); setPeso(animal.peso || ""); setSexo(animal.sexo || ""); setRaca(animal.raca || ""); setIdade(animal.idade || animal.nascimento || "");
-        const esp = String(animal.especie || "").toLowerCase();
-        setEspecie(esp.includes("gato") || esp.includes("fel") ? "Felina" : esp.includes("cão") || esp.includes("cach") || esp.includes("can") ? "Canina" : "Outro");
+    let ativo = true;
+    async function preencher() {
+      const params = new URLSearchParams(window.location.search);
+      const animalId = params.get("animalId") || "";
+      const tutorId = params.get("tutorId") || "";
+      try {
+        const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
+        if (erroSessao || !sessao.session?.access_token)
+          throw new Error("Sessão não encontrada. Entre novamente para preencher os dados.");
+
+        const dados = await obterDadosReceituario({
+          data: {
+            accessToken: sessao.session.access_token,
+            ...(animalId ? { animalId } : {}),
+            ...(tutorId ? { tutorId } : {}),
+          },
+        });
+        if (!ativo) return;
+        if (dados.clinicaEndereco) setEndereco(dados.clinicaEndereco);
+        if (dados.animal) {
+          const animal = dados.animal;
+          setPaciente(animal.nome || "");
+          setPeso(animal.peso ? animal.peso.replace(".", ",") : "");
+          setSexo(animal.sexo || "");
+          setRaca(animal.raca || "");
+          let idadeAnimal = animal.idade || "";
+          if (!idadeAnimal && /^\\d{4}-\\d{2}-\\d{2}$/.test(animal.nascimento || "")) {
+            const [ano, mes, dia] = animal.nascimento.split("-").map(Number);
+            const agora = new Date();
+            const anos = agora.getFullYear() - ano - (agora.getMonth() + 1 < mes || (agora.getMonth() + 1 === mes && agora.getDate() < dia) ? 1 : 0);
+            if (anos >= 0) idadeAnimal = anos < 1 ? "Menos de 1 ano" : anos === 1 ? "1 ano" : anos + " anos";
+          }
+          setIdade(idadeAnimal);
+          const especieSalva = String(animal.especie || "").toLocaleLowerCase("pt-BR");
+          if (especieSalva.includes("gat") || especieSalva.includes("fel")) {
+            setEspecie("Felina");
+            setOutraEspecie("");
+          } else if (especieSalva.includes("cão") || especieSalva.includes("cao") || especieSalva.includes("cach") || especieSalva.includes("can")) {
+            setEspecie("Canina");
+            setOutraEspecie("");
+          } else if (especieSalva) {
+            setEspecie("Outro");
+            setOutraEspecie(animal.especie);
+          }
+        }
+        if (dados.tutor) {
+          setTutor(dados.tutor.nome || "");
+          setTelefoneTutor(dados.tutor.telefone || "");
+          setCpfTutor(dados.tutor.cpf || "");
+          setEnderecoTutor(dados.tutor.endereco || "");
+          setTutorIdCanonico(dados.tutor.id);
+        }
+        if (!dados.clinicaEndereco) {
+          setMensagemDados("Endereço da clínica não encontrado no cadastro. Confira e preencha antes de gerar o PDF.");
+        } else if (animalId || tutorId) {
+          setMensagemDados("Dados do atendimento e endereço cadastrado da clínica carregados. Confira antes de emitir.");
+        } else {
+          setMensagemDados("Endereço cadastrado da clínica carregado.");
+        }
+      } catch (error) {
+        if (ativo) {
+          setMensagemDados(error instanceof Error ? error.message : "Não foi possível preencher os dados do atendimento.");
+          toast.error("Preenchimento automático indisponível. Confira os dados antes de emitir.");
+        }
+      } finally {
+        if (ativo) setCarregandoDados(false);
       }
-      if (tutorEncontrado) {
-        setTutor(tutorEncontrado.nome || ""); setTelefoneTutor(tutorEncontrado.telefone || tutorEncontrado.celular || ""); setCpfTutor(tutorEncontrado.cpfCnpj || tutorEncontrado.cpf || tutorEncontrado.cnpj || "");
-        setEnderecoTutor([tutorEncontrado.endereco, tutorEncontrado.numero, tutorEncontrado.bairro, tutorEncontrado.cidade, tutorEncontrado.uf].filter(Boolean).join(", "));
-      }
-    } catch { /* mantém preenchimento manual */ }
+    }
+    void preencher();
+    return () => { ativo = false; };
   }, []);
 
   useEffect(() => {
@@ -198,7 +251,7 @@ export function Receituario() {
   async function publicarNoPortal(doc: Awaited<ReturnType<typeof criarReceituario>>, numero?: string) {
     const params = new URLSearchParams(window.location.search);
     const animalId = params.get("animalId") || "";
-    const tutorId = params.get("tutorId") || "";
+    const tutorId = tutorIdCanonico || params.get("tutorId") || "";
     if (!animalId || !tutorId) {
       toast.info("PDF gerado. Esta receita não foi vinculada ao Portal do Tutor porque não há animal/tutor canônico na URL.");
       return;
@@ -207,11 +260,11 @@ export function Receituario() {
     const accessToken = sessao.session?.access_token;
     const userId = sessao.session?.user?.id;
     if (!accessToken || !userId) throw new Error("Sessão não encontrada para publicar a receita.");
-    const { data: contexto, error: contextoError } = await (supabase as any).rpc("oricse_contexto_clinica_atual");
+    const { data: contexto, error: contextoError } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
     if (contextoError) throw contextoError;
     const clinicaId = String(contexto?.[0]?.clinica_id || "");
     if (!clinicaId) throw new Error("Clínica atual não identificada.");
-    const { data: animalCanonico, error: animalError } = await (supabase as any)
+    const { data: animalCanonico, error: animalError } = await (supabaseBanco as any)
       .from("oricse_animais").select("id,tutor_id,nome").eq("id", animalId).eq("clinica_id", clinicaId).maybeSingle();
     if (animalError) throw animalError;
     if (!animalCanonico || String(animalCanonico.tutor_id) !== tutorId) {
@@ -236,7 +289,7 @@ export function Receituario() {
       },
     });
     const dados = { paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco };
-    const { error } = await (supabase as any).from("oricse_portal_receitas").insert({
+    const { error } = await (supabaseBanco as any).from("oricse_portal_receitas").insert({
       clinica_id: clinicaId,
       tutor_id: tutorId,
       animal_id: animalId,
@@ -255,7 +308,7 @@ export function Receituario() {
   }
 
   const gerar = async () => {
-    if (gerando) return;
+    if (gerando || carregandoDados) return;
     if (!paciente.trim()) return void toast.error("Informe o nome do paciente.");
     if (!telefoneTutor.trim()) return void toast.error("Informe o telefone do tutor.");
     if (!itens.some((item) => item.medicamento.trim())) return void toast.error("Informe ao menos um medicamento.");
@@ -368,9 +421,10 @@ export function Receituario() {
         {!selos.assinatura && !selos.carimbo && <p className="mt-2 text-xs text-muted-foreground">Cadastre a assinatura e o carimbo em Assinar um documento.</p>}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço que aparecerá no final da folha" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data aparece somente no final do PDF.</p></section>
+      {(carregandoDados || mensagemDados) && <p role="status" className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs text-foreground">{carregandoDados ? "Buscando os dados do atendimento e da clínica..." : mensagemDados}</p>}
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
 
-      <button type="button" onClick={() => void gerar()} disabled={gerando} className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-14 w-auto max-w-3xl items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-60"><FileDown className="h-5 w-5" />{gerando ? "Gerando PDF…" : "Gerar receituário em PDF"}</button>
+      <button type="button" onClick={() => void gerar()} disabled={gerando || carregandoDados} className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-14 w-auto max-w-3xl items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-60"><FileDown className="h-5 w-5" />{gerando ? "Gerando PDF…" : carregandoDados ? "Carregando dados..." : "Gerar receituário em PDF"}</button>
     </main>
   );
 }
