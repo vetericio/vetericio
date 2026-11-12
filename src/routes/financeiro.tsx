@@ -10,7 +10,6 @@ import {
   Pencil,
   Plus,
   Search,
-  Trash2,
   Users,
   Phone,
   Clock3,
@@ -44,12 +43,13 @@ import { toast } from "sonner";
 import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { CaixaOperacional } from "@/components/financeiro/CaixaOperacional";
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
 const LANCAMENTOS_KEY = "oricse-financeiro-lancamentos-v1";
 
-type TipoLancamento = "Entrada" | "Saída";
+type TipoLancamento = "Entrada" | "Saída" | "Estorno";
 type StatusLancamento = "Pago" | "Pendente";
 
 type Lancamento = {
@@ -216,11 +216,12 @@ function lerTutores(): TutorFinanceiro[] {
 
 export function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
-  const { clinicaId } = usePermissoes();
+  const { clinicaId, pode } = usePermissoes();
   const [estadiasHotel, setEstadiasHotel] = useState<Array<{id:string;status:string;valor_diaria_centavos:number;valor_final_centavos:number|null;chegada_prevista:string;saida_prevista:string;checkout_em:string|null}>>([]);
   const [erroHotel, setErroHotel] = useState("");
-  const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string}>>([]);
+  const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string;detalhes?:{tutor?:string;tutorId?:string;observacao?:string};data_competencia?:string|null}>>([]);
   const [erroCaixaGeral,setErroCaixaGeral]=useState("");
+  const [estornosConfirmados,setEstornosConfirmados]=useState<Array<{id:string;valor_centavos:number;lancamento_id:string;revisado_em:string}>>([]);
   const [carregandoCaixa,setCarregandoCaixa]=useState(false);
   const [periodoSetorial,setPeriodoSetorial]=useState<PeriodoSetorial>("mes");
   useEffect(()=>{
@@ -231,12 +232,18 @@ export function Financeiro() {
       const atual=++requisicao;
       if(ativo)setCarregandoCaixa(true);
       try{
+        const { data: estornosData, error: erroEstornos } = await (supabaseBanco as any)
+          .from("oricse_caixa_estornos")
+          .select("id,valor_centavos,lancamento_id,revisado_em")
+          .eq("clinica_id",clinicaId).eq("status","confirmado")
+          .order("revisado_em",{ascending:false}).limit(1000);
+        if(erroEstornos)throw erroEstornos;
         // Paginação evita subcontar clínicas com mais de 2.000 movimentos.
         const todos: typeof caixaGeral=[];
         const pagina=1000;
         for(let inicio=0;;inicio+=pagina){
           const {data,error}=await (supabaseBanco as any).from("oricse_caixa_lancamentos")
-            .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo")
+            .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo,detalhes,data_competencia")
             .eq("clinica_id",clinicaId)
             .order("registrado_em",{ascending:false}).order("id",{ascending:false})
             .range(inicio,inicio+pagina-1);
@@ -245,11 +252,11 @@ export function Financeiro() {
           todos.push(...(data||[]));
           if(!data||data.length<pagina)break;
         }
-        if(ativo&&requisicao===atual){setCaixaGeral(todos);setErroCaixaGeral("");}
+        if(ativo&&requisicao===atual){setCaixaGeral(todos);setEstornosConfirmados(estornosData||[]);setErroCaixaGeral("");}
       }catch(error){
         if(ativo&&requisicao===atual){
           setErroCaixaGeral("Não foi possível consultar todos os lançamentos do caixa. Tente atualizar a página.");
-          setCaixaGeral([]);
+          setCaixaGeral([]);setEstornosConfirmados([]);
           console.error("Falha na consolidação financeira:",error);
         }
       }finally{if(ativo&&requisicao===atual)setCarregandoCaixa(false);}
@@ -257,7 +264,8 @@ export function Financeiro() {
     void carregar();
     window.addEventListener("focus",carregar);
     document.addEventListener("visibilitychange",carregar);
-    return()=>{ativo=false;window.removeEventListener("focus",carregar);document.removeEventListener("visibilitychange",carregar);};
+    window.addEventListener("oricse:caixa-alterado",carregar);
+    return()=>{ativo=false;window.removeEventListener("focus",carregar);document.removeEventListener("visibilitychange",carregar);window.removeEventListener("oricse:caixa-alterado",carregar);};
   },[clinicaId]);
   useEffect(() => {
     if (!clinicaId) { setEstadiasHotel([]); return; }
@@ -307,6 +315,10 @@ export function Financeiro() {
   const [formAberto, setFormAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(() => formVazio());
+  const [salvandoLancamento, setSalvandoLancamento] = useState(false);
+  const [baixaCentralId, setBaixaCentralId] = useState("");
+  const [formaBaixa, setFormaBaixa] = useState("Pix");
+  const [salvandoBaixa, setSalvandoBaixa] = useState(false);
 
   useEffect(() => {
     const atualizarComandas = () => setComandas(lerComandas());
@@ -367,7 +379,7 @@ export function Financeiro() {
     window.dispatchEvent(new Event("oricse-financeiro-atualizado"));
   }
 
-  function salvarLancamento(evento: FormEvent) {
+  async function salvarLancamento(evento: FormEvent) {
     evento.preventDefault();
     const valor = parseValorMonetario(form.valor);
     if (!form.descricao.trim()) return void toast.error("Informe a descrição do lançamento.");
@@ -384,6 +396,9 @@ export function Financeiro() {
     const tutorVinculado =
       tutoresCadastrados.find((tutor) => tutor.id === form.tutorId) ||
       (tutoresComMesmoNome.length === 1 ? tutoresComMesmoNome[0] : undefined);
+    if (!clinicaId) return void toast.error("Selecione uma clínica ativa antes de salvar.");
+    if (!pode("caixa.financeiro.gerenciar") && !pode("caixa.comandas"))
+      return void toast.error("Você não tem permissão para registrar movimentações.");
     const anterior = editandoId ? lancamentos.find((item) => item.id === editandoId) : undefined;
     const mesmoTutor = anterior?.tutor && normalizar(anterior.tutor) === nomeTutor;
     const camposAnteriores: Partial<Lancamento> = anterior ? { ...anterior } : {};
@@ -408,13 +423,42 @@ export function Financeiro() {
       ...(tutorId ? { tutorId } : {}),
       ...(observacao ? { observacao } : {}),
     };
-    persistir(
-      anterior
-        ? lancamentos.map((item) => (item.id === anterior.id ? novo : item))
-        : [novo, ...lancamentos],
-    );
-    fecharFormulario();
-    toast.success(anterior ? "Lançamento atualizado." : "Lançamento salvo.");
+    if (anterior) {
+      if (anterior.status === "Pago") return void toast.error("Lançamentos pagos não podem ser editados. Solicite um estorno ou registre ajuste auditável.");
+      persistir(lancamentos.map((item) => item.id === anterior.id ? novo : item));
+      fecharFormulario();
+      toast.success("Lançamento pendente atualizado no histórico anterior.");
+      return;
+    }
+    setSalvandoLancamento(true);
+    try {
+      const { data: sessao, error: erroSessao } = await supabase.auth.getUser();
+      if (erroSessao || !sessao.user) throw new Error("Sessão expirada. Entre novamente.");
+      const { data: inserido, error: erroGravacao } = await (supabaseBanco as any)
+        .from("oricse_caixa_lancamentos")
+        .insert({
+          clinica_id: clinicaId, setor: form.categoria,
+          origem_tipo: "financeiro_manual", origem_id: crypto.randomUUID(),
+          tipo: form.tipo === "Entrada" ? "entrada" : "saida",
+          status: form.status === "Pago" ? "pago" : "pendente",
+          descricao: form.descricao.trim(), valor_centavos: Math.round(valor * 100),
+          forma_pagamento: form.formaPagamento,
+          registrado_por: sessao.user.id,
+          data_competencia: form.data,
+          detalhes: { tutor: tutor || null, tutorId: tutorId || null, observacao: observacao || null },
+        })
+        .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo,detalhes,data_competencia")
+        .single();
+      if (erroGravacao || !inserido) throw new Error(erroGravacao?.message || "O banco não confirmou o lançamento.");
+      setCaixaGeral((lista) => [inserido, ...lista]);
+      fecharFormulario();
+      toast.success("Lançamento confirmado no Caixa Geral.");
+    } catch (error) {
+      console.error("Falha ao salvar no Caixa Geral:",error);
+      toast.error(error instanceof Error ? error.message : "Lançamento não confirmado. Tente novamente.");
+    } finally {
+      setSalvandoLancamento(false);
+    }
   }
 
   function abrirNovo(tutor = "", tutorId = "") {
@@ -424,7 +468,8 @@ export function Financeiro() {
   }
 
   function abrirEdicao(lancamento: Lancamento) {
-    if (lancamento.id.startsWith("caixa:")) return void toast.error("Registros centralizados são somente leitura nesta tela.");
+    if (lancamento.id.startsWith("caixa:") || lancamento.status === "Pago")
+      return void toast.error("Lançamento pago não pode ser editado. Use o fluxo de estorno autorizado.");
     setEditandoId(lancamento.id);
     setForm({
       tipo: lancamento.tipo,
@@ -447,11 +492,12 @@ export function Financeiro() {
     setForm(formVazio());
   }
 
-  function remover(id: string) {
-    if (id.startsWith("caixa:")) return void toast.error("Registros centralizados não podem ser apagados nesta tela.");
-    persistir(lancamentos.filter((item) => item.id !== id));
-  }
   function darBaixa(id: string) {
+    if (id.startsWith("caixa:")) {
+      setBaixaCentralId(id.slice("caixa:".length));
+      setFormaBaixa("Pix");
+      return;
+    }
     const lancamento = lancamentos.find((item) => item.id === id);
     if (lancamento) {
       if (lancamento.comandaId) {
@@ -466,28 +512,60 @@ export function Financeiro() {
     }
   }
 
+  async function confirmarBaixaCentral() {
+    if (!baixaCentralId || salvandoBaixa) return;
+    setSalvandoBaixa(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_caixa_baixar_pendente", {
+        p_lancamento_id: baixaCentralId, p_forma_pagamento: formaBaixa,
+      });
+      if (error || !data?.id) throw new Error(error?.message || "O pagamento ainda não foi confirmado.");
+      setCaixaGeral(lista => lista.map(l => l.id === baixaCentralId ? { ...l, ...data } : l));
+      setBaixaCentralId("");
+      toast.success("Recebimento registrado e auditado no Caixa Geral.");
+    } catch (error) {
+      console.error("Falha ao registrar baixa:", error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar o pagamento.");
+    } finally {
+      setSalvandoBaixa(false);
+    }
+  }
+
   // Caixa unificado: operações da clínica no PostgreSQL, lançamentos anteriores
   // preservados durante a transição. Identificadores de origem impedem sobreposição.
   const lancamentosUnificados = useMemo<Lancamento[]>(() => {
     const vindosBanco: Lancamento[] = caixaGeral.filter(p => p.status !== "cancelado").map(p => ({
       id: "caixa:" + p.id, tipo: p.tipo === "saida" ? "Saída" : "Entrada",
       descricao: p.descricao, categoria: p.setor,
-      valor: p.valor_centavos / 100, data: dataLocalISO(new Date(p.registrado_em)),
+      valor: p.valor_centavos / 100, data: p.status === "pago"
+        ? dataLocalISO(new Date(p.registrado_em))
+        : (p.data_competencia || dataLocalISO(new Date(p.registrado_em))),
       formaPagamento: p.forma_pagamento,
       status: p.status === "pago" ? "Pago" : "Pendente",
-      observacao: "Registro centralizado · " + p.setor,
+      tutor: p.detalhes?.tutor, tutorId: p.detalhes?.tutorId,
+      observacao: p.detalhes?.observacao || ("Registro centralizado · " + p.setor),
     }));
+    const estornos: Lancamento[] = estornosConfirmados.filter(e=>Boolean(e.revisado_em)).map(e=>{
+      const original=caixaGeral.find(l=>l.id===e.lancamento_id);
+      return {
+        id:"estorno:"+e.id, tipo:"Estorno",
+        descricao:"Estorno confirmado · "+(original?.descricao||"Lançamento central"),
+        categoria:original?.setor||"Outros",valor:e.valor_centavos/100,
+        data:dataLocalISO(new Date(e.revisado_em)),formaPagamento:"Estorno externo",
+        status:"Pago",observacao:"Transação original: "+e.lancamento_id,
+      };
+    });
     const idsBanco = new Set(vindosBanco.map(l => l.id));
-    return [...vindosBanco, ...lancamentos.filter(l => !idsBanco.has(l.id))];
-  }, [caixaGeral, lancamentos]);
+    return [...vindosBanco, ...estornos, ...lancamentos.filter(l => !idsBanco.has(l.id))];
+  }, [caixaGeral, lancamentos, estornosConfirmados]);
   const doDia = useMemo(() => lancamentosUnificados.filter((l) => l.data === dataAtual), [lancamentosUnificados, dataAtual]);
   const doMes = useMemo(
     () => lancamentosUnificados.filter((l) => l.data.startsWith(dataAtual.slice(0, 7))),
     [lancamentosUnificados, dataAtual],
   );
   const entradasDia = doDia
-    .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
-    .reduce((s, l) => s + l.valor, 0);
+    .filter((l) => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago")
+    .reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const saidasDia = doDia
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
@@ -495,14 +573,14 @@ export function Financeiro() {
     .filter((l) => l.tipo === "Entrada" && l.status === "Pendente")
     .reduce((s, l) => s + l.valor, 0);
   const recebidoMes = doMes
-    .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
-    .reduce((s, l) => s + l.valor, 0);
+    .filter((l) => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago")
+    .reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const despesasMes = doMes
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
   const recebidoTotal = lancamentosUnificados
-    .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
-    .reduce((s, l) => s + l.valor, 0);
+    .filter((l) => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago")
+    .reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const despesasTotal = lancamentosUnificados
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
@@ -510,12 +588,12 @@ export function Financeiro() {
   const resumoSetores = useMemo(() => {
     const mapa = Object.fromEntries(SETORES_FINANCEIROS.map((setor) => [setor.id, { recebido: 0, pendente: 0, quantidade: 0 }])) as Record<SetorFinanceiro, { recebido: number; pendente: number; quantidade: number }>;
     for(const lancamento of lancamentosUnificados){
-      if(lancamento.tipo!=="Entrada" || !Number.isFinite(lancamento.valor) || lancamento.valor<0) continue;
+      if(!["Entrada","Estorno"].includes(lancamento.tipo) || !Number.isFinite(lancamento.valor) || lancamento.valor<0) continue;
       if(periodoSetorial==="hoje" && lancamento.data!==dataAtual) continue;
       if(periodoSetorial==="mes" && !lancamento.data.startsWith(dataAtual.slice(0,7))) continue;
       const setor=setorDoLancamento(lancamento.categoria);
       mapa[setor].quantidade++;
-      if(lancamento.status==="Pago") mapa[setor].recebido+=lancamento.valor;
+      if(lancamento.status==="Pago") mapa[setor].recebido+=(lancamento.tipo==="Estorno"? -lancamento.valor : lancamento.valor);
       else mapa[setor].pendente+=lancamento.valor;
     }
     return mapa;
@@ -524,7 +602,7 @@ export function Financeiro() {
   const comandasDia = useMemo(() => comandas.filter(c => dataLocalISO(new Date(c.abertaEm)) === dataAtual).sort((a,b) => b.abertaEm.localeCompare(a.abertaEm)), [comandas, dataAtual]);
   const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && dataLocalISO(new Date(c.abertaEm)) < dataAtual).sort((a,b) => a.abertaEm.localeCompare(b.abertaEm)), [comandas, dataAtual]);
   const lancamentosPeriodo = useMemo(() => lancamentosUnificados.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentosUnificados, periodoInicio, periodoFim]);
-  const recebidoPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Entrada" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
+  const recebidoPeriodo = lancamentosPeriodo.filter(l => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago").reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const despesasPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Saída" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
 
   const tutoresFinanceiros = useMemo(() => {
@@ -585,15 +663,10 @@ export function Financeiro() {
   }, [comandas, lancamentos, tutoresCadastrados, buscaTutor]);
   const tutorSelecionado = tutoresFinanceiros.find((item) => item.tutor.id === tutorSelecionadoId);
 
-  const resumo = [
-    ["Recebido", dinheiro(entradasDia)],
-    ["Pendente", dinheiro(pendenteDia)],
-    ["Despesas", dinheiro(saidasDia)],
-    ["Líquido", dinheiro(entradasDia - saidasDia)],
-  ];
+
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6">
+    <main className="mx-auto min-h-screen w-full max-w-[1500px] px-4 pb-20 pt-5 sm:px-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         {aba === "inicio" ? (
           <Link
@@ -620,7 +693,7 @@ export function Financeiro() {
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Atendimento</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Gestão financeira</p>
           <h1 className="text-3xl font-bold tracking-tight">
             {aba === "inicio" ? "Financeiro" : opcoes.find((o) => o.id === aba)?.titulo}
           </h1>
@@ -640,36 +713,29 @@ export function Financeiro() {
         )}
       </div>
 
+      {(aba === "inicio" || aba === "dia") && <CaixaOperacional
+        clinicaId={clinicaId}
+        recebido={entradasDia}
+        pendente={pendenteDia}
+        despesas={saidasDia}
+        podeOperar={pode("caixa.financeiro.gerenciar") || pode("caixa.comandas")}
+        podeAprovar={pode("administracao.configuracoes")}
+        lancamentosLegadosNoDia={lancamentos.filter(l => l.data === dataAtual && l.status === "Pago").length}
+        onNovoLancamento={() => {setAba("lancamentos");abrirNovo();}}
+        onVerLancamentos={() => setAba("lancamentos")}
+      />}
       {aba === "inicio" && (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {opcoes.map(({ id, titulo, texto, icone: Icone, cor }) => (
-              <button
-                key={titulo}
-                onClick={() => setAba(id)}
-                className="rounded-2xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
-              >
-                <span
-                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${cor}`}
-                >
-                  <Icone size={22} />
-                </span>
-                <h2 className="font-semibold">{titulo}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{texto}</p>
+          <nav aria-label="Áreas do Financeiro" className="mt-4 flex flex-wrap gap-2 rounded-2xl border bg-card p-3 shadow-sm">
+            {opcoes.map(({ id, titulo, icone: Icone }) => (
+              <button key={id} type="button" onClick={() => setAba(id)}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-secondary/30 px-3 text-sm font-semibold text-foreground hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex-none">
+                <Icone size={17} className="shrink-0 text-primary" aria-hidden="true"/>
+                {titulo}
               </button>
             ))}
-          </section>
-          <section className="mt-6 rounded-2xl border bg-card p-5">
-            <h2 className="font-semibold">Resumo de hoje</h2>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {resumo.map(([label, valor]) => (
-                <div key={label} className="rounded-xl bg-muted/50 p-4">
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-lg font-bold">{valor}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          </nav>
+
         </>
       )}
 
@@ -723,7 +789,7 @@ export function Financeiro() {
             </button>
           </div>
           {!erroHotel&&<details className="mt-3 border-t pt-3">
-            <summary className="cursor-pointer text-sm font-semibold text-foreground">Indicadores operacionais do hotelzinho (não são receita recebida)</summary>
+            <summary className="cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold text-foreground hover:bg-secondary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Indicadores operacionais do hotelzinho · não são receita recebida</summary>
             <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
               <div className="rounded-lg bg-secondary/30 p-3">Hospedagens em aberto: <strong>{estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).length}</strong></div>
               <div className="rounded-lg bg-secondary/30 p-3">Diárias reservadas (base): <strong>{dinheiro(estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).reduce((n,e)=>n+Math.max(0,e.valor_diaria_centavos||0),0)/100)}</strong></div>
@@ -740,7 +806,7 @@ export function Financeiro() {
           recebido={entradasDia}
           despesas={saidasDia}
           pendente={pendenteDia}
-          onRemover={remover}
+          ocultarIndicadores
           onEditar={abrirEdicao}
           podeAlterarComanda={podeAlterarComanda}
         />
@@ -1115,8 +1181,8 @@ export function Financeiro() {
 
       {aba === "lancamentos" && (
         <section className="rounded-2xl border bg-card overflow-hidden">
-          {lancamentos.length ? (
-            lancamentos.map((l) => (
+          {lancamentosUnificados.length ? (
+            lancamentosUnificados.map((l) => (
               <div
                 key={l.id}
                 className="grid gap-2 border-b p-4 last:border-b-0 sm:grid-cols-[1fr_auto_auto] sm:items-center"
@@ -1136,8 +1202,8 @@ export function Financeiro() {
                     {new Date(`${l.data}T12:00:00`).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
-                <strong className={l.tipo === "Saída" ? "text-rose-600" : "text-emerald-700"}>
-                  {l.tipo === "Saída" ? "− " : "+ "}
+                <strong className={(l.tipo === "Saída" || l.tipo === "Estorno") ? "text-rose-600" : "text-emerald-700"}>
+                  {(l.tipo === "Saída" || l.tipo === "Estorno") ? "− " : "+ "}
                   {dinheiro(l.valor)}
                 </strong>
                 <div className="flex gap-1">
@@ -1148,25 +1214,12 @@ export function Financeiro() {
                     >
                       Abrir comanda
                     </a>
+                  ) : l.status === "Pendente" && !l.id.startsWith("caixa:") ? (
+                    <button type="button" onClick={() => abrirEdicao(l)}
+                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      aria-label={"Editar lançamento pendente: "+l.descricao}>Editar pendência</button>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => abrirEdicao(l)}
-                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                        aria-label="Editar"
-                      >
-                        <Pencil size={17} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remover(l.id)}
-                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                        aria-label="Excluir"
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </>
+                    <span className="text-xs text-muted-foreground">Registro preservado</span>
                   )}
                 </div>
               </div>
@@ -1178,6 +1231,23 @@ export function Financeiro() {
           )}
         </section>
       )}
+
+      {baixaCentralId && <section className="mb-5 rounded-2xl border-2 border-primary/25 bg-card p-5" aria-label="Registrar recebimento de conta pendente">
+        <h2 className="text-lg font-extrabold">Dar baixa na conta a receber</h2>
+        <p className="mt-1 text-sm text-muted-foreground">O lançamento será atualizado no banco somente após confirmação e manterá o registro de quem recebeu e quando.</p>
+        <p className="mt-3 text-base font-semibold">{caixaGeral.find(l=>l.id===baixaCentralId)?.descricao || "Lançamento"} · {dinheiro((caixaGeral.find(l=>l.id===baixaCentralId)?.valor_centavos || 0)/100)}</p>
+        <label className="mt-3 block max-w-sm text-sm font-semibold">Forma de pagamento
+          <select value={formaBaixa} onChange={e=>setFormaBaixa(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3">
+            {["Pix","Dinheiro","Cartão de crédito","Cartão de débito","Transferência","Boleto"].map(f=><option key={f}>{f}</option>)}
+          </select>
+        </label>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" disabled={salvandoBaixa} onClick={()=>void confirmarBaixaCentral()} className="min-h-11 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">
+            {salvandoBaixa?"Confirmando...":"Confirmar recebimento"}
+          </button>
+          <button type="button" onClick={()=>setBaixaCentralId("")} className="min-h-11 rounded-xl border px-4 font-semibold">Cancelar</button>
+        </div>
+      </section>}
 
       {formAberto && (
         <div
@@ -1325,8 +1395,8 @@ export function Financeiro() {
                 className="input min-h-24"
               />
             </Campo>
-            <button type="submit" className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">
-              {editandoId ? "Salvar alterações" : "Salvar lançamento"}
+            <button type="submit" disabled={salvandoLancamento} className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground disabled:opacity-50">
+              {salvandoLancamento ? "Confirmando no banco..." : editandoId ? "Salvar alterações" : "Salvar lançamento"}
             </button>
           </form>
         </div>
@@ -1350,22 +1420,22 @@ function ModuloCaixa({
   recebido,
   despesas,
   pendente,
-  onRemover,
   onEditar,
   podeAlterarComanda,
+  ocultarIndicadores = false,
 }: {
   titulo: string;
   lista: Lancamento[];
   recebido: number;
   despesas: number;
   pendente: number;
-  onRemover: (id: string) => void;
   onEditar: (lancamento: Lancamento) => void;
   podeAlterarComanda: boolean;
+  ocultarIndicadores?: boolean;
 }) {
   return (
     <section>
-      <div className="grid gap-3 sm:grid-cols-4">
+      {!ocultarIndicadores && <div className="grid gap-3 sm:grid-cols-4">
         {[
           ["Recebido", recebido],
           ["Pendente", pendente],
@@ -1377,7 +1447,7 @@ function ModuloCaixa({
             <p className="mt-1 text-xl font-black">{dinheiro(Number(v))}</p>
           </div>
         ))}
-      </div>
+      </div>}
       <div className="mt-5 rounded-2xl border bg-card">
         <div className="border-b p-4 font-bold">{titulo}</div>
         {lista.length ? (
@@ -1393,8 +1463,8 @@ function ModuloCaixa({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <strong className={l.tipo === "Saída" ? "text-rose-600" : "text-emerald-700"}>
-                  {l.tipo === "Saída" ? "− " : "+ "}
+                <strong className={(l.tipo === "Saída" || l.tipo === "Estorno") ? "text-rose-600" : "text-emerald-700"}>
+                  {(l.tipo === "Saída" || l.tipo === "Estorno") ? "− " : "+ "}
                   {dinheiro(l.valor)}
                 </strong>
                 {l.comandaId || l.categoria === "Pagamento de comanda" ? (
@@ -1404,25 +1474,10 @@ function ModuloCaixa({
                   >
                     Abrir comanda
                   </a>
+                ) : l.status === "Pendente" && !l.id.startsWith("caixa:") ? (
+                  <button type="button" onClick={()=>onEditar(l)} className="rounded-lg border px-3 py-2 text-xs font-semibold">Editar pendência</button>
                 ) : (
-                  <>
-                <button
-                  type="button"
-                  onClick={() => onEditar(l)}
-                  className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                  aria-label="Editar"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemover(l.id)}
-                  className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                  aria-label="Excluir"
-                >
-                  <Trash2 size={16} />
-                </button>
-                  </>
+                  <span className="text-xs text-muted-foreground">Histórico preservado</span>
                 )}
               </div>
             </div>
