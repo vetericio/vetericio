@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoModelosDocumentos } from "@/components/ConfiguracaoModelosDocumentos";
+import { ConfiguracaoPoliticasClinica } from "@/components/ConfiguracaoPoliticasClinica";
 
 export const Route = createFileRoute("/perfil-clinica")({
   head: () => ({
@@ -150,10 +151,11 @@ function PerfilClinica() {
       { nome: "Dados cadastrais e unidades", descricao: "Cadastro, endereço, contatos, responsável técnico e funcionamento." },
       { nome: "Equipe e permissões", descricao: "Gerencie acessos e responsabilidades.", href: "/permissoes-equipe" },
       { nome: "Animais e tutores", descricao: "Campos cadastrais, responsáveis e identificação." },
-      { nome: "Aprovações administrativas", descricao: "Regras para ações sensíveis." },
+      { nome: "Aprovações administrativas", descricao: "Regras para ações sensíveis.", especial: "politicas" },
     ] },
     { id: "operacao", titulo: "Operação clínica", icone: Stethoscope, itens: [
       { nome: "Agenda e atendimentos", descricao: "Intervalos e duração de procedimentos.", especial: "agenda" },
+      { nome: "Políticas de cancelamento e faltas", descricao: "Tolerância, antecedência, remarcação e sinal.", especial: "politicas" },
       { nome: "Prontuário e protocolos", descricao: "Modelos clínicos, checklists e configurações por espécie." },
       { nome: "Internação e hospedagem", descricao: "Rotinas, leitos, cuidados e regras da hospedagem." },
       { nome: "Banho e tosa", descricao: "Duração, serviços, pacotes e horários." },
@@ -177,6 +179,7 @@ function PerfilClinica() {
     { id: "comunicacao", titulo: "Comunicação", icone: MessagesSquare, itens: [
       ...((adminGeral || perfil?.papel === "admin_clinica") ? [{ nome: "Portal do Tutor", descricao: "Personalização e serviços disponíveis ao tutor.", href: "/configurar-portal-tutor" }] : []),
       { nome: "CRM e campanhas", descricao: "Comunicação, segmentação e relacionamento." },
+      { nome: "Modelos de mensagens", descricao: "Mensagens personalizáveis para uso nas comunicações.", especial: "politicas" },
       { nome: "Lembretes automáticos", descricao: "Vacinas, retornos, consultas e mensagens." },
       { nome: "Central de pendências e automações", descricao: "Tarefas, avisos e regras de execução." },
     ] },
@@ -252,15 +255,19 @@ function PerfilClinica() {
               <div className="grid gap-2 md:grid-cols-2">
                 {itensVisiveis.map((item) => {
                   const isAgenda = "especial" in item && item.especial === "agenda";
+                  const isPoliticas = "especial" in item && item.especial === "politicas" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const isModelos = "especial" in item && item.especial === "modelos" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const destination = "href" in item ? item.href : undefined;
                   const corpo = <><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">{item.nome}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.descricao}</span></span>
-                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : (isAgenda || isModelos) ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
+                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : (isAgenda || isModelos || isPoliticas) ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
                   return destination && item.nome === "Meu plano e funcionalidades" ? <Link key={item.nome} to="/plano-clinica" className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link> : destination ? <Link key={item.nome} to={destination as any} className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link>
                     : <div key={item.nome} className="flex min-h-20 items-center gap-2 rounded-lg border p-3">{corpo}</div>;
                 })}
               </div>
 
+              {(["estrutura","operacao","comunicacao"].includes(grupo.id)) && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
+                <ConfiguracaoPoliticasClinica grupo={grupo.id as "estrutura"|"operacao"|"comunicacao"} podeGerenciar={true}/>
+              )}
               {grupo.id === "documentos" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <ConfiguracaoModelosDocumentos clinica={perfil?.nome || "clínica"} podeGerenciar={Boolean(adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica")}/>
               )}
