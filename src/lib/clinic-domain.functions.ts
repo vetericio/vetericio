@@ -27,7 +27,7 @@ export const prepararEnderecoOricse = createServerFn({ method: "POST" })
     const hostname = `${data.slug}.oricse.com.br`;
     const { data: existente, error: erroConsulta } = await supabaseAdmin
       .from("oricse_dominios_clinica")
-      .select("id, status, hostname")
+      .select("id, status, hostname, publicar_site, ssl_status")
       .eq("clinica_id", data.clinicaId)
       .eq("tipo", "oricse")
       .maybeSingle();
@@ -38,11 +38,11 @@ export const prepararEnderecoOricse = createServerFn({ method: "POST" })
     const valores = {
       hostname,
       principal: true,
-      publicar_site: true,
+      publicar_site: existente?.hostname === hostname ? existente.publicar_site : false,
       dns_alvo: "sites.oricse.com.br",
       verificacao_tipo: "automatica",
       status: "ativo",
-      ssl_status: "ativo",
+      ssl_status: existente?.hostname === hostname ? existente.ssl_status : null,
       ultimo_erro: null,
       atualizado_em: new Date().toISOString(),
     };
