@@ -117,6 +117,8 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
   const [editPessoaId, setEditPessoaId] = useState<string | null>(null);
   const [editPessoa, setEditPessoa] = useState<DadosPessoa>(pessoaVazia);
   const [carregandoPessoa, setCarregandoPessoa] = useState(false);
+  const [alterandoVinculo, setAlterandoVinculo] = useState<string | null>(null);
+  const [buscaUsuario, setBuscaUsuario] = useState("");
 
   async function abrirCadastroPessoa(userId: string) {
     setEditPessoaId(userId);
@@ -258,20 +260,35 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
     }
   }
 
-  const ativos = usuariosDaClinica.filter((x) => x.vinculo.ativo).length;
+  async function mudarVinculo(vinculo: Vinculo, mudancas: Partial<Vinculo>) {
+    if (alterandoVinculo) return;
+    setAlterandoVinculo(vinculo.user_id);
+    try {
+      await onAtualizarVinculo(vinculo, mudancas);
+    } finally {
+      setAlterandoVinculo(null);
+    }
+  }
 
-  return <div className="space-y-5">
-    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+  const ativos = usuariosDaClinica.filter((x) => x.vinculo.ativo).length;
+  const filtrados = usuariosDaClinica.filter(({ usuario, vinculo }) =>
+    [usuario?.username, usuario?.email, perfis[vinculo.papel]?.nome]
+      .some((valor) => String(valor || "").toLowerCase().includes(buscaUsuario.trim().toLowerCase()))
+  );
+
+  return <div className="space-y-3">
+    <section className="rounded-xl border bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold">Usuários · {clinica.nome}</h2>
+          <h2 className="text-lg font-black">Equipe · {clinica.nome}</h2>
           <p className="text-sm text-muted-foreground">{ativos} de {clinica.limite_usuarios} vagas em uso.</p>
         </div>
       </div>
-      <div className="mt-4 grid gap-3">
+      <label className="mt-3 block"><span className="sr-only">Buscar usuário da equipe</span><input value={buscaUsuario} onChange={(e) => setBuscaUsuario(e.target.value)} placeholder="Buscar por usuário, e-mail ou função" className="min-h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none focus:border-primary" /></label>
+      <div className="mt-3 grid gap-2">
         {usuariosDaClinica.length === 0 && <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">Nenhum usuário vinculado a esta clínica.</div>}
-        {usuariosDaClinica.map(({ vinculo, usuario }) => <div key={vinculo.user_id} className="rounded-xl border p-4">
-          <div className="grid gap-3 lg:grid-cols-[1fr_220px_120px] lg:items-center">
+        {filtrados.map(({ vinculo, usuario }) => <div key={vinculo.user_id} className="rounded-lg border p-3">
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_110px] lg:items-center">
             <div>
               <div className="font-semibold">
                 {usuario?.username ? `@${usuario.username}` : "Conta sem perfil sincronizado"}
@@ -281,11 +298,12 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
               </div>
               <div className="mt-1 text-xs text-muted-foreground">{perfis[vinculo.papel]?.resumo}</div>
             </div>
-            <select value={vinculo.papel} onChange={(e) => void onAtualizarVinculo(vinculo, { papel: e.target.value as PapelClinica })} className="min-h-10 rounded-xl border px-3 text-sm">
+            <select aria-label="Função da pessoa" value={vinculo.papel} disabled={alterandoVinculo !== null} onChange={(e) => void mudarVinculo(vinculo, { papel: e.target.value as PapelClinica })} className="min-h-9 rounded-lg border px-2 text-xs disabled:opacity-50">
               {Object.entries(perfis).map(([id, p]) => <option key={id} value={id}>{p.nome}</option>)}
             </select>
-            <button onClick={() => void onAtualizarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button>
+            <button type="button" disabled={alterandoVinculo !== null} onClick={() => void mudarVinculo(vinculo, { ativo: !vinculo.ativo })} className={"min-h-9 rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50 " + (vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")}>{alterandoVinculo === vinculo.user_id ? "Salvando..." : vinculo.ativo ? "Ativo · desativar" : "Inativo · ativar"}</button>
           </div>
+          <details className="group mt-2 rounded-lg bg-slate-50 px-3 py-2"><summary className="cursor-pointer text-xs font-bold text-primary">Gerenciar cadastro, permissões e senha</summary>
           <div className="mt-3 border-t pt-3">
             {editId === vinculo.user_id && <div className="mb-3 grid gap-2 md:grid-cols-2">
               <div className="flex min-h-10 items-center rounded-xl border px-3"><span className="text-muted-foreground">@</span><input value={editUsername} onChange={(e) => setEditUsername(limparUsuario(e.target.value))} placeholder="usuario" className="min-w-0 flex-1 bg-transparent outline-none" autoComplete="off" /></div>
@@ -322,13 +340,16 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
               <button disabled={salvando} onClick={() => void alterarSenha(vinculo.user_id)} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">Salvar nova senha</button>
               <button onClick={() => { setResetUserId(null); setResetPassword(""); }} className="rounded-xl border px-4 py-2 text-sm font-semibold">Cancelar</button>
             </div> : <button onClick={() => { setResetUserId(vinculo.user_id); setResetPassword(""); }} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold"><KeyRound size={15}/> Alterar senha</button>}
-          </div>
+          </div></details>
         </div>)}
+        {usuariosDaClinica.length > 0 && filtrados.length === 0 && <p className="py-5 text-center text-sm text-muted-foreground">Nenhuma pessoa encontrada.</p>}
       </div>
     </section>
 
-    <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2"><UserPlus size={20}/><h3 className="font-bold">Criar e vincular pessoa</h3></div>
+    <details className="group rounded-xl border bg-white shadow-sm">
+      <summary className="flex cursor-pointer items-center gap-2 p-4 text-sm font-black"><UserPlus size={18}/> Adicionar pessoa à equipe <span className="ml-auto text-xs font-medium text-muted-foreground">Abrir cadastro</span></summary>
+      <div className="border-t p-4">
+      <div className="flex items-center gap-2"><UserPlus size={18}/><h3 className="font-bold">Criar e vincular pessoa</h3></div>
       <p className="mt-1 text-sm text-muted-foreground">Crie o acesso e já vincule a pessoa a esta clínica.</p>
       <p className="mt-1 text-xs text-muted-foreground">
         Se o acesso já foi criado, informe o mesmo @usuário para recuperar ou concluir o vínculo sem duplicar a conta. A senha da conta existente não será alterada.
@@ -348,7 +369,8 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       <p className="mt-2 text-xs text-muted-foreground">CRMV e MAPA são informados quando aplicáveis. Dados pessoais protegidos e vinculados à conta, não à clínica.</p>
       <button disabled={salvando} onClick={() => void criar()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><UserPlus size={17}/>{salvando ? "Criando..." : "Criar e vincular usuário"}</button>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2">{Object.entries(perfis).map(([id, p]) => <div key={id} className={`rounded-xl border p-4 ${papel === id ? "border-primary bg-primary/5" : ""}`}><div className="font-bold">{p.nome}</div><p className="mt-1 text-sm text-muted-foreground">{p.resumo}</p><div className="mt-3 text-xs"><strong>Acesso:</strong> {p.acessos.join(" · ")}</div>{p.bloqueios.length > 0 && <div className="mt-2 text-xs text-muted-foreground"><strong>Sem acesso:</strong> {p.bloqueios.join(" · ")}</div>}</div>)}</div>
-    </section>
+      <details className="mt-4 rounded-lg border p-3"><summary className="cursor-pointer text-xs font-semibold">Consultar o que cada função pode acessar</summary><div className="mt-3 grid gap-2 md:grid-cols-2">{Object.entries(perfis).map(([id, p]) => <div key={id} className={"rounded-lg border p-3 " + (papel === id ? "border-primary bg-primary/5" : "")}><div className="text-sm font-bold">{p.nome}</div><p className="mt-1 text-xs text-muted-foreground">{p.resumo}</p><p className="mt-2 text-xs"><strong>Acesso:</strong> {p.acessos.join(" · ")}</p>{p.bloqueios.length > 0 && <p className="mt-1 text-xs"><strong>Sem acesso:</strong> {p.bloqueios.join(" · ")}</p>}</div>)}</div></details>
+      </div>
+    </details>
   </div>;
 }
