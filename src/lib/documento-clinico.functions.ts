@@ -165,6 +165,13 @@ export const alterarPublicacaoDocumentoClinico = createServerFn({method:"POST"})
     const {error:erroAuditoria} = await admin.from("drive_arquivos").update({
       metadata:{...metadata,eventos:[...eventos,{tipo:data.visivel?"liberacao_portal":"ocultacao_portal",por:userId,em:atualizadoEm}]},
     }).eq("id",arquivo.id).eq("clinica_id",data.clinicaId);
-    if (erroAuditoria) throw new Error("Visibilidade alterada, mas o registro de auditoria falhou. Revise antes de tentar novamente.");
+    if (erroAuditoria) {
+      // Não manter o documento publicado se a trilha de auditoria falhar.
+      const {error:erroReversao}=await admin.from("oricse_portal_documentos")
+        .update({visivel_tutor:doc.visivel_tutor,updated_at:new Date().toISOString()})
+        .eq("id",doc.id).eq("clinica_id",data.clinicaId);
+      if (erroReversao) throw new Error("A auditoria falhou e não foi possível reverter a visibilidade. Faça uma revisão imediata.");
+      throw new Error("A auditoria falhou. A alteração de visibilidade foi revertida.");
+    }
     return {documentoId:salvo.id,visivelTutor:salvo.visivel_tutor};
   });
