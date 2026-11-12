@@ -86,6 +86,12 @@ function PaginaReceituario() {
           )}
         </section>
       )}
+      {temAnimal && (
+        <a href={"/termos" + window.location.search}
+          className="mx-auto mb-4 flex min-h-11 w-full max-w-3xl items-center justify-center rounded-xl border bg-card px-4 text-sm font-semibold text-primary hover:bg-secondary">
+          Criar pedido, termo ou documento com modelo da clínica
+        </a>
+      )}
       <Receituario />
     </ProtegidoPorSenha>
   );
