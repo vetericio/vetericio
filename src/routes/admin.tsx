@@ -1254,7 +1254,7 @@ function Admin() {
       inadimplentes > 0 ? { titulo: "Situação financeira", descricao: inadimplentes + " clínica(s) estão pendentes ou em atraso e precisam de revisão.", botao: "Ver clínicas", acao: () => abrirPainel("clinicas"), Icone: CreditCard } : null,
       emTeste > 0 ? { titulo: "Períodos de teste", descricao: emTeste + " clínica(s) estão em teste e exigem acompanhamento antes da continuidade.", botao: "Revisar contas", acao: () => abrirPainel("clinicas"), Icone: Clock3 } : null,
       dominiosPendentes.length > 0 ? { titulo: "Domínios e publicação", descricao: dominiosPendentes.length + " endereço(s) precisam de configuração, DNS, SSL ou revisão.", botao: "Revisar domínio", acao: () => clinicaDoDominioPendente ? abrirClinicaNoAdmin(clinicaDoDominioPendente, "site") : abrirPainel("site"), Icone: Globe2 } : null,
-      usuariosSemClinica > 0 ? { titulo: "Usuários sem clínica ativa", descricao: usuariosSemClinica + " usuário(s) não possuem vínculo ativo com uma clínica.", botao: "Abrir equipe", acao: () => abrirPainel("equipe"), Icone: Users } : null,
+      !erroEquipe && usuariosSemClinica > 0 ? { titulo: "Usuários sem clínica ativa", descricao: usuariosSemClinica + " usuário(s) não possuem vínculo ativo com uma clínica.", botao: "Abrir equipe", acao: () => abrirPainel("equipe"), Icone: Users } : null,
     ].filter(Boolean) as Array<{ titulo: string; descricao: string; botao: string; acao: () => void; Icone: typeof Gauge }>;
 
     const atalhos = [
@@ -1314,7 +1314,7 @@ function Admin() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Clínicas</p><p className="mt-1 text-2xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-xs text-muted-foreground">clientes cadastrados</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir clínicas</button></Card>
-        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Equipe</p><p className="mt-1 text-2xl font-black">{usuariosAtivos}</p><p className="text-xs text-muted-foreground">vínculos ativos · {usuariosSemClinica} sem clínica</p><button type="button" onClick={() => abrirPainel("equipe")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir equipe</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Equipe</p><p className="mt-1 text-2xl font-black">{erroEquipe ? "—" : usuariosAtivos}</p><p className="text-xs text-muted-foreground">{erroEquipe ? "Dados indisponíveis no momento" : `vínculos ativos · ${usuariosSemClinica} sem clínica`}</p><button type="button" onClick={() => abrirPainel("equipe")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir equipe</button></Card>
         <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Assinaturas</p><p className="mt-1 text-2xl font-black">{pagas}</p><p className="text-xs text-muted-foreground">contas em dia · {canceladas} canceladas</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-2 text-xs font-bold text-primary hover:underline">Ver contas</button></Card>
         <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Produto e catálogo</p><p className="mt-1 text-2xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-xs text-muted-foreground">páginas · {planos.length} planos configurados</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir catálogo</button></Card>
       </div>
@@ -2360,7 +2360,7 @@ function Admin() {
       { titulo: "Abertura de clínicas", numero: solicitacoesEmAberto.length, descricao: "Contratações e testes que aguardam análise, preparação ou liberação.", acao: () => abrirPainel("novas"), botao: "Abrir fila" },
       { titulo: "Situação de contas", numero: emAtencao + emTeste, descricao: "Contas em atraso, pendentes ou em período de teste.", acao: () => abrirPainel("clinicas"), botao: "Revisar contas" },
       { titulo: "Domínios e publicação", numero: dominiosPendentes.length, descricao: "Endereços em rascunho, DNS, SSL, verificação ou erro.", acao: () => clinicaComDominioPendente ? abrirClinicaNoAdmin(clinicaComDominioPendente, "site") : abrirPainel("site"), botao: "Abrir domínios" },
-      { titulo: "Vínculos de equipe", numero: usuariosSemClinica, descricao: "Usuários sem vínculo ativo com uma clínica.", acao: () => abrirPainel("clinicas"), botao: "Gerenciar equipe" },
+      { titulo: "Vínculos de equipe", numero: usuariosSemClinica, descricao: erroEquipe ? "Não foi possível consultar os vínculos. Atualize os dados antes de decidir." : "Usuários sem vínculo ativo com uma clínica.", acao: () => abrirPainel("equipe"), botao: "Gerenciar equipe", indisponivel: erroEquipe },
     ];
 
     return <div className="space-y-5">
@@ -2371,8 +2371,8 @@ function Admin() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {controles.map(({ titulo, numero, descricao, acao, botao }) => <Card key={titulo}>
-          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">{titulo}</p><p className="mt-2 text-3xl font-black">{numero}</p></div><ShieldCheck className={numero > 0 ? "text-primary" : "text-emerald-600"} size={22}/></div>
+        {controles.map(({ titulo, numero, descricao, acao, botao, indisponivel }) => <Card key={titulo}>
+          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">{titulo}</p><p className="mt-2 text-3xl font-black">{indisponivel ? "—" : numero}</p></div><ShieldCheck className={indisponivel ? "text-slate-400" : numero > 0 ? "text-primary" : "text-emerald-600"} size={22}/></div>
           <p className="mt-2 min-h-10 text-sm text-muted-foreground">{descricao}</p>
           <button type="button" onClick={acao} className="mt-4 text-sm font-bold text-primary hover:underline">{botao}</button>
         </Card>)}
