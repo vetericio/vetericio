@@ -1,4 +1,4 @@
-import { Camera, Flashlight, ScanBarcode, Volume2, X } from "lucide-react";
+import { Camera, Flashlight, Focus, ScanBarcode, Volume2, ZoomIn, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -11,8 +11,16 @@ type Detector = { detect: (imagem: HTMLVideoElement) => Promise<CodigoLido[]> };
 type ConstrutorDetector = (new (opcoes: { formats: string[] }) => Detector) & {
   getSupportedFormats?: () => Promise<string[]>;
 };
-type CapacidadesCamera = MediaTrackCapabilities & { torch?: boolean; focusMode?: string[] };
-type RestricoesCamera = MediaTrackConstraintSet & { torch?: boolean; focusMode?: string };
+type CapacidadesCamera = MediaTrackCapabilities & {
+  torch?: boolean;
+  focusMode?: string[];
+  zoom?: { min: number; max: number; step?: number };
+};
+type RestricoesCamera = MediaTrackConstraintSet & {
+  torch?: boolean;
+  focusMode?: string;
+  zoom?: number;
+};
 const formatos = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"];
 const leiturasParaConfirmar = 3;
 const intervaloMaximoLeitura = 1800;
@@ -44,14 +52,35 @@ function resultadoValido(item: CodigoLido): string | null {
   return codigo;
 }
 
+/**
+ * Seleciona a etiqueta no centro da parte VISÍVEL da câmera.
+ * object-cover pode recortar a imagem: usar videoWidth/Height sem esse ajuste
+ * faria códigos fora do enquadramento serem aceitos incorretamente.
+ */
 function resultadoMaisCentral(resultados: CodigoLido[], video: HTMLVideoElement): CodigoLido | undefined {
-  const largura = video.videoWidth || 1, altura = video.videoHeight || 1;
-  return [...resultados].filter(item => resultadoValido(item) !== null).sort((a, b) => {
+  const largura = video.videoWidth || 1;
+  const altura = video.videoHeight || 1;
+  const wVisivel = video.clientWidth || largura;
+  const hVisivel = video.clientHeight || altura;
+  const escala = Math.max(wVisivel / largura, hVisivel / altura);
+  const areaW = wVisivel / escala;
+  const areaH = hVisivel / escala;
+  const deslocX = (largura - areaW) / 2;
+  const deslocY = (altura - areaH) / 2;
+  const elegiveis = resultados.filter(item => {
+    if (!resultadoValido(item)) return false;
+    if (!item.boundingBox) return resultados.length === 1;
+    const centroX = (item.boundingBox.x + item.boundingBox.width / 2 - deslocX) / areaW;
+    const centroY = (item.boundingBox.y + item.boundingBox.height / 2 - deslocY) / areaH;
+    // A região de confirmação é um pouco maior que a moldura visível, para
+    // permitir etiquetas estreitas e pequenas sem ler outras embalagens.
+    return centroX >= 0.09 && centroX <= 0.91 && centroY >= 0.24 && centroY <= 0.76;
+  });
+  return elegiveis.sort((a, b) => {
     const distancia = (item: CodigoLido) => {
-      const retangulo = item.boundingBox;
-      if (!retangulo) return 1;
-      const x = (retangulo.x + retangulo.width / 2) / largura - 0.5;
-      const y = (retangulo.y + retangulo.height / 2) / altura - 0.5;
+      if (!item.boundingBox) return 1;
+      const x = (item.boundingBox.x + item.boundingBox.width / 2 - deslocX) / areaW - 0.5;
+      const y = (item.boundingBox.y + item.boundingBox.height / 2 - deslocY) / areaH - 0.5;
       return x * x + y * y;
     };
     return distancia(a) - distancia(b);
@@ -112,6 +141,11 @@ export function LeitorCodigoBarrasCamera({
   const [sessao, setSessao] = useState(0);
   const [lanternaDisponivel, setLanternaDisponivel] = useState(false);
   const [lanternaLigada, setLanternaLigada] = useState(false);
+  const [faixaZoom, setFaixaZoom] = useState<{min:number;max:number;step:number}|null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [focoDisponivel, setFocoDisponivel] = useState(false);
+  const [refocando, setRefocando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
@@ -132,6 +166,11 @@ export function LeitorCodigoBarrasCamera({
     setAviso("");
     setLanternaLigada(false);
     setLanternaDisponivel(false);
+    setFaixaZoom(null);
+    setZoom(1);
+    setFocoDisponivel(false);
+    setRefocando(false);
+    setProgresso(0);
   }, [parar]);
 
   const solicitarCamera = async () => {
@@ -168,6 +207,16 @@ export function LeitorCodigoBarrasCamera({
       const capacidades = trilha?.getCapabilities?.() as CapacidadesCamera | undefined;
       setLanternaDisponivel(Boolean(capacidades?.torch));
       setLanternaLigada(false);
+      const capacidadeZoom = capacidades?.zoom;
+      if (capacidadeZoom && Number.isFinite(capacidadeZoom.min) && Number.isFinite(capacidadeZoom.max) && capacidadeZoom.max > capacidadeZoom.min) {
+        const alcance = {min:capacidadeZoom.min,max:Math.min(capacidadeZoom.max,6),step:capacidadeZoom.step && capacidadeZoom.step>0?capacidadeZoom.step:0.1};
+        if (alcance.max > alcance.min) {
+          setFaixaZoom(alcance);
+          setZoom(Math.max(alcance.min, Math.min(alcance.max, trilha.getSettings().zoom ?? 1)));
+        } else setFaixaZoom(null);
+      } else setFaixaZoom(null);
+      setFocoDisponivel(Boolean(capacidades?.focusMode?.includes("single-shot") || capacidades?.focusMode?.includes("continuous")));
+      setProgresso(0);
       if (capacidades?.focusMode?.includes("continuous")) {
         void trilha.applyConstraints({ advanced: [{ focusMode: "continuous" } as RestricoesCamera] }).catch(() => {});
       }
@@ -191,6 +240,37 @@ export function LeitorCodigoBarrasCamera({
     } catch {
       setAviso("Lanterna indisponível neste dispositivo.");
     }
+  }
+
+  async function alterarZoom(novo: number) {
+    const trilha = streamRef.current?.getVideoTracks()[0];
+    if (!trilha || !faixaZoom) return;
+    const valor = Math.max(faixaZoom.min,Math.min(faixaZoom.max,novo));
+    setZoom(valor);
+    try {
+      await trilha.applyConstraints({advanced:[{zoom:valor} as RestricoesCamera]});
+    } catch {
+      setAviso("O zoom não pôde ser ajustado nesta câmera.");
+    }
+  }
+
+  async function refocar() {
+    const trilha = streamRef.current?.getVideoTracks()[0];
+    if (!trilha || refocando) return;
+    const capacidades = trilha.getCapabilities?.() as CapacidadesCamera | undefined;
+    const modos = capacidades?.focusMode || [];
+    setRefocando(true);
+    try {
+      if (modos.includes("single-shot")) {
+        await trilha.applyConstraints({advanced:[{focusMode:"single-shot"} as RestricoesCamera]});
+      } else if (modos.includes("continuous")) {
+        await trilha.applyConstraints({advanced:[{focusMode:"continuous"} as RestricoesCamera]});
+      } else {
+        setAviso("O foco é automático neste aparelho. Afaste um pouco o código da câmera.");
+      }
+    } catch {
+      setAviso("O ajuste de foco não é suportado por esta câmera.");
+    } finally { setRefocando(false); }
   }
 
   useEffect(() => {
@@ -225,11 +305,15 @@ export function LeitorCodigoBarrasCamera({
             if (!ativo) return;
             const selecionado = resultadoMaisCentral(lista, video);
             const codigo = selecionado && resultadoValido(selecionado);
-            if (!codigo) return;
+            if (!codigo) {
+              if (vezes && Date.now() - vistoEm > 850) { vezes = 0; setProgresso(0); }
+              return;
+            }
             const agora = Date.now();
             if (codigo === ultimo && agora - vistoEm <= intervaloMaximoLeitura) vezes += 1;
             else { ultimo = codigo; vezes = 1; }
             vistoEm = agora;
+            setProgresso(Math.min(vezes,leiturasParaConfirmar));
             if (vezes < leiturasParaConfirmar || agora - rejeitadoEm < 2400) return;
             vezes = 0;
             let aceito = false;
@@ -237,8 +321,10 @@ export function LeitorCodigoBarrasCamera({
             catch { aceito = false; }
             if (aceito) {
               bipConfirmacao(audioRef.current);
+              if ("vibrate" in navigator) navigator.vibrate?.(70);
               fechar();
             } else {
+              setProgresso(0);
               rejeitadoEm = agora;
               setAviso("Código " + codigo + " não aceito. Confira a etiqueta ou tente outro produto.");
             }
@@ -301,10 +387,31 @@ export function LeitorCodigoBarrasCamera({
                 <div className="absolute inset-x-2 top-1/2 border-t border-red-400/90"/>
               </div>
             </div>
-            {lanternaDisponivel && <button type="button" onClick={() => void alternarLanterna()}
-              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">
-              <Flashlight size={18}/> {lanternaLigada ? "Desligar lanterna" : "Ligar lanterna"}
-            </button>}
+            <div className="flex flex-wrap items-center gap-2">
+              {lanternaDisponivel && <button type="button" onClick={() => void alternarLanterna()}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">
+                <Flashlight size={18}/> {lanternaLigada ? "Desligar lanterna" : "Ligar lanterna"}
+              </button>}
+              {focoDisponivel && <button type="button" onClick={() => void refocar()} disabled={refocando}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50">
+                <Focus size={18}/> {refocando ? "Focando…" : "Refocar"}
+              </button>}
+            </div>
+            {faixaZoom && <label className="flex items-center gap-3 rounded-xl border px-3 py-2 text-sm font-semibold">
+              <ZoomIn size={18} aria-hidden="true"/>
+              <span className="shrink-0">Zoom {zoom.toFixed(1)}×</span>
+              <input type="range" className="min-w-0 flex-1 accent-primary" min={faixaZoom.min}
+                max={faixaZoom.max} step={faixaZoom.step} value={zoom}
+                onChange={evento => void alterarZoom(Number(evento.target.value))}
+                aria-label="Aproximação da câmera"/>
+            </label>}
+            <div className="space-y-1" role="status" aria-live="polite">
+              <p className="text-xs font-medium">{progresso ? `Confirmando código: ${progresso} de ${leiturasParaConfirmar}` : "Procurando código no centro da imagem…"}</p>
+              <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div className="h-full rounded-full bg-primary transition-all duration-150"
+                  style={{width:`${100*progresso/leiturasParaConfirmar}%`}}/>
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => bipConfirmacao(audioRef.current)}
                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">
