@@ -7,7 +7,7 @@ type CodigoLido = {
   format: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
 };
-type Detector = { detect: (imagem: HTMLVideoElement) => Promise<CodigoLido[]> };
+type Detector = { detect: (imagem: HTMLVideoElement | HTMLCanvasElement) => Promise<CodigoLido[]> };
 type ConstrutorDetector = (new (opcoes: { formats: string[] }) => Detector) & {
   getSupportedFormats?: () => Promise<string[]>;
 };
@@ -43,16 +43,29 @@ function codigoGTINValido(codigo: string): boolean {
  * impressos na embalagem com o identificador do produto.
  */
 function candidatosNumericosOCR(texto: string): string[] {
-  const linhas = texto.split(/\r?\n/);
-  const valores = new Set<string>();
-  for (const linha of linhas) {
-    const grupos = linha.match(/\d+/g) || [];
-    const juntos = grupos.join("");
-    for (const valor of [...grupos, juntos]) {
-      if (codigoGTINValido(valor)) valores.add(valor);
+  const linhas = texto.split(/\r?\n/).map(linha=>linha.replace(/[^0-9\s]/g," ").trim()).filter(Boolean);
+  const candidatos = new Set<string>();
+  // O OCR pode dividir "7 896058 200324" em linhas diferentes.
+  // Só são aceitas combinações de grupos vizinhos com checksum correto.
+  const grupos = linhas.map(linha=>linha.match(/\d+/g)||[]);
+  const todos = grupos.flat();
+  const testar=(valor:string)=>{
+    if (codigoGTINValido(valor)) candidatos.add(valor);
+  };
+  for (const linha of grupos) {
+    testar(linha.join(""));
+    for (const grupo of linha) testar(grupo);
+  }
+  for(let inicio=0;inicio<todos.length;inicio++){
+    let unidos="";
+    for(let fim=inicio;fim<Math.min(todos.length,inicio+4);fim++){
+      unidos+=todos[fim];
+      if(unidos.length>13)break;
+      testar(unidos);
     }
   }
-  return [...valores];
+  // Se dois códigos distintos forem válidos, não selecionar automaticamente.
+  return [...candidatos];
 }
 
 function resultadoValido(item: CodigoLido): string | null {
@@ -115,18 +128,22 @@ function prepararImagemOCR(video: HTMLVideoElement, indice: number): HTMLCanvasE
     {x:0.02,y:0.08,w:0.96,h:0.84},
     {x:0.04,y:0.35,w:0.92,h:0.60},
     {x:0.10,y:0.12,w:0.80,h:0.58},
+    {x:0.10,y:0.42,w:0.80,h:0.30},
+    {x:0.04,y:0.20,w:0.92,h:0.50},
   ];
   const regiao = regioes[indice % regioes.length];
   const x=Math.floor(largura*regiao.x),y=Math.floor(altura*regiao.y);
   const w=Math.max(1,Math.floor(largura*regiao.w));
   const h=Math.max(1,Math.floor(altura*regiao.h));
-  const maxLargura = 1400;
-  const escala = Math.min(2, maxLargura/w);
+  const maxLargura = 1650;
+  const escala = Math.min(2.5, maxLargura/w);
   const canvas=document.createElement("canvas");
   canvas.width=Math.max(1,Math.round(w*escala));
   canvas.height=Math.max(1,Math.round(h*escala));
   const ctx=canvas.getContext("2d",{willReadFrequently:true});
   if (!ctx) return null;
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
   ctx.drawImage(video,x,y,w,h,0,0,canvas.width,canvas.height);
   const img=ctx.getImageData(0,0,canvas.width,canvas.height);
   const dados=img.data;
@@ -385,14 +402,25 @@ export function LeitorCodigoBarrasCamera({
         if (!ativo) return;
         const detector = Construtor && habilitados.length ? new Construtor({ formats: habilitados }) : null;
         let processando = false;
+        let tentativasNativas=0;
         if (detector) intervalo = setInterval(async () => {
           if (!ativo || processando || video.readyState < 2) return;
           processando = true;
           try {
-            const lista = await detector.detect(video);
+            let lista=await detector.detect(video);
             if (!ativo) return;
-            const selecionado = resultadoMaisCentral(lista, video);
-            const codigo = selecionado && resultadoValido(selecionado);
+            const selecionado=resultadoMaisCentral(lista,video);
+            let codigo=selecionado?resultadoValido(selecionado):null;
+            // Repassar imagens com contraste ajustado para a API nativa
+            // quando o vídeo original não revela as barras.
+            if (!codigo && ++tentativasNativas%4===0) {
+              const frame=prepararImagemOCR(video,tentativasNativas%5);
+              if (frame) {
+                lista=await detector.detect(frame);
+                const codigos=lista.map(resultadoValido).filter((valor):valor is string=>!!valor);
+                if (new Set(codigos).size===1) codigo=codigos[0];
+              }
+            }
             if (!codigo) {
               if (vezes && Date.now() - vistoEm > 850) { vezes = 0; setProgresso(0); }
               return;
@@ -411,7 +439,7 @@ export function LeitorCodigoBarrasCamera({
           } finally {
             processando = false;
           }
-        }, 120);
+        }, 150);
 
         // OCR roda como segunda via, em baixa frequência e num worker separado.
         // O scanner de barras continua responsivo durante a análise de números.
@@ -451,7 +479,7 @@ export function LeitorCodigoBarrasCamera({
               }).catch(()=>{
                 if (ativo) setStatusOCR("indisponivel");
               }).finally(()=>{ ocrOcupado=false; });
-            }, 650);
+            }, 700);
           } catch {
             if (ativo) {
               setStatusOCR("indisponivel");
@@ -546,7 +574,7 @@ export function LeitorCodigoBarrasCamera({
               </button>
               <span className="text-xs text-muted-foreground">A altura do som depende do volume de mídia do celular.</span>
             </div>
-            <p className="text-sm font-medium">Mostre a embalagem para a câmera. O leitor procura em diferentes posições e compensa imagens escuras automaticamente.</p>
+            <p className="text-sm font-medium">Aponte para a etiqueta. O leitor procura barras e números em diferentes posições, corrigindo o contraste quando necessário.</p>
             <p className="text-xs text-muted-foreground">Leitura dupla: barras + reconhecimento local dos números impressos. Códigos EAN/UPC passam por verificação e confirmação para evitar erros. O bip toca após leitura aceita.</p>
             <p className="text-xs text-muted-foreground" role="status">{statusOCR === "carregando" ? "Preparando reconhecimento dos números…" : statusOCR === "ativo" ? "Leitura dos números ativa · pode demorar um pouco mais em celulares lentos" : statusOCR === "indisponivel" ? "Leitura numérica indisponível. O leitor de barras permanece ativo." : "Procurando código…"}</p>
             {aviso && <p role="status" className="rounded-lg bg-secondary p-2 text-sm">{aviso}</p>}
