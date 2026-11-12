@@ -1940,12 +1940,12 @@ function Admin() {
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Acessos por clínica</p><h2 className="mt-1 text-2xl font-black">Equipe</h2><p className="mt-1 text-sm text-muted-foreground">Localize pessoas, confira vínculos e abra a clínica para ajustar cargo, acesso ou cadastro.</p></div>
-          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">{visiveis.length} resultado(s)</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">{erroEquipe ? "Dados incompletos" : `${visiveis.length} resultado(s)`}</span>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Pessoas com acesso ativo</p><p className="text-xl font-black">{pessoasAtivas}</p></div>
-          <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Vínculos inativos</p><p className="text-xl font-black">{vinculosInativos}</p></div>
-          <div className="rounded-xl border bg-amber-50 px-3 py-2"><p className="text-xs font-semibold text-amber-800">Sem vínculo com clínica</p><p className="text-xl font-black text-amber-950">{pessoasSemVinculo}</p></div>
+          <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Pessoas com acesso ativo</p><p className="text-xl font-black">{erroEquipe ? "—" : pessoasAtivas}</p></div>
+          <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Vínculos inativos</p><p className="text-xl font-black">{erroEquipe ? "—" : vinculosInativos}</p></div>
+          <div className="rounded-xl border bg-amber-50 px-3 py-2"><p className="text-xs font-semibold text-amber-800">Sem vínculo com clínica</p><p className="text-xl font-black text-amber-950">{erroEquipe ? "—" : pessoasSemVinculo}</p></div>
         </div>
         {erroEquipe && <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{erroEquipe}</span><button type="button" onClick={() => void carregarTudo()} className="inline-flex min-h-8 items-center gap-1 font-bold"><RefreshCcw size={14}/> Atualizar</button></div>}
         <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_220px]">
@@ -1955,7 +1955,7 @@ function Admin() {
           </select>
         </div>
       </section>
-      <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      {!erroEquipe && <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-[760px] w-full text-left text-sm">
             <thead className="bg-[#fbf8f6] text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Pessoa</th><th className="px-4 py-3">Clínica</th><th className="px-4 py-3">Cargo</th><th className="px-4 py-3">Acesso</th><th className="px-4 py-3 text-right">Ação</th></tr></thead>
@@ -1971,7 +1971,7 @@ function Admin() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
     </div>;
   };
 
