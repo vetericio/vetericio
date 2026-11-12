@@ -85,15 +85,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }
 
   const navegacao = (
-    <nav aria-label="Navegação administrativa" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-2 pb-6">
-      <div className="border-b px-2 pb-4 pt-1">
+    <nav aria-label="Navegação administrativa" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-2 pb-6">
+      <div className="border-b px-2 pb-3 pt-1">
         <p className="text-sm font-black text-slate-900">Administração ORICSE</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Gestão central da plataforma</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">Gestão central da plataforma</p>
       </div>
       {(["Operação", "Produto e conteúdo", "Controle"] as Grupo[]).map((grupo) => (
         <section key={grupo}>
           <p className="px-2 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">{grupo}</p>
-          <div className="mt-1 grid gap-1">
+          <div className="mt-1 grid gap-0.5">
             {ITENS.filter((item) => item.grupo === grupo).map((item) => {
               const selecionado = ativo(item);
               const Icone = item.Icone;
@@ -103,11 +103,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={() => abrir(item)}
                   aria-current={selecionado ? "page" : undefined}
-                  className={"flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition " + (
+                  className={"flex min-h-9 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-semibold transition " + (
                     selecionado ? "bg-primary text-primary-foreground shadow-sm" : "text-slate-700 hover:bg-slate-100"
                   )}
                 >
-                  <Icone size={18} className="shrink-0" />
+                  <Icone size={16} className="shrink-0" />
                   <span className="min-w-0 flex-1">{item.nome}</span>
                 </button>
               );
@@ -121,10 +121,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <AdminNavigationContext.Provider value={{ aba, setAba, adminMenuRecolhido: menuLateralOculto, alternarMenuAdmin: () => setAdminMenuRecolhido((valor) => !valor) }}>
       <div className="min-h-[100dvh] bg-[#f6f4ef] text-slate-900">
-        <aside className={`fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r bg-white px-3 pt-4 shadow-sm ${menuLateralOculto ? "" : "lg:flex"}`}>
+        <aside className={`fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r bg-white px-2 pt-3 shadow-sm ${menuLateralOculto ? "" : "lg:flex"}`}>
           {navegacao}
         </aside>
-        <div className={menuLateralOculto ? "lg:pl-0" : "lg:pl-[280px]"}>
+        <div className={menuLateralOculto ? "lg:pl-0" : "lg:pl-[240px]"}>
           <header className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
             <button type="button" onClick={() => setMenuAberto(true)} aria-label="Abrir menu da administração" aria-expanded={menuAberto} className="flex h-11 w-11 items-center justify-center rounded-xl border">
               <Menu size={22} />

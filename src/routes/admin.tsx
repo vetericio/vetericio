@@ -282,6 +282,7 @@ function Admin() {
   const [erroNovaClinica, setErroNovaClinica] = useState("");
   const [buscaClinica, setBuscaClinica] = useState("");
   const [filtroClinica, setFiltroClinica] = useState<FiltroClinica>("todas");
+  const [alterandoStatusClinica, setAlterandoStatusClinica] = useState<string | null>(null);
   const [usuarios, setUsuarios] = useState<AppUser[]>([]);
   const [vinculos, setVinculos] = useState<Vinculo[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
@@ -1063,12 +1064,24 @@ function Admin() {
   }
 
   async function atualizarVinculo(v: Vinculo, mudancas: Partial<Vinculo>) {
-    const { error } = await (supabase as any).from("clinica_usuarios").update(mudancas).eq("clinica_id", v.clinica_id).eq("user_id", v.user_id);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { data, error } = await (supabase as any)
+        .from("clinica_usuarios")
+        .update(mudancas)
+        .eq("clinica_id", v.clinica_id)
+        .eq("user_id", v.user_id)
+        .select("clinica_id,user_id,papel,ativo")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data || Object.entries(mudancas).some(([campo, valor]) => data[campo] !== valor))
+        throw new Error("O banco não confirmou a alteração. Atualize a lista e tente novamente.");
+      setVinculos((anterior) => anterior.map((item) =>
+        item.clinica_id === v.clinica_id && item.user_id === v.user_id ? { ...item, ...mudancas } : item
+      ));
+      toast.success("Acesso da equipe atualizado e confirmado.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível atualizar o acesso.");
     }
-    await carregarTudo();
   }
 
   function alterarPlano(i: number, mudancas: Partial<Plano>) {
@@ -1888,12 +1901,134 @@ function Admin() {
     </div>;
   };
 
-  const renderClinicas = () => {
-    if (selecionada) return <div className="space-y-5"><button onClick={() => setSelecionada(null)} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ArrowLeft size={17}/> Voltar para clínicas</button><Card><div className="flex flex-wrap items-center gap-4"><div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={30} className="text-muted-foreground"/>}</div><div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-bold">{selecionada.nome}</h2><p className="mt-1 text-sm text-muted-foreground">@{selecionada.slug || "sem-usuario"} · {selecionada.plano} · {selecionada.status}</p></div></div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{[
-      ["cadastro", "Cadastro", Building2], ["dados", "Dados", ClipboardCheck], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database], ["site", "Site e domínios", Globe2], ["autorizacoes", "Autorizações", Settings],
-    ].map(([id, nome, Icone]: any) => id === "dados" ? <Button key={id} variant={abaClinica === "dados" ? "default" : "outline"} onClick={() => setAbaClinica("dados")} className="h-auto rounded-xl px-4 py-2.5 font-semibold"><Icone size={16}/>{nome}</Button> : <button key={id} onClick={() => { setAbaClinica(id);  }} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "dados" && <ClinicRegistrationData key={selecionada.id} clinicId={selecionada.id}/>}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}{abaClinica === "site" && renderSiteDominiosClinica()}{abaClinica === "autorizacoes" && renderAutorizacoesClinica()}</div>;
 
-    return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Clínicas e equipe</h2><p className="mt-1 text-sm text-muted-foreground">Cada conta é administrada por aqui: cadastro, usuários, plano, situação financeira, site, domínio e autorizações.</p></div><button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Plus size={18}/> Adicionar clínica</button></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
+  // Ações rápidas persistem diretamente no servidor e só confirmam sucesso após ler o estado salvo.
+  async function alternarStatusClinica(clinica: Clinica) {
+    if (alterandoStatusClinica || clinica.status === "cancelada") return;
+    const proximo: Clinica["status"] = clinica.status === "ativa" ? "bloqueada" : "ativa";
+    setAlterandoStatusClinica(clinica.id);
+    try {
+      const { data, error } = await (supabaseBanco as any)
+        .from("clinicas")
+        .update({ status: proximo, updated_at: new Date().toISOString() })
+        .eq("id", clinica.id)
+        .eq("status", clinica.status)
+        .select("id,status")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data || data.status !== proximo) throw new Error("A situação da clínica mudou em outra sessão. Atualize o painel antes de tentar novamente.");
+      setClinicas((anterior) => anterior.map((item) => item.id === clinica.id ? { ...item, status: proximo } : item));
+      setSelecionada((anterior) => anterior?.id === clinica.id ? { ...anterior, status: proximo } : anterior);
+      toast.success(proximo === "ativa" ? "Clínica ativada e alteração confirmada." : "Clínica bloqueada e alteração confirmada.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível alterar a clínica.");
+    } finally {
+      setAlterandoStatusClinica(null);
+    }
+  }
+
+  const renderClinicas = () => {
+    const quantidadeAtivas = clinicas.filter((item) => item.status === "ativa").length;
+    const quantidadeBloqueadas = clinicas.filter((item) => item.status === "bloqueada" || item.status === "inativa").length;
+    const equipeAtiva = vinculos.filter((item) => item.ativo).length;
+    const abas: { id: AbaClinica; nome: string; Icone: typeof Building2 }[] = [
+      { id: "cadastro", nome: "Configurações", Icone: Building2 },
+      { id: "dados", nome: "Dados da contratação", Icone: ClipboardCheck },
+      { id: "situacao", nome: "Assinatura", Icone: CreditCard },
+      { id: "usuarios", nome: "Equipe e acessos", Icone: Users },
+      { id: "site", nome: "Site e domínios", Icone: Globe2 },
+      { id: "autorizacoes", nome: "Permissões", Icone: Settings },
+      { id: "drive", nome: "Drive", Icone: Database },
+    ];
+
+    if (selecionada) return <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button type="button" onClick={() => setSelecionada(null)} className="inline-flex min-h-9 items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm font-semibold hover:bg-slate-50"><ArrowLeft size={15}/> Todas as clínicas</button>
+        <button type="button" disabled={alterandoStatusClinica !== null || selecionada.status === "cancelada"} onClick={() => void alternarStatusClinica(selecionada)} className={"inline-flex min-h-9 items-center rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 " + (selecionada.status === "ativa" ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-primary text-primary-foreground")}>
+          {alterandoStatusClinica === selecionada.id ? "Salvando..." : selecionada.status === "ativa" ? "Bloquear acesso" : selecionada.status === "cancelada" ? "Conta cancelada" : "Ativar clínica"}
+        </button>
+      </div>
+      <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
+          <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-50">
+            {selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="max-h-full max-w-full object-contain"/> : <Building2 size={22} className="text-muted-foreground"/>}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-xl font-black">{selecionada.nome}</h2>
+            <p className="text-xs text-muted-foreground">{selecionada.slug}.oricse.com.br · {selecionada.plano} · {selecionada.status}</p>
+          </div>
+          <button type="button" onClick={() => { void carregarTudo(); void carregarSolicitacoes(); }} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs font-bold"><RefreshCcw size={13}/> Atualizar</button>
+        </div>
+        <nav aria-label="Seções da clínica" className="flex flex-wrap gap-1 px-3 py-2">
+          {abas.map(({ id, nome, Icone }) => <button key={id} type="button" onClick={() => setAbaClinica(id)} aria-current={abaClinica === id ? "page" : undefined} className={"inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition " + (abaClinica === id ? "bg-primary text-primary-foreground" : "text-slate-700 hover:bg-slate-100")}><Icone size={15}/>{nome}</button>)}
+        </nav>
+      </div>
+      {abaClinica === "cadastro" && renderCadastroClinica()}
+      {abaClinica === "dados" && <ClinicRegistrationData key={selecionada.id} clinicId={selecionada.id}/>}
+      {abaClinica === "situacao" && renderSituacao()}
+      {abaClinica === "usuarios" && renderUsuariosClinica()}
+      {abaClinica === "drive" && renderDriveClinica()}
+      {abaClinica === "site" && renderSiteDominiosClinica()}
+      {abaClinica === "autorizacoes" && renderAutorizacoesClinica()}
+    </div>;
+
+    return <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black">Clínicas e equipes</h2>
+          <p className="text-xs text-muted-foreground">Controle de acesso, pessoas, assinaturas e presença digital em uma única área.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => void carregarTudo()} className="inline-flex min-h-9 items-center gap-1 rounded-lg border bg-white px-3 text-xs font-bold"><RefreshCcw size={14}/> Atualizar</button>
+          <button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground"><Plus size={16}/> Nova clínica</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {[
+          { nome: "Clínicas", valor: clinicas.length },
+          { nome: "Em operação", valor: quantidadeAtivas },
+          { nome: "Bloqueadas / inativas", valor: quantidadeBloqueadas },
+          { nome: "Vínculos ativos", valor: equipeAtiva },
+        ].map(({ nome, valor }) => <div key={nome} className="rounded-xl border bg-white px-4 py-3 shadow-sm"><p className="text-xs font-semibold text-slate-500">{nome}</p><p className="text-2xl font-black tabular-nums">{valor}</p></div>)}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-white p-3">
+        <div className="relative min-w-[210px] flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={17}/>
+          <input aria-label="Buscar clínicas" value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Buscar clínica, endereço, plano ou status" className="min-h-10 w-full rounded-lg border bg-slate-50 pl-10 pr-3 text-sm outline-none focus:border-primary"/>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {([["todas", "Todas"], ["pagas", "Em dia"], ["inadimplentes", "Pendentes"], ["canceladas", "Canceladas"]] as const).map(([id, nome]) => <button key={id} type="button" onClick={() => setFiltroClinica(id)} aria-pressed={filtroClinica === id} className={"min-h-9 rounded-lg px-3 text-xs font-bold " + (filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white hover:bg-slate-50")}>{nome}</button>)}
+        </div>
+      </div>
+      <section className="overflow-hidden rounded-xl border bg-white shadow-sm" aria-label="Lista de clínicas">
+        <div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] gap-3 border-b bg-slate-50 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500 lg:grid">
+          <span>Clínica</span><span>Plano e equipe</span><span>Situação</span><span>Ações</span>
+        </div>
+        <div className="divide-y">
+          {clinicasFiltradas.map((clinica) => {
+            const ativos = vinculos.filter((item) => item.clinica_id === clinica.id && item.ativo).length;
+            const ativa = clinica.status === "ativa";
+            const modificando = alterandoStatusClinica === clinica.id;
+            return <div key={clinica.id} className="grid items-center gap-2 px-4 py-3 transition hover:bg-slate-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] lg:gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100">{clinica.logo_url ? <img src={clinica.logo_url} alt="" className="max-h-full max-w-full object-contain"/> : <Building2 size={19} className="text-slate-500"/>}</div>
+                <div className="min-w-0"><button type="button" onClick={() => abrirClinicaNoAdmin(clinica)} className="block max-w-full truncate text-left text-sm font-bold hover:text-primary hover:underline">{clinica.nome}</button><p className="truncate text-xs text-muted-foreground">{clinica.slug ? clinica.slug + ".oricse.com.br" : "Endereço não configurado"}</p></div>
+              </div>
+              <div className="min-w-0 text-xs"><p className="truncate font-bold">{clinica.plano}</p><p className="text-muted-foreground">{ativos} de {clinica.limite_usuarios} acessos</p></div>
+              <div className="flex flex-wrap gap-1.5 text-xs"><span className={"rounded-full px-2 py-1 font-bold " + (ativa ? "bg-emerald-50 text-emerald-700" : clinica.status === "cancelada" ? "bg-slate-200 text-slate-700" : "bg-amber-50 text-amber-900")}>{clinica.status}</span><span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{clinica.status_financeiro.replaceAll("_", " ")}</span></div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button type="button" disabled={alterandoStatusClinica !== null || clinica.status === "cancelada"} onClick={() => void alternarStatusClinica(clinica)} className={"min-h-9 rounded-lg px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 " + (ativa ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-emerald-700 text-white")}>{modificando ? "Salvando..." : ativa ? "Bloquear" : clinica.status === "cancelada" ? "Cancelada" : "Ativar"}</button>
+                <button type="button" onClick={() => abrirClinicaNoAdmin(clinica, "usuarios")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Equipe</button>
+                <button type="button" onClick={() => abrirClinicaNoAdmin(clinica, "site")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Site</button>
+                <button type="button" onClick={() => abrirClinicaNoAdmin(clinica, "dados")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Dados</button>
+                <button type="button" onClick={() => abrirClinicaNoAdmin(clinica)} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Gerenciar</button>
+              </div>
+            </div>;
+          })}
+          {clinicasFiltradas.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma clínica encontrada com esses filtros.</p>}
+        </div>
+      </section>
+    </div>;
   };
 
   async function carregarExcecoesClinica(clinicaId:string) {
@@ -2306,13 +2441,13 @@ function Admin() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
-      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
+      <div className="mx-auto max-w-[1800px] px-3 py-3 sm:px-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-3">
-            <img src={site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="h-14 w-14 object-contain"/>
+            <img src={site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="h-11 w-11 object-contain"/>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">ORICSE ADMIN</p>
-              <h1 className="text-2xl font-black sm:text-3xl">Central de gestão</h1>
+              <h1 className="text-xl font-black sm:text-2xl">Central de gestão</h1>
               <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">Operação, aprovações e configuração da plataforma.</p>
             </div>
           </div>
@@ -2330,7 +2465,7 @@ function Admin() {
           </div>
         </header>
 
-        <div className="mt-6">
+        <div className="mt-3">
           <section className="min-w-0">
             {aba === "dashboard" && renderDashboard()}
             {aba === "novas" && renderClinicasNovas()}
