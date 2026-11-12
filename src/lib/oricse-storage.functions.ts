@@ -89,6 +89,7 @@ function permissoesDaChave(chave: string): string[] {
     "oricse-modelos-documentos-v1": ["administracao.configuracoes"],
     "oricse-politicas-operacionais-v1": ["administracao.configuracoes"],
     "oricse-modulos-administrativos-v3": ["administracao.configuracoes"],
+    "oricse-lgpd-solicitacoes-v1": ["administracao.configuracoes"],
     "veterico-assinatura-v1": ["consultorio.receituario"],
     "veterico-carimbo-v1": ["consultorio.receituario"],
     "veterico:precisao-ml": ["consultorio.medicacoes", "internacao.medicacoes"],
@@ -220,6 +221,23 @@ async function autorizarAdministracaoClinica(userId: string, clinicaId: string, 
   }
 }
 
+const lgpdSolicitacoesSchema = z.object({
+  versao:z.literal(1),
+  solicitacoes:z.array(z.object({
+    id:z.string().uuid(),
+    protocolo:z.string().min(3).max(64),
+    tipo:z.enum(["acesso","correcao","exclusao","portabilidade","revogacao","outros"]),
+    titularReferencia:z.string().min(2).max(120),
+    recebidoEm:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    prazo:z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
+    status:z.enum(["recebida","em_analise","respondida","encerrada"]),
+    responsavel:z.string().max(100),
+    descricao:z.string().max(1400),
+    registroResposta:z.string().max(1400),
+    resolvidoEm:z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
+  }).strict()).max(500),
+}).strict();
+
 async function validarAlteracoesPorPlano(
   accessToken: string,
   contexto: { userId: string; clinicaId: string | null },
@@ -233,12 +251,16 @@ async function validarAlteracoesPorPlano(
     if (item.chave !== "oricse-politicas-operacionais-v1") continue;
     await autorizarPoliticasClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as { adminGeral?: boolean }).adminGeral));
   }
+  if (alteracoes.some(item=>item.chave==="oricse-lgpd-solicitacoes-v1")) {
+    await autorizarAdministracaoClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as {adminGeral?:boolean}).adminGeral));
+  }
   if (alteracoes.some((item) => item.chave === "oricse-modulos-administrativos-v3")) {
     await autorizarAdministracaoClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as {adminGeral?:boolean}).adminGeral));
   }
   if ((contexto as { adminGeral?: boolean }).adminGeral) return; // Admin geral mantém a autorização da plataforma.
   const regras = new Map<string, string[]>();
   for (const item of alteracoes) {
+    if (item.chave === "oricse-lgpd-solicitacoes-v1") continue;
     if (item.chave === "oricse-modulos-administrativos-v3") continue; // Admin/RT checado acima.
     if (item.chave === "oricse-politicas-operacionais-v1") continue; // Regra estrita Admin/RT.
     if (item.chave === "oricse-modelos-documentos-v1") continue; // Autorização estrita Admin/RT verificada acima.
@@ -283,6 +305,7 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
       catch { return false; }
     })();
     if (!permitidoAdmin) delete estado["oricse-modulos-administrativos-v3"];
+    if (!permitidoAdmin) delete estado["oricse-lgpd-solicitacoes-v1"];
   }
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
@@ -321,6 +344,13 @@ export async function salvarEstadoOricseInterno(data: z.infer<typeof salvarSchem
     let parsed: unknown;
     try { parsed = JSON.parse(alteracao.valor); } catch { throw new Error("JSON administrativo inválido."); }
     estruturaAdministrativaSchema.parse(parsed);
+  }
+  for (const alteracao of data.alteracoes) {
+    if (alteracao.chave !== "oricse-lgpd-solicitacoes-v1") continue;
+    if (alteracao.valor === null || alteracao.valor.length > 650000) throw new Error("Solicitações LGPD inválidas.");
+    let parsed: unknown;
+    try { parsed=JSON.parse(alteracao.valor); } catch { throw new Error("JSON de solicitações LGPD inválido."); }
+    lgpdSolicitacoesSchema.parse(parsed);
   }
   // A lista JSON legada também não pode adicionar animais acima da cota.
   // Compara IDs anteriores e novos; editar pacientes existentes continua permitido.
