@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Barcode, Camera, CheckCircle2, CreditCard, Minus, Package, Plus, RefreshCw, Search, ShoppingCart, Star, Trash2, Wallet, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, Minus, Package, Plus, RefreshCw, Search, ShoppingCart, Star, Trash2, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import type { ItemCatalogo } from "@/lib/comissoes";
+import { LeitorCodigoBarrasCamera } from "@/components/LeitorCodigoBarrasCamera";
 
 export const Route = createFileRoute("/venda-expressa")({
   head: () => ({ meta: [{ title: "Venda Expressa — ORICSE" }] }),
@@ -13,11 +14,6 @@ export const Route = createFileRoute("/venda-expressa")({
 
 type Carrinho = { produto: ItemCatalogo; quantidade: number };
 type Forma = "Dinheiro" | "Pix" | "Cartão de débito" | "Cartão de crédito";
-type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> };
-type DetectorCtor = (new (config: { formats: string[] }) => Detector) & {
-  getSupportedFormats?: () => Promise<string[]>;
-};
-const formatos = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "qr_code"];
 const dinheiro = (centavos: number) => (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const preco = (p: ItemCatalogo) => Math.round(Number(p.valor) * 100);
 const formatoQuantidade = (valor: number) => valor.toLocaleString("pt-BR", {minimumFractionDigits: 3,maximumFractionDigits: 3});
@@ -52,16 +48,8 @@ function VendaExpressa() {
   const [recebido, setRecebido] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [modal, setModal] = useState(false);
-  const [camera, setCamera] = useState(false);
-  const [cameraAbrindo, setCameraAbrindo] = useState(false);
-  const [erroCamera, setErroCamera] = useState("");
-  const [sessaoCamera, setSessaoCamera] = useState(0);
   const [sucesso, setSucesso] = useState<{ id: string; total: number; troco: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const cameraStream = useRef<MediaStream | null>(null);
-  const tentativaCamera = useRef(0);
-  const leituraRef = useRef(0);
   const chaveVenda = useRef(crypto.randomUUID());
   const disponiveis = useMemo(() => produtos.filter(p => p.ativo && p.tipo === "produto"), [produtos]);
   const produtosFavoritos = useMemo(() => disponiveis.filter(p => favoritos.includes(p.id)), [disponiveis, favoritos]);
@@ -126,28 +114,50 @@ function VendaExpressa() {
     finally {setSalvandoFavorito(null);}
   }
 
-  const adicionar = useCallback((p: ItemCatalogo) => {
+  const adicionar = useCallback((p: ItemCatalogo): boolean => {
     const quantidade=normalizarQuantidade(quantidadeEntrada);
-    if (quantidade===null) return void toast.error("Informe uma quantidade positiva com até 3 casas decimais, como 0,250 ou 1,500.");
-    if (!Number.isFinite(preco(p)) || preco(p) <= 0) return void toast.error("Configure um preço válido para vender este produto.");
-    if (p.estoque_atual == null) return void toast.error("Configure o estoque do produto antes de vendê-lo.");
+    if (quantidade===null) {
+      toast.error("Informe uma quantidade positiva com até 3 casas decimais, como 0,250 ou 1,500.");
+      return false;
+    }
+    if (!Number.isFinite(preco(p)) || preco(p) <= 0) {
+      toast.error("Configure um preço válido para vender este produto.");
+      return false;
+    }
+    if (p.estoque_atual == null) {
+      toast.error("Configure o estoque do produto antes de vendê-lo.");
+      return false;
+    }
     const existente=carrinho.find(item=>item.produto.id===p.id);
     const totalNovo=Math.round(((existente?.quantidade||0)+quantidade)*1000)/1000;
-    if(totalNovo>Number(p.estoque_atual)) return void toast.error("Estoque insuficiente para "+p.nome);
-    if(totalNovo>10000) return void toast.error("Quantidade máxima excedida.");
+    if (totalNovo>Number(p.estoque_atual)) {
+      toast.error("Estoque insuficiente para "+p.nome);
+      return false;
+    }
+    if (totalNovo>10000) {
+      toast.error("Quantidade máxima excedida.");
+      return false;
+    }
     setCarrinho(anterior=>existente
       ? anterior.map(item=>item.produto.id===p.id?{...item,quantidade:totalNovo}:item)
       : [...anterior,{produto:p,quantidade}]);
     setBusca(""); setQuantidadeEntrada("1,000");
     inputRef.current?.focus();
+    return true;
   }, [carrinho,quantidadeEntrada]);
 
-  const porCodigo = useCallback((codigo: string) => {
+  const porCodigo = useCallback((codigo: string): boolean => {
     const valor = codigo.trim();
-    if (!valor) return;
-    const p = disponiveis.find(item => item.codigo_barras === valor);
-    if (!p) return void toast.error("Código de barras não cadastrado: " + valor);
-    adicionar(p);
+    if (!valor) return false;
+    // EAN-13 de origem UPC-A pode receber zero à esquerda na câmera Android.
+    const produto = disponiveis.find(item => item.codigo_barras === valor
+      || (valor.length === 13 && valor.startsWith("0") && item.codigo_barras === valor.slice(1))
+      || (valor.length === 12 && item.codigo_barras === "0" + valor));
+    if (!produto) {
+      toast.error("Código de barras não cadastrado: " + valor);
+      return false;
+    }
+    return adicionar(produto);
   }, [adicionar, disponiveis]);
 
   const alterarQuantidade = (id: string, delta: number) => {
@@ -158,126 +168,6 @@ function VendaExpressa() {
       return nova > 0 ? [{ ...item, quantidade: nova }] : [];
     }));
   };
-  // Mantém o leitor usando sempre o carrinho/quantidade atuais, sem
-  // reiniciar a câmera a cada produto incluído.
-  const porCodigoAtual = useRef(porCodigo);
-  useEffect(() => { porCodigoAtual.current = porCodigo; }, [porCodigo]);
-
-  const pararCamera = useCallback(() => {
-    tentativaCamera.current += 1;
-    setCamera(false);
-    setCameraAbrindo(false);
-    setErroCamera("");
-    cameraStream.current?.getTracks().forEach(track => track.stop());
-    cameraStream.current = null;
-  }, []);
-
-  async function abrirCamera() {
-    if (cameraAbrindo || cameraStream.current) return;
-    setErroCamera("");
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setErroCamera("A câmera precisa de uma conexão HTTPS e de um navegador compatível. Abra o endereço oficial no Chrome do celular.");
-      setCamera(true);
-      return;
-    }
-    const Detector = (window as unknown as { BarcodeDetector?: DetectorCtor }).BarcodeDetector;
-    if (!Detector) {
-      setErroCamera("Este navegador não oferece leitura de códigos de barras pela câmera. Experimente o Chrome atualizado ou use o leitor USB/código digitado.");
-      setCamera(true);
-      return;
-    }
-    const tentativa = ++tentativaCamera.current;
-    setCameraAbrindo(true);
-    try {
-      // Chamado DIRETAMENTE pelo clique, sem aguardar um useEffect:
-      // assim o Android/Chrome consegue apresentar a permissão do site.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
-      if (tentativa !== tentativaCamera.current) {
-        stream.getTracks().forEach(track => track.stop());
-        return;
-      }
-      cameraStream.current = stream;
-      setCamera(true);
-      setSessaoCamera(s => s + 1);
-    } catch (error) {
-      if (tentativa !== tentativaCamera.current) return;
-      const nome = error instanceof DOMException ? error.name : "";
-      if (nome === "NotAllowedError" || nome === "PermissionDeniedError" || nome === "SecurityError") {
-        setErroCamera("O navegador bloqueou o acesso à câmera. Confira as permissões do site e do Chrome no Android e tente novamente.");
-      } else if (nome === "NotFoundError" || nome === "DevicesNotFoundError") {
-        setErroCamera("Nenhuma câmera foi encontrada. Confira se há câmera disponível no aparelho.");
-      } else if (nome === "NotReadableError" || nome === "TrackStartError") {
-        setErroCamera("A câmera está ocupada por outro aplicativo. Feche o outro aplicativo e tente novamente.");
-      } else {
-        setErroCamera(error instanceof Error ? error.message : "Não foi possível acessar a câmera.");
-      }
-      setCamera(true);
-    } finally {
-      if (tentativa === tentativaCamera.current) setCameraAbrindo(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!camera || !cameraStream.current) return;
-    const stream = cameraStream.current;
-    const video = videoRef.current;
-    if (!video) return;
-    let ativo = true;
-    let intervalo: ReturnType<typeof setInterval> | undefined;
-    const iniciarLeitura = async () => {
-      try {
-        video.srcObject = stream;
-        await video.play();
-        const Construtor = (window as unknown as { BarcodeDetector?: DetectorCtor }).BarcodeDetector;
-        if (!Construtor) throw new Error("Leitor de barras não disponível neste navegador.");
-        const suportados = typeof Construtor.getSupportedFormats === "function"
-          ? await Construtor.getSupportedFormats()
-          : formatos;
-        const formatosAtivos = formatos.filter(formato => suportados.includes(formato));
-        if (!formatosAtivos.length) throw new Error("Nenhum formato de código de barras compatível foi encontrado.");
-        if (!ativo) return;
-        const detector = new Construtor({ formats: formatosAtivos });
-        let ocupado = false;
-        intervalo = setInterval(async () => {
-          if (!ativo || ocupado || video.readyState < 2) return;
-          ocupado = true;
-          try {
-            const codigos = await detector.detect(video);
-            const codigo = codigos[0]?.rawValue;
-            if (ativo && codigo && Date.now() - leituraRef.current > 1100) {
-              leituraRef.current = Date.now();
-              pararCamera();
-              porCodigoAtual.current(codigo);
-            }
-          } catch {
-            // O próximo quadro pode conter uma imagem mais nítida.
-          } finally {
-            ocupado = false;
-          }
-        }, 300);
-      } catch (error) {
-        if (!ativo) return;
-        stream.getTracks().forEach(track => track.stop());
-        if (cameraStream.current === stream) cameraStream.current = null;
-        setErroCamera(error instanceof Error ? error.message : "Falha ao iniciar a leitura da câmera.");
-      }
-    };
-    void iniciarLeitura();
-    return () => {
-      ativo = false;
-      if (intervalo) clearInterval(intervalo);
-      if (video.srcObject === stream) video.srcObject = null;
-    };
-  }, [camera, sessaoCamera, pararCamera]);
-  useEffect(() => () => {
-    tentativaCamera.current += 1;
-    cameraStream.current?.getTracks().forEach(track => track.stop());
-    cameraStream.current = null;
-  }, []);
-
   async function finalizar(e: FormEvent) {
     e.preventDefault();
     if (finalizando || !autorizado || !clinicaId || !carrinho.length) return;
@@ -350,7 +240,8 @@ function VendaExpressa() {
               </div>):<p className="p-4 text-sm text-muted-foreground">Nenhum produto encontrado.</p>}
             </div>}
           </label>
-          <button type="button" onClick={() => void abrirCamera()} disabled={cameraAbrindo} className="inline-flex min-h-12 items-center gap-2 rounded-xl border px-4 text-sm font-bold disabled:opacity-50"><Camera size={18}/> {cameraAbrindo ? "Solicitando..." : "Câmera"}</button>
+          <LeitorCodigoBarrasCamera onCodigoLido={porCodigo} desabilitado={carregando}
+            classeBotao="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold disabled:opacity-50"/>
         </form>
         <p className="text-xs text-muted-foreground">Leitor USB: posicione o cursor no campo e escaneie (Enter). No celular, toque em Câmera. É necessário cadastrar os códigos no estoque.</p>
         <section aria-label="Produtos preferidos" className="space-y-2">
@@ -391,31 +282,6 @@ function VendaExpressa() {
             className="mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50"><Wallet size={20}/> Receber pagamento</button></div>
       </section>
     </div>
-    {camera && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4" role="presentation">
-      <section role="dialog" aria-modal="true" aria-label="Leitor de código de barras" className="w-full max-w-lg rounded-2xl bg-card p-4 shadow-2xl">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 font-bold"><Barcode size={18}/> Escanear código de barras</h2>
-          <button type="button" onClick={pararCamera} aria-label="Fechar câmera" className="rounded-lg border p-2"><X size={18}/></button>
-        </div>
-        {erroCamera ? (
-          <div role="alert" className="space-y-3 rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-950">
-            <p className="font-semibold">{erroCamera}</p>
-            <p>Para liberar no Chrome do Android: toque no ícone à esquerda do endereço do site, abra <strong>Permissões</strong> e escolha <strong>Permitir</strong> para a câmera. Confira também em Configurações do Android → Apps → Chrome → Permissões → Câmera.</p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void abrirCamera()} disabled={cameraAbrindo} className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50">
-                {cameraAbrindo ? "Solicitando..." : "Tentar novamente"}
-              </button>
-              <button type="button" onClick={pararCamera} className="rounded-lg border px-4 py-2 font-semibold">Voltar à busca</button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <video ref={videoRef} playsInline muted autoPlay className="max-h-[55vh] w-full rounded-xl bg-black object-cover"/>
-            <p className="mt-3 text-xs text-muted-foreground">Aponte a câmera traseira para o código de barras. O leitor fecha após reconhecer o produto. Nenhuma imagem é enviada ao servidor.</p>
-          </>
-        )}
-      </section>
-    </div>}
     {modal && <div role="presentation" className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3">
       <form onSubmit={e=>void finalizar(e)} role="dialog" aria-modal="true" aria-label="Pagamento da Venda Expressa" className="w-full max-w-lg space-y-4 rounded-2xl bg-card p-5 shadow-2xl">
         <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-extrabold"><CreditCard size={19} className="text-primary"/> Finalizar venda</h2><button type="button" disabled={finalizando} onClick={()=>setModal(false)} aria-label="Fechar"><X/></button></div>
