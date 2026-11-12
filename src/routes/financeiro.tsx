@@ -44,6 +44,7 @@ import { toast } from "sonner";
 import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { CaixaOperacional } from "@/components/financeiro/CaixaOperacional";
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
@@ -216,7 +217,7 @@ function lerTutores(): TutorFinanceiro[] {
 
 export function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
-  const { clinicaId } = usePermissoes();
+  const { clinicaId, pode } = usePermissoes();
   const [estadiasHotel, setEstadiasHotel] = useState<Array<{id:string;status:string;valor_diaria_centavos:number;valor_final_centavos:number|null;chegada_prevista:string;saida_prevista:string;checkout_em:string|null}>>([]);
   const [erroHotel, setErroHotel] = useState("");
   const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string}>>([]);
@@ -585,12 +586,7 @@ export function Financeiro() {
   }, [comandas, lancamentos, tutoresCadastrados, buscaTutor]);
   const tutorSelecionado = tutoresFinanceiros.find((item) => item.tutor.id === tutorSelecionadoId);
 
-  const resumo = [
-    ["Recebido", dinheiro(entradasDia)],
-    ["Pendente", dinheiro(pendenteDia)],
-    ["Despesas", dinheiro(saidasDia)],
-    ["Líquido", dinheiro(entradasDia - saidasDia)],
-  ];
+
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6">
@@ -640,6 +636,17 @@ export function Financeiro() {
         )}
       </div>
 
+      {(aba === "inicio" || aba === "dia") && <CaixaOperacional
+        clinicaId={clinicaId}
+        recebido={entradasDia}
+        pendente={pendenteDia}
+        despesas={saidasDia}
+        podeOperar={pode("caixa.financeiro.gerenciar") || pode("caixa.comandas")}
+        podeAprovar={pode("administracao.configuracoes")}
+        lancamentosLegadosNoDia={lancamentos.filter(l => l.data === dataAtual && l.status === "Pago").length}
+        onNovoLancamento={() => {setAba("lancamentos");abrirNovo();}}
+        onVerLancamentos={() => setAba("lancamentos")}
+      />}
       {aba === "inicio" && (
         <>
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -659,17 +666,7 @@ export function Financeiro() {
               </button>
             ))}
           </section>
-          <section className="mt-6 rounded-2xl border bg-card p-5">
-            <h2 className="font-semibold">Resumo de hoje</h2>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {resumo.map(([label, valor]) => (
-                <div key={label} className="rounded-xl bg-muted/50 p-4">
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-lg font-bold">{valor}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+
         </>
       )}
 
@@ -740,6 +737,7 @@ export function Financeiro() {
           recebido={entradasDia}
           despesas={saidasDia}
           pendente={pendenteDia}
+          ocultarIndicadores
           onRemover={remover}
           onEditar={abrirEdicao}
           podeAlterarComanda={podeAlterarComanda}
@@ -1353,6 +1351,7 @@ function ModuloCaixa({
   onRemover,
   onEditar,
   podeAlterarComanda,
+  ocultarIndicadores = false,
 }: {
   titulo: string;
   lista: Lancamento[];
@@ -1362,10 +1361,11 @@ function ModuloCaixa({
   onRemover: (id: string) => void;
   onEditar: (lancamento: Lancamento) => void;
   podeAlterarComanda: boolean;
+  ocultarIndicadores?: boolean;
 }) {
   return (
     <section>
-      <div className="grid gap-3 sm:grid-cols-4">
+      {!ocultarIndicadores && <div className="grid gap-3 sm:grid-cols-4">
         {[
           ["Recebido", recebido],
           ["Pendente", pendente],
@@ -1377,7 +1377,7 @@ function ModuloCaixa({
             <p className="mt-1 text-xl font-black">{dinheiro(Number(v))}</p>
           </div>
         ))}
-      </div>
+      </div>}
       <div className="mt-5 rounded-2xl border bg-card">
         <div className="border-b p-4 font-bold">{titulo}</div>
         {lista.length ? (
