@@ -17,6 +17,7 @@ type FactoryArgs = {
   auth: AuthLike;
   fromDrive: FromFn;
   fromIdentity: FromFn;
+  fromCanonical?: FromFn;
   getSelectedClinicId: () => Promise<string | null>;
   databaseRpc?: (name: string, args: Record<string, unknown>) => Promise<any>;
 };
@@ -111,7 +112,7 @@ function localParaIso(data: string, hora: string, timeZone: string) {
   ).toISOString();
 }
 
-export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClinicId, databaseRpc }: FactoryArgs) {
+export function createDriveRpc({ auth, fromDrive, fromIdentity, fromCanonical, getSelectedClinicId, databaseRpc }: FactoryArgs) {
   async function user() {
     const { data, error } = await auth.getUser();
     if (error) throw error;
@@ -145,7 +146,9 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, getSelectedClini
     return data?.role === "admin";
   }
   async function clinic(clinicaId: string) {
-    const { data, error } = await fromDrive("clinicas")
+    // O cadastro oficial da clínica já está no PostgreSQL. O Drive pode
+    // não possuir a cópia da clínica e jamais deve decidir autorização.
+    const { data, error } = await (fromCanonical || fromDrive)("clinicas")
       .select("*")
       .eq("id", clinicaId)
       .maybeSingle();
