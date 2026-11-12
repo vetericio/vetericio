@@ -113,7 +113,7 @@ function normalizar(valor: string) {
 }
 type SetorFinanceiro =
   | "consultas" | "exames" | "internacao" | "procedimentos" | "vacinas"
-  | "hotelzinho" | "banho_tosa" | "venda_expressa" | "produtos" | "outros";
+  | "hotelzinho" | "banho_tosa" | "venda_expressa" | "produtos" | "comandas" | "outros";
 type PeriodoSetorial = "hoje" | "mes" | "todos";
 
 const SETORES_FINANCEIROS = [
@@ -126,12 +126,14 @@ const SETORES_FINANCEIROS = [
   { id: "banho_tosa", titulo: "Banho e Tosa", icone: Scissors },
   { id: "venda_expressa", titulo: "Venda Expressa", icone: ShoppingCart },
   { id: "produtos", titulo: "Farmácia e produtos", icone: Package },
+  { id: "comandas", titulo: "Comandas sem setor", icone: CreditCard },
   { id: "outros", titulo: "Outros", icone: ClipboardList },
 ] as const;
 
 function setorDoLancamento(categoria: string): SetorFinanceiro {
   const n = normalizar(String(categoria || "")).replace(/[_-]+/g, " ").replace(/\s+/g, " ");
   if (/venda expressa|venda rapida|venda avulsa/.test(n)) return "venda_expressa";
+  if (/pagamento de comanda|comanda sem setor|comandas/.test(n)) return "comandas";
   if (/banho|tosa|grooming|estetica pet/.test(n)) return "banho_tosa";
   if (/hotel|hospedagem|estadia|creche/.test(n)) return "hotelzinho";
   if (/exam|laboratori|diagnostic|radiograf|raio x|ultrass|tomograf/.test(n)) return "exames";
@@ -699,6 +701,7 @@ export function Financeiro() {
                 <div className="flex items-center gap-2">
                   <Icone size={18} className="shrink-0 text-primary" aria-hidden="true" />
                   <h3 className="text-sm font-bold leading-5 text-foreground">{titulo}</h3>
+                  {id==="venda_expressa"&&<span className="ml-auto rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Em breve</span>}
                 </div>
                 {erroCaixaGeral||carregandoCaixa
                   ? <p className="mt-4 text-base font-semibold text-muted-foreground">—</p>
@@ -714,7 +717,7 @@ export function Financeiro() {
             })}
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs leading-5 text-muted-foreground">
-            <p>Valores agrupados pela categoria do lançamento. Setores sem registros aparecem zerados; entradas sem categoria reconhecida vão para Outros.</p>
+            <p>Valores agrupados pela categoria do lançamento. Setores sem registros ficam zerados. Pagamentos de comandas sem discriminação do serviço ficam separados, sem atribuição artificial a consultas ou produtos.</p>
             <button type="button" onClick={()=>setAba("lancamentos")} className="min-h-9 rounded-lg px-2 font-bold text-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
               Ver lançamentos
             </button>
