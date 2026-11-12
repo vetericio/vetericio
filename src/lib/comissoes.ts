@@ -17,6 +17,7 @@ export type ItemCatalogo = {
   valor: number;
   estoque_atual: number | null;
   estoque_minimo: number | null;
+  codigo_barras?: string | null;
   ativo: boolean;
 };
 

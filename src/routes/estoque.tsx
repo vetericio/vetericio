@@ -26,6 +26,7 @@ type ItemForm = {
   valor: string;
   estoque_atual: string;
   estoque_minimo: string;
+  codigo_barras: string;
 };
 
 const CATEGORIAS_SERVICOS = ["Consultas", "Vacinação", "Vermifugação", "Exames laboratoriais", "Diagnóstico por imagem", "Cirurgias", "Internação", "Procedimentos", "Odontologia", "Banho e tosa", "Atendimento domiciliar", "Outros"];
@@ -45,6 +46,7 @@ const FORM_VAZIO: ItemForm = {
   valor: "",
   estoque_atual: "",
   estoque_minimo: "",
+  codigo_barras: "",
 };
 
 function dinheiro(valor: number) {
@@ -246,6 +248,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       valor: Math.round(valor * 100) / 100,
       estoque_atual: estoqueAtual,
       estoque_minimo: estoqueMinimo,
+      codigo_barras: modal.tipo === "produto" ? modal.codigo_barras.trim() || null : null,
       updated_at: new Date().toISOString(),
       ...(modal.id ? {} : { criado_por: usuarioId }),
     };
@@ -469,8 +472,8 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
 
       {aba === "catalogo" && podeVerCatalogo && (
         <div className="grid gap-4 md:grid-cols-2">
-          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "" })} aoRemover={arquivarItem} />
-          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo) })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "" })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "" })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
         </div>
       )}
@@ -587,6 +590,9 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
               </label>
               {modal.tipo === "produto" && (
                 <>
+                  <label className="text-xs font-semibold sm:col-span-2">Código de barras (EAN, UPC ou código interno)
+                    <input value={modal.codigo_barras} maxLength={80} onChange={event=>setModal({...modal,codigo_barras:event.target.value})} placeholder="Digite ou use um leitor USB" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"/>
+                  </label>
                   <label className="text-xs font-semibold">Estoque atual
                     <input min="0" step="0.001" type="number" disabled={!podeMovimentarEstoque} value={modal.estoque_atual} onChange={(event) => setModal({ ...modal, estoque_atual: event.target.value })} placeholder={podeMovimentarEstoque ? "Opcional" : "Sem permissão"} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal disabled:opacity-60" />
                   </label>

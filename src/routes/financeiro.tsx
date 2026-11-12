@@ -767,7 +767,6 @@ export function Financeiro() {
                 <div className="flex items-center gap-2">
                   <Icone size={18} className="shrink-0 text-primary" aria-hidden="true" />
                   <h3 className="text-sm font-bold leading-5 text-foreground">{titulo}</h3>
-                  {id==="venda_expressa"&&<span className="ml-auto rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Em breve</span>}
                 </div>
                 {erroCaixaGeral||carregandoCaixa
                   ? <p className="mt-4 text-base font-semibold text-muted-foreground">—</p>

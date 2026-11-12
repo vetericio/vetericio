@@ -690,6 +690,7 @@ export type Database = {
         Row: {
           ativo: boolean
           categoria: string
+          codigo_barras: string | null
           clinica_id: string
           created_at: string
           criado_por: string | null
@@ -704,6 +705,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           categoria?: string
+          codigo_barras?: string | null
           clinica_id: string
           created_at?: string
           criado_por?: string | null
@@ -718,6 +720,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           categoria?: string
+          codigo_barras?: string | null
           clinica_id?: string
           created_at?: string
           criado_por?: string | null
