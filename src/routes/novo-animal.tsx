@@ -200,6 +200,9 @@ function NovoAnimal() {
     if(error)return toast.error(error.message);
     toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no ORICSE.");
     navigate({to:"/tutores"});
+    } catch (error) {
+      console.error("Não foi possível salvar o animal:", error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível concluir o cadastro do animal.");
     } finally {
       setSalvando(false);
     }
