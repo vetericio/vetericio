@@ -12,7 +12,7 @@ import {
   type RegraComissao,
   type RemuneracaoFuncionario,
 } from "@/lib/comissoes";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
@@ -132,7 +132,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     if (operacao === "saida" && quantidade > Number(item.estoque_atual ?? 0)) return void toast.error("Saída maior que o estoque disponível.");
     setSalvandoEstoque(item.id);
     try {
-      const { error } = await (supabase as any).rpc("oricse_movimentar_estoque", {
+      const { error } = await (supabaseBanco as any).rpc("oricse_movimentar_estoque", {
         p_clinica_id: clinicaId,
         p_item_id: item.id,
         p_delta: operacao === "entrada" ? quantidade : -quantidade,
@@ -150,37 +150,38 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   }
 
   async function carregarDados(clinica: string) {
-    const [itensResult, regrasResult, vinculosResult] = await Promise.all([
-      supabase.from("oricse_catalogo_itens").select("*").eq("clinica_id", clinica).order("nome"),
-      supabase.from("oricse_regras_comissao").select("*").eq("clinica_id", clinica),
-      supabase.from("clinica_usuarios").select("user_id,papel").eq("clinica_id", clinica).eq("ativo", true),
+    // Fonte canônica do catálogo: a mesma do PDV e do caixa operacional.
+    // O Drive continua atendendo os demais módulos legados, sem uma cadeia
+    // de leituras adicionais para cadastrar ou movimentar produtos.
+    const {data: itensResult, error: erroItens} = await supabaseBanco
+      .from("oricse_catalogo_itens").select("*")
+      .eq("clinica_id",clinica).order("nome");
+    if (erroItens) throw erroItens;
+    setItens((itensResult || []) as ItemCatalogo[]);
+    if (area !== "rh") return;
+
+    const [regrasResult, vinculosResult, remuneracoesResult] = await Promise.all([
+      supabase.from("oricse_regras_comissao").select("*").eq("clinica_id",clinica),
+      supabase.from("clinica_usuarios").select("user_id,papel").eq("clinica_id",clinica).eq("ativo",true),
+      supabase.from("oricse_remuneracao_funcionario").select("*").eq("clinica_id",clinica),
     ]);
-    if (itensResult.error) throw itensResult.error;
     if (regrasResult.error) throw regrasResult.error;
     if (vinculosResult.error) throw vinculosResult.error;
-    const vinculos = vinculosResult.data || [];
-    const ids = vinculos.map((item) => item.user_id);
-    const [perfisResult, remuneracoesResult] = await Promise.all([
-      ids.length
-        ? supabase.from("app_users").select("user_id,username,email").in("user_id", ids)
-        : Promise.resolve({ data: [], error: null } as any),
-      supabase.from("oricse_remuneracao_funcionario").select("*").eq("clinica_id", clinica),
-    ]);
-    if (perfisResult.error) throw perfisResult.error;
     if (remuneracoesResult.error) throw remuneracoesResult.error;
-    const papeis = new Map(vinculos.map((item) => [item.user_id, item.papel]));
-    setItens((itensResult.data || []) as ItemCatalogo[]);
+    const vinculos = vinculosResult.data || [];
+    const ids = vinculos.map((item)=>item.user_id);
+    const {data: perfisResult,error: erroPerfis} = ids.length
+      ? await supabase.from("app_users").select("user_id,username,email").in("user_id",ids)
+      : {data: [],error:null};
+    if (erroPerfis) throw erroPerfis;
+    const papeis = new Map(vinculos.map(item=>[item.user_id,item.papel]));
     setRegras((regrasResult.data || []) as RegraComissao[]);
     setRemuneracoes((remuneracoesResult.data || []) as RemuneracaoFuncionario[]);
-    setProfissionais(
-      (perfisResult.data || [])
-        .map((perfil: any) => ({
-          user_id: perfil.user_id,
-          nome: perfil.username ? `@${perfil.username}` : perfil.email || "Funcionário",
-          papel: String(papeis.get(perfil.user_id) || ""),
-        }))
-        .sort((a: ProfissionalClinica, b: ProfissionalClinica) => a.nome.localeCompare(b.nome, "pt-BR")),
-    );
+    setProfissionais((perfisResult || []).map((perfil:any)=>({
+      user_id:perfil.user_id,
+      nome:perfil.username ? `@${perfil.username}` : perfil.email || "Funcionário",
+      papel:String(papeis.get(perfil.user_id) || ""),
+    })).sort((a:ProfissionalClinica,b:ProfissionalClinica)=>a.nome.localeCompare(b.nome,"pt-BR")));
   }
 
   useEffect(() => {
@@ -253,18 +254,23 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       ...(modal.id ? {} : { criado_por: usuarioId }),
     };
     const { error } = modal.id
-      ? await supabase.from("oricse_catalogo_itens").update(payload).eq("id", modal.id).eq("clinica_id", clinicaId)
-      : await supabase.from("oricse_catalogo_itens").insert(payload);
+      ? await supabaseBanco.from("oricse_catalogo_itens").update(payload).eq("id", modal.id).eq("clinica_id", clinicaId)
+      : await supabaseBanco.from("oricse_catalogo_itens").insert(payload);
     if (error) return void toast.error(`Não foi possível salvar: ${error.message}`);
     setModal(null);
-    await carregarDados(clinicaId);
+    try {
+      await carregarDados(clinicaId);
+    } catch (recarregarErro) {
+      toast.error("Produto salvo, mas a lista não pôde ser atualizada. Recarregue a página.");
+      return;
+    }
     toast.success(modal.id ? "Item atualizado." : "Item cadastrado.");
   }
 
   async function arquivarItem(item: ItemCatalogo) {
     if (!podeGerenciarCatalogo) return void toast.error("Seu usuário não pode gerenciar o catálogo.");
     if (!clinicaId || !window.confirm(`Remover "${item.nome}" do catálogo?`)) return;
-    const { error } = await supabase.from("oricse_catalogo_itens").update({ ativo: false, updated_at: new Date().toISOString() }).eq("id", item.id).eq("clinica_id", clinicaId);
+    const { error } = await supabaseBanco.from("oricse_catalogo_itens").update({ ativo: false, updated_at: new Date().toISOString() }).eq("id", item.id).eq("clinica_id", clinicaId);
     if (error) return void toast.error(`Não foi possível remover o item: ${error.message}`);
     await carregarDados(clinicaId);
     toast.success("Item removido do catálogo.");
