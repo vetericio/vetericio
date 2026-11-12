@@ -32,9 +32,18 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     if(!portal)throw new Error("Você não tem acesso a este arquivo.");
 
     const tabela=data.tipo==="exame"?"oricse_portal_exames":data.tipo==="receita"?"oricse_portal_receitas":"oricse_portal_documentos";
-    const resposta=await driveQuery(data.accessToken,tabela,[{kind:"eq",column:"id",value:data.documentoId},{kind:"eq",column:"visivel_tutor",value:true}]);
-    if(resposta.error)throw new Error(resposta.error.message);
-    const registro=resposta.data;
+    // Documentos clínicos novos têm registro canônico no PostgreSQL;
+    // preservar a consulta legada do Drive para registros anteriores.
+    const {data:canonico,error:erroCanonico}=await supabaseAdmin.from(tabela as "oricse_portal_documentos")
+      .select("id,clinica_id,animal_id,drive_arquivo_id,visivel_tutor")
+      .eq("id",data.documentoId).eq("visivel_tutor",true).maybeSingle();
+    if(erroCanonico)throw new Error("Não foi possível verificar a autorização do documento.");
+    let registro: any=canonico;
+    if(!registro){
+      const resposta=await driveQuery(data.accessToken,tabela,[{kind:"eq",column:"id",value:data.documentoId},{kind:"eq",column:"visivel_tutor",value:true}]);
+      if(resposta.error)throw new Error(resposta.error.message);
+      registro=resposta.data;
+    }
     if(!registro?.drive_arquivo_id||String(registro.clinica_id)!==String(portal.clinica_id))throw new Error("Este arquivo ainda não está disponível para download.");
     // O arquivo precisa pertencer a um animal do tutor autenticado, na mesma clínica.
     // A conferência explícita é necessária porque esta rota utiliza cliente administrativo.
