@@ -203,11 +203,6 @@ export function LeitorCodigoBarrasCamera({
       setAberto(true);
       return;
     }
-    if (!(window as Window & { BarcodeDetector?: ConstrutorDetector }).BarcodeDetector) {
-      setErro("Este navegador não oferece leitura automática de códigos de barras. Experimente o Chrome atualizado ou digite o código.");
-      setAberto(true);
-      return;
-    }
     const tentativa = ++tentativaRef.current;
     setAbrindo(true);
     try {
@@ -353,15 +348,13 @@ export function LeitorCodigoBarrasCamera({
         video.srcObject = stream;
         await video.play();
         const Construtor = (window as Window & { BarcodeDetector?: ConstrutorDetector }).BarcodeDetector;
-        if (!Construtor) throw new Error("Leitor não disponível neste navegador.");
-        const suportados = Construtor.getSupportedFormats
-          ? await Construtor.getSupportedFormats() : formatos;
+        const suportados = Construtor ? (Construtor.getSupportedFormats
+          ? await Construtor.getSupportedFormats() : formatos) : [];
         const habilitados = formatos.filter(formato => suportados.includes(formato));
-        if (!habilitados.length) throw new Error("O navegador não suporta leitura de códigos de barras.");
         if (!ativo) return;
-        const detector = new Construtor({ formats: habilitados });
+        const detector = Construtor && habilitados.length ? new Construtor({ formats: habilitados }) : null;
         let processando = false;
-        intervalo = setInterval(async () => {
+        if (detector) intervalo = setInterval(async () => {
           if (!ativo || processando || video.readyState < 2) return;
           processando = true;
           try {
@@ -429,7 +422,10 @@ export function LeitorCodigoBarrasCamera({
               }).finally(()=>{ ocrOcupado=false; });
             }, 1100);
           } catch {
-            if (ativo) setStatusOCR("indisponivel");
+            if (ativo) {
+              setStatusOCR("indisponivel");
+              if (!detector) setAviso("O navegador não oferece reconhecimento por barras nem OCR. Digite o código manualmente.");
+            }
           }
         })();
       } catch (falha) {
