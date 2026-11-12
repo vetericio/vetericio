@@ -8,7 +8,7 @@ import { supabaseBanco } from "@/integrations/supabase/client";
 
 type Turno = {
   id: string; clinica_id: string; aberto_por: string; aberto_em: string;
-  fundo_centavos: number; observacao_abertura: string; status: "aberto" | "fechado";
+  fundo_centavos: number; observacao_abertura: string; aberto_nome?: string; fechado_nome?: string | null; status: "aberto" | "fechado";
   fechado_em: string | null; fechado_por: string | null;
   contado_centavos: number | null; esperado_centavos: number | null;
   divergencia_centavos: number | null; justificativa_fechamento: string;
@@ -221,11 +221,68 @@ export function CaixaOperacional({
     }
   }
 
+  async function gerarPdfFechamento(turno: Turno) {
+    if (turno.status !== "fechado" || !turno.resumo_fechamento) return void toast.error("Fechamento ainda não confirmado.");
+    try {
+      const { jsPDF } = await import("jspdf");
+      const documento = new jsPDF({ unit: "mm", format: "a4" });
+      const esquerdo = 20;
+      let y = 22;
+      const linha = (rotulo: string, valor: string, destaque = false) => {
+        if (y > 275) { documento.addPage(); y = 22; }
+        documento.setFont("helvetica", destaque ? "bold" : "normal");
+        documento.setFontSize(destaque ? 11 : 10);
+        documento.text(rotulo, esquerdo, y);
+        documento.text(valor, 190, y, { align: "right" });
+        y += 9;
+      };
+      documento.setFont("helvetica", "bold");
+      documento.setFontSize(18); documento.text("ORICSE", esquerdo, y); y += 10;
+      documento.setFontSize(13); documento.text("Comprovante de fechamento de caixa", esquerdo, y); y += 12;
+      documento.setDrawColor(180,150,160); documento.line(esquerdo,y,190,y); y += 9;
+      linha("ID do fechamento", turno.id);
+      linha("Aberto", dataBR(turno.aberto_em));
+      linha("Operador", turno.aberto_nome || turno.aberto_por);
+      linha("Fechado", dataBR(turno.fechado_em));
+      linha("Responsavel pelo fechamento", turno.fechado_nome || turno.fechado_por || "");
+      y += 3;documento.line(esquerdo,y,190,y);y += 8;
+      const resumo = turno.resumo_fechamento;
+      linha("Fundo inicial", formatarCentavos(resumo.fundo_centavos));
+      linha("Dinheiro recebido (central)", formatarCentavos(resumo.dinheiro_centavos));
+      linha("Pix registrado", formatarCentavos(resumo.pix_centavos));
+      linha("Credito registrado", formatarCentavos(resumo.credito_centavos));
+      linha("Debito registrado", formatarCentavos(resumo.debito_centavos));
+      linha("Outras formas", formatarCentavos(resumo.outras_formas_centavos));
+      linha("Suprimentos", formatarCentavos(resumo.suprimento_centavos));
+      linha("Sangrias", formatarCentavos(resumo.sangria_centavos));
+      linha("Estornos em dinheiro confirmados", formatarCentavos(resumo.estorno_dinheiro_centavos));
+      y += 3;documento.line(esquerdo,y,190,y);y += 8;
+      linha("Esperado em especie", formatarCentavos(turno.esperado_centavos), true);
+      linha("Dinheiro contado", formatarCentavos(turno.contado_centavos), true);
+      linha("Diferenca", formatarCentavos(turno.divergencia_centavos), true);
+      const justificativa = turno.justificativa_fechamento?.trim();
+      if(justificativa){
+        y += 5;documento.setFontSize(10);documento.setFont("helvetica","bold");
+        documento.text("Justificativa da divergencia",esquerdo,y);y+=6;
+        documento.setFont("helvetica","normal");
+        const linhas = documento.splitTextToSize(justificativa,165);
+        documento.text(linhas,esquerdo,y);y+=linhas.length*5+6;
+      }
+      y+=7;
+      const nota = "Fechamento parcial: inclui apenas movimentos centralizados no PostgreSQL. Pagamentos legados nao conciliados ficam fora do calculo.";
+      documento.setFontSize(9);documento.setFont("helvetica","italic");
+      documento.text(documento.splitTextToSize(nota,170),esquerdo,Math.min(y,270));
+      documento.save("oricse-fechamento-"+turno.id.slice(0,8)+".pdf");
+    } catch (error) {
+      toast.error("Não foi possível gerar o PDF: " + mensagemErro(error));
+    }
+  }
+
   function exportarHistorico() {
     const cabecalho = ["Tipo", "Registrado em", "Caixa", "Valor (R$)", "Operador", "Motivo ou referência", "Estado"];
     const linhas: (string | number | null)[][] = [
-      ...turnos.map(t => ["Abertura", t.aberto_em, t.id, (t.fundo_centavos / 100).toFixed(2), t.aberto_por, t.observacao_abertura, t.status]),
-      ...turnos.filter(t => t.fechado_em).map(t => ["Fechamento", t.fechado_em, t.id, ((t.contado_centavos || 0) / 100).toFixed(2), t.fechado_por || "", t.justificativa_fechamento, "fechado"]),
+      ...turnos.map(t => ["Abertura", t.aberto_em, t.id, (t.fundo_centavos / 100).toFixed(2), t.aberto_nome || t.aberto_por, t.observacao_abertura, t.status]),
+      ...turnos.filter(t => t.fechado_em).map(t => ["Fechamento", t.fechado_em, t.id, ((t.contado_centavos || 0) / 100).toFixed(2), t.fechado_nome || t.fechado_por || "", t.justificativa_fechamento, "fechado"]),
       ...ajustes.map(a => [a.tipo, a.registrado_em, a.turno_id, (a.valor_centavos / 100).toFixed(2), a.registrado_por, a.motivo, "registrado"]),
       ...estornos.map(e => ["Estorno", e.solicitado_em, e.lancamento_id, (e.valor_centavos / 100).toFixed(2), e.solicitado_por, e.motivo, e.status]),
     ];
@@ -308,8 +365,14 @@ export function CaixaOperacional({
         {turnos.length ? <div className="mt-3 space-y-2">
           {turnos.slice(0,12).map(t=>(
             <div key={t.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-sm">
-              <div><strong>Aberto em {dataBR(t.aberto_em)}</strong><p className="text-xs text-muted-foreground">Operador: {t.aberto_por.slice(0,8)} · {t.status==="aberto"?"Em andamento":"Fechado em "+dataBR(t.fechado_em)}</p></div>
-              <div className="text-right"><strong>{t.status==="aberto"?"Aberto":formatarCentavos(t.contado_centavos)}</strong>{t.status==="fechado"&&<p className="text-xs text-muted-foreground">Diferença: {formatarCentavos(t.divergencia_centavos)}</p>}</div>
+              <div><strong>Aberto em {dataBR(t.aberto_em)}</strong><p className="text-xs text-muted-foreground">Operador: {t.aberto_nome || t.aberto_por.slice(0,8)} · {t.status==="aberto"?"Em andamento":"Fechado em "+dataBR(t.fechado_em)}</p></div>
+              <div className="flex items-center gap-3">
+                <div className="text-right"><strong>{t.status==="aberto"?"Aberto":formatarCentavos(t.contado_centavos)}</strong>{t.status==="fechado"&&<p className="text-xs text-muted-foreground">Diferença: {formatarCentavos(t.divergencia_centavos)}</p>}</div>
+                {t.status==="fechado"&&<button type="button" onClick={()=>void gerarPdfFechamento(t)}
+                  className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 text-xs font-semibold">
+                  <FileDown size={15}/> PDF
+                </button>}
+              </div>
             </div>
           ))}
         </div> : <p className="mt-3 text-sm text-muted-foreground">Nenhum turno registrado.</p>}
