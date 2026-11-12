@@ -109,6 +109,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
   const [papel, setPapel] = useState<PapelClinica>("veterinario");
   const [salvando, setSalvando] = useState(false);
   const [adicionandoPessoa, setAdicionandoPessoa] = useState(false);
+  const [vinculoSalvando, setVinculoSalvando] = useState<string | null>(null);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
@@ -191,6 +192,19 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
     if (!data.session?.access_token) throw new Error("Sessão expirada.");
     return data.session.access_token;
   }
+
+  async function alterarVinculo(vinculo: Vinculo, mudancas: Partial<Vinculo>) {
+    setVinculoSalvando(vinculo.user_id);
+    try {
+      await onAtualizarVinculo(vinculo, mudancas);
+      toast.success(mudancas.papel ? "Cargo atualizado." : "Acesso da pessoa atualizado.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível atualizar este vínculo.");
+    } finally {
+      setVinculoSalvando(null);
+    }
+  }
+
 
   async function criar() {
     const nome = limparUsuario(username);
@@ -286,10 +300,10 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
               </div>
               <div className="mt-1 text-xs text-muted-foreground">{perfis[vinculo.papel]?.resumo}</div>
             </div>
-            <select value={vinculo.papel} onChange={(e) => void onAtualizarVinculo(vinculo, { papel: e.target.value as PapelClinica })} className="min-h-10 rounded-xl border px-3 text-sm">
+            <select value={vinculo.papel} onChange={(e) => void alterarVinculo(vinculo, { papel: e.target.value as PapelClinica })} disabled={vinculoSalvando === vinculo.user_id} className="min-h-10 rounded-xl border px-3 text-sm disabled:opacity-60">
               {Object.entries(perfis).map(([id, p]) => <option key={id} value={id}>{p.nome}</option>)}
             </select>
-            <button onClick={() => void onAtualizarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button>
+            <button type="button" disabled={vinculoSalvando === vinculo.user_id} onClick={() => void alterarVinculo(vinculo, { ativo: !vinculo.ativo })} className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60 ${vinculo.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{vinculo.ativo ? "Ativo" : "Inativo"}</button>
           </div>
           <div className="mt-3 border-t pt-3">
             {editId === vinculo.user_id && <div className="mb-3 grid gap-2 md:grid-cols-2">
