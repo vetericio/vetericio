@@ -17,6 +17,13 @@ import {
   PawPrint,
   Wallet,
   X,
+  Stethoscope,
+  Microscope,
+  BedDouble,
+  Scissors,
+  ShoppingCart,
+  Syringe,
+  Activity,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -104,6 +111,38 @@ function normalizar(valor: string) {
     .toLocaleLowerCase("pt-BR")
     .trim();
 }
+type SetorFinanceiro =
+  | "consultas" | "exames" | "internacao" | "procedimentos" | "vacinas"
+  | "hotelzinho" | "banho_tosa" | "venda_expressa" | "produtos" | "outros";
+type PeriodoSetorial = "hoje" | "mes" | "todos";
+
+const SETORES_FINANCEIROS = [
+  { id: "consultas", titulo: "Consultas", icone: Stethoscope },
+  { id: "exames", titulo: "Exames", icone: Microscope },
+  { id: "internacao", titulo: "Internação", icone: BedDouble },
+  { id: "procedimentos", titulo: "Cirurgias e procedimentos", icone: Activity },
+  { id: "vacinas", titulo: "Vacinas", icone: Syringe },
+  { id: "hotelzinho", titulo: "Hotelzinho", icone: PawPrint },
+  { id: "banho_tosa", titulo: "Banho e Tosa", icone: Scissors },
+  { id: "venda_expressa", titulo: "Venda Expressa", icone: ShoppingCart },
+  { id: "produtos", titulo: "Farmácia e produtos", icone: Package },
+  { id: "outros", titulo: "Outros", icone: ClipboardList },
+] as const;
+
+function setorDoLancamento(categoria: string): SetorFinanceiro {
+  const n = normalizar(String(categoria || "")).replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  if (/venda expressa|venda rapida|venda avulsa/.test(n)) return "venda_expressa";
+  if (/banho|tosa|grooming|estetica pet/.test(n)) return "banho_tosa";
+  if (/hotel|hospedagem|estadia|creche/.test(n)) return "hotelzinho";
+  if (/exam|laboratori|diagnostic|radiograf|raio x|ultrass|tomograf/.test(n)) return "exames";
+  if (/internac|hospitaliz|diaria clinica/.test(n)) return "internacao";
+  if (/cirurg|procediment|anestesi|odontolog/.test(n)) return "procedimentos";
+  if (/vacin|imuniz/.test(n)) return "vacinas";
+  if (/consult|atendimento clinico|retorno veterinario/.test(n)) return "consultas";
+  if (/produto|farmac|medicament|racao|pet ?shop|acessorio|varejo/.test(n)) return "produtos";
+  return "outros"; // Categorias desconhecidas não são atribuídas arbitrariamente.
+}
+
 function digitos(valor: string) {
   return valor.replace(/\D/g, "");
 }
@@ -180,17 +219,43 @@ export function Financeiro() {
   const [erroHotel, setErroHotel] = useState("");
   const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string}>>([]);
   const [erroCaixaGeral,setErroCaixaGeral]=useState("");
+  const [carregandoCaixa,setCarregandoCaixa]=useState(false);
+  const [periodoSetorial,setPeriodoSetorial]=useState<PeriodoSetorial>("mes");
   useEffect(()=>{
-    if(!clinicaId){setCaixaGeral([]);return;}
+    if(!clinicaId){setCaixaGeral([]);setErroCaixaGeral("");setCarregandoCaixa(false);return;}
     let ativo=true;
+    let requisicao=0;
     const carregar=async()=>{
-      const {data,error}=await (supabaseBanco as any).from("oricse_caixa_lancamentos").select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo").eq("clinica_id",clinicaId).order("registrado_em",{ascending:false}).limit(2000);
-      if(!ativo)return;
-      if(error){setErroCaixaGeral("Não foi possível consultar o caixa geral.");return;}
-      setCaixaGeral(data||[]);setErroCaixaGeral("");
+      const atual=++requisicao;
+      if(ativo)setCarregandoCaixa(true);
+      try{
+        // Paginação evita subcontar clínicas com mais de 2.000 movimentos.
+        const todos: typeof caixaGeral=[];
+        const pagina=1000;
+        for(let inicio=0;;inicio+=pagina){
+          const {data,error}=await (supabaseBanco as any).from("oricse_caixa_lancamentos")
+            .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo")
+            .eq("clinica_id",clinicaId)
+            .order("registrado_em",{ascending:false}).order("id",{ascending:false})
+            .range(inicio,inicio+pagina-1);
+          if(error)throw error;
+          if(!ativo||requisicao!==atual)return;
+          todos.push(...(data||[]));
+          if(!data||data.length<pagina)break;
+        }
+        if(ativo&&requisicao===atual){setCaixaGeral(todos);setErroCaixaGeral("");}
+      }catch(error){
+        if(ativo&&requisicao===atual){
+          setErroCaixaGeral("Não foi possível consultar todos os lançamentos do caixa. Tente atualizar a página.");
+          setCaixaGeral([]);
+          console.error("Falha na consolidação financeira:",error);
+        }
+      }finally{if(ativo&&requisicao===atual)setCarregandoCaixa(false);}
     };
-    void carregar();window.addEventListener("focus",carregar);
-    return()=>{ativo=false;window.removeEventListener("focus",carregar);};
+    void carregar();
+    window.addEventListener("focus",carregar);
+    document.addEventListener("visibilitychange",carregar);
+    return()=>{ativo=false;window.removeEventListener("focus",carregar);document.removeEventListener("visibilitychange",carregar);};
   },[clinicaId]);
   useEffect(() => {
     if (!clinicaId) { setEstadiasHotel([]); return; }
@@ -440,6 +505,19 @@ export function Financeiro() {
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
   const contasReceber = lancamentosUnificados.filter((l) => l.tipo === "Entrada" && l.status === "Pendente");
+  const resumoSetores = useMemo(() => {
+    const mapa = Object.fromEntries(SETORES_FINANCEIROS.map((setor) => [setor.id, { recebido: 0, pendente: 0, quantidade: 0 }])) as Record<SetorFinanceiro, { recebido: number; pendente: number; quantidade: number }>;
+    for(const lancamento of lancamentosUnificados){
+      if(lancamento.tipo!=="Entrada" || !Number.isFinite(lancamento.valor) || lancamento.valor<0) continue;
+      if(periodoSetorial==="hoje" && lancamento.data!==dataAtual) continue;
+      if(periodoSetorial==="mes" && !lancamento.data.startsWith(dataAtual.slice(0,7))) continue;
+      const setor=setorDoLancamento(lancamento.categoria);
+      mapa[setor].quantidade++;
+      if(lancamento.status==="Pago") mapa[setor].recebido+=lancamento.valor;
+      else mapa[setor].pendente+=lancamento.valor;
+    }
+    return mapa;
+  },[lancamentosUnificados,periodoSetorial,dataAtual]);
 
   const comandasDia = useMemo(() => comandas.filter(c => dataLocalISO(new Date(c.abertaEm)) === dataAtual).sort((a,b) => b.abertaEm.localeCompare(a.abertaEm)), [comandas, dataAtual]);
   const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && dataLocalISO(new Date(c.abertaEm)) < dataAtual).sort((a,b) => a.abertaEm.localeCompare(b.abertaEm)), [comandas, dataAtual]);
@@ -594,20 +672,62 @@ export function Financeiro() {
       )}
 
       {(aba === "inicio" || aba === "dia" || aba === "mes") && (
-        <section className="mb-5 rounded-2xl border bg-card p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-lg font-bold">Integração financeira dos setores</h2>
-              <p className="text-sm text-muted-foreground">Visão de valores de hospedagem. Reservas e check-outs não são lançados automaticamente como dinheiro recebido.</p></div>
-            <Link to="/hotelzinho" className="text-sm font-semibold text-primary underline">Ver hotelzinho</Link>
-          </div>
-          {erroHotel ? <p className="mt-3 text-sm text-destructive">{erroHotel}</p> : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs text-muted-foreground">Hospedagens em aberto</p><p className="mt-1 text-xl font-bold">{estadiasHotel.filter(e => ["reservada","hospedado"].includes(e.status)).length}</p></div>
-              <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs text-muted-foreground">Diárias de reservas (valor base)</p><p className="mt-1 text-xl font-bold">{dinheiro(estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).reduce((n,e)=>n+Math.max(0,e.valor_diaria_centavos||0),0)/100)}</p></div>
-              <div className="rounded-xl bg-secondary/40 p-3"><p className="text-xs text-muted-foreground">Check-outs concluídos (total apurado)</p><p className="mt-1 text-xl font-bold">{dinheiro(estadiasHotel.filter(e=>e.status==="concluida").reduce((n,e)=>n+Math.max(0,e.valor_final_centavos||0),0)/100)}</p></div>
+        <section className="mb-5 rounded-2xl border bg-card p-4 sm:p-5" aria-labelledby="titulo-setores">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="titulo-setores" className="text-lg font-bold text-foreground">Valores por setor</h2>
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                Valores dos lançamentos registrados no Financeiro e no Caixa. Reservas, orçamentos e check-outs sem pagamento registrado não entram como recebido.
+              </p>
             </div>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">Consultas, internação e banho e tosa devem registrar cobranças e pagamentos em um livro financeiro comum para compor o caixa real sem duplicações. Os valores acima são apenas informativos.</p>
+            <div role="group" aria-label="Período do resumo financeiro por setor" className="inline-flex flex-wrap gap-1 rounded-xl border bg-muted/30 p-1">
+              {([
+                ["hoje","Hoje"],["mes","Este mês"],["todos","Todo o histórico"],
+              ] as const).map(([valor,rotulo])=><button
+                type="button" key={valor} aria-pressed={periodoSetorial===valor}
+                onClick={()=>setPeriodoSetorial(valor)}
+                className={`min-h-9 rounded-lg px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${periodoSetorial===valor?"bg-primary text-primary-foreground shadow-sm":"text-foreground hover:bg-secondary"}`}
+              >{rotulo}</button>)}
+            </div>
+          </div>
+          {erroCaixaGeral&&<p role="alert" className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{erroCaixaGeral}</p>}
+          {carregandoCaixa&&<p role="status" className="mt-3 text-sm text-muted-foreground">Atualizando lançamentos por setor...</p>}
+          <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-5">
+            {SETORES_FINANCEIROS.map(({id,titulo,icone:Icone})=>{
+              const valores=resumoSetores[id];
+              return <article key={id} className="min-w-0 rounded-xl border border-border/70 bg-secondary/25 p-3.5">
+                <div className="flex items-center gap-2">
+                  <Icone size={18} className="shrink-0 text-primary" aria-hidden="true" />
+                  <h3 className="text-sm font-bold leading-5 text-foreground">{titulo}</h3>
+                </div>
+                {erroCaixaGeral||carregandoCaixa
+                  ? <p className="mt-4 text-base font-semibold text-muted-foreground">—</p>
+                  : <>
+                    <p className="mt-3 text-xs text-muted-foreground">Recebido</p>
+                    <p className="mt-0.5 break-words text-xl font-extrabold tabular-nums text-foreground">{dinheiro(valores.recebido)}</p>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      A receber: <strong className="font-semibold text-foreground">{dinheiro(valores.pendente)}</strong>
+                    </p>
+                    <p className="text-xs text-muted-foreground">{valores.quantidade} {valores.quantidade===1?"lançamento":"lançamentos"}</p>
+                  </>}
+              </article>;
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs leading-5 text-muted-foreground">
+            <p>Valores agrupados pela categoria do lançamento. Setores sem registros aparecem zerados; entradas sem categoria reconhecida vão para Outros.</p>
+            <button type="button" onClick={()=>setAba("lancamentos")} className="min-h-9 rounded-lg px-2 font-bold text-primary underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+              Ver lançamentos
+            </button>
+          </div>
+          {!erroHotel&&<details className="mt-3 border-t pt-3">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground">Indicadores operacionais do hotelzinho (não são receita recebida)</summary>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+              <div className="rounded-lg bg-secondary/30 p-3">Hospedagens em aberto: <strong>{estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).length}</strong></div>
+              <div className="rounded-lg bg-secondary/30 p-3">Diárias reservadas (base): <strong>{dinheiro(estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).reduce((n,e)=>n+Math.max(0,e.valor_diaria_centavos||0),0)/100)}</strong></div>
+              <div className="rounded-lg bg-secondary/30 p-3">Check-outs apurados: <strong>{dinheiro(estadiasHotel.filter(e=>e.status==="concluida").reduce((n,e)=>n+Math.max(0,e.valor_final_centavos||0),0)/100)}</strong></div>
+            </div>
+          </details>}
+          {erroHotel&&<p className="mt-3 text-xs text-muted-foreground">Os indicadores operacionais do hotel não puderam ser carregados.</p>}
         </section>
       )}
       {aba === "dia" && (
@@ -1120,10 +1240,15 @@ export function Financeiro() {
                   className="input"
                 >
                   <option>Consulta</option>
-                  <option>Vacina</option>
-                  <option>Cirurgia</option>
-                  <option>Banho e Tosa</option>
+                  <option>Exame</option>
                   <option>Internação</option>
+                  <option>Procedimento</option>
+                  <option>Cirurgia</option>
+                  <option>Vacina</option>
+                  <option>Hotelzinho</option>
+                  <option>Banho e Tosa</option>
+                  <option>Venda Expressa</option>
+                  <option>Farmácia e produtos</option>
                   <option>Produto</option>
                   <option>Despesa</option>
                   <option>Ajuste</option>
