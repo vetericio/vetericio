@@ -46,6 +46,29 @@ create policy venda_expressa_itens_leitura on public.oricse_vendas_expressas_ite
 using (public.oricse_usuario_pode_permissao(clinica_id,'caixa.financeiro.visualizar')
   or public.oricse_usuario_pode_permissao(clinica_id,'caixa.comandas'));
 
+-- Estoque manual segue exigindo estoque.movimentar. Apenas o fluxo atômico
+-- de venda do caixa pode reduzir unidades sem conceder essa permissão ao caixa.
+create or replace function public.oricse_guardar_movimentacao_estoque()
+returns trigger language plpgsql security invoker set search_path = ''
+as $
+begin
+  if (select auth.uid()) is null then return new; end if;
+  if tg_op = 'INSERT' then
+    if new.tipo='produto' and coalesce(new.estoque_atual,0)<>0
+      and not public.oricse_usuario_pode_permissao(new.clinica_id,'estoque.movimentar') then
+      raise exception 'Sem permissão para definir estoque inicial.' using errcode='42501';
+    end if;
+  elsif tg_op = 'UPDATE' then
+    if new.estoque_atual is distinct from old.estoque_atual
+      and not public.oricse_usuario_pode_permissao(new.clinica_id,'estoque.movimentar')
+      and not (pg_catalog.current_setting('oricse.pdv_clinica',true)=new.clinica_id::text
+        and new.tipo='produto' and new.estoque_atual<old.estoque_atual) then
+      raise exception 'Sem permissão para movimentar estoque.' using errcode='42501';
+    end if;
+  end if;
+  return new;
+end $;
+
 create or replace function public.oricse_venda_expressa_finalizar(
   p_clinica_id uuid,
   p_idempotencia uuid,
@@ -118,6 +141,7 @@ begin
     recebido := total::integer;
     troco := 0;
   end if;
+  perform pg_catalog.set_config('oricse.pdv_clinica',p_clinica_id::text,true);
   insert into public.oricse_vendas_expressas
     (clinica_id,idempotencia,operador_id,valor_centavos,forma_pagamento,recebido_centavos,troco_centavos)
   values (p_clinica_id,p_idempotencia,usuario,total::integer,p_forma_pagamento,recebido,troco)
