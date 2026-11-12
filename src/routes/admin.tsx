@@ -1541,15 +1541,21 @@ function Admin() {
     const dominiosProprios = dominiosDaClinica.filter((dominio) => dominio.tipo === "proprio");
     const plano = planos.find((item) => valorPlanoClinica(item) === selecionada.plano);
     const enderecoSugerido = selecionada.slug ? limparSlug(selecionada.slug) + ".oricse.com.br" : "defina-o-no-cadastro.oricse.com.br";
-    const subdominioPronto = Boolean(enderecoOricse && normalizarDominio(enderecoOricse.hostname) === normalizarDominio(enderecoSugerido));
+    const enderecoHostnameConfere = Boolean(enderecoOricse && normalizarDominio(enderecoOricse.hostname) === normalizarDominio(enderecoSugerido));
+    const subdominioPronto = enderecoHostnameConfere && enderecoOricse?.status === "ativo";
     const conteudoSitePublicado = statusConteudoSite === "publicado";
     const publicacaoDoSubdominioAtiva = enderecoOricse?.publicar_site === true;
     const httpsDoSubdominioConfirmado = Boolean(enderecoOricse && verificacoes[enderecoOricse.id] === "ativo");
+    const bloqueioEtapa4 = !subdominioPronto
+      ? "Sincronize o endereço no passo 1" + (enderecoOricse?.status ? " (status: " + enderecoOricse.status + ")" : "")
+      : !conteudoSitePublicado ? "Publique o conteúdo no passo 2"
+      : !publicacaoDoSubdominioAtiva ? "Libere a publicação no passo 3"
+      : "";
     const etapasAtivacao = [
-      { numero: "1", titulo: "Preparar o endereço", descricao: "Salvar e sincronizar o subdomínio desta clínica.", concluida: subdominioPronto, liberada: true, busy: salvandoDominio, botao: subdominioPronto ? "Concluído" : "Preparar endereço", executar: () => void sincronizarEnderecoOricse() },
+      { numero: "1", titulo: "Preparar o endereço", descricao: "Salvar e sincronizar o subdomínio desta clínica.", concluida: subdominioPronto, liberada: true, busy: salvandoDominio, botao: subdominioPronto ? "Concluído" : enderecoHostnameConfere ? "Sincronizar endereço" : "Preparar endereço", executar: () => void sincronizarEnderecoOricse() },
       { numero: "2", titulo: "Publicar o conteúdo", descricao: "Abra o editor, revise a página e clique em Publicar. Depois atualize o estado aqui.", concluida: conteudoSitePublicado, liberada: subdominioPronto && statusConteudoSite !== "carregando", busy: statusConteudoSite === "carregando", botao: conteudoSitePublicado ? "Conteúdo publicado" : "Abrir editor do site", executar: () => setEditorSiteAberto(true) },
-      { numero: "3", titulo: "Liberar o subdomínio", descricao: "Ativar a publicação pública neste endereço.", concluida: publicacaoDoSubdominioAtiva, liberada: subdominioPronto && conteudoSitePublicado, busy: salvandoDominio, botao: publicacaoDoSubdominioAtiva ? "Concluído" : "Liberar publicação", executar: () => { if (enderecoOricse) void alterarPublicacaoDominio(enderecoOricse, true); } },
-      { numero: "4", titulo: "Confirmar HTTPS", descricao: "Testar o acesso real e abrir o site somente após a confirmação.", concluida: httpsDoSubdominioConfirmado, liberada: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva && enderecoOricse?.status === "ativo", busy: enderecoOricse ? verificacoes[enderecoOricse.id] === "verificando" : false, botao: httpsDoSubdominioConfirmado ? "Verificar novamente" : "Verificar HTTPS", executar: () => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); } },
+      { numero: "3", titulo: "Liberar o subdomínio", descricao: "Ativar a publicação pública neste endereço.", concluida: publicacaoDoSubdominioAtiva && subdominioPronto, liberada: subdominioPronto && conteudoSitePublicado, busy: salvandoDominio, botao: publicacaoDoSubdominioAtiva && subdominioPronto ? "Concluído" : "Liberar publicação", executar: () => { if (enderecoOricse) void alterarPublicacaoDominio(enderecoOricse, true); } },
+      { numero: "4", titulo: "Confirmar HTTPS", descricao: "Testar o acesso real e abrir o site somente após a confirmação.", concluida: httpsDoSubdominioConfirmado, liberada: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva, busy: enderecoOricse ? verificacoes[enderecoOricse.id] === "verificando" : false, botao: httpsDoSubdominioConfirmado ? "Verificar novamente" : "Verificar HTTPS", executar: () => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); } },
     ];
 
     return <div className="space-y-5">
@@ -1618,7 +1624,7 @@ function Admin() {
                     <div className="min-w-0">
                       <h5 className="font-bold">{etapa.titulo}</h5>
                       <p className="mt-1 text-sm text-muted-foreground">{etapa.descricao}</p>
-                      <p className="mt-2 text-xs font-semibold">{etapa.concluida ? "Concluído" : etapa.liberada ? "Próxima etapa disponível" : "Conclua a etapa anterior"}</p>
+                      <p className="mt-2 text-xs font-semibold">{etapa.concluida ? "Concluído" : etapa.liberada ? "Próxima etapa disponível" : etapa.numero === "4" ? bloqueioEtapa4 : "Conclua a etapa anterior"}</p>
                     </div>
                   </div>
                   <button type="button" disabled={!etapa.liberada || etapa.busy || (etapa.concluida && etapa.numero !== "4") || (etapa.numero === "1" && !selecionada.slug)} onClick={etapa.executar} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
