@@ -1064,12 +1064,24 @@ function Admin() {
   }
 
   async function atualizarVinculo(v: Vinculo, mudancas: Partial<Vinculo>) {
-    const { error } = await (supabase as any).from("clinica_usuarios").update(mudancas).eq("clinica_id", v.clinica_id).eq("user_id", v.user_id);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { data, error } = await (supabase as any)
+        .from("clinica_usuarios")
+        .update(mudancas)
+        .eq("clinica_id", v.clinica_id)
+        .eq("user_id", v.user_id)
+        .select("clinica_id,user_id,papel,ativo")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data || Object.entries(mudancas).some(([campo, valor]) => data[campo] !== valor))
+        throw new Error("O banco não confirmou a alteração. Atualize a lista e tente novamente.");
+      setVinculos((anterior) => anterior.map((item) =>
+        item.clinica_id === v.clinica_id && item.user_id === v.user_id ? { ...item, ...mudancas } : item
+      ));
+      toast.success("Acesso da equipe atualizado e confirmado.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível atualizar o acesso.");
     }
-    await carregarTudo();
   }
 
   function alterarPlano(i: number, mudancas: Partial<Plano>) {
@@ -2429,13 +2441,13 @@ function Admin() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
-      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
+      <div className="mx-auto max-w-[1800px] px-3 py-3 sm:px-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-3">
-            <img src={site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="h-14 w-14 object-contain"/>
+            <img src={site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="h-11 w-11 object-contain"/>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">ORICSE ADMIN</p>
-              <h1 className="text-2xl font-black sm:text-3xl">Central de gestão</h1>
+              <h1 className="text-xl font-black sm:text-2xl">Central de gestão</h1>
               <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">Operação, aprovações e configuração da plataforma.</p>
             </div>
           </div>
@@ -2453,7 +2465,7 @@ function Admin() {
           </div>
         </header>
 
-        <div className="mt-6">
+        <div className="mt-3">
           <section className="min-w-0">
             {aba === "dashboard" && renderDashboard()}
             {aba === "novas" && renderClinicasNovas()}
