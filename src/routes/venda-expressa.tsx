@@ -25,7 +25,7 @@ const centavosTexto = (t: string) => {
 };
 function VendaExpressa() {
   const { clinicaId, carregando: carregandoPermissoes, pode, adminGlobal } = usePermissoes();
-  const autorizado = adminGlobal || ((pode("caixa.financeiro.gerenciar") || pode("caixa.comandas")) && pode("estoque.movimentar"));
+  const autorizado = adminGlobal || pode("caixa.financeiro.gerenciar") || pode("caixa.comandas");
   const [produtos, setProdutos] = useState<ItemCatalogo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -175,7 +175,7 @@ function VendaExpressa() {
     } finally { setFinalizando(false); }
   }
   if (carregandoPermissoes) return <main className="p-8">Carregando permissões…</main>;
-  if (!autorizado) return <main className="mx-auto max-w-2xl space-y-4 p-8"><h1 className="text-xl font-bold">Venda Expressa</h1><p role="alert">Seu usuário precisa de permissão de caixa e movimentação de estoque.</p><Link to="/inicio" className="underline">Voltar</Link></main>;
+  if (!autorizado) return <main className="mx-auto max-w-2xl space-y-4 p-8"><h1 className="text-xl font-bold">Venda Expressa</h1><p role="alert">Seu usuário precisa de permissão para operar o caixa.</p><Link to="/inicio" className="underline">Voltar</Link></main>;
   return <main className="mx-auto w-full max-w-7xl space-y-5 px-3 py-5 sm:px-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><Link to="/inicio" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"><ArrowLeft size={16}/> Voltar</Link>
