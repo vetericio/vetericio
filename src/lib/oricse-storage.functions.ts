@@ -87,6 +87,7 @@ function permissoesDaChave(chave: string): string[] {
     "vetericio-exames-favoritos": ["consultorio.atendimentos"],
     "vetericio-termos-clinica": ["consultorio.receituario"],
     "oricse-modelos-documentos-v1": ["administracao.configuracoes"],
+    "oricse-politicas-operacionais-v1": ["administracao.configuracoes"],
     "veterico-assinatura-v1": ["consultorio.receituario"],
     "veterico-carimbo-v1": ["consultorio.receituario"],
     "veterico:precisao-ml": ["consultorio.medicacoes", "internacao.medicacoes"],
@@ -141,6 +142,38 @@ async function autorizarModelosClinica(userId: string, clinicaId: string, adminG
   }
 }
 
+const politicasOperacionaisSchema = z.object({
+  versao: z.literal(1),
+  agenda: z.object({
+    toleranciaMinutos: z.number().int().min(0).max(120),
+    cancelamentoHoras: z.number().int().min(0).max(168),
+    reagendamentoHoras: z.number().int().min(0).max(168),
+    exigirSinal: z.boolean(),
+    percentualSinal: z.number().int().min(0).max(100),
+  }).strict(),
+  aprovacoes: z.object({
+    descontoAcimaPercentual: z.number().int().min(0).max(100),
+    estornoExigeAprovacao: z.boolean(),
+    exclusaoExigeAprovacao: z.boolean(),
+  }).strict(),
+  comunicacao: z.object({
+    confirmacaoConsulta: z.string().max(1500),
+    lembreteVacina: z.string().max(1500),
+    mensagemRetorno: z.string().max(1500),
+    mensagemPosConsulta: z.string().max(1500),
+  }).strict(),
+}).strict();
+
+async function autorizarPoliticasClinica(userId: string, clinicaId: string, adminGeral: boolean) {
+  if (adminGeral) return;
+  const admin = await carregarAdmin();
+  const { data: vinculo, error } = await admin.from("clinica_usuarios")
+    .select("papel").eq("user_id", userId).eq("clinica_id", clinicaId).eq("ativo", true).maybeSingle();
+  if (error || !["rt", "admin_clinica"].includes(String(vinculo?.papel || ""))) {
+    throw new Error("Somente a administração ou o responsável técnico pode alterar as políticas da clínica.");
+  }
+}
+
 async function validarAlteracoesPorPlano(
   accessToken: string,
   contexto: { userId: string; clinicaId: string | null },
@@ -150,9 +183,14 @@ async function validarAlteracoesPorPlano(
   if (alteracoes.some((item) => item.chave === "oricse-modelos-documentos-v1")) {
     await autorizarModelosClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as { adminGeral?: boolean }).adminGeral));
   }
+  for (const item of alteracoes) {
+    if (item.chave !== "oricse-politicas-operacionais-v1") continue;
+    await autorizarPoliticasClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as { adminGeral?: boolean }).adminGeral));
+  }
   if ((contexto as { adminGeral?: boolean }).adminGeral) return; // Admin geral mantém a autorização da plataforma.
   const regras = new Map<string, string[]>();
   for (const item of alteracoes) {
+    if (item.chave === "oricse-politicas-operacionais-v1") continue; // Regra estrita Admin/RT.
     if (item.chave === "oricse-modelos-documentos-v1") continue; // Autorização estrita Admin/RT verificada acima.
     const candidatas = permissoesDaChave(item.chave);
     if (candidatas.length) regras.set(item.chave, candidatas);
@@ -185,6 +223,11 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
       catch { return false; }
     })();
     if (!autorizado) delete estado["oricse-modelos-documentos-v1"];
+    const politicasPermitidas = await (async () => {
+      try { await autorizarPoliticasClinica(contexto.userId, contexto.clinicaId!, false); return true; }
+      catch { return false; }
+    })();
+    if (!politicasPermitidas) delete estado["oricse-politicas-operacionais-v1"];
   }
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
@@ -210,6 +253,13 @@ export async function salvarEstadoOricseInterno(data: z.infer<typeof salvarSchem
   const { contexto, estado } = await lerEstado(data.accessToken);
   if (!contexto.clinicaId) throw new Error("Clínica atual não identificada. Nenhuma gravação foi confirmada.");
   await validarAlteracoesPorPlano(data.accessToken, contexto, data.alteracoes);
+  for (const alteracao of data.alteracoes) {
+    if (alteracao.chave !== "oricse-politicas-operacionais-v1") continue;
+    if (alteracao.valor === null || alteracao.valor.length > 12000) throw new Error("Políticas operacionais inválidas.");
+    let parsed: unknown;
+    try { parsed = JSON.parse(alteracao.valor); } catch { throw new Error("JSON das políticas inválido."); }
+    politicasOperacionaisSchema.parse(parsed);
+  }
   // A lista JSON legada também não pode adicionar animais acima da cota.
   // Compara IDs anteriores e novos; editar pacientes existentes continua permitido.
   for (const alteracao of data.alteracoes) {
