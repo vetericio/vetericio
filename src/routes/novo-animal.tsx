@@ -138,6 +138,7 @@ function NovoAnimal() {
   const [animalExistente,setAnimalExistente]=useState<Animal|null>(null);
   const [clinicaId,setClinicaId]=useState("");
   const [carregando,setCarregando]=useState(true);
+  const [salvando,setSalvando]=useState(false);
   const [form,setForm]=useState<AnimalForm>(FORM_VAZIO);
   const editando=Boolean(animalId);
   useEffect(()=>{let ativo=true;(async()=>{try{
@@ -181,17 +182,27 @@ function NovoAnimal() {
     if (form.chegadaTutor && form.nascimento && form.chegadaTutor < form.nascimento) return toast.error("A chegada ao tutor não pode ser anterior ao nascimento.");
     if (form.status === "Falecido" && !form.dataObito) return toast.error("Informe a data do óbito.");
     if (form.status !== "Falecido" && form.dataObito) return toast.error("A data do óbito só pode ser preenchida para animal falecido.");
-    const { data: animaisDoTutor, error: erroDuplicidade } = await (supabaseBanco as any).from("oricse_animais").select("id,nome,microchip").eq("clinica_id",clinicaId).eq("tutor_id",tutor.id);
-    if (erroDuplicidade) return toast.error("Não foi possível verificar duplicidade do cadastro.");
+    if (salvando) return;
+    setSalvando(true);
+    try {
+    // O microchip é armazenado em 'dados' (JSONB), não existe coluna física microchip.
+    const { data: animaisDoTutor, error: erroDuplicidade } = await (supabaseBanco as any).from("oricse_animais").select("id,nome,dados").eq("clinica_id",clinicaId).eq("tutor_id",tutor.id);
+    if (erroDuplicidade) {
+      console.error("Falha ao verificar cadastro duplicado:", erroDuplicidade);
+      return toast.error("Não foi possível consultar os animais deste tutor: " + erroDuplicidade.message);
+    }
     const nomeNormalizado = form.nome.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const homonimos = (animaisDoTutor || []).filter((item: any) => item.id !== animalId && String(item.nome || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === nomeNormalizado);
     if (homonimos.length && !window.confirm("Este tutor já possui um animal com o mesmo nome. Deseja continuar?")) return;
     const microchip = (form.microchip || "").trim();
-    if (microchip && (animaisDoTutor || []).some((item: any) => item.id !== animalId && String(item.microchip || "").trim() === microchip)) return toast.error("Este microchip já está cadastrado para outro animal deste tutor.");
+    if (microchip && (animaisDoTutor || []).some((item: any) => item.id !== animalId && String(item.dados?.microchip || "").trim() === microchip)) return toast.error("Este microchip já está cadastrado para outro animal deste tutor.");
     const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
     if(error)return toast.error(error.message);
     toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no ORICSE.");
     navigate({to:"/tutores"});
+    } finally {
+      setSalvando(false);
+    }
   }
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
@@ -256,7 +267,7 @@ function NovoAnimal() {
 
           <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><label className="text-sm font-semibold">Observações gerais<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} className={`${campo} py-3`}/></label></section>
 
-          <div className="flex flex-wrap justify-end gap-2"><Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"><Save size={17}/> {editando ? "Salvar alterações" : "Salvar animal"}</button></div>
+          <div className="flex flex-wrap justify-end gap-2"><Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} disabled={salvando} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"><Save size={17}/> {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Salvar animal"}</button></div>
         </div>
       )}
     </main>
