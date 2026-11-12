@@ -1,162 +1,155 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Delete } from "lucide-react";
+import { LockKeyhole, Settings2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { supabaseBanco } from "@/integrations/supabase/client";
 
 type AreaProtegida = "assinar" | "receituario";
-const HASH_PIN = "3e2dbcbf35006bbc50d89a28146b286a743fa54624e71bb1293d063ba6360fa6";
+type Contexto = { clinica_id: string; exigida: boolean; configurada: boolean; pode_configurar: boolean };
 const TEMPO_LIBERADO_MS = 15 * 60 * 1000;
-const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
-async function hash(texto: string) {
-  const dados = new TextEncoder().encode(`vetericio-protecao:${texto}`);
-  const digest = await crypto.subtle.digest("SHA-256", dados);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function chave(area: AreaProtegida) {
-  return `vetericio-acesso-${area}`;
-}
-
-function lerLiberacao(area: AreaProtegida) {
-  try {
-    const ate = Number(oricseSession.getItem(chave(area)) ?? 0);
-    return Number.isFinite(ate) && ate > Date.now() ? ate : 0;
-  } catch {
-    return 0;
-  }
-}
-
-export function ProtegidoPorSenha({
-  area,
-  titulo,
-  children,
-}: {
-  area: AreaProtegida;
-  titulo: string;
-  children: ReactNode;
+export function ProtegidoPorSenha({ area, titulo, children }: {
+  area: AreaProtegida; titulo: string; children: ReactNode;
 }) {
+  const [contexto, setContexto] = useState<Contexto | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [senha, setSenha] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmacao, setConfirmacao] = useState("");
+  const [exigida, setExigida] = useState(true);
+  const [configurando, setConfigurando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const [liberadoAte, setLiberadoAte] = useState(0);
-  const [pin, setPin] = useState("");
-  const [verificando, setVerificando] = useState(false);
 
-  useEffect(() => {
-    setLiberadoAte(lerLiberacao(area));
-    setPin("");
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErro("");
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_protecao_contexto", { p_area: area });
+      if (error) throw error;
+      const resultado = (Array.isArray(data) ? data[0] : data) as Contexto | undefined;
+      if (!resultado?.clinica_id) throw new Error("Não foi possível identificar a clínica ativa.");
+      setContexto(resultado);
+      setExigida(resultado.exigida);
+      setLiberadoAte(0);
+      setSenha("");
+    } catch (error) {
+      setContexto(null);
+      setErro(error instanceof Error ? error.message : "Não foi possível verificar a proteção da clínica.");
+    } finally {
+      setCarregando(false);
+    }
   }, [area]);
 
+  useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => {
     if (!liberadoAte) return;
-    const expirar = () => {
-      if (Date.now() >= liberadoAte) {
-        setLiberadoAte(0);
-        setPin("");
-      }
-    };
-    const timer = window.setTimeout(expirar, Math.max(0, liberadoAte - Date.now()));
-    window.addEventListener("focus", expirar);
-    document.addEventListener("visibilitychange", expirar);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("focus", expirar);
-      document.removeEventListener("visibilitychange", expirar);
-    };
+    const timer = window.setTimeout(() => setLiberadoAte(0), Math.max(0, liberadoAte - Date.now()));
+    const verificar = () => { if (Date.now() >= liberadoAte) setLiberadoAte(0); };
+    window.addEventListener("focus", verificar);
+    return () => { window.clearTimeout(timer); window.removeEventListener("focus", verificar); };
   }, [liberadoAte]);
 
-  const validar = useCallback(
-    async (candidato: string) => {
-      setVerificando(true);
-      try {
-        if ((await hash(candidato)) !== HASH_PIN) {
-          setPin("");
-          toast.error("Senha incorreta.");
-          return;
-        }
-        const ate = Date.now() + TEMPO_LIBERADO_MS;
-        oricseSession.setItem(chave(area), String(ate));
-        setPin("");
-        setLiberadoAte(ate);
-        toast.success("Acesso liberado neste aparelho por 15 minutos.");
-      } catch {
-        setPin("");
-        toast.error("Não foi possível validar a senha.");
-      } finally {
-        setVerificando(false);
-      }
-    },
-    [area],
-  );
+  async function liberar() {
+    if (!contexto || salvando) return;
+    setSalvando(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_protecao_validar", { p_area: area, p_senha: senha });
+      if (error) throw error;
+      if (data !== true) throw new Error("Senha incorreta.");
+      setLiberadoAte(Date.now() + TEMPO_LIBERADO_MS);
+      setSenha("");
+      toast.success("Área liberada por 15 minutos nesta sessão.");
+    } catch (error) {
+      setSenha("");
+      toast.error(error instanceof Error ? error.message : "Não foi possível conferir a senha.");
+    } finally {
+      setSalvando(false);
+    }
+  }
 
-  const digitar = useCallback(
-    (digito: string) => {
-      if (verificando || pin.length >= 4) return;
-      const proximo = `${pin}${digito}`;
-      setPin(proximo);
-      if (proximo.length === 4) void validar(proximo);
-    },
-    [pin, verificando, validar],
-  );
+  async function salvarConfig() {
+    if (!contexto?.pode_configurar || salvando) return;
+    if (novaSenha && novaSenha.length < 8) return void toast.error("Use uma senha de pelo menos 8 caracteres.");
+    if (novaSenha !== confirmacao) return void toast.error("A confirmação da nova senha não corresponde.");
+    if (exigida && !contexto.configurada && !novaSenha) return void toast.error("Defina uma senha antes de ativar a proteção.");
+    setSalvando(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_protecao_configurar", {
+        p_area: area, p_exigida: exigida, p_nova_senha: novaSenha || null,
+      });
+      if (error || data !== true) throw error || new Error("Alteração não confirmada.");
+      setNovaSenha(""); setConfirmacao(""); setConfigurando(false); setLiberadoAte(0);
+      toast.success("Proteção atualizada pelo RT.");
+      await carregar();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao salvar a proteção.");
+    } finally {
+      setSalvando(false);
+    }
+  }
 
-  useEffect(() => {
-    if (liberadoAte) return;
-    const teclado = (evento: KeyboardEvent) => {
-      if (evento.ctrlKey || evento.altKey || evento.metaKey || evento.repeat || verificando) return;
-      if (/^\d$/.test(evento.key)) {
-        evento.preventDefault();
-        digitar(evento.key);
-      } else if (evento.key === "Backspace") {
-        evento.preventDefault();
-        setPin((atual) => atual.slice(0, -1));
-      }
-    };
-    window.addEventListener("keydown", teclado);
-    return () => window.removeEventListener("keydown", teclado);
-  }, [liberadoAte, digitar, verificando]);
-
-  if (liberadoAte > Date.now()) return <>{children}</>;
-
-  return (
-    <main className="mx-auto flex min-h-[60vh] w-full max-w-sm items-center px-4 py-8">
-      <section className="w-full rounded-3xl border border-border bg-card p-5 text-center shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Veterício</p>
-        <h1 className="mt-2 font-display text-xl font-semibold text-foreground">{titulo}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Digite a senha de quatro números para continuar.
-        </p>
-        <div
-          className="mx-auto mt-6 flex w-fit gap-3"
-          aria-label={`${pin.length} de 4 números digitados`}
-          aria-live="polite"
-        >
-          {Array.from({ length: 4 }, (_, indice) => (
-            <span
-              key={indice}
-              className={`h-3 w-3 rounded-full ${indice < pin.length ? "bg-primary" : "bg-secondary"}`}
-            />
-          ))}
-        </div>
-        <div className="mx-auto mt-7 grid max-w-[17rem] grid-cols-3 gap-2">
-          {TECLAS.map((tecla) => (
-            <button
-              key={tecla}
-              type="button"
-              onClick={() => digitar(tecla)}
-              disabled={tecla === "*" || tecla === "#" || verificando}
-              className="min-h-14 rounded-2xl bg-secondary text-lg font-semibold text-secondary-foreground transition-colors hover:bg-secondary/70 disabled:cursor-default disabled:opacity-45"
-            >
-              {tecla}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setPin((atual) => atual.slice(0, -1))}
-          disabled={!pin || verificando}
-          className="mx-auto mt-3 flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-secondary disabled:opacity-40"
-        >
-          <Delete className="h-4 w-4" /> Apagar
-        </button>
-      </section>
+  if (carregando) return <main className="mx-auto max-w-md px-4 py-12 text-sm text-muted-foreground">Conferindo regras de acesso da clínica…</main>;
+  if (erro || !contexto) return (
+    <main className="mx-auto max-w-md space-y-3 px-4 py-12" role="alert">
+      <p className="font-semibold text-destructive">{erro || "Acesso indisponível."}</p>
+      <button type="button" onClick={() => void carregar()} className="rounded-xl border px-4 py-2">Tentar novamente</button>
     </main>
   );
+
+  const liberado = !contexto.exigida || liberadoAte > Date.now();
+
+  return <>
+    {contexto.pode_configurar && (
+      <div className="mx-auto mb-3 flex w-full max-w-3xl justify-end px-4">
+        <button type="button" onClick={() => setConfigurando(v => !v)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold">
+          <Settings2 size={16}/> Segurança · RT
+        </button>
+      </div>
+    )}
+    {configurando && contexto.pode_configurar && (
+      <section className="mx-auto mb-5 w-full max-w-3xl space-y-3 rounded-2xl border border-primary/25 bg-card p-5 shadow-sm" aria-label="Configuração de segurança do RT">
+        <div className="flex items-center gap-2"><ShieldCheck className="text-primary" size={20}/><h2 className="font-bold">Senha de {area === "assinar" ? "assinaturas de documentos" : "receituários"}</h2></div>
+        <p className="text-sm text-muted-foreground">Somente o responsável técnico da clínica pode configurar esta exigência. A senha é armazenada como hash, nunca em texto simples.</p>
+        <label className="flex items-center gap-3 text-sm font-semibold">
+          <input type="checkbox" checked={exigida} onChange={e => setExigida(e.target.checked)} className="h-5 w-5 accent-primary"/>
+          Exigir senha para acessar esta área
+        </label>
+        <label className="block text-sm font-semibold"> {contexto.configurada ? "Alterar senha (opcional)" : "Definir senha"}
+          <input type="password" autoComplete="new-password" value={novaSenha} onChange={e => setNovaSenha(e.target.value)}
+            minLength={8} maxLength={128} placeholder="Mínimo de 8 caracteres" className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3"/>
+        </label>
+        <label className="block text-sm font-semibold">Confirmar nova senha
+          <input type="password" autoComplete="new-password" value={confirmacao} onChange={e => setConfirmacao(e.target.value)}
+            maxLength={128} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3"/>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={salvando} onClick={() => void salvarConfig()} className="rounded-xl bg-primary px-4 py-2 font-bold text-primary-foreground disabled:opacity-50">Salvar configuração</button>
+          <button type="button" onClick={() => setConfigurando(false)} className="rounded-xl border px-4 py-2">Cancelar</button>
+        </div>
+      </section>
+    )}
+    {liberado ? children : (
+      <main className="mx-auto flex min-h-[48vh] w-full max-w-md items-center px-4 py-8">
+        <section className="w-full rounded-3xl border bg-card p-6 shadow-sm">
+          <LockKeyhole className="mx-auto text-primary" size={30}/>
+          <h1 className="mt-3 text-center text-xl font-bold">{titulo}</h1>
+          {!contexto.configurada ? (
+            <p className="mt-3 text-center text-sm text-amber-700">O responsável técnico precisa definir a senha antes de liberar esta área.</p>
+          ) : (
+            <form onSubmit={e => { e.preventDefault(); void liberar(); }} className="mt-5 space-y-4">
+              <p className="text-center text-sm text-muted-foreground">Digite a senha definida pelo RT para continuar.</p>
+              <label className="block text-sm font-semibold">Senha de acesso
+                <input type="password" autoComplete="off" value={senha} onChange={e => setSenha(e.target.value)}
+                  className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 text-base" required autoFocus/>
+              </label>
+              <button type="submit" disabled={salvando || !senha} className="min-h-11 w-full rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">
+                {salvando ? "Validando…" : "Desbloquear"}
+              </button>
+            </form>
+          )}
+        </section>
+      </main>
+    )}
+  </>;
 }
