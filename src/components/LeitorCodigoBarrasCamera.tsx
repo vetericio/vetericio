@@ -169,6 +169,31 @@ function prepararImagemOCR(video: HTMLVideoElement, indice: number): HTMLCanvasE
   return canvas;
 }
 
+/** Alterna enquadramentos entre os quadros para achar barras longe do centro. */
+function capturarQuadroZXing(
+  video: HTMLVideoElement, quadro: HTMLCanvasElement, tentativa: number,
+): HTMLCanvasElement | null {
+  if (video.videoWidth < 250 || video.videoHeight < 180) return null;
+  const zonas = [
+    {x:0, y:0, w:1, h:1},
+    {x:0.06, y:0.16, w:0.88, h:0.70},
+    {x:0.02, y:0.39, w:0.96, h:0.52},
+  ];
+  const zona = zonas[tentativa % zonas.length];
+  const origemX = Math.round(video.videoWidth*zona.x);
+  const origemY = Math.round(video.videoHeight*zona.y);
+  const origemW = Math.round(video.videoWidth*zona.w);
+  const origemH = Math.round(video.videoHeight*zona.h);
+  const escala = Math.min(1.5, 1350/origemW);
+  quadro.width = Math.max(1,Math.round(origemW*escala));
+  quadro.height = Math.max(1,Math.round(origemH*escala));
+  const ctx = quadro.getContext("2d",{willReadFrequently:true});
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(video,origemX,origemY,origemW,origemH,0,0,quadro.width,quadro.height);
+  return quadro;
+}
+
 function erroDaCamera(erro: unknown): string {
   const nome = erro instanceof Error ? erro.name : "";
   if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(nome))
@@ -229,6 +254,7 @@ export function LeitorCodigoBarrasCamera({
   const [refocando, setRefocando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [statusOCR, setStatusOCR] = useState<"carregando" | "ativo" | "indisponivel" | null>(null);
+  const [statusQuadros, setStatusQuadros] = useState<"carregando" | "ativo" | "indisponivel" | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
@@ -256,6 +282,7 @@ export function LeitorCodigoBarrasCamera({
     setRefocando(false);
     setProgresso(0);
     setStatusOCR(null);
+    setStatusQuadros(null);
   }, [parar]);
 
   const solicitarCamera = async () => {
@@ -359,6 +386,8 @@ export function LeitorCodigoBarrasCamera({
     const video = videoRef.current;
     let ativo = true;
     let intervalo: ReturnType<typeof setInterval> | undefined;
+    let intervaloZXing: ReturnType<typeof setInterval> | undefined;
+    let iniciarOCR: ReturnType<typeof setTimeout> | undefined;
     let ultimo = "";
     let vezes = 0;
     let vistoEm = 0;
@@ -388,8 +417,20 @@ export function LeitorCodigoBarrasCamera({
         setAviso("Código " + codigo + " não aceito. Confira a etiqueta ou tente outro produto.");
       }
     };
+    const registrarLeituraBarras = (codigo: string) => {
+      if(!ativo || fechandoLeitura) return;
+      const agora=Date.now();
+      ultimaLeituraDeBarras=agora;
+      if(codigo===ultimo && agora-vistoEm<=intervaloMaximoLeitura) vezes+=1;
+      else {ultimo=codigo;vezes=1;}
+      vistoEm=agora;
+      setProgresso(Math.min(vezes,leiturasParaConfirmar));
+      if(vezes>=leiturasParaConfirmar && agora-rejeitadoEm>=2400) {
+        vezes=0;
+        confirmarCodigo(codigo,"barras");
+      }
+    };
     let indiceOCR=0;
-
 
     async function iniciar() {
       try {
@@ -425,15 +466,7 @@ export function LeitorCodigoBarrasCamera({
               if (vezes && Date.now() - vistoEm > 850) { vezes = 0; setProgresso(0); }
               return;
             }
-            const agora = Date.now();
-            ultimaLeituraDeBarras = agora;
-            if (codigo === ultimo && agora - vistoEm <= intervaloMaximoLeitura) vezes += 1;
-            else { ultimo = codigo; vezes = 1; }
-            vistoEm = agora;
-            setProgresso(Math.min(vezes,leiturasParaConfirmar));
-            if (vezes < leiturasParaConfirmar || agora - rejeitadoEm < 2400) return;
-            vezes = 0;
-            confirmarCodigo(codigo,"barras");
+            registrarLeituraBarras(codigo);
           } catch {
             // Ignora um quadro com desfoque, reflexo ou movimento.
           } finally {
@@ -441,10 +474,45 @@ export function LeitorCodigoBarrasCamera({
           }
         }, 150);
 
+        // Decoder ZXing independente do navegador, examinando o vídeo
+        // quadro a quadro, como uma câmera de leitura contínua.
+        // A análise é LOCAL; quadros não saem do aparelho.
+        setStatusQuadros("carregando");
+        void (async () => {
+          try {
+            const {criarLeitorZXing}=await import("@/lib/leitorZXing");
+            const ler=await criarLeitorZXing();
+            if (!ativo || fechandoLeitura) return;
+            const quadro=document.createElement("canvas");
+            let tentativaZXing=0;
+            setStatusQuadros("ativo");
+            intervaloZXing=setInterval(()=>{
+              if(!ativo || fechandoLeitura || video.readyState<2) return;
+              const indice=tentativaZXing++;
+              // Testa vídeo original em diferentes regiões e, às vezes,
+              // uma versão com contraste ampliado para embalagens difíceis.
+              const imagem=indice%5===4
+                ? prepararImagemOCR(video,indice)
+                : capturarQuadroZXing(video,quadro,indice);
+              if(!imagem)return;
+              const resultado=ler(imagem);
+              if(!resultado)return;
+              const codigo=resultadoValido(resultado);
+              if(codigo) registrarLeituraBarras(codigo);
+            },190);
+          } catch {
+            if(ativo)setStatusQuadros("indisponivel");
+          }
+        })();
+
         // OCR roda como segunda via, em baixa frequência e num worker separado.
         // O scanner de barras continua responsivo durante a análise de números.
         setStatusOCR("carregando");
-        void (async () => {
+        // Inicia o OCR depois do vídeo: dá prioridade às barras e evita
+        // carregar o modelo de reconhecimento no primeiro quadro.
+        iniciarOCR=setTimeout(()=>{
+          if(!ativo || fechandoLeitura)return;
+          void (async () => {
           try {
             const {createWorker, PSM} = await import("tesseract.js");
             const worker = await createWorker("eng",1);
@@ -486,7 +554,8 @@ export function LeitorCodigoBarrasCamera({
               if (!detector) setAviso("O navegador não oferece reconhecimento por barras nem OCR. Digite o código manualmente.");
             }
           }
-        })();
+          })();
+        },950);
       } catch (falha) {
         if (!ativo) return;
         parar();
@@ -497,6 +566,8 @@ export function LeitorCodigoBarrasCamera({
     return () => {
       ativo = false;
       if (intervalo) clearInterval(intervalo);
+      if (intervaloZXing) clearInterval(intervaloZXing);
+      if (iniciarOCR) clearTimeout(iniciarOCR);
       if (ocrTimer) clearInterval(ocrTimer);
       if (workerOCR) void workerOCR.terminate().catch(() => {});
       if (video.srcObject === stream) video.srcObject = null;
@@ -561,7 +632,7 @@ export function LeitorCodigoBarrasCamera({
                 aria-label="Aproximação da câmera"/>
             </label>}
             <div className="space-y-1" role="status" aria-live="polite">
-              <p className="text-xs font-medium">{progresso ? `Confirmando código: ${progresso} de ${leiturasParaConfirmar}` : "Procurando código no centro da imagem…"}</p>
+              <p className="text-xs font-medium">{progresso ? `Confirmando código: ${progresso} de ${leiturasParaConfirmar}` : "Filmando e procurando código em todos os quadros…"}</p>
               <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                 <div className="h-full rounded-full bg-primary transition-all duration-150"
                   style={{width:`${100*progresso/leiturasParaConfirmar}%`}}/>
@@ -575,7 +646,8 @@ export function LeitorCodigoBarrasCamera({
               <span className="text-xs text-muted-foreground">A altura do som depende do volume de mídia do celular.</span>
             </div>
             <p className="text-sm font-medium">Aponte para a etiqueta. O leitor procura barras e números em diferentes posições, corrigindo o contraste quando necessário.</p>
-            <p className="text-xs text-muted-foreground">Leitura dupla: barras + reconhecimento local dos números impressos. Códigos EAN/UPC passam por verificação e confirmação para evitar erros. O bip toca após leitura aceita.</p>
+            <p className="text-xs text-muted-foreground">Leitura contínua por vídeo: ZXing + leitor nativo, com OCR dos números como alternativa. O bip confirma a leitura correta.</p>
+            <p className="text-xs text-muted-foreground" role="status">{statusQuadros === "ativo" ? "Leitura de barras quadro a quadro ativa" : statusQuadros === "carregando" ? "Ativando leitor contínuo…" : statusQuadros === "indisponivel" ? "Decodificador alternativo indisponível; tentando outros métodos" : "Preparando câmera…"}</p>
             <p className="text-xs text-muted-foreground" role="status">{statusOCR === "carregando" ? "Preparando reconhecimento dos números…" : statusOCR === "ativo" ? "Leitura dos números ativa · pode demorar um pouco mais em celulares lentos" : statusOCR === "indisponivel" ? "Leitura numérica indisponível. O leitor de barras permanece ativo." : "Procurando código…"}</p>
             {aviso && <p role="status" className="rounded-lg bg-secondary p-2 text-sm">{aviso}</p>}
           </>}
