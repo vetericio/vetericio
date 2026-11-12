@@ -1,6 +1,12 @@
 
 -- Caixa operacional: novos registros, sem migrar ou apagar lançamentos legados.
 -- Alterações financeiras só pelas RPCs abaixo; tabelas abertas somente para leitura sob RLS.
+-- Campos complementares para novos lançamentos manuais, sem alterar o histórico existente.
+alter table public.oricse_caixa_lancamentos
+  add column if not exists detalhes jsonb not null default '{}'::jsonb;
+alter table public.oricse_caixa_lancamentos
+  add column if not exists data_competencia date;
+
 create table if not exists public.oricse_caixa_turnos (
   id uuid primary key default gen_random_uuid(),
   clinica_id uuid not null references public.clinicas(id) on delete restrict,
