@@ -61,6 +61,10 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     const arquivo=await localizarArquivo(token,String(registro.drive_arquivo_id));
     if(!arquivo)throw new Error("Arquivo não encontrado no Google Drive.");
     if(arquivo.appProperties?.clinicaId&&String(arquivo.appProperties.clinicaId)!==String(portal.clinica_id))throw new Error("Você não tem acesso a este arquivo.");
+    if(arquivo.appProperties?.entidadeTipo==="animal" &&
+      String(arquivo.appProperties.entidadeId||"")!==String(registro.animal_id)){
+      throw new Error("O arquivo não pertence ao animal autorizado.");
+    }
     if(Number(arquivo.size||0)>20_000_000)throw new Error("Este arquivo é grande demais para abrir pelo portal.");
 
     const response=await driveFetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}?alt=media`);
