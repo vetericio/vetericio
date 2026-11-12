@@ -1453,6 +1453,16 @@ function Admin() {
     }
   }
 
+  async function copiarEndereco(texto: string, descricao: string) {
+    try {
+      if (!window.navigator.clipboard?.writeText) throw new Error("Cópia automática indisponível neste navegador.");
+      await window.navigator.clipboard.writeText(texto);
+      toast.success(descricao + " copiado.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível copiar. Selecione o texto manualmente.");
+    }
+  }
+
   async function verificarDnsProprio(dominio: DominioClinica) {
     if (!selecionada || verificandoDnsId || dominio.tipo !== "proprio") return;
     setVerificandoDnsId(dominio.id);
@@ -1616,11 +1626,12 @@ function Admin() {
         <div className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Endereço principal ORICSE</p>
-            <p className="mt-0.5 break-all text-base font-black sm:text-lg">{hostnameOricse ? "https://" + hostnameOricse : "Defina um endereço no cadastro da clínica"}</p>
+            <p className="mt-0.5 break-all text-base font-black sm:text-lg">{hostnameOricse ? "https://" + hostnameOricse : "Endereço ainda não definido"}</p>
+            {!selecionada.slug && <button type="button" onClick={() => setAbaClinica("cadastro")} className="mt-1 rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-bold text-primary">Definir endereço no cadastro</button>}
             <div className="mt-1 flex flex-wrap items-center gap-2">{indicadorDominio(enderecoOricse)}<span className="text-xs text-muted-foreground">{conteudoSitePublicado ? "Conteúdo publicado" : statusConteudoSite === "erro" ? "Não foi possível consultar o conteúdo" : statusConteudoSite === "carregando" ? "Consultando conteúdo" : "Conteúdo ainda não publicado"}</span></div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {hostnameOricse && <button type="button" onClick={() => { void window.navigator.clipboard.writeText("https://" + hostnameOricse).then(() => toast.success("Endereço copiado.")).catch(() => toast.error("Não foi possível copiar. Selecione o endereço na tela.")); }} className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold">Copiar link</button>}
+            {hostnameOricse && <button type="button" onClick={() => void copiarEndereco("https://" + hostnameOricse, "Endereço")} className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold">Copiar link</button>}
             {hostnameOricse && <a href={"https://" + hostnameOricse} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold"><ExternalLink size={14}/> Abrir endereço</a>}
             {proximaEtapa && <button type="button" disabled={!proximaEtapa.liberada || proximaEtapa.busy || bloqueado && proximaEtapa.numero !== 2} onClick={proximaEtapa.executar} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{proximaEtapa.busy ? "Processando..." : proximaEtapa.botao}</button>}
             {!proximaEtapa && <button type="button" disabled={!enderecoOricse || verificacoes[enderecoOricse.id] === "verificando"} onClick={() => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800"><RefreshCcw size={14}/> Testar novamente</button>}
@@ -1667,7 +1678,7 @@ function Admin() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   {dominio.tipo === "proprio" && <>
                     <button type="button" disabled={verificandoDnsId !== null} onClick={() => void verificarDnsProprio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificandoDnsId === dominio.id ? "Consultando..." : "Testar DNS"}</button>
-                    <button type="button" onClick={() => { void window.navigator.clipboard.writeText(dominio.dns_alvo).then(() => toast.success("Destino DNS copiado.")).catch(() => toast.error("Não foi possível copiar o DNS.")); }} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold">Copiar DNS</button>
+                    <button type="button" onClick={() => void copiarEndereco(dominio.dns_alvo, "Destino DNS")} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold">Copiar DNS</button>
                   </>}
                   <button type="button" disabled={salvandoDominio || (!dominio.publicar_site && (!conteudoSitePublicado || dominio.status !== "ativo" || (dominio.tipo === "oricse" && !subdominioPronto)))} onClick={() => void alterarPublicacaoDominio(dominio, !dominio.publicar_site)} className={"min-h-8 rounded-lg px-2 text-[11px] font-bold disabled:opacity-40 " + (dominio.publicar_site ? "border bg-white" : "bg-primary text-primary-foreground")}>{dominio.publicar_site ? "Pausar" : "Publicar"}</button>
                   <button type="button" disabled={!verificavel || verificacoes[dominio.id] === "verificando"} onClick={() => void verificarDisponibilidadeDominio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificacoes[dominio.id] === "verificando" ? "Testando..." : "Testar HTTPS"}</button>
