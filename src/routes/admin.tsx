@@ -49,11 +49,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 export const Route = createFileRoute("/admin")({ component: Admin });
 
-type Aba = "dashboard" | "novas" | "lixeira" | "clinicas" | "planos" | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
+type Aba = "dashboard" | "novas" | "lixeira" | "clinicas" | "equipe" | "planos" | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
 type AbaClinica = "cadastro" | "dados" | "situacao" | "usuarios" | "drive" | "site" | "autorizacoes";
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
 type StatusFinanceiro = "em_dia" | "pendente" | "atrasado" | "isento" | "teste";
-type FiltroClinica = "todas" | "pagas" | "inadimplentes" | "canceladas";
+type FiltroClinica = "todas" | "pagas" | "inadimplentes" | "canceladas" | "bloqueadas" | "inativas";
+type FiltroEquipe = "todas" | "ativos" | "inativos" | "sem_vinculo";
 
 type Clinica = {
   id: string;
@@ -282,8 +283,11 @@ function Admin() {
   const [erroNovaClinica, setErroNovaClinica] = useState("");
   const [buscaClinica, setBuscaClinica] = useState("");
   const [filtroClinica, setFiltroClinica] = useState<FiltroClinica>("todas");
+  const [buscaEquipe, setBuscaEquipe] = useState("");
+  const [filtroEquipe, setFiltroEquipe] = useState<FiltroEquipe>("todas");
   const [usuarios, setUsuarios] = useState<AppUser[]>([]);
   const [vinculos, setVinculos] = useState<Vinculo[]>([]);
+  const [erroEquipe, setErroEquipe] = useState("");
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [funcionalidades, setFuncionalidades] = useState<{codigo:string;nome:string;grupo:string;ordem:number}[]>([]);
   const [permissoesPlanos, setPermissoesPlanos] = useState<Record<string,Record<string,boolean>>>({});
@@ -360,6 +364,8 @@ function Admin() {
     if (filtroClinica === "pagas") lista = lista.filter((c) => c.status === "ativa" && c.status_financeiro === "em_dia");
     else if (filtroClinica === "inadimplentes") lista = lista.filter((c) => c.status !== "cancelada" && (c.status_financeiro === "pendente" || c.status_financeiro === "atrasado"));
     else if (filtroClinica === "canceladas") lista = lista.filter((c) => c.status === "cancelada");
+    else if (filtroClinica === "bloqueadas") lista = lista.filter((c) => c.status === "bloqueada");
+    else if (filtroClinica === "inativas") lista = lista.filter((c) => c.status === "inativa");
     if (!q) return lista;
     return lista.filter((c) => [c.nome, c.slug, c.plano, c.status, c.status_financeiro].filter(Boolean).some((x) => String(x).toLowerCase().includes(q)));
   }, [clinicas, buscaClinica, filtroClinica]);
@@ -426,6 +432,7 @@ function Admin() {
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
+    setErroEquipe(u.error || v.error ? "Não foi possível carregar todas as pessoas e vínculos da equipe. Atualize a lista e tente novamente." : "");
     setClinicas(c.data || []);
     setClinicasLixeira(clinicasNaLixeira.data || []);
     if(assinaturas.error) toast.error("Não foi possível carregar a vigência das assinaturas: "+assinaturas.error.message);
@@ -1064,10 +1071,7 @@ function Admin() {
 
   async function atualizarVinculo(v: Vinculo, mudancas: Partial<Vinculo>) {
     const { error } = await (supabase as any).from("clinica_usuarios").update(mudancas).eq("clinica_id", v.clinica_id).eq("user_id", v.user_id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) throw new Error(error.message || "Não foi possível atualizar este vínculo.");
     await carregarTudo();
   }
 
@@ -1250,7 +1254,7 @@ function Admin() {
       inadimplentes > 0 ? { titulo: "Situação financeira", descricao: inadimplentes + " clínica(s) estão pendentes ou em atraso e precisam de revisão.", botao: "Ver clínicas", acao: () => abrirPainel("clinicas"), Icone: CreditCard } : null,
       emTeste > 0 ? { titulo: "Períodos de teste", descricao: emTeste + " clínica(s) estão em teste e exigem acompanhamento antes da continuidade.", botao: "Revisar contas", acao: () => abrirPainel("clinicas"), Icone: Clock3 } : null,
       dominiosPendentes.length > 0 ? { titulo: "Domínios e publicação", descricao: dominiosPendentes.length + " endereço(s) precisam de configuração, DNS, SSL ou revisão.", botao: "Revisar domínio", acao: () => clinicaDoDominioPendente ? abrirClinicaNoAdmin(clinicaDoDominioPendente, "site") : abrirPainel("site"), Icone: Globe2 } : null,
-      usuariosSemClinica > 0 ? { titulo: "Usuários sem clínica ativa", descricao: usuariosSemClinica + " usuário(s) não possuem vínculo ativo com uma clínica.", botao: "Abrir equipe", acao: () => abrirPainel("clinicas"), Icone: Users } : null,
+      !erroEquipe && usuariosSemClinica > 0 ? { titulo: "Usuários sem clínica ativa", descricao: usuariosSemClinica + " usuário(s) não possuem vínculo ativo com uma clínica.", botao: "Abrir equipe", acao: () => abrirPainel("equipe"), Icone: Users } : null,
     ].filter(Boolean) as Array<{ titulo: string; descricao: string; botao: string; acao: () => void; Icone: typeof Gauge }>;
 
     const atalhos = [
@@ -1308,10 +1312,11 @@ function Admin() {
         </Card>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Assinaturas</p><p className="mt-2 text-3xl font-black">{pagas}</p><p className="text-sm text-muted-foreground">conta(s) ativa(s) e em dia · {canceladas} cancelada(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Ver situações de conta</button></Card>
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Clínicas</p><p className="mt-1 text-2xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-xs text-muted-foreground">clientes cadastrados</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir clínicas</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Equipe</p><p className="mt-1 text-2xl font-black">{erroEquipe ? "—" : usuariosAtivos}</p><p className="text-xs text-muted-foreground">{erroEquipe ? "Dados indisponíveis no momento" : `vínculos ativos · ${usuariosSemClinica} sem clínica`}</p><button type="button" onClick={() => abrirPainel("equipe")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir equipe</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Assinaturas</p><p className="mt-1 text-2xl font-black">{pagas}</p><p className="text-xs text-muted-foreground">contas em dia · {canceladas} canceladas</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-2 text-xs font-bold text-primary hover:underline">Ver contas</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Produto e catálogo</p><p className="mt-1 text-2xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-xs text-muted-foreground">páginas · {planos.length} planos configurados</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir catálogo</button></Card>
       </div>
     </div>;
   };
@@ -1536,15 +1541,21 @@ function Admin() {
     const dominiosProprios = dominiosDaClinica.filter((dominio) => dominio.tipo === "proprio");
     const plano = planos.find((item) => valorPlanoClinica(item) === selecionada.plano);
     const enderecoSugerido = selecionada.slug ? limparSlug(selecionada.slug) + ".oricse.com.br" : "defina-o-no-cadastro.oricse.com.br";
-    const subdominioPronto = Boolean(enderecoOricse && normalizarDominio(enderecoOricse.hostname) === normalizarDominio(enderecoSugerido));
+    const enderecoHostnameConfere = Boolean(enderecoOricse && normalizarDominio(enderecoOricse.hostname) === normalizarDominio(enderecoSugerido));
+    const subdominioPronto = enderecoHostnameConfere && enderecoOricse?.status === "ativo";
     const conteudoSitePublicado = statusConteudoSite === "publicado";
     const publicacaoDoSubdominioAtiva = enderecoOricse?.publicar_site === true;
     const httpsDoSubdominioConfirmado = Boolean(enderecoOricse && verificacoes[enderecoOricse.id] === "ativo");
+    const bloqueioEtapa4 = !subdominioPronto
+      ? "Sincronize o endereço no passo 1" + (enderecoOricse?.status ? " (status: " + enderecoOricse.status + ")" : "")
+      : !conteudoSitePublicado ? "Publique o conteúdo no passo 2"
+      : !publicacaoDoSubdominioAtiva ? "Libere a publicação no passo 3"
+      : "";
     const etapasAtivacao = [
-      { numero: "1", titulo: "Preparar o endereço", descricao: "Salvar e sincronizar o subdomínio desta clínica.", concluida: subdominioPronto, liberada: true, busy: salvandoDominio, botao: subdominioPronto ? "Concluído" : "Preparar endereço", executar: () => void sincronizarEnderecoOricse() },
+      { numero: "1", titulo: "Preparar o endereço", descricao: "Salvar e sincronizar o subdomínio desta clínica.", concluida: subdominioPronto, liberada: true, busy: salvandoDominio, botao: subdominioPronto ? "Concluído" : enderecoHostnameConfere ? "Sincronizar endereço" : "Preparar endereço", executar: () => void sincronizarEnderecoOricse() },
       { numero: "2", titulo: "Publicar o conteúdo", descricao: "Abra o editor, revise a página e clique em Publicar. Depois atualize o estado aqui.", concluida: conteudoSitePublicado, liberada: subdominioPronto && statusConteudoSite !== "carregando", busy: statusConteudoSite === "carregando", botao: conteudoSitePublicado ? "Conteúdo publicado" : "Abrir editor do site", executar: () => setEditorSiteAberto(true) },
-      { numero: "3", titulo: "Liberar o subdomínio", descricao: "Ativar a publicação pública neste endereço.", concluida: publicacaoDoSubdominioAtiva, liberada: subdominioPronto && conteudoSitePublicado, busy: salvandoDominio, botao: publicacaoDoSubdominioAtiva ? "Concluído" : "Liberar publicação", executar: () => { if (enderecoOricse) void alterarPublicacaoDominio(enderecoOricse, true); } },
-      { numero: "4", titulo: "Confirmar HTTPS", descricao: "Testar o acesso real e abrir o site somente após a confirmação.", concluida: httpsDoSubdominioConfirmado, liberada: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva && enderecoOricse?.status === "ativo", busy: enderecoOricse ? verificacoes[enderecoOricse.id] === "verificando" : false, botao: httpsDoSubdominioConfirmado ? "Verificar novamente" : "Verificar HTTPS", executar: () => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); } },
+      { numero: "3", titulo: "Liberar o subdomínio", descricao: "Ativar a publicação pública neste endereço.", concluida: publicacaoDoSubdominioAtiva && subdominioPronto, liberada: subdominioPronto && conteudoSitePublicado, busy: salvandoDominio, botao: publicacaoDoSubdominioAtiva && subdominioPronto ? "Concluído" : "Liberar publicação", executar: () => { if (enderecoOricse) void alterarPublicacaoDominio(enderecoOricse, true); } },
+      { numero: "4", titulo: "Confirmar HTTPS", descricao: "Testar o acesso real e abrir o site somente após a confirmação.", concluida: httpsDoSubdominioConfirmado, liberada: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva, busy: enderecoOricse ? verificacoes[enderecoOricse.id] === "verificando" : false, botao: httpsDoSubdominioConfirmado ? "Verificar novamente" : "Verificar HTTPS", executar: () => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); } },
     ];
 
     return <div className="space-y-5">
@@ -1613,7 +1624,7 @@ function Admin() {
                     <div className="min-w-0">
                       <h5 className="font-bold">{etapa.titulo}</h5>
                       <p className="mt-1 text-sm text-muted-foreground">{etapa.descricao}</p>
-                      <p className="mt-2 text-xs font-semibold">{etapa.concluida ? "Concluído" : etapa.liberada ? "Próxima etapa disponível" : "Conclua a etapa anterior"}</p>
+                      <p className="mt-2 text-xs font-semibold">{etapa.concluida ? "Concluído" : etapa.liberada ? "Próxima etapa disponível" : etapa.numero === "4" ? bloqueioEtapa4 : "Conclua a etapa anterior"}</p>
                     </div>
                   </div>
                   <button type="button" disabled={!etapa.liberada || etapa.busy || (etapa.concluida && etapa.numero !== "4") || (etapa.numero === "1" && !selecionada.slug)} onClick={etapa.executar} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
@@ -1888,12 +1899,165 @@ function Admin() {
     </div>;
   };
 
-  const renderClinicas = () => {
-    if (selecionada) return <div className="space-y-5"><button onClick={() => setSelecionada(null)} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 font-semibold"><ArrowLeft size={17}/> Voltar para clínicas</button><Card><div className="flex flex-wrap items-center gap-4"><div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={30} className="text-muted-foreground"/>}</div><div className="min-w-0 flex-1"><h2 className="truncate text-2xl font-bold">{selecionada.nome}</h2><p className="mt-1 text-sm text-muted-foreground">@{selecionada.slug || "sem-usuario"} · {selecionada.plano} · {selecionada.status}</p></div></div><div className="mt-5 flex flex-wrap gap-2 border-t pt-4">{[
-      ["cadastro", "Cadastro", Building2], ["dados", "Dados", ClipboardCheck], ["situacao", "Situação da conta", CreditCard], ["usuarios", "Usuários", Users], ["drive", "Drive", Database], ["site", "Site e domínios", Globe2], ["autorizacoes", "Autorizações", Settings],
-    ].map(([id, nome, Icone]: any) => id === "dados" ? <Button key={id} variant={abaClinica === "dados" ? "default" : "outline"} onClick={() => setAbaClinica("dados")} className="h-auto rounded-xl px-4 py-2.5 font-semibold"><Icone size={16}/>{nome}</Button> : <button key={id} onClick={() => { setAbaClinica(id);  }} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${abaClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}><Icone size={16}/>{nome}</button>)}</div></Card>{abaClinica === "cadastro" && renderCadastroClinica()}{abaClinica === "dados" && <ClinicRegistrationData key={selecionada.id} clinicId={selecionada.id}/>}{abaClinica === "situacao" && renderSituacao()}{abaClinica === "usuarios" && renderUsuariosClinica()}{abaClinica === "drive" && renderDriveClinica()}{abaClinica === "site" && renderSiteDominiosClinica()}{abaClinica === "autorizacoes" && renderAutorizacoesClinica()}</div>;
+  const renderEquipe = () => {
+    const linhas = [
+      ...vinculos.map((vinculo) => ({
+        id: `${vinculo.clinica_id}:${vinculo.user_id}`,
+        userId: vinculo.user_id,
+        usuario: usuarios.find((item) => item.user_id === vinculo.user_id) || null,
+        clinica: clinicas.find((item) => item.id === vinculo.clinica_id) || null,
+        papel: vinculo.papel,
+        ativo: vinculo.ativo,
+        semVinculo: false,
+      })),
+      ...usuarios.filter((usuario) => !vinculos.some((vinculo) => vinculo.user_id === usuario.user_id)).map((usuario) => ({
+        id: `sem-vinculo:${usuario.user_id}`,
+        userId: usuario.user_id,
+        usuario,
+        clinica: null,
+        papel: null,
+        ativo: false,
+        semVinculo: true,
+      })),
+    ];
+    const termo = buscaEquipe.trim().toLocaleLowerCase("pt-BR");
+    const visiveis = linhas.filter((linha) => {
+      if (filtroEquipe === "ativos" && !linha.ativo) return false;
+      if (filtroEquipe === "inativos" && (linha.ativo || linha.semVinculo)) return false;
+      if (filtroEquipe === "sem_vinculo" && !linha.semVinculo) return false;
+      if (!termo) return true;
+      const clinica = linha.clinica?.nome || "sem clínica";
+      const cargo = linha.papel ? PERFIS[linha.papel]?.nome || linha.papel : "";
+      return [linha.usuario?.username, linha.usuario?.email, clinica, cargo, linha.userId]
+        .filter(Boolean)
+        .some((valor) => String(valor).toLocaleLowerCase("pt-BR").includes(termo));
+    });
+    const pessoasAtivas = new Set(vinculos.filter((v) => v.ativo).map((v) => v.user_id)).size;
+    const pessoasSemVinculo = usuarios.filter((usuario) => !vinculos.some((vinculo) => vinculo.user_id === usuario.user_id)).length;
+    const vinculosInativos = vinculos.filter((vinculo) => !vinculo.ativo).length;
 
-    return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Clínicas e equipe</h2><p className="mt-1 text-sm text-muted-foreground">Cada conta é administrada por aqui: cadastro, usuários, plano, situação financeira, site, domínio e autorizações.</p></div><button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Plus size={18}/> Adicionar clínica</button></div><div className="flex flex-wrap items-center gap-2">{[["todas", "Todas"], ["pagas", "Ativas e pagas"], ["inadimplentes", "Não pagaram"], ["canceladas", "Canceladas"]].map(([id, nome]) => <button key={id} onClick={() => setFiltroClinica(id as FiltroClinica)} className={`rounded-full px-3 py-2 text-sm font-semibold ${filtroClinica === id ? "bg-primary text-primary-foreground" : "border bg-white"}`}>{nome}</button>)}</div><div className="relative max-w-2xl"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20}/><input value={buscaClinica} onChange={(e) => setBuscaClinica(e.target.value)} placeholder="Procurar por nome, @usuário, plano ou status" className="min-h-12 w-full rounded-2xl border bg-white pl-12 pr-4 shadow-sm outline-none focus:border-primary"/></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{clinicasFiltradas.map((c) => <button key={c.id} onClick={() => { setSelecionada(c); setAbaClinica("cadastro"); }} className="group rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:border-primary"><div className="flex items-start gap-4"><div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50">{c.logo_url ? <img src={c.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={26} className="text-muted-foreground"/>}</div><div className="min-w-0"><h3 className="truncate text-lg font-bold group-hover:text-primary">{c.nome}</h3><p className="mt-1 text-sm text-muted-foreground">@{c.slug || "sem-usuario"}</p><div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{c.plano}</span><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{c.status}</span></div></div></div><div className="mt-4 border-t pt-3 text-xs text-muted-foreground">Conta criada em {dataBR(c.created_at)}{c.acesso_ate ? ` · acesso até ${dataBR(c.acesso_ate)}` : ""}</div></button>)}{clinicasFiltradas.length === 0 && <Card className="sm:col-span-2 xl:col-span-3"><div className="py-8 text-center text-muted-foreground">Nenhuma clínica encontrada.</div></Card>}</div></div>;
+    return <div className="space-y-4">
+      <section className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Acessos por clínica</p><h2 className="mt-1 text-2xl font-black">Equipe</h2><p className="mt-1 text-sm text-muted-foreground">Localize pessoas, confira vínculos e abra a clínica para ajustar cargo, acesso ou cadastro.</p></div>
+          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">{erroEquipe ? "Dados incompletos" : `${visiveis.length} resultado(s)`}</span>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Pessoas com acesso ativo</p><p className="text-xl font-black">{erroEquipe ? "—" : pessoasAtivas}</p></div>
+          <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Vínculos inativos</p><p className="text-xl font-black">{erroEquipe ? "—" : vinculosInativos}</p></div>
+          <div className="rounded-xl border bg-amber-50 px-3 py-2"><p className="text-xs font-semibold text-amber-800">Sem vínculo com clínica</p><p className="text-xl font-black text-amber-950">{erroEquipe ? "—" : pessoasSemVinculo}</p></div>
+        </div>
+        {erroEquipe && <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{erroEquipe}</span><button type="button" onClick={() => void carregarTudo()} className="inline-flex min-h-8 items-center gap-1 font-bold"><RefreshCcw size={14}/> Atualizar</button></div>}
+        <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_220px]">
+          <label className="relative block"><Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input value={buscaEquipe} onChange={(event) => setBuscaEquipe(event.target.value)} aria-label="Pesquisar equipe" placeholder="Buscar por pessoa, e-mail, clínica ou cargo" className="min-h-11 w-full rounded-xl border bg-white pl-10 pr-3 text-sm"/></label>
+          <select value={filtroEquipe} onChange={(event) => setFiltroEquipe(event.target.value as FiltroEquipe)} aria-label="Filtrar equipe" className="min-h-11 rounded-xl border bg-white px-3 text-sm">
+            <option value="todas">Todos os vínculos</option><option value="ativos">Acessos ativos</option><option value="inativos">Vínculos inativos</option><option value="sem_vinculo">Sem vínculo com clínica</option>
+          </select>
+        </div>
+      </section>
+      {!erroEquipe && <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-[760px] w-full text-left text-sm">
+            <thead className="bg-[#fbf8f6] text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Pessoa</th><th className="px-4 py-3">Clínica</th><th className="px-4 py-3">Cargo</th><th className="px-4 py-3">Acesso</th><th className="px-4 py-3 text-right">Ação</th></tr></thead>
+            <tbody className="divide-y">
+              {visiveis.map((linha) => <tr key={linha.id} className="hover:bg-slate-50/70">
+                <td className="px-4 py-3"><p className="font-bold">{linha.usuario?.username ? `@${linha.usuario.username}` : "Conta sem perfil"}</p><p className="mt-0.5 text-xs text-muted-foreground">{linha.usuario?.email || "E-mail não cadastrado"}</p></td>
+                <td className="px-4 py-3">{linha.clinica ? <><p className="font-semibold">{linha.clinica.nome}</p><p className="text-xs text-muted-foreground">@{linha.clinica.slug || "sem-endereço"}</p></> : <span className="text-amber-800">Sem clínica vinculada</span>}</td>
+                <td className="px-4 py-3">{linha.papel ? PERFIS[linha.papel]?.nome || linha.papel : "—"}</td>
+                <td className="px-4 py-3"><span className={linha.semVinculo ? "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800" : linha.ativo ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800" : "rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"}>{linha.semVinculo ? "Sem vínculo" : linha.ativo ? "Ativo" : "Inativo"}</span></td>
+                <td className="px-4 py-3 text-right">{linha.clinica ? <button type="button" onClick={() => abrirClinicaNoAdmin(linha.clinica!, "usuarios")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:border-primary hover:text-primary">Gerenciar equipe</button> : <button type="button" onClick={() => abrirPainel("clinicas")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:border-primary hover:text-primary">Ver clínicas</button>}</td>
+              </tr>)}
+              {!visiveis.length && !erroEquipe && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum vínculo corresponde à busca e aos filtros.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>}
+    </div>;
+  };
+
+  const renderClinicas = () => {
+    if (selecionada) {
+      const abas: [AbaClinica, string, typeof Building2][] = [
+        ["cadastro", "Cadastro", Building2], ["dados", "Dados", ClipboardCheck], ["situacao", "Conta", CreditCard], ["usuarios", "Equipe", Users], ["drive", "Drive", Database], ["site", "Site e domínios", Globe2], ["autorizacoes", "Autorizações", Settings],
+      ];
+      const financeiros: Record<StatusFinanceiro, string> = { em_dia: "Em dia", pendente: "Pendente", atrasado: "Em atraso", isento: "Isento", teste: "Em teste" };
+      return <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setSelecionada(null)} className="inline-flex min-h-9 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-semibold"><ArrowLeft size={16}/> Clínicas</button>
+          <span className="text-xs text-muted-foreground">/</span><span className="text-sm font-semibold">{selecionada.nome}</span>
+        </div>
+        <section className="rounded-2xl border bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={24} className="text-muted-foreground"/>}</div>
+            <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-black">{selecionada.nome}</h2><p className="truncate text-xs text-muted-foreground">@{selecionada.slug || "sem-endereco"} · {selecionada.plano}</p></div>
+            <span className={selecionada.status === "ativa" ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800" : selecionada.status === "bloqueada" ? "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-900" : selecionada.status === "cancelada" ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-800" : "rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"}>{selecionada.status}</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{usuariosDaClinica.filter((item) => item.vinculo.ativo).length}/{selecionada.limite_usuarios} usuários ativos</span>
+          </div>
+          <nav role="tablist" aria-label={`Seções de ${selecionada.nome}`} className="mt-3 flex gap-1 overflow-x-auto border-t pt-2">
+            {abas.map(([id, nome, Icone]) => <button key={id} type="button" role="tab" aria-selected={abaClinica === id} onClick={() => setAbaClinica(id)} className={abaClinica === id ? "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground" : "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100"}><Icone size={16}/>{nome}</button>)}
+          </nav>
+        </section>
+        {abaClinica === "cadastro" && renderCadastroClinica()}
+        {abaClinica === "dados" && <ClinicRegistrationData key={selecionada.id} clinicId={selecionada.id}/>}
+        {abaClinica === "situacao" && renderSituacao()}
+        {abaClinica === "usuarios" && renderUsuariosClinica()}
+        {abaClinica === "drive" && renderDriveClinica()}
+        {abaClinica === "site" && renderSiteDominiosClinica()}
+        {abaClinica === "autorizacoes" && renderAutorizacoesClinica()}
+      </div>;
+    }
+
+    const financeiros: Record<StatusFinanceiro, string> = { em_dia: "Em dia", pendente: "Pendente", atrasado: "Em atraso", isento: "Isento", teste: "Em teste" };
+    const filtros: [FiltroClinica, string][] = [
+      ["todas", "Todas"], ["pagas", "Ativas e em dia"], ["inadimplentes", "Pendentes/atrasadas"], ["bloqueadas", "Bloqueadas"], ["inativas", "Inativas"], ["canceladas", "Canceladas"],
+    ];
+    const tituloFiltro = (filtro: FiltroClinica) => filtros.find(([id]) => id === filtro)?.[1] || "Todas";
+    return <div className="space-y-3">
+      <section className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Base de clientes</p><h2 className="mt-1 text-2xl font-black">Clínicas</h2><p className="mt-1 text-sm text-muted-foreground">Cadastro, conta, site e acesso da equipe em um lugar só.</p></div>
+          <button type="button" onClick={abrirNovaClinica} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground"><Plus size={17}/> Adicionar clínica</button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          {[
+            ["Total", clinicas.length, "todas" as FiltroClinica],
+            ["Ativas e em dia", clinicas.filter((item) => item.status === "ativa" && item.status_financeiro === "em_dia").length, "pagas" as FiltroClinica],
+            ["Pendentes ou atrasadas", clinicas.filter((item) => item.status !== "cancelada" && (item.status_financeiro === "pendente" || item.status_financeiro === "atrasado")).length, "inadimplentes" as FiltroClinica],
+            ["Bloqueadas", clinicas.filter((item) => item.status === "bloqueada").length, "bloqueadas" as FiltroClinica],
+          ].map(([label, count, filtro]) => <button key={String(label)} type="button" onClick={() => setFiltroClinica(filtro as FiltroClinica)} className="flex items-center justify-between rounded-lg border bg-slate-50 px-3 py-2 text-left hover:border-primary"><span className="text-xs font-semibold text-muted-foreground">{label}</span><span className="text-lg font-black">{count}</span></button>)}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {filtros.map(([id, nome]) => <button key={id} type="button" aria-pressed={filtroClinica === id} onClick={() => setFiltroClinica(id)} className={filtroClinica === id ? "rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground" : "rounded-full border px-3 py-1.5 text-xs font-semibold hover:border-primary"}>{nome}</button>)}
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <label className="relative block"><Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input value={buscaClinica} onChange={(event) => setBuscaClinica(event.target.value)} aria-label="Pesquisar clínicas" placeholder="Buscar por nome, endereço ORICSE, plano ou status" className="min-h-11 w-full rounded-lg border bg-white pl-10 pr-3 text-sm"/></label>
+          <p className="text-xs font-semibold text-muted-foreground">{clinicasFiltradas.length} de {clinicas.length} clínicas · filtro: {tituloFiltro(filtroClinica)}</p>
+        </div>
+      </section>
+      <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-[840px] w-full text-left text-sm">
+            <thead className="bg-[#fbf8f6] text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Clínica</th><th className="px-4 py-3">Plano</th><th className="px-4 py-3">Conta</th><th className="px-4 py-3">Equipe</th><th className="px-4 py-3">Acesso até</th><th className="px-4 py-3 text-right">Ação</th></tr></thead>
+            <tbody className="divide-y">
+              {clinicasFiltradas.map((clinica) => {
+                const statusClasse = clinica.status === "ativa" ? "bg-emerald-50 text-emerald-800" : clinica.status === "bloqueada" ? "bg-amber-50 text-amber-900" : clinica.status === "cancelada" ? "bg-red-50 text-red-800" : "bg-slate-100 text-slate-700";
+                const financeiroClasse = clinica.status_financeiro === "em_dia" || clinica.status_financeiro === "isento" ? "text-emerald-700" : clinica.status_financeiro === "atrasado" || clinica.status_financeiro === "pendente" ? "text-amber-800" : "text-slate-600";
+                const equipeAtiva = vinculos.filter((vinculo) => vinculo.clinica_id === clinica.id && vinculo.ativo).length;
+                return <tr key={clinica.id} className="hover:bg-slate-50/70">
+                  <td className="px-4 py-3"><div className="flex items-center gap-3"><div className="flex h-9 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">{clinica.logo_url ? <img src={clinica.logo_url} alt="" className="h-full w-full object-contain"/> : <Building2 size={18} className="text-muted-foreground"/>}</div><div className="min-w-0"><p className="max-w-[260px] truncate font-bold">{clinica.nome}</p><p className="text-xs text-muted-foreground">@{clinica.slug || "sem-endereco"} · criada {dataBR(clinica.created_at)}</p></div></div></td>
+                  <td className="px-4 py-3"><p className="font-semibold">{clinica.plano}</p><p className={`text-xs ${financeiroClasse}`}>{financeiros[clinica.status_financeiro] || clinica.status_financeiro}</p></td>
+                  <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClasse}`}>{clinica.status}</span></td>
+                  <td className="px-4 py-3">{equipeAtiva}/{clinica.limite_usuarios}<span className="block text-xs text-muted-foreground">vagas em uso</span></td>
+                  <td className="px-4 py-3">{clinica.acesso_ate ? dataBR(clinica.acesso_ate) : "Sem data"}</td>
+                  <td className="px-4 py-3 text-right"><button type="button" onClick={() => { setSelecionada(clinica); setAbaClinica("cadastro"); }} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:border-primary hover:text-primary">Abrir cadastro</button></td>
+                </tr>;
+              })}
+              {!clinicasFiltradas.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma clínica encontrada com estes filtros.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>;
   };
 
   async function carregarExcecoesClinica(clinicaId:string) {
@@ -2196,7 +2360,7 @@ function Admin() {
       { titulo: "Abertura de clínicas", numero: solicitacoesEmAberto.length, descricao: "Contratações e testes que aguardam análise, preparação ou liberação.", acao: () => abrirPainel("novas"), botao: "Abrir fila" },
       { titulo: "Situação de contas", numero: emAtencao + emTeste, descricao: "Contas em atraso, pendentes ou em período de teste.", acao: () => abrirPainel("clinicas"), botao: "Revisar contas" },
       { titulo: "Domínios e publicação", numero: dominiosPendentes.length, descricao: "Endereços em rascunho, DNS, SSL, verificação ou erro.", acao: () => clinicaComDominioPendente ? abrirClinicaNoAdmin(clinicaComDominioPendente, "site") : abrirPainel("site"), botao: "Abrir domínios" },
-      { titulo: "Vínculos de equipe", numero: usuariosSemClinica, descricao: "Usuários sem vínculo ativo com uma clínica.", acao: () => abrirPainel("clinicas"), botao: "Gerenciar equipe" },
+      { titulo: "Vínculos de equipe", numero: usuariosSemClinica, descricao: erroEquipe ? "Não foi possível consultar os vínculos. Atualize os dados antes de decidir." : "Usuários sem vínculo ativo com uma clínica.", acao: () => abrirPainel("equipe"), botao: "Gerenciar equipe", indisponivel: erroEquipe },
     ];
 
     return <div className="space-y-5">
@@ -2207,8 +2371,8 @@ function Admin() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {controles.map(({ titulo, numero, descricao, acao, botao }) => <Card key={titulo}>
-          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">{titulo}</p><p className="mt-2 text-3xl font-black">{numero}</p></div><ShieldCheck className={numero > 0 ? "text-primary" : "text-emerald-600"} size={22}/></div>
+        {controles.map(({ titulo, numero, descricao, acao, botao, indisponivel }) => <Card key={titulo}>
+          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">{titulo}</p><p className="mt-2 text-3xl font-black">{indisponivel ? "—" : numero}</p></div><ShieldCheck className={indisponivel ? "text-slate-400" : numero > 0 ? "text-primary" : "text-emerald-600"} size={22}/></div>
           <p className="mt-2 min-h-10 text-sm text-muted-foreground">{descricao}</p>
           <button type="button" onClick={acao} className="mt-4 text-sm font-bold text-primary hover:underline">{botao}</button>
         </Card>)}
@@ -2306,8 +2470,8 @@ function Admin() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
-      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
+      <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-3">
             <img src={site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="h-14 w-14 object-contain"/>
             <div>
@@ -2336,6 +2500,7 @@ function Admin() {
             {aba === "novas" && renderClinicasNovas()}
             {aba === "lixeira" && renderLixeira()}
             {aba === "clinicas" && renderClinicas()}
+            {aba === "equipe" && renderEquipe()}
             {aba === "planos" && renderPlanos()}
             {aba === "site" && renderSite()}
             {aba === "sistema" && renderSistema()}
