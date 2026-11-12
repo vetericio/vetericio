@@ -619,7 +619,7 @@ export function Financeiro() {
 
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6">
+    <main className="mx-auto min-h-screen w-full max-w-[1500px] px-4 pb-20 pt-5 sm:px-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         {aba === "inicio" ? (
           <Link
@@ -646,7 +646,7 @@ export function Financeiro() {
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Atendimento</p>
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary">Gestão financeira</p>
           <h1 className="text-3xl font-bold tracking-tight">
             {aba === "inicio" ? "Financeiro" : opcoes.find((o) => o.id === aba)?.titulo}
           </h1>
@@ -679,23 +679,15 @@ export function Financeiro() {
       />}
       {aba === "inicio" && (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {opcoes.map(({ id, titulo, texto, icone: Icone, cor }) => (
-              <button
-                key={titulo}
-                onClick={() => setAba(id)}
-                className="rounded-2xl border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
-              >
-                <span
-                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${cor}`}
-                >
-                  <Icone size={22} />
-                </span>
-                <h2 className="font-semibold">{titulo}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{texto}</p>
+          <nav aria-label="Áreas do Financeiro" className="mt-4 flex flex-wrap gap-2 rounded-2xl border bg-card p-3 shadow-sm">
+            {opcoes.map(({ id, titulo, icone: Icone }) => (
+              <button key={id} type="button" onClick={() => setAba(id)}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-secondary/30 px-3 text-sm font-semibold text-foreground hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex-none">
+                <Icone size={17} className="shrink-0 text-primary" aria-hidden="true"/>
+                {titulo}
               </button>
             ))}
-          </section>
+          </nav>
 
         </>
       )}
@@ -750,7 +742,7 @@ export function Financeiro() {
             </button>
           </div>
           {!erroHotel&&<details className="mt-3 border-t pt-3">
-            <summary className="cursor-pointer text-sm font-semibold text-foreground">Indicadores operacionais do hotelzinho (não são receita recebida)</summary>
+            <summary className="cursor-pointer rounded-lg px-3 py-2 text-sm font-semibold text-foreground hover:bg-secondary/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">Indicadores operacionais do hotelzinho · não são receita recebida</summary>
             <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
               <div className="rounded-lg bg-secondary/30 p-3">Hospedagens em aberto: <strong>{estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).length}</strong></div>
               <div className="rounded-lg bg-secondary/30 p-3">Diárias reservadas (base): <strong>{dinheiro(estadiasHotel.filter(e=>["reservada","hospedado"].includes(e.status)).reduce((n,e)=>n+Math.max(0,e.valor_diaria_centavos||0),0)/100)}</strong></div>
