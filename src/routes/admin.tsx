@@ -1069,10 +1069,7 @@ function Admin() {
 
   async function atualizarVinculo(v: Vinculo, mudancas: Partial<Vinculo>) {
     const { error } = await (supabase as any).from("clinica_usuarios").update(mudancas).eq("clinica_id", v.clinica_id).eq("user_id", v.user_id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) throw new Error(error.message || "Não foi possível atualizar este vínculo.");
     await carregarTudo();
   }
 
