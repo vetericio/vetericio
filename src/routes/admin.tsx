@@ -287,6 +287,7 @@ function Admin() {
   const [filtroEquipe, setFiltroEquipe] = useState<FiltroEquipe>("todas");
   const [usuarios, setUsuarios] = useState<AppUser[]>([]);
   const [vinculos, setVinculos] = useState<Vinculo[]>([]);
+  const [erroEquipe, setErroEquipe] = useState("");
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [funcionalidades, setFuncionalidades] = useState<{codigo:string;nome:string;grupo:string;ordem:number}[]>([]);
   const [permissoesPlanos, setPermissoesPlanos] = useState<Record<string,Record<string,boolean>>>({});
@@ -431,6 +432,7 @@ function Admin() {
     if (u.error) toast.error(`Não foi possível carregar os usuários: ${u.error.message}`);
     if (v.error) toast.error(`Não foi possível carregar os vínculos das clínicas: ${v.error.message}`);
     if (dom.error) toast.error(`Não foi possível carregar os domínios das clínicas: ${dom.error.message}`);
+    setErroEquipe(u.error || v.error ? "Não foi possível carregar todas as pessoas e vínculos da equipe. Atualize a lista e tente novamente." : "");
     setClinicas(c.data || []);
     setClinicasLixeira(clinicasNaLixeira.data || []);
     if(assinaturas.error) toast.error("Não foi possível carregar a vigência das assinaturas: "+assinaturas.error.message);
@@ -1945,6 +1947,7 @@ function Admin() {
           <div className="rounded-xl border bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-muted-foreground">Vínculos inativos</p><p className="text-xl font-black">{vinculosInativos}</p></div>
           <div className="rounded-xl border bg-amber-50 px-3 py-2"><p className="text-xs font-semibold text-amber-800">Sem vínculo com clínica</p><p className="text-xl font-black text-amber-950">{pessoasSemVinculo}</p></div>
         </div>
+        {erroEquipe && <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{erroEquipe}</span><button type="button" onClick={() => void carregarTudo()} className="inline-flex min-h-8 items-center gap-1 font-bold"><RefreshCcw size={14}/> Atualizar</button></div>}
         <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_220px]">
           <label className="relative block"><Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input value={buscaEquipe} onChange={(event) => setBuscaEquipe(event.target.value)} aria-label="Pesquisar equipe" placeholder="Buscar por pessoa, e-mail, clínica ou cargo" className="min-h-11 w-full rounded-xl border bg-white pl-10 pr-3 text-sm"/></label>
           <select value={filtroEquipe} onChange={(event) => setFiltroEquipe(event.target.value as FiltroEquipe)} aria-label="Filtrar equipe" className="min-h-11 rounded-xl border bg-white px-3 text-sm">
@@ -1964,7 +1967,7 @@ function Admin() {
                 <td className="px-4 py-3"><span className={linha.semVinculo ? "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800" : linha.ativo ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800" : "rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"}>{linha.semVinculo ? "Sem vínculo" : linha.ativo ? "Ativo" : "Inativo"}</span></td>
                 <td className="px-4 py-3 text-right">{linha.clinica ? <button type="button" onClick={() => abrirClinicaNoAdmin(linha.clinica!, "usuarios")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:border-primary hover:text-primary">Gerenciar equipe</button> : <button type="button" onClick={() => abrirPainel("clinicas")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:border-primary hover:text-primary">Ver clínicas</button>}</td>
               </tr>)}
-              {!visiveis.length && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum vínculo corresponde à busca e aos filtros.</td></tr>}
+              {!visiveis.length && !erroEquipe && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum vínculo corresponde à busca e aos filtros.</td></tr>}
             </tbody>
           </table>
         </div>
