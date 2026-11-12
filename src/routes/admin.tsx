@@ -1310,10 +1310,11 @@ function Admin() {
         </Card>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Clientes e equipe</p><p className="mt-2 text-3xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-sm text-muted-foreground">clínica(s) cadastrada(s) · {usuariosAtivos} vínculo(s) ativo(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Gerenciar clínicas e usuários</button></Card>
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Assinaturas</p><p className="mt-2 text-3xl font-black">{pagas}</p><p className="text-sm text-muted-foreground">conta(s) ativa(s) e em dia · {canceladas} cancelada(s)</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-4 text-sm font-bold text-primary hover:underline">Ver situações de conta</button></Card>
-        <Card><p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Produto e catálogo</p><p className="mt-2 text-3xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-sm text-muted-foreground">página(s) catalogada(s) · {planos.length} plano(s) configurado(s)</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-4 text-sm font-bold text-primary hover:underline">Administrar páginas e URLs</button></Card>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Clínicas</p><p className="mt-1 text-2xl font-black">{quantidadeClinicasAtivas ?? "—"}</p><p className="text-xs text-muted-foreground">clientes cadastrados</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir clínicas</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Equipe</p><p className="mt-1 text-2xl font-black">{usuariosAtivos}</p><p className="text-xs text-muted-foreground">vínculos ativos · {usuariosSemClinica} sem clínica</p><button type="button" onClick={() => abrirPainel("equipe")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir equipe</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Assinaturas</p><p className="mt-1 text-2xl font-black">{pagas}</p><p className="text-xs text-muted-foreground">contas em dia · {canceladas} canceladas</p><button type="button" onClick={() => abrirPainel("clinicas")} className="mt-2 text-xs font-bold text-primary hover:underline">Ver contas</button></Card>
+        <Card className="p-4"><p className="text-xs font-black uppercase tracking-[0.14em] text-primary">Produto e catálogo</p><p className="mt-1 text-2xl font-black">{ROTAS_CATALOGO.length}</p><p className="text-xs text-muted-foreground">páginas · {planos.length} planos configurados</p><button type="button" onClick={() => abrirPainel("paginas")} className="mt-2 text-xs font-bold text-primary hover:underline">Abrir catálogo</button></Card>
       </div>
     </div>;
   };
@@ -2465,8 +2466,8 @@ function Admin() {
 
   return (
     <main className="min-h-screen bg-[#f6f4ef] text-slate-900">
-      <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
+      <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-3">
             <img src={site.logo_url || "/oricse-logo-oryx.svg?v=15"} alt="Oricse" className="h-14 w-14 object-contain"/>
             <div>
