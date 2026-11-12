@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BadgeCheck, Building2, Clock3, PackagePlus, Save, Stethoscope, ExternalLink, PawPrint } from "lucide-react";
+import { Building2, Save, Stethoscope, Search, ShieldCheck, FileText, Wallet, Palette, MessagesSquare, ChevronRight, Settings2, CheckCircle2, LockKeyhole, CalendarDays, AlertCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -44,6 +44,8 @@ function PerfilClinica() {
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [adminGeral, setAdminGeral] = useState(false);
+  const [grupoAtivo, setGrupoAtivo] = useState("operacao");
+  const [busca, setBusca] = useState("");
 
   const podeEditar = adminGeral || perfil?.papel === "rt" || perfil?.papel === "recepcao";
   const opcaoSelecionada = useMemo(
@@ -141,191 +143,162 @@ function PerfilClinica() {
     }
   }
 
+
+  const grupos = [
+    { id: "estrutura", titulo: "Clínica e estrutura", icone: Building2, itens: [
+      { nome: "Dados cadastrais e unidades", descricao: "Cadastro, endereço, contatos, responsável técnico e funcionamento." },
+      { nome: "Equipe e permissões", descricao: "Gerencie acessos e responsabilidades.", href: "/permissoes-equipe" },
+      { nome: "Animais e tutores", descricao: "Campos cadastrais, responsáveis e identificação." },
+      { nome: "Aprovações administrativas", descricao: "Regras para ações sensíveis." },
+    ] },
+    { id: "operacao", titulo: "Operação clínica", icone: Stethoscope, itens: [
+      { nome: "Agenda e atendimentos", descricao: "Intervalos e duração de procedimentos.", especial: "agenda" },
+      { nome: "Prontuário e protocolos", descricao: "Modelos clínicos, checklists e configurações por espécie." },
+      { nome: "Internação e hospedagem", descricao: "Rotinas, leitos, cuidados e regras da hospedagem." },
+      { nome: "Banho e tosa", descricao: "Duração, serviços, pacotes e horários." },
+      { nome: "Equipamentos clínicos", descricao: "Cadastro, manutenção e calibração." },
+    ] },
+    { id: "comercial", titulo: "Comercial e financeiro", icone: Wallet, itens: [
+      { nome: "Produtos e serviços", descricao: "Catálogo, preços e itens de estoque.", href: "/catalogo" },
+      { nome: "Estoque e Venda Expressa", descricao: "Lotes, validade, código de barras e regras de venda." },
+      { nome: "Caixa, pagamentos e comissões", descricao: "Estornos, descontos, taxas e aprovações." },
+      ...(adminGeral ? [{ nome: "Mercado Pago", descricao: "Conta de recebimento vinculada à clínica.", href: "/mercado-pago-clinica" }] : []),
+      { nome: "Faturamento e documentos fiscais", descricao: "Integração fiscal e parâmetros de emissão." },
+    ] },
+    { id: "documentos", titulo: "Documentos e modelos", icone: FileText, itens: [
+      { nome: "Receituários personalizados", descricao: "Biblioteca de receitas, cabeçalhos e modelos próprios." },
+      { nome: "Pedidos de exames", descricao: "Modelos de solicitações e encaminhamentos." },
+      { nome: "Laudos, atestados e declarações", descricao: "Modelos com preenchimento automático." },
+      { nome: "Termos e consentimentos", descricao: "Termos por procedimento e autorizações." },
+      { nome: "Editor visual e importação", descricao: "Criação de modelos e envio de arquivos." },
+      { nome: "Assinaturas e senhas do RT", descricao: "Políticas de autenticação e versões." },
+    ] },
+    { id: "comunicacao", titulo: "Comunicação", icone: MessagesSquare, itens: [
+      ...((adminGeral || perfil?.papel === "admin_clinica") ? [{ nome: "Portal do Tutor", descricao: "Personalização e serviços disponíveis ao tutor.", href: "/configurar-portal-tutor" }] : []),
+      { nome: "CRM e campanhas", descricao: "Comunicação, segmentação e relacionamento." },
+      { nome: "Lembretes automáticos", descricao: "Vacinas, retornos, consultas e mensagens." },
+      { nome: "Central de pendências e automações", descricao: "Tarefas, avisos e regras de execução." },
+    ] },
+    { id: "personalizacao", titulo: "Personalização", icone: Palette, itens: [
+      { nome: "Identidade visual", descricao: "Logotipo, cores, documentos e site." },
+      { nome: "Acessibilidade e interface", descricao: "Contraste, legibilidade e densidade de informações." },
+      { nome: "Impressoras e equipamentos", descricao: "Etiquetas, leitores, câmeras e impressão." },
+      { nome: "Indicadores personalizados", descricao: "Seleção de métricas dos painéis." },
+    ] },
+    { id: "administracao", titulo: "Administração avançada", icone: ShieldCheck, itens: [
+      { nome: "Meu plano e funcionalidades", descricao: "Recursos e limites contratados.", href: "/plano-clinica" },
+      { nome: "Segurança e auditoria", descricao: "Permissões, histórico e autenticação." },
+      { nome: "Backup, importação e contingência", descricao: "Exportações, migrações e continuidade operacional." },
+      { nome: "Privacidade e LGPD", descricao: "Retenção, solicitações e proteção de dados." },
+      { nome: "Integrações e API", descricao: "Serviços externos e webhooks." },
+    ] },
+  ];
+  const termoBusca = busca.trim().toLocaleLowerCase("pt-BR");
+  const gruposVisiveis = grupos.filter((grupo) => !termoBusca || grupo.titulo.toLocaleLowerCase("pt-BR").includes(termoBusca) || grupo.itens.some((item) => (item.nome + " " + item.descricao).toLocaleLowerCase("pt-BR").includes(termoBusca)));
+  const gruposConteudo = termoBusca ? gruposVisiveis : grupos.filter((grupo) => grupo.id === grupoAtivo);
+  const pendente = !!perfil && (intervalo !== perfil.duracao_padrao_atendimento_min || TIPOS.some((tipo) => duracoes[tipo] !== perfil.duracoes_atendimento_min[tipo]));
+
   if (carregando) {
-    return <main className="mx-auto w-full max-w-4xl px-4 py-8"><div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">Carregando perfil da clínica...</div></main>;
+    return <main className="mx-auto w-full max-w-6xl px-4 py-8" aria-busy="true"><div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Carregando configurações da clínica...</div></main>;
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 pb-12 pt-4">
-      <header className="mb-5">
+    <main className="mx-auto w-full max-w-7xl px-4 pb-12 pt-5 sm:px-6">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 size={22} /></div>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Settings2 size={22}/></div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Configurações da clínica</h1>
-            <p className="text-sm text-muted-foreground">{perfil?.nome || "Clínica"}</p>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Configurações da clínica</h1>
+            <p className="text-sm text-muted-foreground">{perfil?.nome || "Clínica"} · Central de administração</p>
           </div>
         </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground"><CheckCircle2 size={14} className="text-emerald-600"/> Configurações centralizadas</span>
       </header>
 
-      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Permissões da equipe</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Ajuste os acessos de funcionários sem ultrapassar o plano contratado.
-            </p>
+      <div className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-3 shadow-sm">
+        <Search size={18} className="shrink-0 text-muted-foreground"/>
+        <input aria-label="Buscar configuração" type="search" placeholder="Buscar configuração, documento, agenda, equipe..." value={busca} onChange={(e) => setBusca(e.target.value)}
+          className="min-h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"/>
+        {busca && <button type="button" onClick={() => setBusca("")} className="text-xs font-medium text-primary">Limpar</button>}
+      </div>
+
+      <div className="grid items-start gap-4 lg:grid-cols-[250px_minmax(0,1fr)]">
+        <nav aria-label="Categorias de configurações" className="rounded-xl border bg-card p-2 lg:sticky lg:top-4">
+          <p className="px-3 pb-2 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Categorias</p>
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
+            {gruposVisiveis.map((grupo) => {
+              const Icone = grupo.icone;
+              return <button key={grupo.id} type="button" onClick={() => { setGrupoAtivo(grupo.id); setBusca(""); }}
+                aria-current={!termoBusca && grupoAtivo === grupo.id ? "page" : undefined}
+                className={`flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors sm:text-sm ${!termoBusca && grupoAtivo === grupo.id ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"}`}>
+                <Icone size={17} className="shrink-0"/><span className="min-w-0 flex-1">{grupo.titulo}</span><ChevronRight size={14} className="hidden shrink-0 lg:block"/>
+              </button>;
+            })}
           </div>
-          <Link to="/permissoes-equipe" className="inline-flex min-h-11 items-center rounded-xl border px-4 text-sm font-bold">
-            Gerenciar acessos
-          </Link>
-        </div>
-      </section>
+        </nav>
 
-      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <BadgeCheck className="mt-0.5 text-primary" size={21} />
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Meu plano e funcionalidades</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Confira os recursos e os limites contratados pela clínica.</p>
-            </div>
-          </div>
-          <Link to="/plano-clinica" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">
-            Ver meu plano
-          </Link>
-        </div>
-      </section>
-
-      {adminGeral && (
-      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <Building2 className="mt-0.5 text-primary" size={21} />
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Mercado Pago</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Conecte a conta de recebimento exclusiva desta clínica. As cobranças dos tutores ficam vinculadas à sua conta.</p>
-            </div>
-          </div>
-          <Link to="/mercado-pago-clinica" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Configurar Mercado Pago</Link>
-        </div>
-      </section>
-      )}
-
-      <section className="mb-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <PackagePlus className="mt-0.5 text-primary" size={21} />
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Serviços e produtos</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Cadastre os serviços da clínica e os produtos que terão controle de estoque.</p>
-            </div>
-          </div>
-          <Link to="/catalogo" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"><PackagePlus size={17} /> Cadastrar serviço / produto</Link>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-start gap-3">
-          <Clock3 className="mt-0.5 text-primary" size={21} />
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Intervalo dos horários da agenda</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Define de quanto em quanto tempo os horários aparecem no seletor e na grade da agenda.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_180px]">
-          <label className="text-sm font-semibold text-foreground">
-            Intervalo da grade
-            <select
-              value={opcaoSelecionada}
-              disabled={!podeEditar}
-              onChange={(e) => {
-                if (e.target.value !== "personalizado") setIntervalo(Number(e.target.value));
-                else if (OPCOES_INTERVALO.includes(intervalo)) setIntervalo(25);
-              }}
-              className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal"
-            >
-              {OPCOES_INTERVALO.map((min) => <option key={min} value={min}>{min} minutos</option>)}
-              <option value="personalizado">Personalizado</option>
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold text-foreground">
-            Minutos
-            <input
-              type="number"
-              min={5}
-              max={720}
-              step={5}
-              value={intervalo}
-              disabled={!podeEditar}
-              onChange={(e) => setIntervalo(Number(e.target.value))}
-              className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal"
-            />
-          </label>
-        </div>
-
-        <div className="mt-4 rounded-xl bg-secondary/50 p-4 text-sm text-foreground">
-          <strong>Exemplo com {intervalo || 30} min:</strong>{" "}
-          8h00 → {formatarExemplo(8 * 60 + (intervalo || 30))} → {formatarExemplo(8 * 60 + 2 * (intervalo || 30))}.
-        </div>
-      </section>
-
-      {(adminGeral || perfil?.papel === "admin_clinica") && <section className="mt-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <PawPrint className="mt-1 text-primary" size={22}/>
-            <div><h2 className="text-lg font-bold">Portal do Tutor</h2><p className="mt-1 max-w-xl text-sm text-muted-foreground">Personalize a identidade visual da sua clínica, os serviços, horários, documentos, comunicações e pagamentos disponíveis aos tutores. A demonstração do ORICSE permanece independente.</p></div>
-          </div>
-          <Link to="/configurar-portal-tutor" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Administrar portal <ExternalLink size={16}/></Link>
-        </div>
-      </section>}
-      <section className="mt-4 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-start gap-3">
-          <Stethoscope className="mt-0.5 text-primary" size={21} />
-          <div>
-            <h2 className="text-lg font-bold text-foreground">Tempo de cada atendimento</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Você determina quanto tempo cada tipo de atendimento ocupa na agenda. A Oricse bloqueia todos os horários abrangidos por esse período.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 divide-y rounded-xl border bg-background">
-          {TIPOS.map((tipo) => (
-            <div key={tipo} className="flex items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-foreground">{tipo}</div>
-                <div className="text-xs text-muted-foreground">Ocupa {formatarDuracao(duracoes[tipo] || 30)} na agenda</div>
+        <div className="min-w-0 space-y-4">
+          {gruposConteudo.map((grupo) => {
+            const Icone = grupo.icone;
+            const itensVisiveis = termoBusca && !grupo.titulo.toLocaleLowerCase("pt-BR").includes(termoBusca)
+              ? grupo.itens.filter((item) => (item.nome + " " + item.descricao).toLocaleLowerCase("pt-BR").includes(termoBusca))
+              : grupo.itens;
+            return <section key={grupo.id} className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+              <div className="mb-4 flex items-center gap-3 border-b pb-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icone size={19}/></span>
+                <div><h2 className="text-base font-semibold text-foreground sm:text-lg">{grupo.titulo}</h2><p className="text-xs text-muted-foreground">Escolha o que deseja configurar.</p></div>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={5}
-                  max={720}
-                  step={5}
-                  value={duracoes[tipo] ?? 30}
-                  disabled={!podeEditar}
-                  onChange={(e) => alterarDuracao(tipo, Number(e.target.value))}
-                  className="h-10 w-24 rounded-lg border bg-background px-3 text-right font-semibold"
-                />
-                <span className="w-8 text-sm text-muted-foreground">min</span>
+              <div className="grid gap-2 md:grid-cols-2">
+                {itensVisiveis.map((item) => {
+                  const isAgenda = "especial" in item && item.especial === "agenda";
+                  const destination = "href" in item ? item.href : undefined;
+                  const corpo = <><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">{item.nome}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.descricao}</span></span>
+                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : isAgenda ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
+                  return destination ? <Link key={item.nome} to={destination} className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link>
+                    : <div key={item.nome} className="flex min-h-20 items-center gap-2 rounded-lg border p-3">{corpo}</div>;
+                })}
               </div>
-            </div>
-          ))}
+
+              {grupo.id === "operacao" && (!termoBusca || "agenda e atendimentos intervalos e duração de procedimentos".includes(termoBusca)) && <div className="mt-5 rounded-xl border bg-background p-4 sm:p-5">
+                <div className="mb-4 flex items-start gap-2"><CalendarDays size={20} className="mt-0.5 text-primary"/><div><h3 className="font-semibold">Intervalos da agenda</h3><p className="text-xs leading-relaxed text-muted-foreground">Defina a distância entre os horários e quanto tempo cada serviço ocupa.</p></div></div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-medium">Intervalo da grade
+                    <select value={opcaoSelecionada} disabled={!podeEditar} onChange={(e) => { if(e.target.value !== "personalizado") setIntervalo(Number(e.target.value)); else if (OPCOES_INTERVALO.includes(intervalo)) setIntervalo(25); }}
+                      className="mt-1 min-h-11 w-full rounded-lg border bg-card px-3 font-normal">
+                      {OPCOES_INTERVALO.map((min) => <option key={min} value={min}>{min} minutos</option>)}<option value="personalizado">Personalizado</option>
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium">Minutos
+                    <input type="number" min={5} max={720} step={5} value={intervalo} disabled={!podeEditar} onChange={(e) => setIntervalo(Number(e.target.value))}
+                      className="mt-1 min-h-11 w-full rounded-lg border bg-card px-3 font-normal"/>
+                  </label>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">Exemplo: 8h00 → {formatarExemplo(8 * 60 + (intervalo || 30))} → {formatarExemplo(8 * 60 + 2 * (intervalo || 30))}</p>
+                <div className="mt-5 border-t pt-4">
+                  <h3 className="mb-1 text-sm font-semibold">Duração por atendimento</h3>
+                  <p className="mb-3 text-xs text-muted-foreground">O horário permanece ocupado durante o período definido.</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {TIPOS.map((tipo) => <label key={tipo} className="flex min-h-12 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"><span>{tipo}</span>
+                      <span className="flex items-center gap-1"><input aria-label={`Duração de ${tipo} em minutos`} type="number" min={5} max={720} step={5} value={duracoes[tipo] ?? 30} disabled={!podeEditar} onChange={(e) => alterarDuracao(tipo, Number(e.target.value))}
+                        className="h-9 w-20 rounded-md border bg-card px-2 text-right font-medium"/><span className="text-xs text-muted-foreground">min</span></span>
+                    </label>)}
+                  </div>
+                </div>
+                {!podeEditar && <p className="mt-3 flex items-center gap-2 text-xs text-amber-700"><LockKeyhole size={14}/> Seu perfil possui acesso somente à visualização.</p>}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+                  <span className="text-xs text-muted-foreground">{pendente ? "Alterações ainda não salvas." : "Configurações atualizadas."}</span>
+                  <button type="button" disabled={!podeEditar || salvando || !pendente} onClick={salvar}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
+                    <Save size={16}/>{salvando ? "Salvando..." : "Salvar agenda"}
+                  </button>
+                </div>
+              </div>}
+            </section>;
+          })}
+          {gruposVisiveis.length === 0 && <div className="rounded-xl border bg-card p-8 text-center"><AlertCircle className="mx-auto mb-2 text-muted-foreground"/><h2 className="font-semibold">Nenhuma configuração encontrada</h2><p className="mt-1 text-sm text-muted-foreground">Experimente outra palavra.</p></div>}
+          <p className="px-1 text-xs text-muted-foreground">Os recursos marcados como “Em preparação” fazem parte da evolução planejada e ainda não possuem configuração disponível nesta tela.</p>
         </div>
-
-        <div className="mt-4 rounded-xl border border-primary/15 bg-primary/5 p-4 text-sm text-foreground">
-          <strong>Exemplo:</strong> se Cirurgia estiver configurada para 120 min e for marcada às 10h, a agenda fica ocupada de <strong>10h às 12h</strong>.
-        </div>
-
-        {!podeEditar && (
-          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-            Seu perfil pode visualizar esta configuração. A alteração fica disponível para o Admin geral, RT e Recepção.
-          </p>
-        )}
-
-        <button
-          type="button"
-          disabled={!podeEditar || salvando}
-          onClick={salvar}
-          className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-5 font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Save size={17} /> {salvando ? "Salvando..." : "Salvar configurações da agenda"}
-        </button>
-      </section>
+      </div>
     </main>
   );
 }
