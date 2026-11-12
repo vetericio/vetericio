@@ -76,34 +76,80 @@ function resultadoValido(item: CodigoLido): string | null {
  * object-cover pode recortar a imagem: usar videoWidth/Height sem esse ajuste
  * faria códigos fora do enquadramento serem aceitos incorretamente.
  */
+/**
+ * Prioriza a região visível central sem obrigar o operador a enquadrar
+ * a etiqueta: se houver APENAS um código válido em todo o quadro, ele
+ * pode ser confirmado mesmo fora do centro. Mais de um código ao mesmo
+ * tempo nunca é escolhido apenas pela posição.
+ */
 function resultadoMaisCentral(resultados: CodigoLido[], video: HTMLVideoElement): CodigoLido | undefined {
+  const elegiveis = resultados.filter(item => resultadoValido(item) !== null);
+  if (elegiveis.length === 1) return elegiveis[0];
+  if (!elegiveis.length) return undefined;
+  // Duas etiquetas diferentes na mesma imagem: aguardar enquadramento
+  // inequívoco, em vez de arriscar uma venda incorreta.
+  const diferentes = new Set(elegiveis.map(item => resultadoValido(item)));
+  if (diferentes.size > 1) return undefined;
   const largura = video.videoWidth || 1;
   const altura = video.videoHeight || 1;
-  const wVisivel = video.clientWidth || largura;
-  const hVisivel = video.clientHeight || altura;
-  const escala = Math.max(wVisivel / largura, hVisivel / altura);
-  const areaW = wVisivel / escala;
-  const areaH = hVisivel / escala;
-  const deslocX = (largura - areaW) / 2;
-  const deslocY = (altura - areaH) / 2;
-  const elegiveis = resultados.filter(item => {
-    if (!resultadoValido(item)) return false;
-    if (!item.boundingBox) return resultados.length === 1;
-    const centroX = (item.boundingBox.x + item.boundingBox.width / 2 - deslocX) / areaW;
-    const centroY = (item.boundingBox.y + item.boundingBox.height / 2 - deslocY) / areaH;
-    // A região de confirmação é um pouco maior que a moldura visível, para
-    // permitir etiquetas estreitas e pequenas sem ler outras embalagens.
-    return centroX >= 0.09 && centroX <= 0.91 && centroY >= 0.24 && centroY <= 0.76;
-  });
-  return elegiveis.sort((a, b) => {
+  return elegiveis.sort((a,b) => {
     const distancia = (item: CodigoLido) => {
       if (!item.boundingBox) return 1;
-      const x = (item.boundingBox.x + item.boundingBox.width / 2 - deslocX) / areaW - 0.5;
-      const y = (item.boundingBox.y + item.boundingBox.height / 2 - deslocY) / areaH - 0.5;
-      return x * x + y * y;
+      const x = (item.boundingBox.x + item.boundingBox.width / 2)/largura-0.5;
+      const y = (item.boundingBox.y + item.boundingBox.height / 2)/altura-0.5;
+      return x*x+y*y;
     };
-    return distancia(a) - distancia(b);
+    return distancia(a)-distancia(b);
   })[0];
+}
+
+/**
+ * Prepara pequenas amostras para OCR em situações de pouca luz,
+ * contraste baixo e código fora do centro. Tudo no navegador, sem upload.
+ * As regiões se alternam por captura, mantendo consumo de CPU limitado.
+ */
+function prepararImagemOCR(video: HTMLVideoElement, indice: number): HTMLCanvasElement | null {
+  const largura = video.videoWidth, altura = video.videoHeight;
+  if (largura < 250 || altura < 180) return null;
+  const regioes = [
+    {x:0.02,y:0.08,w:0.96,h:0.84},
+    {x:0.04,y:0.35,w:0.92,h:0.60},
+    {x:0.10,y:0.12,w:0.80,h:0.58},
+  ];
+  const regiao = regioes[indice % regioes.length];
+  const x=Math.floor(largura*regiao.x),y=Math.floor(altura*regiao.y);
+  const w=Math.max(1,Math.floor(largura*regiao.w));
+  const h=Math.max(1,Math.floor(altura*regiao.h));
+  const maxLargura = 1400;
+  const escala = Math.min(2, maxLargura/w);
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(w*escala));
+  canvas.height=Math.max(1,Math.round(h*escala));
+  const ctx=canvas.getContext("2d",{willReadFrequently:true});
+  if (!ctx) return null;
+  ctx.drawImage(video,x,y,w,h,0,0,canvas.width,canvas.height);
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const dados=img.data;
+  let minimo=255,maximo=0,soma=0,amostras=0;
+  for(let i=0;i<dados.length;i+=40){
+    const luma=Math.round(dados[i]*0.299+dados[i+1]*0.587+dados[i+2]*0.114);
+    minimo=Math.min(minimo,luma);maximo=Math.max(maximo,luma);soma+=luma;amostras++;
+  }
+  const media=soma/Math.max(1,amostras);
+  const contraste=maximo-minimo;
+  // Compensação moderada: clarear áreas escuras e estender contraste,
+  // preservando bordas dos dígitos; sem inventar caracteres.
+  if(media<115 || contraste<105) {
+    const ganho=Math.min(2.1,Math.max(1.1,170/Math.max(70,contraste)));
+    const offset=media<115 ? Math.min(55,125-media):0;
+    for(let i=0;i<dados.length;i+=4){
+      const lum=dados[i]*0.299+dados[i+1]*0.587+dados[i+2]*0.114;
+      const cor=Math.max(0,Math.min(255,Math.round((lum-128)*ganho+128+offset)));
+      dados[i]=cor;dados[i+1]=cor;dados[i+2]=cor;
+    }
+    ctx.putImageData(img,0,0);
+  }
+  return canvas;
 }
 
 function erroDaCamera(erro: unknown): string {
@@ -325,23 +371,8 @@ export function LeitorCodigoBarrasCamera({
         setAviso("Código " + codigo + " não aceito. Confira a etiqueta ou tente outro produto.");
       }
     };
-    const criarRecorteNumeros = () => {
-      if (video.videoWidth < 300 || video.videoHeight < 200) return null;
-      // Região central, contendo barras e a linha de números sob elas.
-      const x = Math.floor(video.videoWidth * 0.09);
-      const y = Math.floor(video.videoHeight * 0.30);
-      const w = Math.floor(video.videoWidth * 0.82);
-      const h = Math.floor(video.videoHeight * 0.45);
-      const canvas = document.createElement("canvas");
-      const escala = Math.min(2, 1500 / w);
-      canvas.width = Math.max(1, Math.floor(w * escala));
-      canvas.height = Math.max(1, Math.floor(h * escala));
-      const contexto = canvas.getContext("2d", {willReadFrequently:true});
-      if (!contexto) return null;
-      contexto.imageSmoothingEnabled = true;
-      contexto.drawImage(video, x,y,w,h, 0,0,canvas.width,canvas.height);
-      return canvas;
-    };
+    let indiceOCR=0;
+
 
     async function iniciar() {
       try {
@@ -401,16 +432,17 @@ export function LeitorCodigoBarrasCamera({
               if (!ativo || fechandoLeitura || ocrOcupado || video.readyState < 2) return;
               // Evita gastar bateria quando o detector de barras já está lendo.
               if (Date.now() - ultimaLeituraDeBarras < 750) return;
-              const recorte = criarRecorteNumeros();
+              const recorte = prepararImagemOCR(video, indiceOCR++);
               if (!recorte || !workerOCR) return;
               ocrOcupado = true;
+              horarioUltimoOCR=Date.now();
               void workerOCR.recognize(recorte).then(({data})=>{
                 if (!ativo || fechandoLeitura) return;
                 const candidatos = candidatosNumericosOCR(data.text || "");
-                if (candidatos.length !== 1) return; // número ambíguo não entra no caixa
+                if (candidatos.length !== 1) return; // nunca adivinhar código ambíguo
                 const codigo = candidatos[0];
                 const agora = Date.now();
-                if (codigo === ultimoOCR && agora - vistoOCR <= 6500) vezesOCR += 1;
+                if (codigo === ultimoOCR && agora - vistoOCR <= 9000) vezesOCR += 1;
                 else {ultimoOCR = codigo;vezesOCR = 1;}
                 vistoOCR = agora;
                 if (vezesOCR >= 2 && agora - rejeitadoEm >= 2400) {
@@ -420,7 +452,7 @@ export function LeitorCodigoBarrasCamera({
               }).catch(()=>{
                 if (ativo) setStatusOCR("indisponivel");
               }).finally(()=>{ ocrOcupado=false; });
-            }, 1100);
+            }, 650);
           } catch {
             if (ativo) {
               setStatusOCR("indisponivel");
@@ -515,7 +547,7 @@ export function LeitorCodigoBarrasCamera({
               </button>
               <span className="text-xs text-muted-foreground">A altura do som depende do volume de mídia do celular.</span>
             </div>
-            <p className="text-sm font-medium">Centralize a etiqueta, afaste um pouco o celular e mantenha a câmera imóvel.</p>
+            <p className="text-sm font-medium">Mostre a embalagem para a câmera. O leitor procura em diferentes posições e compensa imagens escuras automaticamente.</p>
             <p className="text-xs text-muted-foreground">Leitura dupla: barras + reconhecimento local dos números impressos. Códigos EAN/UPC passam por verificação e confirmação para evitar erros. O bip toca após leitura aceita.</p>
             <p className="text-xs text-muted-foreground" role="status">{statusOCR === "carregando" ? "Preparando reconhecimento dos números…" : statusOCR === "ativo" ? "Leitura dos números ativa · pode demorar um pouco mais em celulares lentos" : statusOCR === "indisponivel" ? "Leitura numérica indisponível. O leitor de barras permanece ativo." : "Procurando código…"}</p>
             {aviso && <p role="status" className="rounded-lg bg-secondary p-2 text-sm">{aviso}</p>}
