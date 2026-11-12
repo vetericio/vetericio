@@ -1423,25 +1423,26 @@ function Admin() {
 
     setSalvandoDominio(true);
     try {
-      const { error } = await (supabaseBanco as any).from("oricse_dominios_clinica").insert(hostnames.map((item, indice) => ({
+      const { data: criados, error } = await (supabaseBanco as any).from("oricse_dominios_clinica").insert(hostnames.map((item, indice) => ({
         clinica_id: selecionada.id,
         hostname: item,
         tipo: "proprio",
         status: "aguardando_dns",
-        principal: indice === 0,
-        publicar_site: true,
+        principal: indice === 0 && !dominiosClinica.some((dominio) => dominio.clinica_id === selecionada.id && dominio.tipo === "proprio" && dominio.principal),
+        publicar_site: false,
         dns_alvo: "sites.oricse.com.br",
         verificacao_tipo: "cname",
-      })));
-      if (error) throw error;
+      }))).select("id,hostname");
+      if (error) throw new Error(error.message);
+      if (!criados || criados.length !== hostnames.length) throw new Error("O banco não confirmou todos os domínios. Atualize a lista antes de tentar novamente.");
       const { error: clinicaError } = await (supabaseBanco as any).from("clinicas").update({
         dominio: hostname,
         updated_at: new Date().toISOString(),
       }).eq("id", selecionada.id);
-      if (clinicaError) throw clinicaError;
+      if (clinicaError) throw new Error("O domínio foi cadastrado, mas o cadastro da clínica não foi sincronizado. Atualize os dados antes de repetir: " + clinicaError.message);
       setNovoDominio("");
       await carregarTudo();
-      toast.success("Domínio próprio incluído. Agora aponte o DNS indicado.");
+      toast.success("Domínio cadastrado como pendente. Copie o DNS e aguarde a validação antes de publicar.");
     } catch (e) {
       const erro = e as { code?: string; message?: string };
       toast.error(erro.code === "23505" ? "Esse domínio já está vinculado a outra clínica." : (erro.message || "Não foi possível incluir o domínio."));
@@ -1451,15 +1452,29 @@ function Admin() {
   }
 
   async function alterarPublicacaoDominio(dominio: DominioClinica, publicar_site: boolean) {
+    if (salvandoDominio || !selecionada || dominio.clinica_id !== selecionada.id) return;
+    if (publicar_site && statusConteudoSite !== "publicado") {
+      toast.error("Publique o conteúdo do site antes de liberar o endereço.");
+      setEditorSiteAberto(true);
+      return;
+    }
+    if (publicar_site && dominio.status !== "ativo") {
+      toast.error("O endereço ainda precisa ser validado pela infraestrutura. Confira DNS e SSL.");
+      return;
+    }
     setSalvandoDominio(true);
     try {
-      const { error } = await (supabaseBanco as any).from("oricse_dominios_clinica").update({
+      const { data, error } = await (supabaseBanco as any).from("oricse_dominios_clinica").update({
         publicar_site,
         atualizado_em: new Date().toISOString(),
-      }).eq("id", dominio.id);
-      if (error) throw error;
-      await carregarTudo();
-      toast.success(publicar_site ? "Site público liberado neste domínio." : "Site público pausado neste domínio.");
+      }).eq("id", dominio.id).eq("clinica_id", selecionada.id)
+        .select("id,publicar_site").maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data || data.publicar_site !== publicar_site) throw new Error("O banco não confirmou a alteração. Atualize os domínios e tente novamente.");
+      setDominiosClinica((lista) => lista.map((item) => item.id === dominio.id ? { ...item, publicar_site } : item));
+      if (!publicar_site) setVerificacoes((estado) => ({ ...estado, [dominio.id]: "nao_verificado" }));
+      toast.success(publicar_site ? "Publicação liberada. Verificando o acesso HTTPS..." : "Publicação pausada e alteração confirmada.");
+      if (publicar_site) void verificarDisponibilidadeDominio({ ...dominio, publicar_site });
     } catch (e) {
       toast.error((e as Error).message || "Não foi possível alterar a publicação.");
     } finally {
@@ -1632,7 +1647,7 @@ function Admin() {
                 <div className="min-w-0"><p className="break-all font-mono text-[11px]">{dns}</p>{dominio.ultimo_erro && <p className="mt-0.5 text-[11px] text-red-700">{dominio.ultimo_erro}</p>}</div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {dominio.tipo === "proprio" && <button type="button" onClick={() => { void window.navigator.clipboard.writeText(dominio.dns_alvo).then(() => toast.success("Destino DNS copiado.")).catch(() => toast.error("Não foi possível copiar o DNS.")); }} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold">Copiar DNS</button>}
-                  <button type="button" disabled={salvandoDominio || (dominio.tipo === "oricse" && (!conteudoSitePublicado || !subdominioPronto)) || (dominio.status !== "ativo" && !dominio.publicar_site)} onClick={() => void alterarPublicacaoDominio(dominio, !dominio.publicar_site)} className={"min-h-8 rounded-lg px-2 text-[11px] font-bold disabled:opacity-40 " + (dominio.publicar_site ? "border bg-white" : "bg-primary text-primary-foreground")}>{dominio.publicar_site ? "Pausar" : "Publicar"}</button>
+                  <button type="button" disabled={salvandoDominio || (!dominio.publicar_site && (!conteudoSitePublicado || dominio.status !== "ativo" || (dominio.tipo === "oricse" && !subdominioPronto)))} onClick={() => void alterarPublicacaoDominio(dominio, !dominio.publicar_site)} className={"min-h-8 rounded-lg px-2 text-[11px] font-bold disabled:opacity-40 " + (dominio.publicar_site ? "border bg-white" : "bg-primary text-primary-foreground")}>{dominio.publicar_site ? "Pausar" : "Publicar"}</button>
                   <button type="button" disabled={!verificavel || verificacoes[dominio.id] === "verificando"} onClick={() => void verificarDisponibilidadeDominio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificacoes[dominio.id] === "verificando" ? "Testando..." : "Testar HTTPS"}</button>
                   <button type="button" disabled={Boolean(excluindoDominio)} onClick={() => { setExclusaoDominio(dominio); setConfirmarHostname(""); setConfirmarInterrupcao(false); }} aria-label={"Excluir " + dominio.hostname} className="flex min-h-8 items-center gap-1 rounded-lg border border-red-200 px-2 text-[11px] font-bold text-red-700 disabled:opacity-40"><Trash2 size={12}/> Excluir</button>
                 </div>
