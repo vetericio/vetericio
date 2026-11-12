@@ -10,6 +10,7 @@ let hidratado = false;
 let hidratando: Promise<void> | null = null;
 let fila: Alteracao[] = [];
 let enviando = false;
+let envioAtual: Promise<void> | null = null;
 let conflito = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let falhasConsecutivas = 0;
@@ -21,8 +22,7 @@ async function tokenAtual() {
   return data.session.access_token;
 }
 
-async function enviarFila() {
-  if (enviando || !fila.length) return;
+async function processarLote() {
   enviando = true;
   const lote = fila;
   fila = [];
@@ -49,7 +49,7 @@ async function enviarFila() {
       else fila[indice] = { ...fila[indice], esperado: anterior.esperado };
     }
     falhasConsecutivas++;
-    console.error("Falha ao salvar estado no Google Drive:", error);
+    console.error("Falha ao confirmar gravação no PostgreSQL:", error);
     if(error?.code==="DRIVE_CONFLICT" || /Outros usuários alteraram/.test(error?.message||"")){
       conflito = true;
       toast.error("Alterações conflitantes",{
@@ -59,16 +59,33 @@ async function enviarFila() {
         action:{label:"Atualizar e revisar",onClick:()=>window.location.reload()},
       });
     } else {
-      toast.error("Sincronização pendente",{
+      const mensagem = error instanceof Error ? error.message : "Falha desconhecida na gravação.";
+      toast.error("Alterações não salvas", {
         id: AVISO_SINCRONIZACAO,
-        description:"A gravação ainda não foi confirmada. O sistema fará novas tentativas automaticamente.",
-        duration:Infinity,
+        description: mensagem.slice(0, 240) + " — Tente novamente. Não feche esta aba antes de confirmar o salvamento.",
+        duration: Infinity,
+        action: { label: "Tentar novamente", onClick: () => { void descarregarOricseStorage().catch(() => undefined); } },
       });
     }
     throw error;
   } finally {
     enviando = false;
     if (fila.length && !conflito) agendarEnvio();
+  }
+}
+
+// Um salvamento explícito aguarda o envio já em andamento.
+// Antes, descarregarOricseStorage retornava sem aguardar o servidor,
+// exibindo confirmação na tela enquanto o lote anterior ainda estava pendente.
+async function enviarFila(): Promise<void> {
+  if (envioAtual) return envioAtual;
+  if (!fila.length) return;
+  const atual = processarLote();
+  envioAtual = atual;
+  try {
+    await atual;
+  } finally {
+    if (envioAtual === atual) envioAtual = null;
   }
 }
 
@@ -127,6 +144,10 @@ export const oricseSession = {
 
 export async function hidratarOricseStorage(force = false) {
   if (hidratado && !force) return;
+  // Uma reidratação forçada não pode apagar edições ainda pendentes em memória.
+  if (fila.length || envioAtual) {
+    await descarregarOricseStorage();
+  }
   if (hidratando && !force) return hidratando;
   hidratando = (async () => {
     const accessToken = await tokenAtual();
@@ -140,13 +161,20 @@ export async function hidratarOricseStorage(force = false) {
 
 export async function descarregarOricseStorage() {
   if (timer) { clearTimeout(timer); timer = null; }
-  await enviarFila();
+  while (fila.length || envioAtual) {
+    await enviarFila();
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
 }
 
 export function limparMemoriaOricse() {
   memoria.clear();
   sessao.clear();
+  if (fila.length || enviando) {
+    console.warn("Há alterações não confirmadas ao encerrar a sessão ORICSE.");
+  }
   fila = [];
+  envioAtual = null;
   conflito = false;
   falhasConsecutivas = 0;
   toast.dismiss(AVISO_SINCRONIZACAO);
