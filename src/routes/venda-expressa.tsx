@@ -119,7 +119,7 @@ function VendaExpressa() {
         if (!video) throw new Error("Não foi possível preparar a câmera.");
         video.srcObject = stream;
         await video.play();
-        const detector = new Detector({ formats });
+        const detector = new Detector({ formats: formatos });
         let ocupada = false;
         intervalo = setInterval(async () => {
           if (ocupada || !video || video.readyState < 2) return;
