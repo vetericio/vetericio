@@ -167,7 +167,7 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
     .map(([chave, valor]) => [chave, valor as string] as const);
-  if (filtrarLeitura && pares.some(([chave]) => permissoesDaChave(chave).length)) {
+  if (filtrarLeitura && !contexto.adminGeral && pares.some(([chave]) => permissoesDaChave(chave).length)) {
     const permitidas = await obterPermissoesUsuario(accessToken, contexto);
     pares = pares.filter(([chave]) => {
       const exigidas = permissoesDaChave(chave);
