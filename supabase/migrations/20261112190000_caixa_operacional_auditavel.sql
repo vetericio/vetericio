@@ -11,11 +11,13 @@ create table if not exists public.oricse_caixa_turnos (
   id uuid primary key default gen_random_uuid(),
   clinica_id uuid not null references public.clinicas(id) on delete restrict,
   aberto_por uuid not null references auth.users(id),
+  aberto_nome text not null default '',
   aberto_em timestamptz not null default now(),
   fundo_centavos bigint not null default 0 check (fundo_centavos between 0 and 100000000000),
   observacao_abertura text not null default '',
   status text not null default 'aberto' check (status in ('aberto','fechado')),
   fechado_por uuid references auth.users(id),
+  fechado_nome text,
   fechado_em timestamptz,
   contado_centavos bigint check (contado_centavos >= 0),
   esperado_centavos bigint,
@@ -108,8 +110,8 @@ begin
  if p_fundo_centavos is null or p_fundo_centavos < 0 or p_fundo_centavos > 100000000000 then
    raise exception 'Fundo de troco inválido.' using errcode='22023';
  end if;
- insert into public.oricse_caixa_turnos(clinica_id,aberto_por,fundo_centavos,observacao_abertura)
- values(p_clinica_id,(select auth.uid()),p_fundo_centavos,coalesce(left(p_observacao,1000),''))
+ insert into public.oricse_caixa_turnos(clinica_id,aberto_por,aberto_nome,fundo_centavos,observacao_abertura)
+ values(p_clinica_id,(select auth.uid()),coalesce((select username from public.app_users where user_id=(select auth.uid())),'Operador'),p_fundo_centavos,coalesce(left(p_observacao,1000),''))
  returning * into v_turno;
  return v_turno;
 exception when unique_violation then
@@ -233,7 +235,8 @@ begin
    raise exception 'Explique a diferença de caixa com pelo menos dez caracteres.' using errcode='22023';
  end if;
  update public.oricse_caixa_turnos
- set status='fechado',fechado_por=(select auth.uid()),fechado_em=now(),
+ set status='fechado',fechado_por=(select auth.uid()),
+     fechado_nome=coalesce((select username from public.app_users where user_id=(select auth.uid())),'Operador'),fechado_em=now(),
      contado_centavos=p_contado_centavos,esperado_centavos=v_esperado,
      divergencia_centavos=v_diferenca,justificativa_fechamento=coalesce(p_justificativa,''),
      resumo_fechamento=v_resumo
