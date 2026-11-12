@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 import {
   supabase,
+  supabaseBanco,
   supabaseConfigurado,
   supabaseMensagemConfiguracao,
 } from "@/integrations/supabase/client";
@@ -61,19 +62,43 @@ function Login() {
 
     setEntrando(true);
     const email = `${nome}@vetericio.local`;
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
+    try {
+      const { data: login, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      });
+      if (loginError || !login.user) {
+        toast.error("@usuário ou senha inválidos.");
+        return;
+      }
 
-    if (!loginError) {
+      // Uma senha válida não define a clínica: o vínculo pertence à identidade
+      // autenticada e deve ser confirmado pelo banco antes do redirecionamento.
+      const { data: perfil, error: erroPerfil } = await (supabaseBanco as any)
+        .from("app_users")
+        .select("role")
+        .eq("user_id", login.user.id)
+        .maybeSingle();
+      if (erroPerfil || !perfil) throw new Error("Não foi possível validar sua conta. Tente novamente.");
+
+      if (perfil.role !== "admin") {
+        const { data: contexto, error: erroContexto } = await (supabaseBanco as any)
+          .rpc("oricse_contexto_clinica_atual");
+        if (erroContexto) throw new Error("Não foi possível identificar a clínica vinculada. Tente novamente.");
+        if (!contexto?.[0]?.clinica_id) {
+          await supabase.auth.signOut();
+          toast.error("Conta autenticada, mas sem clínica ativa vinculada. Solicite revisão ao administrador.");
+          return;
+        }
+      }
+      await navigate({ to: "/inicio" });
+    } catch (error) {
+      // Não manter uma sessão parcialmente validada, que acabaria na tela de bloqueio.
+      await supabase.auth.signOut();
+      toast.error(error instanceof Error ? error.message : "Não foi possível concluir o acesso.");
+    } finally {
       setEntrando(false);
-      navigate({ to: "/inicio" });
-      return;
     }
-
-    setEntrando(false);
-    toast.error("@usuário ou senha inválidos.");
   }
 
   return (
