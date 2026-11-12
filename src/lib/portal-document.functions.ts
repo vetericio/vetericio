@@ -36,8 +36,9 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     // preservar a consulta legada do Drive para registros anteriores.
     const {data:canonico,error:erroCanonico}=await supabaseAdmin.from(tabela as "oricse_portal_documentos")
       .select("id,clinica_id,animal_id,drive_arquivo_id,visivel_tutor")
-      .eq("id",data.documentoId).eq("visivel_tutor",true).maybeSingle();
+      .eq("id",data.documentoId).maybeSingle();
     if(erroCanonico)throw new Error("Não foi possível verificar a autorização do documento.");
+    if(canonico && canonico.visivel_tutor !== true) throw new Error("Documento não liberado ao tutor.");
     let registro: any=canonico;
     if(!registro){
       const resposta=await driveQuery(data.accessToken,tabela,[{kind:"eq",column:"id",value:data.documentoId},{kind:"eq",column:"visivel_tutor",value:true}]);
