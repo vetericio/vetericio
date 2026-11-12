@@ -2004,6 +2004,7 @@ function Admin() {
       </div>;
     }
 
+    const financeiros: Record<StatusFinanceiro, string> = { em_dia: "Em dia", pendente: "Pendente", atrasado: "Em atraso", isento: "Isento", teste: "Em teste" };
     const filtros: [FiltroClinica, string][] = [
       ["todas", "Todas"], ["pagas", "Ativas e em dia"], ["inadimplentes", "Pendentes/atrasadas"], ["bloqueadas", "Bloqueadas"], ["inativas", "Inativas"], ["canceladas", "Canceladas"],
     ];
