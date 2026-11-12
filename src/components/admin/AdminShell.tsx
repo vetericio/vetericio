@@ -2,13 +2,13 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   BadgeDollarSign, Building2, ClipboardCheck, CreditCard, Gauge, Globe2,
-  ImageUp, LayoutDashboard, Menu, PanelsTopLeft, Settings, ShieldCheck,
+  ImageUp, LayoutDashboard, Menu, PanelsTopLeft, Settings, ShieldCheck, Users,
   Presentation, Trash2, X, FileText,
 } from "lucide-react";
 
 export type AdminAba =
   | "dashboard" | "novas" | "lixeira" | "clinicas" | "planos"
-  | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria";
+  | "site" | "sistema" | "paginas" | "pagamentos" | "auditoria" | "equipe";
 
 type Grupo = "Operação" | "Produto e conteúdo" | "Controle";
 type Item = {
@@ -26,7 +26,8 @@ const ITENS: Item[] = [
   { id: "demonstracoes", nome: "Solicitações de demonstração", Icone: Presentation, grupo: "Operação", rota: "/admin-solicitacoes-demonstracao" },
   { id: "contratos", nome: "Contratos", Icone: FileText, grupo: "Operação", rota: "/admin-contratos" },
   { id: "lixeira", nome: "Lixeira · 360 dias", Icone: Trash2, grupo: "Operação", aba: "lixeira" },
-  { id: "clinicas", nome: "Clínicas e equipe", Icone: Building2, grupo: "Operação", aba: "clinicas" },
+  { id: "clinicas", nome: "Clínicas", Icone: Building2, grupo: "Operação", aba: "clinicas" },
+  { id: "equipe", nome: "Equipe", Icone: Users, grupo: "Operação", aba: "equipe" },
   { id: "planos", nome: "Planos e cupons", Icone: BadgeDollarSign, grupo: "Operação", aba: "planos" },
   { id: "pagamentos", nome: "OricsePay", Icone: CreditCard, grupo: "Operação", aba: "pagamentos" },
   { id: "oricstudio-plataforma", nome: "Meu OricStúdio", Icone: ImageUp, grupo: "Produto e conteúdo", rota: "/oricstudio" },
