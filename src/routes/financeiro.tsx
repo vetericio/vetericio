@@ -49,7 +49,7 @@ export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
 const LANCAMENTOS_KEY = "oricse-financeiro-lancamentos-v1";
 
-type TipoLancamento = "Entrada" | "Saída";
+type TipoLancamento = "Entrada" | "Saída" | "Estorno";
 type StatusLancamento = "Pago" | "Pendente";
 
 type Lancamento = {
@@ -221,6 +221,7 @@ export function Financeiro() {
   const [erroHotel, setErroHotel] = useState("");
   const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string;detalhes?:{tutor?:string;tutorId?:string;observacao?:string};data_competencia?:string|null}>>([]);
   const [erroCaixaGeral,setErroCaixaGeral]=useState("");
+  const [estornosConfirmados,setEstornosConfirmados]=useState<Array<{id:string;valor_centavos:number;lancamento_id:string;revisado_em:string}>>([]);
   const [carregandoCaixa,setCarregandoCaixa]=useState(false);
   const [periodoSetorial,setPeriodoSetorial]=useState<PeriodoSetorial>("mes");
   useEffect(()=>{
@@ -231,6 +232,12 @@ export function Financeiro() {
       const atual=++requisicao;
       if(ativo)setCarregandoCaixa(true);
       try{
+        const { data: estornosData, error: erroEstornos } = await (supabaseBanco as any)
+          .from("oricse_caixa_estornos")
+          .select("id,valor_centavos,lancamento_id,revisado_em")
+          .eq("clinica_id",clinicaId).eq("status","confirmado")
+          .order("revisado_em",{ascending:false}).limit(1000);
+        if(erroEstornos)throw erroEstornos;
         // Paginação evita subcontar clínicas com mais de 2.000 movimentos.
         const todos: typeof caixaGeral=[];
         const pagina=1000;
@@ -245,11 +252,11 @@ export function Financeiro() {
           todos.push(...(data||[]));
           if(!data||data.length<pagina)break;
         }
-        if(ativo&&requisicao===atual){setCaixaGeral(todos);setErroCaixaGeral("");}
+        if(ativo&&requisicao===atual){setCaixaGeral(todos);setEstornosConfirmados(estornosData||[]);setErroCaixaGeral("");}
       }catch(error){
         if(ativo&&requisicao===atual){
           setErroCaixaGeral("Não foi possível consultar todos os lançamentos do caixa. Tente atualizar a página.");
-          setCaixaGeral([]);
+          setCaixaGeral([]);setEstornosConfirmados([]);
           console.error("Falha na consolidação financeira:",error);
         }
       }finally{if(ativo&&requisicao===atual)setCarregandoCaixa(false);}
@@ -257,7 +264,8 @@ export function Financeiro() {
     void carregar();
     window.addEventListener("focus",carregar);
     document.addEventListener("visibilitychange",carregar);
-    return()=>{ativo=false;window.removeEventListener("focus",carregar);document.removeEventListener("visibilitychange",carregar);};
+    window.addEventListener("oricse:caixa-alterado",carregar);
+    return()=>{ativo=false;window.removeEventListener("focus",carregar);document.removeEventListener("visibilitychange",carregar);window.removeEventListener("oricse:caixa-alterado",carregar);};
   },[clinicaId]);
   useEffect(() => {
     if (!clinicaId) { setEstadiasHotel([]); return; }
@@ -537,17 +545,27 @@ export function Financeiro() {
       tutor: p.detalhes?.tutor, tutorId: p.detalhes?.tutorId,
       observacao: p.detalhes?.observacao || ("Registro centralizado · " + p.setor),
     }));
+    const estornos: Lancamento[] = estornosConfirmados.filter(e=>Boolean(e.revisado_em)).map(e=>{
+      const original=caixaGeral.find(l=>l.id===e.lancamento_id);
+      return {
+        id:"estorno:"+e.id, tipo:"Estorno",
+        descricao:"Estorno confirmado · "+(original?.descricao||"Lançamento central"),
+        categoria:original?.setor||"Outros",valor:e.valor_centavos/100,
+        data:dataLocalISO(new Date(e.revisado_em)),formaPagamento:"Estorno externo",
+        status:"Pago",observacao:"Transação original: "+e.lancamento_id,
+      };
+    });
     const idsBanco = new Set(vindosBanco.map(l => l.id));
-    return [...vindosBanco, ...lancamentos.filter(l => !idsBanco.has(l.id))];
-  }, [caixaGeral, lancamentos]);
+    return [...vindosBanco, ...estornos, ...lancamentos.filter(l => !idsBanco.has(l.id))];
+  }, [caixaGeral, lancamentos, estornosConfirmados]);
   const doDia = useMemo(() => lancamentosUnificados.filter((l) => l.data === dataAtual), [lancamentosUnificados, dataAtual]);
   const doMes = useMemo(
     () => lancamentosUnificados.filter((l) => l.data.startsWith(dataAtual.slice(0, 7))),
     [lancamentosUnificados, dataAtual],
   );
   const entradasDia = doDia
-    .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
-    .reduce((s, l) => s + l.valor, 0);
+    .filter((l) => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago")
+    .reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const saidasDia = doDia
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
@@ -555,14 +573,14 @@ export function Financeiro() {
     .filter((l) => l.tipo === "Entrada" && l.status === "Pendente")
     .reduce((s, l) => s + l.valor, 0);
   const recebidoMes = doMes
-    .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
-    .reduce((s, l) => s + l.valor, 0);
+    .filter((l) => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago")
+    .reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const despesasMes = doMes
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
   const recebidoTotal = lancamentosUnificados
-    .filter((l) => l.tipo === "Entrada" && l.status === "Pago")
-    .reduce((s, l) => s + l.valor, 0);
+    .filter((l) => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago")
+    .reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const despesasTotal = lancamentosUnificados
     .filter((l) => l.tipo === "Saída" && l.status === "Pago")
     .reduce((s, l) => s + l.valor, 0);
@@ -570,12 +588,12 @@ export function Financeiro() {
   const resumoSetores = useMemo(() => {
     const mapa = Object.fromEntries(SETORES_FINANCEIROS.map((setor) => [setor.id, { recebido: 0, pendente: 0, quantidade: 0 }])) as Record<SetorFinanceiro, { recebido: number; pendente: number; quantidade: number }>;
     for(const lancamento of lancamentosUnificados){
-      if(lancamento.tipo!=="Entrada" || !Number.isFinite(lancamento.valor) || lancamento.valor<0) continue;
+      if(!["Entrada","Estorno"].includes(lancamento.tipo) || !Number.isFinite(lancamento.valor) || lancamento.valor<0) continue;
       if(periodoSetorial==="hoje" && lancamento.data!==dataAtual) continue;
       if(periodoSetorial==="mes" && !lancamento.data.startsWith(dataAtual.slice(0,7))) continue;
       const setor=setorDoLancamento(lancamento.categoria);
       mapa[setor].quantidade++;
-      if(lancamento.status==="Pago") mapa[setor].recebido+=lancamento.valor;
+      if(lancamento.status==="Pago") mapa[setor].recebido+=(lancamento.tipo==="Estorno"? -lancamento.valor : lancamento.valor);
       else mapa[setor].pendente+=lancamento.valor;
     }
     return mapa;
@@ -584,7 +602,7 @@ export function Financeiro() {
   const comandasDia = useMemo(() => comandas.filter(c => dataLocalISO(new Date(c.abertaEm)) === dataAtual).sort((a,b) => b.abertaEm.localeCompare(a.abertaEm)), [comandas, dataAtual]);
   const comandasAbertasAnteriores = useMemo(() => comandas.filter(c => c.status === "Aberta" && dataLocalISO(new Date(c.abertaEm)) < dataAtual).sort((a,b) => a.abertaEm.localeCompare(b.abertaEm)), [comandas, dataAtual]);
   const lancamentosPeriodo = useMemo(() => lancamentosUnificados.filter(l => periodoInicio <= periodoFim && l.data >= periodoInicio && l.data <= periodoFim), [lancamentosUnificados, periodoInicio, periodoFim]);
-  const recebidoPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Entrada" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
+  const recebidoPeriodo = lancamentosPeriodo.filter(l => (l.tipo === "Entrada" || l.tipo === "Estorno") && l.status === "Pago").reduce((s, l) => s + (l.tipo === "Estorno" ? -l.valor : l.valor), 0);
   const despesasPeriodo = lancamentosPeriodo.filter(l => l.tipo === "Saída" && l.status === "Pago").reduce((s, l) => s + l.valor, 0);
 
   const tutoresFinanceiros = useMemo(() => {
