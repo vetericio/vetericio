@@ -9,7 +9,7 @@ export async function criarLeitorZXing(): Promise<(quadro: HTMLCanvasElement) =>
     import("@zxing/browser"),
     import("@zxing/library"),
   ]);
-  const formatos = new Map<BarcodeFormat, string>([
+  const formatos = new Map<number, string>([
     [BarcodeFormat.EAN_13, "ean_13"],
     [BarcodeFormat.EAN_8, "ean_8"],
     [BarcodeFormat.UPC_A, "upc_a"],
