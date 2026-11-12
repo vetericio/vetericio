@@ -1202,8 +1202,8 @@ export function Financeiro() {
                     {new Date(`${l.data}T12:00:00`).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
-                <strong className={l.tipo === "Saída" ? "text-rose-600" : "text-emerald-700"}>
-                  {l.tipo === "Saída" ? "− " : "+ "}
+                <strong className={(l.tipo === "Saída" || l.tipo === "Estorno") ? "text-rose-600" : "text-emerald-700"}>
+                  {(l.tipo === "Saída" || l.tipo === "Estorno") ? "− " : "+ "}
                   {dinheiro(l.valor)}
                 </strong>
                 <div className="flex gap-1">
@@ -1463,8 +1463,8 @@ function ModuloCaixa({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <strong className={l.tipo === "Saída" ? "text-rose-600" : "text-emerald-700"}>
-                  {l.tipo === "Saída" ? "− " : "+ "}
+                <strong className={(l.tipo === "Saída" || l.tipo === "Estorno") ? "text-rose-600" : "text-emerald-700"}>
+                  {(l.tipo === "Saída" || l.tipo === "Estorno") ? "− " : "+ "}
                   {dinheiro(l.valor)}
                 </strong>
                 {l.comandaId || l.categoria === "Pagamento de comanda" ? (
