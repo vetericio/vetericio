@@ -1,4 +1,4 @@
-import { Camera, Flashlight, ScanBarcode, X } from "lucide-react";
+import { Camera, Flashlight, ScanBarcode, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -305,6 +305,13 @@ export function LeitorCodigoBarrasCamera({
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">
               <Flashlight size={18}/> {lanternaLigada ? "Desligar lanterna" : "Ligar lanterna"}
             </button>}
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => bipConfirmacao(audioRef.current)}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">
+                <Volume2 size={18}/> Testar bip
+              </button>
+              <span className="text-xs text-muted-foreground">A altura do som depende do volume de mídia do celular.</span>
+            </div>
             <p className="text-sm font-medium">Centralize a etiqueta, afaste um pouco o celular e mantenha a câmera imóvel.</p>
             <p className="text-xs text-muted-foreground">Confirmamos o mesmo código em 3 imagens antes de aceitar. Após a leitura, o bip é reproduzido no volume permitido pelo aparelho.</p>
             {aviso && <p role="status" className="rounded-lg bg-secondary p-2 text-sm">{aviso}</p>}
