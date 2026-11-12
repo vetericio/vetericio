@@ -108,6 +108,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
   const [email, setEmail] = useState("");
   const [papel, setPapel] = useState<PapelClinica>("veterinario");
   const [salvando, setSalvando] = useState(false);
+  const [adicionandoPessoa, setAdicionandoPessoa] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
@@ -225,6 +226,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       setEmail("");
       setPapel("veterinario");
       setPessoa(pessoaVazia());
+      setAdicionandoPessoa(false);
       await onRefresh();
       toast.success(
         resultado.contaExistente
@@ -264,9 +266,12 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold">Usuários · {clinica.nome}</h2>
-          <p className="text-sm text-muted-foreground">{ativos} de {clinica.limite_usuarios} vagas em uso.</p>
+          <h2 className="text-xl font-bold">Equipe · {clinica.nome}</h2>
+          <p className="text-sm text-muted-foreground">{ativos} de {clinica.limite_usuarios} vagas em uso · {usuariosDaClinica.length} vínculo(s) cadastrado(s).</p>
         </div>
+        <button type="button" onClick={() => setAdicionandoPessoa((aberto) => !aberto)} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground">
+          <UserPlus size={16}/>{adicionandoPessoa ? "Fechar cadastro" : "Adicionar pessoa"}
+        </button>
       </div>
       <div className="mt-4 grid gap-3">
         {usuariosDaClinica.length === 0 && <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">Nenhum usuário vinculado a esta clínica.</div>}
@@ -327,8 +332,8 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       </div>
     </section>
 
-    <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2"><UserPlus size={20}/><h3 className="font-bold">Criar e vincular pessoa</h3></div>
+    {adicionandoPessoa && <section className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2"><UserPlus size={18}/><h3 className="font-bold">Adicionar pessoa à equipe</h3></div>
       <p className="mt-1 text-sm text-muted-foreground">Crie o acesso e já vincule a pessoa a esta clínica.</p>
       <p className="mt-1 text-xs text-muted-foreground">
         Se o acesso já foi criado, informe o mesmo @usuário para recuperar ou concluir o vínculo sem duplicar a conta. A senha da conta existente não será alterada.
@@ -349,6 +354,6 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       <button disabled={salvando} onClick={() => void criar()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><UserPlus size={17}/>{salvando ? "Criando..." : "Criar e vincular usuário"}</button>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">{Object.entries(perfis).map(([id, p]) => <div key={id} className={`rounded-xl border p-4 ${papel === id ? "border-primary bg-primary/5" : ""}`}><div className="font-bold">{p.nome}</div><p className="mt-1 text-sm text-muted-foreground">{p.resumo}</p><div className="mt-3 text-xs"><strong>Acesso:</strong> {p.acessos.join(" · ")}</div>{p.bloqueios.length > 0 && <div className="mt-2 text-xs text-muted-foreground"><strong>Sem acesso:</strong> {p.bloqueios.join(" · ")}</div>}</div>)}</div>
-    </section>
+    </section>}
   </div>;
 }
