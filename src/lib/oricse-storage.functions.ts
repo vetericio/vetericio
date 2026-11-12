@@ -86,6 +86,7 @@ function permissoesDaChave(chave: string): string[] {
     "veterico-referencias-exames-v2": ["consultorio.atendimentos"],
     "vetericio-exames-favoritos": ["consultorio.atendimentos"],
     "vetericio-termos-clinica": ["consultorio.receituario"],
+    "oricse-modelos-documentos-v1": ["administracao.configuracoes"],
     "veterico-assinatura-v1": ["consultorio.receituario"],
     "veterico-carimbo-v1": ["consultorio.receituario"],
     "veterico:precisao-ml": ["consultorio.medicacoes", "internacao.medicacoes"],
@@ -130,15 +131,29 @@ async function obterPermissoesUsuario(
   return new Set<string>(data.filter((p: any) => p.permitido).map((p: any) => String(p.codigo)));
 }
 
+async function autorizarModelosClinica(userId: string, clinicaId: string, adminGeral: boolean) {
+  if (adminGeral) return;
+  const admin = await carregarAdmin();
+  const { data: vinculo, error } = await admin.from("clinica_usuarios")
+    .select("papel").eq("user_id", userId).eq("clinica_id", clinicaId).eq("ativo", true).maybeSingle();
+  if (error || !["rt", "admin_clinica"].includes(String(vinculo?.papel || ""))) {
+    throw new Error("Somente o responsável técnico ou o administrador da clínica pode gerenciar modelos.");
+  }
+}
+
 async function validarAlteracoesPorPlano(
   accessToken: string,
   contexto: { userId: string; clinicaId: string | null },
   alteracoes: Array<{ chave: string }>,
 ) {
   if (!contexto.clinicaId) throw new Error("Selecione a clínica para salvar.");
+  if (alteracoes.some((item) => item.chave === "oricse-modelos-documentos-v1")) {
+    await autorizarModelosClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as { adminGeral?: boolean }).adminGeral));
+  }
   if ((contexto as { adminGeral?: boolean }).adminGeral) return; // Admin geral mantém a autorização da plataforma.
   const regras = new Map<string, string[]>();
   for (const item of alteracoes) {
+    if (item.chave === "oricse-modelos-documentos-v1") continue; // Autorização estrita Admin/RT verificada acima.
     const candidatas = permissoesDaChave(item.chave);
     if (candidatas.length) regras.set(item.chave, candidatas);
   }
@@ -164,6 +179,13 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
   if (error) throw error;
   const bruto = data?.dados;
   const estado = bruto && typeof bruto === "object" && !Array.isArray(bruto) ? bruto as Record<string, unknown> : {};
+  if (filtrarLeitura && !contexto.adminGeral) {
+    const autorizado = await (async () => {
+      try { await autorizarModelosClinica(contexto.userId, contexto.clinicaId!, false); return true; }
+      catch { return false; }
+    })();
+    if (!autorizado) delete estado["oricse-modelos-documentos-v1"];
+  }
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
     .map(([chave, valor]) => [chave, valor as string] as const);
