@@ -1,10 +1,11 @@
 // Prontuário estruturado com versão original preservada e adendos.
 import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
-import { ArrowLeft, CalendarDays, ClipboardList, History, Save, Stethoscope } from "lucide-react";
+import { ArrowLeft, ChevronDown, ClipboardList, History, Save, Stethoscope } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/consulta")({ component: ConsultaSalva });
 
@@ -50,11 +51,40 @@ function dataBR(valor?: string) {
   return a && m && d ? `${d}/${m}/${a}` : valor;
 }
 
-function separarDetalhe(detalhe?: string) {
-  return (detalhe || "")
-    .split("\n")
-    .map((linha) => linha.trim())
-    .filter(Boolean);
+type CampoPreenchido = { titulo: string; itens: string[] };
+
+// A visualização é filtrada; o conteúdo original nunca é editado ou descartado.
+function semInformacao(valor: string) {
+  const normalizado = valor.trim().toLocaleLowerCase("pt-BR")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[.!?\s]+$/g, "");
+  return !normalizado || [
+    "nao informado", "nao informada", "nao preenchido", "nao preenchida",
+    "sem informacao", "sem informacoes", "-", "—",
+  ].includes(normalizado);
+}
+
+function camposPreenchidos(detalhe?: string): CampoPreenchido[] {
+  const secoes: CampoPreenchido[] = [];
+  let atual: CampoPreenchido | null = null;
+  const cabecalho = /^(Queixa principal|Tutor relata|Observações por sistema|Exame clínico|Hipóteses\s*\/\s*suspeitas|Conduta\s*\/\s*orientações|Retorno|Medicações\s*\/\s*receita|Exames solicitados|Exames oftalmológicos)\s*:\s*(.*)$/i;
+  for (const origem of (detalhe || "").split(/\r?\n/)) {
+    const linha = origem.trim().replace(/^[-•]\s*/, "").trim();
+    if (!linha) continue;
+    const titulo = cabecalho.exec(linha);
+    if (titulo) {
+      atual = { titulo: titulo[1], itens: [] };
+      secoes.push(atual);
+      if (!semInformacao(titulo[2])) atual.itens.push(titulo[2].trim());
+    } else if (!semInformacao(linha)) {
+      if (!atual) {
+        atual = { titulo: "Outras informações registradas", itens: [] };
+        secoes.push(atual);
+      }
+      atual.itens.push(linha);
+    }
+  }
+  return secoes.filter((secao) => secao.itens.length > 0);
 }
 
 function ConsultaSalva() {
@@ -134,12 +164,13 @@ function ConsultaSalva() {
     return () => { ativo = false; };
   }, [animalIdParam, registroId]);
 
-  const linhas = separarDetalhe(registro?.detalhe);
+  const secoes = camposPreenchidos(registro?.detalhe);
   const adendos = registro ? registrosRelacionados.filter((item) => item.adendoDe === registro.id).sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm))) : [];
 
   async function salvarAdendo() {
     if (!registro || !animal || !adendoTexto.trim() || salvandoAdendo) return;
     setSalvandoAdendo(true);
+    setErro("");
     try {
       const agora = new Date().toISOString();
       const novo: Registro = {
@@ -154,6 +185,7 @@ function ConsultaSalva() {
       await descarregarOricseStorage();
       setRegistrosRelacionados((lista) => [...lista, novo]);
       setAdendoTexto("");
+      toast.success("Adendo salvo no prontuário.");
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Não foi possível salvar o adendo.");
     } finally {
@@ -170,50 +202,137 @@ function ConsultaSalva() {
     </main>;
   }
 
-  return <main className="mx-auto min-h-screen w-full max-w-[1100px] px-4 pb-28 pt-6 sm:px-6">
-    <Link to="/animal" search={{ animalId: animal.id } as never} className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para {animal.nome}</Link>
+  return <main className="mx-auto min-h-screen w-full max-w-[940px] px-4 pb-24 pt-5 text-foreground sm:px-6 sm:pt-7">
+    <Link
+      to="/animal"
+      search={{ animalId: animal.id } as never}
+      className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <ArrowLeft size={18} aria-hidden="true" />
+      Voltar para {animal.nome}
+    </Link>
 
-    <section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className="border-b bg-primary/[0.035] p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+    <article className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm" aria-labelledby="titulo-registro-clinico">
+      <header className="border-b border-border bg-white px-5 py-5 sm:px-8 sm:py-6">
+        <div className="flex items-center gap-2 text-sm font-bold text-primary">
+          <Stethoscope size={18} aria-hidden="true" />
+          Registro clínico
+        </div>
+        <h1 id="titulo-registro-clinico" className="mt-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+          {registro.titulo || "Consulta"}
+        </h1>
+        <dl className="mt-5 grid grid-cols-1 gap-x-7 gap-y-3 rounded-xl bg-slate-50 px-4 py-4 sm:grid-cols-2">
+          {registro.data && <div>
+            <dt className="text-sm font-semibold text-slate-600">Data do atendimento</dt>
+            <dd className="mt-1 text-base font-semibold text-slate-950">{dataBR(registro.data)}</dd>
+          </div>}
           <div>
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-primary"><Stethoscope size={16}/> Registro clínico</div>
-            <h1 className="mt-2 text-3xl font-black">{registro.titulo || "Consulta"}</h1>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><CalendarDays size={14}/> {dataBR(registro.data)}</span>
-              <span><strong className="text-foreground">Animal:</strong> {animal.nome}</span>
-              <span><strong className="text-foreground">Tutor:</strong> {tutor?.nome || "—"}</span>
-              {tutor && codigoPublicoTutor(tutor) && <span><strong className="text-foreground">ID do tutor:</strong> {codigoPublicoTutor(tutor)}</span>}
-              {(tutor?.telefone || tutor?.outroTelefone) && <span>{[tutor.telefone, tutor.outroTelefone].filter(Boolean).join(" · ")}</span>}
-            </div>
+            <dt className="text-sm font-semibold text-slate-600">Paciente</dt>
+            <dd className="mt-1 text-base font-semibold text-slate-950">{animal.nome}</dd>
           </div>
+          {tutor?.nome && <div>
+            <dt className="text-sm font-semibold text-slate-600">Tutor</dt>
+            <dd className="mt-1 text-base font-semibold text-slate-950">{tutor.nome}</dd>
+          </div>}
+          {tutor && codigoPublicoTutor(tutor) && <div>
+            <dt className="text-sm font-semibold text-slate-600">Identificação do tutor</dt>
+            <dd className="mt-1 text-base font-medium text-slate-950">{codigoPublicoTutor(tutor)}</dd>
+          </div>}
+          {(tutor?.telefone || tutor?.outroTelefone) && <div>
+            <dt className="text-sm font-semibold text-slate-600">Contato</dt>
+            <dd className="mt-1 text-base font-medium text-slate-950">{[tutor.telefone, tutor.outroTelefone].filter(Boolean).join(" · ")}</dd>
+          </div>}
+        </dl>
+      </header>
+
+      <div className="px-5 py-5 sm:px-8 sm:py-7">
+        <h2 className="text-lg font-bold text-slate-950">Informações registradas</h2>
+        {secoes.length > 0 ? (
+          <div className="mt-2 divide-y divide-slate-200">
+            {secoes.map((secao, index) => (
+              <section key={secao.titulo + index} className="py-4 first:pt-3 last:pb-0">
+                <h3 className="text-base font-bold leading-6 text-primary sm:text-lg">{secao.titulo}</h3>
+                <div className="mt-2 space-y-2">
+                  {secao.itens.map((item, indice) => (
+                    <p key={indice} className="whitespace-pre-wrap break-words text-base leading-7 text-slate-950">
+                      {item}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-5 text-base text-slate-700">
+            <ClipboardList size={20} aria-hidden="true" />
+            Este registro não contém informações clínicas preenchidas.
+          </div>
+        )}
+      </div>
+    </article>
+
+    <details className="group mt-4 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary sm:px-8 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-3 text-base font-bold text-slate-950">
+          <History size={19} className="shrink-0 text-primary" aria-hidden="true" />
+          Histórico e adendos
+          {adendos.length > 0 && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{adendos.length}</span>}
+        </span>
+        <ChevronDown size={20} className="shrink-0 text-slate-600 transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="border-t border-border px-5 pb-6 pt-5 sm:px-8">
+        <p className="text-sm leading-6 text-slate-700">
+          O registro original é preservado. Os complementos são adicionados em ordem cronológica, sem substituir informações anteriores.
+        </p>
+
+        <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+            Consultar texto original · v{registro.versao || 1} · {dataBR(registro.criadoEm || registro.data)}
+          </summary>
+          <p className="whitespace-pre-wrap break-words border-t border-slate-200 px-4 py-4 text-base leading-7 text-slate-900">
+            {registro.detalhe || "Sem texto registrado."}
+          </p>
+        </details>
+
+        {adendos.map((adendo) => (
+          <article key={adendo.id} className="mt-3 border-b border-slate-200 py-4 last:border-b-0">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-base font-bold text-slate-950">Adendo {adendo.versao ? "· v" + adendo.versao : ""}</h3>
+              <time className="text-sm font-medium text-slate-600">{dataBR(adendo.criadoEm)}</time>
+            </div>
+            <p className="mt-2 whitespace-pre-wrap break-words text-base leading-7 text-slate-950">
+              {adendo.detalhe?.replace(/^ADENDO DO PRONTUÁRIO\n\n/, "")}
+            </p>
+          </article>
+        ))}
+
+        <div className="mt-5 border-t border-border pt-5">
+          <h3 className="text-lg font-bold text-slate-950">Adicionar adendo</h3>
+          <p id="ajuda-adendo" className="mt-1 text-sm leading-6 text-slate-700">
+            Registre correções ou informações complementares. O texto original não será alterado.
+          </p>
+          <label htmlFor="texto-adendo" className="mt-4 block text-sm font-semibold text-slate-950">Texto do adendo</label>
+          <textarea
+            id="texto-adendo"
+            aria-describedby="ajuda-adendo"
+            value={adendoTexto}
+            onChange={(event) => setAdendoTexto(event.target.value)}
+            rows={4}
+            placeholder="Escreva a informação clínica adicional."
+            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-7 text-slate-950 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          {erro && <p role="alert" className="mt-2 text-sm font-semibold text-red-800">{erro}</p>}
+          <button
+            type="button"
+            disabled={!adendoTexto.trim() || salvandoAdendo}
+            onClick={() => void salvarAdendo()}
+            className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save size={17} aria-hidden="true" />
+            {salvandoAdendo ? "Salvando..." : "Salvar adendo"}
+          </button>
         </div>
       </div>
-
-      <div className="p-4 sm:p-6">
-        {linhas.length ? <div className="space-y-3">
-          {linhas.map((linha, index) => {
-            const ehTitulo = /^(Queixa principal|Tutor relata|Observações por sistema|Exames oftalmológicos|Exame clínico|Hipóteses \/ suspeitas|Exames solicitados|Medicações|Conduta|Retorno):/.test(linha);
-            const [rotulo, ...resto] = linha.split(":");
-            const valor = resto.join(":").trim();
-            return ehTitulo ? <section key={`${linha}-${index}`} className="rounded-2xl border bg-slate-50/60 p-4">
-              <div className="text-xs font-black uppercase tracking-wide text-primary">{rotulo}</div>
-              {valor && <div className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{valor}</div>}
-            </section> : <div key={`${linha}-${index}`} className="rounded-xl border px-4 py-3 text-sm leading-relaxed">{linha.replace(/^[-•]\s*/, "")}</div>;
-          })}
-        </div> : <div className="py-16 text-center text-muted-foreground"><ClipboardList className="mx-auto mb-3 opacity-30" size={36}/><p>Este registro não possui detalhes salvos.</p></div>}
-      </div>
-    </section>
-
-    <section className="mt-4 rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
-      <div className="flex items-center gap-2"><History size={19} className="text-primary"/><h2 className="text-xl font-black">Histórico do prontuário</h2></div>
-      <p className="mt-1 text-sm text-muted-foreground">A versão original permanece preservada. Cada alteração é registrada como adendo, sem substituir o texto anterior.</p>
-      <div className="mt-4 rounded-xl border border-primary/30 bg-primary/[0.04] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><strong>Versão original</strong><span className="text-xs font-bold text-muted-foreground">v{registro.versao || 1} · {dataBR(registro.criadoEm || registro.data)}</span></div>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{registro.detalhe || "Sem texto registrado."}</p>
-      </div>
-      {adendos.map((adendo) => <article key={adendo.id} className="mt-3 rounded-xl border border-amber-300 bg-amber-50/50 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{adendo.titulo}</strong><span className="text-xs font-bold text-muted-foreground">v{adendo.versao || 2} · {dataBR(adendo.criadoEm)}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{adendo.detalhe?.replace(/^ADENDO DO PRONTUÁRIO\n\n/, "")}</p></article>)}
-      <div className="mt-5 border-t pt-4"><label className="block text-sm font-bold">Novo adendo<textarea value={adendoTexto} onChange={(e) => setAdendoTexto(e.target.value)} rows={4} placeholder="Descreva a correção, complemento ou atualização clínica." className="mt-1 w-full rounded-xl border bg-white p-3 text-sm font-normal outline-none focus:border-primary"/></label><button type="button" disabled={!adendoTexto.trim() || salvandoAdendo} onClick={() => void salvarAdendo()} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Save size={16}/>{salvandoAdendo ? "Salvando..." : "Salvar adendo"}</button></div>
-    </section>
+    </details>
   </main>;
 }
