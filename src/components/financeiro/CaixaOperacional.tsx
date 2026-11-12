@@ -313,7 +313,7 @@ export function CaixaOperacional({
             <div className="flex items-center gap-2"><Wallet size={22} className="text-primary"/>
               <h2 className="text-xl font-extrabold">Caixa da clínica</h2></div>
             <p className="mt-1 text-sm text-muted-foreground">
-              {carregando ? "Carregando..." : turnoAberto ? "Caixa aberto em " + dataBR(turnoAberto.aberto_em) : "Nenhum caixa operacional aberto"}
+              {carregando ? "Carregando..." : turnoAberto ? "Aberto em " + dataBR(turnoAberto.aberto_em) + " · Operador: " + (turnoAberto.aberto_nome || "Identificado pelo cadastro") : "Nenhum caixa operacional aberto"}
             </p>
           </div>
           <div className="flex items-center gap-2">
