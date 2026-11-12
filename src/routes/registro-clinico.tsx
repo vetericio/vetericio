@@ -236,7 +236,7 @@ function RegistroClinico(){
   function abrirPagamento(){ if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal."); if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda."); if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda."); salvarConsulta("Pendente","A definir"); }
   function confirmarPagamento(){ if(!formaPagamento)return void toast.error("Selecione como foi pago."); if(formaPagamento==="Outros"&&!outroPagamento.trim())return void toast.error("Especifique a forma de pagamento."); salvarConsulta("Pago",formaPagamento==="Outros"?outroPagamento.trim():formaPagamento); }
 
-  function salvarConsulta(statusPagamento:StatusPagamento="Pendente",pagamento="A definir"){
+  async function salvarConsulta(statusPagamento:StatusPagamento="Pendente",pagamento="A definir"){
     if (!animal) return void toast.error("Animal não encontrado.");
     if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal.");
     if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda.");
@@ -365,7 +365,13 @@ function RegistroClinico(){
     const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
     const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Consulta",dados:consultaSalva};
     oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
-    void descarregarOricseStorage().catch(() => undefined);
+    try {
+      await descarregarOricseStorage();
+    } catch (error) {
+      console.error("Consulta ainda não confirmada no banco:", error);
+      toast.error("A consulta ainda não foi salva no servidor. Confira o aviso de sincronização e tente novamente.");
+      return; // Manter esta tela e o rascunho até a confirmação real.
+    }
     oricseStorage.removeItem(chaveRascunho);
     setPagamentoAberto(false);
     toast.success(
@@ -376,7 +382,7 @@ function RegistroClinico(){
     navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
-  function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); void descarregarOricseStorage().catch(() => undefined); toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
+  async function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
 
   const abrirConsulta=()=>{if (!animal) return; setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 

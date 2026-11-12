@@ -249,6 +249,7 @@ function RootComponent() {
   const [acessoPortalNegado, setAcessoPortalNegado] = useState(false);
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
   const [dadosDriveProntos, setDadosDriveProntos] = useState(false);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [menuFixo, setMenuFixo] = useState(false);
   const [quantidadeClinicasAtivas, setQuantidadeClinicasAtivas] = useState<number | null>(null);
 
@@ -491,28 +492,28 @@ function RootComponent() {
         ativo = false;
       };
     }
-    // A conta da plataforma não pertence a uma clínica específica. Não existe
-    // estado operacional global para hidratar; tentar carregá-lo deixava o
-    // admin preso indefinidamente em “Sincronizando os dados”.
-    if (role === "admin") {
+    // O Admin da plataforma não precisa de dados operacionais na página /admin,
+    // mas ao abrir uma clínica deve carregar o estado selecionado antes de editar.
+    if (role === "admin" && (location.pathname === "/admin" || location.pathname.startsWith("/admin/"))) {
       setDadosDriveProntos(true);
-      return () => {
-        ativo = false;
-      };
+      setErroCarregamento(null);
+      return () => { ativo = false; };
     }
     setDadosDriveProntos(false);
+    setErroCarregamento(null);
     void hidratarOricseStorage(true)
       .then(() => {
-        if (ativo) setDadosDriveProntos(true);
+        if (ativo) { setDadosDriveProntos(true); setErroCarregamento(null); }
       })
       .catch((error) => {
-        console.error("Não foi possível carregar os dados do Google Drive:", error);
-        if (ativo) setDadosDriveProntos(false);
+        console.error("Não foi possível carregar o estado operacional do PostgreSQL:", error);
+        if (ativo) {
+          setDadosDriveProntos(false);
+          setErroCarregamento(error instanceof Error ? error.message : "Falha de carregamento da clínica.");
+        }
       });
-    return () => {
-      ativo = false;
-    };
-  }, [autenticado, role]);
+    return () => { ativo = false; };
+  }, [autenticado, role, role === "admin" ? location.pathname.startsWith("/admin") : null]);
 
   useEffect(() => {
     // O tema pertence ao app inteiro. Reaplicá-lo após a hidratação do estado
@@ -920,9 +921,28 @@ function RootComponent() {
             </section>
           </main>
         ) : autenticado && !rotaPublica && !dadosDriveProntos ? (
-          <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
-            Sincronizando os dados no sistema Oricse...
-          </div>
+          erroCarregamento ? (
+            <main className="mx-auto flex min-h-[60vh] max-w-xl items-center justify-center px-4">
+              <section className="w-full rounded-2xl border bg-card p-6 text-center shadow-sm" role="alert">
+                <h2 className="text-lg font-bold text-foreground">Não foi possível carregar os dados da clínica</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{erroCarregamento}</p>
+                <p className="mt-2 text-xs text-muted-foreground">O sistema não permitirá alterações sem confirmar o estado atual. Seus dados do banco não foram apagados.</p>
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                  <button type="button" className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" onClick={() => {
+                    setErroCarregamento(null);
+                    void hidratarOricseStorage(true).then(() => setDadosDriveProntos(true)).catch((error) => {
+                      setErroCarregamento(error instanceof Error ? error.message : "Falha ao carregar os dados.");
+                    });
+                  }}>Tentar novamente</button>
+                  {role === "admin" && <Link to="/admin" className="rounded-xl border px-4 py-2 text-sm font-semibold">Selecionar clínica no Admin</Link>}
+                </div>
+              </section>
+            </main>
+          ) : (
+            <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
+              Carregando os dados da clínica...
+            </div>
+          )
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
           <div className="min-h-screen" />
         ) : mostrarBloqueioAssinatura ? (
