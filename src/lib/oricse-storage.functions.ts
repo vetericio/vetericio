@@ -92,6 +92,8 @@ async function obterPermissoesUsuario(
     },
     fromDrive: createDriveFrom(async () => accessToken),
     fromIdentity: (tabela: string) => (admin as any).from(tabela),
+    // O cadastro de clínicas está no PostgreSQL. Não depender de uma cópia no Drive.
+    fromCanonical: (tabela: string) => (admin as any).from(tabela),
     getSelectedClinicId: async () => contexto.clinicaId,
   });
   const { data, error } = await rpc("oricse_permissoes_efetivas", {
