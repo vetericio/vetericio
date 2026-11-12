@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Clinic registration details are read-only and queried on demand by `clinica_criada_id` from `oricse_contratacoes`, merging the original JSON payload over persisted columns; this preserves original submissions, clinic isolation and optional/legacy fields without changing the editable Cadastro tab.
