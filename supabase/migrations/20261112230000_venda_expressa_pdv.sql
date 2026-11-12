@@ -50,7 +50,7 @@ using (public.oricse_usuario_pode_permissao(clinica_id,'caixa.financeiro.visuali
 -- de venda do caixa pode reduzir unidades sem conceder essa permissão ao caixa.
 create or replace function public.oricse_guardar_movimentacao_estoque()
 returns trigger language plpgsql security invoker set search_path = ''
-as $
+as $trigger_venda$
 begin
   if (select auth.uid()) is null then return new; end if;
   if tg_op = 'INSERT' then
@@ -67,7 +67,7 @@ begin
     end if;
   end if;
   return new;
-end $;
+end $trigger_venda$;
 
 create or replace function public.oricse_venda_expressa_finalizar(
   p_clinica_id uuid,
