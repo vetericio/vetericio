@@ -130,6 +130,18 @@ const SETORES_FINANCEIROS = [
   { id: "outros", titulo: "Outros", icone: ClipboardList },
 ] as const;
 
+// Agrupamento apenas visual: cada lançamento continua no seu setor original.
+const GRUPOS_SETORES = [
+  { id: "atendimento", titulo: "Consultas e vacinas", icone: Stethoscope, setores: ["consultas", "vacinas"] },
+  { id: "diagnostico", titulo: "Exames e procedimentos", icone: Microscope, setores: ["exames", "procedimentos"] },
+  { id: "internacao", titulo: "Internação", icone: BedDouble, setores: ["internacao"] },
+  { id: "bem_estar", titulo: "Hotelzinho, banho e tosa", icone: PawPrint, setores: ["hotelzinho", "banho_tosa"] },
+  { id: "vendas", titulo: "Vendas e produtos", icone: ShoppingCart, setores: ["venda_expressa", "produtos"] },
+  { id: "nao_classificados", titulo: "Sem classificação de setor", icone: ClipboardList, setores: ["comandas", "outros"] },
+] as const satisfies ReadonlyArray<{
+  id: string; titulo: string; icone: typeof Stethoscope; setores: readonly SetorFinanceiro[];
+}>;
+
 function setorDoLancamento(categoria: string): SetorFinanceiro {
   const n = normalizar(String(categoria || "")).replace(/[_-]+/g, " ").replace(/\s+/g, " ");
   if (/venda expressa|venda rapida|venda avulsa/.test(n)) return "venda_expressa";
@@ -760,24 +772,41 @@ export function Financeiro() {
           </div>
           {erroCaixaGeral&&<p role="alert" className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{erroCaixaGeral}</p>}
           {carregandoCaixa&&<p role="status" className="mt-3 text-sm text-muted-foreground">Atualizando lançamentos por setor...</p>}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-5">
-            {SETORES_FINANCEIROS.map(({id,titulo,icone:Icone})=>{
-              const valores=resumoSetores[id];
-              return <article key={id} className="min-w-0 rounded-xl border border-border/70 bg-secondary/25 p-3.5">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {GRUPOS_SETORES.map(({id,titulo,icone:Icone,setores})=>{
+              const valores = setores.reduce((total, setor) => ({
+                recebido: total.recebido + resumoSetores[setor].recebido,
+                pendente: total.pendente + resumoSetores[setor].pendente,
+                quantidade: total.quantidade + resumoSetores[setor].quantidade,
+              }), { recebido: 0, pendente: 0, quantidade: 0 });
+              return <article key={id} className="min-w-0 rounded-2xl border border-border/70 bg-secondary/25 p-4 sm:p-5">
                 <div className="flex items-center gap-2">
-                  <Icone size={18} className="shrink-0 text-primary" aria-hidden="true" />
-                  <h3 className="text-sm font-bold leading-5 text-foreground">{titulo}</h3>
-                  {id==="venda_expressa"&&<span className="ml-auto rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Em breve</span>}
+                  <Icone size={19} className="shrink-0 text-primary" aria-hidden="true"/>
+                  <h3 className="text-sm font-extrabold leading-5 text-foreground sm:text-base">{titulo}</h3>
                 </div>
                 {erroCaixaGeral||carregandoCaixa
                   ? <p className="mt-4 text-base font-semibold text-muted-foreground">—</p>
                   : <>
                     <p className="mt-3 text-xs text-muted-foreground">Recebido</p>
-                    <p className="mt-0.5 break-words text-xl font-extrabold tabular-nums text-foreground">{dinheiro(valores.recebido)}</p>
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    <p className="mt-0.5 break-words text-2xl font-extrabold tabular-nums text-foreground">{dinheiro(valores.recebido)}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
                       A receber: <strong className="font-semibold text-foreground">{dinheiro(valores.pendente)}</strong>
+                      <span className="mx-2" aria-hidden="true">·</span>
+                      {valores.quantidade} {valores.quantidade===1?"lançamento":"lançamentos"}
                     </p>
-                    <p className="text-xs text-muted-foreground">{valores.quantidade} {valores.quantidade===1?"lançamento":"lançamentos"}</p>
+                    <div className="mt-3 divide-y divide-border/60 border-t border-border/60 text-xs">
+                      {setores.map(setor=>{
+                        const detalhe = SETORES_FINANCEIROS.find(item=>item.id===setor)!;
+                        const numero = resumoSetores[setor];
+                        return <div key={setor} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 py-2">
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            {detalhe.titulo}
+                            {setor==="venda_expressa"&&<span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Em breve</span>}
+                          </span>
+                          <span className="font-semibold tabular-nums text-foreground">{dinheiro(numero.recebido)}</span>
+                        </div>;
+                      })}
+                    </div>
                   </>}
               </article>;
             })}
