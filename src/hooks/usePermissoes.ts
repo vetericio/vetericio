@@ -48,6 +48,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/plantoes": ["internacao.plantoes"],
   "/financeiro": ["caixa.financeiro.visualizar"],
   "/comandas": ["caixa.comandas"],
+  "/venda-expressa": ["caixa.comandas", "caixa.financeiro.gerenciar"],
   "/estoque": ["estoque.catalogo.visualizar", "estoque.movimentar"],
   "/rh": ["equipe.pagamentos.visualizar", "equipe.pagamentos.gerenciar"],
   "/catalogo": ["estoque.catalogo.visualizar"],
