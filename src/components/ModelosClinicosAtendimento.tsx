@@ -235,7 +235,7 @@ export function ModelosClinicosAtendimento() {
     {!modelos.length && <p className="mt-3 text-sm text-muted-foreground">Nenhum modelo clínico disponível. O administrador ou RT pode criar modelos nas Configurações da Clínica.</p>}
     {modelo && <div className="mt-4 space-y-3">
       <label className="block text-sm font-medium">Revisar e completar documento
-        <textarea rows={15} maxLength={25000} value={conteudo} onChange={(e)=>setConteudo(e.target.value)}
+        <textarea rows={15} maxLength={25000} value={conteudo} onChange={(e)=>{setConteudo(e.target.value);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);setRegistro(null);}}
           className="mt-1 w-full rounded-lg border bg-background p-3 font-mono text-sm leading-relaxed"/>
       </label>
       {pendencias.length > 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Campos a preencher: {[...new Set(pendencias)].join(", ")}</p>}
