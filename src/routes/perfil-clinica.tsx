@@ -254,7 +254,7 @@ function PerfilClinica() {
                   const destination = "href" in item ? item.href : undefined;
                   const corpo = <><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">{item.nome}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.descricao}</span></span>
                     {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : isAgenda ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
-                  return destination ? <Link key={item.nome} to={destination as any} className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link>
+                  return destination && item.nome === "Meu plano e funcionalidades" ? <Link key={item.nome} to="/plano-clinica" className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link> : destination ? <Link key={item.nome} to={destination as any} className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link>
                     : <div key={item.nome} className="flex min-h-20 items-center gap-2 rounded-lg border p-3">{corpo}</div>;
                 })}
               </div>
