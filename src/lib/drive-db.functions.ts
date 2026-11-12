@@ -11,6 +11,8 @@ const CATALOG_READ = new Set(["oricse_funcionalidades", "oricse_permissoes"]);
 const GLOBAL_ADMIN_ONLY = new Set(["oricse_planos", "oricse_planos_auditoria", "oricse_config", "oricse_funcionalidades", "oricse_plano_funcionalidades", "oricse_permissoes_papel", "oricse_clinica_funcionalidade_excecoes", "oricse_clinica_autorizacoes", "oricse_codigos_promocionais", "oricse_codigo_promocional_usos", "oricse_contratacoes", "oricse_rotas_personalizadas", "clinicas"]);
 const PORTAL_CLINIC_READ = new Set(["oricse_agendas_online"]);
 const PORTAL_DIRECT_WRITE = new Set<string>(["tutores", "oricse_agendamentos_online"]);
+const PORTAL_DOCUMENTOS_SENSIVEIS = new Set(["oricse_portal_documentos", "oricse_portal_exames", "oricse_portal_receitas", "oricse_portal_vacinas", "oricse_portal_vermifugos"]);
+
 
 const filterSchema = z.object({ kind: z.string(), column: z.string().optional(), value: z.unknown().optional(), operator: z.string().optional() });
 const querySchema = z.object({
@@ -151,6 +153,8 @@ async function authorizedRows(t: string, table: string, rows: any[], ctx: AuthCo
   const animais = await animalIdsPortal(t, ctx);
   return rows.filter((r) => {
     const cid = rowClinic(r); if (!cid) return false; if (staff.has(cid)) return true; if (!portalClinicas.has(cid)) return false;
+    // Tutores nunca podem consultar títulos, arquivos ou metadados ocultos.
+    if (PORTAL_DOCUMENTOS_SENSIVEIS.has(table) && r.visivel_tutor !== true) return false;
     if (table === "tutores") return portalTutors.has(String(r.id));
     if (table === "oricse_animais") return portalTutors.has(String(r.tutor_id));
     if (r.tutor_id != null) return portalTutors.has(String(r.tutor_id));

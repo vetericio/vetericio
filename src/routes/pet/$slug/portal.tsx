@@ -202,7 +202,16 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
         (supabase as any).from("oricse_agendamentos_online").select("id,agenda_id,animal_id,inicio,fim,estado,tipo,observacoes").eq("clinica_id",ctx.clinica_id).order("inicio"),
         (supabase as any).from("oricse_portal_comandas").select("id,animal_id,numero,status,origem,aberta_em,finalizada_em,itens,pagamentos,total,total_pago,saldo").eq("clinica_id",ctx.clinica_id).order("aberta_em",{ascending:false}),
       ]);for(const resposta of[a,v,verm,e,d,r,ag,marc,c])if(resposta.error)throw resposta.error;
-      const lista=(a.data||[]) as Animal[];setAnimais(lista);setVacinas(v.data||[]);setVermifugos(verm.data||[]);setExames(e.data||[]);setDocumentos(d.data||[]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas(c.data||[]);setAnimalId(at=>lista.some(x=>x.id===at)?at:(lista[0]?.id||""));setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
+      // Os documentos emitidos agora são registrados no PostgreSQL.
+      // Conservar os documentos legados do Drive e aplicar RLS no banco.
+      const docsCanonicos = await (supabaseBanco as any).from("oricse_portal_documentos")
+        .select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id")
+        .eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true)
+        .order("data_documento",{ascending:false,nullsFirst:false});
+      if(docsCanonicos.error) console.warn("Documentos canônicos indisponíveis:",docsCanonicos.error.message);
+      const unicos = new Map<string,Documento>();
+      for(const item of [...(d.data||[]),...(docsCanonicos.data||[])] as Documento[]) unicos.set(item.id,item);
+      const lista=(a.data||[]) as Animal[];setAnimais(lista);setVacinas(v.data||[]);setVermifugos(verm.data||[]);setExames(e.data||[]);setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas(c.data||[]);setAnimalId(at=>lista.some(x=>x.id===at)?at:(lista[0]?.id||""));setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
     }catch(e){console.error(e);setContexto(null);setAnimais([]);}finally{setCarregando(false);}
   },[slug]);
 
