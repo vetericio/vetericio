@@ -435,7 +435,6 @@ export function LeitorCodigoBarrasCamera({
               const recorte = prepararImagemOCR(video, indiceOCR++);
               if (!recorte || !workerOCR) return;
               ocrOcupado = true;
-              horarioUltimoOCR=Date.now();
               void workerOCR.recognize(recorte).then(({data})=>{
                 if (!ativo || fechandoLeitura) return;
                 const candidatos = candidatosNumericosOCR(data.text || "");
