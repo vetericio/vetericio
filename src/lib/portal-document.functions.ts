@@ -28,8 +28,6 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     const {supabaseAdmin}=await import("@/integrations/supabase/client.server");
     const {data:authData,error:authError}=await supabaseAdmin.auth.getUser(data.accessToken);
     if(authError||!authData.user)throw new Error("Sessão inválida ou expirada.");
-    const {data:portal}=await supabaseAdmin.from("oricse_portal_tutores").select("clinica_id,tutor_id,ativo").eq("auth_user_id",authData.user.id).eq("ativo",true).limit(1).maybeSingle();
-    if(!portal)throw new Error("Você não tem acesso a este arquivo.");
 
     const tabela=data.tipo==="exame"?"oricse_portal_exames":data.tipo==="receita"?"oricse_portal_receitas":"oricse_portal_documentos";
     // Documentos clínicos novos têm registro canônico no PostgreSQL;
@@ -45,7 +43,13 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
       if(resposta.error)throw new Error(resposta.error.message);
       registro=resposta.data;
     }
-    if(!registro?.drive_arquivo_id||String(registro.clinica_id)!==String(portal.clinica_id))throw new Error("Este arquivo ainda não está disponível para download.");
+    if(!registro?.drive_arquivo_id || !registro.clinica_id)throw new Error("Este arquivo ainda não está disponível para download.");
+    // Um tutor pode estar vinculado a varias clinicas: selecionar a clinica do documento.
+    const {data:portal,error:erroPortal}=await supabaseAdmin.from("oricse_portal_tutores")
+      .select("clinica_id,tutor_id,ativo")
+      .eq("auth_user_id",authData.user.id).eq("clinica_id",registro.clinica_id)
+      .eq("ativo",true).limit(1).maybeSingle();
+    if(erroPortal||!portal)throw new Error("Você não tem acesso a este arquivo.");
     // O arquivo precisa pertencer a um animal do tutor autenticado, na mesma clínica.
     // A conferência explícita é necessária porque esta rota utiliza cliente administrativo.
     const {data:animalPermitido,error:erroAnimal}=await supabaseAdmin
