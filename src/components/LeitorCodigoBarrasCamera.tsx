@@ -7,7 +7,7 @@ type CodigoLido = {
   format: string;
   boundingBox?: { x: number; y: number; width: number; height: number };
 };
-type Detector = { detect: (imagem: HTMLVideoElement) => Promise<CodigoLido[]> };
+type Detector = { detect: (imagem: HTMLVideoElement | HTMLCanvasElement) => Promise<CodigoLido[]> };
 type ConstrutorDetector = (new (opcoes: { formats: string[] }) => Detector) & {
   getSupportedFormats?: () => Promise<string[]>;
 };
