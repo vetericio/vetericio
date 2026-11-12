@@ -36,7 +36,7 @@ import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
-import { prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
+import { diagnosticarDnsDominio, prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
 import { dominiosUnicosPorClinica, normalizarDominio, rotuloDisponibilidadeDominio, type EstadoOnlineDominio } from "@/lib/clinic-domain-status";
 import { prestigeDefault } from "@/lib/clinic-site";
 import { SiteDaClinica } from "@/routes/site-da-clinica";
@@ -319,6 +319,8 @@ function Admin() {
   const [novoDominio, setNovoDominio] = useState("");
   const [incluirWww, setIncluirWww] = useState(true);
   const [salvandoDominio, setSalvandoDominio] = useState(false);
+  const [verificandoDnsId, setVerificandoDnsId] = useState<string | null>(null);
+  const [diagnosticoDns, setDiagnosticoDns] = useState<Record<string, { correto: boolean; aviso: string }>>({});
   const [verificacoes, setVerificacoes] = useState<Record<string, EstadoOnlineDominio | "verificando">>({});
   const [statusConteudoSite, setStatusConteudoSite] = useState<"carregando" | "publicado" | "rascunho" | "erro">("carregando");
   const [revisaoStatusSite, setRevisaoStatusSite] = useState(0);
@@ -1451,6 +1453,23 @@ function Admin() {
     }
   }
 
+  async function verificarDnsProprio(dominio: DominioClinica) {
+    if (!selecionada || verificandoDnsId || dominio.tipo !== "proprio") return;
+    setVerificandoDnsId(dominio.id);
+    try {
+      const resultado = await diagnosticarDnsDominio({
+        data: { accessToken: await tokenAtual(), clinicaId: selecionada.id, dominioId: dominio.id },
+      });
+      setDiagnosticoDns((estado) => ({ ...estado, [dominio.id]: { correto: resultado.correto, aviso: resultado.aviso } }));
+      if (resultado.correto) toast.success("DNS confirmado. Verifique também a ativação SSL.");
+      else toast.info("O DNS ainda precisa de configuração ou revisão.");
+    } catch (error) {
+      toast.error((error as Error).message || "Não foi possível consultar o DNS.");
+    } finally {
+      setVerificandoDnsId(null);
+    }
+  }
+
   async function alterarPublicacaoDominio(dominio: DominioClinica, publicar_site: boolean) {
     if (salvandoDominio || !selecionada || dominio.clinica_id !== selecionada.id) return;
     if (publicar_site && statusConteudoSite !== "publicado") {
@@ -1646,11 +1665,15 @@ function Admin() {
                 <div className="flex flex-wrap items-center gap-1.5">{indicadorDominio(dominio)}<span className="text-[11px] text-muted-foreground">{dominio.ssl_status ? "SSL: " + dominio.ssl_status : "SSL sem confirmação"}</span></div>
                 <div className="min-w-0"><p className="break-all font-mono text-[11px]">{dns}</p>{dominio.ultimo_erro && <p className="mt-0.5 text-[11px] text-red-700">{dominio.ultimo_erro}</p>}</div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {dominio.tipo === "proprio" && <button type="button" onClick={() => { void window.navigator.clipboard.writeText(dominio.dns_alvo).then(() => toast.success("Destino DNS copiado.")).catch(() => toast.error("Não foi possível copiar o DNS.")); }} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold">Copiar DNS</button>}
+                  {dominio.tipo === "proprio" && <>
+                    <button type="button" disabled={verificandoDnsId !== null} onClick={() => void verificarDnsProprio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificandoDnsId === dominio.id ? "Consultando..." : "Testar DNS"}</button>
+                    <button type="button" onClick={() => { void window.navigator.clipboard.writeText(dominio.dns_alvo).then(() => toast.success("Destino DNS copiado.")).catch(() => toast.error("Não foi possível copiar o DNS.")); }} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold">Copiar DNS</button>
+                  </>}
                   <button type="button" disabled={salvandoDominio || (!dominio.publicar_site && (!conteudoSitePublicado || dominio.status !== "ativo" || (dominio.tipo === "oricse" && !subdominioPronto)))} onClick={() => void alterarPublicacaoDominio(dominio, !dominio.publicar_site)} className={"min-h-8 rounded-lg px-2 text-[11px] font-bold disabled:opacity-40 " + (dominio.publicar_site ? "border bg-white" : "bg-primary text-primary-foreground")}>{dominio.publicar_site ? "Pausar" : "Publicar"}</button>
                   <button type="button" disabled={!verificavel || verificacoes[dominio.id] === "verificando"} onClick={() => void verificarDisponibilidadeDominio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificacoes[dominio.id] === "verificando" ? "Testando..." : "Testar HTTPS"}</button>
                   <button type="button" disabled={Boolean(excluindoDominio)} onClick={() => { setExclusaoDominio(dominio); setConfirmarHostname(""); setConfirmarInterrupcao(false); }} aria-label={"Excluir " + dominio.hostname} className="flex min-h-8 items-center gap-1 rounded-lg border border-red-200 px-2 text-[11px] font-bold text-red-700 disabled:opacity-40"><Trash2 size={12}/> Excluir</button>
                 </div>
+                {diagnosticoDns[dominio.id] && <p role="status" className={"rounded-lg px-3 py-2 text-xs lg:col-span-4 " + (diagnosticoDns[dominio.id].correto ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900")}>{diagnosticoDns[dominio.id].aviso}</p>}
               </div>;
             })}</div>}
         </div>
