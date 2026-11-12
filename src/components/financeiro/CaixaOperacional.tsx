@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Banknote, CheckCircle2, ClipboardList,
-  CreditCard, FileDown, LockKeyhole, Plus, ReceiptText, RefreshCw, ShieldAlert, Wallet, X,
+  FileDown, LockKeyhole, Plus, ReceiptText, RefreshCw, ShieldAlert, Wallet, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
@@ -89,6 +89,7 @@ export function CaixaOperacional({
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
   const [operacao, setOperacao] = useState<Operacao>(null);
+  const [chaveOperacao, setChaveOperacao] = useState("");
   const [valor, setValor] = useState("");
   const [motivo, setMotivo] = useState("");
   const [lancamentoId, setLancamentoId] = useState("");
@@ -151,6 +152,7 @@ export function CaixaOperacional({
     setComprovadoExternamente(false);
     setRejeitar(false);
     setEntendi(false);
+    setChaveOperacao(crypto.randomUUID());
     setOperacao(proxima);
   }
 
@@ -185,7 +187,7 @@ export function CaixaOperacional({
         nome = operacao === "sangria" ? "Sangria registrada" : "Suprimento registrado";
         resposta = await (supabaseBanco as any).rpc("oricse_caixa_movimentar", {
           p_turno_id: turnoAberto.id, p_tipo: operacao, p_valor_centavos: c,
-          p_motivo: motivo, p_idempotencia: crypto.randomUUID(),
+          p_motivo: motivo, p_idempotencia: chaveOperacao,
         });
       } else if (operacao === "fechar" && turnoAberto) {
         nome = "Caixa fechado";
