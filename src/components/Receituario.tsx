@@ -128,7 +128,7 @@ export function Receituario() {
           setSexo(animal.sexo || "");
           setRaca(animal.raca || "");
           let idadeAnimal = animal.idade || "";
-          if (!idadeAnimal && /^\\d{4}-\\d{2}-\\d{2}$/.test(animal.nascimento || "")) {
+          if (!idadeAnimal && /^\d{4}-\d{2}-\d{2}$/.test(animal.nascimento || "")) {
             const [ano, mes, dia] = animal.nascimento.split("-").map(Number);
             const agora = new Date();
             const anos = agora.getFullYear() - ano - (agora.getMonth() + 1 < mes || (agora.getMonth() + 1 === mes && agora.getDate() < dia) ? 1 : 0);
@@ -310,6 +310,7 @@ export function Receituario() {
   const gerar = async () => {
     if (gerando || carregandoDados) return;
     if (!paciente.trim()) return void toast.error("Informe o nome do paciente.");
+    if (!endereco.trim()) return void toast.error("Confirme o endereço da clínica para o rodapé do receituário.");
     if (!telefoneTutor.trim()) return void toast.error("Informe o telefone do tutor.");
     if (!itens.some((item) => item.medicamento.trim())) return void toast.error("Informe ao menos um medicamento.");
     if (!especie) return void toast.error("Selecione a espécie.");
