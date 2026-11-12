@@ -15,6 +15,7 @@ const registrarSchema = autenticacaoSchema.extend({
   categoria: z.enum(["pedido","documento","termo"]),
   titulo: z.string().trim().min(3).max(140),
   assinaturaConferida: z.literal(true),
+  arquivoSha256: z.string().regex(/^[a-f0-9]{64}$/),
 });
 const publicarSchema = autenticacaoSchema.extend({
   documentoId: z.string().uuid(),
@@ -79,7 +80,15 @@ async function encontrarPdf(registroId: string) {
       Number(arquivo.size||0) > 10_000_000) {
     throw new Error("O arquivo enviado não é um PDF válido de até 10 MB.");
   }
-  return arquivo;
+  const response=await driveFetch(token,"https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(arquivo.id)+"?alt=media");
+  const bytes=Buffer.from(await response.arrayBuffer());
+  if (bytes.byteLength !== Number(arquivo.size) || bytes.byteLength > 10_000_000 ||
+      bytes.subarray(0,5).toString("ascii") !== "%PDF-") {
+    throw new Error("O PDF do Drive não corresponde ao arquivo informado.");
+  }
+  const { createHash }=await import("node:crypto");
+  const sha256=createHash("sha256").update(bytes).digest("hex");
+  return {...arquivo,sha256};
 }
 function erroBanco(error: {message?:string}|null, contexto:string) {
   if (error) throw new Error(contexto+": "+error.message);
@@ -92,6 +101,7 @@ export const registrarDocumentoClinicoAssinado = createServerFn({method:"POST"})
     await conferirAnimal(admin,data.clinicaId,data.animalId,data.tutorId);
     await conferirModelo(admin,data.clinicaId,data.modeloId,data.modeloVersao,data.categoria);
     const arquivo = await encontrarPdf(data.registroId);
+    if (arquivo.sha256 !== data.arquivoSha256) throw new Error("O PDF recebido não corresponde ao arquivo conferido. Faça o envio novamente.");
     const props = arquivo.appProperties || {};
     if (props.clinicaId !== data.clinicaId || props.entidadeTipo !== "animal" ||
         props.entidadeId !== data.animalId || props.enviadoPor !== userId ||
@@ -115,6 +125,8 @@ export const registrarDocumentoClinicoAssinado = createServerFn({method:"POST"})
           origem:"modelo_clinico_assinado", modeloId:data.modeloId, modeloVersao:data.modeloVersao,
           categoria:data.categoria, tutorId:data.tutorId, assinatura:"conferida_manualmente_sem_validacao_criptografica",
           emitido_por:userId, emitido_em:new Date().toISOString(),
+          integridade_sha256:arquivo.sha256,
+          integridade_verificada_em:new Date().toISOString(),
           eventos:[{tipo:"registro",por:userId,em:new Date().toISOString()}],
         },
       });
