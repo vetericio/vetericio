@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoModelosDocumentos } from "@/components/ConfiguracaoModelosDocumentos";
+import { BackupPoliticasClinica } from "@/components/BackupPoliticasClinica";
 import { ConfiguracaoPoliticasClinica } from "@/components/ConfiguracaoPoliticasClinica";
 
 export const Route = createFileRoute("/perfil-clinica")({
@@ -66,20 +67,25 @@ function PerfilClinica() {
         const { data: contaAdmin } = await (supabase as any).from("app_users").select("role").eq("user_id", userId).maybeSingle();
         if (ativo) setAdminGeral(contaAdmin?.role === "admin");
 
-        const { data: vinculo, error: erroVinculo } = await (supabase as any)
+        const { data: selecao, error: erroSelecao } = await (supabase as any)
+          .from("oricse_clinica_ativa_usuario")
+          .select("clinica_id").eq("user_id", userId).maybeSingle();
+        if (erroSelecao) throw new Error("Não foi possível consultar a clínica ativa.");
+        const { data: vinculos, error: erroVinculo } = await (supabase as any)
           .from("clinica_usuarios")
-          .select("clinica_id,papel")
-          .eq("user_id", userId)
-          .eq("ativo", true)
-          .limit(1)
-          .maybeSingle();
+          .select("clinica_id,papel").eq("user_id", userId).eq("ativo", true);
         if (erroVinculo) throw erroVinculo;
-        if (!vinculo?.clinica_id) throw new Error("Usuário não vinculado a uma clínica.");
+        const lista = (vinculos || []) as Array<{clinica_id:string;papel:string}>;
+        const escolhida = String(selecao?.clinica_id || "");
+        const vinculo = lista.find(v=>v.clinica_id===escolhida) || (lista.length===1 ? lista[0] : null);
+        if (!vinculo && contaAdmin?.role !== "admin") throw new Error("Selecione uma clínica ativa antes de configurar.");
+        const clinicaId = vinculo?.clinica_id || (contaAdmin?.role === "admin" ? escolhida : "");
+        if (!clinicaId) throw new Error("Selecione uma clínica no Admin antes de configurar.");
 
         const { data: clinica, error: erroClinica } = await (supabase as any)
           .from("clinicas")
           .select("id,nome,duracao_padrao_atendimento_min,duracoes_atendimento_min")
-          .eq("id", vinculo.clinica_id)
+          .eq("id", clinicaId)
           .maybeSingle();
         if (erroClinica) throw erroClinica;
         if (!clinica?.id) throw new Error("Clínica não encontrada.");
@@ -92,7 +98,7 @@ function PerfilClinica() {
           nome: clinica.nome,
           duracao_padrao_atendimento_min: intervaloSalvo,
           duracoes_atendimento_min: salvas,
-          papel: vinculo.papel,
+          papel: vinculo?.papel || "admin_clinica",
         });
         setIntervalo(intervaloSalvo);
         setDuracoes(salvas);
@@ -219,6 +225,17 @@ function PerfilClinica() {
         <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground"><CheckCircle2 size={14} className="text-emerald-600"/> Configurações centralizadas</span>
       </header>
 
+      <details className="mb-4 rounded-xl border bg-card px-4 py-3 shadow-sm">
+        <summary className="cursor-pointer text-sm font-semibold">Primeiros passos · Configuração guiada</summary>
+        <p className="mt-2 text-xs text-muted-foreground">Siga esta sequência para revisar sua clínica. Nada é marcado como concluído sem conferência.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <button type="button" onClick={()=>{setGrupoAtivo("estrutura");setBusca("");}} className="min-h-11 rounded-lg border p-3 text-left text-xs font-medium hover:bg-muted">1. Equipe, acessos e regras</button>
+          <button type="button" onClick={()=>{setGrupoAtivo("operacao");setBusca("");}} className="min-h-11 rounded-lg border p-3 text-left text-xs font-medium hover:bg-muted">2. Agenda e atendimento</button>
+          <button type="button" onClick={()=>{setGrupoAtivo("documentos");setBusca("");}} className="min-h-11 rounded-lg border p-3 text-left text-xs font-medium hover:bg-muted">3. Modelos de documentos</button>
+          <button type="button" onClick={()=>{setGrupoAtivo("comunicacao");setBusca("");}} className="min-h-11 rounded-lg border p-3 text-left text-xs font-medium hover:bg-muted">4. Mensagens e Portal do Tutor</button>
+        </div>
+      </details>
+
       <div className="mb-4 flex items-center gap-2 rounded-xl border bg-card px-3 shadow-sm">
         <Search size={18} className="shrink-0 text-muted-foreground"/>
         <input aria-label="Buscar configuração" type="search" placeholder="Buscar configuração, documento, agenda, equipe..." value={busca} onChange={(e) => setBusca(e.target.value)}
@@ -267,6 +284,9 @@ function PerfilClinica() {
 
               {(["estrutura","operacao","comunicacao"].includes(grupo.id)) && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <ConfiguracaoPoliticasClinica grupo={grupo.id as "estrutura"|"operacao"|"comunicacao"} podeGerenciar={true}/>
+              )}
+              {grupo.id === "estrutura" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
+                <BackupPoliticasClinica podeGerenciar={true}/>
               )}
               {grupo.id === "documentos" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <ConfiguracaoModelosDocumentos clinica={perfil?.nome || "clínica"} podeGerenciar={Boolean(adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica")}/>
