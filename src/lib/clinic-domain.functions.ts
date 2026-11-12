@@ -38,7 +38,8 @@ export const prepararEnderecoOricse = createServerFn({ method: "POST" })
     const valores = {
       hostname,
       principal: true,
-      publicar_site: existente?.hostname === hostname ? existente.publicar_site : false,
+      // Registros legados em rascunho não podem herdar uma liberação pública indevida.
+      publicar_site: existente?.hostname === hostname && existente.status === "ativo" ? existente.publicar_site : false,
       dns_alvo: "sites.oricse.com.br",
       verificacao_tipo: "automatica",
       status: "ativo",
