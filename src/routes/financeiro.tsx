@@ -721,7 +721,7 @@ export function Financeiro() {
         podeOperar={pode("caixa.financeiro.gerenciar") || pode("caixa.comandas")}
         podeAprovar={pode("administracao.configuracoes")}
         lancamentosLegadosNoDia={lancamentos.filter(l => l.data === dataAtual && l.status === "Pago").length}
-        onNovoLancamento={() => {setAba("lancamentos");abrirNovo();}}
+        onNovoLancamento={() => abrirNovo()}
         onVerLancamentos={() => setAba("lancamentos")}
       />}
       {aba === "inicio" && (
