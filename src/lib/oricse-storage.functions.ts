@@ -256,3 +256,38 @@ export async function salvarEstadoOricseInterno(data: z.infer<typeof salvarSchem
 export const salvarEstadoOricseDrive = createServerFn({ method: "POST" })
   .validator((input: unknown) => salvarSchema.parse(input))
   .handler(async ({ data }) => salvarEstadoOricseInterno(data));
+
+
+const modelosClinicosSchema = inputSchema.extend({
+  clinicaId: z.string().uuid(),
+});
+
+/** Lista somente os modelos da clínica autenticada, sem revelar o estado completo dos módulos. */
+export const listarModelosClinicos = createServerFn({ method: "POST" })
+  .validator((input: unknown) => modelosClinicosSchema.parse(input))
+  .handler(async ({ data }) => {
+    const contexto = await contextoUsuario(data.accessToken);
+    if (contexto.clinicaId !== data.clinicaId) {
+      throw new Error("O atendimento não pertence à clínica selecionada.");
+    }
+    if (!contexto.adminGeral) {
+      const permitidas = await obterPermissoesUsuario(data.accessToken, contexto);
+      if (!permitidas.has("consultorio.receituario") && !permitidas.has("consultorio.atendimentos")) {
+        throw new Error("Seu perfil não tem permissão para utilizar documentos clínicos.");
+      }
+    }
+    const { estado } = await lerEstado(data.accessToken);
+    let valores: unknown;
+    try { valores = JSON.parse(estado["oricse-modelos-documentos-v1"] || "[]"); }
+    catch { throw new Error("A biblioteca da clínica está inconsistente. Solicite revisão à administração."); }
+    if (!Array.isArray(valores)) throw new Error("Biblioteca de modelos inválida.");
+    return valores.filter((modelo): modelo is { id: string; nome: string; categoria: string; texto: string; versao: number } => Boolean(
+      modelo && typeof modelo === "object" &&
+      typeof modelo.id === "string" && typeof modelo.nome === "string" &&
+      typeof modelo.texto === "string" && modelo.texto.length <= 25000 &&
+      ["receita", "pedido", "documento", "termo"].includes(modelo.categoria)
+    )).slice(0, 80).map((modelo) => ({
+      id: modelo.id, nome: modelo.nome, categoria: modelo.categoria,
+      texto: modelo.texto, versao: Number(modelo.versao) || 0,
+    }));
+  });
