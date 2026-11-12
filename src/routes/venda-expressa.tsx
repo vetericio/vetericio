@@ -21,7 +21,7 @@ const preco = (p: ItemCatalogo) => Math.round(Number(p.valor) * 100);
 const formatoQuantidade = (valor: number) => valor.toLocaleString("pt-BR", {minimumFractionDigits: 3,maximumFractionDigits: 3});
 const normalizarQuantidade = (texto: string) => {
   const entrada = texto.trim();
-  if (!/^\\d{1,5}(?:[,.]\\d{1,3})?$/.test(entrada)) return null;
+  if (!/^\d{1,5}(?:[,.]\d{1,3})?$/.test(entrada)) return null;
   const quantidade = Number(entrada.replace(",","."));
   if (!Number.isFinite(quantidade) || quantidade<=0 || quantidade>10000) return null;
   return Math.round(quantidade*1000)/1000;
@@ -122,9 +122,7 @@ function VendaExpressa() {
 
   const adicionar = useCallback((p: ItemCatalogo) => {
     const quantidade=normalizarQuantidade(quantidadeEntrada);
-    if (quantidade===null) return void toast.error("Quantidade inválida. Use 1,000 ou, para peso, 1,500.");
-    if (!p.venda_por_peso && !Number.isInteger(quantidade))
-      return void toast.error("Este produto é vendido por unidade. Use 1,000 ou outra quantidade inteira.");
+    if (quantidade===null) return void toast.error("Informe uma quantidade positiva com até 3 casas decimais, como 0,250 ou 1,500.");
     if (!Number.isFinite(preco(p)) || preco(p) <= 0) return void toast.error("Configure um preço válido para vender este produto.");
     if (p.estoque_atual == null) return void toast.error("Configure o estoque do produto antes de vendê-lo.");
     const existente=carrinho.find(item=>item.produto.id===p.id);
