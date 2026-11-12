@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { LeitorCodigoBarrasCamera } from "@/components/LeitorCodigoBarrasCamera";
 
 import {
   DIAS_SEMANA,
@@ -603,9 +604,17 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                     <input type="checkbox" checked={modal.venda_por_peso} onChange={event=>setModal({...modal,venda_por_peso:event.target.checked})} className="h-5 w-5 accent-primary"/>
                     <span>Vender por peso (kg) — aceita quantidades como 0,250 e 1,500. Desmarcado: apenas unidades inteiras.</span>
                   </label>
-                  <label className="text-xs font-semibold sm:col-span-2">Código de barras (EAN, UPC ou código interno)
-                    <input value={modal.codigo_barras} maxLength={80} onChange={event=>setModal({...modal,codigo_barras:event.target.value})} placeholder="Digite ou use um leitor USB" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"/>
-                  </label>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="codigo-barras-cadastro" className="text-xs font-semibold">Código de barras (EAN, UPC ou código interno)</label>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <input id="codigo-barras-cadastro" value={modal.codigo_barras} maxLength={80}
+                        onChange={event=>setModal({...modal,codigo_barras:event.target.value})}
+                        placeholder="Digite, use leitor USB ou câmera"
+                        className="mt-1 h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm font-normal"/>
+                      <LeitorCodigoBarrasCamera onCodigoLido={codigo=>setModal(atual=>atual?{...atual,codigo_barras:codigo}:atual)}/>
+                    </div>
+                    <p className="mt-1 text-xs font-normal text-muted-foreground">A câmera preenche somente o código; confira os dados antes de salvar.</p>
+                  </div>
                   <label className="text-xs font-semibold">Estoque atual
                     <input min="0" step="0.001" type="number" disabled={!podeMovimentarEstoque} value={modal.estoque_atual} onChange={(event) => setModal({ ...modal, estoque_atual: event.target.value })} placeholder={podeMovimentarEstoque ? "Opcional" : "Sem permissão"} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal disabled:opacity-60" />
                   </label>
