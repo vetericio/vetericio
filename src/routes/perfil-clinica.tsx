@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoModelosDocumentos } from "@/components/ConfiguracaoModelosDocumentos";
 import { BackupPoliticasClinica } from "@/components/BackupPoliticasClinica";
+import { ModulosAdministrativosClinica } from "@/components/ModulosAdministrativosClinica";
 import { ConfiguracaoPoliticasClinica } from "@/components/ConfiguracaoPoliticasClinica";
 
 export const Route = createFileRoute("/perfil-clinica")({
@@ -158,14 +159,15 @@ function PerfilClinica() {
       { nome: "Equipe e permissões", descricao: "Gerencie acessos e responsabilidades.", href: "/permissoes-equipe" },
       { nome: "Animais e tutores", descricao: "Campos cadastrais, responsáveis e identificação." },
       { nome: "Aprovações administrativas", descricao: "Regras para ações sensíveis.", especial: "politicas" },
+      { nome: "Pendências e responsáveis", descricao: "Prioridades, responsáveis, prazos e acompanhamento.", especial: "modulos" },
     ] },
     { id: "operacao", titulo: "Operação clínica", icone: Stethoscope, itens: [
       { nome: "Agenda e atendimentos", descricao: "Intervalos e duração de procedimentos.", especial: "agenda" },
       { nome: "Políticas de cancelamento e faltas", descricao: "Tolerância, antecedência, remarcação e sinal.", especial: "politicas" },
-      { nome: "Prontuário e protocolos", descricao: "Modelos clínicos, checklists e configurações por espécie." },
+      { nome: "Prontuário e protocolos", descricao: "Modelos clínicos, checklists e configurações por espécie.", especial: "modulos" },
       { nome: "Internação e hospedagem", descricao: "Rotinas, leitos, cuidados e regras da hospedagem." },
       { nome: "Banho e tosa", descricao: "Duração, serviços, pacotes e horários." },
-      { nome: "Equipamentos clínicos", descricao: "Cadastro, manutenção e calibração." },
+      { nome: "Equipamentos clínicos", descricao: "Cadastro, manutenção e calibração.", especial: "modulos" },
     ] },
     { id: "comercial", titulo: "Comercial e financeiro", icone: Wallet, itens: [
       { nome: "Produtos e serviços", descricao: "Catálogo, preços e itens de estoque.", href: "/catalogo" },
@@ -193,12 +195,12 @@ function PerfilClinica() {
       { nome: "Identidade visual", descricao: "Logotipo, cores, documentos e site." },
       { nome: "Acessibilidade e interface", descricao: "Contraste, legibilidade e densidade de informações." },
       { nome: "Impressoras e equipamentos", descricao: "Etiquetas, leitores, câmeras e impressão." },
-      { nome: "Indicadores personalizados", descricao: "Seleção de métricas dos painéis." },
+      { nome: "Indicadores personalizados", descricao: "Seleção de métricas dos painéis.", especial: "modulos" },
     ] },
     { id: "administracao", titulo: "Administração avançada", icone: ShieldCheck, itens: [
       { nome: "Meu plano e funcionalidades", descricao: "Recursos e limites contratados.", href: "/plano-clinica" },
       { nome: "Segurança e auditoria", descricao: "Permissões, histórico e autenticação." },
-      { nome: "Backup, importação e contingência", descricao: "Exportações, migrações e continuidade operacional." },
+      { nome: "Backup, importação e contingência", descricao: "Plano operacional e contatos para indisponibilidade.", especial: "modulos" },
       { nome: "Privacidade e LGPD", descricao: "Retenção, solicitações e proteção de dados." },
       { nome: "Integrações e API", descricao: "Serviços externos e webhooks." },
     ] },
@@ -273,10 +275,11 @@ function PerfilClinica() {
                 {itensVisiveis.map((item) => {
                   const isAgenda = "especial" in item && item.especial === "agenda";
                   const isPoliticas = "especial" in item && item.especial === "politicas" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
+                  const isModulos = "especial" in item && item.especial === "modulos" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const isModelos = "especial" in item && item.especial === "modelos" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const destination = "href" in item ? item.href : undefined;
                   const corpo = <><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">{item.nome}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.descricao}</span></span>
-                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : (isAgenda || isModelos || isPoliticas) ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
+                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : (isAgenda || isModelos || isPoliticas || isModulos) ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
                   return destination && item.nome === "Meu plano e funcionalidades" ? <Link key={item.nome} to="/plano-clinica" className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link> : destination ? <Link key={item.nome} to={destination as any} className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link>
                     : <div key={item.nome} className="flex min-h-20 items-center gap-2 rounded-lg border p-3">{corpo}</div>;
                 })}
@@ -287,6 +290,9 @@ function PerfilClinica() {
               )}
               {grupo.id === "estrutura" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <BackupPoliticasClinica podeGerenciar={true}/>
+              )}
+              {(["estrutura","operacao","personalizacao","administracao"].includes(grupo.id)) && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
+                <ModulosAdministrativosClinica grupo={grupo.id as "estrutura"|"operacao"|"personalizacao"|"administracao"} podeGerenciar={true}/>
               )}
               {grupo.id === "documentos" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <ConfiguracaoModelosDocumentos clinica={perfil?.nome || "clínica"} podeGerenciar={Boolean(adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica")}/>

@@ -88,6 +88,7 @@ function permissoesDaChave(chave: string): string[] {
     "vetericio-termos-clinica": ["consultorio.receituario"],
     "oricse-modelos-documentos-v1": ["administracao.configuracoes"],
     "oricse-politicas-operacionais-v1": ["administracao.configuracoes"],
+    "oricse-modulos-administrativos-v3": ["administracao.configuracoes"],
     "veterico-assinatura-v1": ["consultorio.receituario"],
     "veterico-carimbo-v1": ["consultorio.receituario"],
     "veterico:precisao-ml": ["consultorio.medicacoes", "internacao.medicacoes"],
@@ -174,6 +175,51 @@ async function autorizarPoliticasClinica(userId: string, clinicaId: string, admi
   }
 }
 
+const estruturaAdministrativaSchema = z.object({
+  versao: z.literal(1),
+  equipamentos: z.array(z.object({
+    id: z.string().uuid(), nome: z.string().trim().min(2).max(100),
+    setor: z.string().trim().min(2).max(80),
+    patrimonio: z.string().max(80),
+    proximaManutencao: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
+    status: z.enum(["operante","manutencao","fora_de_uso"]),
+    observacoes: z.string().max(600),
+  }).strict()).max(250),
+  pendencias: z.array(z.object({
+    id: z.string().uuid(), titulo: z.string().trim().min(3).max(140),
+    responsavel: z.string().max(100),
+    prazo: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
+    prioridade: z.enum(["baixa","media","alta"]),
+    status: z.enum(["aberta","em_andamento","concluida"]),
+    observacoes: z.string().max(800),
+  }).strict()).max(400),
+  especies: z.array(z.object({
+    id: z.string().uuid(), nome: z.string().trim().min(2).max(80),
+    instrucoes: z.string().max(1400),
+  }).strict()).max(100),
+  contingencia: z.object({
+    responsavel: z.string().max(100),
+    telefone: z.string().max(60),
+    orientacoes: z.string().max(4000),
+    ultimaRevisao: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
+  }).strict(),
+  indicadores: z.object({
+    consultas: z.boolean(), exames: z.boolean(), internacao: z.boolean(),
+    hotel: z.boolean(), banhoTosa: z.boolean(), vendaExpressa: z.boolean(),
+    receita: z.boolean(), despesas: z.boolean(),
+  }).strict(),
+}).strict();
+
+async function autorizarAdministracaoClinica(userId: string, clinicaId: string, adminGeral: boolean) {
+  if (adminGeral) return;
+  const admin = await carregarAdmin();
+  const { data: vinculo, error } = await admin.from("clinica_usuarios")
+    .select("papel").eq("user_id", userId).eq("clinica_id", clinicaId).eq("ativo", true).maybeSingle();
+  if (error || !["rt","admin_clinica"].includes(String(vinculo?.papel || ""))) {
+    throw new Error("Somente administradores da clínica e RTs podem alterar estes módulos.");
+  }
+}
+
 async function validarAlteracoesPorPlano(
   accessToken: string,
   contexto: { userId: string; clinicaId: string | null },
@@ -187,9 +233,13 @@ async function validarAlteracoesPorPlano(
     if (item.chave !== "oricse-politicas-operacionais-v1") continue;
     await autorizarPoliticasClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as { adminGeral?: boolean }).adminGeral));
   }
+  if (alteracoes.some((item) => item.chave === "oricse-modulos-administrativos-v3")) {
+    await autorizarAdministracaoClinica(contexto.userId, contexto.clinicaId, Boolean((contexto as {adminGeral?:boolean}).adminGeral));
+  }
   if ((contexto as { adminGeral?: boolean }).adminGeral) return; // Admin geral mantém a autorização da plataforma.
   const regras = new Map<string, string[]>();
   for (const item of alteracoes) {
+    if (item.chave === "oricse-modulos-administrativos-v3") continue; // Admin/RT checado acima.
     if (item.chave === "oricse-politicas-operacionais-v1") continue; // Regra estrita Admin/RT.
     if (item.chave === "oricse-modelos-documentos-v1") continue; // Autorização estrita Admin/RT verificada acima.
     const candidatas = permissoesDaChave(item.chave);
@@ -228,6 +278,11 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
       catch { return false; }
     })();
     if (!politicasPermitidas) delete estado["oricse-politicas-operacionais-v1"];
+    const permitidoAdmin = await (async () => {
+      try { await autorizarAdministracaoClinica(contexto.userId, contexto.clinicaId!, false); return true; }
+      catch { return false; }
+    })();
+    if (!permitidoAdmin) delete estado["oricse-modulos-administrativos-v3"];
   }
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
@@ -259,6 +314,13 @@ export async function salvarEstadoOricseInterno(data: z.infer<typeof salvarSchem
     let parsed: unknown;
     try { parsed = JSON.parse(alteracao.valor); } catch { throw new Error("JSON das políticas inválido."); }
     politicasOperacionaisSchema.parse(parsed);
+  }
+  for (const alteracao of data.alteracoes) {
+    if (alteracao.chave !== "oricse-modulos-administrativos-v3") continue;
+    if (alteracao.valor === null || alteracao.valor.length > 300000) throw new Error("Configurações administrativas inválidas.");
+    let parsed: unknown;
+    try { parsed = JSON.parse(alteracao.valor); } catch { throw new Error("JSON administrativo inválido."); }
+    estruturaAdministrativaSchema.parse(parsed);
   }
   // A lista JSON legada também não pode adicionar animais acima da cota.
   // Compara IDs anteriores e novos; editar pacientes existentes continua permitido.
