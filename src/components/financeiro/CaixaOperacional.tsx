@@ -212,6 +212,7 @@ export function CaixaOperacional({
       toast.success(nome);
       setOperacao(null);
       await atualizar();
+      window.dispatchEvent(new Event("oricse:caixa-alterado"));
     } catch (error) {
       const mensagem = mensagemErro(error);
       toast.error(mensagem);
