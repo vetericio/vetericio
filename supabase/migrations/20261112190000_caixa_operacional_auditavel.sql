@@ -307,3 +307,52 @@ end;
 $$;
 revoke all on function public.oricse_caixa_revisar_estorno(uuid,boolean,text) from public,anon;
 grant execute on function public.oricse_caixa_revisar_estorno(uuid,boolean,text) to authenticated;
+
+-- Baixa auditável de lançamentos pendentes. A data da operação é distinta da competência.
+create table if not exists public.oricse_caixa_baixas (
+ id uuid primary key default gen_random_uuid(),
+ clinica_id uuid not null references public.clinicas(id) on delete restrict,
+ lancamento_id uuid not null unique references public.oricse_caixa_lancamentos(id) on delete restrict,
+ forma_pagamento text not null,
+ valor_centavos bigint not null check (valor_centavos > 0),
+ data_registro_original timestamptz not null,
+ registrado_por uuid not null references auth.users(id),
+ registrado_em timestamptz not null default now()
+);
+alter table public.oricse_caixa_baixas enable row level security;
+revoke all on public.oricse_caixa_baixas from public,anon,authenticated;
+grant select on public.oricse_caixa_baixas to authenticated;
+drop policy if exists "caixa_baixas_leitura_autorizada" on public.oricse_caixa_baixas;
+create policy "caixa_baixas_leitura_autorizada" on public.oricse_caixa_baixas
+for select to authenticated
+using (public.oricse_usuario_pode_permissao(clinica_id,'caixa.financeiro.visualizar')
+       or public.oricse_usuario_pode_permissao(clinica_id,'caixa.comandas'));
+
+create or replace function public.oricse_caixa_baixar_pendente(p_lancamento_id uuid,p_forma_pagamento text)
+returns public.oricse_caixa_lancamentos
+language plpgsql security definer set search_path = ''
+as $$
+declare v_lancamento public.oricse_caixa_lancamentos;
+begin
+ select * into v_lancamento from public.oricse_caixa_lancamentos where id=p_lancamento_id for update;
+ if not found or not public.oricse_caixa_pode_operar(v_lancamento.clinica_id) then
+   raise exception 'Lançamento não encontrado ou sem autorização.' using errcode='42501';
+ end if;
+ if v_lancamento.status <> 'pendente' or v_lancamento.tipo <> 'entrada' then
+   raise exception 'Somente contas a receber ainda pendentes podem ser baixadas.' using errcode='23514';
+ end if;
+ if length(btrim(coalesce(p_forma_pagamento,''))) < 3 or lower(btrim(p_forma_pagamento))='a definir' then
+   raise exception 'Informe uma forma de pagamento válida.' using errcode='22023';
+ end if;
+ insert into public.oricse_caixa_baixas(
+   clinica_id,lancamento_id,forma_pagamento,valor_centavos,data_registro_original,registrado_por)
+ values(v_lancamento.clinica_id,v_lancamento.id,btrim(p_forma_pagamento),
+        v_lancamento.valor_centavos,v_lancamento.registrado_em,(select auth.uid()));
+ update public.oricse_caixa_lancamentos
+ set status='pago',forma_pagamento=btrim(p_forma_pagamento),registrado_em=now()
+ where id=p_lancamento_id returning * into v_lancamento;
+ return v_lancamento;
+end;
+$$;
+revoke all on function public.oricse_caixa_baixar_pendente(uuid,text) from public,anon;
+grant execute on function public.oricse_caixa_baixar_pendente(uuid,text) to authenticated;
