@@ -155,7 +155,8 @@ export function SiteDaClinica({
       if (site.data) {
         const current = site.data;
         setHasRecord(true);
-        setSlug(current.slug || "");
+        // O cadastro da clínica é a referência para o subdomínio, não o slug antigo do site.
+        setSlug(clinic.data?.slug || current.slug || "");
         setStatus(current.status === "publicado" ? "publicado" : "rascunho");
         const chosen = draft.data?.template || current.template;
         if (clinicSiteTemplates.includes(chosen)) setTemplate(chosen);
@@ -345,10 +346,19 @@ export function SiteDaClinica({
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      // Evitar que uma aba antiga publique com o slug anterior da clínica.
+      const { data: clinicaAtual, error: erroClinicaAtual } = await (supabaseBanco as any)
+        .from("clinicas").select("slug").eq("id", clinicaId).maybeSingle();
+      if (erroClinicaAtual || !clinicaAtual?.slug)
+        throw new Error(erroClinicaAtual?.message || "Não foi possível confirmar o endereço atual da clínica.");
+      const slugPublicacao = String(clinicaAtual.slug).trim().toLowerCase();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugPublicacao))
+        throw new Error("Corrija o endereço da clínica no cadastro antes de publicar.");
+      if (slug !== slugPublicacao) setSlug(slugPublicacao);
       if (publish) {
         const payload = {
           clinica_id: clinicaId,
-          slug,
+          slug: slugPublicacao,
           updated_at: now,
           status: "publicado",
           config,
@@ -381,7 +391,7 @@ export function SiteDaClinica({
             .from("clinic_sites")
             .insert({
               clinica_id: clinicaId,
-              slug,
+              slug: slugPublicacao,
               updated_at: now,
               status: "rascunho",
               config,
