@@ -348,9 +348,14 @@ export function SiteDaClinica({
       const now = new Date().toISOString();
       // Evitar que uma aba antiga publique com o slug anterior da clínica.
       const { data: clinicaAtual, error: erroClinicaAtual } = await (supabaseBanco as any)
-        .from("clinicas").select("slug").eq("id", clinicaId).maybeSingle();
+        .from("clinicas")
+        .select("slug")
+        .eq("id", clinicaId)
+        .maybeSingle();
       if (erroClinicaAtual || !clinicaAtual?.slug)
-        throw new Error(erroClinicaAtual?.message || "Não foi possível confirmar o endereço atual da clínica.");
+        throw new Error(
+          erroClinicaAtual?.message || "Não foi possível confirmar o endereço atual da clínica.",
+        );
       const slugPublicacao = String(clinicaAtual.slug).trim().toLowerCase();
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugPublicacao))
         throw new Error("Corrija o endereço da clínica no cadastro antes de publicar.");
