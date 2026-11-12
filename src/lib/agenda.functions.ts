@@ -44,6 +44,19 @@ export const salvarAgendaOnline = createServerFn({ method: 'POST' })
     const { data: auth, error: authErro } = await admin.auth.getUser(data.accessToken);
     if (authErro || !auth.user) throw new Error('Sessão inválida ou expirada. Entre novamente.');
     await podeEditarAgenda(admin, auth.user.id, data.clinicaId);
+    if (!data.agendaId) {
+      const { data: clinica, error: erroClinica } = await admin
+        .from('clinicas').select('limite_usuarios').eq('id', data.clinicaId).single();
+      if (erroClinica || !clinica) throw new Error('Não foi possível consultar o limite de agendas da clínica.');
+      const { count, error: erroContagem } = await admin
+        .from('oricse_agendas_online').select('id', { count: 'exact', head: true })
+        .eq('clinica_id', data.clinicaId);
+      if (erroContagem || count === null) throw new Error('Não foi possível confirmar a quantidade de agendas.');
+      const limite = Math.max(0, Number(clinica.limite_usuarios) || 0);
+      if (count >= limite) throw new Error(
+        'Limite de ' + limite + ' agenda(s) atingido. Para contratar mais, escreva para atendimento@oricse.com.br ou fale com seu consultor.',
+      );
+    }
     const registro = { clinica_id: data.clinicaId, ...data.agenda, updated_at: new Date().toISOString() };
     const consulta = data.agendaId
       ? admin.from('oricse_agendas_online').update(registro).eq('id', data.agendaId).eq('clinica_id', data.clinicaId)

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, BadgeCheck, LockKeyhole, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, LockKeyhole, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -113,11 +113,16 @@ function PlanoClinica() {
             <ShieldCheck size={15}/> {resumo.clinica.status === "ativa" ? "Clínica ativa" : resumo.clinica.status}
           </span>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl bg-secondary/40 p-4">
             <Users size={20} className="text-primary"/>
             <p className="mt-2 text-xl font-black">{resumo.clinica.limite_usuarios ?? resumo.plano?.usuarios_inclusos ?? "—"}</p>
             <p className="text-xs text-muted-foreground">Limite de usuários</p>
+          </div>
+          <div className="rounded-xl bg-secondary/40 p-4">
+            <CalendarDays size={20} className="text-primary"/>
+            <p className="mt-2 text-xl font-black">{resumo.clinica.limite_usuarios ?? resumo.plano?.usuarios_inclusos ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">Agendas incluídas</p>
           </div>
           <div className="rounded-xl bg-secondary/40 p-4">
             <BadgeCheck size={20} className="text-primary"/>
@@ -130,7 +135,10 @@ function PlanoClinica() {
             <p className="text-xs text-muted-foreground">Recursos bloqueados no plano</p>
           </div>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">
+        <p className="mt-4 text-sm text-muted-foreground">
+          Cada usuário contratado dá direito a uma agenda. Para solicitar agendas adicionais, escreva para <a className="font-semibold text-primary underline" href="mailto:atendimento@oricse.com.br">atendimento@oricse.com.br</a> ou fale com seu consultor.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
           Esta tela apresenta os limites do plano, não as permissões individuais de cada funcionário.
           Um recurso liberado ainda depende da autorização do cargo.
         </p>
