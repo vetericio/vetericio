@@ -22,7 +22,8 @@ type RestricoesCamera = MediaTrackConstraintSet & {
   zoom?: number;
 };
 const formatos = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"];
-const leiturasParaConfirmar = 3;
+// GTIN com dígito verificador válido pode ser confirmado mais rapidamente.
+const leiturasParaConfirmar = 2;
 const intervaloMaximoLeitura = 1800;
 
 function codigoGTINValido(codigo: string): boolean {
@@ -34,6 +35,24 @@ function codigoGTINValido(codigo: string): boolean {
     soma += digitos[indice] * peso;
   }
   return (10 - (soma % 10)) % 10 === verificador;
+}
+
+/**
+ * OCR não aceita códigos internos não verificáveis: só GTIN 8/12/13 com
+ * checksum, vistos pelo menos duas vezes. Evita confundir preços e números
+ * impressos na embalagem com o identificador do produto.
+ */
+function candidatosNumericosOCR(texto: string): string[] {
+  const linhas = texto.split(/\r?\n/);
+  const valores = new Set<string>();
+  for (const linha of linhas) {
+    const grupos = linha.match(/\d+/g) || [];
+    const juntos = grupos.join("");
+    for (const valor of [...grupos, juntos]) {
+      if (codigoGTINValido(valor)) valores.add(valor);
+    }
+  }
+  return [...valores];
 }
 
 function resultadoValido(item: CodigoLido): string | null {
@@ -146,11 +165,13 @@ export function LeitorCodigoBarrasCamera({
   const [focoDisponivel, setFocoDisponivel] = useState(false);
   const [refocando, setRefocando] = useState(false);
   const [progresso, setProgresso] = useState(0);
+  const [statusOCR, setStatusOCR] = useState<"carregando" | "ativo" | "indisponivel" | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const tentativaRef = useRef(0);
   const callbackRef = useRef(onCodigoLido);
+  const ultimoCodigoRef = useRef<{codigo:string;origem:"barras"|"numeros";quando:number}|null>(null);
   useEffect(() => { callbackRef.current = onCodigoLido; }, [onCodigoLido]);
 
   const parar = useCallback(() => {
@@ -171,6 +192,7 @@ export function LeitorCodigoBarrasCamera({
     setFocoDisponivel(false);
     setRefocando(false);
     setProgresso(0);
+    setStatusOCR(null);
   }, [parar]);
 
   const solicitarCamera = async () => {
@@ -178,11 +200,6 @@ export function LeitorCodigoBarrasCamera({
     setErro(""); setAviso("");
     if (typeof window === "undefined" || !window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setErro("Abra o ORICSE por HTTPS em um navegador que permita usar a câmera.");
-      setAberto(true);
-      return;
-    }
-    if (!(window as Window & { BarcodeDetector?: ConstrutorDetector }).BarcodeDetector) {
-      setErro("Este navegador não oferece leitura automática de códigos de barras. Experimente o Chrome atualizado ou digite o código.");
       setAberto(true);
       return;
     }
@@ -283,21 +300,61 @@ export function LeitorCodigoBarrasCamera({
     let vezes = 0;
     let vistoEm = 0;
     let rejeitadoEm = 0;
+    let ultimoOCR = "";
+    let vezesOCR = 0;
+    let vistoOCR = 0;
+    let ocrOcupado = false;
+    let ocrTimer: ReturnType<typeof setInterval> | undefined;
+    let workerOCR: import("tesseract.js").Worker | null = null;
+    let fechandoLeitura = false;
+    let ultimaLeituraDeBarras = 0;
+    const confirmarCodigo = (codigo: string, origem: "barras" | "numeros") => {
+      if (!ativo || fechandoLeitura) return;
+      let aceito = false;
+      try { aceito = callbackRef.current(codigo) !== false; }
+      catch { aceito = false; }
+      if (aceito) {
+        fechandoLeitura = true;
+        ultimoCodigoRef.current = {codigo,origem,quando:Date.now()};
+        bipConfirmacao(audioRef.current);
+        if ("vibrate" in navigator) navigator.vibrate?.(70);
+        fechar();
+      } else {
+        rejeitadoEm = Date.now();
+        setProgresso(0);
+        setAviso("Código " + codigo + " não aceito. Confira a etiqueta ou tente outro produto.");
+      }
+    };
+    const criarRecorteNumeros = () => {
+      if (video.videoWidth < 300 || video.videoHeight < 200) return null;
+      // Região central, contendo barras e a linha de números sob elas.
+      const x = Math.floor(video.videoWidth * 0.09);
+      const y = Math.floor(video.videoHeight * 0.30);
+      const w = Math.floor(video.videoWidth * 0.82);
+      const h = Math.floor(video.videoHeight * 0.45);
+      const canvas = document.createElement("canvas");
+      const escala = Math.min(2, 1500 / w);
+      canvas.width = Math.max(1, Math.floor(w * escala));
+      canvas.height = Math.max(1, Math.floor(h * escala));
+      const contexto = canvas.getContext("2d", {willReadFrequently:true});
+      if (!contexto) return null;
+      contexto.imageSmoothingEnabled = true;
+      contexto.drawImage(video, x,y,w,h, 0,0,canvas.width,canvas.height);
+      return canvas;
+    };
 
     async function iniciar() {
       try {
         video.srcObject = stream;
         await video.play();
         const Construtor = (window as Window & { BarcodeDetector?: ConstrutorDetector }).BarcodeDetector;
-        if (!Construtor) throw new Error("Leitor não disponível neste navegador.");
-        const suportados = Construtor.getSupportedFormats
-          ? await Construtor.getSupportedFormats() : formatos;
+        const suportados = Construtor ? (Construtor.getSupportedFormats
+          ? await Construtor.getSupportedFormats() : formatos) : [];
         const habilitados = formatos.filter(formato => suportados.includes(formato));
-        if (!habilitados.length) throw new Error("O navegador não suporta leitura de códigos de barras.");
         if (!ativo) return;
-        const detector = new Construtor({ formats: habilitados });
+        const detector = Construtor && habilitados.length ? new Construtor({ formats: habilitados }) : null;
         let processando = false;
-        intervalo = setInterval(async () => {
+        if (detector) intervalo = setInterval(async () => {
           if (!ativo || processando || video.readyState < 2) return;
           processando = true;
           try {
@@ -310,30 +367,67 @@ export function LeitorCodigoBarrasCamera({
               return;
             }
             const agora = Date.now();
+            ultimaLeituraDeBarras = agora;
             if (codigo === ultimo && agora - vistoEm <= intervaloMaximoLeitura) vezes += 1;
             else { ultimo = codigo; vezes = 1; }
             vistoEm = agora;
             setProgresso(Math.min(vezes,leiturasParaConfirmar));
             if (vezes < leiturasParaConfirmar || agora - rejeitadoEm < 2400) return;
             vezes = 0;
-            let aceito = false;
-            try { aceito = callbackRef.current(codigo) !== false; }
-            catch { aceito = false; }
-            if (aceito) {
-              bipConfirmacao(audioRef.current);
-              if ("vibrate" in navigator) navigator.vibrate?.(70);
-              fechar();
-            } else {
-              setProgresso(0);
-              rejeitadoEm = agora;
-              setAviso("Código " + codigo + " não aceito. Confira a etiqueta ou tente outro produto.");
-            }
+            confirmarCodigo(codigo,"barras");
           } catch {
             // Ignora um quadro com desfoque, reflexo ou movimento.
           } finally {
             processando = false;
           }
-        }, 160);
+        }, 120);
+
+        // OCR roda como segunda via, em baixa frequência e num worker separado.
+        // O scanner de barras continua responsivo durante a análise de números.
+        setStatusOCR("carregando");
+        void (async () => {
+          try {
+            const {createWorker, PSM} = await import("tesseract.js");
+            const worker = await createWorker("eng",1);
+            if (!ativo) { await worker.terminate(); return; }
+            workerOCR = worker;
+            await worker.setParameters({
+              tessedit_char_whitelist:"0123456789 ",
+              tessedit_pageseg_mode:PSM.SPARSE_TEXT,
+            });
+            if (!ativo) return;
+            setStatusOCR("ativo");
+            ocrTimer = setInterval(() => {
+              if (!ativo || fechandoLeitura || ocrOcupado || video.readyState < 2) return;
+              // Evita gastar bateria quando o detector de barras já está lendo.
+              if (Date.now() - ultimaLeituraDeBarras < 750) return;
+              const recorte = criarRecorteNumeros();
+              if (!recorte || !workerOCR) return;
+              ocrOcupado = true;
+              void workerOCR.recognize(recorte).then(({data})=>{
+                if (!ativo || fechandoLeitura) return;
+                const candidatos = candidatosNumericosOCR(data.text || "");
+                if (candidatos.length !== 1) return; // número ambíguo não entra no caixa
+                const codigo = candidatos[0];
+                const agora = Date.now();
+                if (codigo === ultimoOCR && agora - vistoOCR <= 6500) vezesOCR += 1;
+                else {ultimoOCR = codigo;vezesOCR = 1;}
+                vistoOCR = agora;
+                if (vezesOCR >= 2 && agora - rejeitadoEm >= 2400) {
+                  vezesOCR = 0;
+                  confirmarCodigo(codigo,"numeros");
+                }
+              }).catch(()=>{
+                if (ativo) setStatusOCR("indisponivel");
+              }).finally(()=>{ ocrOcupado=false; });
+            }, 1100);
+          } catch {
+            if (ativo) {
+              setStatusOCR("indisponivel");
+              if (!detector) setAviso("O navegador não oferece reconhecimento por barras nem OCR. Digite o código manualmente.");
+            }
+          }
+        })();
       } catch (falha) {
         if (!ativo) return;
         parar();
@@ -344,6 +438,8 @@ export function LeitorCodigoBarrasCamera({
     return () => {
       ativo = false;
       if (intervalo) clearInterval(intervalo);
+      if (ocrTimer) clearInterval(ocrTimer);
+      if (workerOCR) void workerOCR.terminate().catch(() => {});
       if (video.srcObject === stream) video.srcObject = null;
     };
   }, [aberto, sessao, fechar, parar]);
@@ -420,7 +516,8 @@ export function LeitorCodigoBarrasCamera({
               <span className="text-xs text-muted-foreground">A altura do som depende do volume de mídia do celular.</span>
             </div>
             <p className="text-sm font-medium">Centralize a etiqueta, afaste um pouco o celular e mantenha a câmera imóvel.</p>
-            <p className="text-xs text-muted-foreground">Confirmamos o mesmo código em 3 imagens antes de aceitar. Após a leitura, o bip é reproduzido no volume permitido pelo aparelho.</p>
+            <p className="text-xs text-muted-foreground">Leitura dupla: barras + reconhecimento local dos números impressos. Códigos EAN/UPC passam por verificação e confirmação para evitar erros. O bip toca após leitura aceita.</p>
+            <p className="text-xs text-muted-foreground" role="status">{statusOCR === "carregando" ? "Preparando reconhecimento dos números…" : statusOCR === "ativo" ? "Leitura dos números ativa · pode demorar um pouco mais em celulares lentos" : statusOCR === "indisponivel" ? "Leitura numérica indisponível. O leitor de barras permanece ativo." : "Procurando código…"}</p>
             {aviso && <p role="status" className="rounded-lg bg-secondary p-2 text-sm">{aviso}</p>}
           </>}
         </section>
