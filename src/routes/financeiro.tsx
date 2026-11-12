@@ -10,7 +10,6 @@ import {
   Pencil,
   Plus,
   Search,
-  Trash2,
   Users,
   Phone,
   Clock3,
@@ -482,9 +481,6 @@ export function Financeiro() {
     setForm(formVazio());
   }
 
-  function remover(_id: string) {
-    toast.error("Lançamentos financeiros não devem ser excluídos. Registre um ajuste ou solicite estorno ao gestor.");
-  }
   function darBaixa(id: string) {
     const lancamento = lancamentos.find((item) => item.id === id);
     if (lancamento) {
@@ -772,7 +768,6 @@ export function Financeiro() {
           despesas={saidasDia}
           pendente={pendenteDia}
           ocultarIndicadores
-          onRemover={remover}
           onEditar={abrirEdicao}
           podeAlterarComanda={podeAlterarComanda}
         />
@@ -1147,8 +1142,8 @@ export function Financeiro() {
 
       {aba === "lancamentos" && (
         <section className="rounded-2xl border bg-card overflow-hidden">
-          {lancamentos.length ? (
-            lancamentos.map((l) => (
+          {lancamentosUnificados.length ? (
+            lancamentosUnificados.map((l) => (
               <div
                 key={l.id}
                 className="grid gap-2 border-b p-4 last:border-b-0 sm:grid-cols-[1fr_auto_auto] sm:items-center"
@@ -1180,25 +1175,12 @@ export function Financeiro() {
                     >
                       Abrir comanda
                     </a>
+                  ) : l.status === "Pendente" && !l.id.startsWith("caixa:") ? (
+                    <button type="button" onClick={() => abrirEdicao(l)}
+                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      aria-label={"Editar lançamento pendente: "+l.descricao}>Editar pendência</button>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => abrirEdicao(l)}
-                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                        aria-label="Editar"
-                      >
-                        <Pencil size={17} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remover(l.id)}
-                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                        aria-label="Excluir"
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </>
+                    <span className="text-xs text-muted-foreground">Registro preservado</span>
                   )}
                 </div>
               </div>
@@ -1382,7 +1364,6 @@ function ModuloCaixa({
   recebido,
   despesas,
   pendente,
-  onRemover,
   onEditar,
   podeAlterarComanda,
   ocultarIndicadores = false,
@@ -1392,7 +1373,6 @@ function ModuloCaixa({
   recebido: number;
   despesas: number;
   pendente: number;
-  onRemover: (id: string) => void;
   onEditar: (lancamento: Lancamento) => void;
   podeAlterarComanda: boolean;
   ocultarIndicadores?: boolean;
@@ -1438,25 +1418,10 @@ function ModuloCaixa({
                   >
                     Abrir comanda
                   </a>
+                ) : l.status === "Pendente" && !l.id.startsWith("caixa:") ? (
+                  <button type="button" onClick={()=>onEditar(l)} className="rounded-lg border px-3 py-2 text-xs font-semibold">Editar pendência</button>
                 ) : (
-                  <>
-                <button
-                  type="button"
-                  onClick={() => onEditar(l)}
-                  className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                  aria-label="Editar"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemover(l.id)}
-                  className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-                  aria-label="Excluir"
-                >
-                  <Trash2 size={16} />
-                </button>
-                  </>
+                  <span className="text-xs text-muted-foreground">Histórico preservado</span>
                 )}
               </div>
             </div>
