@@ -58,6 +58,10 @@ const PERGUNTAS_FREQUENTES = [
     resposta: "Cada plano já inclui uma quantidade de usuários para sua equipe. Precisa de mais profissionais? Você pode ampliar os acessos conforme seu negócio cresce, contratando usuários adicionais por um valor extra, de acordo com as condições comerciais vigentes. Assim, sua equipe tem espaço para crescer sem precisar trocar de sistema.",
   },
   {
+    pergunta: "Quantas agendas estão incluídas no plano?",
+    resposta: "A quantidade de agendas é igual à quantidade de usuários contratados: 1 usuário = 1 agenda. Para solicitar agendas adicionais, entre em contato com atendimento@oricse.com.br ou com seu consultor.",
+  },
+  {
     pergunta: "O Portal do Tutor está incluído?",
     resposta: "O Portal do Tutor aparece entre os recursos de planos compatíveis, como Essencial e superiores. Confira a tabela comparativa para ver o que está disponível no plano escolhido.",
   },
@@ -234,7 +238,7 @@ function Planos() {
 
                   <div className="mt-5 grid grid-cols-2 gap-2">
                     <div className="rounded-2xl bg-[#f8efeb] px-3 py-3"><span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Animais</span><strong className="mt-1 block text-sm">{LIMITE_ANIMAIS[p.codigo] || "Consulte"}</strong></div>
-                    <div className="rounded-2xl bg-[#f8efeb] px-3 py-3"><span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Equipe</span><strong className="mt-1 block text-sm">{p.usuarios_inclusos} usuário{p.usuarios_inclusos !== 1 ? "s" : ""}</strong></div>
+                    <div className="rounded-2xl bg-[#f8efeb] px-3 py-3"><span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Equipe e agendas</span><strong className="mt-1 block text-sm">{p.usuarios_inclusos} usuário{p.usuarios_inclusos !== 1 ? "s" : ""} · {p.usuarios_inclusos} agenda{p.usuarios_inclusos !== 1 ? "s" : ""}</strong></div>
                   </div>
 
                   <ul className="mt-6 space-y-3 text-sm leading-5 text-[#5e3f4b]">
