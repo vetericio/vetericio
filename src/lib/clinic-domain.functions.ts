@@ -38,7 +38,8 @@ export const prepararEnderecoOricse = createServerFn({ method: "POST" })
     const valores = {
       hostname,
       principal: true,
-      publicar_site: existente?.hostname === hostname ? existente.publicar_site : false,
+      // Registros legados em rascunho não podem herdar uma liberação pública indevida.
+      publicar_site: existente?.hostname === hostname && existente.status === "ativo" ? existente.publicar_site : false,
       dns_alvo: "sites.oricse.com.br",
       verificacao_tipo: "automatica",
       status: "ativo",
@@ -62,4 +63,57 @@ export const prepararEnderecoOricse = createServerFn({ method: "POST" })
     if (erroSalvar || !dominio)
       throw new Error(`Não foi possível preparar o endereço: ${erroSalvar?.message || "erro desconhecido"}`);
     return dominio;
+  });
+
+/** Diagnóstico somente de leitura: DNS público não comprova certificado SSL ou domínio ativado. */
+const diagnosticoSchema = z.object({
+  accessToken: z.string().min(20),
+  clinicaId: z.string().uuid(),
+  dominioId: z.string().uuid(),
+});
+
+export const diagnosticarDnsDominio = createServerFn({ method: "POST" })
+  .validator((input: unknown) => diagnosticoSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
+    if (authError || !auth.user) throw new Error("Sessão expirada. Entre novamente.");
+    const { data: usuario, error: roleError } = await supabaseAdmin
+      .from("app_users")
+      .select("role")
+      .eq("user_id", auth.user.id)
+      .maybeSingle();
+    if (roleError || usuario?.role !== "admin") throw new Error("Operação exclusiva da administração ORICSE.");
+
+    const { data: dominio, error: domainError } = await supabaseAdmin
+      .from("oricse_dominios_clinica")
+      .select("hostname,tipo,dns_alvo")
+      .eq("id", data.dominioId)
+      .eq("clinica_id", data.clinicaId)
+      .maybeSingle();
+    if (domainError || !dominio || dominio.tipo !== "proprio")
+      throw new Error("Domínio próprio não encontrado nesta clínica.");
+
+    const resposta = await fetch(
+      "https://cloudflare-dns.com/dns-query?name=" + encodeURIComponent(dominio.hostname) + "&type=CNAME",
+      { headers: { accept: "application/dns-json" }, signal: AbortSignal.timeout(7000) },
+    );
+    if (!resposta.ok) throw new Error("O serviço de consulta DNS não respondeu. Tente novamente.");
+    const resultado = await resposta.json() as { Status?: number; Answer?: Array<{ type: number; data: string }> };
+    const encontrados = (resultado.Answer || [])
+      .filter((registro) => registro.type === 5)
+      .map((registro) => registro.data.toLowerCase().replace(/\.$/, ""));
+    const esperado = dominio.dns_alvo.toLowerCase().replace(/\.$/, "");
+    const correto = encontrados.includes(esperado);
+    return {
+      correto,
+      hostname: dominio.hostname,
+      esperado,
+      encontrados,
+      aviso: correto
+        ? "CNAME público correto. A publicação ainda depende da validação SSL e da infraestrutura."
+        : encontrados.length
+          ? "O CNAME está apontando para outro endereço: " + encontrados.join(", ") + "."
+          : "Nenhum CNAME público foi encontrado. Para o domínio raiz, alguns provedores usam CNAME flattening; confira a configuração no provedor DNS.",
+    };
   });

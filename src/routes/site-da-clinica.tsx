@@ -85,9 +85,11 @@ const mobile = (max: number) => ({
 export function SiteDaClinica({
   adminClinicaId,
   embedded = false,
+  onPublished,
 }: {
   adminClinicaId?: string;
   embedded?: boolean;
+  onPublished?: () => void;
 } = {}) {
   const { clinicaId: clinicaDaSessao, carregando, adminGlobal, pode } = usePermissoes();
   // A atualização da sessão é feita em segundo plano. Depois da primeira
@@ -428,6 +430,7 @@ export function SiteDaClinica({
             ].slice(0, 25),
           );
       }
+      if (publish) onPublished?.();
       toast.success(publish ? "Site publicado." : "Rascunho salvo sem alterar o site público.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar.");
