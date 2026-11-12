@@ -72,8 +72,7 @@ begin
     then raise exception 'Clínica não está ativa.' using errcode='42501'; end if;
   if not (public.oricse_usuario_pode_permissao(p_clinica_id,'caixa.financeiro.gerenciar')
     or public.oricse_usuario_pode_permissao(p_clinica_id,'caixa.comandas'))
-    or not public.oricse_usuario_pode_permissao(p_clinica_id,'estoque.movimentar')
-    then raise exception 'Sem permissão para vender ou movimentar estoque.' using errcode='42501'; end if;
+    then raise exception 'Sem permissão para operar o caixa.' using errcode='42501'; end if;
   if p_idempotencia is null then raise exception 'Identificador da venda obrigatório.'; end if;
   -- Bloqueia retries concorrentes sem possibilitar uma segunda venda.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_clinica_id::text || p_idempotencia::text, 0));
