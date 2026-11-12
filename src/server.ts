@@ -34,7 +34,9 @@ function securityHeaders(response: Response, pathname?: string): Response {
   headers.set("x-frame-options", "SAMEORIGIN");
   headers.set("x-content-type-options", "nosniff");
   headers.set("referrer-policy", "strict-origin-when-cross-origin");
-  headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  // A câmera só pode ser solicitada em páginas da própria origem (PDV/leitor).
+  // O navegador continua obrigado a pedir consentimento ao usuário.
+  headers.set("permissions-policy", "camera=(self), microphone=(), geolocation=()");
   // O HTML aponta para chunks com hash. Mantê-lo em cache depois de um deploy
   // faz o navegador pedir chunks que já não existem e quebra a navegação.
   const contentType = headers.get("content-type") ?? "";
