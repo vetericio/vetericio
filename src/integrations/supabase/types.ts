@@ -691,6 +691,7 @@ export type Database = {
           ativo: boolean
           categoria: string
           codigo_barras: string | null
+          venda_por_peso: boolean
           clinica_id: string
           created_at: string
           criado_por: string | null
@@ -706,6 +707,7 @@ export type Database = {
           ativo?: boolean
           categoria?: string
           codigo_barras?: string | null
+          venda_por_peso?: boolean
           clinica_id: string
           created_at?: string
           criado_por?: string | null
@@ -721,6 +723,7 @@ export type Database = {
           ativo?: boolean
           categoria?: string
           codigo_barras?: string | null
+          venda_por_peso?: boolean
           clinica_id?: string
           created_at?: string
           criado_por?: string | null
