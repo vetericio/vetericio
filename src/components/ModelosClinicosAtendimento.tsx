@@ -148,7 +148,7 @@ export function ModelosClinicosAtendimento() {
 
   async function receberAssinado(arquivo?: File) {
     if (!arquivo) return;
-    if (arquivo.size > 8_000_000 || arquivo.size < 100 || !/\\.pdf$/i.test(arquivo.name)) {
+    if (arquivo.size > 8_000_000 || arquivo.size < 100 || !/\.pdf$/i.test(arquivo.name)) {
       toast.error("Escolha um PDF assinado de até 8 MB.");
       return;
     }
@@ -187,6 +187,7 @@ export function ModelosClinicosAtendimento() {
       const resultado=await registrarDocumentoClinicoAssinado({data:{
         accessToken,clinicaId:dados.clinicaId,animalId:dados.animal.id,tutorId:dados.tutorId,
         registroId,modeloId:modelo.id,modeloVersao:modelo.versao,
+        arquivoSha256:Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",await arquivoAssinado.arrayBuffer()))).map((b)=>b.toString(16).padStart(2,"0")).join(""),
         categoria:modelo.categoria as "pedido"|"documento"|"termo",
         titulo:modelo.nome,assinaturaConferida:true,
       }});
@@ -263,7 +264,7 @@ export function ModelosClinicosAtendimento() {
           <label className="flex items-start gap-3 rounded-lg border bg-background p-3 text-sm">
             <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" checked={assinaturaConferida}
               onChange={(e)=>setAssinaturaConferida(e.target.checked)}/>
-            <span>Confirmo que este PDF corresponde ao documento revisado, que a assinatura necessária foi aposta e que conferi o arquivo. Estou ciente de que o ORICSE não validou criptograficamente uma assinatura GOV.BR ou certificado digital.</span>
+            <span>Confirmo que conferi o conteúdo e a assinatura deste PDF. O ORICSE verifica a integridade do arquivo enviado, mas não valida criptograficamente certificados digitais ou assinaturas GOV.BR.</span>
           </label>
           <button type="button" onClick={()=>void registrarAssinado()}
             disabled={emitindo || !assinaturaConferida || Boolean(pendencias.length)}
