@@ -63,8 +63,8 @@ export function ModulosAdministrativosClinica({grupo, podeGerenciar}:{grupo:"est
       if(emAspas && texto[i+1]==='"'){campo+='"';i++;}
       else emAspas=!emAspas;
     }else if(ch===';'&&!emAspas){linha.push(campo);campo="";}
-    else if((ch==='\\n'||ch==='\\r')&&!emAspas){
-      if(ch==='\\r'&&texto[i+1]==='\\n')i++;
+    else if((ch==='\n'||ch==='\r')&&!emAspas){
+      if(ch==='\r'&&texto[i+1]==='\n')i++;
       linha.push(campo);campo="";
       if(linha.some(x=>x.trim()))linhas.push(linha);
       linha=[];
@@ -78,7 +78,7 @@ export function ModulosAdministrativosClinica({grupo, podeGerenciar}:{grupo:"est
   if(!file||!podeGerenciar)return;
   if(!file.name.toLowerCase().endsWith(".csv")||file.size>120000||file.size<5)return toast.error("Use um arquivo .csv de até 120 KB.");
   try{
-    const rows=lerCsv((await file.text()).replace(/^\\uFEFF/,""));
+    const rows=lerCsv((await file.text()).replace(/^\uFEFF/,""));
     if(rows.length<2||rows.length>251)throw new Error("O CSV deve ter cabeçalho e até 250 equipamentos.");
     const headers=rows[0].map(x=>x.trim().toLowerCase());
     const required=["nome","setor","patrimonio","proxima_manutencao","status","observacoes"];
@@ -92,7 +92,7 @@ export function ModulosAdministrativosClinica({grupo, podeGerenciar}:{grupo:"est
       const observacoes=get("observacoes");
       if(nome.length<2||nome.length>100||setor.length<2||setor.length>80||patrimonio.length>80||
         observacoes.length>600||(!["operante","manutencao","fora_de_uso"].includes(status))||
-        (data!==""&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(data)))throw new Error("Linha "+(i+2)+" contém dados inválidos.");
+        (data!==""&&!/^\d{4}-\d{2}-\d{2}$/.test(data)))throw new Error("Linha "+(i+2)+" contém dados inválidos.");
       const chave=patrimonio.toLowerCase();
       if(chave&&visto.has(chave))continue;
       if(chave)visto.add(chave);
