@@ -377,9 +377,12 @@ function RootComponent() {
     }
 
     let ativo = true;
+    let validacaoAtual = 0;
     async function validarSessao(session: any) {
+      const geracao = ++validacaoAtual;
+      const estaAtual = () => ativo && geracao === validacaoAtual;
       if (!session?.user?.id) {
-        if (ativo) {
+        if (estaAtual()) {
           setAutenticado(false);
           setRole(null);
           setAcessoTeste(null);
@@ -393,7 +396,7 @@ function RootComponent() {
         .select("user_id, role")
         .eq("user_id", session.user.id)
         .maybeSingle();
-      if (!ativo) return;
+      if (!estaAtual()) return;
       if (error || !data?.user_id) {
         setAutenticado(false);
         setRole(null);
@@ -405,9 +408,12 @@ function RootComponent() {
       setAcessoPortalNegado(false);
       if (papel !== "admin") {
         try {
-          const { data: contexto, error: erroContexto } = await supabase.rpc(
+          // Identidade e vínculos vivem no PostgreSQL; o proxy de operações do Drive
+          // pode não conter o cadastro da clínica e negar acesso indevidamente.
+          const { data: contexto, error: erroContexto } = await supabaseBanco.rpc(
             "oricse_contexto_clinica_atual",
           );
+          if (!estaAtual()) return;
           if (erroContexto) throw erroContexto;
           const clinica = contexto?.[0];
           if (!clinica?.clinica_id)
@@ -418,19 +424,21 @@ function RootComponent() {
           if (portal && clinica.clinica_id !== portal.clinica_id) {
             setAcessoPortalNegado(true);
           } else if (portal) {
-            const { data: permitido, error: erroAcesso } = await supabase.rpc(
+            const { data: permitido, error: erroAcesso } = await supabaseBanco.rpc(
               "oricse_usuario_pode_acessar_portal",
               { p_clinica_id: portal.clinica_id },
             );
+            if (!estaAtual()) return;
             if (erroAcesso) throw erroAcesso;
             setAcessoPortalNegado(!permitido);
           }
         } catch (error) {
+          if (!estaAtual()) return;
           console.error("Não foi possível validar o acesso à clínica:", error);
           setAcessoPortalNegado(true);
         }
       }
-      if (!ativo) return;
+      if (!estaAtual()) return;
       setAutenticado(true);
       setRole(papel);
       if (papel === "admin") {
@@ -439,21 +447,37 @@ function RootComponent() {
         return;
       }
       const [acessoResp, assinaturaResp] = await Promise.all([
-        (supabase as any).rpc("oricse_meu_acesso"),
-        (supabase as any).rpc("oricse_meu_status_assinatura"),
+        (supabaseBanco as any).rpc("oricse_meu_acesso"),
+        (supabaseBanco as any).rpc("oricse_meu_status_assinatura"),
       ]);
-      if (!ativo) return;
+      if (!estaAtual()) return;
       const item = Array.isArray(acessoResp.data) ? acessoResp.data[0] : acessoResp.data;
       const assinatura = Array.isArray(assinaturaResp.data) ? assinaturaResp.data[0] : assinaturaResp.data;
       setAcessoTeste(item || null);
       setAcessoAssinatura(assinatura || null);
     }
-    supabase.auth.getSession().then(({ data }) => void validarSessao(data.session));
+    // Chamadas ao Supabase dentro do callback síncrono de Auth podem
+    // disputar o lock da sessão; agendar fora desse callback evita deadlock.
+    const pendentes = new Set<ReturnType<typeof setTimeout>>();
+    let eventoAuthRecebido = false;
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => void validarSessao(session),
+      (_event, session) => {
+        eventoAuthRecebido = true;
+        const id = setTimeout(() => {
+          pendentes.delete(id);
+          if (ativo) void validarSessao(session);
+        }, 0);
+        pendentes.add(id);
+      },
     );
+    // Fallback de sessão inicial: nunca sobrescrever um evento de login mais recente.
+    void supabase.auth.getSession().then(({ data }) => {
+      if (ativo && !eventoAuthRecebido) void validarSessao(data.session);
+    });
     return () => {
       ativo = false;
+      validacaoAtual++;
+      pendentes.forEach(clearTimeout);
       listener.subscription.unsubscribe();
     };
   }, [portal?.clinica_id, portalLoading]);

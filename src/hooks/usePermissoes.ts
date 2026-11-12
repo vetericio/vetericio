@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export type PermissaoEfetiva = {
   codigo: string;
@@ -88,13 +88,13 @@ export function usePermissoes() {
       if (plataforma?.role === "admin") {
         setPermissoes([]);
         setAdminGlobal(true);
-        const { data: contextoAdmin } = await (supabase as any).rpc("oricse_contexto_clinica_atual");
+        const { data: contextoAdmin } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
         setClinicaId(contextoAdmin?.[0]?.clinica_id || "");
         return;
       }
       setAdminGlobal(false);
 
-      const { data: contexto, error: contextoError } = await (supabase as any).rpc("oricse_contexto_clinica_atual");
+      const { data: contexto, error: contextoError } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
       if (contextoError) throw contextoError;
       const id = contexto?.[0]?.clinica_id || "";
       if (!id) {
@@ -103,7 +103,7 @@ export function usePermissoes() {
         return;
       }
 
-      const { data, error } = await (supabase as any).rpc("oricse_permissoes_efetivas", {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_permissoes_efetivas", {
         p_clinica_id: id,
         p_user_id: sessao.session.user.id,
       });

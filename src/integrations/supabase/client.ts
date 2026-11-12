@@ -75,6 +75,7 @@ function proxyPara(client: ReturnType<typeof createSupabaseClient>) {
     auth: client.auth as any,
     fromDrive,
     fromIdentity,
+    fromCanonical: (table: string) => (client as any).from(table),
     databaseRpc: (name: string, args: Record<string, unknown>) =>
       (client as any).rpc(name, args),
     getSelectedClinicId: async () => {

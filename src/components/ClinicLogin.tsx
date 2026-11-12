@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import {
   supabase,
+  supabaseBanco,
   supabaseConfigurado,
   supabaseMensagemConfiguracao,
 } from "@/integrations/supabase/client";
@@ -32,7 +33,7 @@ export function ClinicLogin({ clinic }: { clinic: ClinicPortalInfo }) {
       setEntrando(false);
       return void toast.error("@usuário ou senha inválidos.");
     }
-    const { data: acesso, error: erroAcesso } = await supabase.rpc(
+    const { data: acesso, error: erroAcesso } = await supabaseBanco.rpc(
       "oricse_usuario_pode_acessar_portal",
       { p_clinica_id: clinic.clinica_id },
     );
