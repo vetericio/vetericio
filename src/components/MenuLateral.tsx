@@ -168,7 +168,7 @@ const areas: AreaMenu[] = [
   {
     titulo: "Venda Expressa",
     icone: ShoppingCart,
-    itens: [{ to: "/venda-expressa", rotulo: "Em breve" }],
+    itens: [{ to: "/venda-expressa", rotulo: "Abrir PDV", permissao: "caixa.comandas" }],
   },
   {
     titulo: "Meu OricStúdio",
