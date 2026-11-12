@@ -2021,8 +2021,8 @@ function Admin() {
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
           {[
             ["Total", clinicas.length, "todas" as FiltroClinica],
-            ["Ativas", clinicas.filter((item) => item.status === "ativa").length, "pagas" as FiltroClinica],
-            ["Pendentes ou atrasadas", clinicas.filter((item) => item.status_financeiro === "pendente" || item.status_financeiro === "atrasado").length, "inadimplentes" as FiltroClinica],
+            ["Ativas e em dia", clinicas.filter((item) => item.status === "ativa" && item.status_financeiro === "em_dia").length, "pagas" as FiltroClinica],
+            ["Pendentes ou atrasadas", clinicas.filter((item) => item.status !== "cancelada" && (item.status_financeiro === "pendente" || item.status_financeiro === "atrasado")).length, "inadimplentes" as FiltroClinica],
             ["Bloqueadas", clinicas.filter((item) => item.status === "bloqueada").length, "bloqueadas" as FiltroClinica],
           ].map(([label, count, filtro]) => <button key={String(label)} type="button" onClick={() => setFiltroClinica(filtro as FiltroClinica)} className="flex items-center justify-between rounded-lg border bg-slate-50 px-3 py-2 text-left hover:border-primary"><span className="text-xs font-semibold text-muted-foreground">{label}</span><span className="text-lg font-black">{count}</span></button>)}
         </div>
