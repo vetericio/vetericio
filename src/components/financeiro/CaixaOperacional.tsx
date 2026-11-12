@@ -89,6 +89,7 @@ export function CaixaOperacional({
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
   const [operacao, setOperacao] = useState<Operacao>(null);
+  const [painelAuxiliar, setPainelAuxiliar] = useState<"historico" | "relatorios" | null>(null);
   const [chaveOperacao, setChaveOperacao] = useState("");
   const [valor, setValor] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -143,6 +144,24 @@ export function CaixaOperacional({
 
   useEffect(() => { void atualizar(); }, [atualizar]);
 
+  const modalAberto = !!operacao || !!painelAuxiliar;
+  useEffect(() => {
+    if (!modalAberto) return;
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const fecharComEscape = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape" && !ocupado) {
+        setOperacao(null);
+        setPainelAuxiliar(null);
+      }
+    };
+    document.addEventListener("keydown", fecharComEscape);
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener("keydown", fecharComEscape);
+    };
+  }, [modalAberto, ocupado]);
+
   function abrirOperacao(proxima: Operacao) {
     setValor("");
     setMotivo("");
@@ -153,6 +172,7 @@ export function CaixaOperacional({
     setRejeitar(false);
     setEntendi(false);
     setChaveOperacao(crypto.randomUUID());
+    setPainelAuxiliar(null);
     setOperacao(proxima);
   }
 
@@ -341,7 +361,7 @@ export function CaixaOperacional({
         <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
           {botoes.map(({id,label,Icone,ativo})=>(
             <button key={id} type="button" disabled={!ativo || ocupado || carregando}
-              onClick={()=>id==="lancamento" ? onNovoLancamento() : id==="relatorio" ? exportarHistorico() : abrirOperacao(id)}
+              onClick={()=>id==="lancamento" ? onNovoLancamento() : id==="relatorio" ? setPainelAuxiliar("relatorios") : abrirOperacao(id)}
               className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-1 py-2 text-center text-xs font-bold leading-4 text-foreground hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-40">
               <Icone size={22} className="text-primary"/>{label}
             </button>
@@ -361,8 +381,23 @@ export function CaixaOperacional({
         {erro && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
       </div>
 
-      <details className="rounded-2xl border bg-card p-4">
-        <summary className="cursor-pointer text-base font-bold">Histórico de fechamentos e auditoria</summary>
+      <button type="button" onClick={() => setPainelAuxiliar("historico")}
+        className="flex min-h-16 w-full items-center justify-between rounded-2xl border bg-card px-5 text-left text-base font-bold hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+        <span>Histórico de fechamentos e auditoria</span>
+        <ClipboardList size={20} className="text-primary"/>
+      </button>
+
+      {painelAuxiliar && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-6" role="presentation"
+        onMouseDown={e => { if (e.target === e.currentTarget) setPainelAuxiliar(null); }}>
+        <section role="dialog" aria-modal="true" aria-label={painelAuxiliar === "historico" ? "Histórico de fechamentos e auditoria" : "Relatórios do caixa"}
+          className="flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b px-5 py-4">
+            <div><p className="text-xs font-semibold uppercase tracking-wide text-primary">ORICSE · Financeiro</p>
+              <h3 className="text-lg font-extrabold">{painelAuxiliar === "historico" ? "Histórico de fechamentos e auditoria" : "Relatórios do caixa"}</h3></div>
+            <button type="button" onClick={() => setPainelAuxiliar(null)} aria-label="Fechar janela" className="rounded-xl border p-2 hover:bg-secondary"><X size={20}/></button>
+          </header>
+          <div className="overflow-y-auto p-5">
+            {painelAuxiliar === "relatorios" && <p className="mb-4 text-sm text-muted-foreground">Consulte os fechamentos, exporte o histórico auditável em CSV ou visualize os lançamentos. O relatório reflete apenas os dados disponíveis e não concilia automaticamente registros legados.</p>}
         {turnos.length ? <div className="mt-3 space-y-2">
           {turnos.slice(0,12).map(t=>(
             <div key={t.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-sm">
@@ -383,16 +418,21 @@ export function CaixaOperacional({
           <button type="button" onClick={onVerLancamentos} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-bold"><ClipboardList size={16}/> Ver lançamentos</button>
           {podeAprovar && solicitacoes.length>0 && <button type="button" onClick={()=>abrirOperacao("revisar")} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-bold text-primary-foreground">Revisar estornos</button>}
         </div>
-      </details>
+          </div>
+        </section>
+      </div>}
 
-      {operacao && <div className="rounded-2xl border-2 border-primary/30 bg-card p-4 shadow-sm sm:p-5" role="region" aria-label="Formulário de operação do caixa">
+      {operacao && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-6" role="presentation"
+        onMouseDown={e => { if (e.target === e.currentTarget && !ocupado) setOperacao(null); }}>
+        <section role="dialog" aria-modal="true" aria-label="Formulário de operação do caixa"
+          className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-2xl border border-primary/20 bg-card p-4 shadow-2xl sm:p-6">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-lg font-extrabold">{{
             abrir:"Abrir novo caixa",sangria:"Retirada de dinheiro · Sangria",
             suprimento:"Entrada de troco · Suprimento",fechar:"Conferência e fechamento",
             estorno:"Solicitar estorno",revisar:"Revisar estorno",
           }[operacao]}</h3>
-          <button type="button" aria-label="Fechar formulário" onClick={()=>setOperacao(null)} className="rounded-lg border p-2"><X size={18}/></button>
+          <button type="button" aria-label="Fechar formulário" onClick={()=>setOperacao(null)} disabled={ocupado} className="rounded-lg border p-2 disabled:opacity-50"><X size={18}/></button>
         </div>
         {operacao==="fechar"&&resumo&&<div className="mt-3 rounded-xl bg-secondary/40 p-3 text-sm">
           <p>Dinheiro esperado (lançamentos centrais): <strong>{formatarCentavos(resumo.esperado_centavos)}</strong></p>
@@ -446,8 +486,9 @@ export function CaixaOperacional({
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">
             <CheckCircle2 size={17}/>{ocupado?"Confirmando no banco...":operacao==="estorno"?"Enviar solicitação":operacao==="revisar"?(rejeitar?"Rejeitar":"Registrar confirmação externa"):"Confirmar operação"}
           </button>
-          <button type="button" onClick={()=>setOperacao(null)} className="min-h-11 rounded-xl border px-4 text-sm font-semibold">Cancelar</button>
+          <button type="button" onClick={()=>setOperacao(null)} disabled={ocupado} className="min-h-11 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
         </div>
+        </section>
       </div>}
     </section>
   );
