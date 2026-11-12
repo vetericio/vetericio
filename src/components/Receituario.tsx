@@ -93,6 +93,7 @@ export function Receituario() {
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [mensagemDados, setMensagemDados] = useState("");
   const [tutorIdCanonico, setTutorIdCanonico] = useState("");
+  const [clinicaIdCanonica, setClinicaIdCanonica] = useState("");
   const [selos, setSelos] = useState<Record<TipoSelo, string | null>>({ assinatura: null, carimbo: null });
   const [posicoesSelos, setPosicoesSelos] = useState<Partial<Record<TipoSelo, PosicaoSeloReceituario>>>({});
   const [gerando, setGerando] = useState(false);
@@ -120,6 +121,7 @@ export function Receituario() {
           },
         });
         if (!ativo) return;
+        if (dados.clinicaId) setClinicaIdCanonica(dados.clinicaId);
         if (dados.clinicaEndereco) setEndereco(dados.clinicaEndereco);
         if (dados.animal) {
           const animal = dados.animal;
@@ -260,9 +262,12 @@ export function Receituario() {
     const accessToken = sessao.session?.access_token;
     const userId = sessao.session?.user?.id;
     if (!accessToken || !userId) throw new Error("Sessão não encontrada para publicar a receita.");
-    const { data: contexto, error: contextoError } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
-    if (contextoError) throw contextoError;
-    const clinicaId = String(contexto?.[0]?.clinica_id || "");
+    let clinicaId = clinicaIdCanonica;
+    if (!clinicaId) {
+      const { data: contexto, error: contextoError } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
+      if (contextoError) throw contextoError;
+      clinicaId = String(contexto?.[0]?.clinica_id || "");
+    }
     if (!clinicaId) throw new Error("Clínica atual não identificada.");
     const { data: animalCanonico, error: animalError } = await (supabaseBanco as any)
       .from("oricse_animais").select("id,tutor_id,nome").eq("id", animalId).eq("clinica_id", clinicaId).maybeSingle();
@@ -393,6 +398,7 @@ export function Receituario() {
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <h2 className="font-display font-semibold text-foreground">Paciente</h2>
+        {(carregandoDados || mensagemDados) && <p role="status" className="mt-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-foreground">{carregandoDados ? "Buscando os dados do atendimento e da clínica..." : mensagemDados}</p>}
         {anamneses.length > 0 && <label className="mt-3 block"><span className={rotulo}>Puxar da Anamnese</span><select defaultValue="" onChange={(e) => escolherPaciente(e.target.value)} className={campo}><option value="">Preencher manualmente</option>{anamneses.map((item) => <option key={item.id} value={item.id}>{item.animal} {item.especie ? "· " + item.especie : ""}</option>)}</select></label>}
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label><span className={rotulo}>Paciente</span><input value={paciente} onChange={(e) => setPaciente(e.target.value)} className={campo} placeholder="Nome do animal" /></label>
@@ -422,7 +428,6 @@ export function Receituario() {
         {!selos.assinatura && !selos.carimbo && <p className="mt-2 text-xs text-muted-foreground">Cadastre a assinatura e o carimbo em Assinar um documento.</p>}
       </section>
 
-      {(carregandoDados || mensagemDados) && <p role="status" className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs text-foreground">{carregandoDados ? "Buscando os dados do atendimento e da clínica..." : mensagemDados}</p>}
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
 
       <button type="button" onClick={() => void gerar()} disabled={gerando || carregandoDados} className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-14 w-auto max-w-3xl items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-60"><FileDown className="h-5 w-5" />{gerando ? "Gerando PDF…" : carregandoDados ? "Carregando dados..." : "Gerar receituário em PDF"}</button>
