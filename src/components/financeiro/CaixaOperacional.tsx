@@ -326,7 +326,7 @@ export function CaixaOperacional({
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            { titulo: "Recebido hoje", valor: recebido, icone: ArrowDownToLine },
+            { titulo: "Recebido líquido", valor: recebido, icone: ArrowDownToLine },
             { titulo: "A receber", valor: pendente, icone: ReceiptText },
             { titulo: "Despesas", valor: despesas, icone: ArrowUpRight },
             { titulo: "Resultado do dia", valor: recebido-despesas, icone: Wallet },
