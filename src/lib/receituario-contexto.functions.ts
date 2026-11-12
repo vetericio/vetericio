@@ -72,7 +72,7 @@ export const obterDadosReceituario = createServerFn({ method: "POST" })
     }
     if (!clinicaId) {
       if (data.animalId || data.tutorId) throw new Error("Clínica do atendimento não identificada.");
-      return { clinicaNome: "", clinicaEndereco: "", animal: null, tutor: null, tutorId: "" };
+      return { clinicaId: "", clinicaNome: "", clinicaEndereco: "", animal: null, tutor: null, tutorId: "" };
     }
 
     const { data: vinculo, error: erroVinculo } = await supabaseAdmin
@@ -126,6 +126,7 @@ export const obterDadosReceituario = createServerFn({ method: "POST" })
     const dadosTutor = (tutor?.dados || {}) as Record<string, unknown>;
     const string = (valor: unknown) => typeof valor === "string" ? valor.trim() : valor == null ? "" : String(valor);
     return {
+      clinicaId,
       clinicaNome: clinica.nome,
       clinicaEndereco,
       animal: animal ? {
