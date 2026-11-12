@@ -220,7 +220,7 @@ export function Financeiro() {
   const { clinicaId, pode } = usePermissoes();
   const [estadiasHotel, setEstadiasHotel] = useState<Array<{id:string;status:string;valor_diaria_centavos:number;valor_final_centavos:number|null;chegada_prevista:string;saida_prevista:string;checkout_em:string|null}>>([]);
   const [erroHotel, setErroHotel] = useState("");
-  const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string}>>([]);
+  const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string;detalhes?:{tutor?:string;tutorId?:string;observacao?:string};data_competencia?:string|null}>>([]);
   const [erroCaixaGeral,setErroCaixaGeral]=useState("");
   const [carregandoCaixa,setCarregandoCaixa]=useState(false);
   const [periodoSetorial,setPeriodoSetorial]=useState<PeriodoSetorial>("mes");
@@ -237,7 +237,7 @@ export function Financeiro() {
         const pagina=1000;
         for(let inicio=0;;inicio+=pagina){
           const {data,error}=await (supabaseBanco as any).from("oricse_caixa_lancamentos")
-            .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo")
+            .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo,detalhes,data_competencia")
             .eq("clinica_id",clinicaId)
             .order("registrado_em",{ascending:false}).order("id",{ascending:false})
             .range(inicio,inicio+pagina-1);
@@ -308,6 +308,7 @@ export function Financeiro() {
   const [formAberto, setFormAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(() => formVazio());
+  const [salvandoLancamento, setSalvandoLancamento] = useState(false);
 
   useEffect(() => {
     const atualizarComandas = () => setComandas(lerComandas());
@@ -368,7 +369,7 @@ export function Financeiro() {
     window.dispatchEvent(new Event("oricse-financeiro-atualizado"));
   }
 
-  function salvarLancamento(evento: FormEvent) {
+  async function salvarLancamento(evento: FormEvent) {
     evento.preventDefault();
     const valor = parseValorMonetario(form.valor);
     if (!form.descricao.trim()) return void toast.error("Informe a descrição do lançamento.");
@@ -385,6 +386,9 @@ export function Financeiro() {
     const tutorVinculado =
       tutoresCadastrados.find((tutor) => tutor.id === form.tutorId) ||
       (tutoresComMesmoNome.length === 1 ? tutoresComMesmoNome[0] : undefined);
+    if (!clinicaId) return void toast.error("Selecione uma clínica ativa antes de salvar.");
+    if (!pode("caixa.financeiro.gerenciar") && !pode("caixa.comandas"))
+      return void toast.error("Você não tem permissão para registrar movimentações.");
     const anterior = editandoId ? lancamentos.find((item) => item.id === editandoId) : undefined;
     const mesmoTutor = anterior?.tutor && normalizar(anterior.tutor) === nomeTutor;
     const camposAnteriores: Partial<Lancamento> = anterior ? { ...anterior } : {};
@@ -409,13 +413,42 @@ export function Financeiro() {
       ...(tutorId ? { tutorId } : {}),
       ...(observacao ? { observacao } : {}),
     };
-    persistir(
-      anterior
-        ? lancamentos.map((item) => (item.id === anterior.id ? novo : item))
-        : [novo, ...lancamentos],
-    );
-    fecharFormulario();
-    toast.success(anterior ? "Lançamento atualizado." : "Lançamento salvo.");
+    if (anterior) {
+      if (anterior.status === "Pago") return void toast.error("Lançamentos pagos não podem ser editados. Solicite um estorno ou registre ajuste auditável.");
+      persistir(lancamentos.map((item) => item.id === anterior.id ? novo : item));
+      fecharFormulario();
+      toast.success("Lançamento pendente atualizado no histórico anterior.");
+      return;
+    }
+    setSalvandoLancamento(true);
+    try {
+      const { data: sessao, error: erroSessao } = await supabase.auth.getUser();
+      if (erroSessao || !sessao.user) throw new Error("Sessão expirada. Entre novamente.");
+      const { data: inserido, error: erroGravacao } = await (supabaseBanco as any)
+        .from("oricse_caixa_lancamentos")
+        .insert({
+          clinica_id: clinicaId, setor: form.categoria,
+          origem_tipo: "financeiro_manual", origem_id: crypto.randomUUID(),
+          tipo: form.tipo === "Entrada" ? "entrada" : "saida",
+          status: form.status === "Pago" ? "pago" : "pendente",
+          descricao: form.descricao.trim(), valor_centavos: Math.round(valor * 100),
+          forma_pagamento: form.formaPagamento,
+          registrado_por: sessao.user.id,
+          data_competencia: form.data,
+          detalhes: { tutor: tutor || null, tutorId: tutorId || null, observacao: observacao || null },
+        })
+        .select("id,setor,descricao,valor_centavos,forma_pagamento,registrado_em,status,tipo,detalhes,data_competencia")
+        .single();
+      if (erroGravacao || !inserido) throw new Error(erroGravacao?.message || "O banco não confirmou o lançamento.");
+      setCaixaGeral((lista) => [inserido, ...lista]);
+      fecharFormulario();
+      toast.success("Lançamento confirmado no Caixa Geral.");
+    } catch (error) {
+      console.error("Falha ao salvar no Caixa Geral:",error);
+      toast.error(error instanceof Error ? error.message : "Lançamento não confirmado. Tente novamente.");
+    } finally {
+      setSalvandoLancamento(false);
+    }
   }
 
   function abrirNovo(tutor = "", tutorId = "") {
@@ -425,7 +458,8 @@ export function Financeiro() {
   }
 
   function abrirEdicao(lancamento: Lancamento) {
-    if (lancamento.id.startsWith("caixa:")) return void toast.error("Registros centralizados são somente leitura nesta tela.");
+    if (lancamento.id.startsWith("caixa:") || lancamento.status === "Pago")
+      return void toast.error("Lançamento pago não pode ser editado. Use o fluxo de estorno autorizado.");
     setEditandoId(lancamento.id);
     setForm({
       tipo: lancamento.tipo,
@@ -448,9 +482,8 @@ export function Financeiro() {
     setForm(formVazio());
   }
 
-  function remover(id: string) {
-    if (id.startsWith("caixa:")) return void toast.error("Registros centralizados não podem ser apagados nesta tela.");
-    persistir(lancamentos.filter((item) => item.id !== id));
+  function remover(_id: string) {
+    toast.error("Lançamentos financeiros não devem ser excluídos. Registre um ajuste ou solicite estorno ao gestor.");
   }
   function darBaixa(id: string) {
     const lancamento = lancamentos.find((item) => item.id === id);
@@ -473,10 +506,11 @@ export function Financeiro() {
     const vindosBanco: Lancamento[] = caixaGeral.filter(p => p.status !== "cancelado").map(p => ({
       id: "caixa:" + p.id, tipo: p.tipo === "saida" ? "Saída" : "Entrada",
       descricao: p.descricao, categoria: p.setor,
-      valor: p.valor_centavos / 100, data: dataLocalISO(new Date(p.registrado_em)),
+      valor: p.valor_centavos / 100, data: p.data_competencia || dataLocalISO(new Date(p.registrado_em)),
       formaPagamento: p.forma_pagamento,
       status: p.status === "pago" ? "Pago" : "Pendente",
-      observacao: "Registro centralizado · " + p.setor,
+      tutor: p.detalhes?.tutor, tutorId: p.detalhes?.tutorId,
+      observacao: p.detalhes?.observacao || ("Registro centralizado · " + p.setor),
     }));
     const idsBanco = new Set(vindosBanco.map(l => l.id));
     return [...vindosBanco, ...lancamentos.filter(l => !idsBanco.has(l.id))];
@@ -1323,8 +1357,8 @@ export function Financeiro() {
                 className="input min-h-24"
               />
             </Campo>
-            <button type="submit" className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground">
-              {editandoId ? "Salvar alterações" : "Salvar lançamento"}
+            <button type="submit" disabled={salvandoLancamento} className="mt-5 w-full rounded-xl bg-primary px-4 py-3 font-black text-primary-foreground disabled:opacity-50">
+              {salvandoLancamento ? "Confirmando no banco..." : editandoId ? "Salvar alterações" : "Salvar lançamento"}
             </button>
           </form>
         </div>
