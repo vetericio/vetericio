@@ -308,6 +308,9 @@ export function Financeiro() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(() => formVazio());
   const [salvandoLancamento, setSalvandoLancamento] = useState(false);
+  const [baixaCentralId, setBaixaCentralId] = useState("");
+  const [formaBaixa, setFormaBaixa] = useState("Pix");
+  const [salvandoBaixa, setSalvandoBaixa] = useState(false);
 
   useEffect(() => {
     const atualizarComandas = () => setComandas(lerComandas());
@@ -482,6 +485,11 @@ export function Financeiro() {
   }
 
   function darBaixa(id: string) {
+    if (id.startsWith("caixa:")) {
+      setBaixaCentralId(id.slice("caixa:".length));
+      setFormaBaixa("Pix");
+      return;
+    }
     const lancamento = lancamentos.find((item) => item.id === id);
     if (lancamento) {
       if (lancamento.comandaId) {
@@ -496,13 +504,34 @@ export function Financeiro() {
     }
   }
 
+  async function confirmarBaixaCentral() {
+    if (!baixaCentralId || salvandoBaixa) return;
+    setSalvandoBaixa(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_caixa_baixar_pendente", {
+        p_lancamento_id: baixaCentralId, p_forma_pagamento: formaBaixa,
+      });
+      if (error || !data?.id) throw new Error(error?.message || "O pagamento ainda não foi confirmado.");
+      setCaixaGeral(lista => lista.map(l => l.id === baixaCentralId ? { ...l, ...data } : l));
+      setBaixaCentralId("");
+      toast.success("Recebimento registrado e auditado no Caixa Geral.");
+    } catch (error) {
+      console.error("Falha ao registrar baixa:", error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar o pagamento.");
+    } finally {
+      setSalvandoBaixa(false);
+    }
+  }
+
   // Caixa unificado: operações da clínica no PostgreSQL, lançamentos anteriores
   // preservados durante a transição. Identificadores de origem impedem sobreposição.
   const lancamentosUnificados = useMemo<Lancamento[]>(() => {
     const vindosBanco: Lancamento[] = caixaGeral.filter(p => p.status !== "cancelado").map(p => ({
       id: "caixa:" + p.id, tipo: p.tipo === "saida" ? "Saída" : "Entrada",
       descricao: p.descricao, categoria: p.setor,
-      valor: p.valor_centavos / 100, data: p.data_competencia || dataLocalISO(new Date(p.registrado_em)),
+      valor: p.valor_centavos / 100, data: p.status === "pago"
+        ? dataLocalISO(new Date(p.registrado_em))
+        : (p.data_competencia || dataLocalISO(new Date(p.registrado_em))),
       formaPagamento: p.forma_pagamento,
       status: p.status === "pago" ? "Pago" : "Pendente",
       tutor: p.detalhes?.tutor, tutorId: p.detalhes?.tutorId,
@@ -1184,6 +1213,23 @@ export function Financeiro() {
           )}
         </section>
       )}
+
+      {baixaCentralId && <section className="mb-5 rounded-2xl border-2 border-primary/25 bg-card p-5" aria-label="Registrar recebimento de conta pendente">
+        <h2 className="text-lg font-extrabold">Dar baixa na conta a receber</h2>
+        <p className="mt-1 text-sm text-muted-foreground">O lançamento será atualizado no banco somente após confirmação e manterá o registro de quem recebeu e quando.</p>
+        <p className="mt-3 text-base font-semibold">{caixaGeral.find(l=>l.id===baixaCentralId)?.descricao || "Lançamento"} · {dinheiro((caixaGeral.find(l=>l.id===baixaCentralId)?.valor_centavos || 0)/100)}</p>
+        <label className="mt-3 block max-w-sm text-sm font-semibold">Forma de pagamento
+          <select value={formaBaixa} onChange={e=>setFormaBaixa(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3">
+            {["Pix","Dinheiro","Cartão de crédito","Cartão de débito","Transferência","Boleto"].map(f=><option key={f}>{f}</option>)}
+          </select>
+        </label>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" disabled={salvandoBaixa} onClick={()=>void confirmarBaixaCentral()} className="min-h-11 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">
+            {salvandoBaixa?"Confirmando...":"Confirmar recebimento"}
+          </button>
+          <button type="button" onClick={()=>setBaixaCentralId("")} className="min-h-11 rounded-xl border px-4 font-semibold">Cancelar</button>
+        </div>
+      </section>}
 
       {formAberto && (
         <div
