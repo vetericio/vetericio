@@ -27,6 +27,7 @@ type ItemForm = {
   estoque_atual: string;
   estoque_minimo: string;
   codigo_barras: string;
+  venda_por_peso: boolean;
 };
 
 const CATEGORIAS_SERVICOS = ["Consultas", "Vacinação", "Vermifugação", "Exames laboratoriais", "Diagnóstico por imagem", "Cirurgias", "Internação", "Procedimentos", "Odontologia", "Banho e tosa", "Atendimento domiciliar", "Outros"];
@@ -47,6 +48,7 @@ const FORM_VAZIO: ItemForm = {
   estoque_atual: "",
   estoque_minimo: "",
   codigo_barras: "",
+  venda_por_peso: false,
 };
 
 function dinheiro(valor: number) {
@@ -250,6 +252,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       estoque_atual: estoqueAtual,
       estoque_minimo: estoqueMinimo,
       codigo_barras: modal.tipo === "produto" ? modal.codigo_barras.trim() || null : null,
+      venda_por_peso: modal.tipo === "produto" && modal.venda_por_peso,
       updated_at: new Date().toISOString(),
       ...(modal.id ? {} : { criado_por: usuarioId }),
     };
@@ -478,8 +481,8 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
 
       {aba === "catalogo" && podeVerCatalogo && (
         <div className="grid gap-4 md:grid-cols-2">
-          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "" })} aoRemover={arquivarItem} />
-          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "" })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
         </div>
       )}
@@ -596,6 +599,10 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
               </label>
               {modal.tipo === "produto" && (
                 <>
+                  <label className="flex items-center gap-3 rounded-lg border bg-secondary/30 p-3 text-xs font-semibold sm:col-span-2">
+                    <input type="checkbox" checked={modal.venda_por_peso} onChange={event=>setModal({...modal,venda_por_peso:event.target.checked})} className="h-5 w-5 accent-primary"/>
+                    <span>Vender por peso (kg) — aceita quantidades como 0,250 e 1,500. Desmarcado: apenas unidades inteiras.</span>
+                  </label>
                   <label className="text-xs font-semibold sm:col-span-2">Código de barras (EAN, UPC ou código interno)
                     <input value={modal.codigo_barras} maxLength={80} onChange={event=>setModal({...modal,codigo_barras:event.target.value})} placeholder="Digite ou use um leitor USB" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"/>
                   </label>
