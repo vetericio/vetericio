@@ -70,6 +70,12 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   const [modal, setModal] = useState<ItemForm | null>(null);
   const [quantidadesEstoque, setQuantidadesEstoque] = useState<Record<string, string>>({});
   const [salvandoEstoque, setSalvandoEstoque] = useState<string | null>(null);
+  const [historicoEstoque, setHistoricoEstoque] = useState<Array<{id:string;item_nome:string;tipo:string;quantidade:number;estoque_anterior:number;estoque_posterior:number;registrado_em:string}>>([]);
+  const [historicoVendas, setHistoricoVendas] = useState<Array<{id:string;forma_pagamento:string;valor_centavos:number;registrada_em:string}>>([]);
+  const [historicoItensVenda, setHistoricoItensVenda] = useState<Array<{venda_id:string;nome_snapshot:string;quantidade:number}>>([]);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  const [erroHistorico, setErroHistorico] = useState("");
+
   const [ordenacaoEstoque, setOrdenacaoEstoque] = useState<"categoria" | "alfabetica" | "maior" | "menor">("categoria");
   const [categoriaEstoque, setCategoriaEstoque] = useState("todas");
   const [regraItemId, setRegraItemId] = useState("");
@@ -151,6 +157,27 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       setSalvandoEstoque(null);
     }
   }
+
+  async function carregarHistorico(clinica: string) {
+    setCarregandoHistorico(true); setErroHistorico("");
+    try {
+      const [estoqueResult,vendasResult,itensVendaResult] = await Promise.all([
+        (supabaseBanco as any).from("oricse_historico_estoque").select("id,item_nome,tipo,quantidade,estoque_anterior,estoque_posterior,registrado_em").eq("clinica_id",clinica).order("registrado_em",{ascending:false}).limit(500),
+        (supabaseBanco as any).from("oricse_vendas_expressas").select("id,forma_pagamento,valor_centavos,registrada_em").eq("clinica_id",clinica).order("registrada_em",{ascending:false}).limit(500),
+        (supabaseBanco as any).from("oricse_vendas_expressas_itens").select("venda_id,nome_snapshot,quantidade").eq("clinica_id",clinica).limit(1500),
+      ]);
+      if (estoqueResult.error) throw estoqueResult.error;
+      setHistoricoEstoque(estoqueResult.data || []);
+      // Vendas podem exigir permissão financeira adicional; o controle RLS do banco prevalece.
+      setHistoricoVendas(vendasResult.error ? [] : vendasResult.data || []);
+      setHistoricoItensVenda(itensVendaResult.error ? [] : itensVendaResult.data || []);
+    } catch (error) {
+      setErroHistorico(error instanceof Error ? error.message : "Não foi possível consultar as movimentações.");
+    } finally { setCarregandoHistorico(false); }
+  }
+  useEffect(() => {
+    if (area === "estoque" && aba === "historico" && clinicaId && podeVerCatalogo) void carregarHistorico(clinicaId);
+  }, [area, aba, clinicaId, podeVerCatalogo]);
 
   async function carregarDados(clinica: string) {
     // Fonte canônica do catálogo: a mesma do PDV e do caixa operacional.
@@ -492,6 +519,27 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
             <button type="button" onClick={() => iniciarCadastro("servico")} className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-semibold"><Plus size={17}/> Adicionar serviço</button>
           </div>}
         </div>
+      )}
+
+      {aba === "historico" && podeVerCatalogo && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-xl font-bold">Histórico de operações</h2><p className="text-sm text-muted-foreground">Movimentações de mercadorias e vendas registradas, em ordem cronológica. As movimentações de estoque são auditadas a partir da ativação deste recurso.</p></div>
+            <button type="button" onClick={() => void carregarHistorico(clinicaId)} disabled={carregandoHistorico} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-50">Atualizar histórico</button>
+          </div>
+          {erroHistorico && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{erroHistorico}</p>}
+          {carregandoHistorico && <p className="text-sm text-muted-foreground">Carregando histórico…</p>}
+          {!carregandoHistorico && <div className="space-y-2">
+            {([
+              ...historicoEstoque.map(m => ({id:"m-"+m.id,data:m.registrado_em,titulo:(m.tipo==="entrada"?"Entrada":"Saída")+" de mercadoria",descricao:m.item_nome+" · "+Number(m.quantidade).toLocaleString("pt-BR",{maximumFractionDigits:3})+" un. · "+Number(m.estoque_anterior).toLocaleString("pt-BR")+" → "+Number(m.estoque_posterior).toLocaleString("pt-BR"),pagamento:"",valor:null as number|null})),
+              ...historicoVendas.map(v => ({id:"v-"+v.id,data:v.registrada_em,titulo:"Venda Expressa",descricao:historicoItensVenda.filter(i=>i.venda_id===v.id).map(i=>i.nome_snapshot+" ("+Number(i.quantidade).toLocaleString("pt-BR",{maximumFractionDigits:3})+")").join(", ") || "Venda registrada",pagamento:v.forma_pagamento,valor:Number(v.valor_centavos)/100 as number|null})),
+            ]).sort((a,b)=>new Date(b.data).getTime()-new Date(a.data).getTime()).map(m=><article key={m.id} className="flex flex-wrap justify-between gap-3 rounded-xl border bg-card p-4">
+              <div><h3 className="font-semibold">{m.titulo}</h3><p className="mt-1 text-sm text-muted-foreground">{m.descricao}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(m.data).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</p></div>
+              {m.valor !== null && <div className="text-right"><strong>{dinheiro(m.valor)}</strong><p className="text-xs text-muted-foreground">Recebimento: {m.pagamento}</p></div>}
+            </article>)}
+            {!historicoEstoque.length && !historicoVendas.length && <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">Nenhuma operação registrada no período disponível.</p>}
+          </div>}
+        </section>
       )}
 
       {aba === "comissoes" && podeVerPagamentos && (
