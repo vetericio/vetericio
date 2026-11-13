@@ -62,6 +62,8 @@ jobs:
         run: node scripts/audit-planos.mjs
       - name: UI audit
         run: node scripts/audit-ui.mjs
+      - name: Inventory all application page routes
+        run: node --check scripts/audit-rotas-performance.mjs && node scripts/audit-rotas-performance.mjs --inventory
       - name: Lint debt report
         continue-on-error: true
         run: npx eslint src --quiet --format json > eslint-report.json
