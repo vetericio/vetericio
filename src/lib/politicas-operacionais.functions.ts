@@ -53,8 +53,8 @@ export const consultarPoliticasAgendaClinica = createServerFn({ method: "POST" }
           p_clinica_id: data.clinicaId, p_user_id: userId,
         });
       if (permissoesError || !Array.isArray(permissoes) ||
-        !permissoes.some((p: any) => ["recepcao.agenda","consultorio.atendimentos","administracao.configuracoes"].includes(p.codigo) && p.permitido === true)) {
-        throw new Error("Sem permissão para acessar a política de agendamentos.");
+        !permissoes.some((p: any) => ["recepcao.agenda","consultorio.atendimentos","administracao.configuracoes","crm.gerenciar"].includes(p.codigo) && p.permitido === true)) {
+        throw new Error("Sem permissão para consultar estas políticas da clínica.");
       }
     }
     const { data: clinica, error: clinicaError } = await supabaseAdmin.from("clinicas")

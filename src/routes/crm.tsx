@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Crm360Panel } from "@/components/Crm360Panel";
+import { CrmModelosDaCentral } from "@/components/CrmModelosDaCentral";
 
 export const Route = createFileRoute("/crm")({ component: Crm });
 
@@ -231,11 +232,17 @@ function renderizar(texto: string, variaveis: Variaveis) {
 }
 
 function canalTutor(tutor: TutorLocal, padrao: CanalCrm): CanalCrm {
+  // Ausência de autorização explícita não libera um canal externo por padrão.
+  const permiteWhatsapp = tutor.autorizaWhatsapp === true && Boolean(tutor.telefone || tutor.outroTelefone);
+  const permiteEmail = tutor.autorizaEmail === true && Boolean(tutor.email);
   const preferencia = String(tutor.contatoPreferencial || "").toLowerCase();
-  if (preferencia.includes("email") && tutor.autorizaEmail !== false && tutor.email) return "email";
-  if (tutor.autorizaWhatsapp !== false && (tutor.telefone || tutor.outroTelefone)) return "whatsapp";
-  if (tutor.autorizaEmail !== false && tutor.email) return "email";
-  return padrao === "whatsapp" && !(tutor.telefone || tutor.outroTelefone) ? "manual" : padrao;
+  if (preferencia.includes("email") && permiteEmail) return "email";
+  if (preferencia.includes("whatsapp") && permiteWhatsapp) return "whatsapp";
+  if (padrao === "whatsapp" && permiteWhatsapp) return "whatsapp";
+  if (padrao === "email" && permiteEmail) return "email";
+  if (permiteWhatsapp) return "whatsapp";
+  if (permiteEmail) return "email";
+  return "manual";
 }
 
 function telefone(tutor: TutorLocal) {
@@ -521,7 +528,15 @@ function Crm() {
   }
 
   function abrirContato(evento: EventoCrm) {
-    if (evento.canal === "email" && evento.email) {
+    if (evento.canal === "manual") {
+      if (!navigator.clipboard?.writeText) return void toast.error("Copie a mensagem manualmente; área de transferência indisponível.");
+      void navigator.clipboard.writeText(evento.mensagem)
+        .then(() => toast.success("Mensagem copiada para revisão. Nenhum contato foi enviado."))
+        .catch(() => toast.error("Não foi possível copiar a mensagem."));
+      return;
+    }
+    if (evento.canal === "email") {
+      if (!evento.email) return void toast.error("Este contato não possui endereço de e-mail.");
       window.location.href = `mailto:${evento.email}?subject=${encodeURIComponent(evento.titulo)}&body=${encodeURIComponent(evento.mensagem)}`;
       return;
     }
@@ -605,6 +620,11 @@ function Crm() {
     </section>}
 
     {aba === "modelos" && <section className="mt-5 grid gap-4 lg:grid-cols-2">
+      {clinicaId && <CrmModelosDaCentral clinicaId={clinicaId} modelos={modelos} podeGerenciar={podeGerenciar}
+        onAtualizados={(alteracoes)=>setModelos(lista=>lista.map(m=>{
+          const encontrado=alteracoes.find(x=>x.id===m.id);
+          return encontrado?{...m,mensagem:encontrado.mensagem}:m;
+        }))}/>}
       {modelos.map((item) => <article key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div><p className="text-xs font-bold uppercase tracking-wider text-primary">{ROTULOS[item.tipo]}</p><h2 className="mt-1 font-black">{item.nome}</h2></div>
@@ -649,7 +669,7 @@ function EventoCard({ evento, podeOperar, salvando, onContato, onStatus }: { eve
       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${evento.status === "enviado" ? "bg-emerald-100 text-emerald-800" : evento.status === "pendente" ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>{evento.status}</span>
     </div>
     {podeOperar && evento.status === "pendente" && <div className="mt-4 flex flex-wrap gap-2">
-      <button type="button" onClick={() => onContato(evento)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">{evento.canal === "email" ? <Mail size={16}/> : <MessageCircle size={16}/>} Abrir {evento.canal === "email" ? "e-mail" : evento.canal === "manual" ? "contato" : "WhatsApp"}</button>
+      <button type="button" onClick={() => onContato(evento)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">{evento.canal === "email" ? <Mail size={16}/> : <MessageCircle size={16}/>} {evento.canal === "manual" ? "Copiar mensagem" : evento.canal === "email" ? "Abrir e-mail" : "Abrir WhatsApp"}</button>
       <button type="button" disabled={salvando} onClick={() => void onStatus(evento, "enviado")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold disabled:opacity-50"><Check size={16}/> Marcar enviado</button>
       <button type="button" disabled={salvando} onClick={() => void onStatus(evento, "ignorado")} className="min-h-10 rounded-xl border px-3 text-sm font-semibold text-muted-foreground disabled:opacity-50">Ignorar</button>
     </div>}
