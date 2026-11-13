@@ -164,9 +164,6 @@
 .portal-area-details[open] { padding-bottom: .75rem; }
 .portal-area-clinic-info { display: grid; gap: .6rem; }
 
-.portal-area-footer { border-top: 1px solid var(--area-line); color: var(--area-muted); font-size: .78rem; }
-.portal-area-footer p { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .85rem; padding-block: 1rem; }
-.portal-area-footer a { font-weight: 650; text-decoration: underline; text-underline-offset: .2em; }
 .portal-area :is(button, a, select, summary, h1):focus-visible {
   outline: 2px solid var(--area-text);
   outline-offset: 3px;

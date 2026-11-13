@@ -2,9 +2,8 @@ import { VERSAO } from "@/lib/versao";
 
 /**
  * Rodapé institucional público, conforme arte aprovada.
- * Exclusivo das páginas de marketing; não altera o rodapé clínico.
  */
-export function RodapeInstitucional() {
+export function RodapeInstitucional({ linkMarca = false }: { linkMarca?: boolean }) {
   return (
     <footer
       aria-label="Informações institucionais do Oricse"
@@ -12,7 +11,11 @@ export function RodapeInstitucional() {
     >
       <div className="mx-auto max-w-5xl text-[13px] leading-[1.55] sm:text-[14px]">
         <p className="mb-2 text-[14px] font-normal text-[#5e4753] sm:text-[15px]">
-          Oricse - Soluções para o mercado pet
+          {linkMarca ? (
+            <a href="https://oricse.com.br" className="underline underline-offset-2">
+              Oricse - Soluções para o mercado pet
+            </a>
+          ) : "Oricse - Soluções para o mercado pet"}
         </p>
         <p>Desenvolvido por:</p>
         <p>DIRCE Tecnologia — Desenvolvimento, Inovação, Resultados, Conectividade e Evolução Tecnologia LTDA.</p>
