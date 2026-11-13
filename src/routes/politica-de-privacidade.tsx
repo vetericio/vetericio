@@ -20,7 +20,8 @@ const SECOES = [
     "items": [
       "Aplica-se a visitantes, interessados, contratantes, responsáveis técnicos, funcionários e usuários autorizados dos estabelecimentos, tutores e outras pessoas cujos dados sejam registrados no sistema.",
       "O tratamento varia conforme os módulos efetivamente utilizados pela empresa contratante. Uma funcionalidade disponível no sistema não significa que todos os estabelecimentos a utilizem.",
-      "Esta Política complementa os Termos de Uso e deve ser lida em conjunto com os avisos e documentos específicos de cada estabelecimento quando existentes."
+      "Esta Política complementa os Termos de Uso e deve ser lida em conjunto com os avisos e documentos específicos de cada estabelecimento quando existentes.",
+      "Esta Política acompanha operações efetivamente realizadas, não a mera existência de funcionalidades no catálogo. Avisos de recursos opcionais poderão complementar as informações, sem permitir coleta incompatível com a finalidade comunicada ou dispensar identificação dos responsáveis."
     ]
   },
   {
@@ -30,7 +31,8 @@ const SECOES = [
     "items": [
       "Oricse - Vetericio Serviços Veterinários LTDA atua, em regra, como controladora dos dados necessários ao seu próprio site, contratação de planos, relacionamento comercial, suporte, administração de contas e segurança da plataforma.",
       "Quando uma clínica, hospital veterinário, profissional domiciliar, hotelzinho ou pet shop registra dados de tutores, clientes, profissionais e atendimentos para sua própria atividade, esse estabelecimento é normalmente o controlador; a Oricse trata tais informações como operadora, de acordo com a contratação e as instruções legítimas recebidas.",
-      "O estabelecimento é responsável por informar seus titulares, definir bases legais, administrar as permissões de sua equipe e avaliar a legitimidade dos dados, documentos e campanhas que cadastra. A classificação dos agentes pode variar conforme a operação concreta."
+      "O estabelecimento é responsável por informar seus titulares, definir bases legais, administrar as permissões de sua equipe e avaliar a legitimidade dos dados, documentos e campanhas que cadastra. A classificação dos agentes pode variar conforme a operação concreta.",
+      "Uma entidade pode desempenhar papéis diferentes conforme a operação. A clínica geralmente decide finalidades de atendimento e relacionamento com tutores; a ORICSE determina finalidades próprias de contratação, segurança e suporte. As responsabilidades precisam ser avaliadas concretamente."
     ]
   },
   {
@@ -44,7 +46,8 @@ const SECOES = [
       "Dados relativos aos animais: identificação, espécie, raça, idade, histórico veterinário, prontuários, anamneses, receitas, exames, evolução, internação, medicações, vacinas, imagens e documentos, quando inseridos no sistema.",
       "Operações do estabelecimento: agendas, reservas, estadias, cuidados em hotelzinho, creche, banho e tosa, estoque, comanda, caixa, relatórios, equipe, horários e tarefas.",
       "Cobranças e contratações: plano, valores, cupons, situação financeira, identificadores de transações e confirmações de pagamento. Dados de pagamento são processados também pelo prestador responsável pelo checkout.",
-      "Comunicações e arquivos: mensagens de suporte, documentos enviados, dados de campanhas e registros das preferências de contato."
+      "Comunicações e arquivos: mensagens de suporte, documentos enviados, dados de campanhas e registros das preferências de contato.",
+      "A coleta varia conforme campos preenchidos, permissões utilizadas e integrações habilitadas. Não se presume que todas as informações relacionadas sejam obrigatórias ou recolhidas de cada pessoa; cada operação deve respeitar os princípios de necessidade e adequação."
     ]
   },
   {
@@ -57,7 +60,8 @@ const SECOES = [
       "Operacionalizar contratação, faturamento, pagamento, confirmação financeira, suporte, cancelamento e prevenção a fraudes.",
       "Manter segurança, prevenir acessos indevidos, diagnosticar falhas, registrar eventos operacionais e assegurar continuidade do serviço.",
       "Permitir comunicações transacionais (por exemplo, informações de agendamento e atendimento) e, quando cabível e legitimamente autorizado, comunicações promocionais de responsabilidade do estabelecimento.",
-      "Atender exigências legais, regulatórias, requisições legítimas e exercício regular de direitos."
+      "Atender exigências legais, regulatórias, requisições legítimas e exercício regular de direitos.",
+      "Informações não devem ser reutilizadas automaticamente para finalidades incompatíveis com sua obtenção. Novos usos, especialmente publicidade ou compartilhamento adicional, exigem análise de base legal, expectativas dos titulares, riscos e eventual transparência complementar."
     ]
   },
   {
@@ -70,7 +74,8 @@ const SECOES = [
       "Legítimo interesse, quando cabível e após avaliação dos direitos e expectativas dos titulares, especialmente para segurança e aperfeiçoamento do serviço.",
       "Exercício regular de direitos em processos judiciais, administrativos ou arbitrais.",
       "Consentimento livre, informado e específico quando a legislação exigir, como em determinadas comunicações opcionais. O consentimento pode ser revogado nos termos da LGPD.",
-      "Quando houver dados pessoais sensíveis de pessoas naturais, aplicam-se as hipóteses e salvaguardas específicas previstas na LGPD. Registros veterinários sobre animais não são, por si sós, dados pessoais sensíveis de seres humanos, mas podem conter dados pessoais dos tutores e profissionais."
+      "Quando houver dados pessoais sensíveis de pessoas naturais, aplicam-se as hipóteses e salvaguardas específicas previstas na LGPD. Registros veterinários sobre animais não são, por si sós, dados pessoais sensíveis de seres humanos, mas podem conter dados pessoais dos tutores e profissionais.",
+      "Bases legais devem corresponder às finalidades concretas, não ser indicadas genericamente para todos os registros. Quando necessário, observar-se-ão as regras específicas de dados pessoais sensíveis, informações de crianças e adolescentes e sigilo profissional."
     ]
   },
   {
@@ -80,7 +85,8 @@ const SECOES = [
     "items": [
       "A clínica define os recursos exibidos aos seus tutores, como dados dos animais, agendamentos, documentos, comprovantes, resultados, comunicados e informações de serviços.",
       "O estabelecimento deve conferir a identidade de quem recebe acesso e verificar se a divulgação de documentos é adequada ao vínculo com o animal e às regras profissionais aplicáveis.",
-      "A Oricse fornece os recursos técnicos do portal, sem substituir as decisões do estabelecimento sobre quais informações devem ser registradas ou compartilhadas."
+      "A Oricse fornece os recursos técnicos do portal, sem substituir as decisões do estabelecimento sobre quais informações devem ser registradas ou compartilhadas.",
+      "Antes de disponibilizar documentos, o estabelecimento deve verificar vínculo, legitimidade e restrições de acesso. Compartilhar uma identidade entre mais de uma clínica não autoriza circulação de prontuários entre estabelecimentos sem finalidade válida e salvaguardas adequadas."
     ]
   },
   {
@@ -91,7 +97,8 @@ const SECOES = [
       "O estabelecimento é responsável por determinar público, conteúdo, fundamento jurídico, frequência e destinatários de suas campanhas.",
       "É necessário respeitar preferências, recusas e pedidos de interrupção de mensagens promocionais, bem como as regras dos canais utilizados.",
       "Dados de atendimento e históricos clínicos não devem ser usados para segmentação publicitária sem avaliação específica de necessidade, proporcionalidade, base legal e confidencialidade.",
-      "Comunicações indispensáveis ao atendimento ou à execução de um contrato podem ter natureza distinta de publicidade e devem ser identificadas adequadamente."
+      "Comunicações indispensáveis ao atendimento ou à execução de um contrato podem ter natureza distinta de publicidade e devem ser identificadas adequadamente.",
+      "As preferências de comunicação devem diferenciar mensagens essenciais dos conteúdos promocionais. Oposição e descadastramento legítimos precisam ser respeitados pelos agentes responsáveis, mesmo quando campanhas utilizarem canais e serviços de envio contratados de terceiros."
     ]
   },
   {
@@ -102,7 +109,8 @@ const SECOES = [
       "Informações de pedido, valores, ciclo contratado, identificação do pagador e situação do pagamento podem ser utilizadas para registrar e conciliar cobranças.",
       "Quando o checkout envolver prestador financeiro independente, o processamento de transações poderá estar sujeito a avisos de privacidade próprios desse prestador, conforme seu papel na operação, sem afastar os direitos dos titulares.",
       "A confirmação de uma cobrança não implica acesso irrestrito aos dados financeiros: consultas e permissões devem corresponder à função do usuário e à necessidade operacional.",
-      "A ativação de planos e funcionalidades depende das regras de contratação e da confirmação financeira aplicável."
+      "A ativação de planos e funcionalidades depende das regras de contratação e da confirmação financeira aplicável.",
+      "Operações de estorno, fraude e verificação de identidade podem demandar tratamentos próprios de instituições financeiras. A ORICSE deve distinguir seus registros dos dados controlados autonomamente por intermediadores e assegurar acesso proporcional às funções operacionais."
     ]
   },
   {
@@ -113,7 +121,8 @@ const SECOES = [
       "Podemos utilizar prestadores terceirizados de hospedagem, infraestrutura, execução e proteção da aplicação, banco de dados, armazenamento, autenticação, processamento de arquivos e monitoramento, conforme os recursos efetivamente utilizados.",
       "Integrações de armazenamento e sincronização, e-mail, mensageria, mapas e serviços financeiros podem ser utilizadas conforme a configuração do estabelecimento e as funcionalidades efetivamente ativadas.",
       "Dados podem ser fornecidos a autoridades mediante obrigação legal ou requisição válida, observados os requisitos aplicáveis.",
-      "Não declaramos que todos esses serviços tratam os dados de todos os clientes. O fluxo efetivo varia de acordo com as integrações e configurações em uso."
+      "Não declaramos que todos esses serviços tratam os dados de todos os clientes. O fluxo efetivo varia de acordo com as integrações e configurações em uso.",
+      "Cada compartilhamento deve ser avaliado quanto à finalidade, categoria de dado, necessidade, autorização e papel do destinatário. A contratação de infraestrutura não permite acesso indiscriminado a informações clínicas nem tratamento alheio às instruções e deveres cabíveis."
     ]
   },
   {
@@ -122,7 +131,8 @@ const SECOES = [
     "intro": "O uso de provedores globais pode envolver armazenamento, acesso ou processamento em outros países.",
     "items": [
       "Sempre que uma operação configurar transferência internacional de dados pessoais, deverão ser observadas as hipóteses legais e as salvaguardas aplicáveis previstas na LGPD e na regulamentação da ANPD.",
-      "O local de processamento e o mecanismo jurídico utilizado dependem do serviço contratado, de sua configuração e dos instrumentos aplicáveis com os fornecedores."
+      "O local de processamento e o mecanismo jurídico utilizado dependem do serviço contratado, de sua configuração e dos instrumentos aplicáveis com os fornecedores.",
+      "Regiões de armazenamento no exterior e acessos remotos internacionais exigem análise jurídica conforme a operação. Quando a regulamentação determinar, serão disponibilizadas informações concretas sobre destinos, finalidades, destinatários, mecanismos de transferência e exercício de direitos."
     ]
   },
   {
@@ -132,7 +142,8 @@ const SECOES = [
     "items": [
       "Entre os controles relevantes estão autenticação, permissões por perfil, mecanismos de restrição de acesso e registros técnicos de segurança, de acordo com os recursos configurados.",
       "Contratantes devem proteger suas credenciais, administrar o acesso de sua equipe, revisar permissões e informar prontamente suspeitas de acesso indevido.",
-      "Nenhum ambiente digital está isento de riscos. Eventos de segurança serão avaliados e tratados conforme a gravidade, as responsabilidades dos agentes e as obrigações de comunicação aplicáveis."
+      "Nenhum ambiente digital está isento de riscos. Eventos de segurança serão avaliados e tratados conforme a gravidade, as responsabilidades dos agentes e as obrigações de comunicação aplicáveis.",
+      "Controles de segurança devem acompanhar a natureza dos registros, o volume tratado e as permissões dos usuários. Incidentes serão avaliados com identificação de impactos, medidas de contenção, documentação e eventual comunicação pelo agente legalmente responsável."
     ]
   },
   {
@@ -143,7 +154,8 @@ const SECOES = [
       "Os períodos podem variar entre dados cadastrais, faturamento, registros técnicos, documentos clínicos e informações operacionais dos estabelecimentos.",
       "O encerramento do contrato não significa exclusão automática e imediata de todos os registros, pois podem existir obrigações de conservação, prevenção a fraudes, exercício de direitos ou necessidades de exportação previstas no contrato.",
       "Pedidos de correção, exportação ou eliminação serão examinados segundo a natureza do dado, o papel de cada agente e as hipóteses legais de retenção.",
-      "Cópias de segurança podem seguir ciclos próprios de retenção e substituição, respeitadas as obrigações aplicáveis."
+      "Cópias de segurança podem seguir ciclos próprios de retenção e substituição, respeitadas as obrigações aplicáveis.",
+      "A eliminação considera conservação clínica e fiscal, necessidades de prova e ciclos de cópias de segurança. Dados retirados do ambiente principal poderão persistir temporariamente em processos de recuperação quando houver justificativa legítima e proteção compatível."
     ]
   },
   {
@@ -157,7 +169,8 @@ const SECOES = [
       "Solicitar portabilidade, informações sobre compartilhamentos e sobre a possibilidade de não fornecer consentimento.",
       "Revogar consentimento e solicitar eliminação dos dados tratados com base nessa hipótese, ressalvadas as hipóteses legais de conservação.",
       "Solicitar revisão de decisões tomadas unicamente com base em tratamento automatizado, quando previstas em lei, e apresentar reclamação à ANPD.",
-      "Quando o pedido se refere a dados inseridos por uma clínica ou pet shop, o primeiro contato deverá ser, em regra, com o estabelecimento responsável, sem prejuízo do apoio técnico da Oricse."
+      "Quando o pedido se refere a dados inseridos por uma clínica ou pet shop, o primeiro contato deverá ser, em regra, com o estabelecimento responsável, sem prejuízo do apoio técnico da Oricse.",
+      "Pedidos de titulares devem contar com canal acessível e tratamento compatível com a legislação. Quando atuar como operadora, a ORICSE poderá encaminhar solicitações à clínica controladora e cooperar tecnicamente, sem negar direitos previstos na LGPD."
     ]
   },
   {
@@ -167,7 +180,9 @@ const SECOES = [
     "items": [
       "Recursos estritamente necessários podem viabilizar autenticação, segurança, continuidade da sessão e configuração de funcionalidades.",
       "Caso sejam adotadas tecnologias analíticas ou publicitárias não essenciais, elas deverão ser informadas de maneira adequada e submetidas aos mecanismos de escolha exigidos pelas regras aplicáveis.",
-      "O titular também pode administrar determinadas preferências no navegador, observando que a desativação de recursos necessários pode prejudicar o uso do sistema."
+      "O titular também pode administrar determinadas preferências no navegador, observando que a desativação de recursos necessários pode prejudicar o uso do sistema.",
+      "Cookies essenciais e tecnologias facultativas de análise, publicidade ou personalização possuem finalidades diferentes. Quando exigido, deverão existir informações adequadas e meios apropriados de escolha, sem induzir o usuário à aceitação de recursos não necessários.",
+      "A escolha sobre cookies facultativos, quando disponibilizada, deverá ser respeitada nas visitas posteriores conforme as capacidades técnicas e as exigências legais. A retirada da autorização não altera a legitimidade de tratamentos já realizados anteriormente."
     ]
   },
   {
@@ -176,7 +191,9 @@ const SECOES = [
     "intro": "O ORICSE não foi desenvolvido como rede social infantil. Todavia, os registros profissionais podem envolver dados de responsáveis e, em situações específicas, de menores.",
     "items": [
       "Quando dados pessoais de crianças ou adolescentes forem inseridos, o estabelecimento deverá avaliar o melhor interesse do titular e observar os requisitos legais aplicáveis.",
-      "Representantes legais podem exercer direitos conforme a legislação, mediante verificação adequada de legitimidade."
+      "Representantes legais podem exercer direitos conforme a legislação, mediante verificação adequada de legitimidade.",
+      "O tratamento de informações de menores deve observar seu melhor interesse e as condições legais aplicáveis. Representação, consentimento quando necessário e limites de divulgação precisam ser analisados segundo a finalidade concreta e a legitimidade do solicitante.",
+      "Caso o estabelecimento registre menores como tutores, acompanhantes ou representantes, deverá limitar a coleta ao necessário e verificar a legitimidade do responsável, evitando exposição indevida de dados por notificações ou documentos compartilhados."
     ]
   },
   {
@@ -188,7 +205,8 @@ const SECOES = [
       "Para facilitar a análise, descreva sua relação com o ORICSE, o estabelecimento envolvido (se houver) e o direito que deseja exercer. Não envie senhas ou documentos desnecessários no primeiro contato.",
       "A identidade do solicitante poderá ser verificada de forma proporcional para evitar acesso indevido a dados de terceiros.",
       "Quando a solicitação for relativa a dados de tutores e pacientes administrados por um estabelecimento, orientaremos, quando possível, o encaminhamento ao controlador responsável.",
-      "A Oricse - Vetericio Serviços Veterinários LTDA está identificada pelo CNPJ 67.099.538/0001-76, com cadastro localizado em Belo Horizonte/MG, bairro Maria Helena, Rua Tenente Marino Freire, CEP 31680-120. O número do imóvel ainda depende de conferência com o comprovante cadastral oficial."
+      "A Oricse - Vetericio Serviços Veterinários LTDA está identificada pelo CNPJ 67.099.538/0001-76, com cadastro localizado em Belo Horizonte/MG, bairro Maria Helena, Rua Tenente Marino Freire, CEP 31680-120. O número do imóvel ainda depende de conferência com o comprovante cadastral oficial.",
+      "O canal de privacidade pode solicitar confirmação proporcional de identidade para evitar acesso indevido. Recomenda-se ao titular indicar a clínica relacionada ao pedido, quando pertinente, sem encaminhar senhas ou documentos desnecessários por mensagens eletrônicas."
     ]
   },
   {
@@ -198,7 +216,8 @@ const SECOES = [
     "items": [
       "A versão vigente ficará disponível nesta página, com indicação da data da atualização.",
       "Alterações materialmente relevantes serão comunicadas por meios apropriados, conforme as circunstâncias e a legislação aplicável.",
-      "Solicitações de esclarecimento, acesso, correção e demais direitos podem ser dirigidas ao canal de privacidade informado nesta Política."
+      "Solicitações de esclarecimento, acesso, correção e demais direitos podem ser dirigidas ao canal de privacidade informado nesta Política.",
+      "Alterações relevantes de finalidade, categorias, compartilhamentos ou procedimentos devem ser comunicadas adequadamente. A versão vigente e sua data precisam estar identificáveis, sem presumir aceite tácito para novos tratamentos dependentes de manifestação específica."
     ]
   },
   {
@@ -210,7 +229,8 @@ const SECOES = [
     "O compartilhamento observa finalidade, necessidade, base legal e obrigações contratuais adequadas. Alguns prestadores, sobretudo os financeiros, podem ser controladores independentes de tratamentos próprios e disponibilizar avisos de privacidade específicos.",
     "Permissões de integração, contratos e licenças de terceiros podem mudar ou terminar, afetando o funcionamento de módulos. A ORICSE avaliará impactos sobre o tratamento de dados e implementará medidas de mitigação e comunicação cabíveis.",
     "A classificação de operador, suboperador ou controlador depende da atividade concreta, não apenas da contratação de infraestrutura. A terceirização não afasta as responsabilidades legais próprias da ORICSE.",
-    "A identidade de destinatários e as informações específicas exigidas pela LGPD serão disponibilizadas conforme a obrigação legal aplicável, por transparência direta ou pelo canal de privacidade indicado; o uso de descrições por categoria não substitui divulgações legalmente obrigatórias."
+    "A identidade de destinatários e as informações específicas exigidas pela LGPD serão disponibilizadas conforme a obrigação legal aplicável, por transparência direta ou pelo canal de privacidade indicado; o uso de descrições por categoria não substitui divulgações legalmente obrigatórias.",
+    "Subcontratações de infraestrutura, suporte e integração podem envolver subprocessadores. Quando aplicável, contratos e controles internos deverão disciplinar confidencialidade, segurança, instruções, incidentes e cooperação, conforme os papéis reais e as operações executadas."
   ]
 },
   {
@@ -222,7 +242,8 @@ const SECOES = [
     "Transferências internacionais devem observar as hipóteses da LGPD, a regulamentação da ANPD e salvaguardas efetivamente adotadas, como cláusulas contratuais adequadas quando cabíveis. Uma referência genérica a fornecedores globais não substitui informação específica obrigatória.",
     "Incidentes serão avaliados, contidos, registrados e comunicados aos agentes responsáveis, titulares e autoridade competente quando exigido, segundo risco e prazos legais.",
     "Requisições de acesso, correção, eliminação e portabilidade poderão exigir atuação do controlador do estabelecimento, com cooperação técnica da ORICSE quando esta atuar como operadora.",
-    "Restrições de retenção, obrigações profissionais e cópias técnicas de segurança podem impedir eliminação instantânea de todos os dados. A restauração estará sujeita às possibilidades técnicas e às salvaguardas existentes."
+    "Restrições de retenção, obrigações profissionais e cópias técnicas de segurança podem impedir eliminação instantânea de todos os dados. A restauração estará sujeita às possibilidades técnicas e às salvaguardas existentes.",
+    "Incidentes não se limitam a acessos indevidos: perdas, alterações, divulgação não autorizada e indisponibilidade prejudicial também podem exigir investigação. Prazos e destinatários de comunicação dependem da legislação, da gravidade e das responsabilidades concretas de cada agente."
   ]
 },
   {
@@ -234,17 +255,19 @@ const SECOES = [
     "Vendas, orçamento, produtos, estoque e caixa podem tratar identificadores de transações, dados comerciais, informações de pagamento, registros de atendimento, comprovantes e dados necessários à execução contratual, fiscalização ou contabilidade.",
     "Hotelzinho, creche e banho e tosa podem envolver reservas, estadias, informações de contato, cuidados indicados pelos responsáveis e comunicações da rotina do animal.",
     "Gestão de funcionários, perfis, autorizações, escalas, jornadas e comissões podem tratar dados identificadores, profissionais, de acesso e de atividade. O estabelecimento normalmente define as finalidades trabalhistas.",
-    "Sites personalizados, CRM, campanhas, atendimento, demonstração e programas beta podem envolver cadastros, contatos, preferências, mensagens, consentimentos quando exigidos e registros de relacionamento."
+    "Sites personalizados, CRM, campanhas, atendimento, demonstração e programas beta podem envolver cadastros, contatos, preferências, mensagens, consentimentos quando exigidos e registros de relacionamento.",
+    "Campos clínicos e administrativos podem reunir dados de animais e informações pessoais de seres humanos. A LGPD protege dados de tutores, profissionais e representantes mesmo quando incluídos em documentos voltados ao cuidado veterinário."
   ]
 },
   {
-  "id": "pagamentos",
+  "id": "pagamentos-secao-21",
   "title": "21. OricsePay e fluxos financeiros",
   "intro": "Os recursos financeiros podem envolver prestadores independentes de pagamento e tratamento de dados para cumprimento de obrigações próprias.",
   "items": [
     "Dados sobre pagadores, estabelecimentos, recebedores, cobranças, valores, taxas, repasses, antecipações, identificadores de transação, chargebacks e conciliações poderão ser tratados conforme os recursos efetivamente habilitados.",
     "Prestadores financeiros podem atuar como controladores independentes para prevenção a fraude, identificação, compliance e execução das transações, observadas suas próprias obrigações e avisos de privacidade.",
-    "A ORICSE utilizará dados financeiros segundo necessidade, base legal e controles de acesso; não pressupõe acesso irrestrito a cartões ou informações bancárias completas apenas por oferecer interface tecnológica."
+    "A ORICSE utilizará dados financeiros segundo necessidade, base legal e controles de acesso; não pressupõe acesso irrestrito a cartões ou informações bancárias completas apenas por oferecer interface tecnológica.",
+    "Registros financeiros devem ser acessados por perfis com necessidade legítima e controles proporcionais. Contestação, fraude e análise de recebimentos podem envolver conservação específica e obrigações regulatórias dos participantes de cada transação."
   ]
 },
   {
@@ -255,17 +278,19 @@ const SECOES = [
     "Conforme a integração e as permissões concedidas, podem ser tratados identificadores de contas, credenciais técnicas ou tokens, conteúdos enviados, mídias, agenda de publicações, mensagens, comentários, métricas e registros de auditoria.",
     "Os dados de contas externas serão utilizados para as funções solicitadas, sujeito às permissões e políticas das plataformas; desconexão, expiração de autorização ou alterações externas podem reduzir os recursos disponíveis.",
     "Quando houver recursos de criação assistida ou inteligência artificial, seu uso, os dados enviados, os fornecedores participantes e as opções de configuração deverão ser informados de modo apropriado antes do processamento, observadas as bases legais e restrições aplicáveis.",
-    "Conteúdos clínicos, informações de tutores ou outros dados confidenciais não deverão ser reutilizados para publicidade ou treinamento de ferramentas externas sem fundamento jurídico e salvaguardas apropriadas."
+    "Conteúdos clínicos, informações de tutores ou outros dados confidenciais não deverão ser reutilizados para publicidade ou treinamento de ferramentas externas sem fundamento jurídico e salvaguardas apropriadas.",
+    "Tokens de contas conectadas exigem proteção técnica e acesso restrito. Métricas, mensagens e comentários fornecidos por redes externas não se tornam automaticamente utilizáveis para qualquer outra finalidade, especialmente publicidade desvinculada da autorização original."
   ]
 },
   {
-  "id": "portal",
+  "id": "portal-secao-23",
   "title": "23. Identidade, acesso multiclínica e Portal do Tutor",
   "intro": "O vínculo de uma pessoa a mais de um estabelecimento não autoriza o compartilhamento automático de seus registros entre clínicas.",
   "items": [
     "Identificadores comuns necessários à autenticação e à identificação do tutor podem coexistir com acervos específicos de cada estabelecimento, sujeitos a segregação lógica e controles de acesso apropriados.",
     "A divulgação de prontuários, exames, receitas, comprovantes e outros documentos pressupõe validação de vínculo e legitimidade do acesso. Os controladores devem orientar correções e reclamações relacionadas aos dados de sua responsabilidade.",
-    "Ambientes de demonstração devem utilizar dados fictícios ou devidamente autorizados e permanecer separados de dados reais e credenciais produtivas."
+    "Ambientes de demonstração devem utilizar dados fictícios ou devidamente autorizados e permanecer separados de dados reais e credenciais produtivas.",
+    "Quando um tutor possui animais em estabelecimentos diferentes, cada clínica conserva controle de seus registros. Compartilhamentos e exportações devem verificar vínculos entre tutor, animal e estabelecimento, prevenindo exposição de dados de terceiros."
   ]
 },
   {
@@ -275,7 +300,8 @@ const SECOES = [
   "items": [
     "Prontuários e documentos clínicos, registros financeiros e fiscais, contratos, provas de aceite, comunicações, logs de segurança e conteúdos de campanha podem ter períodos de guarda distintos, sujeitos a fundamentação e avaliação própria.",
     "Ao encerrar contrato ou desabilitar integração, o controlador deverá avaliar exportação, conservação obrigatória, descarte seguro e eventual manutenção temporária em cópias de segurança, observados prazos e direitos aplicáveis.",
-    "As solicitações de titulares serão atendidas pelo controlador competente, com cooperação da ORICSE como operadora quando couber; eventual impossibilidade de eliminação imediata será justificada pela base legal ou obrigação pertinente."
+    "As solicitações de titulares serão atendidas pelo controlador competente, com cooperação da ORICSE como operadora quando couber; eventual impossibilidade de eliminação imediata será justificada pela base legal ou obrigação pertinente.",
+    "Logs e registros de aceite podem ser necessários para auditoria, segurança e defesa de direitos, enquanto prontuários e documentos fiscais possuem deveres distintos. Prazos de retenção devem considerar finalidade, base legal e necessidade de cada categoria."
   ]
 },
   {
@@ -286,18 +312,20 @@ const SECOES = [
     "Categorias de fornecedores podem incluir hospedagem, infraestrutura, banco de dados, autenticação, segurança, armazenamento, processamento documental, comunicação, canais sociais, serviços financeiros e suporte.",
     "Informações concretas sobre transferências internacionais, inclusive destinos, mecanismos jurídicos e destinatários, devem ser documentadas e divulgadas de forma destacada quando exigidas pela regulamentação, não bastando referência genérica a provedores globais.",
     "Licenças e permissões externas podem ser limitadas, alteradas ou suspensas; mudanças que afetem tratamento de dados serão avaliadas e comunicadas conforme a legislação. A contratação de terceiros não exclui os deveres legais da ORICSE.",
-    "Conforme a configuração do serviço, titulares podem solicitar informações sobre compartilhamentos e sobre suas operações de tratamento pelo canal oficial de privacidade."
+    "Conforme a configuração do serviço, titulares podem solicitar informações sobre compartilhamentos e sobre suas operações de tratamento pelo canal oficial de privacidade.",
+    "A transparência internacional não se satisfaz apenas com declaração genérica de utilização de infraestrutura global. Quando exigível, os detalhes do destino, da finalidade e do mecanismo jurídico empregado serão disponibilizados nos termos da regulamentação aplicável."
   ]
 },
   {
-  "id": "direitos",
+  "id": "direitos-secao-26",
   "title": "26. Direitos, segurança e comunicação de incidentes",
   "intro": "O tratamento respeitará direitos dos titulares e deveres de prevenção, resposta e transparência previstos na legislação.",
   "items": [
     "São observados os direitos de confirmação de tratamento, acesso, correção, anonimização, bloqueio, eliminação quando cabível, portabilidade nos termos regulatórios, informação sobre compartilhamento, oposição e revisão de decisões automatizadas quando aplicável.",
     "Pedidos poderão exigir verificação proporcional de identidade e encaminhamento à clínica controladora, quando esta determinar a finalidade da operação; a ORICSE prestará cooperação compatível com seu papel.",
     "Eventos de segurança serão avaliados conforme gravidade e risco, com medidas de contenção, investigação, registros e comunicações à autoridade e aos titulares nos casos legalmente exigidos.",
-    "Os direitos previstos na LGPD não são renunciados por aceite eletrônico, contratação de módulos ou utilização do Portal do Tutor."
+    "Os direitos previstos na LGPD não são renunciados por aceite eletrônico, contratação de módulos ou utilização do Portal do Tutor.",
+    "Quando um incidente puder ocasionar risco ou dano relevante, comunicações à autoridade e aos titulares observarão responsabilidades do controlador e prazos regulatórios. A avaliação deverá ser documentada e as informações fornecidas de modo claro e acessível."
   ]
 }
 ] as const;
@@ -320,7 +348,7 @@ function PoliticaDePrivacidade() {
           <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.19em] text-[#EED8DF]"><ShieldCheck size={17}/> Transparência, segurança e respeito aos seus dados</p>
           <h1 className="mt-5 max-w-3xl font-display text-4xl font-semibold tracking-tight sm:text-5xl">Política de Privacidade e Proteção de Dados</h1>
           <p className="mt-5 max-w-3xl text-base leading-8 text-[#F0DBE2]">Esta página explica, de maneira clara e responsável, como tratamos informações pessoais no ecossistema Oricse, o papel dos estabelecimentos que usam a plataforma e como você pode exercer seus direitos.</p>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Lei Geral de Proteção de Dados — LGPD</span><span className="rounded-full border border-white/25 px-4 py-2">Atualizada em 02/11/2026</span></div>
+          <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Lei Geral de Proteção de Dados — LGPD</span><span className="rounded-full border border-white/25 px-4 py-2">Atualizada em 13/11/2026</span></div>
         </div>
       </section>
 
