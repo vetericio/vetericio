@@ -1,3 +1,4 @@
+import { credencialSenhaPortal, orientacaoSenhaPortal, senhaPortalValida, versaoSenhaPortal } from "../_shared/portal-password.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -23,7 +24,6 @@ const corsBase = {
 };
 function normalizarUsuario(valor:unknown){return String(valor??"").trim().replace(/^@+/,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9._-]+/g,".").replace(/\.{2,}/g,".").replace(/^\.+|\.+$/g,"");}
 async function sha256Hex(valor:string){const bytes=new TextEncoder().encode(valor);const hash=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");}
-function senhaForte(senha:string){return senha.length>=12&&senha.length<=128&&/[a-z]/.test(senha)&&/[A-Z]/.test(senha)&&/\d/.test(senha)&&/[^A-Za-z0-9]/.test(senha);}
 
 Deno.serve(async(req)=>{
   const cors={...corsBase,"Access-Control-Allow-Origin":origemAutorizada(req),"Content-Type":"application/json"};
@@ -38,7 +38,7 @@ Deno.serve(async(req)=>{
     const codigoCurto=/^[A-Z]{2}[0-9]{2}$/i.test(token);
     const senha=String(payload?.senha??"");
     if(!slug||usuarioChave.length<3||(!codigoCurto&&!/^[0-9a-f]{48}$/i.test(token)))return resposta({error:"Informe o usuário e o código de ativação enviado pela clínica."},400);
-    if(!senhaForte(senha))return resposta({error:"Crie uma senha de 12 a 128 caracteres com maiúscula, minúscula, número e símbolo."},400);
+    if(!senhaPortalValida(senha))return resposta({error:orientacaoSenhaPortal},400);
 
     const url=Deno.env.get("SUPABASE_URL")!;
     const admin=createClient(url,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -65,7 +65,7 @@ Deno.serve(async(req)=>{
     }
 
     const emailInterno=`portal+${portal.id}@auth.oricse.local`;
-    const {data:criado,error:erroCriar}=await admin.auth.admin.createUser({email:emailInterno,password:senha,email_confirm:true,app_metadata:{oricse_portal_tutor:true,clinica_id:portal.clinica_id,tutor_id:portal.tutor_id}});
+    const {data:criado,error:erroCriar}=await admin.auth.admin.createUser({email:emailInterno,password:await credencialSenhaPortal(senha,portal.id),email_confirm:true,app_metadata:{oricse_portal_tutor:true,oricse_versao_senha_portal:versaoSenhaPortal,clinica_id:portal.clinica_id,tutor_id:portal.tutor_id}});
     if(erroCriar||!criado.user)return resposta({error:"Não foi possível ativar o acesso agora."},500);
 
     const authUserId=criado.user.id;
