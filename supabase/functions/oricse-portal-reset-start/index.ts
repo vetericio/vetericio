@@ -47,10 +47,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return resposta({ ok: false, error: "Método não permitido." }, 405);
 
   try {
-    const { slug, cpf, nascimento } = await req.json();
+    const { slug, usuario, cpf, nascimento } = await req.json();
     const clinicaSlug = String(slug ?? "").trim().toLowerCase();
     const cpfNormalizado = cpfDigitos(cpf);
     const nascimentoNormalizado = dataIso(nascimento);
+    // Clientes anteriores continuam usando CPF e nascimento durante a atualização.
+    const usuarioChave = typeof usuario === "string" ? usuario.trim().replace(/^@/, "").toLowerCase() : "";
+    if (usuario !== undefined && !/^[a-z0-9][a-z0-9._-]{2,63}$/.test(usuarioChave)) return falha();
     if (!clinicaSlug || cpfNormalizado.length !== 11 || !nascimentoNormalizado) return falha();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -91,13 +94,13 @@ Deno.serve(async (req) => {
 
     const { data: portal } = await admin
       .from("oricse_portal_tutores")
-      .select("id,auth_user_id")
+      .select("id,auth_user_id,usuario_chave")
       .eq("clinica_id", clinica.id)
       .eq("tutor_id", tutor.id)
       .eq("ativo", true)
       .not("auth_user_id", "is", null)
       .maybeSingle();
-    if (!portal?.auth_user_id) return falha();
+    if (!portal?.auth_user_id || (usuarioChave && portal.usuario_chave !== usuarioChave)) return falha();
 
     const { count } = await admin
       .from("oricse_portal_redefinicoes_senha")
