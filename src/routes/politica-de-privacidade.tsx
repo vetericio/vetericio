@@ -184,7 +184,7 @@ const SECOES = [
     "title": "16. Como falar conosco e exercer seus direitos",
     "intro": "Para questões relacionadas à plataforma, à contratação e aos tratamentos sob responsabilidade da Oricse, utilize o canal indicado abaixo.",
     "items": [
-      "E-mail de contato: vetericio@gmail.com. No assunto, informe “Privacidade e proteção de dados — Oricse”.",
+      "E-mail de contato: atendimento@oricse.com.br. No assunto, informe “Privacidade e proteção de dados — Oricse”.",
       "Para facilitar a análise, descreva sua relação com o ORICSE, o estabelecimento envolvido (se houver) e o direito que deseja exercer. Não envie senhas ou documentos desnecessários no primeiro contato.",
       "A identidade do solicitante poderá ser verificada de forma proporcional para evitar acesso indevido a dados de terceiros.",
       "Quando a solicitação for relativa a dados de tutores e pacientes administrados por um estabelecimento, orientaremos, quando possível, o encaminhamento ao controlador responsável.",
@@ -256,7 +256,7 @@ function PoliticaDePrivacidade() {
             <h2 className="mt-2 text-lg font-bold">{EMPRESA}</h2><p className="mt-1 text-sm font-semibold text-[#703047]">CNPJ: {CNPJ_EMPRESA}</p><p className="mt-1 text-sm text-[#78666C]">Endereço cadastral identificado: {ENDERECO_EMPRESA} (número sujeito à conferência).</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-[#78666C]">Este documento diferencia os tratamentos realizados pela Oricse e aqueles realizados pelos estabelecimentos que utilizam seus serviços.</p>
           </div>
-          <a href="mailto:vetericio@gmail.com?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#DCC7D0] px-5 py-3 text-sm font-bold text-[#703047] hover:bg-[#FBF4F7]"><Mail size={17}/> Falar sobre privacidade <ArrowUpRight size={15}/></a>
+          <a href="mailto:atendimento@oricse.com.br?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#DCC7D0] px-5 py-3 text-sm font-bold text-[#703047] hover:bg-[#FBF4F7]"><Mail size={17}/> Falar sobre privacidade <ArrowUpRight size={15}/></a>
         </section>
 
         <div className="grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
@@ -283,7 +283,7 @@ function PoliticaDePrivacidade() {
               <p className="text-xs font-bold uppercase tracking-widest text-white/70">Canal de contato</p>
               <h2 className="mt-3 font-display text-2xl font-bold">Fale com a Oricse</h2>
               <p className="mt-2 text-sm leading-7 text-white/80">Dúvidas, solicitações e pedidos relacionados à privacidade e ao tratamento de dados pessoais podem ser encaminhados pelo canal abaixo.</p>
-              <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:vetericio@gmail.com?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse"><Mail size={18}/> vetericio@gmail.com <ArrowUpRight size={16}/></a>
+              <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:atendimento@oricse.com.br?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse"><Mail size={18}/> atendimento@oricse.com.br <ArrowUpRight size={16}/></a>
             </div>
             <p className="mt-6 text-xs leading-6 text-[#8A747D]">Para informações específicas sobre destinatários, fornecedores e transferências internacionais, utilize o canal de privacidade indicado. A transparência legalmente exigida será observada em cada operação.</p>
           </article>

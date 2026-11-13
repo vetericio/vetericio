@@ -217,7 +217,7 @@ const SECOES = [
     "title": "20. Atendimento, identificação e disposições finais",
     "intro": "Solicitações de suporte, contratação, cancelamento ou esclarecimentos poderão ser encaminhadas à Oricse - Vetericio Serviços Veterinários LTDA pelo contato oficial.",
     "items": [
-      "E-mail: vetericio@gmail.com. Para facilitar o atendimento, informe o estabelecimento, o assunto e o número da solicitação, caso disponível.",
+      "E-mail: atendimento@oricse.com.br. Para facilitar o atendimento, informe o estabelecimento, o assunto e o número da solicitação, caso disponível.",
       "Nome empresarial: Vetericio Serviços Veterinários LTDA; CNPJ: 67.099.538/0001-76; localização cadastral identificada: Rua Tenente Marino Freire, bairro Maria Helena, Belo Horizonte/MG, CEP 31680-120 (número do imóvel pendente de confirmação).",
       "Eventuais controvérsias serão tratadas preferencialmente pelos canais de atendimento e por meios adequados de solução, sem afastar o foro competente e as proteções obrigatórias previstas na legislação.",
       "Condições comerciais e documentos complementares efetivamente aceitos integram a relação contratual conforme a lei; eventuais divergências devem ser apuradas pelos canais oficiais."
@@ -275,7 +275,7 @@ function TermosDeUso() {
       <p className="mt-1 text-sm font-semibold text-[#703047]">CNPJ: {CNPJ_EMPRESA}</p>
       <p className="mt-1 text-sm leading-6 text-[#78666C]">Endereço cadastral identificado: {ENDERECO_EMPRESA} (número sujeito à conferência).</p>
      </div>
-     <a href="mailto:vetericio@gmail.com?subject=Termos%20de%20Uso%20e%20Contrata%C3%A7%C3%A3o%20%E2%80%94%20Oricse" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#DCC7D0] px-5 py-3 text-sm font-bold text-[#703047] hover:bg-[#FBF4F7]"><Mail size={17}/> Falar com a Oricse <ArrowUpRight size={15}/></a>
+     <a href="mailto:atendimento@oricse.com.br?subject=Termos%20de%20Uso%20e%20Contrata%C3%A7%C3%A3o%20%E2%80%94%20Oricse" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#DCC7D0] px-5 py-3 text-sm font-bold text-[#703047] hover:bg-[#FBF4F7]"><Mail size={17}/> Falar com a Oricse <ArrowUpRight size={15}/></a>
     </section>
     <div className="grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
      <aside className="rounded-2xl border border-[#E8D9DE] bg-white p-5 lg:sticky lg:top-5">
@@ -296,7 +296,7 @@ function TermosDeUso() {
        <p className="text-xs font-bold uppercase tracking-widest text-white/70">Atendimento e contratações</p>
        <h2 className="mt-3 font-display text-2xl font-bold">Fale com a Oricse</h2>
        <p className="mt-2 text-sm leading-7 text-white/80">Para dúvidas comerciais, solicitações, cancelamento e esclarecimentos sobre estes Termos, entre em contato.</p>
-       <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:vetericio@gmail.com?subject=Termos%20de%20Uso%20e%20Contrata%C3%A7%C3%A3o%20%E2%80%94%20Oricse"><Mail size={18}/> vetericio@gmail.com <ArrowUpRight size={16}/></a>
+       <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:atendimento@oricse.com.br?subject=Termos%20de%20Uso%20e%20Contrata%C3%A7%C3%A3o%20%E2%80%94%20Oricse"><Mail size={18}/> atendimento@oricse.com.br <ArrowUpRight size={16}/></a>
       </div>
       <p className="mt-6 text-xs leading-6 text-[#8A747D]">Para informações complementares sobre condições comerciais e tratamento de dados, utilize os canais oficiais de atendimento.</p>
      </article>
