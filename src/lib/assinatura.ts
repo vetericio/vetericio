@@ -1,4 +1,5 @@
 import { supabaseBanco } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 
 export type TipoSelo = "assinatura" | "carimbo";
 
@@ -21,9 +22,8 @@ export async function gravarSelo(tipo: TipoSelo, dataUrl: string | null) {
   if (dataUrl && (!dataUrl.startsWith("data:image/png;base64,") || dataUrl.length > 6_000_000)) {
     throw new Error("Use uma imagem menor para a assinatura ou o carimbo.");
   }
-  const selo = tipo === "assinatura"
-    ? { user_id: userId, assinatura: dataUrl }
-    : { user_id: userId, carimbo: dataUrl };
+  const selo: TablesInsert<"oricse_selos_profissionais"> = { user_id: userId };
+  selo[tipo] = dataUrl;
   const { error } = await supabaseBanco.from("oricse_selos_profissionais").upsert(selo);
   if (error) throw new Error("Não foi possível salvar a alteração no seu perfil.");
   window.dispatchEvent(new Event("veterico-selos"));
