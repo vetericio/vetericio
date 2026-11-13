@@ -2,7 +2,7 @@ import { destinoPortalLegado, urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { orientacaoSenhaPortal, senhaPortalValida } from "../../../../supabase/functions/_shared/portal-password";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
 import { PortalFooter } from "@/components/PortalFooter";
@@ -178,13 +178,41 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_config_publica",{p_slug:slug});if(ativo&&data)setPortalConfig(data);})();return()=>{ativo=false};},[slug]);
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_extras_publicas",{p_slug:slug});if(ativo&&data)setExtrasPublicos(data);})();return()=>{ativo=false};},[slug]);
+  const versaoCarregamento = useRef(0);
   const carregar=useCallback(async()=>{
+    const versao = ++versaoCarregamento.current;
     setCarregando(true);
     try{
-      const{data:ctxData,error:ctxError}=await(supabase as any).rpc("oricse_portal_meu_contexto");if(ctxError)throw ctxError;const ctx=ctxData?.[0] as Contexto|undefined;
-      if(!ctx?.tutor_id||ctx.clinica_slug!==slug){setContexto(null);setAnimais([]);return;}setContexto(ctx);setTelefone(ctx.tutor_telefone||"");setEmail(ctx.tutor_email||"");
-      const [a,v,verm,e,d,r,ag,marc,c]=await Promise.all([
-        (supabase as any).from("oricse_animais").select("id,nome,especie,raca,sexo,nascimento,peso_kg,foto_url").eq("clinica_id",ctx.clinica_id).order("nome"),
+      const{data:ctxData,error:ctxError}=await supabaseBanco.rpc("oricse_portal_meu_contexto");if(ctxError)throw ctxError;const ctx=ctxData?.[0] as Contexto|undefined;
+      if (!ctx?.tutor_id || ctx.clinica_slug !== slug) {
+        throw new Error("Esta conta não tem acesso ao portal desta clínica.");
+      }
+      const { data: pets, error: erroPets } = await supabaseBanco.from("oricse_animais")
+        .select("id,nome,especie,raca,sexo,nascimento,peso_kg,foto_url")
+        .eq("clinica_id", ctx.clinica_id).eq("tutor_id", ctx.tutor_id).order("nome");
+      if (erroPets) throw erroPets;
+      if (versao !== versaoCarregamento.current) return;
+      setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
+      const lista = (pets || []) as Animal[];
+      setAnimais(lista);
+      setAnimalId(at => lista.some(x => x.id === at) ? at : (lista[0]?.id || ""));
+      setTelefone(ctx.tutor_telefone || "");
+      setEmail(ctx.tutor_email || "");
+      setContexto(ctx);
+      setCarregando(false);
+      void carregarComplementos(ctx);
+    } catch (erro) {
+      if (versao !== versaoCarregamento.current) return;
+      setContexto(null);
+      setAnimais([]);
+      throw erro;
+    } finally {
+      if (versao === versaoCarregamento.current) setCarregando(false);
+    }
+
+    async function carregarComplementos(ctx: Contexto) {
+      try {
+      const [v,verm,e,d,r,ag,marc,c,docsCanonicos]=await Promise.all([
         (supabase as any).from("oricse_portal_vacinas").select("id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes").eq("clinica_id",ctx.clinica_id).order("reforco_em",{ascending:true,nullsFirst:false}),
         (supabase as any).from("oricse_portal_vermifugos").select("id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes").eq("clinica_id",ctx.clinica_id).order("administrado_em",{ascending:false,nullsFirst:false}),
         (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("realizado_em",{ascending:false,nullsFirst:false}),
@@ -193,26 +221,51 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
         (supabase as any).rpc("oricse_portal_agendas"),
         (supabase as any).from("oricse_agendamentos_online").select("id,agenda_id,animal_id,inicio,fim,estado,tipo,observacoes").eq("clinica_id",ctx.clinica_id).order("inicio"),
         (supabase as any).from("oricse_portal_comandas").select("id,animal_id,numero,status,origem,aberta_em,finalizada_em,itens,pagamentos,total,total_pago,saldo").eq("clinica_id",ctx.clinica_id).order("aberta_em",{ascending:false}),
-      ]);for(const resposta of[a,v,verm,e,d,r,ag,marc,c])if(resposta.error)throw resposta.error;
-      // Os documentos emitidos agora são registrados no PostgreSQL.
-      // Conservar os documentos legados do Drive e aplicar RLS no banco.
-      const docsCanonicos = await (supabaseBanco as any).from("oricse_portal_documentos")
-        .select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id")
-        .eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true)
-        .order("data_documento",{ascending:false,nullsFirst:false});
+        supabaseBanco.from("oricse_portal_documentos")
+          .select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id")
+          .eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true)
+          .order("data_documento",{ascending:false,nullsFirst:false}),
+      ]);
+      if (versao !== versaoCarregamento.current) return;
       if(docsCanonicos.error) console.warn("Documentos canônicos indisponíveis:",docsCanonicos.error.message);
       const unicos = new Map<string,Documento>();
       for(const item of [...(d.data||[]),...(docsCanonicos.data||[])] as Documento[]) unicos.set(item.id,item);
-      const lista=(a.data||[]) as Animal[];setAnimais(lista);setVacinas(v.data||[]);setVermifugos(verm.data||[]);setExames(e.data||[]);setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas(c.data||[]);setAnimalId(at=>lista.some(x=>x.id===at)?at:(lista[0]?.id||""));setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
-    }catch(e){console.error(e);setContexto(null);setAnimais([]);}finally{setCarregando(false);}
+      setVacinas(v.data||[]);setVermifugos(verm.data||[]);setExames(e.data||[]);setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas(c.data||[]);setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
+      } catch (erro) {
+        console.error("Falha ao carregar dados complementares do portal:", erro);
+      }
+    }
   },[slug]);
 
-  useEffect(()=>{let vivo=true;void supabase.auth.getSession().then(({data})=>{if(!vivo)return;if(data.session)void carregar();else setCarregando(false);});const{data:l}=supabase.auth.onAuthStateChange((_e,s)=>{if(!vivo)return;if(s)void carregar();else{setContexto(null);setAnimais([]);setCarregando(false);}});return()=>{vivo=false;l.subscription.unsubscribe();};},[carregar]);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const { data } = supabase.auth.onAuthStateChange((evento, sessao) => {
+      if (evento === "INITIAL_SESSION" && sessao) {
+        // O cliente libera o lock de autenticação ao sair do callback.
+        timer = setTimeout(() => {
+          void carregar().catch(erro => {
+            console.error("Falha ao restaurar sessão do portal:", erro);
+          });
+        }, 0);
+      } else if (evento === "SIGNED_OUT" || evento === "INITIAL_SESSION") {
+        clearTimeout(timer);
+        ++versaoCarregamento.current;
+        setContexto(null);
+        setAnimais([]);
+        setCarregando(false);
+      }
+    });
+    return () => {
+      clearTimeout(timer);
+      ++versaoCarregamento.current;
+      data.subscription.unsubscribe();
+    };
+  }, [carregar]);
   useEffect(()=>{if(!contexto||!agendaId||!dataAgenda){setHorarios([]);return;}if(modoDemoAlvorada){const dia=`${dataAgenda}T`;const lista:Horario[]=[{inicio:`${dia}09:00:00-03:00`,fim:`${dia}09:30:00-03:00`,rotulo:"09:00"},{inicio:`${dia}10:30:00-03:00`,fim:`${dia}11:00:00-03:00`,rotulo:"10:30"},{inicio:`${dia}14:00:00-03:00`,fim:`${dia}14:30:00-03:00`,rotulo:"14:00"}];setHorarios(lista);setHorario(at=>lista.some(h=>h.inicio===at)?at:lista[0].inicio);setCarregandoHorarios(false);return;}let vivo=true;setCarregandoHorarios(true);void(async()=>{const{data,error}=await(supabase as any).rpc("oricse_portal_horarios_disponiveis",{p_agenda_id:agendaId,p_data:dataAgenda});if(!vivo)return;const lista=error?[]:(data||[]) as Horario[];setHorarios(lista);setHorario(at=>lista.some(h=>h.inicio===at)?at:(lista[0]?.inicio||""));setCarregandoHorarios(false);})();return()=>{vivo=false};},[contexto,agendaId,dataAgenda,modoDemoAlvorada]);
 
   const animal=animais.find(a=>a.id===animalId)||null;const navegar=(destino:Secao)=>{setSecao(destino);if(typeof window!=="undefined")window.scrollTo(0,0);};const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animalId),[vacinas,animalId]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animalId),[vermifugos,animalId]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animalId),[exames,animalId]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animalId),[documentos,animalId]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animalId),[receitas,animalId]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animalId),[agendamentos,animalId]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animalId),[comandas,animalId]);const agenda=agendas.find(a=>a.id===agendaId)||null;
 
-  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setSecao("resumo");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token)throw new Error(data?.error||"Usuário ou senha inválidos.");const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
+  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setSecao("resumo");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
   async function ativar(e: React.FormEvent) {
     e.preventDefault();
     const codigo = token.trim();
