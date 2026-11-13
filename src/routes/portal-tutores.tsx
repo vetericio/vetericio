@@ -225,7 +225,7 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
               <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
                 <p className="text-sm font-black">Convite pronto</p>
                 <p className="mt-1 text-xs">Expira em {new Date(conviteSelecionado.expira_em).toLocaleString("pt-BR")}.</p>
-                <div className="mt-3 break-all rounded-lg bg-white p-2 font-mono text-xs">{conviteSelecionado.link}</div>
+                <p className="mt-3 rounded-lg bg-white p-2 font-mono text-lg font-bold tracking-widest">{conviteSelecionado.token}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => copiar(conviteSelecionado.link, "Link copiado.")} className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white"><Copy size={13} /> Copiar link</button>
                   <button type="button" onClick={() => copiar(conviteSelecionado.token, "Código copiado.")} className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold"><Copy size={13} /> Copiar código</button>
