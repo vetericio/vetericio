@@ -44,7 +44,7 @@ function securityHeaders(response: Response, pathname?: string): Response {
     headers.set("cache-control", "no-store, max-age=0");
   } else if (contentType.includes("text/html")) {
     headers.set("cache-control", "no-store, max-age=0, must-revalidate");
-  } else if (response.ok && pathname.startsWith("/assets/") &&
+  } else if (response.ok && typeof pathname === "string" && pathname.startsWith("/assets/") &&
     /[-.][a-z0-9_-]{8,}[.](?:m?js|css)$/i.test(pathname)) {
     // Apenas chunks com hash de conteúdo podem ficar em cache imutável:
     // páginas e dados clínicos nunca entram nesse cache.
