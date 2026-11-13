@@ -241,7 +241,14 @@ function AdminPlanos() {
     || planos.some((p) => matriz[p.id]?.[f.codigo] === undefined)).length;
 
   const clinicaAtual = clinicas.find((c) => c.id === clinicaSelecionada) || null;
-  const todosBeneficiosClinica = catalogo.filter((item) => item.tipo === "beneficio");
+  const todosBeneficiosClinica = catalogo
+    .filter((item) => item.tipo === "beneficio" || item.codigo === "portal_tutor.acesso")
+    .map((item) => item.codigo === "portal_tutor.acesso" ? {
+      ...item,
+      grupo: "Portal do Tutor",
+      nome: "Acesso ao Portal do Tutor",
+      descricao: "Libera o portal e a gestão de convites nesta clínica. No Solo, a liberação é feita pelo Admin Geral.",
+    } : item);
   const beneficiosClinicaVisiveis = todosBeneficiosClinica.filter((item) => {
     const texto = buscaClinica.trim().toLocaleLowerCase("pt-BR");
     return (grupoFiltroClinica === "todos" || item.grupo === grupoFiltroClinica)
@@ -461,7 +468,9 @@ function AdminPlanos() {
     if (Object.prototype.hasOwnProperty.call(excecoesPendentes, chave)) {
       return excecoesPendentes[chave];
     }
-    const item = excecoes.find((e) => e.clinica_id === clinicaSelecionada && e.funcionalidade_codigo === codigo);
+    const item = excecoes.find((e) =>
+      e.clinica_id === clinicaSelecionada && e.funcionalidade_codigo === codigo &&
+      (!e.expira_em || Date.parse(e.expira_em) > Date.now()));
     if (!item) return "plano";
     return item.permitido ? "liberar" : "bloquear";
   }
@@ -507,9 +516,6 @@ function AdminPlanos() {
         const { error } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
           .delete().eq("clinica_id", clinicaSelecionada).in("funcionalidade_codigo", seguirPlano);
         if (error) throw error;
-        const { error: erroBanco } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
-          .delete().eq("clinica_id", clinicaSelecionada).in("funcionalidade_codigo", seguirPlano);
-        if (erroBanco) throw new Error(erroBanco.message);
       }
 
       if (sobrescritas.length) {
@@ -517,6 +523,7 @@ function AdminPlanos() {
           clinica_id: clinicaSelecionada,
           funcionalidade_codigo: mudanca.codigo,
           permitido: mudanca.modo === "liberar",
+          expira_em: null,
           motivo: "Exceção configurada pelo Admin ORICSE",
           criado_por: usuarioAtual || null,
           updated_at: new Date().toISOString(),
@@ -524,9 +531,6 @@ function AdminPlanos() {
         const { error } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
           .upsert(dados, { onConflict: "clinica_id,funcionalidade_codigo" });
         if (error) throw error;
-        const { error: erroBanco } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
-          .upsert(dados, { onConflict: "clinica_id,funcionalidade_codigo" });
-        if (erroBanco) throw new Error(erroBanco.message);
       }
 
       const { data, error } = await (supabaseBanco as any).from("oricse_clinica_funcionalidade_excecoes")
@@ -786,7 +790,7 @@ function AdminPlanos() {
             <LockKeyhole size={20} className="mt-0.5 text-primary"/>
             <div>
               <h2 className="text-xl font-black">Autorizações por clínica</h2>
-              <p className="mt-1 text-sm text-muted-foreground">A mesma matriz dos planos, aplicada exclusivamente à clínica escolhida. Cada uma das 98 opções pode seguir o plano, ser liberada ou bloqueada sem afetar nenhuma outra clínica.</p>
+              <p className="mt-1 text-sm text-muted-foreground">A mesma matriz dos planos, aplicada exclusivamente à clínica escolhida. Cada opção pode seguir o plano, ser liberada ou bloqueada para a clínica escolhida.</p>
             </div>
           </div>
           {clinicaAtual && <span className="rounded-full border bg-secondary/40 px-3 py-1.5 text-xs font-bold">{clinicaAtual.nome}</span>}
@@ -815,7 +819,7 @@ function AdminPlanos() {
             <div className="relative min-w-[210px] flex-[2_1_280px]">
               <Search size={16} className="absolute left-3 top-3 text-muted-foreground"/>
               <input aria-label="Pesquisar autorizações da clínica" value={buscaClinica} onChange={(e)=>setBuscaClinica(e.target.value)}
-                placeholder="Pesquisar entre as 98 opções da clínica" className="min-h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm"/>
+                placeholder="Pesquisar autorizações da clínica" className="min-h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm"/>
             </div>
             <select aria-label="Filtrar grupo da clínica" value={grupoFiltroClinica} onChange={(e)=>setGrupoFiltroClinica(e.target.value)}
               className="min-h-11 max-w-full rounded-xl border bg-background px-3 text-sm">
@@ -861,7 +865,7 @@ function AdminPlanos() {
                   onToggle={()=>setGruposClinicaFechados((atual)=>({...atual,[grupo]:!atual[grupo]}))}
                   modoExcecao={modoExcecao} mudarExcecao={mudarExcecao} mudarGrupoExcecao={mudarGrupoExcecao}
                   desabilitado={salvando==="excecoes-clinica"}/>)}
-                {beneficiosClinicaVisiveis.length===0 && <tr><td colSpan={2} className="p-6 text-center text-muted-foreground">Nenhuma das 98 opções foi encontrada com estes filtros.</td></tr>}
+                {beneficiosClinicaVisiveis.length===0 && <tr><td colSpan={2} className="p-6 text-center text-muted-foreground">Nenhuma opção foi encontrada com estes filtros.</td></tr>}
               </tbody>
             </table>
           </div>
