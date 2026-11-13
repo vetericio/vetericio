@@ -70,6 +70,7 @@ type ItemMenu = {
   rotulo: string;
   permissao?: string;
   emBreve?: boolean;
+  moduloEmPreparacao?: boolean;
   portalOficial?: boolean;
   abaHotel?: string;
   separador?: "consultorio" | "internacao" | "trabalho" | "comissoes";
@@ -223,6 +224,24 @@ const areas: AreaMenu[] = [
         permissao: "administracao.site",
       },
       { to: "/temas", rotulo: "Temas", permissao: "administracao.temas" },
+      {
+        rotulo: "Assinatura ICP-Brasil",
+        permissao: "administracao.configuracoes",
+        emBreve: true,
+        moduloEmPreparacao: true,
+      },
+      {
+        rotulo: "Módulo Fiscal",
+        permissao: "administracao.configuracoes",
+        emBreve: true,
+        moduloEmPreparacao: true,
+      },
+      {
+        rotulo: "Gestão Laboratorial",
+        permissao: "administracao.configuracoes",
+        emBreve: true,
+        moduloEmPreparacao: true,
+      },
     ],
   },
 ];
@@ -306,7 +325,7 @@ export function MenuLateral({
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) => item.emBreve || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
+          (item) => (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
     // Mostrar títulos de bloco somente quando o usuário pode acessar ao menos um item.
@@ -372,8 +391,13 @@ export function MenuLateral({
                           aria-disabled="true"
                           className="flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-sm text-muted-foreground"
                         >
-                          <span className="flex-1">{item.rotulo}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wide">
+                          <span className="min-w-0 flex-1">
+                            {item.rotulo}
+                            {item.moduloEmPreparacao && (
+                              <span className="block text-[11px]">Módulo em preparação</span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide">
                             Em breve
                           </span>
                         </div>
