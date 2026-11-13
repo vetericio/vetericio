@@ -9,7 +9,7 @@ import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { registrarDocumentoClinicoAssinado, alterarPublicacaoDocumentoClinico } from "@/lib/documento-clinico.functions";
 
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { DOCUMENTOS, MODELOS_BASE_CLINICOS, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { DOCUMENTOS, MODELOS_BASE_CLINICOS, formatarDataDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import { criarPdfComModelo, prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 
 type TipoClinico = "pedido" | "documento" | "termo";
@@ -129,13 +129,13 @@ export function ModelosClinicosAtendimento() {
       const papel = await prepararPapelDocumento(padrao.identidade, padrao.modelo);
       const pdf = await criarPdfComModelo({
         titulo: modelo.nome, conteudo: texto, papel,
-        identificacao: [
-          [dados.animal.nome, dados.animal.especie, dados.animal.raca, dados.animal.sexo,
-            dados.animal.idade || dados.animal.nascimento, dados.animal.pelagem,
-            dados.animal.peso && dados.animal.peso + " kg", dados.animal.microchip && "Microchip " + dados.animal.microchip].filter(Boolean).join(" · "),
-          ["Responsável: " + (dados.tutor?.nome || ""), dados.tutor?.cpf && "CPF " + dados.tutor.cpf,
-            dados.tutor?.endereco].filter(Boolean).join(" · "),
-        ],
+        identificacao: {
+          paciente: {
+            ...dados.animal, idade: dados.animal.idade || formatarDataDocumento(dados.animal.nascimento),
+            peso: dados.animal.peso ? dados.animal.peso + " kg" : "",
+          },
+          tutor: { ...dados.tutor, nascimento: formatarDataDocumento(dados.tutor?.nascimento) },
+        },
         assinatura: [
           [padrao.identidade.municipio, new Date().toLocaleDateString("pt-BR")].filter(Boolean).join(", "),
           autor.nome + " · " + autor.crmv,

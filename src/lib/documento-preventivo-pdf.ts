@@ -1,5 +1,6 @@
 import { dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil } from "@/lib/dados-preventivos";
-import { desenharIdentidadeDocumento, desenharPapelDocumento, type PapelDocumento } from "@/lib/modelos-documentos-pdf";
+import { criarPdfComModelo, type PapelDocumento } from "@/lib/modelos-documentos-pdf";
+import { formatarDataDocumento } from "@/lib/modelos-documentos";
 import type { obterDocumentoPreventivo } from "@/lib/documento-preventivo.functions";
 
 export type DadosDocumentoPreventivo = Awaited<ReturnType<typeof obterDocumentoPreventivo>>;
@@ -22,18 +23,49 @@ export async function criarDocumentoPreventivoPdf(dados: DadosDocumentoPreventiv
   const validade = dataDoRotulo(ato.validade);
   const observacaoValidade = validade && ato.data > fimDaValidade(validade)
     ? "A data registrada é posterior à validade informada para o produto." : "";
-  let y = 19;
-  function iniciarPagina() {
-    y = 19;
-    if (!papel) return;
-    desenharPapelDocumento(pdf, papel);
-    if (identificacao.comEstabelecimento) {
-      y = desenharIdentidadeDocumento(pdf, { ...papel, clinica: {
-        ...papel.clinica, razaoSocial: identificacao.razaoSocial, cnpj: identificacao.cnpj,
-        crmv: identificacao.crmv, endereco: identificacao.endereco,
-      } }, 18, 24);
-    }
+  if (papel) {
+    const papelFinal = identificacao.comEstabelecimento ? { ...papel, clinica: {
+      ...papel.clinica, razaoSocial: identificacao.razaoSocial, cnpj: identificacao.cnpj,
+      crmv: identificacao.crmv, endereco: identificacao.endereco,
+    } } : null;
+    const itens = [
+      ["Data da aplicação", rotulo(ato.data)], ["Horário", ato.hora_aplicacao.slice(0, 5)], ["Local", ato.local_aplicacao],
+      [vacina ? "Nome comercial da vacina" : "Produto administrado", ato.nome],
+      ["Vacinação contra", ato.alvo_vacinacao], ["Princípio ativo", ato.principio_ativo],
+      ["Fabricante", ato.fabricante], ["Lote / partida", ato.lote], ["Dose aplicada", ato.dose], ["Via", ato.via],
+      ["Fabricação", rotulo(ato.fabricacao)], ["Validade", rotulo(ato.validade)],
+      [vacina ? "Revacinação prevista" : "Próxima dose prevista", rotulo(ato.retorno)],
+      ["Observações", [ato.observacoes, observacaoValidade].filter(Boolean).join("\n")],
+      ["Orientações adicionais", orientacoes.trim()],
+      ["Inscrição estadual", identificacao.comEstabelecimento ? identificacao.inscricaoEstadual : ""],
+    ];
+    return criarPdfComModelo({
+      titulo, papel: papelFinal, fundoSemIdentidade: papelFinal ? null : papel,
+      identificacao: {
+        paciente: {
+          ...paciente, idade: paciente.idade || formatarDataDocumento(paciente.nascimento),
+          peso: paciente.peso ? paciente.peso + " kg" : "",
+          outros: [paciente.sinais, paciente.tatuagem && "Tatuagem: " + paciente.tatuagem,
+            paciente.brinco && "Brinco: " + paciente.brinco, paciente.registro && "Registro: " + paciente.registro].filter(Boolean).join(" · "),
+        },
+        tutor: { ...tutor, nascimento: formatarDataDocumento(tutor.nascimento) },
+      },
+      conteudo: [
+        vacina ? "Atesto que realizei o ato vacinal descrito abaixo no animal identificado neste documento."
+          : "Declaro que o procedimento abaixo foi realizado no animal identificado neste documento.",
+        "",
+        ...itens.filter(([, valor]) => valor).map(([nome, valor]) => `${nome}: ${valor}`),
+        "", "Uma via para o responsável pelo animal e uma via para o prontuário.",
+      ].join("\n"),
+      assinatura: [
+        `${identificacao.municipio}, ${hoje}`, `${profissional.nome} · CRMV-${profissional.uf} ${profissional.crmv}`,
+        [identificacao.enderecoProfissional, identificacao.telefoneProfissional, identificacao.emailProfissional].filter(Boolean).join(" · "),
+      ],
+    });
   }
+
+  let y = 19;
+  function iniciarPagina() { y = 19; }
   function linha(texto: string, negrito = false, tamanho = 10.5) {
     pdf.setFont("helvetica", negrito ? "bold" : "normal");
     pdf.setFontSize(tamanho);
