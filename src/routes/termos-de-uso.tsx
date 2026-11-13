@@ -410,7 +410,7 @@ function TermosDeUso() {
      <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.19em] text-[#EED8DF]"><ShieldCheck size={17}/> Clareza, responsabilidades e transparência</p>
      <h1 className="mt-5 max-w-3xl font-display text-4xl font-semibold tracking-tight sm:text-5xl">Termos de Uso e Contratação</h1>
      <p className="mt-5 max-w-3xl text-base leading-8 text-[#F0DBE2]">Condições de acesso, planos, pagamentos, responsabilidades e direitos relacionados ao uso do ecossistema ORICSE.</p>
-     <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Contratação de software como serviço</span><span className="rounded-full border border-white/25 px-4 py-2">Revisado em 12/11/2026</span></div>
+     <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Contratação de software como serviço</span><span className="rounded-full border border-white/25 px-4 py-2">Revisado em 13/11/2026</span></div>
     </div>
    </section>
    <div className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-12">
