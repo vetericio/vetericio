@@ -181,7 +181,8 @@ const SECOES = [
       "Recursos estritamente necessários podem viabilizar autenticação, segurança, continuidade da sessão e configuração de funcionalidades.",
       "Caso sejam adotadas tecnologias analíticas ou publicitárias não essenciais, elas deverão ser informadas de maneira adequada e submetidas aos mecanismos de escolha exigidos pelas regras aplicáveis.",
       "O titular também pode administrar determinadas preferências no navegador, observando que a desativação de recursos necessários pode prejudicar o uso do sistema.",
-      "Cookies essenciais e tecnologias facultativas de análise, publicidade ou personalização possuem finalidades diferentes. Quando exigido, deverão existir informações adequadas e meios apropriados de escolha, sem induzir o usuário à aceitação de recursos não necessários."
+      "Cookies essenciais e tecnologias facultativas de análise, publicidade ou personalização possuem finalidades diferentes. Quando exigido, deverão existir informações adequadas e meios apropriados de escolha, sem induzir o usuário à aceitação de recursos não necessários.",
+      "A escolha sobre cookies facultativos, quando disponibilizada, deverá ser respeitada nas visitas posteriores conforme as capacidades técnicas e as exigências legais. A retirada da autorização não altera a legitimidade de tratamentos já realizados anteriormente."
     ]
   },
   {
@@ -191,7 +192,8 @@ const SECOES = [
     "items": [
       "Quando dados pessoais de crianças ou adolescentes forem inseridos, o estabelecimento deverá avaliar o melhor interesse do titular e observar os requisitos legais aplicáveis.",
       "Representantes legais podem exercer direitos conforme a legislação, mediante verificação adequada de legitimidade.",
-      "O tratamento de informações de menores deve observar seu melhor interesse e as condições legais aplicáveis. Representação, consentimento quando necessário e limites de divulgação precisam ser analisados segundo a finalidade concreta e a legitimidade do solicitante."
+      "O tratamento de informações de menores deve observar seu melhor interesse e as condições legais aplicáveis. Representação, consentimento quando necessário e limites de divulgação precisam ser analisados segundo a finalidade concreta e a legitimidade do solicitante.",
+      "Caso o estabelecimento registre menores como tutores, acompanhantes ou representantes, deverá limitar a coleta ao necessário e verificar a legitimidade do responsável, evitando exposição indevida de dados por notificações ou documentos compartilhados."
     ]
   },
   {
