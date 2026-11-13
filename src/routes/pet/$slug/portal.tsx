@@ -222,7 +222,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
     const versao = ++versaoCarregamento.current;
     if (!atualizar) setCarregando(true);
     try{
-      const{data:ctxData,error:ctxError}=await supabaseBanco.rpc("oricse_portal_meu_contexto");if(ctxError)throw ctxError;const ctx=ctxData?.[0] as Contexto|undefined;
+      const{data:ctxData,error:ctxError}=await supabaseBanco.rpc("oricse_portal_meu_contexto",{p_slug:slug});if(ctxError)throw ctxError;const ctx=ctxData?.[0] as Contexto|undefined;
       if (!ctx?.tutor_id || ctx.clinica_slug !== slug) {
         throw new Error("Esta conta não tem acesso ao portal desta clínica.");
       }
@@ -294,7 +294,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
     async function carregarAgendas(ctx: Contexto) {
       try {
-        const { data, error } = await supabaseBanco.rpc("oricse_portal_agendas");
+        const { data, error } = await supabaseBanco.rpc("oricse_portal_agendas",{p_slug:slug});
         if (versao !== versaoCarregamento.current) return;
         if (error) throw error;
         const lista = data || [];
