@@ -3669,6 +3669,9 @@ export type Database = {
           intervalo_min: number
           modalidade: string
           nome: string
+          pagamento_descricao: string | null
+          pagamento_modo_valor: string | null
+          pagamento_valor: number | null
           responsavel: string
           timezone: string
           tipo: string

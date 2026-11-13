@@ -67,3 +67,5 @@ export function resolverPastaRaiz(
   }
   return pastaPadraoClinica;
 }
+
+export const PORTAL_PDF_MAX_BYTES = 20_000_000;

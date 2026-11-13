@@ -23,14 +23,15 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
-import { enviarArquivoDrive } from "@/lib/drive.functions";
+import { enviarAnexoPortal } from "@/lib/drive.functions";
+import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -340,6 +341,7 @@ function AnimalFicha() {
   const [tipoDetalhe, setTipoDetalhe] = useState("");
   const [salvandoPortal, setSalvandoPortal] = useState(false);
   const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
+  const anexoEmEdicao = useRef<{ arquivo: File; id: string; animalId: string } | null>(null);
 
   async function carregarConteudosPortal() {
     if (!animalId) return;
@@ -581,18 +583,19 @@ function AnimalFicha() {
     setReforcoEm("");
     setLote("");
     setArquivoPdf(null);
+    anexoEmEdicao.current = null;
     setTipoDetalhe(tipo === "Exames" ? "Exame" : tipo === "Documentos" ? "Documento" : "");
   }
 
   async function salvarRegistro() {
-    if (!animal || !modalTipo) return;
+    if (!animal || !modalTipo || salvandoPortal) return;
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
     if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
       if (
         (modalTipo === "Exames" || modalTipo === "Documentos") &&
         arquivoPdf &&
-        (arquivoPdf.type !== "application/pdf" || arquivoPdf.size > 20 * 1024 * 1024)
+        (arquivoPdf.type !== "application/pdf" || arquivoPdf.size > PORTAL_PDF_MAX_BYTES)
       )
         return void toast.error("Envie um PDF de até 20 MB.");
       setSalvandoPortal(true);
@@ -621,87 +624,47 @@ function AnimalFicha() {
             visivel_tutor: visivelTutor,
           });
           if (error) throw error;
-        } else if (modalTipo === "Exames") {
-          const exameId = crypto.randomUUID();
-          let driveArquivoId: string | null = null;
-          if (arquivoPdf) {
-            const { data: sessao } = await supabase.auth.getSession();
-            const accessToken = sessao.session?.access_token;
-            if (!accessToken) throw new Error("Sessão não encontrada para enviar o PDF.");
-            const base64 = await arquivoParaDataUrl(arquivoPdf);
-            const upload = await enviarArquivoDrive({
-              data: {
-                accessToken,
-                clinicaId,
-                categoria: "exames",
-                nome: arquivoPdf.name,
-                mimeType: "application/pdf",
-                base64,
-                visibilidade: visivelTutor ? "tutor" : "interno",
-                entidadeTipo: "exame",
-                entidadeId: exameId,
-                metadata: {
-                  animalId: animal.id,
-                  animalNome: animal.nome,
-                  titulo: titulo.trim(),
-                  tipo: tipoDetalhe.trim() || "Exame",
-                },
-              },
-            });
-            driveArquivoId = upload.arquivo.id;
-          }
-          const { error } = await (supabaseBanco as any).from("oricse_portal_exames").insert({
-            id: exameId,
-            clinica_id: clinicaId,
-            animal_id: animal.id,
-            titulo: titulo.trim(),
-            tipo: tipoDetalhe.trim() || "Exame",
-            realizado_em: data || null,
-            resultado_resumo: detalhe.trim() || null,
-            drive_arquivo_id: driveArquivoId,
-            visivel_tutor: visivelTutor,
-          });
-          if (error) throw error;
         } else {
-          const documentoId = crypto.randomUUID();
+          const exame = modalTipo === "Exames";
           let driveArquivoId: string | null = null;
+          let registroId: string = crypto.randomUUID();
           if (arquivoPdf) {
+            const anterior = anexoEmEdicao.current;
+            if (anterior?.arquivo === arquivoPdf && anterior.animalId === animal.id) {
+              registroId = anterior.id;
+            }
+            anexoEmEdicao.current = { arquivo: arquivoPdf, id: registroId, animalId: animal.id };
             const { data: sessao } = await supabase.auth.getSession();
             const accessToken = sessao.session?.access_token;
-            if (!accessToken) throw new Error("Sessão não encontrada para enviar o documento.");
-            const upload = await enviarArquivoDrive({
-              data: {
-                accessToken,
-                clinicaId,
-                categoria: "documentos",
-                nome: arquivoPdf.name,
-                mimeType: "application/pdf",
-                base64: await arquivoParaDataUrl(arquivoPdf),
-                visibilidade: visivelTutor ? "tutor" : "interno",
-                entidadeTipo: "documento",
-                entidadeId: documentoId,
-                metadata: {
-                  animalId: animal.id,
-                  animalNome: animal.nome,
-                  titulo: titulo.trim(),
-                  tipo: tipoDetalhe.trim() || "Documento",
-                },
-              },
-            });
-            driveArquivoId = upload.arquivo.id;
+            if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente para enviar o PDF.");
+            const anexo = await enviarAnexoPortal({ data: {
+              accessToken, clinicaId, animalId: animal.id, registroId,
+              categoria: exame ? "exames" : "documentos",
+              nome: arquivoPdf.name, base64: await arquivoParaDataUrl(arquivoPdf),
+            } });
+            driveArquivoId = anexo.arquivoId;
           }
-          const { error } = await (supabaseBanco as any).from("oricse_portal_documentos").insert({
-            id: documentoId,
+          const registro = {
+            id: registroId,
             clinica_id: clinicaId,
             animal_id: animal.id,
             titulo: titulo.trim(),
-            tipo: tipoDetalhe.trim() || "Documento",
-            data_documento: data || null,
-            observacoes: detalhe.trim() || null,
+            tipo: tipoDetalhe.trim() || (exame ? "Exame" : "Documento"),
             drive_arquivo_id: driveArquivoId,
             visivel_tutor: visivelTutor,
-          });
-          if (error) throw error;
+          };
+          const { error } = exame
+            ? await supabaseBanco.from("oricse_portal_exames").upsert({
+                ...registro, realizado_em: data || null, resultado_resumo: detalhe.trim() || null,
+              }, { onConflict: "id", ignoreDuplicates: true })
+            : await supabaseBanco.from("oricse_portal_documentos").upsert({
+                ...registro, data_documento: data || null, observacoes: detalhe.trim() || null,
+              }, { onConflict: "id", ignoreDuplicates: true });
+          if (error) {
+            throw new Error(driveArquivoId
+              ? "O PDF foi anexado, mas o registro não foi salvo. Tente salvar novamente."
+              : "Não foi possível salvar o registro na ficha do animal.");
+          }
         }
         await carregarConteudosPortal();
         setModalTipo(null);
@@ -1150,7 +1113,7 @@ function AnimalFicha() {
                           const file = e.target.files?.[0] || null;
                           if (
                             file &&
-                            (file.type !== "application/pdf" || file.size > 20 * 1024 * 1024)
+                            (file.type !== "application/pdf" || file.size > PORTAL_PDF_MAX_BYTES)
                           ) {
                             toast.error("Selecione um PDF de até 20 MB.");
                             e.currentTarget.value = "";

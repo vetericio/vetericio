@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { PASTAS_DRIVE, type DriveCategoria } from "@/lib/drive-storage";
+import { PASTAS_DRIVE, PORTAL_PDF_MAX_BYTES, type DriveCategoria } from "@/lib/drive-storage";
+import { clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";
 
 const CATEGORIAS = ["identidade","tutores","animais","exames","receitas","documentos","imagens","backups","portal-tutor","outros"] as const satisfies readonly DriveCategoria[];
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
@@ -37,7 +38,96 @@ export const statusDrive=createServerFn({method:"POST"}).validator((i:unknown)=>
 export const obterConfigDriveClinica=createServerFn({method:"POST"}).validator((i:unknown)=>clinicaSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const raiz=await pastaRaizClinica(token,data.clinicaId);const cfg=await lerConfig(token,data.clinicaId);return cfg||{modo:raiz.modo,root_folder_id:raiz.folderId,root_folder_url:`https://drive.google.com/drive/folders/${raiz.folderId}`,status:"conectado"};});
 export const testarEConectarPastaDrive=createServerFn({method:"POST"}).validator((i:unknown)=>testarPastaSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const p=await validarPasta(token,data.folderId);await gravarConfig(token,data.clinicaId,{modo:"personalizado",root_folder_id:p.id,root_folder_url:data.folderUrl||p.webViewLink||`https://drive.google.com/drive/folders/${p.id}`,status:"conectado",updated_at:new Date().toISOString()});return{ok:true,pasta:{id:p.id,nome:p.name,url:p.webViewLink||null}};});
 export const voltarAoDrivePadrao=createServerFn({method:"POST"}).validator((i:unknown)=>clinicaSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const id=await pastaPadrao(token,data.clinicaId);await gravarConfig(token,data.clinicaId,{modo:"oricse",root_folder_id:id,root_folder_url:`https://drive.google.com/drive/folders/${id}`,status:"conectado",updated_at:new Date().toISOString()});return{ok:true};});
-export const enviarArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>uploadSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();const usuario=await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const raiz=await pastaRaizClinica(token,data.clinicaId);const pasta=await buscarOuCriarPasta(token,raiz.folderId,PASTAS_DRIVE[data.categoria]);const bytes=Buffer.from(data.base64.replace(/^data:[^;]+;base64,/,""),"base64");const registroId=crypto.randomUUID();const metadata={name:data.nome,parents:[pasta],appProperties:{oricseRegistroId:registroId,clinicaId:data.clinicaId,categoria:data.categoria,visibilidade:data.visibilidade,entidadeTipo:data.entidadeTipo||"",entidadeId:data.entidadeId||"",enviadoPor:usuario.userId},description:JSON.stringify(data.metadata||{}).slice(0,12000)};const form=new FormData();form.append("metadata",new Blob([JSON.stringify(metadata)],{type:"application/json"}));form.append("file",new Blob([bytes],{type:data.mimeType}),data.nome);const r=await gfetch(token,"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,parents,webViewLink,appProperties",{method:"POST",body:form});const a=await r.json() as {id:string;name:string;webViewLink?:string};const publicUrl=data.visibilidade==="publico"?await tornarPublico(token,a.id):null;return{ok:true,registroId,arquivo:{id:registroId,driveId:a.id,nome:a.name,url:publicUrl||a.webViewLink||`https://drive.google.com/open?id=${a.id}`,publicUrl,pastaId:pasta,modo:raiz.modo}};});
+async function enviarAoDrive(data: z.infer<typeof uploadSchema>, userId: string, bytes: Buffer, registroId: string = crypto.randomUUID()) {
+  const token = await accessTokenGoogle();
+  const raiz = await pastaRaizClinica(token, data.clinicaId);
+  const pasta = await buscarOuCriarPasta(token, raiz.folderId, PASTAS_DRIVE[data.categoria]);
+  const metadata = {
+    name: data.nome,
+    parents: [pasta],
+    appProperties: {
+      oricseRegistroId: registroId, clinicaId: data.clinicaId, categoria: data.categoria,
+      visibilidade: data.visibilidade, entidadeTipo: data.entidadeTipo || "",
+      entidadeId: data.entidadeId || "", enviadoPor: userId,
+    },
+    description: JSON.stringify(data.metadata || {}).slice(0, 12000),
+  };
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", new Blob([new Uint8Array(bytes)], { type: data.mimeType }), data.nome);
+  const resposta = await gfetch(token, "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", { method: "POST", body: form });
+  const arquivo = await resposta.json() as { id: string; name: string; webViewLink?: string };
+  const publicUrl = data.visibilidade === "publico" ? await tornarPublico(token, arquivo.id) : null;
+  return {
+    ok: true, registroId,
+    arquivo: {
+      id: registroId, driveId: arquivo.id, nome: arquivo.name,
+      url: publicUrl || arquivo.webViewLink || `https://drive.google.com/open?id=${arquivo.id}`,
+      publicUrl, pastaId: pasta, modo: raiz.modo,
+    },
+  };
+}
+
+export const enviarArquivoDrive = createServerFn({ method: "POST" })
+  .validator((input: unknown) => uploadSchema.parse(input))
+  .handler(async ({ data }) => {
+    const admin = await carregarSupabaseAdmin();
+    const usuario = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
+    const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+    return enviarAoDrive(data, usuario.userId, bytes);
+  });
+
+const anexoPortalSchema = uploadSchema.pick({ accessToken: true, clinicaId: true, nome: true, base64: true }).extend({
+  registroId: z.string().uuid(),
+  animalId: z.string().uuid(),
+  categoria: z.enum(["documentos", "exames"]),
+});
+
+export const enviarAnexoPortal = createServerFn({ method: "POST" })
+  .validator((input: unknown) => anexoPortalSchema.parse(input))
+  .handler(async ({ data }) => {
+    const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+    if (bytes.byteLength > PORTAL_PDF_MAX_BYTES || bytes.subarray(0, 5).toString("ascii") !== "%PDF-") {
+      throw new Error("Envie um arquivo PDF válido de até 20 MB.");
+    }
+
+    const admin = await carregarSupabaseAdmin();
+    const { userId } = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
+    const usuario = clienteSupabaseUsuario(data.accessToken);
+    const { data: permitido, error: erroPermissao } = await usuario.rpc("oricse_usuario_pode_permissao", {
+      p_clinica_id: data.clinicaId, p_codigo: "consultorio.atendimentos",
+    });
+    if (erroPermissao || permitido !== true) throw new Error("Seu acesso não permite anexar documentos nesta clínica.");
+    const { data: animal, error: erroAnimal } = await admin.from("oricse_animais").select("id")
+      .eq("id", data.animalId).eq("clinica_id", data.clinicaId).maybeSingle();
+    if (erroAnimal || !animal) throw new Error("Animal não encontrado nesta clínica.");
+
+    const { data: anterior, error: erroAnterior } = await admin.from("drive_arquivos")
+      .select("id,clinica_id,entidade_id,entidade_tipo,categoria,enviado_por")
+      .eq("id", data.registroId).maybeSingle();
+    if (erroAnterior) throw new Error("Não foi possível verificar o vínculo do PDF.");
+    if (anterior) {
+      if (anterior.clinica_id !== data.clinicaId || anterior.entidade_id !== data.animalId ||
+          anterior.entidade_tipo !== "animal" || anterior.categoria !== data.categoria || anterior.enviado_por !== userId) {
+        throw new Error("O anexo não pertence a esta ficha.");
+      }
+      return { arquivoId: anterior.id as string };
+    }
+
+    const upload = await enviarAoDrive({
+      ...data, mimeType: "application/pdf", visibilidade: "interno",
+      entidadeTipo: "animal", entidadeId: data.animalId,
+    }, userId, bytes, data.registroId);
+    const { error } = await admin.from("drive_arquivos").insert({
+      id: upload.arquivo.id, clinica_id: data.clinicaId, categoria: data.categoria,
+      nome: upload.arquivo.nome, mime_type: "application/pdf", tamanho_bytes: bytes.byteLength,
+      drive_file_id: upload.arquivo.driveId, drive_folder_id: upload.arquivo.pastaId,
+      visibilidade: "interno", entidade_tipo: "animal", entidade_id: data.animalId, enviado_por: userId,
+    });
+    if (error) throw new Error("O PDF foi enviado, mas não foi possível vinculá-lo ao cadastro do animal. Tente salvar novamente.");
+    return { arquivoId: upload.arquivo.id };
+  });
+
 export const localizarArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>arquivoSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const a=await localizarPorRegistro(token,data.registroId);if(!a)throw new Error("Arquivo não encontrado no Google Drive.");if(a.appProperties?.clinicaId!==data.clinicaId)throw new Error("Arquivo pertence a outra clínica.");return{registroId:data.registroId,driveId:a.id,nome:a.name,mimeType:a.mimeType,size:a.size?Number(a.size):null,url:a.webViewLink||`https://drive.google.com/open?id=${a.id}`,appProperties:a.appProperties||{}};});
 export const excluirArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>arquivoSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const a=await localizarPorRegistro(token,data.registroId);if(!a)return{ok:true};if(a.appProperties?.clinicaId!==data.clinicaId)throw new Error("Arquivo pertence a outra clínica.");await gfetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(a.id)}`,{method:"DELETE"});return{ok:true};});
 
