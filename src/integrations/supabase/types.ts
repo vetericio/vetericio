@@ -3646,6 +3646,17 @@ export type Database = {
           estado: string
         }[]
       }
+      oricse_portal_codigos_da_clinica: {
+        Args: { p_clinica_id: string }
+        Returns: {
+          id: string
+          tutor_id: string
+          usuario: string
+          ativo: boolean
+          auth_user_id: string | null
+          codigo_fixo: string
+        }[]
+      }
       oricse_portal_emitir_convite: {
         Args: { p_tutor_id: string; p_usuario: string }
         Returns: {
