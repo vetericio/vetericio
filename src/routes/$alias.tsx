@@ -1,3 +1,4 @@
+import { slugPortalDoTutor } from "@/lib/portal-tutor-url";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,17 +18,17 @@ export const Route = createFileRoute("/$alias")({ component: AliasPagina });
 function AliasPagina() {
   const { alias } = Route.useParams();
   const [erro, setErro] = useState("");
-  const [portalAlvorada, setPortalAlvorada] = useState(false);
+  const [slugPortal, setSlugPortal] = useState<string | null>(null);
 
   useEffect(() => {
     let ativo = true;
     setErro("");
-    // Decidir a clínica no efeito evita diferença de HTML entre SSR e browser.
-    // O atalho não consulta aliases administrativos nem muda autenticação.
-    const rotaPublicaAlvorada =
-      alias === "portaldotutor" && hostDaPagina() === "alvorada.oricse.com.br";
-    setPortalAlvorada(rotaPublicaAlvorada);
-    if (rotaPublicaAlvorada) return;
+    const slug = alias === "portaldotutor" ? slugPortalDoTutor(hostDaPagina()) : null;
+    setSlugPortal(slug);
+    if (alias === "portaldotutor") {
+      if (!slug) setErro("Abra o Portal do Tutor pelo endereço da sua clínica.");
+      return;
+    }
 
     if (!/^[a-z0-9-]{1,65}$/.test(alias)) {
       setErro("Endereço inválido.");
@@ -61,8 +62,8 @@ function AliasPagina() {
     return () => { ativo = false; };
   }, [alias]);
 
-  if (portalAlvorada && alias === "portaldotutor")
-    return <PortalTutorClinica slugDaClinica="alvorada" />;
+  if (slugPortal && alias === "portaldotutor")
+    return <PortalTutorClinica key={slugPortal} slugDaClinica={slugPortal} />;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F8F5F2] p-6 text-center text-[#381724]">

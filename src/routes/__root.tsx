@@ -840,6 +840,7 @@ function RootComponent() {
   const mostrarBloqueioAssinatura = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && assinaturaBloqueada;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
   const telaPortalRestrita = Boolean(
+    !/^\/portaldotutor\/?$/.test(location.pathname) &&
     !/^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname) &&
     !paginaInicialDeClinica &&
     autenticado &&

@@ -87,7 +87,8 @@ export function VisualPageRuntime() {
     const chooseLayout = () => {
       // Login padrão: a mesma arte editada na prévia se aplica ao login real
       // de todas as clínicas, sem alterar autenticação ou páginas internas.
-      const loginTutor = /^\/pet\/[^/]+\/portal\/?$/.test(location.pathname)
+      const loginTutor = location.pathname.replace(/\/$/, "") === "/portaldotutor"
+        && window.location.hostname !== "alvorada.oricse.com.br"
         && Boolean(document.querySelector(".portal-tutor-login-screen"));
       const paginaVisual = loginTutor
         ? "/portal-tutores?portal_login_preview=1"

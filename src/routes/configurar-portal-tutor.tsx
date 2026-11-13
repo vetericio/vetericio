@@ -1,3 +1,4 @@
+import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabaseBanco } from "@/integrations/supabase/client";
@@ -289,10 +290,7 @@ function ConfigurarPortalTutor() {
             A configuração do Portal do Tutor está bloqueada para evitar alterações acidentais.
             O acesso dos tutores e os dados já publicados continuam disponíveis.
           </p>
-          {slug && (slug === "alvorada"
-            ? <a href="https://alvorada.oricse.com.br/portaldotutor" target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</a>
-            : <Link to="/pet/$slug/portal" params={{ slug }} target="_blank" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</Link>
-          )}
+          {slug && <a href={urlPortalDoTutor(slug)} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial ↗</a>}
         </section>
       </main>
     );
@@ -306,7 +304,7 @@ function ConfigurarPortalTutor() {
         <h1 className="text-3xl font-extrabold">Portal do Tutor</h1>
         <p className="text-sm text-muted-foreground">Central de configuração do portal oficial de <strong>{nome||"sua clínica"}</strong>. Todas as personalizações ficam vinculadas à clínica selecionada. Apenas administradores alteram nome e logos.</p>
         <div className="flex flex-wrap gap-2">
-          {slug&&<Link to="/pet/$slug/portal" params={{slug}} target="_blank" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial da clínica ↗</Link>}
+          {slug&&<a href={urlPortalDoTutor(slug)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Abrir portal oficial da clínica ↗</a>}
           <Link to="/demo-portal-tutor" target="_blank" className="inline-flex min-h-11 items-center rounded-xl border bg-card px-4 text-sm font-semibold">Visualizar demonstração ORICSE ↗</Link>
         </div>
         <p className="text-xs text-muted-foreground">A demonstração mantém dados fictícios e não recebe as personalizações das clínicas.</p>

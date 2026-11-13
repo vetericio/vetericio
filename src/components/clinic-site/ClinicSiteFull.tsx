@@ -1,3 +1,4 @@
+import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -134,14 +135,9 @@ export function ClinicSiteFull({
   const routeSlug = caminhoAtual.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
   const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
   const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
-  // A Alvorada utiliza o endereço público oficial, independente do tema
-  // selecionado. Outras clínicas mantêm seus próprios links atuais.
-  let portalHref = "";
-  if (publishedSlug === "alvorada") {
-    portalHref = "https://alvorada.oricse.com.br/portaldotutor";
-  } else if (publishedSlug) {
-    portalHref = `/pet/${encodeURIComponent(publishedSlug)}/portal?secao=agenda&modelo=${encodeURIComponent(template)}`;
-  }
+  const portalHref = publishedSlug
+    ? urlPortalDoTutor(publishedSlug) + (publishedSlug === "alvorada" ? "" : "?secao=agenda")
+    : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
   const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
   // Fotos exclusivas da demonstração da Alvorada. Os outros temas e clínicas não mudam.

@@ -1,3 +1,4 @@
+import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import {
@@ -429,9 +430,7 @@ export function MenuLateral({
                           {item.rotulo}
                         </button>;
                       }
-                      const href = slug === "alvorada"
-                        ? "https://alvorada.oricse.com.br/portaldotutor"
-                        : `/pet/${encodeURIComponent(slug)}/portal`;
+                      const href = urlPortalDoTutor(slug);
                       return <a key={chave} href={href} onClick={() => setAberto(false)}
                         className={`${classe} hover:bg-secondary`}>{item.rotulo}</a>;
                     }

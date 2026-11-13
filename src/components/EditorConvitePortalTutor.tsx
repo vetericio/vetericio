@@ -1,3 +1,4 @@
+import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { useRef, useState } from "react";
 import { MessageCircle, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -5,7 +6,7 @@ import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import { salvarModeloConvite } from "@/lib/convite-portal-tutor.functions";
 import {
   CAMPOS_CONVITE, LIMITE_MODELO_CONVITE, MODELO_CONVITE_PADRAO,
-  camposAusentes, modeloConviteValido, preencherConvite, urlPortalDoTutor,
+  camposAusentes, modeloConviteValido, preencherConvite,
 } from "@/lib/convite-portal-tutor";
 
 export function EditorConvitePortalTutor({ clinicaId, clinicaNome, slug, salvo, aoSalvar }: {

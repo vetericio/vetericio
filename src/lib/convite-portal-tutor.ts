@@ -39,10 +39,6 @@ export function preencherConvite(modelo: string, dados: DadosConvite) {
   return modelo.replace(/\{\{([^{}]*)\}\}/g, (original, chave: string) => valores[chave] ?? original);
 }
 
-export function urlPortalDoTutor(slug: string) {
-  return `https://oricse.com.br/pet/${encodeURIComponent(slug)}/portal`;
-}
-
 export function whatsappDoTutor(telefone: string | null, mensagem: string) {
   const numero = (telefone || "").replace(/\D/g, "");
   const internacional = numero.startsWith("00") ? numero.slice(2) : numero;

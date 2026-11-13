@@ -1,3 +1,4 @@
+import { destinoPortalLegado } from "./lib/portal-tutor-url";
 export { OricseWriteCoordinator } from "./lib/drive-write-coordinator.server";
 import "./lib/error-capture";
 import { setDriveCoordinatorBinding } from "./lib/drive-coordinator-binding.server";
@@ -135,6 +136,15 @@ export default {
     setDriveCoordinatorBinding(getWorkerBindings(env)?.ORICSE_WRITE_COORDINATOR);
     try {
       const url = new URL(request.url);
+      if (request.method === "GET" || request.method === "HEAD") {
+        const destino = destinoPortalLegado(url.pathname, url.search);
+        if (destino) {
+          return securityHeaders(new Response(null, {
+            status: 308,
+            headers: { location: destino, "cache-control": "no-store" },
+          }), url.pathname);
+        }
+      }
       // Entrega os chunks existentes diretamente do pacote atual. Para chunks
       // antigos que não existem mais, deixa o fallback de recuperação agir.
       // Imagens estáticas da vitrine precisam ser servidas como arquivos reais,
