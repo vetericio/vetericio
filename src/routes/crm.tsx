@@ -669,7 +669,7 @@ function EventoCard({ evento, podeOperar, salvando, onContato, onStatus }: { eve
       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${evento.status === "enviado" ? "bg-emerald-100 text-emerald-800" : evento.status === "pendente" ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>{evento.status}</span>
     </div>
     {podeOperar && evento.status === "pendente" && <div className="mt-4 flex flex-wrap gap-2">
-      <button type="button" onClick={() => onContato(evento)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">{evento.canal === "email" ? <Mail size={16}/> : <MessageCircle size={16}/>} Abrir {evento.canal === "email" ? "e-mail" : evento.canal === "manual" ? "Copiar mensagem" : evento.canal === "email" ? "E-mail" : "WhatsApp"}</button>
+      <button type="button" onClick={() => onContato(evento)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">{evento.canal === "email" ? <Mail size={16}/> : <MessageCircle size={16}/>} {evento.canal === "manual" ? "Copiar mensagem" : evento.canal === "email" ? "Abrir e-mail" : "Abrir WhatsApp"}</button>
       <button type="button" disabled={salvando} onClick={() => void onStatus(evento, "enviado")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold disabled:opacity-50"><Check size={16}/> Marcar enviado</button>
       <button type="button" disabled={salvando} onClick={() => void onStatus(evento, "ignorado")} className="min-h-10 rounded-xl border px-3 text-sm font-semibold text-muted-foreground disabled:opacity-50">Ignorar</button>
     </div>}
