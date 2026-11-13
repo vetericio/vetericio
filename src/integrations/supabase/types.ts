@@ -3617,6 +3617,10 @@ export type Database = {
           tipo: string
         }[]
       }
+      oricse_portal_salvar_foto_animal: {
+        Args: { p_animal_id: string; p_foto: string }
+        Returns: boolean
+      }
       oricse_portal_atualizar_perfil: {
         Args: { p_email: string; p_telefone: string }
         Returns: undefined

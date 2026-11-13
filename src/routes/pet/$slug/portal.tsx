@@ -7,7 +7,9 @@ import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClin
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
 import { VERSAO } from "@/lib/versao";
 import "./portal-tutor-area.css";
-import { ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, MessageCircle, PawPrint, ReceiptText, ShieldCheck, UserRound, Wallet } from "lucide-react";
+import { pendenciasDosPets, type FonteCuidados } from "@/lib/portal-pet-care";
+import { prepararFotoDoPet } from "@/lib/portal-pet-photo";
+import { ArrowLeft, Camera, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, HeartPulse, Loader2, LockKeyhole, LogOut, PawPrint, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
@@ -56,16 +58,16 @@ type Horario={inicio:string;fim:string;rotulo:string};
 type Agendamento={id:string;agenda_id:string|null;animal_id:string|null;inicio:string;fim:string;estado:string;tipo:string;observacoes:string|null};
 type Comanda={id:string;animal_id:string;numero:number;status:"Aberta"|"Finalizada";origem:string;aberta_em:string;finalizada_em:string|null;itens:Array<{id:string;descricao:string;quantidade:number;valorUnitario:number}>;pagamentos:Array<{id:string;valor:number;formaPagamento:string;data:string}>;total:number;total_pago:number;saldo:number};
 const secoesPortal = [
-  { id: "resumo", nome: "Visão geral", Icon: Home },
-  { id: "agenda", nome: "Agenda", Icon: CalendarDays },
-  { id: "documentos", nome: "Documentos", Icon: FileText },
-  { id: "exames", nome: "Exames", Icon: FlaskConical },
-  { id: "receitas", nome: "Receitas", Icon: ReceiptText },
-  { id: "vacinas", nome: "Vacinas", Icon: HeartPulse },
-  { id: "vermifugos", nome: "Vermífugos", Icon: ShieldCheck },
-  { id: "comanda", nome: "Financeiro", Icon: Wallet },
-  { id: "contato", nome: "Fale com a clínica", Icon: MessageCircle },
-  { id: "perfil", nome: "Meu perfil", Icon: UserRound },
+  { id: "resumo", nome: "Visão geral", emoji: "🏠" },
+  { id: "agenda", nome: "Agenda", emoji: "📅" },
+  { id: "documentos", nome: "Documentos", emoji: "📄" },
+  { id: "exames", nome: "Exames", emoji: "🔬" },
+  { id: "receitas", nome: "Receitas", emoji: "📝" },
+  { id: "vacinas", nome: "Vacinas", emoji: "💉" },
+  { id: "vermifugos", nome: "Vermífugos", emoji: "🛡️" },
+  { id: "comanda", nome: "Financeiro", emoji: "💳" },
+  { id: "contato", nome: "Fale com a clínica", emoji: "💬" },
+  { id: "perfil", nome: "Meu perfil", emoji: "👤" },
 ] as const;
 
 type Secao = (typeof secoesPortal)[number]["id"];
@@ -83,6 +85,8 @@ function dadosDemoAlvorada(clinica:ClinicaPublica,usuario:string){
     {id:"demo-mel",nome:"Mel",especie:"Cão",raca:"Shih-tzu",sexo:"Fêmea",nascimento:"2024-01-20",peso_kg:6.4,foto_url:null},
     {id:"demo-nina",nome:"Nina",especie:"Gato",raca:"Persa",sexo:"Fêmea",nascimento:"2022-11-02",peso_kg:3.8,foto_url:null},
   ];
+  const ontem = new Date();
+  ontem.setDate(ontem.getDate() - 1);
   const vacinas:Vacina[]=[
     {id:"demo-vacina-lua",animal_id:"demo-lua",nome:"V4 felina",aplicada_em:"2026-03-12",reforco_em:"2027-03-12",lote:"ALV-2026-04",observacoes:"Aplicação registrada pela equipe Alvorada."},
     {id:"demo-vacina-thor",animal_id:"demo-thor",nome:"Antirrábica",aplicada_em:"2026-05-08",reforco_em:"2027-05-08",lote:"ALV-2026-11",observacoes:null},
@@ -117,12 +121,24 @@ function amanha(){const d=new Date();d.setDate(d.getDate()+1);return dataIso(d);
 function dataBr(v?:string|null){if(!v)return"Não informado";const d=new Date(v.length===10?`${v}T12:00:00`:v);return Number.isNaN(d.getTime())?v:d.toLocaleDateString("pt-BR");}
 function dataHora(v:string){return new Date(v).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});}
 function dinheiro(v:number){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
+function emojiDoPet(especie = "") {
+  const nome = (especie || "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  if (/cao|cachorr|canin/.test(nome)) return "🐶";
+  if (/gat|felin/.test(nome)) return "🐱";
+  if (/ave|passar|papagai/.test(nome)) return "🐦";
+  if (/coelh|lagomorf/.test(nome)) return "🐰";
+  return "🐾";
+}
 function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?"Aguardando aprovação":v==="reservado"?"Reservado":v;}
 
 export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const slug=slugDaClinica;
   const router = useRouter();
   const tituloSecao = useRef<HTMLHeadingElement>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState<string | null>(null);
+  const [fontesCuidados, setFontesCuidados] = useState<{ vacinas: FonteCuidados; vermifugos: FonteCuidados }>({
+    vacinas: "carregando", vermifugos: "carregando",
+  });
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string;canais_contato?:CanaisClinica}>({});
   const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [temaPortal,setTemaPortal]=useState<TemaPortal|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);const [modoDemoAlvorada,setModoDemoAlvorada]=useState(false);
@@ -203,6 +219,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       if (erroPets) throw erroPets;
       if (versao !== versaoCarregamento.current) return;
       if (!atualizar) {
+        setFontesCuidados({ vacinas: "carregando", vermifugos: "carregando" });
         setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
       }
       const lista = (pets || []) as Animal[];
@@ -212,6 +229,14 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       setEmail(ctx.tutor_email || "");
       setContexto(ctx);
       setCarregando(false);
+      void carregarCuidados(ctx).catch(erro => {
+        if (versao !== versaoCarregamento.current) return;
+        console.error("Falha ao consultar os cuidados dos pets:", erro);
+        setFontesCuidados(atual => ({
+          vacinas: atual.vacinas === "carregando" ? "indisponivel" : atual.vacinas,
+          vermifugos: atual.vermifugos === "carregando" ? "indisponivel" : atual.vermifugos,
+        }));
+      });
       void carregarComplementos(ctx);
     } catch (erro) {
       if (versao !== versaoCarregamento.current) return;
@@ -224,11 +249,37 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       if (versao === versaoCarregamento.current) setCarregando(false);
     }
 
+    async function carregarCuidados(ctx: Contexto) {
+      const vacinasColunas = "id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes";
+      const vermifugosColunas = "id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes";
+      const [vacinasBanco, vermifugosBanco, vacinasLegadas, vermifugosLegados] = await Promise.all([
+        supabaseBanco.from("oricse_portal_vacinas").select(vacinasColunas, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
+        supabaseBanco.from("oricse_portal_vermifugos").select(vermifugosColunas, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
+        supabase.from("oricse_portal_vacinas").select(vacinasColunas).eq("clinica_id", ctx.clinica_id),
+        supabase.from("oricse_portal_vermifugos").select(vermifugosColunas).eq("clinica_id", ctx.clinica_id),
+      ]);
+      if (versao !== versaoCarregamento.current) return;
+      const unir = <T extends { id: string }>(legados: T[], atuais: T[]) =>
+        [...new Map([...legados, ...atuais].map(registro => [registro.id, registro])).values()];
+      setVacinas(unir(vacinasLegadas.data || [], vacinasBanco.data || []));
+      setVermifugos(unir(vermifugosLegados.data || [], vermifugosBanco.data || []));
+      const situacao = (
+        banco: { error: unknown; count: number | null; data: unknown[] | null },
+        legado: { error: unknown },
+      ): FonteCuidados => {
+        if (banco.error && legado.error) return "indisponivel";
+        if (banco.error || legado.error || (banco.count ?? 0) > (banco.data?.length ?? 0)) return "parcial";
+        return "completa";
+      };
+      setFontesCuidados({
+        vacinas: situacao(vacinasBanco, vacinasLegadas),
+        vermifugos: situacao(vermifugosBanco, vermifugosLegados),
+      });
+    }
+
     async function carregarComplementos(ctx: Contexto) {
       try {
-      const [v,verm,e,d,r,ag,marc,c,docsCanonicos]=await Promise.all([
-        (supabase as any).from("oricse_portal_vacinas").select("id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes").eq("clinica_id",ctx.clinica_id).order("reforco_em",{ascending:true,nullsFirst:false}),
-        (supabase as any).from("oricse_portal_vermifugos").select("id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes").eq("clinica_id",ctx.clinica_id).order("administrado_em",{ascending:false,nullsFirst:false}),
+      const [e,d,r,ag,marc,c,docsCanonicos,comandasBanco]=await Promise.all([
         (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("realizado_em",{ascending:false,nullsFirst:false}),
         (supabase as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("data_documento",{ascending:false,nullsFirst:false}),
         (supabase as any).from("oricse_portal_receitas").select("id,animal_id,tipo,numero,titulo,emitida_em,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("emitida_em",{ascending:false}),
@@ -239,12 +290,17 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           .select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id")
           .eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true)
           .order("data_documento",{ascending:false,nullsFirst:false}),
+        supabaseBanco.from("oricse_portal_comandas")
+          .select("id,animal_id,numero,status,origem,aberta_em,finalizada_em,itens,pagamentos,total,total_pago,saldo")
+          .eq("clinica_id",ctx.clinica_id).eq("tutor_id",ctx.tutor_id).eq("visivel_tutor",true)
+          .order("aberta_em",{ascending:false}),
       ]);
       if (versao !== versaoCarregamento.current) return;
       if(docsCanonicos.error) console.warn("Documentos canônicos indisponíveis:",docsCanonicos.error.message);
       const unicos = new Map<string,Documento>();
       for(const item of [...(d.data||[]),...(docsCanonicos.data||[])] as Documento[]) unicos.set(item.id,item);
-      setVacinas(v.data||[]);setVermifugos(verm.data||[]);setExames(e.data||[]);setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas(c.data||[]);setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
+      setExames(e.data||[]);setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas([...new Map<string, Comanda>([...(c.data || []), ...(comandasBanco.data || [])]
+        .map(item => [item.id, item as Comanda])).values()]);setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
       } catch (erro) {
         console.error("Falha ao carregar dados complementares do portal:", erro);
       }
@@ -314,7 +370,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
   const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animal?.id),[vacinas,animal?.id]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animal?.id),[vermifugos,animal?.id]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animal?.id),[exames,animal?.id]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animal?.id),[documentos,animal?.id]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animal?.id),[receitas,animal?.id]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animal?.id),[agendamentos,animal?.id]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animal?.id),[comandas,animal?.id]);const agenda=agendas.find(a=>a.id===agendaId)||null;
 
-  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
+  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
   async function ativar(e: React.FormEvent) {
     e.preventDefault();
     const codigo = token.trim();
@@ -385,9 +441,38 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   async function pagarComanda(comanda:Comanda){setPagando(comanda.id);try{const texto=String(adiantamentos[comanda.id]||"").replace(/[^0-9,]/g,"").replace(",",".");const informado=Number(texto);const valor_centavos=Number.isFinite(informado)&&informado>0?Math.round(informado*100):Math.round(Number(comanda.saldo)*100);const{data,error}=await supabase.functions.invoke("oricse-portal-pagamentos?action=comanda",{body:{comanda_id:comanda.id,valor_centavos,slug}});if(error||!data?.checkout_url)throw new Error(data?.error||"Não foi possível abrir o pagamento.");window.location.assign(data.checkout_url);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o pagamento.");setPagando(null);}}
   async function abrirArquivo(id:string,tipo:TipoArquivo){const chave=`${tipo}:${id}`;setBaixando(chave);try{const{data:sessao}=await supabase.auth.getSession();const accessToken=sessao.session?.access_token;if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente.");const arquivo=await baixarDocumentoPortal({data:{accessToken,documentoId:id,tipo}});const binario=atob(arquivo.base64);const bytes=new Uint8Array(binario.length);for(let i=0;i<binario.length;i++)bytes[i]=binario.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));const aba=window.open(url,"_blank","noopener,noreferrer");if(!aba){const link=document.createElement("a");link.href=url;link.download=arquivo.nome;link.click();}setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o arquivo.");}finally{setBaixando(null);}}
 
+  async function enviarFotoDoPet(arquivo: File, petId: string) {
+    if (enviandoFoto) return;
+    const versao = versaoCarregamento.current;
+    setEnviandoFoto(petId);
+    try {
+      const foto = await prepararFotoDoPet(arquivo);
+      if (versao !== versaoCarregamento.current) return;
+      if (!modoDemoAlvorada) {
+        const { error } = await supabaseBanco.rpc("oricse_portal_salvar_foto_animal", { p_animal_id: petId, p_foto: foto });
+        if (error) throw new Error(error.message);
+      }
+      if (versao !== versaoCarregamento.current) return;
+      setAnimais(atuais => atuais.map(pet => pet.id === petId ? { ...pet, foto_url: foto } : pet));
+      toast.success(modoDemoAlvorada ? "Foto atualizada nesta demonstração." : "Foto do pet atualizada.");
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível salvar a foto.");
+    } finally {
+      setEnviandoFoto(null);
+    }
+  }
+
   if(carregandoClinica)return <TelaCarregando/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
   if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
 
+  const pendencias = secaoAtual.id === "resumo" ? pendenciasDosPets(
+    animais,
+    vacinas.map(registro => ({ ...registro, realizado: registro.aplicada_em, proximo: registro.reforco_em })),
+    vermifugos.map(registro => ({ ...registro, realizado: registro.administrado_em, proximo: registro.proxima_dose_em })),
+    comandas, fontesCuidados, dataIso(),
+  ) : [];
+  const carregandoCuidados = Object.values(fontesCuidados).includes("carregando");
+  const cuidadosIncompletos = Object.values(fontesCuidados).some(fonte => fonte === "parcial" || fonte === "indisponivel");
   const nomeClinica = portalConfig.nome_exibicao || contexto.clinica_nome;
   const logoClinica = portalConfig.logo_clinica_url || contexto.clinica_logo_url || portalConfig.logo_cabecalho_url;
   const siteClinica = new URL("/", urlPortalDoTutor(slug)).href;
@@ -419,16 +504,16 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       </header>
       <div className="portal-area-container portal-area-layout">
         <nav className="portal-area-nav" aria-label="Seções do Portal do Tutor">
-          {navegacao.map(({ id, nome, Icon }) => (
+          {navegacao.map(({ id, nome, emoji }) => (
             <button key={id} type="button" aria-current={secaoAtual.id === id ? "page" : undefined} onClick={() => navegar(id)}>
-              <Icon size={18} aria-hidden="true" /><span>{nome}</span>
+              <span className="portal-area-emoji" aria-hidden="true">{emoji}</span><span>{nome}</span>
             </button>
           ))}
         </nav>
         <label className="portal-area-mobile-nav">
           <span>Seções</span>
           <select value={secaoAtual.id} onChange={e => navegar(e.target.value as Secao)}>
-            {navegacao.map(({ id, nome }) => <option key={id} value={id}>{nome}</option>)}
+            {navegacao.map(({ id, nome, emoji }) => <option key={id} value={id}>{emoji} {nome}</option>)}
           </select>
         </label>
         <div className="portal-area-content">
@@ -439,7 +524,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
               <label className="portal-area-pet-select">
                 <span>Pet selecionado</span>
                 <select value={animal.id} onChange={e => navegar(secaoAtual.id, e.target.value)}>
-                  {animais.map(pet => <option key={pet.id} value={pet.id}>{pet.nome}</option>)}
+                  {animais.map(pet => <option key={pet.id} value={pet.id}>{emojiDoPet(pet.especie)} {pet.nome}</option>)}
                 </select>
               </label>
             )}
@@ -463,17 +548,53 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                 <>
                   <section className="portal-area-pet">
                     <span className="portal-area-pet-photo">
-                      {animal.foto_url ? <img src={animal.foto_url} alt="" /> : <PawPrint size={31} aria-hidden="true" />}
+                      {animal.foto_url ? <img src={animal.foto_url} alt="" /> : <span aria-hidden="true">{emojiDoPet(animal.especie)}</span>}
                     </span>
                     <div className="min-w-0">
                       <h2>{animal.nome}</h2>
                       <p className="portal-area-muted">{[animal.especie, animal.raca, animal.sexo].filter(Boolean).join(" · ")}</p>
                     </div>
+                    <label className="portal-area-photo-button">
+                      <Camera size={17} aria-hidden="true" />
+                      <span>{enviandoFoto === animal.id ? "Enviando…" : animal.foto_url ? "Trocar foto" : "Adicionar foto"}</span>
+                      <input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp"
+                        aria-label={`${animal.foto_url ? "Trocar" : "Adicionar"} foto de ${animal.nome}`}
+                        disabled={enviandoFoto !== null}
+                        onChange={e => {
+                          const arquivo = e.currentTarget.files?.[0];
+                          e.currentTarget.value = "";
+                          if (arquivo) void enviarFotoDoPet(arquivo, animal.id);
+                        }} />
+                    </label>
+                  </section>
+                  <section className="portal-area-list portal-area-care" aria-labelledby="portal-cuidados">
+                    <h2 id="portal-cuidados"><span aria-hidden="true">🐾</span> Atenção aos cuidados</h2>
+                    {carregandoCuidados && <p className="portal-area-muted mt-2 text-sm" role="status">Consultando registros dos pets…</p>}
+                    {cuidadosIncompletos && <p className="portal-area-muted mt-2 text-sm">Parte dos registros está indisponível no momento.</p>}
+                    {pendencias.length > 0 ? (
+                      <ul className="portal-area-care-list">
+                        {pendencias.map(item => (
+                          <li key={item.id}>
+                            <button type="button" className="portal-area-care-row" onClick={() => navegar(item.secao, item.animal.id)}>
+                              <span className="portal-area-care-icon" aria-hidden="true">{item.secao === "vacinas" ? "💉" : item.secao === "vermifugos" ? "🛡️" : "💳"}</span>
+                              <span className="portal-area-care-detail">
+                                <strong>{item.titulo}</strong>
+                                <small>{item.animal.nome}{item.data ? ` · ${dataBr(item.data)}` : item.saldo ? ` · ${dinheiro(item.saldo)}` : ""}</small>
+                              </span>
+                              <span className="portal-area-care-status" data-status={item.status}>{item.status}</span>
+                              <ChevronRight size={17} aria-hidden="true" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : !carregandoCuidados && !cuidadosIncompletos && (
+                      <p className="portal-area-muted mt-2 text-sm">Nenhum atraso registrado nos cuidados dos pets.</p>
+                    )}
                   </section>
                   <div className="portal-area-shortcuts">
-                    {portalConfig.exibir_agendamento !== false && <Resumo titulo="Agenda" valor="Agendamentos e horários" Icon={CalendarDays} onClick={() => navegar("agenda")} />}
-                    {portalConfig.exibir_documentos !== false && <Resumo titulo="Documentos" valor="Laudos e arquivos" Icon={FileText} onClick={() => navegar("documentos")} />}
-                    <Resumo titulo="Vacinas" valor="Carteira e reforços" Icon={HeartPulse} onClick={() => navegar("vacinas")} />
+                    {portalConfig.exibir_agendamento !== false && <Resumo titulo="Agenda" valor="Agendamentos e horários" emoji="📅" onClick={() => navegar("agenda")} />}
+                    {portalConfig.exibir_documentos !== false && <Resumo titulo="Documentos" valor="Laudos e arquivos" emoji="📄" onClick={() => navegar("documentos")} />}
+                    <Resumo titulo="Vacinas" valor="Carteira e reforços" emoji="💉" onClick={() => navegar("vacinas")} />
                   </div>
                   {extrasPublicos.opcoes.mostrar_avisos !== false && Boolean(extrasPublicos.opcoes.aviso_importante) && (
                     <section className="portal-area-notice">
@@ -529,10 +650,10 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
 function TelaCarregando(){return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4]"><Loader2 className="animate-spin"/></main>}
 function Campo({rotulo,valor,onChange,type="text",inputMode,placeholder}:{rotulo:string;valor:string;onChange:(v:string)=>void;type?:string;inputMode?:React.HTMLAttributes<HTMLInputElement>["inputMode"];placeholder?:string}){return <label className="text-sm font-bold">{rotulo}<input type={type} value={valor} inputMode={inputMode} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>}
-function Resumo({ titulo, valor, Icon, onClick }: { titulo: string; valor: string; Icon: typeof PawPrint; onClick: () => void }) {
+function Resumo({ titulo, valor, emoji, onClick }: { titulo: string; valor: string; emoji: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="portal-area-shortcut">
-      <span className="portal-area-shortcut-icon"><Icon size={21} aria-hidden="true" /></span>
+      <span className="portal-area-shortcut-icon" aria-hidden="true">{emoji}</span>
       <span className="min-w-0"><strong className="block">{titulo}</strong><small className="portal-area-muted">{valor}</small></span>
       <ChevronRight size={17} aria-hidden="true" />
     </button>

@@ -203,3 +203,57 @@
 }
 
 .portal-area-section-heading h1 { scroll-margin-top: 5rem; }
+
+.portal-area-emoji, .portal-area-shortcut-icon { font-size: 1.2rem; }
+.portal-area-pet-photo { font-size: 2rem; }
+.portal-area-pet { flex-wrap: wrap; }
+.portal-area-photo-button {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .5rem .7rem;
+  min-height: 44px;
+  border-radius: .65rem;
+  border: 1px solid var(--area-line);
+  font-size: .875rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.portal-area-photo-button:hover, .portal-area-care-row:hover { background: var(--area-tint); }
+.portal-area-photo-button:focus-within { outline: 2px solid var(--area-text); outline-offset: 3px; }
+.portal-area-photo-button:has(input:disabled) { opacity: .65; cursor: wait; }
+.portal-area-care { border-top: 3px solid var(--area-accent) !important; }
+.portal-area-care h2 { display: flex; align-items: center; gap: .5rem; }
+.portal-area-care-list { margin-top: .55rem; }
+.portal-area-care-list li + li { border-top: 1px solid var(--area-line); }
+.portal-area-care-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: .65rem;
+  min-height: 56px;
+  width: 100%;
+  padding: .55rem .45rem;
+  border-radius: .6rem;
+  text-align: start;
+}
+.portal-area-care-icon { font-size: 1.15rem; }
+.portal-area-care-detail strong { display: block; font-size: .875rem; overflow-wrap: anywhere; }
+.portal-area-care-detail small { display: block; color: var(--area-muted); }
+.portal-area-care-status {
+  display: inline-block;
+  padding: .25rem .5rem;
+  border-radius: .45rem;
+  background: var(--area-tint);
+  font-size: .75rem;
+  font-weight: 650;
+}
+.portal-area-care-status[data-status="Atrasado"] { background: #fce8e6; color: #842e24; }
+.portal-area-care-status[data-status="Hoje"] { background: #fff0cd; color: #6c4710; }
+@media (max-width: 35rem) {
+  .portal-area-care-row { grid-template-columns: auto minmax(0, 1fr) auto; gap: .35rem .55rem; }
+  .portal-area-care-status { grid-column: 2; grid-row: 2; justify-self: start; }
+  .portal-area-care-row > svg { grid-column: 3; grid-row: 1 / span 2; }
+  .portal-area-photo-button { margin-inline-start: 0; }
+}
