@@ -50,7 +50,7 @@ const hasWritePlanGuards = driveDb.includes("const permissoesEscrita:") &&
   driveDb.includes("matrizA") && driveDb.includes("permissaoEfetiva({") &&
   driveDb.includes("oricse_hotel_estadias");
 const hasClinicAdminLink = menu.includes('to: "/plano-clinica"') &&
-  read("src/routes/perfil-clinica.tsx").includes('to="/plano-clinica"');
+  hook.includes('"/plano-clinica"') && clinicPage.includes('createFileRoute("/plano-clinica")');
 const hasGeneralAdminLink = generalAdmin.includes('to="/admin-planos"');
 const hasAuthorizedClinicSummary = clinicPage.includes('oricse_plano_resumo_clinica') &&
   driveRpc.includes('case "oricse_plano_resumo_clinica"') &&
