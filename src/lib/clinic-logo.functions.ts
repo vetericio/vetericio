@@ -35,7 +35,7 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
       throw new Error("Sessão inválida ou expirada. Entre novamente e tente enviar a logo.");
 
     await exigirPermissaoClinica(
-      supabaseAdmin, autenticacao.user.id, data.clinicaId, ["administracao.site"],
+      supabaseAdmin, autenticacao.user.id, data.clinicaId, ["administracao.site"], data.accessToken,
     );
 
     const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
