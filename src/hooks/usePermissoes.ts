@@ -184,6 +184,8 @@ export function usePermissoes() {
     };
   }, [carregar]);
 
+  const recarregar = useCallback(() => carregar(true), [carregar]);
+
   const permitidas = useMemo(
     () => new Set(permissoes.filter((p) => p.permitido).map((p) => p.codigo)),
     [permissoes],
@@ -215,6 +217,6 @@ export function usePermissoes() {
     podeAlguma,
     bloqueadaPeloPlano,
     origemDaPermissao,
-    recarregar: () => carregar(true),
+    recarregar,
   };
 }
