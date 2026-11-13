@@ -100,7 +100,7 @@ const SECOES = [
     "intro": "O ORICSE pode integrar serviços de pagamento para cobrar seus planos e, em módulos próprios, permitir recebimentos de estabelecimentos.",
     "items": [
       "Informações de pedido, valores, ciclo contratado, identificação do pagador e situação do pagamento podem ser utilizadas para registrar e conciliar cobranças.",
-      "Quando há checkout por Mercado Pago ou outro prestador contratado, o processamento da transação está sujeito às práticas e aos avisos de privacidade do respectivo prestador.",
+      "Quando o checkout envolver prestador financeiro independente, o processamento de transações poderá estar sujeito a avisos de privacidade próprios desse prestador, conforme seu papel na operação, sem afastar os direitos dos titulares.",
       "A confirmação de uma cobrança não implica acesso irrestrito aos dados financeiros: consultas e permissões devem corresponder à função do usuário e à necessidade operacional.",
       "A ativação de planos e funcionalidades depende das regras de contratação e da confirmação financeira aplicável."
     ]
@@ -110,8 +110,8 @@ const SECOES = [
     "title": "09. Compartilhamento e operadores de tecnologia",
     "intro": "O compartilhamento é realizado quando necessário à prestação do serviço, à segurança, à integração solicitada ou ao cumprimento de obrigações legais.",
     "items": [
-      "Podemos utilizar fornecedores de hospedagem, infraestrutura, banco de dados, armazenamento, autenticação e processamento de arquivos, a exemplo de Cloudflare e Supabase nos componentes pertinentes.",
-      "Integrações como Google Drive, serviços de e-mail, WhatsApp, mapas e Mercado Pago podem ser utilizadas conforme a configuração do estabelecimento e as funcionalidades efetivamente ativadas.",
+      "Podemos utilizar prestadores terceirizados de hospedagem, infraestrutura, execução e proteção da aplicação, banco de dados, armazenamento, autenticação, processamento de arquivos e monitoramento, conforme os recursos efetivamente utilizados.",
+      "Integrações de armazenamento e sincronização, e-mail, mensageria, mapas e serviços financeiros podem ser utilizadas conforme a configuração do estabelecimento e as funcionalidades efetivamente ativadas.",
       "Dados podem ser fornecidos a autoridades mediante obrigação legal ou requisição válida, observados os requisitos aplicáveis.",
       "Não declaramos que todos esses serviços tratam os dados de todos os clientes. O fluxo efetivo varia de acordo com as integrações e configurações em uso."
     ]
@@ -198,9 +198,33 @@ const SECOES = [
     "items": [
       "A versão vigente ficará disponível nesta página, com indicação da data da atualização.",
       "Alterações materialmente relevantes serão comunicadas por meios apropriados, conforme as circunstâncias e a legislação aplicável.",
-      "Esta redação deve passar por revisão jurídica e validação das informações empresariais e operacionais antes de ser considerada definitiva."
+      "Solicitações de esclarecimento, acesso, correção e demais direitos podem ser dirigidas ao canal de privacidade informado nesta Política."
     ]
-  }
+  },
+  {
+  "id": "terceiros-condicoes",
+  "title": "18. Prestadores de serviços e dependências tecnológicas",
+  "intro": "A prestação do serviço pode envolver operadores ou controladores independentes, conforme a finalidade e a relação concreta com os dados.",
+  "items": [
+    "Categorias de prestadores incluem infraestrutura e hospedagem, proteção de aplicações, banco de dados, autenticação, armazenamento e sincronização, comunicações, suporte e processamento financeiro. Apenas fluxos necessários aos recursos habilitados são pertinentes a cada estabelecimento.",
+    "O compartilhamento observa finalidade, necessidade, base legal e obrigações contratuais adequadas. Alguns prestadores, sobretudo os financeiros, podem ser controladores independentes de tratamentos próprios e disponibilizar avisos de privacidade específicos.",
+    "Permissões de integração, contratos e licenças de terceiros podem mudar ou terminar, afetando o funcionamento de módulos. A ORICSE avaliará impactos sobre o tratamento de dados e implementará medidas de mitigação e comunicação cabíveis.",
+    "A classificação de operador, suboperador ou controlador depende da atividade concreta, não apenas da contratação de infraestrutura. A terceirização não afasta as responsabilidades legais próprias da ORICSE.",
+    "A identidade de destinatários e as informações específicas exigidas pela LGPD serão disponibilizadas conforme a obrigação legal aplicável, por transparência direta ou pelo canal de privacidade indicado; o uso de descrições por categoria não substitui divulgações legalmente obrigatórias."
+  ]
+},
+  {
+  "id": "transferencia-governanca",
+  "title": "19. Transferências internacionais, incidentes e continuidade",
+  "intro": "Cada transferência internacional e incidente de segurança relevante deve ser examinado conforme o fluxo efetivamente adotado.",
+  "items": [
+    "Conforme a configuração do serviço, dados pessoais podem ser armazenados, acessados ou processados fora do Brasil. A ORICSE deverá documentar e informar, quando exigido, países de destino, duração, finalidades, destinatários e mecanismos legais da transferência.",
+    "Transferências internacionais devem observar as hipóteses da LGPD, a regulamentação da ANPD e salvaguardas efetivamente adotadas, como cláusulas contratuais adequadas quando cabíveis. Uma referência genérica a fornecedores globais não substitui informação específica obrigatória.",
+    "Incidentes serão avaliados, contidos, registrados e comunicados aos agentes responsáveis, titulares e autoridade competente quando exigido, segundo risco e prazos legais.",
+    "Requisições de acesso, correção, eliminação e portabilidade poderão exigir atuação do controlador do estabelecimento, com cooperação técnica da ORICSE quando esta atuar como operadora.",
+    "Restrições de retenção, obrigações profissionais e cópias técnicas de segurança podem impedir eliminação instantânea de todos os dados. A restauração estará sujeita às possibilidades técnicas e às salvaguardas existentes."
+  ]
+}
 ] as const;
 
 function PoliticaDePrivacidade() {
@@ -261,7 +285,7 @@ function PoliticaDePrivacidade() {
               <p className="mt-2 text-sm leading-7 text-white/80">Dúvidas, solicitações e pedidos relacionados à privacidade e ao tratamento de dados pessoais podem ser encaminhados pelo canal abaixo.</p>
               <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:vetericio@gmail.com?subject=Privacidade%20e%20prote%C3%A7%C3%A3o%20de%20dados%20%E2%80%94%20Oricse"><Mail size={18}/> vetericio@gmail.com <ArrowUpRight size={16}/></a>
             </div>
-            <p className="mt-6 text-xs leading-6 text-[#8A747D]">Nota de transparência: o CNPJ e a localização foram conferidos em bases cadastrais públicas; o número do endereço e os contratos com fornecedores ainda devem ser confirmados no comprovante oficial. Recomenda-se revisão jurídica antes de considerar esta versão definitiva.</p>
+            <p className="mt-6 text-xs leading-6 text-[#8A747D]">Para informações específicas sobre destinatários, fornecedores e transferências internacionais, utilize o canal de privacidade indicado. A transparência legalmente exigida será observada em cada operação.</p>
           </article>
         </div>
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[#E1D4D9] pt-6 text-xs text-[#856F78]"><span>© {new Date().getFullYear()} {EMPRESA}</span><div className="flex gap-5"><Link to="/termos-de-uso" className="underline underline-offset-4">Termos de Uso</Link><Link to="/" className="underline underline-offset-4">Início</Link></div></footer>
