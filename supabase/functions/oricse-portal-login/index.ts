@@ -1,3 +1,4 @@
+import { credencialSenhaPortal, versaoSenhaPortal } from "../_shared/portal-password.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -187,7 +188,9 @@ Deno.serve(async(req)=>{
     if(erroAuth||!email)return resposta({error:"Usuário ou senha inválidos."},401);
 
     const publico=createClient(url,Deno.env.get("SUPABASE_ANON_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
-    const {data:login,error:erroLogin}=await publico.auth.signInWithPassword({email,password:senha});
+    const usaCredencialPortal=usuarioAuth.user?.app_metadata?.oricse_versao_senha_portal===versaoSenhaPortal;
+    const password=usaCredencialPortal?await credencialSenhaPortal(senha,portal.id):senha;
+    const {data:login,error:erroLogin}=await publico.auth.signInWithPassword({email,password});
     if(erroLogin||!login.session||!login.user||login.user.id!==portal.auth_user_id)return resposta({error:"Usuário ou senha inválidos."},401);
 
     await admin.from("oricse_portal_tutores").update({ultimo_acesso_em:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",portal.id);

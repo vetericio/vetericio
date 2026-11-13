@@ -1,3 +1,4 @@
+import { credencialSenhaPortal, orientacaoSenhaPortal, senhaPortalValida, versaoSenhaPortal } from "../_shared/portal-password.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -23,10 +24,6 @@ const corsBase = {
 };
 
 
-function senhaForte(senha: string) {
-  return senha.length >= 12 && senha.length <= 128 && /[a-z]/.test(senha) && /[A-Z]/.test(senha) && /\d/.test(senha) && /[^A-Za-z0-9]/.test(senha);
-}
-
 Deno.serve(async (req) => {
   const corsHeaders={...corsBase,"Access-Control-Allow-Origin":origemAutorizada(req)};
   const resposta=(body: Record<string, unknown>,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json"}});
@@ -36,8 +33,11 @@ Deno.serve(async (req) => {
   try {
     const { desafioId, animalId, senha } = await req.json();
     const senhaNova = String(senha ?? "");
-    if (!desafioId || !animalId || !senhaForte(senhaNova)) {
-      return resposta({ ok: false, error: "Crie uma senha com pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo." }, 400);
+    if (!desafioId || !animalId) {
+      return resposta({ ok: false, error: "Confirme o pet vinculado ao seu cadastro." }, 400);
+    }
+    if (!senhaPortalValida(senhaNova)) {
+      return resposta({ ok: false, error: orientacaoSenhaPortal }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -72,7 +72,10 @@ Deno.serve(async (req) => {
       return resposta({ ok: false, error: "Não foi possível validar este acesso." }, 400);
     }
 
-    const { error: erroSenha } = await admin.auth.admin.updateUserById(portal.auth_user_id, { password: senhaNova });
+    const { error: erroSenha } = await admin.auth.admin.updateUserById(portal.auth_user_id, {
+      password: await credencialSenhaPortal(senhaNova, portal.id),
+      app_metadata: { oricse_versao_senha_portal: versaoSenhaPortal },
+    });
     if (erroSenha) throw erroSenha;
 
     const agora = new Date().toISOString();

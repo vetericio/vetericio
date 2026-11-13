@@ -1,3 +1,4 @@
+import { orientacaoSenhaPortal, senhaPortalValida } from "../../../../supabase/functions/_shared/portal-password";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -229,9 +230,8 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       toast.error("Informe o código de ativação enviado pela clínica.");
       return;
     }
-    if (novaSenha.length < 12 || novaSenha.length > 128 || !/[a-z]/.test(novaSenha) ||
-        !/[A-Z]/.test(novaSenha) || !/\d/.test(novaSenha) || !/[^A-Za-z0-9]/.test(novaSenha)) {
-      toast.error("Crie uma senha de 12 a 128 caracteres com maiúscula, minúscula, número e símbolo.");
+    if (!senhaPortalValida(novaSenha)) {
+      toast.error(orientacaoSenhaPortal);
       return;
     }
     if (novaSenha !== repeteSenha) {
@@ -284,7 +284,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       setRecuperando(false);
     }
   }
-  async function concluirRecuperacao(e:React.FormEvent){e.preventDefault();if(!desafioRecuperacao||!animalResposta)return void toast.error("Escolha qual é o seu pet.");if(senhaRecuperacao.length<8)return void toast.error("A senha precisa ter pelo menos 8 caracteres.");if(senhaRecuperacao!==repeteSenhaRecuperacao)return void toast.error("As senhas não coincidem.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-complete",{body:{desafioId:desafioRecuperacao.desafioId,animalId:animalResposta,senha:senhaRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível redefinir a senha.");toast.success("Senha redefinida. Entre com seu usuário e a nova senha.");setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível redefinir a senha.");}finally{setRecuperando(false);}}
+  async function concluirRecuperacao(e:React.FormEvent){e.preventDefault();if(!desafioRecuperacao||!animalResposta)return void toast.error("Escolha qual é o seu pet.");if(!senhaPortalValida(senhaRecuperacao))return void toast.error(orientacaoSenhaPortal);if(senhaRecuperacao!==repeteSenhaRecuperacao)return void toast.error("As senhas não coincidem.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-complete",{body:{desafioId:desafioRecuperacao.desafioId,animalId:animalResposta,senha:senhaRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível redefinir a senha.");toast.success("Senha redefinida. Entre com seu usuário e a nova senha.");setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível redefinir a senha.");}finally{setRecuperando(false);}}
   function voltarRecuperacao(){setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}
   async function sair(){if(!modoDemoAlvorada)await supabase.auth.signOut();setModoDemoAlvorada(false);setContexto(null);setAnimais([]);navegar("resumo");}
   async function salvarPerfil(){setSalvandoPerfil(true);try{const{error}=await(supabase as any).rpc("oricse_portal_atualizar_perfil",{p_telefone:telefone,p_email:email});if(error)throw error;toast.success("Dados atualizados.");await carregar();}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}finally{setSalvandoPerfil(false);}}
@@ -412,6 +412,7 @@ function Login(props:{
             <form onSubmit={p.concluirRecuperacao} className="mt-5 space-y-4">
               <fieldset><legend className="text-sm font-bold">{p.desafioRecuperacao.pergunta}</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{p.desafioRecuperacao.alternativas.map((alternativa)=><button key={alternativa.id} type="button" onClick={()=>p.setAnimalResposta(alternativa.id)} className={"rounded-xl border px-4 py-3 text-left font-bold transition "+(p.animalResposta===alternativa.id?"border-[#702a43] bg-slate-100 ring-2 ring-[#303842]/20":"bg-white hover:border-slate-400")}>{alternativa.nome}</button>)}</div></fieldset>
               <Campo rotulo="Nova senha" valor={p.senhaRecuperacao} onChange={p.setSenhaRecuperacao} type="password"/>
+              <p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p>
               <Campo rotulo="Repita a nova senha" valor={p.repeteSenhaRecuperacao} onChange={p.setRepeteSenhaRecuperacao} type="password"/>
               <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">Por segurança, nenhuma senha antiga é exibida ou recuperada.</p>
               <button disabled={p.recuperando||!p.animalResposta} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.recuperando?"Redefinindo...":"Salvar nova senha"}</button>
@@ -419,7 +420,7 @@ function Login(props:{
           )}
           <button onClick={p.voltarRecuperacao} className="mt-4 w-full text-sm font-bold text-[#702a43]">Voltar para o acesso</button></>
         ) : p.modoAtivar ? (
-          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken} placeholder="Ex.: SD45"/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><p className="text-xs text-muted-foreground">Use de 12 a 128 caracteres, com maiúscula, minúscula, número e símbolo.</p><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
+          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken} placeholder="Ex.: SD45"/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
         ) : (
           <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
