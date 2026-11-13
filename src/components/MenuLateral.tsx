@@ -136,9 +136,7 @@ const areas: AreaMenu[] = [
     itens: [
       {to:"/banho-tosa",abaHotel:"painel",rotulo:"Painel do banho e tosa",permissao:"hotelzinho.visualizar"},
       {to:"/banho-tosa",abaHotel:"agenda",rotulo:"Agenda",permissao:"hotelzinho.visualizar"},
-      {to:"/banho-tosa",abaHotel:"novo",rotulo:"Novo agendamento",permissao:"hotelzinho.visualizar"},
       {to:"/banho-tosa",abaHotel:"fila",rotulo:"Fila de serviços",permissao:"hotelzinho.visualizar"},
-      {to:"/banho-tosa",abaHotel:"servicos",rotulo:"Serviços e preços",permissao:"hotelzinho.visualizar"},
       {to:"/banho-tosa",abaHotel:"historico",rotulo:"Histórico",permissao:"hotelzinho.visualizar"},
     ],
   },
@@ -381,19 +379,12 @@ export function MenuLateral({
                         <button
                           key={chave}
                           type="button"
-                          aria-disabled="true"
-                          onClick={() =>
-                            toast.info(
-                              "Recurso disponível somente em um plano que inclua esta funcionalidade.",
-                            )
-                          }
-                          className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground opacity-55"
+                          onClick={() => { setAberto(false); navigate({ to: "/plano-clinica" }); toast.info("Faça um upgrade do plano ORICSE para liberar este recurso."); }}
+                          className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground opacity-55"
                         >
                           <Lock className="h-3.5 w-3.5 shrink-0" />
                           <span className="flex-1">{item.rotulo}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wide">
-                            Plano
-                          </span>
+                          <Lock className="h-4 w-4 shrink-0" aria-label="Recurso não incluído no plano" />
                         </button>
                       );
                     const bloqueadoPlantao =
