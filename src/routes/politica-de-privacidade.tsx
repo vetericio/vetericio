@@ -224,6 +224,81 @@ const SECOES = [
     "Requisições de acesso, correção, eliminação e portabilidade poderão exigir atuação do controlador do estabelecimento, com cooperação técnica da ORICSE quando esta atuar como operadora.",
     "Restrições de retenção, obrigações profissionais e cópias técnicas de segurança podem impedir eliminação instantânea de todos os dados. A restauração estará sujeita às possibilidades técnicas e às salvaguardas existentes."
   ]
+},
+  {
+  "id": "modulos",
+  "title": "20. Dados por módulo e finalidade",
+  "intro": "Cada módulo trata apenas as categorias de dados necessárias às funcionalidades habilitadas, conforme o papel efetivo de cada agente.",
+  "items": [
+    "Consultório, prontuário, internação, receitas, exames e vacinas podem conter dados de identificação e contato de tutores e profissionais, informações sobre animais, histórico clínico, documentos, imagens e registros operacionais.",
+    "Vendas, orçamento, produtos, estoque e caixa podem tratar identificadores de transações, dados comerciais, informações de pagamento, registros de atendimento, comprovantes e dados necessários à execução contratual, fiscalização ou contabilidade.",
+    "Hotelzinho, creche e banho e tosa podem envolver reservas, estadias, informações de contato, cuidados indicados pelos responsáveis e comunicações da rotina do animal.",
+    "Gestão de funcionários, perfis, autorizações, escalas, jornadas e comissões podem tratar dados identificadores, profissionais, de acesso e de atividade. O estabelecimento normalmente define as finalidades trabalhistas.",
+    "Sites personalizados, CRM, campanhas, atendimento, demonstração e programas beta podem envolver cadastros, contatos, preferências, mensagens, consentimentos quando exigidos e registros de relacionamento."
+  ]
+},
+  {
+  "id": "pagamentos",
+  "title": "21. OricsePay e fluxos financeiros",
+  "intro": "Os recursos financeiros podem envolver prestadores independentes de pagamento e tratamento de dados para cumprimento de obrigações próprias.",
+  "items": [
+    "Dados sobre pagadores, estabelecimentos, recebedores, cobranças, valores, taxas, repasses, antecipações, identificadores de transação, chargebacks e conciliações poderão ser tratados conforme os recursos efetivamente habilitados.",
+    "Prestadores financeiros podem atuar como controladores independentes para prevenção a fraude, identificação, compliance e execução das transações, observadas suas próprias obrigações e avisos de privacidade.",
+    "A ORICSE utilizará dados financeiros segundo necessidade, base legal e controles de acesso; não pressupõe acesso irrestrito a cartões ou informações bancárias completas apenas por oferecer interface tecnológica."
+  ]
+},
+  {
+  "id": "studio",
+  "title": "22. OricStudio, perfis conectados e automações",
+  "intro": "A conexão voluntária de canais e perfis poderá permitir operações autorizadas e dados derivados das plataformas vinculadas.",
+  "items": [
+    "Conforme a integração e as permissões concedidas, podem ser tratados identificadores de contas, credenciais técnicas ou tokens, conteúdos enviados, mídias, agenda de publicações, mensagens, comentários, métricas e registros de auditoria.",
+    "Os dados de contas externas serão utilizados para as funções solicitadas, sujeito às permissões e políticas das plataformas; desconexão, expiração de autorização ou alterações externas podem reduzir os recursos disponíveis.",
+    "Quando houver recursos de criação assistida ou inteligência artificial, seu uso, os dados enviados, os fornecedores participantes e as opções de configuração deverão ser informados de modo apropriado antes do processamento, observadas as bases legais e restrições aplicáveis.",
+    "Conteúdos clínicos, informações de tutores ou outros dados confidenciais não deverão ser reutilizados para publicidade ou treinamento de ferramentas externas sem fundamento jurídico e salvaguardas apropriadas."
+  ]
+},
+  {
+  "id": "portal",
+  "title": "23. Identidade, acesso multiclínica e Portal do Tutor",
+  "intro": "O vínculo de uma pessoa a mais de um estabelecimento não autoriza o compartilhamento automático de seus registros entre clínicas.",
+  "items": [
+    "Identificadores comuns necessários à autenticação e à identificação do tutor podem coexistir com acervos específicos de cada estabelecimento, sujeitos a segregação lógica e controles de acesso apropriados.",
+    "A divulgação de prontuários, exames, receitas, comprovantes e outros documentos pressupõe validação de vínculo e legitimidade do acesso. Os controladores devem orientar correções e reclamações relacionadas aos dados de sua responsabilidade.",
+    "Ambientes de demonstração devem utilizar dados fictícios ou devidamente autorizados e permanecer separados de dados reais e credenciais produtivas."
+  ]
+},
+  {
+  "id": "conservacao",
+  "title": "24. Retenção diferenciada, logs, exportação e exclusão",
+  "intro": "O tratamento e a conservação variam por classe de dado, obrigação legal, configuração e necessidade operacional.",
+  "items": [
+    "Prontuários e documentos clínicos, registros financeiros e fiscais, contratos, provas de aceite, comunicações, logs de segurança e conteúdos de campanha podem ter períodos de guarda distintos, sujeitos a fundamentação e avaliação própria.",
+    "Ao encerrar contrato ou desabilitar integração, o controlador deverá avaliar exportação, conservação obrigatória, descarte seguro e eventual manutenção temporária em cópias de segurança, observados prazos e direitos aplicáveis.",
+    "As solicitações de titulares serão atendidas pelo controlador competente, com cooperação da ORICSE como operadora quando couber; eventual impossibilidade de eliminação imediata será justificada pela base legal ou obrigação pertinente."
+  ]
+},
+  {
+  "id": "terceiros",
+  "title": "25. Transparência reforçada, prestadores e transferências",
+  "intro": "O uso de serviços licenciados de terceiros exige observação de finalidades, segurança, obrigações contratuais e direitos dos titulares.",
+  "items": [
+    "Categorias de fornecedores podem incluir hospedagem, infraestrutura, banco de dados, autenticação, segurança, armazenamento, processamento documental, comunicação, canais sociais, serviços financeiros e suporte.",
+    "Informações concretas sobre transferências internacionais, inclusive destinos, mecanismos jurídicos e destinatários, devem ser documentadas e divulgadas de forma destacada quando exigidas pela regulamentação, não bastando referência genérica a provedores globais.",
+    "Licenças e permissões externas podem ser limitadas, alteradas ou suspensas; mudanças que afetem tratamento de dados serão avaliadas e comunicadas conforme a legislação. A contratação de terceiros não exclui os deveres legais da ORICSE.",
+    "Conforme a configuração do serviço, titulares podem solicitar informações sobre compartilhamentos e sobre suas operações de tratamento pelo canal oficial de privacidade."
+  ]
+},
+  {
+  "id": "direitos",
+  "title": "26. Direitos, segurança e comunicação de incidentes",
+  "intro": "O tratamento respeitará direitos dos titulares e deveres de prevenção, resposta e transparência previstos na legislação.",
+  "items": [
+    "São observados os direitos de confirmação de tratamento, acesso, correção, anonimização, bloqueio, eliminação quando cabível, portabilidade nos termos regulatórios, informação sobre compartilhamento, oposição e revisão de decisões automatizadas quando aplicável.",
+    "Pedidos poderão exigir verificação proporcional de identidade e encaminhamento à clínica controladora, quando esta determinar a finalidade da operação; a ORICSE prestará cooperação compatível com seu papel.",
+    "Eventos de segurança serão avaliados conforme gravidade e risco, com medidas de contenção, investigação, registros e comunicações à autoridade e aos titulares nos casos legalmente exigidos.",
+    "Os direitos previstos na LGPD não são renunciados por aceite eletrônico, contratação de módulos ou utilização do Portal do Tutor."
+  ]
 }
 ] as const;
 
