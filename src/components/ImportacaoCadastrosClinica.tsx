@@ -54,6 +54,7 @@ function validoData(valor:string){
 function conferir(tipo:Tipo,rows:RegistroCsv[],base:Base):Linha[]{
   const chaves=new Set<string>();
   const docs=new Set<string>();
+  const microchips=new Set<string>();
   const tutoresPorDocumento=new Map<string,Tutor[]>();
   for(const tutor of base.tutores){
     const doc=soDigitos(tutor.cpfCnpj||"");
@@ -89,7 +90,8 @@ function conferir(tipo:Tipo,rows:RegistroCsv[],base:Base):Linha[]{
     if(chaves.has(chave))return duplicado("Mesmo animal repetido neste arquivo.");
     chaves.add(chave);
     if(base.animais.some(a=>(a.tutorId||a.tutor_id)===tutorId&&normalizar(a.nome)===normalizar(nome)))return duplicado("Animal já cadastrado para este tutor.");
-    if(microchip&&base.animais.some(a=>(a.microchip||a.dados?.microchip||"").trim()===microchip))return duplicado("Microchip já cadastrado.");
+    if(microchip&&(microchips.has(microchip)||base.animais.some(a=>(a.microchip||a.dados?.microchip||"").trim()===microchip)))return duplicado("Microchip repetido ou já cadastrado.");
+    if(microchip)microchips.add(microchip);
     return {...row,status:"novo",motivo:"Pronto para cadastrar.",tutorId};
   });
 }
