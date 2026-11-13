@@ -106,6 +106,7 @@ type Registro = {
   fontePortal?: FontePortal;
   motivoOcultacao?: string | null;
   driveArquivoId?: string | null;
+  vacina?: VacinaPortal;
 };
 type PesoRegistro = { id: string; animalId: string; peso: number; data: string; criadoEm: string };
 type VacinaPortal = {
@@ -271,6 +272,27 @@ function rotuloMotivo(codigo?: string | null) {
   return codigo ? mapa[codigo] || codigo : "";
 }
 
+const CAMPOS_VACINA = "id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at";
+
+function registroDeVacina(vacina: VacinaPortal): Registro {
+  return {
+    id: vacina.id,
+    animalId: vacina.animal_id,
+    tipo: "Vacinas",
+    titulo: vacina.nome,
+    detalhe: [
+      vacina.observacoes,
+      vacina.reforco_em ? `Reforço: ${formatarData(vacina.reforco_em)}` : "",
+      vacina.lote ? `Lote: ${vacina.lote}` : "",
+    ].filter(Boolean).join("\n"),
+    data: vacina.aplicada_em || vacina.created_at.slice(0, 10),
+    criadoEm: vacina.created_at,
+    visivelTutor: vacina.visivel_tutor,
+    fontePortal: "vacina",
+    vacina,
+  };
+}
+
 function AnimalFicha() {
   const busca = useSearch({ strict: false }) as { animalId?: unknown };
   const animalId = typeof busca.animalId === "string" ? busca.animalId : "";
@@ -329,6 +351,7 @@ function AnimalFicha() {
   const [clinicaId, setClinicaId] = useState("");
   const [pesos, setPesos] = useState<PesoRegistro[]>([]);
   const [modalTipo, setModalTipo] = useState<RegistroTipo | null>(null);
+  const [vacinaEmEdicao, setVacinaEmEdicao] = useState<VacinaPortal | null>(null);
   const [modalPeso, setModalPeso] = useState(false);
   const [pesoNovo, setPesoNovo] = useState("");
   const [dataPeso, setDataPeso] = useState(() => new Date().toISOString().slice(0, 10));
@@ -355,9 +378,7 @@ function AnimalFicha() {
       const [vacinasResult, vermifugosResult, examesResult, docsResult, receitasResult] = await Promise.all([
         (supabaseBanco as any)
           .from("oricse_portal_vacinas")
-          .select(
-            "id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at",
-          )
+          .select(CAMPOS_VACINA)
           .eq("clinica_id", cid)
           .eq("animal_id", animalId)
           .order("aplicada_em", { ascending: false, nullsFirst: false }),
@@ -400,23 +421,7 @@ function AnimalFicha() {
       const docs = (docsResult.data || []) as DocumentoPortal[];
       const receitas = (receitasResult.data || []) as ReceitaPortal[];
       const convertidos: Registro[] = [
-        ...vacinas.map((v) => ({
-          id: v.id,
-          animalId: v.animal_id,
-          tipo: "Vacinas" as const,
-          titulo: v.nome,
-          detalhe: [
-            v.observacoes,
-            v.reforco_em ? `Reforço: ${formatarData(v.reforco_em)}` : "",
-            v.lote ? `Lote: ${v.lote}` : "",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-          data: v.aplicada_em || v.created_at.slice(0, 10),
-          criadoEm: v.created_at,
-          visivelTutor: v.visivel_tutor,
-          fontePortal: "vacina" as const,
-        })),
+        ...vacinas.map(registroDeVacina),
         ...vermifugos.map((v) => ({
           id: v.id,
           animalId: v.animal_id,
@@ -575,6 +580,7 @@ function AnimalFicha() {
       setAba("Observações");
       return;
     }
+    setVacinaEmEdicao(null);
     setModalTipo(tipo);
     setTitulo("");
     setDetalhe("");
@@ -585,6 +591,19 @@ function AnimalFicha() {
     setArquivoPdf(null);
     anexoEmEdicao.current = null;
     setTipoDetalhe(tipo === "Exames" ? "Exame" : tipo === "Documentos" ? "Documento" : "");
+  }
+
+  function editarVacina(registro: Registro) {
+    const vacina = registro.vacina;
+    if (!vacina || vacina.animal_id !== animalId) return;
+    setVacinaEmEdicao(vacina);
+    setTitulo(vacina.nome);
+    setData(vacina.aplicada_em || "");
+    setReforcoEm(vacina.reforco_em || "");
+    setLote(vacina.lote || "");
+    setDetalhe(vacina.observacoes || "");
+    setVisivelTutor(Boolean(registro.visivelTutor));
+    setModalTipo("Vacinas");
   }
 
   async function salvarRegistro() {
@@ -601,17 +620,32 @@ function AnimalFicha() {
       setSalvandoPortal(true);
       try {
         if (modalTipo === "Vacinas") {
-          const { error } = await (supabaseBanco as any).from("oricse_portal_vacinas").insert({
-            clinica_id: clinicaId,
-            animal_id: animal.id,
+          const campos = {
             nome: titulo.trim(),
             aplicada_em: data || null,
             reforco_em: reforcoEm || null,
             lote: lote.trim() || null,
             observacoes: detalhe.trim() || null,
             visivel_tutor: visivelTutor,
-          });
-          if (error) throw error;
+          };
+          if (vacinaEmEdicao && (vacinaEmEdicao.animal_id !== animal.id || animal.id !== animalId))
+            throw new Error("A vacina não pertence à ficha aberta.");
+          const vacinas = supabaseBanco.from("oricse_portal_vacinas");
+          const operacao = vacinaEmEdicao
+            ? vacinas.update({ ...campos, updated_at: new Date().toISOString() })
+                .eq("id", vacinaEmEdicao.id)
+                .eq("clinica_id", clinicaId)
+                .eq("animal_id", animal.id)
+            : vacinas.insert({ ...campos, clinica_id: clinicaId, animal_id: animal.id });
+          const { data: salva, error } = await operacao.select(CAMPOS_VACINA).single();
+          if (error || !salva) throw new Error("Não foi possível salvar a vacina. Confira a permissão ou atualize a ficha.");
+          const registro = registroDeVacina(salva);
+          setRegistrosPortal((lista) => [...lista.filter((item) =>
+            item.fontePortal !== "vacina" || item.id !== registro.id), registro]);
+          setModalTipo(null);
+          setVacinaEmEdicao(null);
+          toast.success(vacinaEmEdicao ? "Vacina atualizada." : "Vacina adicionada.");
+          return;
         } else if (modalTipo === "Vermífugos") {
           const { error } = await (supabaseBanco as any).from("oricse_portal_vermifugos").insert({
             clinica_id: clinicaId,
@@ -1010,6 +1044,7 @@ function AnimalFicha() {
               registros={registrosAnimal.filter((r) => r.tipo === aba)}
               onAdd={() => abrirNovo(aba as RegistroTipo)}
               onTogglePortal={alternarVisibilidade}
+              onEditarVacina={editarVacina}
             />
           )}
 
@@ -1017,19 +1052,22 @@ function AnimalFicha() {
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
               onMouseDown={(e) => {
-                if (e.currentTarget === e.target) setModalTipo(null);
+                if (!salvandoPortal && e.currentTarget === e.target) setModalTipo(null);
               }}
             >
-              <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
+              <div role="dialog" aria-modal="true" aria-labelledby="titulo-modal-registro" className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wide text-primary">
                       {animal.nome}
                     </p>
-                    <h2 className="text-2xl font-black">Adicionar em {modalTipo}</h2>
+                    <h2 id="titulo-modal-registro" className="text-2xl font-black">
+                      {vacinaEmEdicao ? "Editar vacina" : `Adicionar em ${modalTipo}`}
+                    </h2>
                   </div>
                   <button
                     type="button"
+                    disabled={salvandoPortal}
                     onClick={() => setModalTipo(null)}
                     className="rounded-lg p-2 hover:bg-muted"
                   >
@@ -1038,7 +1076,7 @@ function AnimalFicha() {
                 </div>
                 <div className="mt-5 space-y-4">
                   <label className="block text-sm font-bold">
-                    Data
+                    {modalTipo === "Vacinas" ? "Data da aplicação" : "Data"}
                     <input
                       type="date"
                       value={data}
@@ -1047,7 +1085,7 @@ function AnimalFicha() {
                     />
                   </label>
                   <label className="block text-sm font-bold">
-                    Título
+                    {modalTipo === "Vacinas" ? "Nome da vacina" : "Título"}
                     <input
                       autoFocus
                       value={titulo}
@@ -1161,6 +1199,7 @@ function AnimalFicha() {
                 <div className="mt-5 flex justify-end gap-2">
                   <button
                     type="button"
+                    disabled={salvandoPortal}
                     onClick={() => setModalTipo(null)}
                     className="rounded-xl border px-4 py-2.5 font-bold"
                   >
@@ -1445,11 +1484,13 @@ function SecaoCompleta({
   registros,
   onAdd,
   onTogglePortal,
+  onEditarVacina,
 }: {
   aba: Aba;
   registros: Registro[];
   onAdd: () => void;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
+  onEditarVacina: (registro: Registro) => void;
 }) {
   const Icon = iconFor(aba);
   return (
@@ -1479,25 +1520,37 @@ function SecaoCompleta({
                       {formatarData(r.data)}
                     </div>
                   </div>
-                  {r.fontePortal === "receita" ? (
-                    <span
-                      className={`rounded-full px-3 py-2 text-xs font-bold ${r.visivelTutor ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}
-                    >
-                      {r.visivelTutor ? "Disponível no Portal" : "Oculta do Portal"}
-                    </span>
-                  ) : (
-                    r.fontePortal && (
-                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(r.visivelTutor)}
-                          onChange={(e) => void onTogglePortal(r, e.target.checked)}
-                          className="accent-primary"
-                        />{" "}
-                        Visível no Portal do Tutor
-                      </label>
-                    )
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {r.vacina && (
+                      <button
+                        type="button"
+                        onClick={() => onEditarVacina(r)}
+                        aria-label={`Editar vacina ${r.titulo}`}
+                        className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted"
+                      >
+                        <Pencil size={14} /> Editar
+                      </button>
+                    )}
+                    {r.fontePortal === "receita" ? (
+                      <span
+                        className={`rounded-full px-3 py-2 text-xs font-bold ${r.visivelTutor ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}
+                      >
+                        {r.visivelTutor ? "Disponível no Portal" : "Oculta do Portal"}
+                      </span>
+                    ) : (
+                      r.fontePortal && (
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(r.visivelTutor)}
+                            onChange={(e) => void onTogglePortal(r, e.target.checked)}
+                            className="accent-primary"
+                          />{" "}
+                          Visível no Portal do Tutor
+                        </label>
+                      )
+                    )}
+                  </div>
                 </div>
                 {r.detalhe && (
                   <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
