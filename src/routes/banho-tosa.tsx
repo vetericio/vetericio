@@ -17,7 +17,7 @@ type Pagamento = {id:string;agendamento_banho_tosa_id:string;valor_centavos:numb
 type Extra = {id:string;agendamento_id:string;descricao:string;quantidade:number;valor_unitario_centavos:number};
 const etapas = ["agendado","recebido","em_execucao","pronto","entregue"];
 const verificacoes = ["Conferência da pele e pelagem","Conferência de olhos e ouvidos","Banho realizado","Secagem concluída","Escovação final","Perfume/acessórios autorizados","Tutor avisado","Conferência antes da entrega"];
-const abas = [{id:"painel",nome:"Painel"},{id:"agenda",nome:"Agenda"},{id:"novo",nome:"Novo agendamento"},{id:"fila",nome:"Fila de serviços"},{id:"servicos",nome:"Serviços e preços"},{id:"historico",nome:"Histórico"}] as const;
+const abas = [{id:"painel",nome:"Painel"},{id:"agenda",nome:"Agenda"},{id:"fila",nome:"Fila de serviços"},{id:"historico",nome:"Histórico"}] as const;
 type Aba = typeof abas[number]["id"];
 const dinheiro=(c:number)=> (c/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const dataLocal=(v:string)=>new Date(v).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
@@ -28,10 +28,10 @@ const campo="mt-1 w-full min-h-11 rounded-xl border bg-background px-3 text-fore
 function BanhoTosa(){
  const {clinicaId,carregando:carregandoPermissoes,adminGlobal,pode}=usePermissoes();
  const location=useLocation();
- const abaDaUrl=(hash:string):Aba=>abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
+ const abaDaUrl=(hash:string):Aba=>hash.replace(/^#/, "")==="novo"?"agenda":abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
  const [aba,setAba]=useState<Aba>(()=>typeof window!=="undefined"?abaDaUrl(window.location.hash):"painel");
- const [mostrarNovoAgendamento,setMostrarNovoAgendamento]=useState(false);
- useEffect(()=>setAba(abaDaUrl(location.hash)),[location.hash]);
+ const [mostrarNovoAgendamento,setMostrarNovoAgendamento]=useState(() => typeof window !== "undefined" && window.location.hash === "#novo");
+ useEffect(()=>{setAba(abaDaUrl(location.hash));if(location.hash==="#novo")setMostrarNovoAgendamento(true);},[location.hash]);
  useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=qs.get("inicio");if(prof)setProfissional(prof);if(hora&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(hora))setInicio(hora);}},[location.hash,location.search]);
  const [carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
  const [erro,setErro]=useState("");
@@ -47,7 +47,6 @@ function BanhoTosa(){
  const [visaoAgenda,setVisaoAgenda]=useState<"dia"|"semana"|"mes">("dia");
  const [filtroProfissional,setFiltroProfissional]=useState("todos");
  const [animalId,setAnimalId]=useState(""),[servicoId,setServicoId]=useState(""),[inicio,setInicio]=useState(isoLocal),[profissional,setProfissional]=useState(""),[obs,setObs]=useState("");
- const [nomeServico,setNomeServico]=useState(""),[duracao,setDuracao]=useState("60"),[preco,setPreco]=useState("");
  const db=supabaseBanco as any;
  const podeOperar=adminGlobal||pode("hotelzinho.operar")||pode("recepcao.agenda");
  const nomesAnimais=useMemo(()=>new Map(animais.map(a=>[a.id,a])),[animais]);
@@ -110,15 +109,6 @@ function BanhoTosa(){
   const {error}=await db.from("oricse_banho_tosa_agendamentos").insert({clinica_id:clinicaId,animal_id:animal.id,tutor_id:animal.tutor_id,servico_id:servico.id,servico_nome:servico.nome,inicio:comeco.toISOString(),fim:fim.toISOString(),profissional,observacoes:obs,valor_centavos:servico.preco_centavos});
   setSalvando(false);if(error)return toast.error(error.message);
   setAnimalId("");setServicoId("");setObs("");toast.success("Agendamento criado.");await carregar();
- }
- async function cadastrarServico(e:FormEvent){
-  e.preventDefault();if(!clinicaId||!podeOperar||salvando)return;
-  const minutos=Number(duracao),valor=centavosDoCampo(preco);
-  if(!nomeServico.trim()||!Number.isInteger(minutos)||minutos<10||minutos>480)return toast.error("Informe nome e duração válida (10 a 480 min).");
-  setSalvando(true);
-  const {error}=await db.from("oricse_banho_tosa_servicos").insert({clinica_id:clinicaId,nome:nomeServico.trim(),duracao_min:minutos,preco_centavos:valor});
-  setSalvando(false);if(error)return toast.error(error.message);
-  setNomeServico("");setPreco("");toast.success("Serviço cadastrado.");await carregar();
  }
  async function mudarStatus(item:Atendimento,status:string){
   if(!podeOperar)return;
@@ -201,7 +191,7 @@ function BanhoTosa(){
   {carregando?<p>Carregando registros…</p>:<>
    {aba==="painel"&&<section className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Agendados hoje",doDia.length],["Em atendimento",ativos.filter(x=>x.status==="em_execucao").length],["Prontos",ativos.filter(x=>x.status==="pronto").length],["Serviços cadastrados",servicos.filter(x=>x.ativo).length]].map(([nome,valor])=><div key={String(nome)} className={card}><p className="text-sm text-muted-foreground">{nome}</p><p className="text-3xl font-bold">{valor}</p></div>)}</div><h2 className="font-bold text-xl">Próximos serviços</h2>{ativos.slice(0,10).map(registro)}</section>}
    {aba==="agenda"&&<section className="space-y-4"><div className="flex justify-end"><button type="button" onClick={()=>setMostrarNovoAgendamento(v=>!v)} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">{mostrarNovoAgendamento?"Fechar novo agendamento":"+ Novo agendamento"}</button></div><AgendaErrorBoundary><AgendaDayBoard mode="banho"/></AgendaErrorBoundary></section>}
-   {(aba==="novo" || (aba==="agenda" && mostrarNovoAgendamento))&&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
+   {aba==="agenda" && mostrarNovoAgendamento &&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
     <label>Animal<select required className={campo} value={animalId} onChange={e=>setAnimalId(e.target.value)}><option value="">Selecione</option>{animais.map(a=><option key={a.id} value={a.id}>{a.nome} — {nomesTutores.get(a.tutor_id)||"Tutor"}</option>)}</select></label>
     <label>Serviço<select required className={campo} value={servicoId} onChange={e=>setServicoId(e.target.value)}><option value="">Selecione</option>{servicos.filter(x=>x.ativo).map(x=><option key={x.id} value={x.id}>{x.nome} · {dinheiro(x.preco_centavos)}</option>)}</select></label>
     <label>Data e horário<input required type="datetime-local" className={campo} value={inicio} onChange={e=>setInicio(e.target.value)}/></label>
@@ -210,7 +200,6 @@ function BanhoTosa(){
     <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3"><strong>{selecionado?`${selecionado.duracao_min} min · ${dinheiro(selecionado.preco_centavos)}`:"Selecione um serviço"}</strong><button disabled={!podeOperar||salvando} className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground disabled:opacity-50">Agendar serviço</button></div>
    </form>}
    {aba==="fila"&&<section className="space-y-3">{ativos.length?ativos.map(registro):<p className={card}>Nenhum atendimento ativo.</p>}</section>}
-   {aba==="servicos"&&<section className="space-y-4"><form onSubmit={cadastrarServico} className={card+" grid gap-3 sm:grid-cols-4"}><label className="sm:col-span-2">Nome do serviço<input required className={campo} value={nomeServico} onChange={e=>setNomeServico(e.target.value)} placeholder="Banho, tosa higiênica…"/></label><label>Duração (min)<input required type="number" min="10" max="480" className={campo} value={duracao} onChange={e=>setDuracao(e.target.value)}/></label><label>Preço (R$)<input inputMode="numeric" className={campo} value={preco} onChange={e=>setPreco(digitarCentavos(e.target.value))} placeholder="0,00"/></label><button disabled={!podeOperar||salvando} className="rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground sm:col-span-4 disabled:opacity-50">Cadastrar serviço</button></form><div className="grid gap-2 sm:grid-cols-2">{servicos.map(x=><div key={x.id} className={card}><strong>{x.nome}</strong><p className="text-sm text-muted-foreground">{x.duracao_min} minutos · {dinheiro(x.preco_centavos)} · {x.ativo?"Ativo":"Inativo"}</p></div>)}</div></section>}
    {aba==="historico"&&<section className="space-y-3">{encerrados.length?encerrados.map(registro):<p className={card}>Ainda não há atendimentos concluídos.</p>}</section>}
   </>}
  </main>;
