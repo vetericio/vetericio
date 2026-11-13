@@ -9,6 +9,7 @@ import { BackupPoliticasClinica } from "@/components/BackupPoliticasClinica";
 import { ModulosAdministrativosClinica } from "@/components/ModulosAdministrativosClinica";
 import { SolicitacoesLgpdClinica } from "@/components/SolicitacoesLgpdClinica";
 import { ImportacaoCadastrosClinica } from "@/components/ImportacaoCadastrosClinica";
+import { ConfiguracaoAcessibilidade } from "@/components/ConfiguracaoAcessibilidade";
 import { ConfiguracaoPoliticasClinica } from "@/components/ConfiguracaoPoliticasClinica";
 
 export const Route = createFileRoute("/perfil-clinica")({
@@ -195,7 +196,7 @@ function PerfilClinica() {
     ] },
     { id: "personalizacao", titulo: "Personalização", icone: Palette, itens: [
       { nome: "Identidade visual", descricao: "Logotipo, cores, documentos e site." },
-      { nome: "Acessibilidade e interface", descricao: "Contraste, legibilidade e densidade de informações." },
+      { nome: "Acessibilidade e interface", descricao: "Texto, contraste, foco e movimento neste navegador.", especial: "acessibilidade" },
       { nome: "Impressoras e equipamentos", descricao: "Etiquetas, leitores, câmeras e impressão." },
       { nome: "Indicadores personalizados", descricao: "Seleção de métricas dos painéis.", especial: "modulos" },
     ] },
@@ -281,10 +282,11 @@ function PerfilClinica() {
                   const isModulos = "especial" in item && item.especial === "modulos" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const isLgpd = "especial" in item && item.especial === "lgpd" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const isImportacao = "especial" in item && item.especial === "importacao" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
+                  const isAcessibilidade = "especial" in item && item.especial === "acessibilidade";
                   const isModelos = "especial" in item && item.especial === "modelos" && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica");
                   const destination = "href" in item ? item.href : undefined;
                   const corpo = <><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">{item.nome}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.descricao}</span></span>
-                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : (isAgenda || isModelos || isPoliticas || isModulos || isLgpd || isImportacao) ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
+                    {destination ? <ChevronRight size={17} className="shrink-0 text-muted-foreground"/> : (isAgenda || isModelos || isPoliticas || isModulos || isLgpd || isImportacao || isAcessibilidade) ? <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">Nesta página</span> : <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">Em preparação</span>}</>;
                   return destination && item.nome === "Meu plano e funcionalidades" ? <Link key={item.nome} to="/plano-clinica" className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link> : destination ? <Link key={item.nome} to={destination as any} className="flex min-h-20 items-center gap-2 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">{corpo}</Link>
                     : <div key={item.nome} className="flex min-h-20 items-center gap-2 rounded-lg border p-3">{corpo}</div>;
                 })}
@@ -305,6 +307,7 @@ function PerfilClinica() {
               {grupo.id === "administracao" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <ImportacaoCadastrosClinica podeGerenciar={true}/>
               )}
+              {grupo.id === "personalizacao" && !termoBusca && <ConfiguracaoAcessibilidade/>}
               {grupo.id === "documentos" && !termoBusca && (adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica") && (
                 <ConfiguracaoModelosDocumentos clinica={perfil?.nome || "clínica"} podeGerenciar={Boolean(adminGeral || perfil?.papel === "rt" || perfil?.papel === "admin_clinica")}/>
               )}
