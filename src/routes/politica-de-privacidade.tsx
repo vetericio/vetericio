@@ -348,7 +348,7 @@ function PoliticaDePrivacidade() {
           <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.19em] text-[#EED8DF]"><ShieldCheck size={17}/> Transparência, segurança e respeito aos seus dados</p>
           <h1 className="mt-5 max-w-3xl font-display text-4xl font-semibold tracking-tight sm:text-5xl">Política de Privacidade e Proteção de Dados</h1>
           <p className="mt-5 max-w-3xl text-base leading-8 text-[#F0DBE2]">Esta página explica, de maneira clara e responsável, como tratamos informações pessoais no ecossistema Oricse, o papel dos estabelecimentos que usam a plataforma e como você pode exercer seus direitos.</p>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Lei Geral de Proteção de Dados — LGPD</span><span className="rounded-full border border-white/25 px-4 py-2">Atualizada em 02/11/2026</span></div>
+          <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Lei Geral de Proteção de Dados — LGPD</span><span className="rounded-full border border-white/25 px-4 py-2">Atualizada em 13/11/2026</span></div>
         </div>
       </section>
 
