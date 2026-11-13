@@ -18,7 +18,7 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
-type Aba = "catalogo" | "cadastro" | "estoque" | "comissoes" | "equipe" | "pagamentos";
+type Aba = "catalogo" | "cadastro" | "estoque" | "historico" | "comissoes" | "equipe" | "pagamentos";
 type ItemForm = {
   id?: string;
   tipo: "servico" | "produto";
@@ -90,8 +90,8 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   const abasPermitidas = useMemo(() => {
     const lista: Array<[Aba, string]> = [];
     if (area === "estoque" && podeVerCatalogo) lista.push(["catalogo", "Serviços e produtos"]);
-    if (area === "estoque" && podeGerenciarCatalogo) lista.push(["cadastro", "Adicionar valores"]);
     if (area === "estoque" && (podeVerCatalogo || podeMovimentarEstoque)) lista.push(["estoque", "Estoque"]);
+    if (area === "estoque" && podeVerCatalogo) lista.push(["historico", "Histórico"]);
     if (area === "rh" && podeVerPagamentos) {
       lista.push(["comissoes", "Comissões da equipe"]);
       lista.push(["equipe", "Comissões por colaborador"]);
@@ -481,10 +481,16 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       )}
 
       {aba === "catalogo" && podeVerCatalogo && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
           <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
           <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
+          </div>
+          {podeGerenciarCatalogo && <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => iniciarCadastro("produto")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"><Plus size={17}/> Adicionar produto</button>
+            <button type="button" onClick={() => iniciarCadastro("servico")} className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-semibold"><Plus size={17}/> Adicionar serviço</button>
+          </div>}
         </div>
       )}
 
