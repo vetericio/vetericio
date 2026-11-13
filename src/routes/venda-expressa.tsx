@@ -204,7 +204,7 @@ function VendaExpressa() {
       <div><Link to="/inicio" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"><ArrowLeft size={16}/> Voltar</Link>
         <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">Venda Expressa</h1>
         <p className="text-sm text-muted-foreground">PDV · sem comanda e sem cadastro de tutor</p></div>
-      <button type="button" onClick={() => void carregar()} disabled={carregando} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold disabled:opacity-50"><RefreshCw size={17}/> Atualizar estoque</button>
+      <div className="flex flex-wrap gap-2"><Link to="/orcamento-venda-expressa" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Orçamento</Link><button type="button" onClick={() => void carregar()} disabled={carregando} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold disabled:opacity-50"><RefreshCw size={17}/> Atualizar estoque</button></div>
     </div>
     {erro && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{erro}</div>}
     {sucesso && <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">

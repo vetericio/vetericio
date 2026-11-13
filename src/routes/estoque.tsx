@@ -18,7 +18,7 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
-type Aba = "catalogo" | "cadastro" | "estoque" | "comissoes" | "equipe" | "pagamentos";
+type Aba = "catalogo" | "cadastro" | "estoque" | "historico" | "comissoes" | "equipe" | "pagamentos";
 type ItemForm = {
   id?: string;
   tipo: "servico" | "produto";
@@ -70,6 +70,13 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   const [modal, setModal] = useState<ItemForm | null>(null);
   const [quantidadesEstoque, setQuantidadesEstoque] = useState<Record<string, string>>({});
   const [salvandoEstoque, setSalvandoEstoque] = useState<string | null>(null);
+  const [historicoEstoque, setHistoricoEstoque] = useState<Array<{id:string;item_nome:string;tipo:string;quantidade:number;estoque_anterior:number;estoque_posterior:number;registrado_em:string}>>([]);
+  const [historicoVendas, setHistoricoVendas] = useState<Array<{id:string;forma_pagamento:string;valor_centavos:number;registrada_em:string}>>([]);
+  const [historicoItensVenda, setHistoricoItensVenda] = useState<Array<{venda_id:string;nome_snapshot:string;quantidade:number}>>([]);
+  const [historicoCaixa, setHistoricoCaixa] = useState<Array<{id:string;origem_tipo:string;origem_id:string;setor:string;tipo:string;status:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string}>>([]);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
+  const [erroHistorico, setErroHistorico] = useState("");
+
   const [ordenacaoEstoque, setOrdenacaoEstoque] = useState<"categoria" | "alfabetica" | "maior" | "menor">("categoria");
   const [categoriaEstoque, setCategoriaEstoque] = useState("todas");
   const [regraItemId, setRegraItemId] = useState("");
@@ -84,14 +91,15 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   const podeGerenciarCatalogo = eAdmin || pode("estoque.catalogo.gerenciar");
   const podeMovimentarEstoque = eAdmin || pode("estoque.movimentar");
   const podeVerCatalogo = eAdmin || pode("estoque.catalogo.visualizar") || podeGerenciarCatalogo || podeMovimentarEstoque;
+  const podeVerCaixa = eAdmin || pode("caixa.financeiro.visualizar") || pode("caixa.financeiro.gerenciar") || pode("caixa.comandas");
   const podeGerenciarPagamentos = eAdmin || pode("equipe.pagamentos.gerenciar");
   const podeVerPagamentos = eAdmin || pode("equipe.pagamentos.visualizar") || podeGerenciarPagamentos;
 
   const abasPermitidas = useMemo(() => {
     const lista: Array<[Aba, string]> = [];
     if (area === "estoque" && podeVerCatalogo) lista.push(["catalogo", "Serviços e produtos"]);
-    if (area === "estoque" && podeGerenciarCatalogo) lista.push(["cadastro", "Adicionar valores"]);
     if (area === "estoque" && (podeVerCatalogo || podeMovimentarEstoque)) lista.push(["estoque", "Estoque"]);
+    if (area === "estoque" && podeVerCatalogo) lista.push(["historico", "Histórico"]);
     if (area === "rh" && podeVerPagamentos) {
       lista.push(["comissoes", "Comissões da equipe"]);
       lista.push(["equipe", "Comissões por colaborador"]);
@@ -151,6 +159,39 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       setSalvandoEstoque(null);
     }
   }
+
+  async function carregarHistorico(clinica: string) {
+    setCarregandoHistorico(true); setErroHistorico("");
+    try {
+      const [estoqueResult, caixaResult, vendasResult, itensVendaResult] = await Promise.all([
+        (supabaseBanco as any).from("oricse_historico_estoque")
+          .select("id,item_nome,tipo,quantidade,estoque_anterior,estoque_posterior,registrado_em")
+          .eq("clinica_id",clinica).order("registrado_em",{ascending:false}).limit(1000),
+        podeVerCaixa ? (supabaseBanco as any).from("oricse_caixa_lancamentos")
+          .select("id,origem_tipo,origem_id,setor,tipo,status,descricao,valor_centavos,forma_pagamento,registrado_em")
+          .eq("clinica_id",clinica).order("registrado_em",{ascending:false}).limit(1000)
+          : Promise.resolve({data:[],error:null}),
+        podeVerCaixa ? (supabaseBanco as any).from("oricse_vendas_expressas")
+          .select("id,forma_pagamento,valor_centavos,registrada_em")
+          .eq("clinica_id",clinica).order("registrada_em",{ascending:false}).limit(1000)
+          : Promise.resolve({data:[],error:null}),
+        podeVerCaixa ? (supabaseBanco as any).from("oricse_vendas_expressas_itens")
+          .select("venda_id,nome_snapshot,quantidade").eq("clinica_id",clinica).limit(2000)
+          : Promise.resolve({data:[],error:null}),
+      ]);
+      if (estoqueResult.error) throw estoqueResult.error;
+      setHistoricoEstoque(estoqueResult.data || []);
+      if (caixaResult.error) setErroHistorico("O Caixa não liberou a consulta dos dados financeiros para este usuário; o histórico de estoque permanece disponível.");
+      setHistoricoCaixa(caixaResult.error ? [] : caixaResult.data || []);
+      setHistoricoVendas(vendasResult.error ? [] : vendasResult.data || []);
+      setHistoricoItensVenda(itensVendaResult.error ? [] : itensVendaResult.data || []);
+    } catch (error) {
+      setErroHistorico(error instanceof Error ? error.message : "Não foi possível consultar as movimentações.");
+    } finally { setCarregandoHistorico(false); }
+  }
+  useEffect(() => {
+    if (area === "estoque" && aba === "historico" && clinicaId && podeVerCatalogo) void carregarHistorico(clinicaId);
+  }, [area, aba, clinicaId, podeVerCatalogo, podeVerCaixa]);
 
   async function carregarDados(clinica: string) {
     // Fonte canônica do catálogo: a mesma do PDV e do caixa operacional.
@@ -481,11 +522,59 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       )}
 
       {aba === "catalogo" && podeVerCatalogo && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
           <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
           <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
+          </div>
+          {podeGerenciarCatalogo && <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => iniciarCadastro("produto")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"><Plus size={17}/> Adicionar produto</button>
+            <button type="button" onClick={() => iniciarCadastro("servico")} className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-semibold"><Plus size={17}/> Adicionar serviço</button>
+          </div>}
         </div>
+      )}
+
+      {aba === "historico" && podeVerCatalogo && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-xl font-bold">Histórico de operações</h2><p className="text-sm text-muted-foreground">Vendas, recebimentos, entradas e saídas de mercadorias. O registro detalhado dos saldos de estoque começa na ativação da auditoria.</p></div>
+            <button type="button" onClick={() => void carregarHistorico(clinicaId)} disabled={carregandoHistorico} className="rounded-xl border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-50">Atualizar histórico</button>
+          </div>
+          {!podeVerCaixa && <p className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">As vendas e formas de pagamento são exibidas somente para usuários autorizados a consultar o Caixa. As movimentações de estoque permanecem disponíveis.</p>}
+          {erroHistorico && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{erroHistorico}</p>}
+          {carregandoHistorico && <p className="text-sm text-muted-foreground">Carregando histórico…</p>}
+          {!carregandoHistorico && <div className="space-y-2">
+            {(() => {
+              const vendasComCaixa = new Set(historicoCaixa.filter(m=>m.origem_tipo==="venda_expressa").map(m=>m.origem_id));
+              const itensDaVenda = (id: string) => historicoItensVenda.filter(i=>i.venda_id===id)
+                .map(i=>i.nome_snapshot+" ("+Number(i.quantidade).toLocaleString("pt-BR",{maximumFractionDigits:3})+" un.)").join(", ");
+              const registros = [
+                ...historicoEstoque.map(m=>({id:"mov-"+m.id,data:m.registrado_em,titulo:(m.tipo==="entrada"?"Entrada":"Saída")+" de mercadoria",
+                  descricao:m.item_nome+" · "+Number(m.quantidade).toLocaleString("pt-BR",{maximumFractionDigits:3})+" un. · Saldo: "+Number(m.estoque_anterior).toLocaleString("pt-BR",{maximumFractionDigits:3})+" → "+Number(m.estoque_posterior).toLocaleString("pt-BR",{maximumFractionDigits:3}),
+                  pagamento:"",valor:null as number|null,status:"Estoque"})),
+                ...historicoCaixa.map(m=>({id:"caixa-"+m.id,data:m.registrado_em,
+                  titulo:(m.tipo==="saida"?"Saída financeira":m.tipo==="entrada"?"Venda / Recebimento":"Movimento financeiro")+" · "+(m.setor||"Caixa"),
+                  descricao:([m.descricao,m.origem_tipo==="venda_expressa"?itensDaVenda(m.origem_id):""].filter(Boolean).join(" · ") || "Operação do caixa"),
+                  pagamento:m.forma_pagamento||"Não informado",valor:Number(m.valor_centavos)/100 as number|null,status:m.status||"Registrado"})),
+                ...historicoVendas.filter(v=>!vendasComCaixa.has(v.id))
+                  .map(v=>({id:"venda-"+v.id,data:v.registrada_em,titulo:"Venda Expressa",
+                    descricao:itensDaVenda(v.id)||"Venda registrada",pagamento:v.forma_pagamento,
+                    valor:Number(v.valor_centavos)/100 as number|null,status:"Registrada"})),
+              ].sort((a,b)=>new Date(b.data).getTime()-new Date(a.data).getTime());
+              return <>
+                {registros.map(m=><article key={m.id} className="flex flex-wrap justify-between gap-3 rounded-xl border bg-card p-4">
+                  <div className="min-w-0 flex-1"><h3 className="font-semibold">{m.titulo}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{m.descricao}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{new Date(m.data).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})} · {m.status}</p></div>
+                  {m.valor !== null && <div className="text-right"><strong>{dinheiro(m.valor)}</strong>
+                    <p className="text-xs text-muted-foreground">Forma: {m.pagamento}</p></div>}
+                </article>)}
+                {registros.length===0 && <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">Nenhuma operação encontrada nos registros disponíveis.</p>}
+              </>;
+            })()}
+          </div>}
+        </section>
       )}
 
       {aba === "comissoes" && podeVerPagamentos && (
