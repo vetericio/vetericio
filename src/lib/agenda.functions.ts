@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
+import { exigirPermissaoClinica } from '@/lib/permissao-clinica.server';
 
 const agendaSchema = z.object({
   accessToken: z.string().min(1),
@@ -21,29 +22,13 @@ const agendaSchema = z.object({
   }),
 });
 
-async function podeEditarAgenda(admin: any, userId: string, clinicaId: string) {
-  const { data: perfil, error: perfilErro } = await admin.from('app_users').select('role').eq('user_id', userId).maybeSingle();
-  if (perfilErro) throw new Error(perfilErro.message);
-  if (perfil?.role === 'admin') return;
-  const { data: vinculo, error: vinculoErro } = await admin.from('clinica_usuarios').select('papel,ativo').eq('clinica_id', clinicaId).eq('user_id', userId).eq('ativo', true).maybeSingle();
-  if (vinculoErro) throw new Error(vinculoErro.message);
-  if (!vinculo) throw new Error('Você não tem acesso a esta clínica.');
-  const { data: individual, error: individualErro } = await admin.from('oricse_permissoes_usuario').select('permitido').eq('clinica_id', clinicaId).eq('user_id', userId).eq('permissao_codigo', 'recepcao.agenda').maybeSingle();
-  if (individualErro) throw new Error(individualErro.message);
-  if (individual?.permitido === false) throw new Error('Você não tem permissão para editar a agenda.');
-  if (individual?.permitido === true) return;
-  const { data: papel, error: papelErro } = await admin.from('oricse_permissoes_papel').select('permitido').eq('papel', vinculo.papel).eq('permissao_codigo', 'recepcao.agenda').maybeSingle();
-  if (papelErro) throw new Error(papelErro.message);
-  if (!papel?.permitido) throw new Error('Você não tem permissão para editar a agenda.');
-}
-
 export const salvarAgendaOnline = createServerFn({ method: 'POST' })
   .validator((input: unknown) => agendaSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin: admin } = await import('@/integrations/supabase/client.server');
     const { data: auth, error: authErro } = await admin.auth.getUser(data.accessToken);
     if (authErro || !auth.user) throw new Error('Sessão inválida ou expirada. Entre novamente.');
-    await podeEditarAgenda(admin, auth.user.id, data.clinicaId);
+    await exigirPermissaoClinica(admin, auth.user.id, data.clinicaId, ['recepcao.agenda']);
     if (!data.agendaId) {
       const { data: clinica, error: erroClinica } = await admin
         .from('clinicas').select('limite_usuarios').eq('id', data.clinicaId).single();
