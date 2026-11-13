@@ -255,6 +255,10 @@ export function LeitorCodigoBarrasCamera({
   const [progresso, setProgresso] = useState(0);
   const [statusOCR, setStatusOCR] = useState<"carregando" | "ativo" | "indisponivel" | null>(null);
   const [statusQuadros, setStatusQuadros] = useState<"carregando" | "ativo" | "indisponivel" | null>(null);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [cameraSelecionada, setCameraSelecionada] = useState("");
+  const [resolucaoCamera, setResolucaoCamera] = useState("");
+  const [codigoDigitado, setCodigoDigitado] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
@@ -283,10 +287,21 @@ export function LeitorCodigoBarrasCamera({
     setProgresso(0);
     setStatusOCR(null);
     setStatusQuadros(null);
+    setCameras([]);
+    setCameraSelecionada("");
+    setResolucaoCamera("");
+    setCodigoDigitado("");
   }, [parar]);
 
-  const solicitarCamera = async () => {
-    if (abrindo || desabilitado || streamRef.current) return;
+  const solicitarCamera = async (cameraId?: string) => {
+    if (abrindo || desabilitado || (streamRef.current && !cameraId)) return;
+    // Alguns aparelhos oferecem uma câmera traseira sem foco próximo.
+    // Encerrar a anterior permite escolher explicitamente outra lente.
+    if (cameraId && streamRef.current) {
+      parar();
+      setStatusQuadros(null);
+      setStatusOCR(null);
+    }
     setErro(""); setAviso("");
     if (typeof window === "undefined" || !window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setErro("Abra o ORICSE por HTTPS em um navegador que permita usar a câmera.");
@@ -298,7 +313,9 @@ export function LeitorCodigoBarrasCamera({
     try {
       // A chamada é feita no gesto do usuário, para disparar a permissão do Android.
       const requisicao = navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: cameraId
+          ? { deviceId: { exact: cameraId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+          : { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       // Desbloqueia o áudio no mesmo toque; não solicita microfone.
@@ -311,6 +328,16 @@ export function LeitorCodigoBarrasCamera({
       }
       streamRef.current = stream;
       const trilha = stream.getVideoTracks()[0];
+      const configuracao = trilha?.getSettings?.();
+      setCameraSelecionada(configuracao?.deviceId || cameraId || "");
+      setResolucaoCamera(configuracao?.width && configuracao?.height
+        ? `${configuracao.width} × ${configuracao.height}` : "");
+      // Os nomes/IDs das lentes ficam disponíveis após o consentimento.
+      void navigator.mediaDevices.enumerateDevices().then(dispositivos => {
+        if (tentativa === tentativaRef.current) {
+          setCameras(dispositivos.filter(item => item.kind === "videoinput" && item.deviceId));
+        }
+      }).catch(() => {});
       const capacidades = trilha?.getCapabilities?.() as CapacidadesCamera | undefined;
       setLanternaDisponivel(Boolean(capacidades?.torch));
       setLanternaLigada(false);
@@ -337,6 +364,25 @@ export function LeitorCodigoBarrasCamera({
       if (tentativa === tentativaRef.current) setAbrindo(false);
     }
   };
+
+  function confirmarCodigoDigitado() {
+    const codigo = codigoDigitado.trim();
+    if (!codigo || codigo.length > 80 || /[\\x00-\\x1f\\x7f]/.test(codigo)) {
+      setAviso("Digite o código impresso na embalagem antes de confirmar.");
+      return;
+    }
+    try {
+      if (callbackRef.current(codigo) === false) {
+        setAviso("Código não encontrado ou produto indisponível. Confira o número informado.");
+        return;
+      }
+      bipConfirmacao(audioRef.current);
+      if ("vibrate" in navigator) navigator.vibrate?.(70);
+      fechar();
+    } catch {
+      setAviso("Não foi possível utilizar esse código. Confira os números.");
+    }
+  }
 
   async function alternarLanterna() {
     const trilha = streamRef.current?.getVideoTracks()[0];
@@ -623,6 +669,20 @@ export function LeitorCodigoBarrasCamera({
                 <Focus size={18}/> {refocando ? "Focando…" : "Refocar"}
               </button>}
             </div>
+            {cameras.length > 1 && <label className="flex flex-col gap-1 rounded-xl border px-3 py-2 text-sm font-semibold">
+              <span>Selecionar câmera / lente</span>
+              <select aria-label="Selecionar câmera do celular" value={cameraSelecionada}
+                onChange={evento => void solicitarCamera(evento.target.value)}
+                disabled={abrindo}
+                className="w-full min-w-0 rounded-lg border bg-background px-2 py-2 text-sm disabled:opacity-50">
+                {!cameraSelecionada && <option value="">Escolha uma câmera</option>}
+                {cameras.map((camera,indice) => <option key={camera.deviceId} value={camera.deviceId}>
+                  {camera.label || `Câmera ${indice + 1}`}
+                </option>)}
+              </select>
+              <span className="text-xs font-normal text-muted-foreground">Se a imagem estiver borrada, experimente outra câmera traseira (principal ou macro).</span>
+            </label>}
+            {resolucaoCamera && <p className="text-xs text-muted-foreground">Imagem capturada: {resolucaoCamera}</p>}
             {faixaZoom && <label className="flex items-center gap-3 rounded-xl border px-3 py-2 text-sm font-semibold">
               <ZoomIn size={18} aria-hidden="true"/>
               <span className="shrink-0">Zoom {zoom.toFixed(1)}×</span>
@@ -649,6 +709,19 @@ export function LeitorCodigoBarrasCamera({
             <p className="text-xs text-muted-foreground">Leitura contínua por vídeo: ZXing + leitor nativo, com OCR dos números como alternativa. O bip confirma a leitura correta.</p>
             <p className="text-xs text-muted-foreground" role="status">{statusQuadros === "ativo" ? "Leitura de barras quadro a quadro ativa" : statusQuadros === "carregando" ? "Ativando leitor contínuo…" : statusQuadros === "indisponivel" ? "Decodificador alternativo indisponível; tentando outros métodos" : "Preparando câmera…"}</p>
             <p className="text-xs text-muted-foreground" role="status">{statusOCR === "carregando" ? "Preparando reconhecimento dos números…" : statusOCR === "ativo" ? "Leitura dos números ativa · pode demorar um pouco mais em celulares lentos" : statusOCR === "indisponivel" ? "Leitura numérica indisponível. O leitor de barras permanece ativo." : "Procurando código…"}</p>
+            <form onSubmit={evento => { evento.preventDefault(); confirmarCodigoDigitado(); }}
+              className="flex flex-wrap items-end gap-2 rounded-xl border p-3">
+              <label className="min-w-[160px] flex-1 text-xs font-semibold">
+                Código impresso (alternativa à câmera)
+                <input type="text" inputMode="numeric" autoComplete="off" value={codigoDigitado}
+                  onChange={evento => setCodigoDigitado(evento.target.value)}
+                  placeholder="Digite os números do código"
+                  className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal"/>
+              </label>
+              <button type="submit" className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
+                Confirmar código
+              </button>
+            </form>
             {aviso && <p role="status" className="rounded-lg bg-secondary p-2 text-sm">{aviso}</p>}
           </>}
         </section>
