@@ -237,7 +237,7 @@ const areas: AreaMenu[] = [
         moduloEmPreparacao: true,
       },
       {
-        rotulo: "Gestão Laboratorial",
+        rotulo: "Programa de Fidelidade",
         permissao: "administracao.configuracoes",
         emBreve: true,
         moduloEmPreparacao: true,
