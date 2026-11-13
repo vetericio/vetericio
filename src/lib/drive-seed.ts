@@ -75,8 +75,8 @@ export const PERMITIDAS_POR_PAPEL:Record<string,string[]>={
 };
 export const PERMISSOES_PAPEL_PADRAO=Object.entries(PERMITIDAS_POR_PAPEL).flatMap(([papel,permitidas])=>PERMISSOES_PADRAO.map(p=>({papel,permissao_codigo:p.codigo,permitido:permitidas.includes(p.codigo)})));
 
-const BASE_2026 = ["administracao.temas","consultorio.atendimentos","consultorio.receituario","recepcao.cadastros"];
-const ESSENCIAL_2026 = [...BASE_2026,"recepcao.agenda","consultorio.medicacoes","caixa.financeiro","portal_tutor.acesso"];
+const BASE_2026 = ["administracao.temas","consultorio.atendimentos","consultorio.receituario","recepcao.cadastros","portal_tutor.acesso"];
+const ESSENCIAL_2026 = [...BASE_2026,"recepcao.agenda","consultorio.medicacoes","caixa.financeiro"];
 const PROFISSIONAL_2026 = [...ESSENCIAL_2026,"internacao.painel","internacao.medicacoes","internacao.plantoes","caixa.comandas","estoque.catalogo","estoque.movimentar","atividade.ponto","equipe.pagamentos","crm.inteligente","administracao.site","hotelzinho.modulo","portal_tutor.agendamento_online"];
 export const FUNCIONALIDADES_POR_PLANO:Record<string,string[]>={
   "solo-2026":BASE_2026,

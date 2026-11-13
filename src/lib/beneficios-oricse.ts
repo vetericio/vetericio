@@ -153,7 +153,7 @@ const GRUPOS: ReadonlyArray<readonly [string, NivelPlano, readonly string[]]> = 
   ],
   [
     "Portal do Tutor",
-    1,
+    0,
     [
       "Acesso básico ao portal",
       "Consulta de animais vinculados",

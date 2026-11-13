@@ -63,7 +63,7 @@ const PERGUNTAS_FREQUENTES = [
   },
   {
     pergunta: "O Portal do Tutor está incluído?",
-    resposta: "O Portal do Tutor aparece entre os recursos de planos compatíveis, como Essencial e superiores. Confira a tabela comparativa para ver o que está disponível no plano escolhido.",
+    resposta: "O acesso básico ao Portal do Tutor está incluído em todos os planos. Confira a tabela comparativa para consultar os recursos adicionais.",
   },
   {
     pergunta: "Consigo acompanhar internações e medicações?",
@@ -144,7 +144,7 @@ function Planos() {
     "solo-2026": {
       ideal: "Veterinário autônomo",
       chamada: "O essencial para atender com segurança e organização.",
-      destaques: ["Prontuários e consultas", "Receitas, exames e documentos", "Painel com resumo do dia", "Cadastro de tutores e animais", "Histórico completo dos animais", "Receituário veterinário em PDF", "Assinatura de documentos clínicos", "Dados completos de identificação e contato", "Documentos e encaminhamentos clínicos", "Temas e aparência básica"],
+      destaques: ["Portal do Tutor", "Prontuários e consultas", "Receitas, exames e documentos", "Painel com resumo do dia", "Cadastro de tutores e animais", "Histórico completo dos animais", "Receituário veterinário em PDF", "Assinatura de documentos clínicos", "Dados completos de identificação e contato", "Documentos e encaminhamentos clínicos", "Temas e aparência básica"],
     },
     "essencial-2026": {
       ideal: "Consultórios e pequenos negócios",
