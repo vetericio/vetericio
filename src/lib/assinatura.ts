@@ -21,8 +21,10 @@ export async function gravarSelo(tipo: TipoSelo, dataUrl: string | null) {
   if (dataUrl && (!dataUrl.startsWith("data:image/png;base64,") || dataUrl.length > 6_000_000)) {
     throw new Error("Use uma imagem menor para a assinatura ou o carimbo.");
   }
-  const { error } = await supabaseBanco.from("oricse_selos_profissionais")
-    .upsert({ user_id: userId, [tipo]: dataUrl });
+  const selo = tipo === "assinatura"
+    ? { user_id: userId, assinatura: dataUrl }
+    : { user_id: userId, carimbo: dataUrl };
+  const { error } = await supabaseBanco.from("oricse_selos_profissionais").upsert(selo);
   if (error) throw new Error("Não foi possível salvar a alteração no seu perfil.");
   window.dispatchEvent(new Event("veterico-selos"));
 }
