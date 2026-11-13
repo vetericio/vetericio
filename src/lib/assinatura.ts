@@ -1,35 +1,29 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-/**
- * Assinatura e carimbo guardados no próprio aparelho (data URL PNG).
- * Entram no backup e na sincronização como itens simples.
- */
-export const CHAVE_ASSINATURA = "veterico-assinatura-v1";
-export const CHAVE_CARIMBO = "veterico-carimbo-v1";
+import { supabaseBanco } from "@/integrations/supabase/client";
 
 export type TipoSelo = "assinatura" | "carimbo";
 
-export const CHAVE_SELO: Record<TipoSelo, string> = {
-  assinatura: CHAVE_ASSINATURA,
-  carimbo: CHAVE_CARIMBO,
-};
-
-export function lerSelo(tipo: TipoSelo): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return oricseStorage.getItem(CHAVE_SELO[tipo]);
-  } catch {
-    return null;
-  }
+async function usuarioDosSelos() {
+  const { data, error } = await supabaseBanco.auth.getSession();
+  if (error || !data.session) throw new Error("Entre novamente para acessar sua assinatura e seu carimbo.");
+  return data.session.user.id;
 }
 
-export function gravarSelo(tipo: TipoSelo, dataUrl: string | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (dataUrl) oricseStorage.setItem(CHAVE_SELO[tipo], dataUrl);
-    else oricseStorage.removeItem(CHAVE_SELO[tipo]);
-  } catch {
-    /* armazenamento indisponível */
+export async function lerSelos() {
+  const userId = await usuarioDosSelos();
+  const { data, error } = await supabaseBanco.from("oricse_selos_profissionais")
+    .select("assinatura,carimbo").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error("Não foi possível carregar a assinatura e o carimbo do seu perfil.");
+  return data ?? { assinatura: null, carimbo: null };
+}
+
+export async function gravarSelo(tipo: TipoSelo, dataUrl: string | null) {
+  const userId = await usuarioDosSelos();
+  if (dataUrl && (!dataUrl.startsWith("data:image/png;base64,") || dataUrl.length > 6_000_000)) {
+    throw new Error("Use uma imagem menor para a assinatura ou o carimbo.");
   }
+  const { error } = await supabaseBanco.from("oricse_selos_profissionais")
+    .upsert({ user_id: userId, [tipo]: dataUrl });
+  if (error) throw new Error("Não foi possível salvar a alteração no seu perfil.");
   window.dispatchEvent(new Event("veterico-selos"));
 }
 

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/assinar")({
       { property: "og:title", content: "Assinar um documento — Oricse" },
       {
         property: "og:description",
-        content: "Assinatura e carimbo em PDF ou foto, offline, direto no aparelho.",
+        content: "Aplique as imagens de assinatura e carimbo do seu perfil a um PDF ou foto.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

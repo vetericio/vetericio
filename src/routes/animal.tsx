@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
-import { obterPerfilPessoa } from "@/lib/admin-users.functions";
+import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
@@ -345,7 +345,8 @@ function AnimalFicha() {
   const [preventivoEmEdicao, setPreventivoEmEdicao] = useState<Registro["preventivo"]>(undefined);
   const [dadosPreventivos, setDadosPreventivos] = useState(camposPreventivos);
   const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
-  const [buscandoProfissional, setBuscandoProfissional] = useState(false);
+  const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
+  const [erroProfissional, setErroProfissional] = useState("");
   const tipoPreventivo = modalTipo === "Vacinas" ? "vacina" : modalTipo === "Vermífugos" ? "vermifugo" : null;
   const [modalPeso, setModalPeso] = useState(false);
   const [pesoNovo, setPesoNovo] = useState("");
@@ -360,6 +361,19 @@ function AnimalFicha() {
   const [salvandoPortal, setSalvandoPortal] = useState(false);
   const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
   const anexoEmEdicao = useRef<{ arquivo: File; id: string; animalId: string } | null>(null);
+
+  useEffect(() => {
+    if (!tipoPreventivo || preventivoEmEdicao) return;
+    let ativo = true;
+    void obterAutorClinico().then(perfil => {
+      if (!ativo) return;
+      setProfissional(perfil);
+      if (!perfil.nome || !perfil.crmv) setErroProfissional("Complete nome, CRMV e UF no cadastro profissional do seu perfil.");
+    }).catch(erro => {
+      if (ativo) setErroProfissional(erro instanceof Error ? erro.message : "Não foi possível carregar o perfil profissional.");
+    });
+    return () => { ativo = false; };
+  }, [tipoPreventivo, preventivoEmEdicao]);
 
   async function carregarConteudosPortal() {
     if (!animalId) return;
@@ -562,6 +576,8 @@ function AnimalFicha() {
       return;
     }
     setPreventivoEmEdicao(undefined);
+    setProfissional(null);
+    setErroProfissional("");
     setDadosPreventivos(camposPreventivos);
     setModalTipo(tipo);
     setTitulo("");
@@ -590,29 +606,8 @@ function AnimalFicha() {
     setModalTipo(registro.tipo);
   }
 
-  async function preencherProfissional() {
-    if (buscandoProfissional) return;
-    setBuscandoProfissional(true);
-    try {
-      const { data: sessao } = await supabase.auth.getSession();
-      const accessToken = sessao.session?.access_token;
-      if (!accessToken) throw new Error("Entre novamente para identificar o profissional.");
-      const perfil = await obterPerfilPessoa({ data: { accessToken } });
-      if (!perfil?.nome_completo || !perfil.crmv || !perfil.crmv_uf) {
-        throw new Error("Complete nome, CRMV e UF no cadastro pessoal.");
-      }
-      setDadosPreventivos(atual => ({
-        ...atual, veterinario_nome: perfil.nome_completo, veterinario_crmv: perfil.crmv, veterinario_uf: perfil.crmv_uf,
-      }));
-    } catch (erro) {
-      toast.error(erro instanceof Error ? erro.message : "Não foi possível consultar o cadastro profissional.");
-    } finally {
-      setBuscandoProfissional(false);
-    }
-  }
-
   async function salvarRegistro() {
-    if (!animal || !modalTipo || salvandoPortal || buscandoProfissional) return;
+    if (!animal || !modalTipo || salvandoPortal) return;
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
     if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
@@ -625,8 +620,16 @@ function AnimalFicha() {
       setSalvandoPortal(true);
       try {
         if (tipoPreventivo) {
-          const campos = normalizarCamposPreventivos(dadosPreventivos);
           const anterior = preventivoEmEdicao?.linha;
+          if (!anterior && (!profissional?.nome || !profissional.crmv || erroProfissional)) {
+            throw new Error(erroProfissional || "Aguarde a identificação do perfil profissional.");
+          }
+          const campos = normalizarCamposPreventivos({
+            ...dadosPreventivos,
+            veterinario_nome: anterior ? anterior.veterinario_nome : profissional?.nome,
+            veterinario_crmv: anterior ? anterior.veterinario_crmv : profissional?.numeroCrmv,
+            veterinario_uf: anterior ? anterior.veterinario_uf : profissional?.uf,
+          });
           const dataAnterior = anterior ? ("aplicada_em" in anterior ? anterior.aplicada_em : anterior.administrado_em) : null;
           const retornoAnterior = anterior ? ("reforco_em" in anterior ? anterior.reforco_em : anterior.proxima_dose_em) : null;
           const legadoIncompleto = anterior && pendenciasPreventivo(tipoPreventivo, {
@@ -645,8 +648,7 @@ function AnimalFicha() {
             visivel_tutor: visivelTutor, fabricante: campos.fabricante || null, dose: campos.dose || null,
             fabricacao: dataDoRotulo(campos.fabricacao), validade: dataDoRotulo(campos.validade),
             hora_aplicacao: campos.hora_aplicacao || null, local_aplicacao: campos.local_aplicacao || null,
-            veterinario_nome: campos.veterinario_nome || null, veterinario_crmv: campos.veterinario_crmv || null,
-            veterinario_uf: campos.veterinario_uf || null, updated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
           const clinicaAnimal = { clinica_id: clinicaId, animal_id: animal.id };
           const vacinas = supabaseBanco.from("oricse_portal_vacinas");
@@ -660,7 +662,8 @@ function AnimalFicha() {
             : await (anterior
               ? vermifugos.update(camposVermifugo).eq("id", anterior.id).match(clinicaAnimal)
               : vermifugos.insert({ ...camposVermifugo, ...clinicaAnimal })).select(CAMPOS_VERMIFUGO).single();
-          if (salvo.error || !salvo.data) throw new Error("Não foi possível salvar. Confira sua permissão ou atualize a ficha.");
+          if (salvo.error || !salvo.data) throw new Error(salvo.error?.code === "22023"
+            ? salvo.error.message : "Não foi possível salvar. Confira sua permissão ou atualize a ficha.");
           const registro = registroPreventivo(salvo.data as VacinaPortal | VermifugoPortal);
           setRegistrosPortal(lista => [...lista.filter(item => item.fontePortal !== registro.fontePortal || item.id !== registro.id), registro]);
           setModalTipo(null);
@@ -1068,7 +1071,7 @@ function AnimalFicha() {
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
               onMouseDown={(e) => {
-                if (!salvandoPortal && !buscandoProfissional && e.currentTarget === e.target) setModalTipo(null);
+                if (!salvandoPortal && e.currentTarget === e.target) setModalTipo(null);
               }}
             >
               <div role="dialog" aria-modal="true" aria-labelledby="titulo-modal-registro" className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
@@ -1083,7 +1086,7 @@ function AnimalFicha() {
                   </div>
                   <button
                     type="button"
-                    disabled={salvandoPortal || buscandoProfissional}
+                    disabled={salvandoPortal}
                     onClick={() => setModalTipo(null)}
                     className="rounded-lg p-2 hover:bg-muted"
                   >
@@ -1141,7 +1144,12 @@ function AnimalFicha() {
                   )}
                   {tipoPreventivo && (
                     <CamposDoPreventivo tipo={tipoPreventivo} valores={dadosPreventivos} onChange={setDadosPreventivos}
-                      buscando={buscandoProfissional} onPreencher={() => void preencherProfissional()} />
+                      profissional={preventivoEmEdicao ? {
+                        nome: preventivoEmEdicao.linha.veterinario_nome,
+                        numeroCrmv: preventivoEmEdicao.linha.veterinario_crmv,
+                        uf: preventivoEmEdicao.linha.veterinario_uf,
+                      } : profissional}
+                      erro={preventivoEmEdicao ? "" : erroProfissional} />
                   )}
                   {(modalTipo === "Exames" || modalTipo === "Documentos") && (
                     <label className="block text-sm font-bold">
@@ -1219,7 +1227,7 @@ function AnimalFicha() {
                 <div className="mt-5 flex justify-end gap-2">
                   <button
                     type="button"
-                    disabled={salvandoPortal || buscandoProfissional}
+                    disabled={salvandoPortal}
                     onClick={() => setModalTipo(null)}
                     className="rounded-xl border px-4 py-2.5 font-bold"
                   >
@@ -1227,7 +1235,7 @@ function AnimalFicha() {
                   </button>
                   <button
                     type="button"
-                    disabled={salvandoPortal || buscandoProfissional}
+                    disabled={salvandoPortal || Boolean(tipoPreventivo && !preventivoEmEdicao && (!profissional || erroProfissional))}
                     onClick={() => void salvarRegistro()}
                     className="rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground disabled:opacity-50"
                   >
@@ -1301,12 +1309,12 @@ function AnimalFicha() {
   );
 }
 
-function CamposDoPreventivo({ tipo, valores, onChange, buscando, onPreencher }: {
+function CamposDoPreventivo({ tipo, valores, onChange, profissional, erro }: {
   tipo: TipoPreventivo;
   valores: CamposPreventivos;
   onChange: React.Dispatch<React.SetStateAction<CamposPreventivos>>;
-  buscando: boolean;
-  onPreencher: () => void;
+  profissional: { nome: string | null; numeroCrmv: string | null; uf: string | null } | null;
+  erro: string;
 }) {
   const campos: [keyof CamposPreventivos, string, string?][] = [
     ...(tipo === "vacina"
@@ -1323,7 +1331,7 @@ function CamposDoPreventivo({ tipo, valores, onChange, buscando, onPreencher }: 
     return <label key={chave} className="block text-sm font-bold">
       {rotulo}
       <input value={valores[chave]} type={chave === "hora_aplicacao" ? "time" : "text"}
-        maxLength={chave === "veterinario_uf" ? 2 : 180} placeholder={dica}
+        maxLength={180} placeholder={dica}
         onChange={e => onChange(atual => ({ ...atual, [chave]: e.target.value }))}
         className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
     </label>;
@@ -1336,13 +1344,14 @@ function CamposDoPreventivo({ tipo, valores, onChange, buscando, onPreencher }: 
       </fieldset>
       <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
         <legend className="px-1 text-sm font-black">Médico-veterinário responsável pelo ato</legend>
-        <div className="sm:col-span-2">{campo("veterinario_nome", "Nome completo")}</div>
-        {campo("veterinario_crmv", "Número do CRMV")}
-        {campo("veterinario_uf", "UF do CRMV")}
-        <button type="button" disabled={buscando} onClick={onPreencher}
-          className="min-h-10 justify-self-start rounded-lg border px-3 text-sm font-bold sm:col-span-2">
-          {buscando ? "Consultando…" : "Usar meu cadastro profissional"}
-        </button>
+        {erro ? <p role="alert" className="text-sm text-destructive sm:col-span-2">{erro}</p>
+          : profissional ? (
+            <>
+              <div className="sm:col-span-2"><Info rotulo="Nome completo" valor={profissional.nome || undefined} /></div>
+              <Info rotulo="Número do CRMV" valor={profissional.numeroCrmv || undefined} />
+              <Info rotulo="UF do CRMV" valor={profissional.uf || undefined} />
+            </>
+          ) : <p role="status" className="text-sm text-muted-foreground sm:col-span-2">Carregando seu cadastro profissional…</p>}
       </fieldset>
     </>
   );

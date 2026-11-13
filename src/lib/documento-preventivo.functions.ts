@@ -31,16 +31,18 @@ export const obterDocumentoPreventivo = createServerFn({ method: "POST" })
     const consulta = vacina
       ? admin.from("oricse_portal_vacinas").select(`nome,lote,observacoes,aplicada_em,reforco_em,alvo_vacinacao,${selecaoPreventivos}`)
       : admin.from("oricse_portal_vermifugos").select(`nome,lote,observacoes,administrado_em,proxima_dose_em,principio_ativo,via,${selecaoPreventivos}`);
-    const [registro, animal, perfil, contrato] = await Promise.all([
+    const [registro, animal, perfil, conta, contrato] = await Promise.all([
       consulta.eq("id", data.registroId).eq("clinica_id", data.clinicaId).eq("animal_id", data.animalId).maybeSingle(),
       admin.from("oricse_animais").select("dados").eq("clinica_id", data.clinicaId).eq("id", data.animalId).maybeSingle(),
       admin.from("oricse_pessoas").select("nome_completo,crmv,crmv_uf,telefone,endereco").eq("user_id", user.id).maybeSingle(),
+      admin.from("app_users").select("email").eq("user_id", user.id).maybeSingle(),
       admin.from("oricse_contratacoes").select("razao_social,cnpj,clinica_cidade,clinica_uf,dados")
         .eq("clinica_criada_id", data.clinicaId).is("excluido_em", null)
         .order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     if (registro.error || !registro.data || animal.error || !animal.data) throw new Error("Registro preventivo não localizado nesta ficha.");
     if (perfil.error || !perfil.data) throw new Error("Complete o cadastro pessoal do médico-veterinário.");
+    if (conta.error) throw new Error("Não foi possível consultar o e-mail do médico-veterinário.");
     if (contrato.error) throw new Error("Não foi possível consultar os dados do estabelecimento.");
 
     const { resolverDadosReceituario } = await import("@/lib/receituario-contexto.server");
@@ -60,7 +62,7 @@ export const obterDocumentoPreventivo = createServerFn({ method: "POST" })
       uf: texto(perfil.data.crmv_uf).toUpperCase(),
       telefone: texto(perfil.data.telefone),
       endereco: texto(perfil.data.endereco),
-      email: texto(user.email),
+      email: [conta.data?.email, user.email].map(texto).find((email) => email && !email.toLowerCase().endsWith("@vetericio.local")) || "",
     };
     if (!normalizarCrmv(profissional.crmv) || normalizarCrmv(profissional.crmv) !== normalizarCrmv(ato.veterinario_crmv)
       || profissional.uf !== ato.veterinario_uf) {

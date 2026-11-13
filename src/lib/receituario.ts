@@ -2,7 +2,7 @@ import type { jsPDF as DocumentoPDF } from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { lerPreferenciaReceitaPortal, motivoFinalReceitaPortal } from "@/lib/receita-portal-state";
-import { lerSelo, type TipoSelo } from "./assinatura";
+import { lerSelos, type TipoSelo } from "./assinatura";
 
 // A mesma logo oficial do app, incorporada para emitir o PDF também offline.
 const LOGO_PDF_DATA_URL =
@@ -336,8 +336,7 @@ export async function criarReceituario(dados: DadosReceituario) {
     { align: "right" },
   );
 
-  const assinatura = lerSelo("assinatura");
-  const carimbo = lerSelo("carimbo");
+  const { assinatura, carimbo } = await lerSelos();
   if (assinatura && dados.posicoesSelos.assinatura) {
     desenharSelo(doc, assinatura, dados.posicoesSelos.assinatura, areaSelos);
   }

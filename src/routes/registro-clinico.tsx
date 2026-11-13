@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, BedDouble, Check, ChevronDown, ChevronUp, Clipbo
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
+import { obterAutorClinico } from "@/lib/perfil-clinico";
 import {
   COMANDAS_KEY,
   LANCAMENTOS_FINANCEIROS_KEY,
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/registro-clinico")({ component: RegistroC
 
 type Animal = { id: string; tutorId: string; nome: string; especie?: string; raca?: string; sexo?: string; peso?: string };
 type Tutor = { id: string; nome: string; telefone?: string; outroTelefone?: string; codigoPublico?: string; codigo_publico?: string; codigo?: string };
-type RegistroProntuario = { id: string; animalId: string; tutorId?: string; clinicaId?: string; autorId?: string; tipo: "Registros clínicos"; titulo: string; detalhe?: string; data: string; criadoEm: string; atualizadoEm?: string; status?: "rascunho" | "concluido" | "adendo"; versao?: number; subtipo?: "Consulta" | "Cirurgia / Procedimentos"; dados?: unknown };
+type RegistroProntuario = { id: string; animalId: string; tutorId?: string; clinicaId?: string; autorId?: string; autorNome?: string; autorCrmv?: string; tipo: "Registros clínicos"; titulo: string; detalhe?: string; data: string; criadoEm: string; atualizadoEm?: string; status?: "rascunho" | "concluido" | "adendo"; versao?: number; subtipo?: "Consulta" | "Cirurgia / Procedimentos"; dados?: unknown };
 type SimNao = "" | "Sim" | "Não";
 type OlhoValores = { od: string; oe: string };
 type OftalmoForm = { schirmer: OlhoValores; fluoresceina: OlhoValores; jones: OlhoValores; rosaBengala: OlhoValores; lissaminaVerde: OlhoValores; pio: OlhoValores; equipamentoTonometria: string; reflexoPupilarDireto: OlhoValores; reflexoPupilarConsensual: OlhoValores; deambulacao: OlhoValores; palpebras: OlhoValores; conjuntiva: OlhoValores; terceiraPalpebra: OlhoValores; cornea: OlhoValores; camaraAnterior: OlhoValores; irisPupila: OlhoValores; cristalino: OlhoValores; fundoOlho: OlhoValores; reflexoAmeaca: OlhoValores; ofuscamento: OlhoValores };
@@ -145,7 +146,7 @@ function RegistroClinico(){
   const [pagamentoAberto,setPagamentoAberto]=useState(false);
   const [formaPagamento,setFormaPagamento]=useState<FormaPagamento|"">("");
   const [outroPagamento,setOutroPagamento]=useState("");
-  const [responsavel,setResponsavel]=useState({id:"",nome:"Equipe clínica"});
+  const [responsavel,setResponsavel]=useState({id:"",nome:"Equipe clínica",crmv:""});
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
 
   useEffect(()=>{let ativo=true;void(async()=>{try{
@@ -164,7 +165,13 @@ function RegistroClinico(){
   }catch(error){if(ativo)setErroAnimal(error instanceof Error?error.message:"Não foi possível abrir o animal.");}
   finally{if(ativo)setCarregandoAnimal(false);}})();return()=>{ativo=false};},[animalId]);
 
-  useEffect(()=>{let ativo=true; async function carregarResponsavel(){try{const {data,error}=await supabase.auth.getUser();if(error)throw error;if(!data.user)throw new Error("Sessão não encontrada.");const {data:perfil,error:erroPerfil}=await supabase.from("app_users").select("username,email").eq("user_id",data.user.id).maybeSingle();if(erroPerfil)throw erroPerfil;if(ativo)setResponsavel({id:data.user.id,nome:perfil?.username?`@${perfil.username}`:perfil?.email||data.user.email||data.user.id});}catch(error){console.error("Não foi possível identificar o responsável pelo atendimento:",error);}}void carregarResponsavel();return()=>{ativo=false};},[]);
+  useEffect(() => {
+    let ativo = true;
+    void obterAutorClinico().then(perfil => {
+      if (ativo) setResponsavel({ id: perfil.id, nome: perfil.identificacao, crmv: perfil.crmv });
+    }).catch(error => console.error("Não foi possível identificar o responsável pelo atendimento:", error));
+    return () => { ativo = false; };
+  }, []);
   useEffect(()=>{ if(!animalId)return; try{const salvo=oricseStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}else if(animal?.peso)setConsulta(atual=>({...atual,peso:atual.peso||animal.peso||""}));}catch{} },[animalId,animal?.peso]);
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
   useEffect(()=>{ let ativo=true; async function carregarCatalogo(){
@@ -363,7 +370,7 @@ function RegistroClinico(){
       }
     }
     const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
-    const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Consulta",dados:consultaSalva};
+    const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,autorNome:responsavel.nome,autorCrmv:responsavel.crmv||undefined,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Consulta",dados:consultaSalva};
     oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
     try {
       await descarregarOricseStorage();
@@ -382,7 +389,7 @@ function RegistroClinico(){
     navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
-  async function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
+  async function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if (!responsavel.id) return void toast.error("Não foi possível identificar o autor deste procedimento."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,autorNome:responsavel.nome,autorCrmv:responsavel.crmv||undefined,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
 
   const abrirConsulta=()=>{if (!animal) return; setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 

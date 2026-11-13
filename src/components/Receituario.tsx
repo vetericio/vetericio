@@ -5,7 +5,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
 import { obterPerfilPessoa } from "@/lib/admin-users.functions";
 import { useAnamneses } from "@/hooks/useAnamneses";
-import { lerSelo, type TipoSelo } from "@/lib/assinatura";
+import { lerSelos, type TipoSelo } from "@/lib/assinatura";
 import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import {
@@ -177,11 +177,25 @@ export function Receituario() {
   }, []);
 
   useEffect(() => {
-    const atualizar = () => setSelos({ assinatura: lerSelo("assinatura"), carimbo: lerSelo("carimbo") });
-    atualizar();
+    let pedido = 0;
+    const atualizar = async () => {
+      const atual = ++pedido;
+      try {
+        const selosDoPerfil = await lerSelos();
+        if (pedido === atual) setSelos(selosDoPerfil);
+      } catch (error) {
+        if (pedido === atual) {
+          setSelos({ assinatura: null, carimbo: null });
+          toast.error(error instanceof Error ? error.message : "Não foi possível carregar as imagens do perfil.");
+        }
+      }
+    };
+    void atualizar();
     window.addEventListener("veterico-selos", atualizar);
-    window.addEventListener("storage", atualizar);
-    return () => { window.removeEventListener("veterico-selos", atualizar); window.removeEventListener("storage", atualizar); };
+    return () => {
+      pedido++;
+      window.removeEventListener("veterico-selos", atualizar);
+    };
   }, []);
 
   useEffect(() => {
