@@ -58,7 +58,8 @@ type Horario={inicio:string;fim:string;rotulo:string};
 type Agendamento={id:string;agenda_id:string|null;animal_id:string|null;inicio:string;fim:string;estado:string;tipo:string;observacoes:string|null};
 type Comanda={id:string;animal_id:string;numero:number;status:"Aberta"|"Finalizada";origem:string;aberta_em:string;finalizada_em:string|null;itens:Array<{id:string;descricao:string;quantidade:number;valorUnitario:number}>;pagamentos:Array<{id:string;valor:number;formaPagamento:string;data:string}>;total:number;total_pago:number;saldo:number};
 const secoesPortal = [
-  { id: "resumo", nome: "Visão geral", emoji: "🏠" },
+  { id: "resumo", nome: "Visão Geral", emoji: "🏠" },
+  { id: "pet", nome: "Meu pet", emoji: "🐾" },
   { id: "agenda", nome: "Agenda", emoji: "📅" },
   { id: "documentos", nome: "Documentos", emoji: "📄" },
   { id: "exames", nome: "Exames", emoji: "🔬" },
@@ -87,9 +88,11 @@ function dadosDemoAlvorada(clinica:ClinicaPublica,usuario:string){
   ];
   const ontem = new Date();
   ontem.setDate(ontem.getDate() - 1);
+  const emQuinzeDias = new Date();
+  emQuinzeDias.setDate(emQuinzeDias.getDate() + 15);
   const vacinas:Vacina[]=[
     {id:"demo-vacina-lua",animal_id:"demo-lua",nome:"V4 felina",aplicada_em:"2026-03-12",reforco_em:dataIso(),lote:"ALV-2026-04",observacoes:"Aplicação registrada pela equipe Alvorada."},
-    {id:"demo-vacina-thor",animal_id:"demo-thor",nome:"Antirrábica",aplicada_em:"2026-05-08",reforco_em:"2027-05-08",lote:"ALV-2026-11",observacoes:null},
+    {id:"demo-vacina-thor",animal_id:"demo-thor",nome:"Antirrábica",aplicada_em:"2026-05-08",reforco_em:dataIso(emQuinzeDias),lote:"ALV-2026-11",observacoes:null},
     {id:"demo-vacina-mel",animal_id:"demo-mel",nome:"V10",aplicada_em:"2026-06-20",reforco_em:"2027-06-20",lote:"ALV-2026-18",observacoes:null},
   ];
   const vermifugos:Vermifugo[]=[
@@ -144,6 +147,8 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
   const [animais,setAnimais]=useState<Animal[]>([]);const [animalId,setAnimalId]=useState("");const [secao,setSecao]=useState<Secao>("resumo");const [vacinas,setVacinas]=useState<Vacina[]>([]);const [vermifugos,setVermifugos]=useState<Vermifugo[]>([]);const [exames,setExames]=useState<Exame[]>([]);const [documentos,setDocumentos]=useState<Documento[]>([]);const [receitas,setReceitas]=useState<Receita[]>([]);const [agendas,setAgendas]=useState<Agenda[]>([]);const [agendamentos,setAgendamentos]=useState<Agendamento[]>([]);const [comandas,setComandas]=useState<Comanda[]>([]);
   const [estadoAgendas, setEstadoAgendas] = useState<"carregando" | "pronto" | "erro">("carregando");
+  const [estadoMarcacoes, setEstadoMarcacoes] = useState<"carregando" | "pronto" | "erro">("carregando");
+  const [estadoAvisos, setEstadoAvisos] = useState<"carregando" | "pronto" | "parcial" | "erro">("carregando");
   const [erroHorarios, setErroHorarios] = useState(false);
   const [agendaId,setAgendaId]=useState("");const [pagando,setPagando]=useState<string|null>(null);const [adiantamentos,setAdiantamentos]=useState<Record<string,string>>({});const [dataAgenda,setDataAgenda]=useState(dataIso);const [horarios,setHorarios]=useState<Horario[]>([]);const [horario,setHorario]=useState("");const [obs,setObs]=useState("");const [carregandoHorarios,setCarregandoHorarios]=useState(false);const [agendando,setAgendando]=useState(false);const [baixando,setBaixando]=useState<string|null>(null);
   const [telefone,setTelefone]=useState("");const [email,setEmail]=useState("");const [salvandoPerfil,setSalvandoPerfil]=useState(false);
@@ -221,7 +226,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       if (versao !== versaoCarregamento.current) return;
       if (!atualizar) {
         setFontesCuidados({ vacinas: "carregando", vermifugos: "carregando" });
-        setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setEstadoAgendas("carregando");setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
+        setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setEstadoAgendas("carregando");setEstadoMarcacoes("carregando");setEstadoAvisos("carregando");setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
       }
       const lista = (pets || []) as Animal[];
       setAnimais(lista);
@@ -257,8 +262,8 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       const [vacinasBanco, vermifugosBanco, vacinasLegadas, vermifugosLegados] = await Promise.all([
         supabaseBanco.from("oricse_portal_vacinas").select(vacinasColunas, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
         supabaseBanco.from("oricse_portal_vermifugos").select(vermifugosColunas, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
-        supabase.from("oricse_portal_vacinas").select(vacinasColunas).eq("clinica_id", ctx.clinica_id),
-        supabase.from("oricse_portal_vermifugos").select(vermifugosColunas).eq("clinica_id", ctx.clinica_id),
+        supabase.from("oricse_portal_vacinas").select(vacinasColunas).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
+        supabase.from("oricse_portal_vermifugos").select(vermifugosColunas).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
       ]);
       if (versao !== versaoCarregamento.current) return;
       const unir = <T extends { id: string }>(legados: T[], atuais: T[]) =>
@@ -300,18 +305,21 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           .eq("clinica_id", ctx.clinica_id).eq("tutor_id", ctx.tutor_id).order("inicio"),
       ]);
       if (versao !== versaoCarregamento.current) return;
-      const registros = [legado, banco].flatMap(resultado =>
+      const fontes = [legado, banco];
+      const registros = fontes.flatMap(resultado =>
         resultado.status === "fulfilled" ? (resultado.value.data || []) as Agendamento[] : []);
+      setEstadoMarcacoes(fontes.some(resultado =>
+        resultado.status === "rejected" || resultado.value.error) ? "erro" : "pronto");
       const unicos = new Map(registros.map(item => [item.id, item]));
       setAgendamentos([...unicos.values()].sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio)));
     }
 
     async function carregarComplementos(ctx: Contexto) {
       try {
-      const [e,d,r,c,docsCanonicos,comandasBanco,examesBanco]=await Promise.all([
-        (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("realizado_em",{ascending:false,nullsFirst:false}),
-        (supabase as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("data_documento",{ascending:false,nullsFirst:false}),
-        (supabase as any).from("oricse_portal_receitas").select("id,animal_id,tipo,numero,titulo,emitida_em,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("emitida_em",{ascending:false}),
+      const [e,d,r,c,docsCanonicos,comandasBanco,examesBanco,receitasBanco]=await Promise.all([
+        (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true).order("realizado_em",{ascending:false,nullsFirst:false}),
+        (supabase as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true).order("data_documento",{ascending:false,nullsFirst:false}),
+        (supabase as any).from("oricse_portal_receitas").select("id,animal_id,tipo,numero,titulo,emitida_em,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true).order("emitida_em",{ascending:false}),
         (supabase as any).from("oricse_portal_comandas").select("id,animal_id,numero,status,origem,aberta_em,finalizada_em,itens,pagamentos,total,total_pago,saldo").eq("clinica_id",ctx.clinica_id).order("aberta_em",{ascending:false}),
         supabaseBanco.from("oricse_portal_documentos")
           .select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id")
@@ -325,6 +333,10 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           .select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id")
           .eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true)
           .order("realizado_em",{ascending:false,nullsFirst:false}),
+        supabaseBanco.from("oricse_portal_receitas")
+          .select("id,animal_id,tipo,numero,titulo,emitida_em,drive_arquivo_id")
+          .eq("clinica_id",ctx.clinica_id).eq("tutor_id",ctx.tutor_id).eq("visivel_tutor",true)
+          .order("emitida_em",{ascending:false}),
       ]);
       if (versao !== versaoCarregamento.current) return;
       if(docsCanonicos.error) console.warn("Documentos canônicos indisponíveis:",docsCanonicos.error.message);
@@ -332,9 +344,16 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       for(const item of [...(d.data||[]),...(docsCanonicos.data||[])] as Documento[]) unicos.set(item.id,item);
       setExames([...new Map<string, Exame>([...(e.data || []), ...(examesBanco.data || [])]
         .map(item => [item.id, item as Exame])).values()]);
-      setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setComandas([...new Map<string, Comanda>([...(c.data || []), ...(comandasBanco.data || [])]
+      setDocumentos([...unicos.values()]);
+      setReceitas([...new Map<string, Receita>([...(r.data || []), ...(receitasBanco.data || [])]
+        .map(item => [item.id, item as Receita])).values()]);
+      const fontesAvisos = [d, e, r, docsCanonicos, examesBanco, receitasBanco];
+      setEstadoAvisos(fontesAvisos.every(fonte => fonte.error) ? "erro"
+        : fontesAvisos.some(fonte => fonte.error) ? "parcial" : "pronto");
+      setComandas([...new Map<string, Comanda>([...(c.data || []), ...(comandasBanco.data || [])]
         .map(item => [item.id, item as Comanda])).values()]);
       } catch (erro) {
+        if (versao === versaoCarregamento.current) setEstadoAvisos("erro");
         console.error("Falha ao carregar dados complementares do portal:", erro);
       }
     }
@@ -406,11 +425,12 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
   const animal = animais.find(a => a.id === animalId) || animais[0] || null;
   const navegacao = secoesPortal.filter(({ id }) =>
+    (id !== "pet" || animais.length > 0) &&
     (id !== "agenda" || portalConfig.exibir_agendamento !== false) &&
     (id !== "documentos" || portalConfig.exibir_documentos !== false));
   const secaoAtual = navegacao.find(({ id }) => id === secao) ?? navegacao[0];
 
-  function navegar(destino: Secao, novoAnimalId = animal?.id || "") {
+  function navegar(destino: Secao, novoAnimalId = destino === "resumo" ? "" : animal?.id || "") {
     const url = new URL(window.location.href);
     if (destino === "resumo") url.searchParams.delete("secao");
     else url.searchParams.set("secao", destino);
@@ -441,7 +461,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
   const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animal?.id),[vacinas,animal?.id]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animal?.id),[vermifugos,animal?.id]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animal?.id),[exames,animal?.id]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animal?.id),[documentos,animal?.id]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animal?.id),[receitas,animal?.id]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animal?.id),[agendamentos,animal?.id]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animal?.id),[comandas,animal?.id]);const agenda=agendas.find(a=>a.id===agendaId)||null;
 
-  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setEstadoAgendas("pronto");setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
+  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setEstadoAgendas("pronto");setEstadoMarcacoes("pronto");setEstadoAvisos("pronto");setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
   async function ativar(e: React.FormEvent) {
     e.preventDefault();
     const codigo = token.trim();
@@ -559,12 +579,25 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   if(carregandoClinica)return <TelaCarregando/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
   if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
 
-  const pendencias = secaoAtual.id === "resumo" ? pendenciasDosPets(
-    animais,
+  const naVisaoGeral = secaoAtual.id === "resumo";
+  const petsPorId = new Map(animais.map(pet => [pet.id, pet]));
+  const pendencias = naVisaoGeral || secaoAtual.id === "pet" ? pendenciasDosPets(
+    naVisaoGeral ? animais : animal ? [animal] : [],
     vacinas.map(registro => ({ ...registro, realizado: registro.aplicada_em, proximo: registro.reforco_em })),
     vermifugos.map(registro => ({ ...registro, realizado: registro.administrado_em, proximo: registro.proxima_dose_em })),
     comandas, fontesCuidados, dataIso(),
   ) : [];
+  const avisosClinica = extrasPublicos.opcoes.mostrar_avisos !== false
+    ? String(extrasPublicos.opcoes.aviso_importante || "").trim() : "";
+  const avisosDosPets = naVisaoGeral ? [
+    ...(portalConfig.exibir_documentos === false ? [] : documentos.map(d => ({
+      ...d, secao: "documentos" as const, categoria: "Documento", data: d.data_documento,
+    }))),
+    ...exames.map(e => ({ ...e, secao: "exames" as const, categoria: "Exame", data: e.realizado_em })),
+    ...receitas.map(r => ({ ...r, secao: "receitas" as const, categoria: "Receita", data: r.emitida_em })),
+  ].filter(item => petsPorId.has(item.animal_id))
+    .sort((a, b) => (b.data || "").localeCompare(a.data || "")) : [];
+  const marcacoes = agendamentos.filter(item => !item.animal_id || petsPorId.has(item.animal_id));
   const carregandoCuidados = Object.values(fontesCuidados).includes("carregando");
   const cuidadosIncompletos = Object.values(fontesCuidados).some(fonte => fonte === "parcial" || fonte === "indisponivel");
   const nomeClinica = portalConfig.nome_exibicao || contexto.clinica_nome;
@@ -613,8 +646,8 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
         <div className="portal-area-content">
           {modoDemoAlvorada && <p className="portal-area-demo">Demonstração · Dados fictícios</p>}
           <div className="portal-area-section-heading">
-            <h1 ref={tituloSecao} tabIndex={-1}>{secaoAtual.nome}</h1>
-            {animal && secaoAtual.id !== "contato" && secaoAtual.id !== "perfil" && (
+            <h1 ref={tituloSecao} tabIndex={-1}>{secaoAtual.id === "pet" ? animal?.nome : secaoAtual.nome}</h1>
+            {animal && !naVisaoGeral && secaoAtual.id !== "contato" && secaoAtual.id !== "perfil" && (
               <label className="portal-area-pet-select">
                 <span>Pet selecionado</span>
                 <select value={animal.id} onChange={e => navegar(secaoAtual.id, e.target.value)}>
@@ -630,7 +663,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
             </div>
           ) : secaoAtual.id === "perfil" ? (
             <section className="rounded-2xl border bg-white p-5 sm:p-6"><p className="text-sm portal-area-muted">{contexto.tutor_nome} · {contexto.usuario}</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><Campo rotulo="Telefone" valor={telefone} onChange={setTelefone}/><Campo rotulo="E-mail" valor={email} onChange={setEmail} type="email"/></div><div className="mt-5 flex flex-wrap gap-2"><button disabled={salvandoPerfil} onClick={salvarPerfil} className="min-h-11 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-50">{salvandoPerfil?"Salvando...":"Salvar"}</button></div></section>
-          ) : !animal ? (
+          ) : !animal && !naVisaoGeral && secaoAtual.id !== "agenda" ? (
             <section className="portal-area-empty">
               <PawPrint size={25} aria-hidden="true" />
               <h2>Nenhum pet vinculado</h2>
@@ -638,8 +671,57 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
             </section>
           ) : (
             <div className="space-y-4">
-              {secaoAtual.id === "resumo" && (
+              {naVisaoGeral && (
                 <>
+                  {portalConfig.exibir_agendamento !== false && (
+                    <Lista titulo="Agendas e agendamentos" vazio="">
+                      <h3 className="text-sm font-semibold">Agendas disponíveis</h3>
+                      {agendas.length ? (
+                        <div className="portal-area-shortcuts">
+                          {agendas.map(item => (
+                            <Resumo key={item.id} titulo={item.nome} valor={item.responsavel || "Ver horários"} emoji="📅"
+                              onClick={() => {
+                                if (agendaId !== item.id) {
+                                  setHorario("");
+                                  setHorarios([]);
+                                  setAgendaId(item.id);
+                                }
+                                navegar("agenda");
+                              }} />
+                          ))}
+                        </div>
+                      ) : <p className="portal-area-muted text-sm" role="status">
+                        {estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro"
+                          ? "Não foi possível carregar as agendas." : "Nenhuma agenda publicada pela clínica."}
+                      </p>}
+                      <h3 className="pt-2 text-sm font-semibold">Agendamentos dos pets</h3>
+                      <ListaMarcacoes itens={marcacoes} estado={estadoMarcacoes} agendas={agendas}
+                        nomeDoPet={id => petsPorId.get(id)?.nome}
+                        onAbrir={id => navegar("agenda", id)} />
+                    </Lista>
+                  )}
+                  <Lista titulo="Avisos" vazio="">
+                    {avisosClinica && <p className="portal-area-notice whitespace-pre-wrap text-sm">{avisosClinica}</p>}
+                    {estadoAvisos === "carregando" && <p className="portal-area-muted text-sm" role="status">Carregando avisos dos pets…</p>}
+                    {(estadoAvisos === "erro" || estadoAvisos === "parcial") && (
+                      <p className="portal-area-muted text-sm" role="status">Parte dos avisos está indisponível no momento.</p>
+                    )}
+                    {avisosDosPets.map(item => (
+                      <button key={`${item.secao}-${item.id}`} type="button" className="portal-area-avisos-row portal-area-activity"
+                        onClick={() => navegar(item.secao, item.animal_id)}>
+                        <span><strong className="block">{item.titulo}</strong>
+                          <small>{item.categoria} · {petsPorId.get(item.animal_id)?.nome}{item.data && ` · ${dataBr(item.data)}`}</small>
+                        </span>
+                        <ChevronRight size={16} aria-hidden="true" />
+                      </button>
+                    ))}
+                    {!avisosClinica && avisosDosPets.length === 0 && estadoAvisos === "pronto" && (
+                      <p className="portal-area-muted text-sm">Nenhum aviso disponível.</p>
+                    )}
+                  </Lista>
+                </>
+              )}
+              {secaoAtual.id === "pet" && animal && (
                   <section className="portal-area-pet">
                     <span className="portal-area-pet-photo">
                       {animal.foto_url ? <img src={animal.foto_url} alt="" /> : <span aria-hidden="true">{emojiDoPet(animal.especie)}</span>}
@@ -661,8 +743,11 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                         }} />
                     </label>
                   </section>
+              )}
+              {(naVisaoGeral || secaoAtual.id === "pet") && (
                   <section className="portal-area-list portal-area-care" aria-labelledby="portal-cuidados">
                     <h2 id="portal-cuidados"><span aria-hidden="true">🐾</span> Atenção aos cuidados</h2>
+                    <p className="portal-area-muted mt-1 text-sm">Vacinas e vermífugos em atraso ou com prazo nos próximos 15 dias.</p>
                     {carregandoCuidados && <p className="portal-area-muted mt-2 text-sm" role="status">Consultando registros dos pets…</p>}
                     {cuidadosIncompletos && <p className="portal-area-muted mt-2 text-sm">Parte dos registros está indisponível no momento.</p>}
                     {pendencias.length > 0 ? (
@@ -682,20 +767,27 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                         ))}
                       </ul>
                     ) : !carregandoCuidados && !cuidadosIncompletos && (
-                      <p className="portal-area-muted mt-2 text-sm">Nenhum atraso registrado nos cuidados dos pets.</p>
+                      <p className="portal-area-muted mt-2 text-sm">Nenhum cuidado atrasado ou com prazo nos próximos 15 dias.</p>
                     )}
                   </section>
+              )}
+              {naVisaoGeral && (
+                <Lista titulo="Meus animais" vazio="Nenhum pet vinculado.">
+                  {animais.length > 0 && <div className="portal-area-shortcuts">
+                    {animais.map(pet => (
+                      <Resumo key={pet.id} titulo={pet.nome} valor={pet.especie || "Abrir ficha"} emoji={emojiDoPet(pet.especie)}
+                        foto={pet.foto_url} onClick={() => navegar("pet", pet.id)} />
+                    ))}
+                  </div>}
+                </Lista>
+              )}
+              {secaoAtual.id === "pet" && (
+                <>
                   <div className="portal-area-shortcuts">
                     {portalConfig.exibir_agendamento !== false && <Resumo titulo="Agenda" valor="Agendamentos e horários" emoji="📅" onClick={() => navegar("agenda")} />}
                     {portalConfig.exibir_documentos !== false && <Resumo titulo="Documentos" valor="Laudos e arquivos" emoji="📄" onClick={() => navegar("documentos")} />}
                     <Resumo titulo="Vacinas" valor="Carteira e reforços" emoji="💉" onClick={() => navegar("vacinas")} />
                   </div>
-                  {extrasPublicos.opcoes.mostrar_avisos !== false && Boolean(extrasPublicos.opcoes.aviso_importante) && (
-                    <section className="portal-area-notice">
-                      <h2 className="font-semibold">Aviso da clínica</h2>
-                      <p className="text-sm">{String(extrasPublicos.opcoes.aviso_importante)}</p>
-                    </section>
-                  )}
                   {(examesAnimal.length > 0 || receitasAnimal.length > 0) && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       {examesAnimal.length > 0 && <Lista titulo="Últimos exames" vazio="">{[...examesAnimal]
@@ -712,6 +804,10 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                         ))}</Lista>}
                     </div>
                   )}
+                </>
+              )}
+              {naVisaoGeral && (
+                <>
                   {temNovidades && <details className="portal-area-details"><summary>Novidades da clínica</summary><div className="pt-4">{extrasPublicos.opcoes?.mostrar_banner!==false&&Boolean(extrasPublicos.opcoes?.banner_titulo)&&<section className="mb-4 rounded-2xl border p-6" style={{backgroundColor:/^#[0-9a-fA-F]{6}$/.test(String(extrasPublicos.opcoes.cor_destaque||""))?String(extrasPublicos.opcoes.cor_destaque)+"20":"#e5f4ef"}}><h2 className="text-xl font-black">{String(extrasPublicos.opcoes.banner_titulo)}</h2><p className="mt-1">{String(extrasPublicos.opcoes.banner_subtitulo||"")}</p>{/^https:\/\//.test(String(extrasPublicos.opcoes.banner_link||""))&&<a className="mt-3 inline-block rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-white" href={String(extrasPublicos.opcoes.banner_link)} target="_blank" rel="noopener noreferrer">Saiba mais</a>}</section>}{extrasPublicos.opcoes?.mostrar_promocoes!==false&&Boolean(extrasPublicos.promocoes?.length)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="mb-3 font-bold">Promoções da clínica</h2><div className="grid gap-3 sm:grid-cols-2">{(extrasPublicos.promocoes||[]).map((p,i)=><div key={i} className="rounded-lg border p-3"><strong>{p.titulo}</strong><p className="text-sm">{p.descricao}</p><p className="mt-1 text-sm font-semibold">{p.desconto_percentual}% de desconto{p.cupom?" · Cupom: "+p.cupom:""}</p></div>)}</div></section>}{extrasPublicos.opcoes?.mostrar_servico!==false&&Boolean(extrasPublicos.opcoes?.destaque_servico)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="font-bold">Serviço em destaque</h2><p className="text-sm">{String(extrasPublicos.opcoes.destaque_servico)}</p></section>}{Boolean(extrasPublicos.opcoes?.chamada_promocional)&&<p className="mb-4 rounded-lg bg-emerald-50 p-3 text-center font-semibold text-emerald-900">{String(extrasPublicos.opcoes.chamada_promocional)}</p>}</div></details>}
                   {portalConfig.exibir_agendamento !== false && (
                     <details className="portal-area-details"><summary>Outros serviços</summary>
@@ -720,7 +816,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                   )}
                 </>
               )}
-  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Novo agendamento</h2>{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>{setHorario("");setHorarios([]);setAgendaId(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>{setHorario("");setHorarios([]);setDataAgenda(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<span role="status" className="p-2 text-sm">Carregando horários…</span>:erroHorarios?<span role="alert" className="p-2 text-sm">Não foi possível consultar os horários. Selecione outra data ou tente novamente.</span>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Nenhum horário disponível nesta data. Selecione outro dia.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">{estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro" ? "Não foi possível carregar as agendas. Atualize a página para tentar novamente." : "A clínica ainda não publicou agendas para atendimento online."}</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><div className="rounded-2xl border bg-white p-5"><h3 className="font-black">Meus agendamentos</h3><div className="mt-3 space-y-2">{marcacoesAnimal.length?marcacoesAnimal.map(a=><div key={a.id} className="flex justify-between gap-3 rounded-xl border p-3"><div><strong className="text-sm">{a.tipo}</strong><p className="text-xs text-slate-500">{dataHora(a.inicio)}</p>{agendas.find(g=>g.id===a.agenda_id)?.responsavel&&<p className="mt-1 text-xs font-semibold text-[#702a43]">Profissional: {agendas.find(g=>g.id===a.agenda_id)?.responsavel}</p>}</div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{estado(a.estado)}</span></div>):<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum agendamento.</p>}</div></div></div>}
+  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Novo agendamento</h2>{!animal && <p className="portal-area-muted mt-2 text-sm">Para agendar, peça à clínica para vincular seu pet.</p>}{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>{setHorario("");setHorarios([]);setAgendaId(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>{setHorario("");setHorarios([]);setDataAgenda(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<span role="status" className="p-2 text-sm">Carregando horários…</span>:erroHorarios?<span role="alert" className="p-2 text-sm">Não foi possível consultar os horários. Selecione outra data ou tente novamente.</span>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Nenhum horário disponível nesta data. Selecione outro dia.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">{estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro" ? "Não foi possível carregar as agendas. Atualize a página para tentar novamente." : "A clínica ainda não publicou agendas para atendimento online."}</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={!animal||!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!animal||!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><Lista titulo="Meus agendamentos" vazio=""><ListaMarcacoes itens={marcacoesAnimal} estado={estadoMarcacoes} agendas={agendas} /></Lista></div>}
   {secaoAtual.id==="documentos"&&portalConfig.exibir_documentos!==false&&<Lista titulo="Documentos, laudos e atestados" vazio="Nenhum documento liberado.">{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista>}
   {secaoAtual.id==="exames"&&<Lista titulo="Exames" vazio="Nenhum exame liberado.">{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
   {secaoAtual.id==="receitas"&&<Lista titulo="Receitas" vazio="Nenhuma receita disponível.">{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
@@ -744,13 +840,46 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
 function TelaCarregando(){return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4]"><Loader2 className="animate-spin"/></main>}
 function Campo({rotulo,valor,onChange,type="text",inputMode,placeholder}:{rotulo:string;valor:string;onChange:(v:string)=>void;type?:string;inputMode?:React.HTMLAttributes<HTMLInputElement>["inputMode"];placeholder?:string}){return <label className="text-sm font-bold">{rotulo}<input type={type} value={valor} inputMode={inputMode} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>}
-function Resumo({ titulo, valor, emoji, onClick }: { titulo: string; valor: string; emoji: string; onClick: () => void }) {
+function Resumo({ titulo, valor, emoji, foto, onClick }: { titulo: string; valor: string; emoji: string; foto?: string | null; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="portal-area-shortcut">
-      <span className="portal-area-shortcut-icon" aria-hidden="true">{emoji}</span>
+      <span className="portal-area-shortcut-icon" aria-hidden="true">{foto ? <img src={foto} alt="" loading="lazy" /> : emoji}</span>
       <span className="min-w-0"><strong className="block">{titulo}</strong><small className="portal-area-muted">{valor}</small></span>
       <ChevronRight size={17} aria-hidden="true" />
     </button>
+  );
+}
+
+function ListaMarcacoes({ itens, estado: situacao, agendas, nomeDoPet, onAbrir }: {
+  itens: Agendamento[];
+  estado: "carregando" | "pronto" | "erro";
+  agendas: Agenda[];
+  nomeDoPet?: (id: string) => string | undefined;
+  onAbrir?: (id: string) => void;
+}) {
+  const agendasPorId = new Map(agendas.map(item => [item.id, item]));
+  return (
+    <div className="space-y-2">
+      {situacao === "carregando" && <p className="portal-area-muted text-sm" role="status">Carregando agendamentos…</p>}
+      {situacao === "erro" && <p className="portal-area-muted text-sm" role="status">Parte dos agendamentos está indisponível no momento.</p>}
+      {situacao === "pronto" && itens.length === 0 && <p className="portal-area-muted text-sm">Nenhum agendamento registrado.</p>}
+      {itens.map(item => {
+        const agenda = item.agenda_id ? agendasPorId.get(item.agenda_id) : undefined;
+        const petId = item.animal_id;
+        const nome = petId ? nomeDoPet?.(petId) : undefined;
+        const conteudo = <>
+          <span>
+            <strong className="block">{item.tipo}</strong>
+            <small className="portal-area-muted">{[nome, dataHora(item.inicio), agenda?.responsavel].filter(Boolean).join(" · ")}</small>
+          </span>
+          <span className="portal-area-care-status">{estado(item.estado)}</span>
+        </>;
+        return petId && nome && onAbrir ? (
+          <button key={item.id} type="button" className="portal-area-activity portal-area-marcacao"
+            onClick={() => onAbrir(petId)}>{conteudo}<ChevronRight size={16} aria-hidden="true" /></button>
+        ) : <div key={item.id} className="portal-area-activity portal-area-marcacao">{conteudo}</div>;
+      })}
+    </div>
   );
 }
 

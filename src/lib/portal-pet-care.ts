@@ -8,7 +8,7 @@ export type PendenciaPet = {
   id: string;
   animal: Pet;
   secao: "vacinas" | "vermifugos" | "comanda";
-  status: "Atrasado" | "Hoje" | "Em aberto" | "Sem informação";
+  status: "Atrasado" | "Hoje" | "Nos próximos 15 dias" | "Em aberto" | "Sem informação";
   titulo: string;
   data?: string;
   saldo?: number;
@@ -30,6 +30,9 @@ export function pendenciasDosPets(
   hoje: string,
 ): PendenciaPet[] {
   const pendencias: PendenciaPet[] = [];
+  const limite = new Date(`${hoje}T12:00:00Z`);
+  limite.setUTCDate(limite.getUTCDate() + 15);
+  const ate = limite.toISOString().slice(0, 10);
 
   for (const animal of pets) {
     for (const [secao, registros, nome] of [
@@ -56,10 +59,10 @@ export function pendenciasDosPets(
         const proximo = secao === "vacinas" ? "Reforço" : "Próxima dose";
         if (!data && fontes[secao] === "completa") {
           pendencias.push({ id: secao + registro.id, animal, secao, status: "Sem informação", titulo: `${proximo} sem data · ${registro.nome}` });
-        } else if (data && data <= hoje) {
+        } else if (data && data <= ate) {
           pendencias.push({
             id: secao + registro.id, animal, secao, data,
-            status: data === hoje ? "Hoje" : "Atrasado",
+            status: data < hoje ? "Atrasado" : data === hoje ? "Hoje" : "Nos próximos 15 dias",
             titulo: `${proximo} · ${registro.nome}`,
           });
         }
@@ -73,7 +76,7 @@ export function pendenciasDosPets(
     });
   }
 
-  const ordem = { Atrasado: 0, Hoje: 1, "Em aberto": 2, "Sem informação": 3 };
+  const ordem = { Atrasado: 0, Hoje: 1, "Nos próximos 15 dias": 2, "Em aberto": 3, "Sem informação": 4 };
   return pendencias.sort((a, b) => ordem[a.status] - ordem[b.status] ||
     (a.data || "").localeCompare(b.data || "") || a.animal.nome.localeCompare(b.animal.nome, "pt-BR"));
 }
