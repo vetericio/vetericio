@@ -16,10 +16,12 @@ const alvos=[
 ];
 const destino="performance-browser-public.json";
 const resultados=[];
-for(const [nome,url] of alvos){
+const cenarios=alvos.flatMap(([nome,url])=>[["desktop",nome,url],["mobile",nome,url]]);
+for(const [perfil,nome,url] of cenarios){
   const temporario=path.join(os.tmpdir(),"oricse-lighthouse-"+resultados.length+".json");
   try{
     execFileSync("npx",["--yes","lighthouse@12.8.2",url,
+      ...(perfil==="desktop"?["--preset=desktop"]:[]),
       "--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage",
       "--only-categories=performance","--output=json","--output-path="+temporario,
       "--quiet","--max-wait-for-load=20000"],{timeout:90000,stdio:"pipe"});
@@ -27,15 +29,15 @@ for(const [nome,url] of alvos){
     const lcp=Math.round(dados.audits?.["largest-contentful-paint"]?.numericValue||0);
     const fcp=Math.round(dados.audits?.["first-contentful-paint"]?.numericValue||0);
     const tbt=Math.round(dados.audits?.["total-blocking-time"]?.numericValue||0);
-    const row={nome,url,lcpMs:lcp,fcpMs:fcp,tbtMs:tbt,score:Math.round((dados.categories?.performance?.score||0)*100),metaAtingida:lcp>0&&lcp<=1000,limiteAtingido:lcp>0&&lcp<=LIMITE};
+    const row={perfil,nome,url,lcpMs:lcp,fcpMs:fcp,tbtMs:tbt,score:Math.round((dados.categories?.performance?.score||0)*100),metaAtingida:lcp>0&&lcp<=1000,limiteAtingido:lcp>0&&lcp<=LIMITE};
     resultados.push(row);
-    console.log((row.limiteAtingido?"OK":"LENTO")+" "+nome+" · LCP "+lcp+" ms · FCP "+fcp+" ms · TBT "+tbt+" ms");
+    console.log((row.limiteAtingido?"OK":"LENTO")+" "+perfil+" "+nome+" · LCP "+lcp+" ms · FCP "+fcp+" ms · TBT "+tbt+" ms");
   }catch(erro){
-    resultados.push({nome,url,erro:erro instanceof Error?erro.message.slice(0,250):String(erro),limiteAtingido:false});
-    console.error("FALHA "+nome+" · auditoria Lighthouse indisponível");
+    resultados.push({perfil,nome,url,erro:erro instanceof Error?erro.message.slice(0,250):String(erro),limiteAtingido:false});
+    console.error("FALHA "+perfil+" "+nome+" · auditoria Lighthouse indisponível");
   }finally{try{fs.unlinkSync(temporario);}catch{}}
 }
-fs.writeFileSync(destino,JSON.stringify({data:new Date().toISOString(),tipo:"Lighthouse desktop — carregamento frio, público e sem sessão",limiteMs:LIMITE,resultados},null,2));
+fs.writeFileSync(destino,JSON.stringify({data:new Date().toISOString(),tipo:"Lighthouse desktop e mobile — carregamento frio, público e sem sessão",limiteMs:LIMITE,resultados},null,2));
 const excedidas=resultados.filter(r=>!r.limiteAtingido);
 console.log("Auditoria visual pública: "+(resultados.length-excedidas.length)+"/"+resultados.length+" com LCP até 3 segundos");
 if(process.env.ORICSE_PERF_STRICT==="1"&&excedidas.length)process.exitCode=1;
