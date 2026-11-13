@@ -225,7 +225,10 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, fromCanonical, g
       .eq("user_id", u.id)
       .eq("ativo", true)
       .maybeSingle();
-    return ["responsavel", "admin_clinica", "rt"].includes(String(data?.papel || ""));
+    if (!["responsavel", "admin_clinica", "rt"].includes(String(data?.papel || ""))) return false;
+    // Cargo de gestor não contorna bloqueio comercial nem revogação individual.
+    return (await effectivePermissions(clinicaId))
+      .some((p) => p.codigo === "administracao.permissoes" && p.permitido);
   }
   async function effectivePermissions(clinicaId: string, userId?: string) {
     const alvo = userId || (await user())?.id;
@@ -525,6 +528,16 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, fromCanonical, g
             .eq("ativo", true)
             .maybeSingle();
           if (!alvo) throw new Error("Usuário sem vínculo ativo com esta clínica.");
+          const codigo = String(args.p_codigo || "");
+          const { data: catalogo, error: erroCatalogo } = await fromDrive("oricse_permissoes")
+            .select("codigo,funcionalidade_codigo,ativo").eq("codigo", codigo).maybeSingle();
+          if (erroCatalogo) throw erroCatalogo;
+          if (!catalogo || catalogo.ativo === false)
+            throw new Error("Permissão inexistente ou inativa.");
+          const permite = await matrizEfetiva(cid);
+          if (!permite("acao." + codigo) ||
+              (catalogo.funcionalidade_codigo && !permite(String(catalogo.funcionalidade_codigo))))
+            throw new Error("A função está bloqueada pelo plano desta clínica.");
           const u = await user();
           const { error } = await fromDrive("oricse_permissoes_usuario").upsert(
             {
@@ -544,11 +557,22 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, fromCanonical, g
           const cid = String(args.p_clinica_id);
           if (!(await canManagePermissions(cid)))
             throw new Error("Sem permissão para gerenciar acessos desta clínica.");
+          const { data: alvo, error: erroAlvo } = await fromIdentity("clinica_usuarios")
+            .select("user_id").eq("clinica_id", cid)
+            .eq("user_id", args.p_user_id).eq("ativo", true).maybeSingle();
+          if (erroAlvo) throw erroAlvo;
+          if (!alvo) throw new Error("Usuário sem vínculo ativo com esta clínica.");
+          const codigo = String(args.p_codigo || "");
+          const { data: catalogo, error: erroCatalogo } = await fromDrive("oricse_permissoes")
+            .select("codigo,ativo").eq("codigo", codigo).maybeSingle();
+          if (erroCatalogo) throw erroCatalogo;
+          if (!catalogo || catalogo.ativo === false)
+            throw new Error("Permissão inexistente ou inativa.");
           const { error } = await fromDrive("oricse_permissoes_usuario")
             .delete()
             .eq("clinica_id", cid)
             .eq("user_id", args.p_user_id)
-            .eq("permissao_codigo", args.p_codigo);
+            .eq("permissao_codigo", codigo);
           if (error) throw error;
           return { data: null, error: null };
         }
