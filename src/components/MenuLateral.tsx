@@ -61,7 +61,7 @@ type MenuRoute =
   | "/perfil-clinica"
   | "/plano-clinica"
   | "/permissoes-equipe"
-  | "/configurar-portal-tutor"
+  | "/portal-tutores"
   | "/temas";
 
 type ItemMenu = {
@@ -69,6 +69,7 @@ type ItemMenu = {
   rotulo: string;
   permissao?: string;
   emBreve?: boolean;
+  portalOficial?: boolean;
   abaHotel?: string;
   separador?: "consultorio" | "internacao" | "trabalho" | "comissoes";
   grupoRh?: "trabalho" | "comissoes";
@@ -211,9 +212,14 @@ const areas: AreaMenu[] = [
         permissao: "administracao.permissoes",
       },
       {
-        to: "/configurar-portal-tutor",
-        rotulo: "Portal do tutor",
+        portalOficial: true,
+        rotulo: "Portal do Tutor",
         permissao: "administracao.site",
+      },
+      {
+        to: "/portal-tutores",
+        rotulo: "Tutores, convites e acessos",
+        permissao: "portal_tutor.gerenciar",
       },
       { to: "/temas", rotulo: "Temas", permissao: "administracao.temas" },
     ],
@@ -247,6 +253,7 @@ export function MenuLateral({
     podeAlguma,
     bloqueadaPeloPlano,
     adminGlobal,
+    clinicaSlug,
   } = usePermissoes();
   const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
   const navigate = useNavigate();
@@ -412,6 +419,22 @@ export function MenuLateral({
                           </span>
                         </button>
                       );
+                    if (item.portalOficial) {
+                      const slug = clinicaSlug.trim();
+                      const classe = "block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors";
+                      if (carregandoPermissoes || !slug) {
+                        return <button key={chave} type="button" disabled={carregandoPermissoes}
+                          className={`${classe} w-full text-left text-muted-foreground`}
+                          onClick={() => toast.info("Selecione uma clínica com Portal do Tutor.")}>
+                          {item.rotulo}
+                        </button>;
+                      }
+                      const href = slug === "alvorada"
+                        ? "https://alvorada.oricse.com.br/portaldotutor"
+                        : `/pet/${encodeURIComponent(slug)}/portal`;
+                      return <a key={chave} href={href} onClick={() => setAberto(false)}
+                        className={`${classe} hover:bg-secondary`}>{item.rotulo}</a>;
+                    }
                     if (!item.to) return null;
                     return (
                       <Link
