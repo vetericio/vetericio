@@ -32,16 +32,7 @@ export async function exigirPermissaoClinica(
 
   // Serviço administrativo não transporta auth.uid() do funcionário; o RPC
   // precisa receber seu JWT para aplicar corretamente as políticas do banco.
-  const url = process.env["ORICSE_SUPABASE_URL"] ||
-    process.env["SUPABASE_URL"] || "https://mwrmfcyrdxfxssebgknz.supabase.co";
-  const publishableKey = process.env["ORICSE_SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    "sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc";
-  const usuario = createClient(url, publishableKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const usuario = clienteSupabaseUsuario(accessToken);
   const { data: permissoes, error: erroPermissoes } = await usuario.rpc(
     "oricse_permissoes_efetivas",
     { p_clinica_id: clinicaId, p_user_id: userId },
@@ -51,4 +42,17 @@ export async function exigirPermissaoClinica(
   if (!permissoes.some((p: any) =>
     codigos.includes(String(p.codigo)) && p.permitido === true))
     throw new Error("Seu cargo ou plano não autoriza esta operação.");
+}
+
+export function clienteSupabaseUsuario(accessToken?: string) {
+  const url = process.env["ORICSE_SUPABASE_URL"] ||
+    process.env["SUPABASE_URL"] || "https://mwrmfcyrdxfxssebgknz.supabase.co";
+  const publishableKey = process.env["ORICSE_SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    "sb_publishable_Y5qsG-0F69poaQjUnWxGKw_8WOydkZc";
+  return createClient(url, publishableKey, {
+    ...(accessToken ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } } : {}),
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
