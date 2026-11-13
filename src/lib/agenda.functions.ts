@@ -28,7 +28,7 @@ export const salvarAgendaOnline = createServerFn({ method: 'POST' })
     const { supabaseAdmin: admin } = await import('@/integrations/supabase/client.server');
     const { data: auth, error: authErro } = await admin.auth.getUser(data.accessToken);
     if (authErro || !auth.user) throw new Error('Sessão inválida ou expirada. Entre novamente.');
-    await exigirPermissaoClinica(admin, auth.user.id, data.clinicaId, ['recepcao.agenda']);
+    await exigirPermissaoClinica(admin, auth.user.id, data.clinicaId, ['recepcao.agenda'], data.accessToken);
     if (!data.agendaId) {
       const { data: clinica, error: erroClinica } = await admin
         .from('clinicas').select('limite_usuarios').eq('id', data.clinicaId).single();
