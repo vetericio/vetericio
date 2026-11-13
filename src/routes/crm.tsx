@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Crm360Panel } from "@/components/Crm360Panel";
+import { CrmModelosDaCentral } from "@/components/CrmModelosDaCentral";
 
 export const Route = createFileRoute("/crm")({ component: Crm });
 
@@ -605,6 +606,11 @@ function Crm() {
     </section>}
 
     {aba === "modelos" && <section className="mt-5 grid gap-4 lg:grid-cols-2">
+      {clinicaId && <CrmModelosDaCentral clinicaId={clinicaId} modelos={modelos} podeGerenciar={podeGerenciar}
+        onAtualizados={(alteracoes)=>setModelos(lista=>lista.map(m=>{
+          const encontrado=alteracoes.find(x=>x.id===m.id);
+          return encontrado?{...m,mensagem:encontrado.mensagem}:m;
+        }))}/>}
       {modelos.map((item) => <article key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div><p className="text-xs font-bold uppercase tracking-wider text-primary">{ROTULOS[item.tipo]}</p><h2 className="mt-1 font-black">{item.nome}</h2></div>
