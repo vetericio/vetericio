@@ -246,6 +246,120 @@ const SECOES = [
     "No encerramento ou suspensão, a ORICSE e o estabelecimento deverão cooperar, dentro das condições contratadas e da legislação, para preservar e disponibilizar os dados cuja entrega seja devida, sem permitir acesso de pessoas não autorizadas.",
     "Alterações materiais em funcionalidades, integrações ou condições de serviço deverão observar os deveres legais de transparência, comunicação e tratamento de dados."
   ]
+},
+  {
+  "id": "catalogo",
+  "title": "23. Abrangência dos módulos e configurações",
+  "intro": "O ORICSE disponibiliza um catálogo modular, sem garantia de que todos os recursos estejam incluídos em todos os planos ou ativados em todos os estabelecimentos.",
+  "items": [
+    "Conforme contratação e configuração, os módulos podem abranger recepção, consultório, internação, exames, vacinas, documentos, prescrições, agenda, Portal do Tutor, hospitalidade pet, banho e tosa, vendas, orçamentos, estoque, caixa, gestão de equipes, ponto, CRM, sites de clínicas, OricStudio, OricsePay e outros recursos divulgados na oferta.",
+    "Os módulos, limites de usuários, cargos, integrações, funcionalidades experimentais e serviços adicionais dependerão do plano, da oferta vinculante, das autorizações e da situação da contratação.",
+    "Funcionalidades em demonstração e informações fictícias devem estar segregadas dos ambientes produtivos. A demonstração não representa compromisso de disponibilidade, precisão ou identidade com cada plano comercial."
+  ]
+},
+  {
+  "id": "financeiro",
+  "title": "24. OricsePay, intermediação financeira e conciliação",
+  "intro": "Os recursos de cobrança e pagamento estão sujeitos à habilitação, ao contrato aplicável e aos serviços financeiros de terceiros legalmente autorizados.",
+  "items": [
+    "A ORICSE pode oferecer integração tecnológica para cobranças, links, pagamentos presenciais ou remotos, repasses, conciliação e modalidades de antecipação quando efetivamente contratadas e disponibilizadas; a oferta específica prevalece sobre a descrição genérica.",
+    "Taxas, descontos, prazos de liquidação, retenções, reservas, antecipações e destinatários do recebimento deverão ser apresentados no fluxo comercial e nos instrumentos específicos pertinentes, sem garantia de aprovação de operações ou antecipação de valores.",
+    "Reembolsos, cancelamentos, contestações, chargebacks, prevenção a fraude, verificações de identidade e eventual bloqueio de transações obedecerão às responsabilidades, às normas legais e às condições do prestador financeiro, conforme seu papel na operação.",
+    "A ORICSE não se declara instituição financeira ou responsável pela custódia de recursos apenas por disponibilizar integração técnica. Sua responsabilidade por integração, informações, falhas próprias e obrigações legais permanece preservada.",
+    "O contratante deve conferir lançamentos, dados dos destinatários, conciliações e eventuais divergências, comunicando erros pelos canais de atendimento, sem prejuízo do dever da ORICSE de corrigir falhas que lhe sejam imputáveis."
+  ]
+},
+  {
+  "id": "studio",
+  "title": "25. OricStudio, redes sociais e propriedade intelectual",
+  "intro": "As ferramentas de criação e gestão de conteúdo são auxiliares da atividade do contratante e podem operar por meio de contas e plataformas externas.",
+  "items": [
+    "O contratante declara possuir poderes para conectar perfis e autorizar, quando habilitado, agendamentos, publicações e interações em seus canais. Revogar acessos ou desconectar serviços pode interromper fluxos e publicações.",
+    "O contratante é responsável pela legitimidade dos materiais, marcas, imagens, músicas, dados pessoais e direitos de terceiros que fornecer, aprovar ou mandar publicar; a ORICSE responde pelos atos e falhas que lhe sejam próprios, nos limites da lei.",
+    "Plataformas de redes sociais podem limitar APIs, alterar requisitos, rejeitar publicações, suspender contas ou remover conteúdos. Nenhuma ferramenta da ORICSE garante alcance, engajamento, resultado publicitário ou disponibilidade de canal externo.",
+    "Recursos automatizados, sugestões e conteúdo eventualmente gerado por inteligência artificial exigem revisão humana, especialmente quanto a exatidão, publicidade veterinária, direitos autorais, discriminação, sigilo e dados pessoais. Não devem ser publicados sem conferência do responsável.",
+    "Condições especiais de licença de mídias, modelos, marcas e serviços de terceiros devem ser observadas pelo usuário conforme cada integração, sem afastar as obrigações próprias da ORICSE."
+  ]
+},
+  {
+  "id": "vendas",
+  "title": "26. Venda Expressa, orçamentos, estoque, caixa e fiscalidade",
+  "intro": "As funcionalidades comerciais oferecem apoio ao registro e ao controle operacional do estabelecimento.",
+  "items": [
+    "Vendas expressas podem ocorrer sem cadastro de tutor quando permitido pela legislação e pelo fluxo contratado; o estabelecimento permanece responsável pelos registros obrigatórios, fornecimento de informações e comprovação da transação.",
+    "Orçamentos são documentos comerciais sujeitos à conferência de itens, validade, quantidades, preços, tributos, condições e aceite pelo estabelecimento e pelo cliente. A geração de PDF ou imagem não substitui documento fiscal exigido em lei.",
+    "Estoque, movimentações, entradas, saídas, validade de produtos, inventários, favoritos e históricos dependem de alimentação e conferência pelos usuários autorizados; divergências devem ser registradas e investigadas.",
+    "Recebimentos, fechamentos de caixa, ajustes, cancelamentos, estornos e devoluções devem manter trilhas adequadas de autorização e justificativa conforme a funcionalidade disponibilizada. O contratante responde pela gestão fiscal e contábil de seu negócio, sem excluir responsabilidade da ORICSE por erros próprios do software.",
+    "A ORICSE não substitui contabilidade, emissão fiscal legalmente obrigatória ou sistemas governamentais específicos, salvo se houver integração expressamente contratada e habilitada."
+  ]
+},
+  {
+  "id": "clinica",
+  "title": "27. Atos veterinários, prontuários e recursos de apoio clínico",
+  "intro": "A aplicação fornece instrumentos administrativos e de documentação, sem assumir a função privativa do médico-veterinário.",
+  "items": [
+    "Prescrições, receitas controladas, cálculo de doses e fluidos, evolução, internação, agendas terapêuticas, exames, procedimentos e orientações clínicas devem ser conferidos e validados por profissional habilitado antes de seu uso assistencial.",
+    "O usuário deve verificar identidade do animal, espécie, peso, condição clínica, apresentação e concentração do medicamento, unidades, via, intervalo, limites de dose, contraindicações e demais condições relevantes. Erros de preenchimento ou conversão podem causar dano e devem ser comunicados imediatamente.",
+    "O sistema não substitui supervisão contínua, protocolos de emergência, aferição clínica, responsabilidade técnica, consentimentos específicos ou as exigências de prontuários e receituários previstas nas normas profissionais.",
+    "A ORICSE permanece responsável por defeitos e falhas do serviço que lhe sejam juridicamente imputáveis, inclusive quando causarem dano; nenhuma previsão transfere indiscriminadamente ao veterinário a responsabilidade por erro técnico do software.",
+    "Registros e documentos clínicos devem observar deveres de sigilo, autenticidade, guarda, acesso, disponibilização e integridade previstos em lei e nas normas profissionais aplicáveis."
+  ]
+},
+  {
+  "id": "portal",
+  "title": "28. Portal do Tutor, agendamentos e serviços aos animais",
+  "intro": "O estabelecimento é responsável pelo atendimento e pela legitimidade do vínculo entre tutor, animal e documentos acessados.",
+  "items": [
+    "Os recursos de agendamento, cobrança antecipada e reserva de horários obedecem às condições visíveis no momento da solicitação e às regras do prestador de pagamento; disponibilidade apresentada não garante confirmação definitiva antes dos controles aplicáveis.",
+    "É responsabilidade do estabelecimento conferir a identidade e os poderes do solicitante antes de liberar prontuários, prescrições, exames, documentos e demais informações do animal, respeitados os direitos de titulares e de terceiros.",
+    "Quando um tutor possui vínculos com mais de um estabelecimento, os dados de cada clínica deverão ser segregados conforme autorização e finalidade; o vínculo a uma clínica não autoriza, por si só, acesso a acervos de outras.",
+    "Serviços de hotelzinho, creche, hospedagem, alimentação, medicações de rotina, banho e tosa podem exigir condições particulares, restrições de saúde e consentimentos específicos definidos entre estabelecimento e cliente.",
+    "Confirmações, atrasos, faltas, cancelamentos e devoluções de serviços prestados pelo estabelecimento são regidos pelas condições específicas e pela legislação aplicável; a ORICSE responde apenas por suas obrigações próprias como fornecedora da plataforma."
+  ]
+},
+  {
+  "id": "equipe",
+  "title": "29. Equipe, ponto, permissões e gestão administrativa",
+  "intro": "A atribuição de credenciais e funções deve observar necessidade de acesso, segurança, obrigações trabalhistas e normas do estabelecimento.",
+  "items": [
+    "O contratante administra cargos, permissões, vínculos de funcionários, desligamentos e autorizações concedidas em seus ambientes, respeitadas as proteções técnicas do sistema.",
+    "Registros de jornada, escalas, comissões, produtividade, remuneração e relatórios são ferramentas de apoio e devem ser conferidos com as normas trabalhistas, instrumentos coletivos e exigências fiscais aplicáveis; sua existência não garante enquadramento automático como sistema oficial de ponto.",
+    "A ORICSE deve adotar controles proporcionais para impedir acessos indevidos entre estabelecimentos e executar adequadamente as restrições contratadas, sem transferir ao contratante responsabilidade por falhas técnicas próprias.",
+    "É vedado criar usuários fictícios para obter acesso indevido, compartilhar credenciais ou consultar informações sem necessidade funcional e base legítima."
+  ]
+},
+  {
+  "id": "dados",
+  "title": "30. Exportação, cópias de segurança, exclusão e continuidade",
+  "intro": "A disponibilidade dos dados está sujeita a limitações técnicas e obrigações legais de conservação, sem afastar deveres de segurança.",
+  "items": [
+    "Procedimentos de backup, cópias externas, sincronização e recuperação dependem da infraestrutura, das licenças e das autorizações efetivamente disponíveis. Nenhuma cláusula constitui garantia absoluta contra perda de dados ou dispensa medidas adequadas de prevenção.",
+    "Mediante encerramento ou solicitação legitimada, o contratante poderá requerer informações e exportação dos dados que lhe pertençam ou aos quais tenha direito, por meios seguros e na extensão técnica e legal cabível.",
+    "Suspensão de cobrança não deve implicar destruição arbitrária de prontuários ou outros documentos de guarda obrigatória. Os procedimentos específicos de retenção, transição e eliminação deverão respeitar legislação, contratos e direitos dos titulares.",
+    "A ORICSE deve comunicar incidentes e apoiar os controladores na forma exigida pela LGPD, além de adotar medidas proporcionais de resposta e continuidade."
+  ]
+},
+  {
+  "id": "planos",
+  "title": "31. Promoções, Programa Beta, fidelidade e renovação",
+  "intro": "Condições especiais devem constar de oferta, instrumento individual ou regulamento próprio, com informação clara e verificável.",
+  "items": [
+    "Benefícios de programas beta, gratuidade temporária, descontos por prazo determinado, cupons, condições de fundador e preços promocionais só se aplicam às contratações expressamente elegíveis e nos limites informados no instrumento aceito.",
+    "A participação em testes não dispensa padrões legais de segurança, transparência e cooperação; alterações relevantes de funcionalidades experimentais deverão ser comunicadas quando exigido.",
+    "Renovações, reajustes, cobrança recorrente, fidelidade do plano Master e consequências de cancelamento precisam ser comunicados com clareza e respeitar regras legais aplicáveis. Não haverá contratação onerosa automática quando a oferta não autorizar essa cobrança.",
+    "Benefícios descritos como permanentes em instrumentos específicos válidos devem observar suas condições pactuadas, sem serem eliminados por simples alteração genérica dos Termos."
+  ]
+},
+  {
+  "id": "responsabilidade",
+  "title": "32. Limites jurídicos, comunicação e resolução de conflitos",
+  "intro": "As partes devem colaborar para mitigar incidentes e resolver divergências de maneira documentada e proporcional.",
+  "items": [
+    "Nenhuma disposição exclui responsabilidade por dolo, culpa, defeito do serviço, descumprimento contratual ou direitos indisponíveis quando juridicamente atribuíveis à ORICSE.",
+    "O contratante deverá relatar incidentes, cobranças indevidas, falhas, dados divergentes e solicitações de correção com informações suficientes para investigação, sem que essa cooperação constitua renúncia de direitos.",
+    "As provas de adesão, versão aplicável, oferta, registros de autorização e comunicações deverão ser conservadas quando geradas, segundo critérios legítimos de retenção e proteção de dados.",
+    "Eventual conflito será tratado inicialmente pelos canais oficiais quando possível, sem limitar o acesso a autoridades administrativas, mecanismos de solução de conflitos ou ao Poder Judiciário."
+  ]
 }
 ] as const;
 
