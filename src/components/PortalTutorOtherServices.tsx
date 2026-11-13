@@ -9,9 +9,9 @@ const servicos:ServicoExtra[]=[
   {titulo:"Fale com a Clínica",descricao:"Canais de atendimento",id:"contato",Icon:MessageCircle},
 ];
 
-export function PortalTutorOtherServices({onNavigate}:{onNavigate:(id:string)=>void}){
+export function PortalTutorOtherServices({onNavigate,mostrarTitulo=true}:{onNavigate:(id:string)=>void;mostrarTitulo?:boolean}){
  return <section className="mb-5 rounded-2xl bg-white p-5 sm:p-6">
-  <div className="mb-4"><h2 className="text-base font-extrabold text-[#312530]">Outros serviços</h2><p className="mt-1 text-sm text-[#6e6268]">Acessos que não estão na navegação principal.</p></div>
+  {mostrarTitulo&&<div className="mb-4"><h2 className="text-base font-extrabold text-[#312530]">Outros serviços</h2><p className="mt-1 text-sm text-[#6e6268]">Acessos que não estão na navegação principal.</p></div>}
   <div className="grid gap-1">
    {servicos.map(({titulo,descricao,id,Icon})=><button key={id} type="button" onClick={()=>onNavigate(id)} className="flex min-h-14 items-center gap-4 rounded-xl px-3 py-3 text-left transition hover:bg-[#faf5f2]">
     <Icon size={23} strokeWidth={1.8} className="shrink-0 text-[#702a43]"/>
