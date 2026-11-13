@@ -2203,6 +2203,8 @@ export type Database = {
       }
       oricse_portal_comandas: {
         Row: {
+          atendimento_registro_id: string | null
+          agendamento_id: string | null
           aberta_em: string
           animal_id: string
           clinica_id: string
@@ -3428,6 +3430,18 @@ export type Database = {
         Args: { p_animal?: string; p_clinica: string; p_tutor?: string }
         Returns: Json
       }
+      oricse_migrar_registros: {
+        Args: { p_clinica: string; p_origem: string; p_tipo: string; p_registros: Json; p_importar?: boolean }
+        Returns: { status: "novo" | "existente" | "importado" | "pendente"; motivo: string; animalId?: string; registroId?: string }[]
+      }
+      oricse_finalizar_atendimento: {
+        Args: { p_clinica: string; p_animal: string; p_agendamento: string | null; p_registro: string; p_data: string; p_detalhe: string; p_dados: Json; p_peso: number | null; p_itens: Json }
+        Returns: { comandaId: string; numero: number; saldo: number }
+      }
+      oricse_receber_comanda_atendimento: {
+        Args: { p_comanda: string; p_pagamento: string; p_centavos: number; p_forma: string }
+        Returns: undefined
+      }
       oricse_animal_historico: {
         Args: {
           p_animal: string
@@ -3739,7 +3753,7 @@ export type Database = {
         Returns: boolean
       }
       oricse_portal_agendas: {
-        Args: never
+        Args: { p_slug?: string }
         Returns: {
           antecedencia_horas: number
           cor: string
@@ -3830,7 +3844,7 @@ export type Database = {
         }[]
       }
       oricse_portal_meu_contexto: {
-        Args: never
+        Args: { p_slug?: string }
         Returns: {
           clinica_id: string
           clinica_logo_url: string

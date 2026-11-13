@@ -51,6 +51,7 @@ export type PagamentoComanda = {
 export type Comanda = {
   id: string;
   numero: number;
+  atendimentoRegistroId?: string;
   status: StatusComanda;
   origem: OrigemComanda;
   tutorId: string;

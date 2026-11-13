@@ -1,4 +1,5 @@
 import { oricseStorage } from "@/lib/oricse-storage";
+import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -16,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
@@ -89,6 +90,7 @@ function origemDaUrl(): OrigemComanda {
 }
 
 export function Comandas() {
+  const [comandasCanonicas, setComandasCanonicas] = useState<Comanda[]>([]);
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
   const { clinicaId, carregando: carregandoPermissoes } = usePermissoes();
   const [tutores, setTutores] = useState<Tutor[]>([]);
@@ -257,9 +259,38 @@ export function Comandas() {
     [animais, tutorIdNovo],
   );
 
+  const carregarCanonicas = useCallback(async () => {
+    if (!clinicaId) { setComandasCanonicas([]); return; }
+    const { data, error } = await supabaseBanco.from("oricse_portal_comandas")
+      .select("id,numero,status,tutor_id,animal_id,aberta_em,finalizada_em,itens,pagamentos,atendimento_registro_id")
+      .eq("clinica_id",clinicaId).not("atendimento_registro_id","is",null)
+      .order("aberta_em",{ascending:false}).limit(500);
+    if (error) { console.error("Falha ao consultar comandas do atendimento:",error); return; }
+    setComandasCanonicas((data || []).map(c => ({
+      id:c.id,numero:c.numero,status:c.status==="Finalizada"?"Finalizada":"Aberta",origem:"Consultório",
+      tutorId:c.tutor_id,tutorNome:tutores.find(t=>t.id===c.tutor_id)?.nome || "Tutor",
+      animalId:c.animal_id,animalNome:animais.find(a=>a.id===c.animal_id)?.nome || "Animal",
+      abertaEm:c.aberta_em,finalizadaEm:c.finalizada_em||undefined,abertaPor:"Equipe clínica",abertaPorId:"",
+      itens:c.itens as unknown as Comanda["itens"],pagamentos:c.pagamentos as unknown as Comanda["pagamentos"],
+      atendimentoRegistroId:c.atendimento_registro_id||undefined,
+    })));
+  },[clinicaId,tutores,animais]);
+  useEffect(()=>{
+    void carregarCanonicas();
+    window.addEventListener("focus",carregarCanonicas);
+    window.addEventListener("oricse:caixa-alterado",carregarCanonicas);
+    const timer=window.setInterval(carregarCanonicas,15000);
+    return ()=>{
+      window.removeEventListener("focus",carregarCanonicas);
+      window.removeEventListener("oricse:caixa-alterado",carregarCanonicas);
+      window.clearInterval(timer);
+    };
+  },[carregarCanonicas]);
+  const comandasVisiveis = useMemo(()=>[...comandas,...comandasCanonicas],[comandas,comandasCanonicas]);
+
   const comandasFiltradas = useMemo(() => {
     const consulta = busca.trim().toLocaleLowerCase("pt-BR");
-    return comandas
+    return comandasVisiveis
       .filter((comanda) =>
         mostrarHistorico ? comanda.status === "Finalizada" : comanda.status === "Aberta",
       )
@@ -274,9 +305,9 @@ export function Comandas() {
           ].some((valor) => valor.toLocaleLowerCase("pt-BR").includes(consulta)),
       )
       .sort((a, b) => b.abertaEm.localeCompare(a.abertaEm));
-  }, [busca, comandas, mostrarHistorico]);
+  }, [busca, comandasVisiveis, mostrarHistorico]);
 
-  const comandaSelecionada = comandas.find((comanda) => comanda.id === comandaSelecionadaId);
+  const comandaSelecionada = comandasVisiveis.find((comanda) => comanda.id === comandaSelecionadaId);
 
   function salvarEstado(proximas: Comanda[]): boolean {
     try {
@@ -707,7 +738,7 @@ export function Comandas() {
                 }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${!mostrarHistorico ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               >
-                Abertas ({comandas.filter((comanda) => comanda.status === "Aberta").length})
+                Abertas ({comandasVisiveis.filter((comanda) => comanda.status === "Aberta").length})
               </button>
               <button
                 type="button"
@@ -734,7 +765,13 @@ export function Comandas() {
             </div>
           </div>
 
-          {comandaSelecionada ? (
+          {comandaSelecionada?.atendimentoRegistroId && clinicaId ? (
+            <div className="min-w-0">
+              <button type="button" className="text-sm font-bold text-primary" onClick={()=>setComandaSelecionadaId(null)}>Voltar à lista</button>
+              <ComandaAtendimento key={comandaSelecionada.id} id={comandaSelecionada.id} clinicaId={clinicaId} />
+              <a className="text-sm font-semibold text-primary underline" href={`/animal?animalId=${comandaSelecionada.animalId}&comandaId=${comandaSelecionada.id}`}>Abrir ficha e documentos de {comandaSelecionada.animalNome}</a>
+            </div>
+          ) : comandaSelecionada ? (
             <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
               <header className="flex flex-wrap items-start justify-between gap-3 border-b bg-primary/[0.025] p-4 sm:p-5">
                 <div className="min-w-0">

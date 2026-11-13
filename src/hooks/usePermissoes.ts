@@ -52,6 +52,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/estoque": ["estoque.catalogo.visualizar", "estoque.movimentar"],
   "/rh": ["equipe.pagamentos.visualizar", "equipe.pagamentos.gerenciar"],
   "/catalogo": ["estoque.catalogo.visualizar"],
+  "/migracao-assistida": ["administracao.configuracoes"],
   "/perfil-clinica": ["administracao.configuracoes"],
   "/plano-clinica": ["administracao.configuracoes"],
   "/permissoes-equipe": ["administracao.permissoes"],

@@ -1,23 +1,12 @@
 // Revisão clínica: cadastro, prontuário e exame oftalmológico vinculados ao atendimento.
-import { descarregarOricseStorage, oricseStorage, oricseSession } from "@/lib/oricse-storage";
+import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BedDouble, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
-import {
-  COMANDAS_KEY,
-  LANCAMENTOS_FINANCEIROS_KEY,
-  type Comanda,
-  type ItemComanda as ItemComandaPersistida,
-  dataLocalISO,
-  lerComandas,
-  parseValorMonetario,
-  proximoNumeroComanda,
-  registrarLancamentoComanda,
-  salvarComandas,
-} from "@/lib/comandas";
+import { type ItemComanda as ItemComandaPersistida, dataLocalISO, parseValorMonetario } from "@/lib/comandas";
 
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Medicacoes } from "@/components/Medicacoes";
@@ -41,14 +30,10 @@ type ConsultaForm = {
 type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anestesia: string; achados: string; materiais: string; intercorrencias: string; posOperatorio: string; observacoes: string };
 type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null };
 type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean };
-type StatusPagamento = "Pago" | "Pendente";
-type FormaPagamento = "Pix" | "Dinheiro" | "Cartão de débito" | "Cartão de crédito" | "App" | "Plano de saúde" | "Outros";
 
 const ANIMAIS_KEY = "oricse-animais-v1";
 const TUTORES_KEY = "oricse-tutores-v1";
 const PRONTUARIO_KEY = "oricse-prontuario-animal-v1";
-const PESOS_KEY = "oricse-pesos-animal-v1";
-const LANCAMENTOS_KEY = LANCAMENTOS_FINANCEIROS_KEY;
 
 const NORMAIS_ESPECIE = {
   cão: { temperatura: "37,5–39,2 °C", fc: "60–160 bpm", fr: "10–30 mpm", pas: "100–160 mmHg", glicemia: "70–120 mg/dL" },
@@ -127,6 +112,10 @@ function RegistroClinico(){
   const navigate=useNavigate();
   const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
   const animalId=params.get("animalId")||"";
+  const agendamentoId=params.get("agendamentoId") || "";
+  const registroId=useRef("");
+  const emEnvio=useRef(false);
+  const [salvandoConsulta,setSalvandoConsulta]=useState(false);
   const [animal,setAnimal]=useState<Animal|null>(null);
   const [tutor,setTutor]=useState<Tutor|null>(null);
   const [carregandoAnimal,setCarregandoAnimal]=useState(true);
@@ -143,11 +132,8 @@ function RegistroClinico(){
   const [catalogoAviso,setCatalogoAviso]=useState("");
   const [itemCatalogoId,setItemCatalogoId]=useState("");
   const [itensComanda,setItensComanda]=useState<ItemComanda[]>([]);
-  const [pagamentoAberto,setPagamentoAberto]=useState(false);
-  const [formaPagamento,setFormaPagamento]=useState<FormaPagamento|"">("");
-  const [outroPagamento,setOutroPagamento]=useState("");
   const [responsavel,setResponsavel]=useState({id:"",nome:"Equipe clínica",crmv:""});
-  const chaveRascunho=`oricse-rascunho-consulta-${animalId}`;
+  const chaveRascunho=`oricse-rascunho-consulta-${animalId}${agendamentoId ? "-" + agendamentoId : ""}`;
 
   useEffect(()=>{let ativo=true;void(async()=>{try{
     if(!animalId)throw new Error("Identificação do animal ausente no link.");
@@ -240,10 +226,8 @@ function RegistroClinico(){
     } as never });
   }
 
-  function abrirPagamento(){ if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal."); if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda."); if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda."); salvarConsulta("Pendente","A definir"); }
-  function confirmarPagamento(){ if(!formaPagamento)return void toast.error("Selecione como foi pago."); if(formaPagamento==="Outros"&&!outroPagamento.trim())return void toast.error("Especifique a forma de pagamento."); salvarConsulta("Pago",formaPagamento==="Outros"?outroPagamento.trim():formaPagamento); }
-
-  async function salvarConsulta(statusPagamento:StatusPagamento="Pendente",pagamento="A definir"){
+  async function salvarConsulta(){
+    if (emEnvio.current) return;
     if (!animal) return void toast.error("Animal não encontrado.");
     if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal.");
     if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda.");
@@ -271,8 +255,6 @@ function RegistroClinico(){
         "Não foi possível identificar o usuário responsável. Atualize a página ou entre novamente.",
       );
     }
-    const valorTotalComanda = Math.round((totalComanda + Number.EPSILON) * 100) / 100;
-    const comandasAnteriores = lerComandas();
     const criadaEm = new Date().toISOString();
     const itensPersistidos: ItemComandaPersistida[] = itensComanda.map((item) => ({
       id: item.id,
@@ -284,109 +266,25 @@ function RegistroClinico(){
       criadoPor: responsavel.nome,
       tipo: item.tipo === "exame" ? "avulso" : item.tipo,
     }));
-    const pagamentoInicial =
-      statusPagamento === "Pago" && valorTotalComanda > 0
-        ? {
-            id: crypto.randomUUID(),
-            valor: valorTotalComanda,
-            formaPagamento: pagamento,
-            data: criadaEm,
-            registradoPor: responsavel.nome,
-          }
-        : null;
-    const novaComanda: Comanda = {
-      id: crypto.randomUUID(),
-      numero: proximoNumeroComanda(comandasAnteriores),
-      status: "Aberta",
-      origem: "Consultório",
-      tutorId: tutor?.id || animal.tutorId,
-      tutorNome: tutor?.nome || "Tutor não informado",
-      animalId: animal.id,
-      animalNome: animal.nome,
-      abertaEm: criadaEm,
-      abertaPor: responsavel.nome,
-      abertaPorId: responsavel.id,
-      itens: itensPersistidos,
-      pagamentos: pagamentoInicial ? [pagamentoInicial] : [],
-    };
-    const comandasArmazenadas = oricseStorage.getItem(COMANDAS_KEY);
-    const lancamentosArmazenados = oricseStorage.getItem(LANCAMENTOS_KEY);
+    emEnvio.current=true;
+    setSalvandoConsulta(true);
+    registroId.current ||= crypto.randomUUID();
     try {
-      salvarComandas([novaComanda, ...comandasAnteriores]);
-      if (pagamentoInicial) {
-        registrarLancamentoComanda({
-          id: `comanda-pagamento-${pagamentoInicial.id}`,
-          tipo: "Entrada",
-          descricao: `Pagamento da comanda #${String(novaComanda.numero).padStart(5, "0")} · ${animal.nome}`,
-          categoria: "Pagamento de comanda",
-          valor: pagamentoInicial.valor,
-          data: dataLocalISO(new Date(pagamentoInicial.data)),
-          formaPagamento: pagamentoInicial.formaPagamento,
-          tutor: novaComanda.tutorNome,
-          tutorId: novaComanda.tutorId,
-          animalId: animal.id,
-          status: "Pago",
-          comandaId: novaComanda.id,
-          registradoPor: responsavel.nome,
-        });
-      } else if (statusPagamento === "Pendente" && valorTotalComanda > 0) {
-        registrarLancamentoComanda({
-          id: `comanda-pendente-${novaComanda.id}`,
-          tipo: "Entrada",
-          descricao: `Saldo da comanda #${String(novaComanda.numero).padStart(5, "0")} · ${animal.nome}`,
-          categoria: "Pagamento de comanda",
-          valor: valorTotalComanda,
-          data: dataLocalISO(new Date(criadaEm)),
-          formaPagamento: "A definir",
-          tutor: novaComanda.tutorNome,
-          tutorId: novaComanda.tutorId,
-          animalId: animal.id,
-          status: "Pendente",
-          comandaId: novaComanda.id,
-          registradoPor: responsavel.nome,
-        });
-      }
-    } catch (error) {
-      console.error("Não foi possível registrar a comanda da consulta:", error);
-      try {
-        if (comandasArmazenadas === null) oricseStorage.removeItem(COMANDAS_KEY);
-        else oricseStorage.setItem(COMANDAS_KEY, comandasArmazenadas);
-        window.dispatchEvent(new Event("oricse-comandas-atualizadas"));
-        if (lancamentosArmazenados === null) oricseStorage.removeItem(LANCAMENTOS_KEY);
-        else oricseStorage.setItem(LANCAMENTOS_KEY, lancamentosArmazenados);
-      } catch (erroRestauracao) {
-        console.error("Não foi possível restaurar os dados após falha ao registrar a comanda:", erroRestauracao);
-      }
-      return void toast.error("Não foi possível registrar a comanda. Tente novamente.");
+      const {data: resultado,error}=await supabaseBanco.rpc("oricse_finalizar_atendimento",{
+        p_clinica:clinicaAnimalId,p_animal:animal.id,p_agendamento:agendamentoId||null,
+        p_registro:registroId.current,p_data:data,p_detalhe:detalhe,p_dados:consultaSalva as never,
+        p_peso:pesoConsulta?Number(pesoConsulta):null,p_itens:itensPersistidos as never,
+      });
+      if(error||!resultado)throw new Error(error?.message||"Não foi possível confirmar o atendimento.");
+      oricseStorage.removeItem(chaveRascunho);
+      toast.success("Consulta salva e comanda registrada.");
+      navigate({to:"/animal",search:{animalId:animal.id,comandaId:resultado.comandaId} as never});
+    } catch(error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar o atendimento.");
+    } finally {
+      emEnvio.current=false;
+      setSalvandoConsulta(false);
     }
-    if (pesoConsulta) {
-      const listaAnimais = ler<Animal>(ANIMAIS_KEY);
-      const pesoAnterior = pesoValido(animal.peso || "");
-      oricseStorage.setItem(ANIMAIS_KEY, JSON.stringify(listaAnimais.map(item => item.id === animal.id ? { ...item, peso: pesoConsulta } : item)));
-      if (pesoAnterior !== pesoConsulta) {
-        const historico = ler<{id:string;animalId:string;peso:number;data:string;criadoEm:string}>(PESOS_KEY);
-        const novoPeso = { id: crypto.randomUUID(), animalId: animal.id, peso: Number(pesoConsulta), data, criadoEm: new Date().toISOString() };
-        oricseStorage.setItem(PESOS_KEY, JSON.stringify([novoPeso, ...historico]));
-      }
-    }
-    const atual=ler<RegistroProntuario>(PRONTUARIO_KEY);
-    const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,autorNome:responsavel.nome,autorCrmv:responsavel.crmv||undefined,tipo:"Registros clínicos",titulo:"Consulta",detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Consulta",dados:consultaSalva};
-    oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual]));
-    try {
-      await descarregarOricseStorage();
-    } catch (error) {
-      console.error("Consulta ainda não confirmada no banco:", error);
-      toast.error("A consulta ainda não foi salva no servidor. Confira o aviso de sincronização e tente novamente.");
-      return; // Manter esta tela e o rascunho até a confirmação real.
-    }
-    oricseStorage.removeItem(chaveRascunho);
-    setPagamentoAberto(false);
-    toast.success(
-      statusPagamento === "Pago"
-        ? `Consulta salva e pagamento registrado na comanda #${String(novaComanda.numero).padStart(5, "0")}.`
-        : `Consulta salva e comanda #${String(novaComanda.numero).padStart(5, "0")} deixada pendente.`,
-    );
-    navigate({to:"/animal",search:{animalId:animal.id} as never});
   }
 
   async function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if (!responsavel.id) return void toast.error("Não foi possível identificar o autor deste procedimento."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,autorNome:responsavel.nome,autorCrmv:responsavel.crmv||undefined,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
@@ -484,13 +382,13 @@ function RegistroClinico(){
               <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950 p-5 text-white"><div><p className="text-xs font-bold uppercase tracking-wide text-white/60">Total da comanda</p><p className="mt-1 text-3xl font-black">{moeda(totalComanda)}</p></div><div className="text-right text-sm text-white/70"><p>{tutor?.nome||"Tutor não informado"}</p><p>{animal.nome}</p></div></section>
             </div>}
           </div>
-          <div className="sticky bottom-0 flex flex-wrap items-end justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-5"><label className="text-xs font-bold">Data da consulta<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 text-sm font-normal"/></label><div className="ml-auto flex gap-2">{etapa>1&&<button onClick={()=>setEtapa(etapa-1)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Anterior</button>}{etapa<7?<button onClick={()=>setEtapa(etapa+1)} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">{etapa===6?"Ir para a comanda":"Próximo"}</button>:<button onClick={abrirPagamento} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"><Save size={16}/> Finalizar consulta e lançar</button>}</div></div>
+          <div className="sticky bottom-0 flex flex-wrap items-end justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-5"><label className="text-xs font-bold">Data da consulta<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 text-sm font-normal"/></label><div className="ml-auto flex gap-2">{etapa>1&&<button onClick={()=>setEtapa(etapa-1)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Anterior</button>}{etapa<7?<button onClick={()=>setEtapa(etapa+1)} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">{etapa===6?"Ir para a comanda":"Próximo"}</button>:<button disabled={salvandoConsulta} onClick={()=>void salvarConsulta()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"><Save size={16}/> {salvandoConsulta ? "Salvando…" : "Finalizar consulta e lançar"}</button>}</div></div>
         </div>
       </div>
     </section>}
 
     {modo==="procedimento"&&<section className="mt-4 rounded-2xl border bg-white shadow-sm"><Cabecalho titulo="Cirurgia / Procedimento" subtitulo="Registro objetivo do procedimento e do pós-operatório."/><div className="p-4 sm:p-5"><div className="grid gap-3 md:grid-cols-2"><Input label="Cirurgia / procedimento *" value={procedimento.tipo} onChange={v=>setProcedimento({...procedimento,tipo:v})}/><Input label="Equipe" value={procedimento.equipe} onChange={v=>setProcedimento({...procedimento,equipe:v})}/><Textarea label="Indicação" value={procedimento.indicacao} onChange={v=>setProcedimento({...procedimento,indicacao:v})}/><Textarea label="Anestesia / sedação" value={procedimento.anestesia} onChange={v=>setProcedimento({...procedimento,anestesia:v})}/><Textarea label="Achados" value={procedimento.achados} onChange={v=>setProcedimento({...procedimento,achados:v})}/><Textarea label="Materiais / técnica" value={procedimento.materiais} onChange={v=>setProcedimento({...procedimento,materiais:v})}/><Textarea label="Intercorrências" value={procedimento.intercorrencias} onChange={v=>setProcedimento({...procedimento,intercorrencias:v})}/><Textarea label="Pós-operatório" value={procedimento.posOperatorio} onChange={v=>setProcedimento({...procedimento,posOperatorio:v})}/></div><div className="mt-3"><Textarea label="Observações" value={procedimento.observacoes} onChange={v=>setProcedimento({...procedimento,observacoes:v})}/></div><div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t pt-4"><label className="text-sm font-bold">Data<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 font-normal"/></label><button onClick={salvarProcedimento} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-primary-foreground"><Save size={17}/> Salvar registro</button></div></div></section>}
-    {pagamentoAberto&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4" onMouseDown={e=>{if(e.currentTarget===e.target)setPagamentoAberto(false)}}><section role="dialog" aria-modal="true" aria-label="Forma de pagamento" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-primary">Finalizar atendimento</p><h2 className="mt-1 text-2xl font-black">Como foi pago?</h2><p className="mt-1 text-sm text-muted-foreground">Total da comanda: <strong className="text-foreground">{moeda(totalComanda)}</strong></p></div><button type="button" onClick={()=>setPagamentoAberto(false)} aria-label="Fechar" className="rounded-xl p-2 text-muted-foreground hover:bg-muted"><X size={20}/></button></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{(["Pix","Dinheiro","Cartão de débito","Cartão de crédito","App","Plano de saúde","Outros"] as FormaPagamento[]).map(opcao=><button key={opcao} type="button" aria-pressed={formaPagamento===opcao} onClick={()=>setFormaPagamento(opcao)} className={`min-h-12 rounded-xl border px-3 text-sm font-black transition ${formaPagamento===opcao?"border-primary bg-primary text-primary-foreground":"bg-white hover:border-primary/50"}`}>{opcao.replace("Cartão de ","")}</button>)}</div>{formaPagamento==="Outros"&&<label className="mt-4 block text-sm font-bold">Especifique a forma de pagamento<input autoFocus value={outroPagamento} onChange={e=>setOutroPagamento(e.target.value)} placeholder="Ex.: transferência, cortesia..." className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 font-normal outline-none focus:border-primary"/></label>}<div className="mt-6 grid gap-2 border-t pt-4 sm:grid-cols-[auto_1fr_1fr]"><button type="button" onClick={()=>setPagamentoAberto(false)} className="min-h-11 rounded-xl border px-4 text-sm font-bold">Cancelar</button><button type="button" onClick={()=>salvarConsulta("Pendente","A definir")} className="min-h-11 rounded-xl border border-amber-300 bg-amber-50 px-4 text-sm font-black text-amber-900">Deixar pendente</button><button type="button" onClick={confirmarPagamento} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground">Confirmar pagamento</button></div></section></div>}
+
   </main>;
 }
 

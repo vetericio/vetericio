@@ -44,13 +44,18 @@ async function verifySignature(req: Request, paymentId: string) {
   const actual = Array.from(new Uint8Array(hmac), (value) => value.toString(16).padStart(2, "0")).join("");
   return actual.length === v1.length && [...actual].reduce((diff, value, index) => diff | (value.charCodeAt(0) ^ v1.charCodeAt(index)), 0) === 0;
 }
-async function tutorAtual(req: Request) {
+async function tutorAtual(req: Request, slug: string) {
   const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
   if (!bearer) throw new Error("Sessão necessária.");
   const { data, error } = await service.auth.getUser(bearer);
   if (error || !data.user) throw new Error("Sessão inválida.");
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Endereço da clínica inválido.");
+  const { data: clinica, error: erroClinica } = await service.from("clinicas")
+    .select("id").eq("slug", slug).eq("status", "ativa").is("excluido_em", null).maybeSingle();
+  if (erroClinica || !clinica) throw new Error("Clínica indisponível.");
   const { data: tutor, error: tutorError } = await service.from("oricse_portal_tutores")
-    .select("auth_user_id,clinica_id,tutor_id").eq("auth_user_id", data.user.id).maybeSingle();
+    .select("auth_user_id,clinica_id,tutor_id").eq("auth_user_id", data.user.id)
+    .eq("clinica_id",clinica.id).eq("ativo", true).maybeSingle();
   if (tutorError || !tutor) throw new Error("Acesso do tutor inválido.");
   return { token: bearer, authUserId: data.user.id, clinicaId: tutor.clinica_id as string, tutorId: tutor.tutor_id as string };
 }
@@ -68,12 +73,7 @@ async function taxaOricse(clinicaId: string, valorCentavos: number) {
   const percentual = global?.ativo ? Number(global.oricse_percentual || 0) : 0;
   return Math.max(0, Math.round(valorCentavos * percentual / 100));
 }
-async function validarSlugClinica(clinicaId: string, slug: string): Promise<void> {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Endereço da clínica inválido.");
-  const { data, error } = await service.from("clinicas").select("slug").eq("id",clinicaId).single();
-  if (error || data?.slug !== slug) throw new Error("Endereço não corresponde à clínica do tutor.");
-}
-async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, slug: string, access: string) {
+async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, slug: string, access: string, expiraEm?: string) {
   const retorno = `https://${slug}.oricse.com.br/portaldotutor`;
   const marketplaceFee = Number(pagamento.estimativa_oricse_centavos || 0) / 100;
   const body = {
@@ -86,6 +86,10 @@ async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, 
       failure: retorno + "?pagamento=falha",
     },
     auto_return: "approved",
+    ...(expiraEm ? {
+      expires: true, expiration_date_to: expiraEm, date_of_expiration: expiraEm,
+      payment_methods: { excluded_payment_types: [{ id: "ticket" }] },
+    } : {}),
     notification_url: url + "/functions/v1/oricse-portal-pagamentos?action=webhook&referencia=portal:" + pagamento.id,
   };
   const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -101,13 +105,12 @@ async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, 
   return String(data.init_point);
 }
 async function reservaAgenda(req: Request, body: any) {
-  const tutor = await tutorAtual(req);
+  const slug = String(body?.slug || "");
+  const tutor = await tutorAtual(req, slug);
   const { token, clinicaId, tutorId } = tutor;
   const agendaId = String(body?.agenda_id || "");
   const animalId = String(body?.animal_id || "");
   const inicio = String(body?.inicio || "");
-  const slug = String(body?.slug || "");
-  await validarSlugClinica(tutor.clinicaId, slug);
   if (!/^[a-f0-9-]{36}$/i.test(agendaId) || !/^[a-f0-9-]{36}$/i.test(animalId) || !inicio || !slug) throw new Error("Dados do agendamento inválidos.");
   const connection = await conexaoClinica(clinicaId);
   const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: "Bearer " + token } } });
@@ -124,14 +127,16 @@ async function reservaAgenda(req: Request, body: any) {
     status: "criado", taxas_snapshot: { origem: "portal_tutor", comissao_oricse_centavos: comissao },
   }).select("*").single();
   if (paymentError || !pagamento) throw new Error("Não foi possível iniciar o pagamento.");
-  await service.from("oricse_agendamentos_online").update({ pagamento_id: pagamento.id }).eq("id", reserva.agendamento_id);
-  return { checkout_url: await criarCheckout(pagamento, String(reserva.descricao || "Agendamento online"), clinicaId, slug, connection.token) };
+  const { data: vinculo, error: erroVinculo } = await service.from("oricse_agendamentos_online")
+    .update({ pagamento_id: pagamento.id }).eq("id", reserva.agendamento_id).eq("clinica_id", clinicaId)
+    .eq("estado", "reservado").select("id,pagamento_expira_em").maybeSingle();
+  if (erroVinculo || !vinculo) throw new Error("Não foi possível vincular o pagamento ao horário reservado.");
+  return { checkout_url: await criarCheckout(pagamento, String(reserva.descricao || "Agendamento online"), clinicaId, slug, connection.token, vinculo.pagamento_expira_em) };
 }
 async function checkoutComanda(req: Request, body: any) {
-  const tutor = await tutorAtual(req);
-  const id = String(body?.comanda_id || "");
   const slug = String(body?.slug || "");
-  await validarSlugClinica(tutor.clinicaId, slug);
+  const tutor = await tutorAtual(req, slug);
+  const id = String(body?.comanda_id || "");
   if (!/^[a-f0-9-]{36}$/i.test(id) || !slug) throw new Error("Comanda inválida.");
   const connection = await conexaoClinica(tutor.clinicaId);
   const { data: comanda, error } = await service.from("oricse_portal_comandas")
@@ -140,7 +145,7 @@ async function checkoutComanda(req: Request, body: any) {
   const solicitado = Number(body?.valor_centavos || 0);
   const saldo = Math.round(Number(comanda.saldo) * 100);
   const valor = solicitado > 0 ? Math.min(solicitado, saldo) : saldo;
-  if (valor <= 0) throw new Error("Informe um valor de pagamento válido.");
+  if (!Number.isSafeInteger(valor) || valor <= 0) throw new Error("Informe um valor de pagamento válido.");
   const comissao = await taxaOricse(tutor.clinicaId, valor);
   const { data: pagamento, error: paymentError } = await service.from("oricse_pagamentos").insert({
     clinica_id: tutor.clinicaId, tipo: "comanda_portal", origem_id: comanda.id, modalidade: "online",
@@ -170,12 +175,6 @@ async function processWebhook(req: Request) {
   const payment = await response.json();
   if (String(payment.external_reference || "") !== "portal:" + paymentRowId || payment.status !== "approved" || payment.currency_id !== "BRL" || Math.round(Number(payment.transaction_amount) * 100) !== Number(row.bruto_centavos)) return reply({ ok: true });
   const net = Math.round(Number(payment.transaction_details?.net_received_amount ?? (Number(row.bruto_centavos) / 100)) * 100);
-  const mpFees = Math.max(0, Number(row.bruto_centavos) - net - Number(row.estimativa_oricse_centavos || 0));
-  await service.from("oricse_pagamentos").update({
-    mp_payment_id: paymentId, recebido_mp_centavos: mpFees,
-    recebido_oricse_centavos: Number(row.estimativa_oricse_centavos || 0),
-    recebido_clinica_centavos: net, status: "aprovado", updated_at: new Date().toISOString(),
-  }).eq("id", paymentRowId);
   const { error: confirmError } = await service.rpc("oricse_confirmar_pagamento_portal", {
     p_pagamento_id: paymentRowId, p_mp_payment_id: paymentId,
     p_forma: String(payment.payment_method_id || payment.payment_type_id || "online"), p_liquido_centavos: net,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Download, PawPrint, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
+import { lerCsv } from "@/lib/migracao-assistida";
 
 type Tipo = "tutores" | "animais";
 type Tutor = { id:string; nome:string; telefone?:string; cpfCnpj?:string };
@@ -17,25 +18,7 @@ const csvModelos:Record<Tipo,string>={
   animais:"nome;especie;raca;tutor_cpf_cnpj;microchip;nascimento\nLuna;Cão;SRD (Sem Raça Definida);12345678909;;2021-05-10\n",
 };
 function parserCsv(conteudo:string):RegistroCsv[]{
-  const texto=conteudo.replace(/^\uFEFF/,"");
-  const cabecalho=texto.split(/\r?\n/,1)[0]||"";
-  const separadores=[";",",","\t"];
-  const separador=separadores.sort((a,b)=>cabecalho.split(b).length-cabecalho.split(a).length)[0];
-  const linhas:string[][]=[];let atual:string[]=[],campo="",aspas=false;
-  for(let i=0;i<texto.length;i++){
-    const c=texto[i];
-    if(c==='"'){
-      if(aspas&&texto[i+1]==='"'){campo+='"';i++;}else aspas=!aspas;
-    }else if(c===separador&&!aspas){atual.push(campo);campo="";}
-    else if((c==="\r"||c==="\n")&&!aspas){
-      if(c==="\r"&&texto[i+1]==="\n")i++;
-      atual.push(campo);campo="";
-      if(atual.some(x=>x.trim()))linhas.push(atual);
-      atual=[];
-    }else campo+=c;
-  }
-  if(aspas)throw new Error("CSV com aspas abertas.");
-  atual.push(campo);if(atual.some(x=>x.trim()))linhas.push(atual);
+  const linhas=lerCsv(conteudo).filter(linha=>linha.some(campo=>campo.trim()));
   if(linhas.length<2)throw new Error("O arquivo precisa de cabeçalho e pelo menos uma linha.");
   if(linhas.length-1>MAX_LINHAS)throw new Error("Importe até "+MAX_LINHAS+" registros por vez.");
   const headers=linhas[0].map(x=>normalizar(x).replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,""));
