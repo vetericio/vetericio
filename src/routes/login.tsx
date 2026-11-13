@@ -49,7 +49,7 @@ function Login() {
     }
 
     if (!/^@[a-z0-9][a-z0-9._-]*$/i.test(identificador)) {
-      toast.error("Use somente o @usuário. E-mail não é aceito.");
+      toast.error("O usuário deve começar com @. Exemplo: @seuusuario.");
       return;
     }
 
@@ -167,7 +167,7 @@ function Login() {
             </div>
 
             <label className="mt-8 block text-sm font-semibold text-foreground">
-              👤 Pessoa (@usuário)
+              Usuário
               <span className="mt-2 flex min-h-12 items-center rounded-xl border border-border bg-[#FBF7F2] px-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
                 <span aria-hidden="true" className="shrink-0 text-lg">👤</span>
                 <input
