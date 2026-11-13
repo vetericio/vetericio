@@ -81,7 +81,7 @@ const SECOES = [
     "title": "07. Planos, preços, periodicidade e usuários",
     "intro": "A contratação informará o plano selecionado, o valor, o período de cobrança, a quantidade de usuários incluídos, o custo de perfis adicionais e as condições comerciais aplicáveis.",
     "items": [
-      "Podem ser oferecidos ciclos mensais ou anuais. O ciclo de cobrança determina quando os pagamentos são exigíveis e não se confunde, por si só, com um eventual prazo de permanência mínima.",
+      "Os ciclos de cobrança podem ser mensais, trimestrais, semestrais, anuais ou bienais, conforme a oferta efetivamente contratada. A periodicidade financeira não se confunde com prazo mínimo de permanência; o plano Master possui fidelidade de 12 meses nos termos expressamente apresentados.",
       "Valores, descontos promocionais, quantidade de usuários e serviços adicionais devem ser apresentados antes da confirmação do pedido. Descontos temporários seguirão as regras informadas na oferta.",
       "Qualquer condição de renovação automática, se disponibilizada futuramente, dependerá de comunicação clara e autorização específica quando legalmente necessária.",
       "Alterações de valores ou de planos respeitarão as condições assumidas, eventuais avisos prévios e a legislação aplicável."
@@ -101,7 +101,7 @@ const SECOES = [
   {
     "id": "pagamento",
     "title": "09. Pagamento, confirmação e acesso",
-    "intro": "Os pagamentos poderão ser processados por prestadores externos, como Mercado Pago, quando a opção estiver disponível e configurada.",
+    "intro": "Os pagamentos poderão ser processados por prestadores financeiros e intermediadores independentes, conforme a opção efetivamente disponível e configurada.",
     "items": [
       "O pedido pode permanecer com status pendente até a confirmação recebida do provedor de pagamentos. O retorno visual do checkout, isoladamente, não substitui a verificação financeira.",
       "Após confirmação, a solicitação poderá ser encaminhada para análise e preparação do ambiente, conforme o fluxo do ORICSE.",
@@ -220,9 +220,33 @@ const SECOES = [
       "E-mail: vetericio@gmail.com. Para facilitar o atendimento, informe o estabelecimento, o assunto e o número da solicitação, caso disponível.",
       "Nome empresarial: Vetericio Serviços Veterinários LTDA; CNPJ: 67.099.538/0001-76; localização cadastral identificada: Rua Tenente Marino Freire, bairro Maria Helena, Belo Horizonte/MG, CEP 31680-120 (número do imóvel pendente de confirmação).",
       "Eventuais controvérsias serão tratadas preferencialmente pelos canais de atendimento e por meios adequados de solução, sem afastar o foro competente e as proteções obrigatórias previstas na legislação.",
-      "Esta redação é um instrumento contratual preliminar que deve ser revisado juridicamente e validado quanto às condições financeiras específicas antes de seu uso comercial definitivo."
+      "Condições comerciais e documentos complementares efetivamente aceitos integram a relação contratual conforme a lei; eventuais divergências devem ser apuradas pelos canais oficiais."
     ]
-  }
+  },
+  {
+  "id": "licencas-terceirizadas",
+  "title": "21. Prestadores externos, licenças e condições de integração",
+  "intro": "Para operar seus módulos, a ORICSE depende de serviços e componentes independentes sujeitos a licenças e contratos de terceiros.",
+  "items": [
+    "Podem ser empregados serviços de hospedagem, execução de aplicações, redes, autenticação, segurança, banco de dados, armazenamento, sincronização de documentos, comunicação e intermediação financeira. O emprego de cada serviço depende das funcionalidades habilitadas e não implica que todos os prestadores tenham acesso a todos os dados.",
+    "Os contratos, licenças de APIs, permissões, políticas de uso e limites operacionais dos fornecedores podem impor restrições, alterações, suspensão ou revogação de recursos. A contratação da ORICSE não transfere ao contratante propriedade intelectual nem licença autônoma para explorar tecnologias de terceiros.",
+    "Falhas, manutenções, indisponibilidades ou mudanças de condições de serviços externos podem afetar a plataforma. A ORICSE empregará esforços razoáveis de prevenção, mitigação, comunicação e restabelecimento, sem prometer ausência absoluta de interrupções.",
+    "Quando o contratante conectar conta própria de serviço externo, deverá preservar as autorizações e cumprir regras aplicáveis, sem prejuízo das obrigações próprias da ORICSE e dos direitos legais que não possam ser afastados por contrato.",
+    "Prestadores financeiros independentes poderão conduzir suas próprias análises de identificação, prevenção de fraudes, aprovação, estorno e contestação, de acordo com suas regras e a legislação aplicável.",
+    "Nenhuma referência a terceiro exclui a responsabilidade da ORICSE por atos ou omissões que lhe sejam juridicamente imputáveis."
+  ]
+},
+  {
+  "id": "dados-continuidades",
+  "title": "22. Continuidade, prontuários e cooperação",
+  "intro": "A operação da plataforma e de suas integrações não substitui os deveres de guarda, sigilo e responsabilidade profissional.",
+  "items": [
+    "O profissional e o estabelecimento permanecem responsáveis pela elaboração, exatidão, assinatura e conservação de registros e documentos clínicos segundo normas profissionais aplicáveis.",
+    "Procedimentos de cópia, sincronização, exportação e recuperação dependem das capacidades técnicas, licenças e configurações dos serviços disponíveis, não constituindo promessa de restauração infalível ou de backup irrestrito.",
+    "No encerramento ou suspensão, a ORICSE e o estabelecimento deverão cooperar, dentro das condições contratadas e da legislação, para preservar e disponibilizar os dados cuja entrega seja devida, sem permitir acesso de pessoas não autorizadas.",
+    "Alterações materiais em funcionalidades, integrações ou condições de serviço deverão observar os deveres legais de transparência, comunicação e tratamento de dados."
+  ]
+}
 ] as const;
 
 function TermosDeUso() {
@@ -240,7 +264,7 @@ function TermosDeUso() {
      <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.19em] text-[#EED8DF]"><ShieldCheck size={17}/> Clareza, responsabilidades e transparência</p>
      <h1 className="mt-5 max-w-3xl font-display text-4xl font-semibold tracking-tight sm:text-5xl">Termos de Uso e Contratação</h1>
      <p className="mt-5 max-w-3xl text-base leading-8 text-[#F0DBE2]">Condições de acesso, planos, pagamentos, responsabilidades e direitos relacionados ao uso do ecossistema ORICSE.</p>
-     <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Contratação de software como serviço</span><span className="rounded-full border border-white/25 px-4 py-2">Atualizado em 02/11/2026</span></div>
+     <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/90"><span className="rounded-full border border-white/25 px-4 py-2">Contratação de software como serviço</span><span className="rounded-full border border-white/25 px-4 py-2">Revisado em 12/11/2026</span></div>
     </div>
    </section>
    <div className="mx-auto max-w-6xl px-5 py-9 sm:px-8 sm:py-12">
@@ -274,7 +298,7 @@ function TermosDeUso() {
        <p className="mt-2 text-sm leading-7 text-white/80">Para dúvidas comerciais, solicitações, cancelamento e esclarecimentos sobre estes Termos, entre em contato.</p>
        <a className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#4A182C] hover:bg-[#F8EEF2]" href="mailto:vetericio@gmail.com?subject=Termos%20de%20Uso%20e%20Contrata%C3%A7%C3%A3o%20%E2%80%94%20Oricse"><Mail size={18}/> vetericio@gmail.com <ArrowUpRight size={16}/></a>
       </div>
-      <p className="mt-6 text-xs leading-6 text-[#8A747D]">Nota: confirme o número do endereço empresarial e as condições concretas de eventual multa de cancelamento antecipado em instrumento separado, se aplicável. Recomenda-se revisão jurídica antes da publicação definitiva.</p>
+      <p className="mt-6 text-xs leading-6 text-[#8A747D]">Para informações complementares sobre condições comerciais e tratamento de dados, utilize os canais oficiais de atendimento.</p>
      </article>
     </div>
     <footer className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[#E1D4D9] pt-6 text-xs text-[#856F78]"><span>© {new Date().getFullYear()} {EMPRESA}</span><div className="flex gap-5"><Link to="/politica-de-privacidade" className="underline underline-offset-4">Política de Privacidade</Link><Link to="/" className="underline underline-offset-4">Início</Link></div></footer>
