@@ -31,7 +31,7 @@ import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
-import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
+import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, vacinasPredefinidas, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
@@ -346,6 +346,7 @@ function AnimalFicha() {
   const [modalTipo, setModalTipo] = useState<RegistroTipo | null>(null);
   const [preventivoEmEdicao, setPreventivoEmEdicao] = useState<Registro["preventivo"]>(undefined);
   const [dadosPreventivos, setDadosPreventivos] = useState(camposPreventivos);
+  const [tipoVacina, setTipoVacina] = useState("");
   const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
   const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [erroProfissional, setErroProfissional] = useState("");
@@ -581,6 +582,7 @@ function AnimalFicha() {
     setProfissional(null);
     setErroProfissional("");
     setDadosPreventivos(camposPreventivos);
+    setTipoVacina("");
     setModalTipo(tipo);
     setTitulo("");
     setDetalhe("");
@@ -599,6 +601,7 @@ function AnimalFicha() {
     const linha = item.linha;
     setPreventivoEmEdicao(item);
     setDadosPreventivos(normalizarCamposPreventivos(linha));
+    setTipoVacina("");
     setTitulo(linha.nome);
     setData(("aplicada_em" in linha ? linha.aplicada_em : linha.administrado_em) || "");
     setReforcoEm(("reforco_em" in linha ? linha.reforco_em : linha.proxima_dose_em) || "");
@@ -606,6 +609,24 @@ function AnimalFicha() {
     setDetalhe(linha.observacoes || "");
     setVisivelTutor(Boolean(registro.visivelTutor));
     setModalTipo(registro.tipo);
+  }
+
+  function selecionarVacina(id: string) {
+    setTipoVacina(id);
+    if (id === "outro") {
+      setTitulo("");
+      setDadosPreventivos(camposPreventivos);
+      setData("");
+      setReforcoEm("");
+      setLote("");
+      setDetalhe("");
+      return;
+    }
+
+    const vacina = vacinasPredefinidas.flatMap(({ opcoes }) => opcoes).find(opcao => opcao.id === id);
+    if (!vacina) return;
+    setTitulo(vacina.nome);
+    setDadosPreventivos(atual => ({ ...atual, alvo_vacinacao: vacina.alvo }));
   }
 
   async function salvarRegistro() {
@@ -1107,6 +1128,22 @@ function AnimalFicha() {
                   </button>
                 </div>
                 <div className="mt-5 space-y-4">
+                  {tipoPreventivo === "vacina" && (
+                    <label className="block text-sm font-bold">
+                      Tipo de vacina
+                      <select value={tipoVacina} onChange={(e) => selecionarVacina(e.target.value)}
+                        autoFocus
+                        className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal">
+                        <option value="" disabled>Selecione uma vacina</option>
+                        {vacinasPredefinidas.map(({ grupo, opcoes }) => (
+                          <optgroup key={grupo} label={grupo}>
+                            {opcoes.map(({ id, nome }) => <option key={id} value={id}>{nome}</option>)}
+                          </optgroup>
+                        ))}
+                        <option value="outro">Outro</option>
+                      </select>
+                    </label>
+                  )}
                   <label className="block text-sm font-bold">
                     {tipoPreventivo ? "Data da aplicação" : "Data"}
                     <input
@@ -1119,12 +1156,12 @@ function AnimalFicha() {
                   <label className="block text-sm font-bold">
                     {tipoPreventivo === "vacina" ? "Nome comercial da vacina" : tipoPreventivo === "vermifugo" ? "Produto administrado" : "Título"}
                     <input
-                      autoFocus
+                      autoFocus={tipoPreventivo !== "vacina"}
                       value={titulo}
                       onChange={(e) => setTitulo(e.target.value)}
                       placeholder={
                         modalTipo === "Vacinas"
-                          ? "Ex.: V10"
+                          ? "Nome que consta no rótulo"
                           : modalTipo === "Vermífugos"
                             ? "Ex.: Drontal Plus"
                           : modalTipo === "Exames"
@@ -1345,8 +1382,14 @@ function CamposDoPreventivo({ tipo, valores, onChange, profissional, erro }: {
       {rotulo}
       <input value={valores[chave]} type={chave === "hora_aplicacao" ? "time" : "text"}
         maxLength={180} placeholder={dica}
+        aria-describedby={chave === "alvo_vacinacao" ? "alvo-vacinacao-ajuda" : undefined}
         onChange={e => onChange(atual => ({ ...atual, [chave]: e.target.value }))}
         className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+      {chave === "alvo_vacinacao" && (
+        <span id="alvo-vacinacao-ajuda" className="mt-1 block text-xs font-normal text-muted-foreground">
+          Confira e ajuste os alvos conforme a bula da vacina aplicada.
+        </span>
+      )}
     </label>;
   }
   return (
