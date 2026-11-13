@@ -170,7 +170,7 @@ function OrcamentoVendaExpressa() {
     <div className="flex flex-wrap gap-2">
       <button type="button" onClick={()=>exportar("pdf")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground"><FileDown size={18}/> PDF</button>
       <button type="button" onClick={()=>exportar("jpeg")} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><ImageDown size={18}/> JPEG</button>
-      <button type="button" onClick={()=>{const canvas=gerarCanvas();if(canvas){const win=window.open("","_blank");if(!win){toast.error("Permita pop-ups para imprimir.");return;}win.document.write('<img alt="Orçamento" style="width:100%" src="'+canvas.toDataURL("image/jpeg",.94)+'"/>');win.document.close();win.focus();win.print();}}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Printer size={18}/> Imprimir</button>
+      <button type="button" onClick={()=>{const canvas=gerarCanvas();if(canvas){const win=window.open("","_blank");if(!win){toast.error("Permita pop-ups para imprimir.");return;}const imagem=win.document.createElement("img");imagem.alt="Orçamento";imagem.style.width="100%";imagem.onload=()=>{win.focus();win.print();};win.document.body.style.margin="0";win.document.body.appendChild(imagem);imagem.src=canvas.toDataURL("image/jpeg",.94);}}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Printer size={18}/> Imprimir</button>
       <button type="button" onClick={()=>void compartilhar()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Send size={18}/> Enviar ao tutor</button>
     </div>
   </main>;
