@@ -522,16 +522,10 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       )}
 
       {aba === "catalogo" && podeVerCatalogo && (
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
-          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
+        <div className="grid gap-4 md:grid-cols-2">
+          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
-          </div>
-          {podeGerenciarCatalogo && <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => iniciarCadastro("produto")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"><Plus size={17}/> Adicionar produto</button>
-            <button type="button" onClick={() => iniciarCadastro("servico")} className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm font-semibold"><Plus size={17}/> Adicionar serviço</button>
-          </div>}
         </div>
       )}
 
@@ -721,12 +715,13 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   );
 }
 
-function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoEditar, aoRemover }: {
+function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdicionar, aoEditar, aoRemover }: {
   titulo: string;
   descricao: string;
   icone: "servico" | "produto";
   itens: ItemCatalogo[];
   podeEditar: boolean;
+  aoAdicionar?: () => void;
   aoEditar: (item: ItemCatalogo) => void;
   aoRemover: (item: ItemCatalogo) => void;
 }) {
@@ -737,6 +732,15 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoEditar, 
         <span className="rounded-lg bg-primary/10 p-2 text-primary"><Icon size={18} /></span>
         <div className="min-w-0"><h2 className="text-sm font-bold">{titulo}</h2><p className="text-[11px] text-muted-foreground">{descricao}</p></div>
       </div>
+      {aoAdicionar && (
+        <button
+          type="button"
+          onClick={aoAdicionar}
+          className={`mb-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${icone === "produto" ? "bg-primary text-primary-foreground" : "border bg-card hover:bg-muted"}`}
+        >
+          <Plus size={17} /> Adicionar {icone === "produto" ? "produto" : "serviço"}
+        </button>
+      )}
       <div className="space-y-2">
         {itens.length ? itens.map((item) => (
           <article key={item.id} className="flex min-h-[58px] items-center gap-2 rounded-lg border px-3 py-2">
