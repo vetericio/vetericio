@@ -117,7 +117,6 @@ function dadosDemoAlvorada(clinica:ClinicaPublica,usuario:string){
 }
 
 function dataIso(data=new Date()){return `${data.getFullYear()}-${String(data.getMonth()+1).padStart(2,"0")}-${String(data.getDate()).padStart(2,"0")}`;}
-function amanha(){const d=new Date();d.setDate(d.getDate()+1);return dataIso(d);}
 function dataBr(v?:string|null){if(!v)return"Não informado";const d=new Date(v.length===10?`${v}T12:00:00`:v);return Number.isNaN(d.getTime())?v:d.toLocaleDateString("pt-BR");}
 function dataHora(v:string){return new Date(v).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});}
 function dinheiro(v:number){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
@@ -144,7 +143,9 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [temaPortal,setTemaPortal]=useState<TemaPortal|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);const [modoDemoAlvorada,setModoDemoAlvorada]=useState(false);
   const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
   const [animais,setAnimais]=useState<Animal[]>([]);const [animalId,setAnimalId]=useState("");const [secao,setSecao]=useState<Secao>("resumo");const [vacinas,setVacinas]=useState<Vacina[]>([]);const [vermifugos,setVermifugos]=useState<Vermifugo[]>([]);const [exames,setExames]=useState<Exame[]>([]);const [documentos,setDocumentos]=useState<Documento[]>([]);const [receitas,setReceitas]=useState<Receita[]>([]);const [agendas,setAgendas]=useState<Agenda[]>([]);const [agendamentos,setAgendamentos]=useState<Agendamento[]>([]);const [comandas,setComandas]=useState<Comanda[]>([]);
-  const [agendaId,setAgendaId]=useState("");const [pagando,setPagando]=useState<string|null>(null);const [adiantamentos,setAdiantamentos]=useState<Record<string,string>>({});const [dataAgenda,setDataAgenda]=useState(amanha);const [horarios,setHorarios]=useState<Horario[]>([]);const [horario,setHorario]=useState("");const [obs,setObs]=useState("");const [carregandoHorarios,setCarregandoHorarios]=useState(false);const [agendando,setAgendando]=useState(false);const [baixando,setBaixando]=useState<string|null>(null);
+  const [estadoAgendas, setEstadoAgendas] = useState<"carregando" | "pronto" | "erro">("carregando");
+  const [erroHorarios, setErroHorarios] = useState(false);
+  const [agendaId,setAgendaId]=useState("");const [pagando,setPagando]=useState<string|null>(null);const [adiantamentos,setAdiantamentos]=useState<Record<string,string>>({});const [dataAgenda,setDataAgenda]=useState(dataIso);const [horarios,setHorarios]=useState<Horario[]>([]);const [horario,setHorario]=useState("");const [obs,setObs]=useState("");const [carregandoHorarios,setCarregandoHorarios]=useState(false);const [agendando,setAgendando]=useState(false);const [baixando,setBaixando]=useState<string|null>(null);
   const [telefone,setTelefone]=useState("");const [email,setEmail]=useState("");const [salvandoPerfil,setSalvandoPerfil]=useState(false);
 
   useEffect(() => {
@@ -220,7 +221,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       if (versao !== versaoCarregamento.current) return;
       if (!atualizar) {
         setFontesCuidados({ vacinas: "carregando", vermifugos: "carregando" });
-        setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
+        setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setEstadoAgendas("carregando");setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
       }
       const lista = (pets || []) as Animal[];
       setAnimais(lista);
@@ -237,6 +238,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           vermifugos: atual.vermifugos === "carregando" ? "indisponivel" : atual.vermifugos,
         }));
       });
+      void carregarAgendas(ctx);
       void carregarComplementos(ctx);
     } catch (erro) {
       if (versao !== versaoCarregamento.current) return;
@@ -277,14 +279,39 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       });
     }
 
+    async function carregarAgendas(ctx: Contexto) {
+      try {
+        const { data, error } = await supabaseBanco.rpc("oricse_portal_agendas");
+        if (versao !== versaoCarregamento.current) return;
+        if (error) throw error;
+        const lista = data || [];
+        setAgendas(lista);
+        setAgendaId(atual => lista.some(agenda => agenda.id === atual) ? atual : (lista[0]?.id || ""));
+        setEstadoAgendas("pronto");
+      } catch {
+        if (versao === versaoCarregamento.current) setEstadoAgendas("erro");
+      }
+
+      const colunas = "id,agenda_id,animal_id,inicio,fim,estado,tipo,observacoes";
+      const [banco, legado] = await Promise.allSettled([
+        supabaseBanco.from("oricse_agendamentos_online").select(colunas)
+          .eq("clinica_id", ctx.clinica_id).eq("tutor_id", ctx.tutor_id).order("inicio"),
+        supabase.from("oricse_agendamentos_online").select(colunas)
+          .eq("clinica_id", ctx.clinica_id).eq("tutor_id", ctx.tutor_id).order("inicio"),
+      ]);
+      if (versao !== versaoCarregamento.current) return;
+      const registros = [legado, banco].flatMap(resultado =>
+        resultado.status === "fulfilled" ? (resultado.value.data || []) as Agendamento[] : []);
+      const unicos = new Map(registros.map(item => [item.id, item]));
+      setAgendamentos([...unicos.values()].sort((a, b) => Date.parse(a.inicio) - Date.parse(b.inicio)));
+    }
+
     async function carregarComplementos(ctx: Contexto) {
       try {
-      const [e,d,r,ag,marc,c,docsCanonicos,comandasBanco]=await Promise.all([
+      const [e,d,r,c,docsCanonicos,comandasBanco,examesBanco]=await Promise.all([
         (supabase as any).from("oricse_portal_exames").select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("realizado_em",{ascending:false,nullsFirst:false}),
         (supabase as any).from("oricse_portal_documentos").select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("data_documento",{ascending:false,nullsFirst:false}),
         (supabase as any).from("oricse_portal_receitas").select("id,animal_id,tipo,numero,titulo,emitida_em,drive_arquivo_id").eq("clinica_id",ctx.clinica_id).order("emitida_em",{ascending:false}),
-        (supabase as any).rpc("oricse_portal_agendas"),
-        (supabase as any).from("oricse_agendamentos_online").select("id,agenda_id,animal_id,inicio,fim,estado,tipo,observacoes").eq("clinica_id",ctx.clinica_id).order("inicio"),
         (supabase as any).from("oricse_portal_comandas").select("id,animal_id,numero,status,origem,aberta_em,finalizada_em,itens,pagamentos,total,total_pago,saldo").eq("clinica_id",ctx.clinica_id).order("aberta_em",{ascending:false}),
         supabaseBanco.from("oricse_portal_documentos")
           .select("id,animal_id,titulo,tipo,data_documento,observacoes,drive_arquivo_id")
@@ -294,13 +321,19 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           .select("id,animal_id,numero,status,origem,aberta_em,finalizada_em,itens,pagamentos,total,total_pago,saldo")
           .eq("clinica_id",ctx.clinica_id).eq("tutor_id",ctx.tutor_id).eq("visivel_tutor",true)
           .order("aberta_em",{ascending:false}),
+        supabaseBanco.from("oricse_portal_exames")
+          .select("id,animal_id,titulo,tipo,realizado_em,resultado_resumo,drive_arquivo_id")
+          .eq("clinica_id",ctx.clinica_id).eq("visivel_tutor",true)
+          .order("realizado_em",{ascending:false,nullsFirst:false}),
       ]);
       if (versao !== versaoCarregamento.current) return;
       if(docsCanonicos.error) console.warn("Documentos canônicos indisponíveis:",docsCanonicos.error.message);
       const unicos = new Map<string,Documento>();
       for(const item of [...(d.data||[]),...(docsCanonicos.data||[])] as Documento[]) unicos.set(item.id,item);
-      setExames(e.data||[]);setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setAgendas(ag.data||[]);setAgendamentos(marc.data||[]);setComandas([...new Map<string, Comanda>([...(c.data || []), ...(comandasBanco.data || [])]
-        .map(item => [item.id, item as Comanda])).values()]);setAgendaId(at=>(ag.data||[]).some((x:Agenda)=>x.id===at)?at:(ag.data?.[0]?.id||""));
+      setExames([...new Map<string, Exame>([...(e.data || []), ...(examesBanco.data || [])]
+        .map(item => [item.id, item as Exame])).values()]);
+      setDocumentos([...unicos.values()]);setReceitas(r.data||[]);setComandas([...new Map<string, Comanda>([...(c.data || []), ...(comandasBanco.data || [])]
+        .map(item => [item.id, item as Comanda])).values()]);
       } catch (erro) {
         console.error("Falha ao carregar dados complementares do portal:", erro);
       }
@@ -331,7 +364,45 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       data.subscription.unsubscribe();
     };
   }, [carregar]);
-  useEffect(()=>{if(!contexto||!agendaId||!dataAgenda){setHorarios([]);return;}if(modoDemoAlvorada){const dia=`${dataAgenda}T`;const lista:Horario[]=[{inicio:`${dia}09:00:00-03:00`,fim:`${dia}09:30:00-03:00`,rotulo:"09:00"},{inicio:`${dia}10:30:00-03:00`,fim:`${dia}11:00:00-03:00`,rotulo:"10:30"},{inicio:`${dia}14:00:00-03:00`,fim:`${dia}14:30:00-03:00`,rotulo:"14:00"}];setHorarios(lista);setHorario(at=>lista.some(h=>h.inicio===at)?at:lista[0].inicio);setCarregandoHorarios(false);return;}let vivo=true;setCarregandoHorarios(true);void(async()=>{const{data,error}=await(supabase as any).rpc("oricse_portal_horarios_disponiveis",{p_agenda_id:agendaId,p_data:dataAgenda});if(!vivo)return;const lista=error?[]:(data||[]) as Horario[];setHorarios(lista);setHorario(at=>lista.some(h=>h.inicio===at)?at:(lista[0]?.inicio||""));setCarregandoHorarios(false);})();return()=>{vivo=false};},[contexto,agendaId,dataAgenda,modoDemoAlvorada]);
+  useEffect(() => {
+    setHorario("");
+    setHorarios([]);
+    setErroHorarios(false);
+    if (!contexto || !agendaId || !dataAgenda) {
+      setCarregandoHorarios(false);
+      return;
+    }
+    if (modoDemoAlvorada) {
+      const dia = `${dataAgenda}T`;
+      const lista = [
+        { inicio: `${dia}09:00:00-03:00`, fim: `${dia}09:30:00-03:00`, rotulo: "09:00" },
+        { inicio: `${dia}10:30:00-03:00`, fim: `${dia}11:00:00-03:00`, rotulo: "10:30" },
+        { inicio: `${dia}14:00:00-03:00`, fim: `${dia}14:30:00-03:00`, rotulo: "14:00" },
+      ];
+      setHorarios(lista);
+      setHorario(lista[0].inicio);
+      setCarregandoHorarios(false);
+      return;
+    }
+    let ativo = true;
+    setCarregandoHorarios(true);
+    void (async () => {
+      try {
+        const { data, error } = await supabaseBanco.rpc("oricse_portal_horarios_disponiveis", {
+          p_agenda_id: agendaId, p_data: dataAgenda,
+        });
+        if (!ativo) return;
+        if (error) throw error;
+        setHorarios(data || []);
+        setHorario(data?.[0]?.inicio || "");
+      } catch {
+        if (ativo) setErroHorarios(true);
+      } finally {
+        if (ativo) setCarregandoHorarios(false);
+      }
+    })();
+    return () => { ativo = false; };
+  }, [contexto, agendaId, dataAgenda, modoDemoAlvorada]);
 
   const animal = animais.find(a => a.id === animalId) || animais[0] || null;
   const navegacao = secoesPortal.filter(({ id }) =>
@@ -370,7 +441,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
   const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animal?.id),[vacinas,animal?.id]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animal?.id),[vermifugos,animal?.id]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animal?.id),[exames,animal?.id]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animal?.id),[documentos,animal?.id]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animal?.id),[receitas,animal?.id]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animal?.id),[agendamentos,animal?.id]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animal?.id),[comandas,animal?.id]);const agenda=agendas.find(a=>a.id===agendaId)||null;
 
-  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
+  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setEstadoAgendas("pronto");setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
   async function ativar(e: React.FormEvent) {
     e.preventDefault();
     const codigo = token.trim();
@@ -436,7 +507,30 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   function voltarRecuperacao(){setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}
   async function sair(){if(!modoDemoAlvorada)await supabase.auth.signOut();setModoDemoAlvorada(false);setContexto(null);setAnimais([]);}
   async function salvarPerfil(){setSalvandoPerfil(true);try{const{error}=await(supabase as any).rpc("oricse_portal_atualizar_perfil",{p_telefone:telefone,p_email:email});if(error)throw error;setContexto(atual=>atual?{...atual,tutor_telefone:telefone,tutor_email:email}:atual);toast.success("Dados atualizados.");}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}finally{setSalvandoPerfil(false);}}
-  async function agendar(){if(!animal||!agendaId||!horario)return;setAgendando(true);try{const{data,error}=await(supabase as any).rpc("oricse_portal_criar_agendamento",{p_agenda_id:agendaId,p_animal_id:animal.id,p_inicio:horario,p_observacoes:obs||null});if(error)throw error;toast.success(data?.[0]?.estado==="confirmado"?"Agendamento confirmado.":"Solicitação enviada.");setObs("");await carregar(true);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível agendar.");}finally{setAgendando(false);}}
+  async function agendar() {
+    if (!animal || !agendaId || !horario) return;
+    if (modoDemoAlvorada) {
+      toast.info("Agendamento demonstrativo.");
+      return;
+    }
+    setAgendando(true);
+    try {
+      const { data, error } = await supabaseBanco.rpc("oricse_portal_criar_agendamento", {
+        p_agenda_id: agendaId, p_animal_id: animal.id, p_inicio: horario,
+        ...(obs ? { p_observacoes: obs } : {}),
+      });
+      if (error) throw new Error(error.message);
+      toast.success(data?.[0]?.estado === "confirmado" ? "Agendamento confirmado." : "Solicitação enviada.");
+      setHorario("");
+      setHorarios([]);
+      setObs("");
+      await carregar(true);
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível agendar.");
+    } finally {
+      setAgendando(false);
+    }
+  }
   async function pagarAgenda(){if(!animal||!agenda||!horario)return;setPagando("agenda");try{const{data,error}=await supabase.functions.invoke("oricse-portal-pagamentos?action=agenda",{body:{agenda_id:agenda.id,animal_id:animal.id,inicio:horario,observacoes:obs||null,slug}});if(error||!data?.checkout_url)throw new Error(data?.error||"Não foi possível abrir o pagamento.");window.location.assign(data.checkout_url);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o pagamento.");setPagando(null);}}
   async function pagarComanda(comanda:Comanda){setPagando(comanda.id);try{const texto=String(adiantamentos[comanda.id]||"").replace(/[^0-9,]/g,"").replace(",",".");const informado=Number(texto);const valor_centavos=Number.isFinite(informado)&&informado>0?Math.round(informado*100):Math.round(Number(comanda.saldo)*100);const{data,error}=await supabase.functions.invoke("oricse-portal-pagamentos?action=comanda",{body:{comanda_id:comanda.id,valor_centavos,slug}});if(error||!data?.checkout_url)throw new Error(data?.error||"Não foi possível abrir o pagamento.");window.location.assign(data.checkout_url);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o pagamento.");setPagando(null);}}
   async function abrirArquivo(id:string,tipo:TipoArquivo){const chave=`${tipo}:${id}`;setBaixando(chave);try{const{data:sessao}=await supabase.auth.getSession();const accessToken=sessao.session?.access_token;if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente.");const arquivo=await baixarDocumentoPortal({data:{accessToken,documentoId:id,tipo}});const binario=atob(arquivo.base64);const bytes=new Uint8Array(binario.length);for(let i=0;i<binario.length;i++)bytes[i]=binario.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));const aba=window.open(url,"_blank","noopener,noreferrer");if(!aba){const link=document.createElement("a");link.href=url;link.download=arquivo.nome;link.click();}setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o arquivo.");}finally{setBaixando(null);}}
@@ -626,7 +720,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                   )}
                 </>
               )}
-  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Novo agendamento</h2>{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>setAgendaId(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>setDataAgenda(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<Loader2 className="animate-spin"/>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Sem horário disponível.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">A clínica ainda não disponibilizou horários para agendamento online.</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><div className="rounded-2xl border bg-white p-5"><h3 className="font-black">Meus agendamentos</h3><div className="mt-3 space-y-2">{marcacoesAnimal.length?marcacoesAnimal.map(a=><div key={a.id} className="flex justify-between gap-3 rounded-xl border p-3"><div><strong className="text-sm">{a.tipo}</strong><p className="text-xs text-slate-500">{dataHora(a.inicio)}</p>{agendas.find(g=>g.id===a.agenda_id)?.responsavel&&<p className="mt-1 text-xs font-semibold text-[#702a43]">Profissional: {agendas.find(g=>g.id===a.agenda_id)?.responsavel}</p>}</div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{estado(a.estado)}</span></div>):<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum agendamento.</p>}</div></div></div>}
+  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Novo agendamento</h2>{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>{setHorario("");setHorarios([]);setAgendaId(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>{setHorario("");setHorarios([]);setDataAgenda(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<span role="status" className="p-2 text-sm">Carregando horários…</span>:erroHorarios?<span role="alert" className="p-2 text-sm">Não foi possível consultar os horários. Selecione outra data ou tente novamente.</span>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Nenhum horário disponível nesta data. Selecione outro dia.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">{estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro" ? "Não foi possível carregar as agendas. Atualize a página para tentar novamente." : "A clínica ainda não publicou agendas para atendimento online."}</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><div className="rounded-2xl border bg-white p-5"><h3 className="font-black">Meus agendamentos</h3><div className="mt-3 space-y-2">{marcacoesAnimal.length?marcacoesAnimal.map(a=><div key={a.id} className="flex justify-between gap-3 rounded-xl border p-3"><div><strong className="text-sm">{a.tipo}</strong><p className="text-xs text-slate-500">{dataHora(a.inicio)}</p>{agendas.find(g=>g.id===a.agenda_id)?.responsavel&&<p className="mt-1 text-xs font-semibold text-[#702a43]">Profissional: {agendas.find(g=>g.id===a.agenda_id)?.responsavel}</p>}</div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{estado(a.estado)}</span></div>):<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum agendamento.</p>}</div></div></div>}
   {secaoAtual.id==="documentos"&&portalConfig.exibir_documentos!==false&&<Lista titulo="Documentos, laudos e atestados" vazio="Nenhum documento liberado.">{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista>}
   {secaoAtual.id==="exames"&&<Lista titulo="Exames" vazio="Nenhum exame liberado.">{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
   {secaoAtual.id==="receitas"&&<Lista titulo="Receitas" vazio="Nenhuma receita disponível.">{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}

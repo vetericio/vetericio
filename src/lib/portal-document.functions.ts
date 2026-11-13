@@ -1,12 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { driveAccessToken, driveFetch } from "@/lib/drive-kv.server";
+import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 
 const schema=z.object({accessToken:z.string().min(20),documentoId:z.string().uuid(),tipo:z.enum(["documento","exame","receita"]).default("documento")});
 
 async function driveQuery(accessToken:string,table:string,filters:any[]){
   const {executarDriveDbInterno}=await import("@/lib/drive-db.functions");
   return executarDriveDbInterno({accessToken,table,operation:"select",columns:"*",filters,order:[],single:"maybeSingle",head:false,count:null} as any) as Promise<any>;
+}
+
+async function consultarArquivo(token: string, driveId: string) {
+  const resposta = await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveId)}?fields=id,name,mimeType,size,appProperties`);
+  return resposta.json() as Promise<{id:string;name:string;mimeType?:string;size?:string;appProperties?:Record<string,string>}>;
 }
 
 async function localizarArquivo(token:string,registroId:string){
@@ -17,8 +23,7 @@ async function localizarArquivo(token:string,registroId:string){
   if(json.files?.[0])return json.files[0];
   // Compatibilidade com registros que guardavam o ID nativo do Drive.
   try{
-    const direto=await driveFetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(registroId)}?fields=id,name,mimeType,size,appProperties`);
-    return await direto.json() as {id:string;name:string;mimeType?:string;size?:string;appProperties?:Record<string,string>};
+    return await consultarArquivo(token, registroId);
   }catch{return null;}
 }
 
@@ -62,17 +67,24 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     if(erroAnimal||!animalPermitido)throw new Error("Você não tem acesso a este documento.");
 
     const token=await driveAccessToken("https://www.googleapis.com/auth/drive.readonly");
-    const arquivo=await localizarArquivo(token,String(registro.drive_arquivo_id));
+    const { data: vinculo, error: erroVinculo } = canonico
+      ? await supabaseAdmin.from("drive_arquivos").select("drive_file_id")
+          .eq("id", registro.drive_arquivo_id).eq("clinica_id", portal.clinica_id).maybeSingle()
+      : { data: null, error: null };
+    if (erroVinculo || (canonico && !vinculo)) throw new Error("Não foi possível verificar o vínculo do arquivo.");
+    const arquivo = vinculo
+      ? await consultarArquivo(token, vinculo.drive_file_id)
+      : await localizarArquivo(token, String(registro.drive_arquivo_id));
     if(!arquivo)throw new Error("Arquivo não encontrado no Google Drive.");
     if(arquivo.appProperties?.clinicaId&&String(arquivo.appProperties.clinicaId)!==String(portal.clinica_id))throw new Error("Você não tem acesso a este arquivo.");
     if(arquivo.appProperties?.entidadeTipo==="animal" &&
       String(arquivo.appProperties.entidadeId||"")!==String(registro.animal_id)){
       throw new Error("O arquivo não pertence ao animal autorizado.");
     }
-    if(Number(arquivo.size||0)>20_000_000)throw new Error("Este arquivo é grande demais para abrir pelo portal.");
+    if(Number(arquivo.size||0)>PORTAL_PDF_MAX_BYTES)throw new Error("Este arquivo é grande demais para abrir pelo portal.");
 
     const response=await driveFetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}?alt=media`);
     const bytes=Buffer.from(await response.arrayBuffer());
-    if(bytes.byteLength>20_000_000)throw new Error("Este arquivo é grande demais para abrir pelo portal.");
+    if(bytes.byteLength>PORTAL_PDF_MAX_BYTES)throw new Error("Este arquivo é grande demais para abrir pelo portal.");
     return{nome:arquivo.name||registro.titulo,mimeType:arquivo.mimeType||"application/octet-stream",base64:bytes.toString("base64")};
   });
