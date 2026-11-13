@@ -103,7 +103,7 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
       setTutores(listaTutores);
       setPortais(listaPortais);
       setAnimais(listaAnimais);
-      setSlug(clinicaResp.data.slug);
+      setSlug(clinicaResp.data.slug || "");
       setClinicaNome(clinicaResp.data.nome);
       setSelecionado((id) => listaTutores.some((tutor) => tutor.id === id) ? id : listaTutores[0]?.id || "");
     } catch {
