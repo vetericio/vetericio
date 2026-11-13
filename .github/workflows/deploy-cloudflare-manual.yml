@@ -98,3 +98,14 @@ jobs:
 
       - name: Audit public routes and demonstrative clinic after publication
         run: node scripts/smoke-oricse-live.mjs
+      - name: Audit response times across all static routes
+        continue-on-error: true
+        run: node scripts/audit-rotas-performance.mjs --live
+      - name: Save route performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oricse-performance-${{ github.sha }}
+          path: performance-audit.json
+          if-no-files-found: ignore
+          retention-days: 14
