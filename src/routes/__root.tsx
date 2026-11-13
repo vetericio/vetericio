@@ -314,6 +314,17 @@ function RootComponent() {
   // As rotas canônicas não redirecionam para seus aliases. O alias serve
   // como atalho para a rota original e preserva links internos já existentes.
 
+  // Evita refazer a resolução do portal — e toda a validação de sessão — a cada
+  // clique entre páginas internas da mesma clínica/plataforma. Os parâmetros
+  // que realmente identificam um portal continuam acionando nova consulta.
+  const hostResolucaoPortal = hostDaPagina();
+  const slugResolucaoPortal = slugDaRota(location.pathname);
+  const homeHostDeClinica = location.pathname === "/" &&
+    !["oricse.com.br", "app.oricse.com.br", "oricse.com", "www.oricse.com", "localhost", "127.0.0.1"].includes(hostResolucaoPortal) &&
+    !hostResolucaoPortal.endsWith(".lovable.app") &&
+    !hostResolucaoPortal.endsWith(".workers.dev");
+  const chaveResolucaoPortal = hostResolucaoPortal + "|" + (slugResolucaoPortal || "") + "|" + (homeHostDeClinica ? "home" : "rotas");
+
   useEffect(() => {
     let ativo = true;
     async function resolverPortal() {
@@ -376,7 +387,7 @@ function RootComponent() {
     return () => {
       ativo = false;
     };
-  }, [location.pathname]);
+  }, [chaveResolucaoPortal]);
 
   useEffect(() => {
     if (portalLoading) return;
