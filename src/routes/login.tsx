@@ -173,12 +173,13 @@ function Login() {
                 <input
                   value={usuario}
                   onChange={(e) => setUsuario(e.target.value)}
-                  placeholder="@usuário"
+                  placeholder="@"
                   autoComplete="username" inputMode="text" autoCapitalize="none" spellCheck={false}
                   aria-label="Usuário"
                   className="h-11 min-w-0 flex-1 bg-transparent px-2 outline-none placeholder:text-muted-foreground/60"
                 />
               </span>
+              {usuario.trim() && !usuario.trim().startsWith("@") && <span role="alert" className="mt-1 block text-xs text-destructive">O nome de usuário precisa começar com @. Exemplo: @seuusuario.</span>}
             </label>
 
             <label className="mt-5 block text-sm font-semibold text-foreground">
