@@ -126,6 +126,8 @@ export async function resolverDadosReceituario(data: { accessToken: string; anim
       peso: string(animal.peso_kg ?? dadosAnimal.peso),
       idade: string(dadosAnimal.idade),
       nascimento: string(animal.nascimento),
+      pelagem: string(dadosAnimal.pelagem || dadosAnimal.cor),
+      microchip: string(dadosAnimal.microchip),
     } : null,
     tutor: tutor ? {
       id: tutor.id,

@@ -1,4 +1,5 @@
 import { dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil } from "@/lib/dados-preventivos";
+import { desenharIdentidadeDocumento, desenharPapelDocumento, type PapelDocumento } from "@/lib/modelos-documentos-pdf";
 import type { obterDocumentoPreventivo } from "@/lib/documento-preventivo.functions";
 
 export type DadosDocumentoPreventivo = Awaited<ReturnType<typeof obterDocumentoPreventivo>>;
@@ -6,7 +7,7 @@ export type DadosDocumentoPreventivo = Awaited<ReturnType<typeof obterDocumentoP
 export async function criarDocumentoPreventivoPdf(dados: DadosDocumentoPreventivo, identificacao: {
   municipio: string; razaoSocial: string; cnpj: string; endereco: string; crmv: string; inscricaoEstadual: string;
   enderecoProfissional: string; telefoneProfissional: string; emailProfissional: string; comEstabelecimento: boolean;
-}) {
+}, papel?: PapelDocumento, orientacoes = "") {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const vacina = dados.tipo === "vacina";
@@ -22,11 +23,24 @@ export async function criarDocumentoPreventivoPdf(dados: DadosDocumentoPreventiv
   const observacaoValidade = validade && ato.data > fimDaValidade(validade)
     ? "A data registrada é posterior à validade informada para o produto." : "";
   let y = 19;
+  function iniciarPagina() {
+    y = 19;
+    if (!papel) return;
+    desenharPapelDocumento(pdf, papel);
+    if (identificacao.comEstabelecimento) {
+      y = desenharIdentidadeDocumento(pdf, { ...papel, clinica: {
+        ...papel.clinica, razaoSocial: identificacao.razaoSocial, cnpj: identificacao.cnpj,
+        crmv: identificacao.crmv, endereco: identificacao.endereco,
+      } }, 18, 24);
+    }
+  }
   function linha(texto: string, negrito = false, tamanho = 10.5) {
     pdf.setFont("helvetica", negrito ? "bold" : "normal");
     pdf.setFontSize(tamanho);
     for (const trecho of pdf.splitTextToSize(texto, 174) as string[]) {
-      if (y > 274) { pdf.addPage(); y = 19; }
+      if (y > 274) { pdf.addPage(); iniciarPagina(); }
+      pdf.setFont("helvetica", negrito ? "bold" : "normal");
+      pdf.setFontSize(tamanho);
       pdf.text(trecho, 18, y);
       y += tamanho >= 15 ? 8 : 5.2;
     }
@@ -39,6 +53,7 @@ export async function criarDocumentoPreventivoPdf(dados: DadosDocumentoPreventiv
     }
   }
 
+  iniciarPagina();
   pdf.setProperties({ title: titulo });
   linha(titulo, true, 18);
   linha("Para assinatura do médico-veterinário", true);
@@ -61,6 +76,7 @@ export async function criarDocumentoPreventivoPdf(dados: DadosDocumentoPreventiv
     ["Fabricação", rotulo(ato.fabricacao)], ["Validade", rotulo(ato.validade)],
     [vacina ? "Revacinação prevista" : "Próxima dose prevista", rotulo(ato.retorno)], ["Observações", [ato.observacoes, observacaoValidade].filter(Boolean).join("\n")],
   ]);
+  if (orientacoes.trim()) grupo("Orientações adicionais", [["Orientações", orientacoes]]);
   grupo("Médico-veterinário responsável", [
     ["Nome completo", profissional.nome], ["Inscrição", `CRMV-${profissional.uf} ${profissional.crmv}`],
     ["Endereço profissional", identificacao.enderecoProfissional], ["Telefone", identificacao.telefoneProfissional], ["E-mail", identificacao.emailProfissional],
@@ -69,7 +85,7 @@ export async function criarDocumentoPreventivoPdf(dados: DadosDocumentoPreventiv
     ["Razão social", identificacao.razaoSocial], ["CNPJ", identificacao.cnpj], ["Endereço", identificacao.endereco],
     ["Registro no CRMV", identificacao.crmv], ["Inscrição estadual", identificacao.inscricaoEstadual],
   ]);
-  if (y > 241) { pdf.addPage(); y = 19; }
+  if (y > 241) { pdf.addPage(); iniciarPagina(); }
   y += 5;
   linha(`${identificacao.municipio}, ${hoje}`);
   y += 6;

@@ -3,6 +3,8 @@ import { Download, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { obterDocumentoPreventivo } from "@/lib/documento-preventivo.functions";
 import type { DadosDocumentoPreventivo } from "@/lib/documento-preventivo-pdf";
+import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
+import { preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import type { TipoPreventivo } from "@/lib/dados-preventivos";
 
 const identificacaoVazia = {
@@ -30,6 +32,8 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
   const [comEstabelecimento, setComEstabelecimento] = useState(true);
   const [erro, setErro] = useState("");
   const [gerando, setGerando] = useState(false);
+  const [padrao, setPadrao] = useState<Awaited<ReturnType<typeof obterModeloDocumentoEmissao>> | null>(null);
+  const [orientacoes, setOrientacoes] = useState("");
   const titulo = tipo === "vacina" ? "Atestado de vacinação" : "Comprovante de vermifugação";
 
   useEffect(() => {
@@ -39,19 +43,27 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
         const { data: sessao } = await supabase.auth.getSession();
         const accessToken = sessao.session?.access_token;
         if (!accessToken) throw new Error("Entre novamente para preparar o documento.");
-        const resposta = await obterDocumentoPreventivo({ data: { accessToken, clinicaId, animalId, registroId, tipo } });
+        const [resposta, modelo] = await Promise.all([
+          obterDocumentoPreventivo({ data: { accessToken, clinicaId, animalId, registroId, tipo } }),
+          obterModeloDocumentoEmissao({ data: { accessToken, clinicaId, tipo } }),
+        ]);
         if (!ativo) return;
         setIdentificacao({
-          municipio: resposta.estabelecimento.municipio,
-          razaoSocial: resposta.estabelecimento.nome,
-          cnpj: resposta.estabelecimento.cnpj,
-          endereco: resposta.estabelecimento.endereco,
-          crmv: resposta.estabelecimento.crmv,
+          municipio: modelo.identidade.municipio || resposta.estabelecimento.municipio,
+          razaoSocial: modelo.identidade.razaoSocial || resposta.estabelecimento.nome,
+          cnpj: modelo.identidade.cnpj || resposta.estabelecimento.cnpj,
+          endereco: modelo.identidade.endereco || resposta.estabelecimento.endereco,
+          crmv: modelo.identidade.crmv || resposta.estabelecimento.crmv,
           inscricaoEstadual: resposta.estabelecimento.inscricaoEstadual,
           enderecoProfissional: resposta.profissional.endereco,
           telefoneProfissional: resposta.profissional.telefone,
           emailProfissional: resposta.profissional.email,
         });
+        setPadrao(modelo);
+        setOrientacoes(preencherTextoDocumento(modelo.modelo.texto, valoresModeloDocumento(modelo.identidade, {
+          paciente: resposta.paciente.nome, tutor: resposta.tutor.nome,
+          especie: resposta.paciente.especie, raca: resposta.paciente.raca, data: new Date().toLocaleDateString("pt-BR"),
+        })));
         setDados(resposta);
       } catch (falha) {
         if (ativo) setErro(falha instanceof Error ? falha.message : "Não foi possível preparar o PDF.");
@@ -62,7 +74,11 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
 
   async function baixar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!dados || gerando) return;
+    if (!dados || !padrao || gerando) return;
+    if (/\{\{[a-z_]+\}\}/.test(orientacoes)) {
+      setErro("Revise os campos pendentes no texto das orientações.");
+      return;
+    }
     if (comEstabelecimento && !/^[0-9A-Z]{12}\d{2}$/i.test(identificacao.cnpj.replace(/[.\-/\s]/g, ""))) {
       setErro("Informe um CNPJ com 14 caracteres.");
       return;
@@ -79,10 +95,12 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
     setErro("");
     try {
       const { criarDocumentoPreventivoPdf } = await import("@/lib/documento-preventivo-pdf");
-      const pdf = await criarDocumentoPreventivoPdf(dados, { ...identificacao, comEstabelecimento });
+      const { prepararPapelDocumento } = await import("@/lib/modelos-documentos-pdf");
+      const papel = await prepararPapelDocumento(padrao.identidade, { ...padrao.modelo, usarLogo: comEstabelecimento && padrao.modelo.usarLogo });
+      const pdf = await criarDocumentoPreventivoPdf(dados, { ...identificacao, comEstabelecimento }, papel, orientacoes);
       pdf.save(`${tipo === "vacina" ? "atestado-vacinacao" : "comprovante-vermifugacao"}-${registroId.slice(0, 8)}.pdf`);
-    } catch {
-      setErro("Não foi possível gerar o PDF.");
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível gerar o PDF.");
     } finally {
       setGerando(false);
     }
@@ -137,6 +155,10 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
                 </label>
               ))}
             </div>}
+            <label className="block text-sm font-bold">Orientações adicionais
+              <textarea rows={3} value={orientacoes} onChange={e => setOrientacoes(e.target.value)}
+                maxLength={25000} className="mt-1 w-full rounded-xl border p-3 font-normal" />
+            </label>
             <button type="submit" disabled={gerando || contatos.some(([chave]) => !identificacao[chave])}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-60">
               <Download size={16} /> {gerando ? "Gerando…" : "Baixar PDF para assinatura"}
