@@ -1,7 +1,7 @@
 import { PortalTutorLoginPreview } from "./pet/$slug/portal";
 import { oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
-import { CheckCircle2, Copy, ExternalLink, KeyRound, MessageCircle, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
+import { ExternalLink, MessageCircle, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
@@ -28,12 +28,18 @@ function PortalTutoresComPrevia() {
   return <PortalTutores key={clinicaId} clinicaId={clinicaId} tutorIdInicial={new URLSearchParams(location.searchStr).get("tutorId") || ""} />;
 }
 
-type TutorDb = { id: string; codigo_publico: string; nome: string; telefone: string | null };
+type TutorDb = { id: string; codigo_publico: string; nome: string; telefone: string | null; email: string | null };
 type AnimalDb = { id: string; tutor_id: string | null; nome: string };
-type PortalDb = { id:string; tutor_id:string; usuario:string; ativo:boolean; auth_user_id:string|null; convite_expira_em:string|null; ultimo_acesso_em:string|null; created_at:string };
+type PortalDb = { id:string; tutor_id:string; usuario:string; ativo:boolean; auth_user_id:string|null; convite_expira_em:string|null };
 type TutorLocal = { id?:string; nome?:string; telefone?:string; email?:string; cpfCnpj?:string; cpf?:string; [key:string]:unknown };
 type AnimalLocal = { id?:string; tutorId?:string; tutor_id?:string; nome?:string; especie?:string; raca?:string; sexo?:string; nascimento?:string; peso?:string; foto_url?:string; [key:string]:unknown };
-type Convite = { clinicaId: string; tutorId:string; usuario:string; token:string; expira_em:string; clinica_slug:string; link:string };
+type Convite = { usuario: string; token: string; expira_em: string; clinica_slug: string };
+
+function conviteValido(convite: Convite | undefined, portal: PortalDb | undefined) {
+  return convite && portal?.ativo && !portal.auth_user_id &&
+    Date.parse(portal.convite_expira_em || "") === Date.parse(convite.expira_em) &&
+    Date.parse(convite.expira_em) > Date.now() ? convite : null;
+}
 
 function soDigitos(valor?: string) { return String(valor || "").replace(/\D/g, ""); }
 function uuidValido(valor?: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(valor || "")); }
@@ -64,9 +70,9 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
   const [modelo, setModelo] = useState<string | null>(null);
   const [erroModelo, setErroModelo] = useState("");
   const [erroPainel, setErroPainel] = useState("");
-  const [selecionado,setSelecionado]=useState(tutorIdInicial);
   const [convites, setConvites] = useState<Record<string, Convite>>({});
-  const [emitindo,setEmitindo]=useState(false);
+  const [emitindo, setEmitindo] = useState<string | null>(null);
+  const [aberturaPendente, setAberturaPendente] = useState<string | null>(null);
   const [sincronizando,setSincronizando]=useState(false);
   const [locais,setLocais]=useState(()=>lerLocal<TutorLocal>("oricse-tutores-v1"));
   const [animaisLocais,setAnimaisLocais]=useState(()=>lerLocal<AnimalLocal>("oricse-animais-v1"));
@@ -89,10 +95,10 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     try {
       const [listaTutores, listaPortais, clinicaResp, listaAnimais] = await Promise.all([
         carregarPaginas<TutorDb>((inicio, fim) => supabaseBanco.from("tutores")
-          .select("id,codigo_publico,nome,telefone").eq("clinica_id", clinicaId)
+          .select("id,codigo_publico,nome,telefone,email").eq("clinica_id", clinicaId)
           .order("nome").order("id").range(inicio, fim)),
         carregarPaginas<PortalDb>((inicio, fim) => supabaseBanco.from("oricse_portal_tutores")
-          .select("id,tutor_id,usuario,ativo,auth_user_id,convite_expira_em,ultimo_acesso_em,created_at")
+          .select("id,tutor_id,usuario,ativo,auth_user_id,convite_expira_em")
           .eq("clinica_id", clinicaId).order("id").range(inicio, fim)),
         supabaseBanco.from("clinicas").select("nome,slug").eq("id", clinicaId).single(),
         carregarPaginas<AnimalDb>((inicio, fim) => supabaseBanco.from("oricse_animais")
@@ -105,7 +111,6 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
       setAnimais(listaAnimais);
       setSlug(clinicaResp.data.slug || "");
       setClinicaNome(clinicaResp.data.nome);
-      setSelecionado((id) => listaTutores.some((tutor) => tutor.id === id) ? id : listaTutores[0]?.id || "");
     } catch {
       setErroPainel("Não foi possível carregar os tutores e animais desta clínica.");
     } finally {
@@ -123,12 +128,6 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
   },[]);
 
   const portalPorTutor=useMemo(()=>new Map(portais.map(p=>[p.tutor_id,p])),[portais]);
-  const tutorSelecionado=tutores.find(t=>t.id===selecionado)||null;
-  const acessoSelecionado = tutorSelecionado && portalPorTutor.get(tutorSelecionado.id);
-  const convite = tutorSelecionado ? convites[tutorSelecionado.id] : undefined;
-  const conviteSelecionado = convite && convite.clinicaId === clinicaId &&
-    convite.tutorId === tutorSelecionado?.id && !acessoSelecionado?.auth_user_id &&
-    Date.parse(acessoSelecionado?.convite_expira_em || "") === Date.parse(convite.expira_em) && Date.parse(convite.expira_em) > Date.now() ? convite : null;
   const animaisPorTutor = useMemo(() => {
     const mapa = new Map<string, AnimalDb[]>();
     for (const animal of animais) {
@@ -139,15 +138,15 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     }
     return mapa;
   }, [animais]);
-  const urlWhatsapp = tutorSelecionado && conviteSelecionado && modelo
-    ? whatsappDoTutor(tutorSelecionado.telefone, preencherConvite(modelo, {
-        nome_tutor: tutorSelecionado.nome,
-        nome_clinica: clinicaNome,
-        link_portal: urlPortalDoTutor(conviteSelecionado.clinica_slug),
-        usuario_tutor: conviteSelecionado.usuario,
-        codigo_ativacao: conviteSelecionado.token,
-      }))
-    : null;
+  function linkConvite(tutor: TutorDb, convite: Convite, texto: string) {
+    return whatsappDoTutor(tutor.telefone, preencherConvite(texto, {
+      nome_tutor: tutor.nome,
+      nome_clinica: clinicaNome,
+      link_portal: urlPortalDoTutor(convite.clinica_slug),
+      usuario_tutor: convite.usuario,
+      codigo_ativacao: convite.token,
+    }));
+  }
 
   const locaisValidos=useMemo(()=>locais.filter(t=>Boolean(t.nome?.trim())&&soDigitos(String(t.cpfCnpj||t.cpf||"")).length===11&&uuidValido(t.id)),[locais]);
   const animaisImportaveis=useMemo(()=>animaisLocais.filter(a=>uuidValido(a.id)&&Boolean(a.nome?.trim())&&Boolean(a.tutorId||a.tutor_id)),[animaisLocais]);
@@ -221,24 +220,46 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     finally{setSincronizando(false);}
   }
 
-  async function emitirConvite(){
-    if (emitindo || !tutorSelecionado || !acessoSelecionado || acessoSelecionado.auth_user_id) return;
-    setEmitindo(true);
-    try{
-      const {data,error}=await supabaseBanco.rpc("oricse_portal_emitir_convite",{p_tutor_id:tutorSelecionado.id,p_usuario:acessoSelecionado.usuario});
-      if(error)throw error;
-      const item=data?.[0];if(!item?.token)throw new Error("O convite não foi gerado.");
-      const link = `${urlPortalDoTutor(item.clinica_slug)}#ativar=${encodeURIComponent(item.token)}&usuario=${encodeURIComponent(item.usuario)}`;
-      setConvites((atuais) => ({ ...atuais, [tutorSelecionado.id]: { ...item, link, clinicaId, tutorId: tutorSelecionado.id } }));
-      setPortais((atuais) => atuais.map((portal) => portal.tutor_id === tutorSelecionado.id
-        ? { ...portal, convite_expira_em: item.expira_em }
-        : portal));
-      toast.success("Convite criado. Ele expira em 48 horas e só pode ser usado uma vez.");
-    }catch(error){toast.error(typeof error === "object" && error && "message" in error ? String(error.message) : "Não foi possível gerar o convite.");}
-    finally{setEmitindo(false);}
+  async function enviarConvite(tutor: TutorDb, portal: PortalDb) {
+    if (emitindo || !modelo || !slug || portal.auth_user_id || !whatsappDoTutor(tutor.telefone, "")) return;
+    const aba = window.open("about:blank", "_blank");
+    if (aba) {
+      aba.opener = null;
+      const referrer = aba.document.createElement("meta");
+      referrer.name = "referrer";
+      referrer.content = "no-referrer";
+      aba.document.head.append(referrer);
+      aba.document.body.textContent = "Abrindo WhatsApp…";
+    }
+    setEmitindo(tutor.id);
+    setAberturaPendente(null);
+    try {
+      let convite = conviteValido(convites[tutor.id], portal);
+      if (!convite) {
+        const { data, error } = await supabaseBanco.rpc("oricse_portal_emitir_convite", {
+          p_tutor_id: tutor.id, p_usuario: portal.usuario,
+        });
+        if (error) throw error;
+        const item = data?.[0];
+        if (!item?.token) throw new Error("O convite não foi gerado.");
+        convite = item;
+        setConvites((atuais) => ({ ...atuais, [tutor.id]: item }));
+        setPortais((atuais) => atuais.map((acesso) => acesso.tutor_id === tutor.id
+          ? { ...acesso, ativo: true, usuario: item.usuario, convite_expira_em: item.expira_em }
+          : acesso));
+      }
+      const url = linkConvite(tutor, convite, modelo);
+      if (!url) throw new Error("Cadastre um telefone válido para abrir o WhatsApp.");
+      if (aba && !aba.closed) aba.location.replace(url);
+      else setAberturaPendente(tutor.id);
+    } catch (error) {
+      aba?.close();
+      toast.error(typeof error === "object" && error && "message" in error
+        ? String(error.message) : "Não foi possível preparar o convite.");
+    } finally {
+      setEmitindo(null);
+    }
   }
-
-  async function copiar(texto:string,mensagem:string){try{await navigator.clipboard.writeText(texto);toast.success(mensagem);}catch{toast.error("Não foi possível copiar automaticamente.");}}
 
   if (carregando && !slug) return <main className="mx-auto max-w-6xl px-5 py-10 text-sm text-muted-foreground">Carregando Portal do Tutor…</main>;
 
@@ -253,98 +274,81 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     {erroPainel && <p role="alert" className="mt-5 rounded-xl border bg-card p-4 text-sm">{erroPainel} <button type="button" className="ml-2 font-semibold text-primary" onClick={() => void carregar()}>Tentar novamente</button></p>}
     {temDadosLocais&&<section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><Upload className="mt-0.5 text-amber-800"/><div className="flex-1"><h2 className="font-black text-amber-950">Sincronização dos dados deste navegador</h2><p className="mt-1 text-sm text-amber-900">Localizei {locais.length} tutor(es), {animaisLocais.length} animal(is) e {comandasLocais.length} comanda(s). A sincronização só ocorre após sua confirmação e sempre para a clínica atual.</p><p className="mt-1 text-xs text-amber-800">Compatíveis agora: {locaisValidos.length} tutor(es), {animaisImportaveis.length} animal(is) e {comandasImportaveis.length} comanda(s).</p><button disabled={sincronizando||!locaisValidos.length} onClick={sincronizarDadosLocais} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber-900 px-4 text-sm font-bold text-white disabled:opacity-40">{sincronizando?<RefreshCw size={16} className="animate-spin"/>:<Upload size={16}/>} Sincronizar para esta clínica</button></div></div></section>}
 
-    <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <section className="rounded-2xl border bg-card p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-lg font-black"><Users size={19} /> Tutores cadastrados</h2>
-          <button type="button" onClick={() => void carregar()} disabled={carregando || emitindo} className="rounded-lg border p-2 text-muted-foreground" aria-label="Atualizar tutores"><RefreshCw size={16} className={carregando ? "animate-spin" : ""} /></button>
-        </div>
-        <div className="mt-4 space-y-2">
-          {tutores.length ? tutores.map((tutor) => {
-            const portal = portalPorTutor.get(tutor.id);
-            const vinculados = animaisPorTutor.get(tutor.id) || [];
-            const ativo = Boolean(portal?.ativo && portal.auth_user_id);
-            return (
-              <button type="button" key={tutor.id} onClick={() => setSelecionado(tutor.id)}
-                aria-pressed={selecionado === tutor.id}
-                className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left ${selecionado === tutor.id ? "border-primary bg-primary/5" : "hover:bg-secondary/40"}`}>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary"><PawPrint size={17} /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <strong className="break-words text-sm">{tutor.nome}</strong>
-                    {tutor.codigo_publico && <span className="text-xs text-muted-foreground">Código do cadastro {tutor.codigo_publico}</span>}
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${ativo ? "bg-emerald-100 text-emerald-800" : "bg-secondary text-muted-foreground"}`}>
-                      {ativo ? "Ativo" : portal?.auth_user_id ? "Inativo" : "Primeiro acesso"}
-                    </span>
+    <section className="mt-6 rounded-2xl border bg-card p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-black"><Users size={19} /> Tutores cadastrados</h2>
+        <button type="button" onClick={() => void carregar()} disabled={carregando || Boolean(emitindo)}
+          className="rounded-lg border p-2 text-muted-foreground" aria-label="Atualizar tutores">
+          <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
+        </button>
+      </div>
+      <ul className="mt-4 space-y-2">
+        {tutores.map((tutor) => {
+          const portal = portalPorTutor.get(tutor.id);
+          const vinculados = animaisPorTutor.get(tutor.id) || [];
+          const ativo = Boolean(portal?.ativo && portal.auth_user_id);
+          const convite = conviteValido(convites[tutor.id], portal);
+          const temTelefone = Boolean(whatsappDoTutor(tutor.telefone, ""));
+          const urlPendente = aberturaPendente === tutor.id && convite && modelo
+            ? linkConvite(tutor, convite, modelo) : null;
+          const impedimento = portal?.auth_user_id ? (ativo ? "Acesso já ativado" : "Acesso inativo")
+            : !portal ? "Usuário do portal indisponível"
+            : !temTelefone ? "Telefone indisponível"
+            : !slug ? "Endereço do portal indisponível"
+            : !modelo ? "Mensagem do convite indisponível" : "";
+          return (
+            <li key={tutor.id} className={`grid gap-3 rounded-xl border p-3 sm:p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center ${tutor.id === tutorIdInicial ? "border-primary bg-primary/5" : ""}`}>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h3 className="break-words text-sm font-bold">{tutor.nome}</h3>
+                  <span className="text-xs text-muted-foreground">Código no sistema <strong>{tutor.codigo_publico || "—"}</strong></span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${ativo ? "bg-emerald-100 text-emerald-800" : "bg-secondary text-muted-foreground"}`}>
+                    {ativo ? "Ativo" : portal?.auth_user_id ? "Inativo" : "Primeiro acesso"}
                   </span>
-                  <span className="mt-2 flex flex-wrap gap-1.5">
-                    {vinculados.length ? vinculados.map((animal) => <span key={animal.id} className="break-all rounded-md border px-2 py-0.5 text-xs">{animal.nome}</span>) : <span className="text-xs text-muted-foreground">Sem animais vinculados</span>}
-                  </span>
-                </span>
-              </button>
-            );
-          }) : !erroPainel && <p className="rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">Nenhum tutor cadastrado nesta clínica.</p>}
-        </div>
-      </section>
-
-      <aside className="self-start rounded-2xl border bg-card p-5 shadow-sm">
-        {!tutorSelecionado ? (
-          <div className="py-8 text-center">
-            <KeyRound className="mx-auto text-muted-foreground" />
-            <h2 className="mt-3 font-black">Selecione um tutor</h2>
-          </div>
-        ) : (
-          <div>
-            <div className="flex items-center gap-2">
-              {acessoSelecionado?.ativo && acessoSelecionado.auth_user_id ? <CheckCircle2 className="text-emerald-700" /> : <KeyRound />}
-              <h2 className="text-lg font-black">Acesso ao Portal do Tutor</h2>
-            </div>
-            <p className="mt-3 font-bold">{tutorSelecionado.nome}</p>
-            {acessoSelecionado ? (
-              <>
-                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="min-w-0"><dt className="text-muted-foreground">Usuário do portal</dt><dd className="break-all font-bold">{acessoSelecionado.usuario}</dd></div>
-                  {!acessoSelecionado.auth_user_id && <div><dt className="text-muted-foreground">Código de ativação</dt><dd className="font-bold">{conviteSelecionado?.token || "Gerar convite"}</dd></div>}
-                </dl>
-                {acessoSelecionado.auth_user_id ? (
-                  <p className="mt-2 text-sm">{acessoSelecionado.ativo ? "Acesso ativo" : "Acesso inativo"}{acessoSelecionado.ultimo_acesso_em && ` · Último acesso em ${new Date(acessoSelecionado.ultimo_acesso_em).toLocaleString("pt-BR")}`}</p>
-                ) : (
-                  <>
-                    <p className="mt-2 text-sm text-muted-foreground">Aguardando ativação pelo tutor.</p>
-                    <button type="button" disabled={emitindo} onClick={emitirConvite} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 font-bold text-primary disabled:opacity-40">
-                      {emitindo ? <RefreshCw size={16} className="animate-spin" /> : <KeyRound size={16} />}
-                      {acessoSelecionado.convite_expira_em ? "Gerar novo código" : "Gerar código de ativação"}
-                    </button>
-                  </>
-                )}
-              </>
-            ) : <p className="mt-2 text-sm text-muted-foreground">Usuário do portal indisponível para este cadastro.</p>}
-            {conviteSelecionado && (
-              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
-                <p className="text-sm font-black">Convite pronto</p>
-                <p className="mt-1 text-xs">Expira em {new Date(conviteSelecionado.expira_em).toLocaleString("pt-BR")}.</p>
-                {urlWhatsapp ? (
-                  <a href={urlWhatsapp} target="_blank" rel="noreferrer" onClick={(event) => {
-                    if (Date.parse(conviteSelecionado.expira_em) > Date.now()) return;
-                    event.preventDefault();
-                    setConvites(({ [tutorSelecionado.id]: _expirado, ...restantes }) => restantes);
-                    toast.error("O código expirou. Gere um novo convite.");
-                  }} className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-3 text-center text-sm font-bold text-white">
-                    <MessageCircle size={16} /> Enviar convite pelo WhatsApp
-                  </a>
-                ) : (
-                  <p className="mt-2 text-xs">{!modelo ? "Carregue a mensagem da clínica para enviar pelo WhatsApp." : "Cadastre um telefone válido para enviar pelo WhatsApp."}</p>
-                )}
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => copiar(conviteSelecionado.link, "Link copiado.")} className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white"><Copy size={13} /> Copiar link</button>
-                  <button type="button" onClick={() => copiar(conviteSelecionado.token, "Código copiado.")} className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold"><Copy size={13} /> Copiar código</button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <PawPrint size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {vinculados.length ? vinculados.map((animal) => (
+                    <span key={animal.id} className="break-words rounded-md border px-2 py-0.5 text-xs">{animal.nome}</span>
+                  )) : <span className="text-xs text-muted-foreground">Sem animais vinculados</span>}
+                </div>
+                <div className="mt-3 grid gap-x-8 gap-y-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <dl className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <div className="min-w-0"><dt className="text-muted-foreground">Telefone</dt><dd className="font-medium">{tutor.telefone || "—"}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">E-mail</dt><dd className="break-all font-medium">{tutor.email || "—"}</dd></div>
+                  </dl>
+                  <dl className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <div className="min-w-0"><dt className="text-muted-foreground">@ do portal</dt><dd className="break-all font-medium">{portal?.usuario || "—"}</dd></div>
+                    <div><dt className="text-muted-foreground">Código de ativação</dt><dd className="font-medium">{convite?.token || (portal?.auth_user_id ? "Já utilizado" : "Gerado ao convidar")}</dd></div>
+                  </dl>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-      </aside>
-    </div>
+              <div className="flex flex-col items-start gap-1 md:items-end">
+                {urlPendente ? (
+                  <a href={urlPendente} target="_blank" rel="noreferrer" onClick={(e) => {
+                    if (conviteValido(convites[tutor.id], portal)) return;
+                    e.preventDefault();
+                    setAberturaPendente(null);
+                    toast.error("O código expirou. Clique em Enviar convite novamente.");
+                  }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+                    <MessageCircle size={16} /> Abrir WhatsApp
+                  </a>
+                ) : (
+                  <button type="button" disabled={Boolean(impedimento || emitindo || carregando)}
+                    onClick={() => { if (portal) void enviarConvite(tutor, portal); }}
+                    className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                    {emitindo === tutor.id ? <RefreshCw size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                    {emitindo === tutor.id ? "Preparando…" : "Enviar convite"}
+                  </button>
+                )}
+                {impedimento && <span className="text-xs text-muted-foreground">{impedimento}</span>}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {!tutores.length && !erroPainel && <p className="mt-4 rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">Nenhum tutor cadastrado nesta clínica.</p>}
+    </section>
     <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
