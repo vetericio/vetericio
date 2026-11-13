@@ -72,7 +72,7 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
       return;
     }
     if (!identificacao.municipio.trim() || contatos.some(([chave]) => !identificacao[chave].trim())) {
-      setErro("Complete o município de emissão e os contatos profissionais.");
+      setErro("Informe o município de emissão e complete os contatos no cadastro do seu perfil.");
       return;
     }
     setGerando(true);
@@ -106,15 +106,22 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
               Confira os dados de emissão e assine o PDF. Na ficha do animal, abra Documentos e anexe o arquivo assinado com o tipo <strong>{titulo}</strong>. Marque Visível no Portal do Tutor para entregar a via ao responsável.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {([["municipio", "Município e UF de emissão"], ...contatos] as const).map(([chave, rotulo]) => (
+              <label className="text-sm font-bold">
+                Município e UF de emissão
+                <input value={identificacao.municipio} maxLength={220} required
+                  onChange={e => setIdentificacao(atual => ({ ...atual, municipio: e.target.value }))}
+                  className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+              </label>
+              {contatos.map(([chave, rotulo]) => (
                 <label key={chave} className="text-sm font-bold">
                   {rotulo}
-                  <input value={identificacao[chave]} maxLength={220} required
-                    type={chave === "emailProfissional" ? "email" : chave === "telefoneProfissional" ? "tel" : "text"}
-                    onChange={e => setIdentificacao(atual => ({ ...atual, [chave]: e.target.value }))}
-                    className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+                  <input value={identificacao[chave]} readOnly
+                    className="mt-1 min-h-11 w-full rounded-xl border bg-muted/30 px-3 font-normal" />
                 </label>
               ))}
+              {contatos.some(([chave]) => !identificacao[chave]) && (
+                <p className="text-sm text-destructive sm:col-span-2">Complete os contatos no cadastro profissional do seu perfil.</p>
+              )}
             </div>
             <label className="flex items-center gap-2 text-sm font-bold">
               <input type="checkbox" checked={comEstabelecimento} onChange={e => setComEstabelecimento(e.target.checked)} />
@@ -130,7 +137,7 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
                 </label>
               ))}
             </div>}
-            <button type="submit" disabled={gerando}
+            <button type="submit" disabled={gerando || contatos.some(([chave]) => !identificacao[chave])}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-60">
               <Download size={16} /> {gerando ? "Gerando…" : "Baixar PDF para assinatura"}
             </button>

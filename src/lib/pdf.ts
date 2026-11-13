@@ -1,6 +1,6 @@
 import type { Registro } from "./ficha";
 import type { Anamnese } from "./anamnese";
-import { lerSelo } from "./assinatura";
+import { lerSelos } from "./assinatura";
 
 import type { Curva } from "./curva";
 import { formatarTodos, linhaEstaForaDaFaixa, paraNumero } from "./ficha";
@@ -519,9 +519,7 @@ export async function exportarPdf(
     y += 12;
   });
 
-  // Assinatura e carimbo guardados no aparelho, no fim do documento.
-  const assinatura = lerSelo("assinatura");
-  const carimbo = lerSelo("carimbo");
+  const { assinatura, carimbo } = await lerSelos();
   const assinadoEm =
     opcoes?.assinadoEm ??
     new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });

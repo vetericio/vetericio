@@ -2934,6 +2934,24 @@ export type Database = {
           },
         ]
       }
+      oricse_selos_profissionais: {
+        Row: {
+          assinatura: string | null
+          carimbo: string | null
+          user_id: string
+        }
+        Insert: {
+          assinatura?: string | null
+          carimbo?: string | null
+          user_id: string
+        }
+        Update: {
+          assinatura?: string | null
+          carimbo?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       oricse_preferencias_usuario: {
         Row: {
           menu_lateral_fixo: boolean

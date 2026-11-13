@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
 import {
   gravarSelo,
   lerArquivoComoDataUrl,
-  lerSelo,
+  lerSelos,
   nomeAssinado,
   proporcao,
   removerFundoBranco,
@@ -72,11 +72,25 @@ export function AssinarDocumento() {
   const areaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ler = () =>
-      setSelos({ assinatura: lerSelo("assinatura"), carimbo: lerSelo("carimbo") });
-    ler();
+    let pedido = 0;
+    const ler = async () => {
+      const atual = ++pedido;
+      try {
+        const selosDoPerfil = await lerSelos();
+        if (pedido === atual) setSelos(selosDoPerfil);
+      } catch (error) {
+        if (pedido === atual) {
+          setSelos({ assinatura: null, carimbo: null });
+          toast.error(error instanceof Error ? error.message : "Não foi possível carregar as imagens do perfil.");
+        }
+      }
+    };
+    void ler();
     window.addEventListener("veterico-selos", ler);
-    return () => window.removeEventListener("veterico-selos", ler);
+    return () => {
+      pedido++;
+      window.removeEventListener("veterico-selos", ler);
+    };
   }, []);
 
   const subirSelo = async (tipo: TipoSelo, arquivo: File | undefined) => {
@@ -84,10 +98,10 @@ export function AssinarDocumento() {
     try {
       const bruto = await lerArquivoComoDataUrl(arquivo);
       const limpo = await removerFundoBranco(bruto);
-      gravarSelo(tipo, limpo);
-      toast.success(`${ROTULO[tipo]} salva neste aparelho`);
-    } catch {
-      toast.error("Não foi possível usar esta imagem");
+      await gravarSelo(tipo, limpo);
+      toast.success(`${ROTULO[tipo]}: imagem salva no seu perfil.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível usar esta imagem.");
     }
   };
 
@@ -254,7 +268,7 @@ export function AssinarDocumento() {
           Minha assinatura e carimbo
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Ficam guardados neste aparelho até você trocar, e vão no backup e na sincronização.
+          As imagens ficam disponíveis na sua conta até você trocar ou remover.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           {(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => (
@@ -287,7 +301,13 @@ export function AssinarDocumento() {
                 {selos[tipo] && (
                   <button
                     type="button"
-                    onClick={() => gravarSelo(tipo, null)}
+                    onClick={async () => {
+                      try {
+                        await gravarSelo(tipo, null);
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : "Não foi possível remover a imagem.");
+                      }
+                    }}
                     className="rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
                     aria-label={`Apagar ${ROTULO[tipo]}`}
                   >
@@ -415,7 +435,7 @@ export function AssinarDocumento() {
               </button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Salva como “{nomeAssinado(doc.nome)}”. Tudo acontece neste aparelho, sem internet.
+              Salva como “{nomeAssinado(doc.nome)}”. O arquivo é processado neste aparelho.
             </p>
           </>
         )}

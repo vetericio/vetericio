@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FileDown, FileText, Save, ShieldAlert, FileCheck2, Upload, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
 import { listarModelosClinicos } from "@/lib/oricse-storage.functions";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
@@ -19,9 +20,8 @@ function preencher(texto: string, dados: Contexto) {
     raca: dados.animal?.raca || "",
     tutor: dados.tutor?.nome || "",
     data: new Date().toLocaleDateString("pt-BR"),
-    // O profissional deve revisar e preencher os campos de identificação.
-    veterinario: "",
-    crmv: "",
+    veterinario: "{{veterinario}}",
+    crmv: "{{crmv}}",
   };
   const pendentes = new Set<string>();
   const resultado = texto.replace(/\{\{([a-z_]+)\}\}/g, (original, chave: string) => {
@@ -50,6 +50,7 @@ async function criarPdf(titulo: string, conteudo: string) {
   return { pdf, filename: nome + ".pdf" };
 }
 export function ModelosClinicosAtendimento() {
+  const [profissional,setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [modelos,setModelos] = useState<Modelo[]>([]);
   const [dados,setDados] = useState<Contexto | null>(null);
   const [selecionado,setSelecionado] = useState("");
@@ -79,11 +80,15 @@ export function ModelosClinicosAtendimento() {
           animalId, ...(tutorId ? { tutorId } : {}),
         }});
         if (!contexto.animal?.id || !contexto.clinicaId) throw new Error("Animal e clínica não identificados.");
-        const lista = await listarModelosClinicos({data:{
-          accessToken:sessao.session.access_token, clinicaId:contexto.clinicaId,
-        }});
+        const [lista, autor] = await Promise.all([
+          listarModelosClinicos({data:{
+            accessToken:sessao.session.access_token, clinicaId:contexto.clinicaId,
+          }}),
+          obterAutorClinico(),
+        ]);
         if (!ativo) return;
         setDados(contexto);
+        setProfissional(autor);
         // Receitas usam o fluxo próprio com assinatura e controles especiais.
         setModelos(lista.filter((item) => item.categoria !== "receita"));
       } catch(e) {
@@ -102,7 +107,9 @@ export function ModelosClinicosAtendimento() {
     setReferencia(m ? { id:m.id,versao:m.versao } : null);
     setRegistro(null);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);
   }
-  const pendencias = useMemo(() => [...conteudo.matchAll(/\{\{[^{}]+\}\}/g)].map((m) => m[0]), [conteudo]);
+  const pendencias = useMemo(() => [...conteudo.matchAll(/\{\{[^{}]+\}\}/g)].map((m) => m[0])
+    .filter(campo => campo !== "{{veterinario}}" && campo !== "{{crmv}}"), [conteudo]);
+  const perfilCompleto = Boolean(profissional?.nome && profissional.crmv);
   async function exportar(arquivar: boolean) {
     if (!modelo || !dados?.animal?.id || !dados.clinicaId) return;
     if (!conteudo.trim()) return toast.error("Preencha o conteúdo antes de gerar o documento.");
@@ -111,7 +118,11 @@ export function ModelosClinicosAtendimento() {
     if (arquivar && !window.confirm("Arquivar este PDF como rascunho interno, ainda sem assinatura?")) return;
     setEmitindo(true);
     try {
-      const { pdf,filename } = await criarPdf(modelo.nome,conteudo);
+      const autor = await obterAutorClinico();
+      if (!autor.nome || !autor.crmv) throw new Error("Complete nome, CRMV e UF no cadastro profissional do seu perfil.");
+      const texto = conteudo.replace(/\{\{(veterinario|crmv)\}\}/g,
+        (_original, campo) => campo === "veterinario" ? autor.nome : autor.crmv);
+      const { pdf,filename } = await criarPdf(modelo.nome, `Médico-veterinário: ${autor.nome} · ${autor.crmv}\n\n${texto}`);
       if (!arquivar) {
         pdf.save(filename);
         toast.success("PDF gerado para conferência. Não é um documento assinado.");
@@ -157,7 +168,7 @@ export function ModelosClinicosAtendimento() {
     setArquivoAssinado(arquivo);setRegistro(null);setUploadPendente(null);setAssinaturaConferida(false);
   }
   async function registrarAssinado() {
-    if (!modelo || !dados?.animal?.id || !dados?.tutorId || !dados.clinicaId || !arquivoAssinado || !assinaturaConferida) return;
+    if (!modelo || !dados?.animal?.id || !dados?.tutorId || !dados.clinicaId || !arquivoAssinado || !assinaturaConferida || !perfilCompleto) return;
     if (!conteudo.trim() || pendencias.length) return toast.error("Revise e preencha todos os campos do documento.");
     if (!window.confirm("Confirmar o registro do PDF assinado? Ele ficará privado até sua liberação expressa.")) return;
     setEmitindo(true);
@@ -235,6 +246,10 @@ export function ModelosClinicosAtendimento() {
     </label>
     {!modelos.length && <p className="mt-3 text-sm text-muted-foreground">Nenhum modelo clínico disponível. O administrador ou RT pode criar modelos nas Configurações da Clínica.</p>}
     {modelo && <div className="mt-4 space-y-3">
+      <p className="text-sm font-medium">
+        {perfilCompleto ? `Médico-veterinário: ${profissional?.nome} · ${profissional?.crmv}`
+          : "Complete nome, CRMV e UF no cadastro profissional do seu perfil."}
+      </p>
       <label className="block text-sm font-medium">Revisar e completar documento
         <textarea rows={15} maxLength={25000} value={conteudo} onChange={(e)=>{setConteudo(e.target.value);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);setRegistro(null);}}
           className="mt-1 w-full rounded-lg border bg-background p-3 font-mono text-sm leading-relaxed"/>
@@ -242,8 +257,8 @@ export function ModelosClinicosAtendimento() {
       {pendencias.length > 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Campos a preencher: {[...new Set(pendencias)].join(", ")}</p>}
       <p className="text-xs text-muted-foreground">O rascunho permanece privado. Para registrar uma emissão, assine o PDF pelo procedimento adequado, importe o arquivo assinado e confirme. Assinatura gráfica não equivale à certificação digital.</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={emitindo || Boolean(pendencias.length)} onClick={()=>void exportar(false)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-semibold disabled:opacity-50"><FileDown size={17}/> Baixar PDF</button>
-        <button type="button" disabled={emitindo || Boolean(pendencias.length)} onClick={()=>void exportar(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save size={17}/>{emitindo?"Processando...":"Arquivar rascunho"}</button>
+        <button type="button" disabled={emitindo || !perfilCompleto || Boolean(pendencias.length)} onClick={()=>void exportar(false)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-semibold disabled:opacity-50"><FileDown size={17}/> Baixar PDF</button>
+        <button type="button" disabled={emitindo || !perfilCompleto || Boolean(pendencias.length)} onClick={()=>void exportar(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Save size={17}/>{emitindo?"Processando...":"Arquivar rascunho"}</button>
       </div>
       <div className="mt-4 space-y-3 border-t pt-4">
         <div className="flex items-start gap-2"><FileCheck2 className="mt-0.5 text-primary" size={19}/>
@@ -267,7 +282,7 @@ export function ModelosClinicosAtendimento() {
             <span>Confirmo que conferi o conteúdo e a assinatura deste PDF. O ORICSE verifica a integridade do arquivo enviado, mas não valida criptograficamente certificados digitais ou assinaturas GOV.BR.</span>
           </label>
           <button type="button" onClick={()=>void registrarAssinado()}
-            disabled={emitindo || !assinaturaConferida || Boolean(pendencias.length)}
+            disabled={emitindo || !perfilCompleto || !assinaturaConferida || Boolean(pendencias.length)}
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
             <Save size={17}/>{emitindo?"Registrando...":"Registrar PDF assinado (privado)"}
           </button>

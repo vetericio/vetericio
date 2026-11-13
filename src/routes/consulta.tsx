@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronDown, ClipboardList, History, Save, Stethoscope } fro
 import { useEffect, useState } from "react";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
+import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/consulta")({ component: ConsultaSalva });
@@ -21,6 +22,8 @@ type Registro = {
   tutorId?: string;
   clinicaId?: string;
   autorId?: string;
+  autorNome?: string;
+  autorCrmv?: string;
   atualizadoEm?: string;
   status?: "rascunho" | "concluido" | "adendo";
   versao?: number;
@@ -172,10 +175,11 @@ function ConsultaSalva() {
     setSalvandoAdendo(true);
     setErro("");
     try {
+      const autor = await obterAutorClinico();
       const agora = new Date().toISOString();
       const novo: Registro = {
         id: crypto.randomUUID(), animalId: animal.id, tutorId: tutor?.id, clinicaId: registro.clinicaId,
-        autorId: registro.autorId, tipo: registro.tipo, subtipo: registro.subtipo, titulo: "Adendo — " + (registro.titulo || "Registro clínico"),
+        autorId: autor.id, autorNome: autor.identificacao, autorCrmv: autor.crmv || undefined, tipo: registro.tipo, subtipo: registro.subtipo, titulo: "Adendo — " + (registro.titulo || "Registro clínico"),
         detalhe: "ADENDO DO PRONTUÁRIO\n\n" + adendoTexto.trim(), data: agora.slice(0, 10), criadoEm: agora, atualizadoEm: agora,
         status: "adendo", versao: (registro.versao || 1) + adendos.length + 1, adendoDe: registro.id,
         dados: { tipo: "adendo", texto: adendoTexto.trim(), registroOriginalId: registro.id },
@@ -242,6 +246,10 @@ function ConsultaSalva() {
             <dt className="text-sm font-semibold text-slate-600">Contato</dt>
             <dd className="mt-1 text-base font-medium text-slate-950">{[tutor.telefone, tutor.outroTelefone].filter(Boolean).join(" · ")}</dd>
           </div>}
+          {registro.autorNome && <div>
+            <dt className="text-sm font-semibold text-slate-600">Autor do registro</dt>
+            <dd className="mt-1 text-base font-medium text-slate-950">{[registro.autorNome, registro.autorCrmv].filter(Boolean).join(" · ")}</dd>
+          </div>}
         </dl>
       </header>
 
@@ -300,6 +308,7 @@ function ConsultaSalva() {
               <h3 className="text-base font-bold text-slate-950">Adendo {adendo.versao ? "· v" + adendo.versao : ""}</h3>
               <time className="text-sm font-medium text-slate-600">{dataBR(adendo.criadoEm)}</time>
             </div>
+            {adendo.autorNome && <p className="mt-1 text-sm text-slate-600">{[adendo.autorNome, adendo.autorCrmv].filter(Boolean).join(" · ")}</p>}
             <p className="mt-2 whitespace-pre-wrap break-words text-base leading-7 text-slate-950">
               {adendo.detalhe?.replace(/^ADENDO DO PRONTUÁRIO\n\n/, "")}
             </p>

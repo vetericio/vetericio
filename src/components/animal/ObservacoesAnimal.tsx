@@ -2,7 +2,7 @@ import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { Clock3, Eye, Pencil, Plus, Trash2, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { obterAutorClinico } from "@/lib/perfil-clinico";
 
 type Registro = {
   id: string;
@@ -40,26 +40,6 @@ function formatarDataHora(valor?: string) {
   }).format(data);
 }
 
-function identificarUsuario(user: any, perfil?: any): UsuarioAtual {
-  const meta = user?.user_metadata || {};
-  const nome =
-    meta.nome ||
-    meta.full_name ||
-    meta.name ||
-    perfil?.username ||
-    perfil?.email ||
-    user?.email ||
-    "Usuário";
-
-  const crmvBase = meta.crmv || meta.responsavel_crmv || meta.crm_v || "";
-  const uf = meta.crmv_uf || meta.responsavel_crmv_uf || "";
-  const crmv = crmvBase
-    ? `${String(crmvBase).toUpperCase().startsWith("CRMV") ? crmvBase : `CRMV${uf ? `-${uf}` : ""} ${crmvBase}`}`
-    : "CRMV não informado";
-
-  return { id: user.id, nome: String(nome), crmv: String(crmv) };
-}
-
 export function ObservacoesAnimal({
   animalId,
   registros,
@@ -80,21 +60,10 @@ export function ObservacoesAnimal({
     let ativo = true;
     async function carregarUsuario() {
       try {
-        const { data } = await supabase.auth.getUser();
-        const user = data.user;
-        if (!user) return;
-        let perfil: any = null;
-        try {
-          const resposta = await (supabase as any)
-            .from("app_users")
-            .select("username,email")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          perfil = resposta.data;
-        } catch {
-          perfil = null;
-        }
-        if (ativo) setUsuario(identificarUsuario(user, perfil));
+        const perfil = await obterAutorClinico();
+        if (ativo) setUsuario({ id: perfil.id, nome: perfil.identificacao, crmv: perfil.crmv });
+      } catch {
+        if (ativo) setUsuario(null);
       } finally {
         if (ativo) setCarregandoUsuario(false);
       }
