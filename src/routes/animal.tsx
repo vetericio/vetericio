@@ -27,6 +27,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
+import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
+import { obterPerfilPessoa } from "@/lib/admin-users.functions";
+import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
@@ -106,31 +109,11 @@ type Registro = {
   fontePortal?: FontePortal;
   motivoOcultacao?: string | null;
   driveArquivoId?: string | null;
-  vacina?: VacinaPortal;
+  preventivo?: { tipo: TipoPreventivo; linha: VacinaPortal | VermifugoPortal };
 };
 type PesoRegistro = { id: string; animalId: string; peso: number; data: string; criadoEm: string };
-type VacinaPortal = {
-  id: string;
-  animal_id: string;
-  nome: string;
-  aplicada_em: string | null;
-  reforco_em: string | null;
-  lote: string | null;
-  observacoes: string | null;
-  visivel_tutor: boolean;
-  created_at: string;
-};
-type VermifugoPortal = {
-  id: string;
-  animal_id: string;
-  nome: string;
-  administrado_em: string | null;
-  proxima_dose_em: string | null;
-  lote: string | null;
-  observacoes: string | null;
-  visivel_tutor: boolean;
-  created_at: string;
-};
+type VacinaPortal = import("@/integrations/supabase/types").Database["public"]["Tables"]["oricse_portal_vacinas"]["Row"];
+type VermifugoPortal = import("@/integrations/supabase/types").Database["public"]["Tables"]["oricse_portal_vermifugos"]["Row"];
 type ExamePortal = {
   id: string;
   animal_id: string;
@@ -272,24 +255,32 @@ function rotuloMotivo(codigo?: string | null) {
   return codigo ? mapa[codigo] || codigo : "";
 }
 
-const CAMPOS_VACINA = "id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at";
+const CAMPOS_VACINA = `id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes,visivel_tutor,created_at,alvo_vacinacao,${selecaoPreventivos}` as const;
+const CAMPOS_VERMIFUGO = `id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes,visivel_tutor,created_at,principio_ativo,via,${selecaoPreventivos}` as const;
 
-function registroDeVacina(vacina: VacinaPortal): Registro {
+function registroPreventivo(linha: VacinaPortal | VermifugoPortal): Registro {
+  const vacina = "aplicada_em" in linha;
+  const retorno = vacina ? linha.reforco_em : linha.proxima_dose_em;
+  const data = vacina ? linha.aplicada_em : linha.administrado_em;
+  const validade = dataDoRotulo(linha.validade || "");
   return {
-    id: vacina.id,
-    animalId: vacina.animal_id,
-    tipo: "Vacinas",
-    titulo: vacina.nome,
+    id: linha.id, animalId: linha.animal_id, tipo: vacina ? "Vacinas" : "Vermífugos", titulo: linha.nome,
     detalhe: [
-      vacina.observacoes,
-      vacina.reforco_em ? `Reforço: ${formatarData(vacina.reforco_em)}` : "",
-      vacina.lote ? `Lote: ${vacina.lote}` : "",
+      linha.observacoes,
+      linha.dose && `Dose: ${linha.dose}`,
+      linha.hora_aplicacao && `Horário: ${linha.hora_aplicacao.slice(0, 5)}`,
+      linha.local_aplicacao && `Local: ${linha.local_aplicacao}`,
+      linha.fabricante && `Fabricante: ${linha.fabricante}`,
+      linha.lote && `Lote: ${linha.lote}`,
+      linha.fabricacao && `Fabricação: ${dataPreventivaBR(linha.fabricacao)}`,
+      validade && `Validade: ${dataPreventivaBR(validade)}`,
+      data && validade && data > fimDaValidade(validade) && "A data registrada é posterior à validade do produto.",
+      linha.veterinario_nome && `Responsável: ${linha.veterinario_nome} · CRMV-${linha.veterinario_uf || ""} ${linha.veterinario_crmv || ""}`,
+      retorno && `${vacina ? "Reforço" : "Próxima dose"}: ${formatarData(retorno)}`,
     ].filter(Boolean).join("\n"),
-    data: vacina.aplicada_em || vacina.created_at.slice(0, 10),
-    criadoEm: vacina.created_at,
-    visivelTutor: vacina.visivel_tutor,
-    fontePortal: "vacina",
-    vacina,
+    data: data || "", criadoEm: linha.created_at, visivelTutor: linha.visivel_tutor,
+    fontePortal: vacina ? "vacina" : "vermifugo",
+    preventivo: { tipo: vacina ? "vacina" : "vermifugo", linha },
   };
 }
 
@@ -351,7 +342,11 @@ function AnimalFicha() {
   const [clinicaId, setClinicaId] = useState("");
   const [pesos, setPesos] = useState<PesoRegistro[]>([]);
   const [modalTipo, setModalTipo] = useState<RegistroTipo | null>(null);
-  const [vacinaEmEdicao, setVacinaEmEdicao] = useState<VacinaPortal | null>(null);
+  const [preventivoEmEdicao, setPreventivoEmEdicao] = useState<Registro["preventivo"]>(undefined);
+  const [dadosPreventivos, setDadosPreventivos] = useState(camposPreventivos);
+  const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
+  const [buscandoProfissional, setBuscandoProfissional] = useState(false);
+  const tipoPreventivo = modalTipo === "Vacinas" ? "vacina" : modalTipo === "Vermífugos" ? "vermifugo" : null;
   const [modalPeso, setModalPeso] = useState(false);
   const [pesoNovo, setPesoNovo] = useState("");
   const [dataPeso, setDataPeso] = useState(() => new Date().toISOString().slice(0, 10));
@@ -384,7 +379,7 @@ function AnimalFicha() {
           .order("aplicada_em", { ascending: false, nullsFirst: false }),
         (supabaseBanco as any)
           .from("oricse_portal_vermifugos")
-          .select("id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes,visivel_tutor,created_at")
+          .select(CAMPOS_VERMIFUGO)
           .eq("clinica_id", cid)
           .eq("animal_id", animalId)
           .order("administrado_em", { ascending: false, nullsFirst: false }),
@@ -421,22 +416,8 @@ function AnimalFicha() {
       const docs = (docsResult.data || []) as DocumentoPortal[];
       const receitas = (receitasResult.data || []) as ReceitaPortal[];
       const convertidos: Registro[] = [
-        ...vacinas.map(registroDeVacina),
-        ...vermifugos.map((v) => ({
-          id: v.id,
-          animalId: v.animal_id,
-          tipo: "Vermífugos" as const,
-          titulo: v.nome,
-          detalhe: [
-            v.observacoes,
-            v.proxima_dose_em ? `Próxima dose: ${formatarData(v.proxima_dose_em)}` : "",
-            v.lote ? `Lote: ${v.lote}` : "",
-          ].filter(Boolean).join("\n"),
-          data: v.administrado_em || v.created_at.slice(0, 10),
-          criadoEm: v.created_at,
-          visivelTutor: v.visivel_tutor,
-          fontePortal: "vermifugo" as const,
-        })),
+        ...vacinas.map(registroPreventivo),
+        ...vermifugos.map(registroPreventivo),
         ...exames.map((e) => ({
           id: e.id,
           animalId: e.animal_id,
@@ -580,11 +561,12 @@ function AnimalFicha() {
       setAba("Observações");
       return;
     }
-    setVacinaEmEdicao(null);
+    setPreventivoEmEdicao(undefined);
+    setDadosPreventivos(camposPreventivos);
     setModalTipo(tipo);
     setTitulo("");
     setDetalhe("");
-    setData(new Date().toISOString().slice(0, 10));
+    setData(hojeNoBrasil());
     setVisivelTutor(false);
     setReforcoEm("");
     setLote("");
@@ -593,21 +575,44 @@ function AnimalFicha() {
     setTipoDetalhe(tipo === "Exames" ? "Exame" : tipo === "Documentos" ? "Documento" : "");
   }
 
-  function editarVacina(registro: Registro) {
-    const vacina = registro.vacina;
-    if (!vacina || vacina.animal_id !== animalId) return;
-    setVacinaEmEdicao(vacina);
-    setTitulo(vacina.nome);
-    setData(vacina.aplicada_em || "");
-    setReforcoEm(vacina.reforco_em || "");
-    setLote(vacina.lote || "");
-    setDetalhe(vacina.observacoes || "");
+  function editarPreventivo(registro: Registro) {
+    const item = registro.preventivo;
+    if (!item || item.linha.animal_id !== animalId) return;
+    const linha = item.linha;
+    setPreventivoEmEdicao(item);
+    setDadosPreventivos(normalizarCamposPreventivos(linha));
+    setTitulo(linha.nome);
+    setData(("aplicada_em" in linha ? linha.aplicada_em : linha.administrado_em) || "");
+    setReforcoEm(("reforco_em" in linha ? linha.reforco_em : linha.proxima_dose_em) || "");
+    setLote(linha.lote || "");
+    setDetalhe(linha.observacoes || "");
     setVisivelTutor(Boolean(registro.visivelTutor));
-    setModalTipo("Vacinas");
+    setModalTipo(registro.tipo);
+  }
+
+  async function preencherProfissional() {
+    if (buscandoProfissional) return;
+    setBuscandoProfissional(true);
+    try {
+      const { data: sessao } = await supabase.auth.getSession();
+      const accessToken = sessao.session?.access_token;
+      if (!accessToken) throw new Error("Entre novamente para identificar o profissional.");
+      const perfil = await obterPerfilPessoa({ data: { accessToken } });
+      if (!perfil?.nome_completo || !perfil.crmv || !perfil.crmv_uf) {
+        throw new Error("Complete nome, CRMV e UF no cadastro pessoal.");
+      }
+      setDadosPreventivos(atual => ({
+        ...atual, veterinario_nome: perfil.nome_completo, veterinario_crmv: perfil.crmv, veterinario_uf: perfil.crmv_uf,
+      }));
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível consultar o cadastro profissional.");
+    } finally {
+      setBuscandoProfissional(false);
+    }
   }
 
   async function salvarRegistro() {
-    if (!animal || !modalTipo || salvandoPortal) return;
+    if (!animal || !modalTipo || salvandoPortal || buscandoProfissional) return;
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
     if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
@@ -619,45 +624,49 @@ function AnimalFicha() {
         return void toast.error("Envie um PDF de até 20 MB.");
       setSalvandoPortal(true);
       try {
-        if (modalTipo === "Vacinas") {
-          const campos = {
-            nome: titulo.trim(),
-            aplicada_em: data || null,
-            reforco_em: reforcoEm || null,
-            lote: lote.trim() || null,
-            observacoes: detalhe.trim() || null,
-            visivel_tutor: visivelTutor,
+        if (tipoPreventivo) {
+          const campos = normalizarCamposPreventivos(dadosPreventivos);
+          const anterior = preventivoEmEdicao?.linha;
+          const dataAnterior = anterior ? ("aplicada_em" in anterior ? anterior.aplicada_em : anterior.administrado_em) : null;
+          const retornoAnterior = anterior ? ("reforco_em" in anterior ? anterior.reforco_em : anterior.proxima_dose_em) : null;
+          const legadoIncompleto = anterior && pendenciasPreventivo(tipoPreventivo, {
+            ...normalizarCamposPreventivos(anterior), nome: anterior.nome, data: dataAnterior || "",
+            lote: anterior.lote || "", retorno: retornoAnterior || "",
+          }).length > 0;
+          const pendencias = pendenciasPreventivo(tipoPreventivo, {
+            ...campos, nome: titulo, data, lote, retorno: reforcoEm,
+          }, !legadoIncompleto);
+          if (pendencias.length) throw new Error("Confira: " + pendencias.join(", ") + ".");
+          if (animal.id !== animalId || (anterior && anterior.animal_id !== animal.id)) {
+            throw new Error("O registro não pertence à ficha aberta.");
+          }
+          const comuns = {
+            nome: titulo.trim(), lote: lote.trim() || null, observacoes: detalhe.trim() || null,
+            visivel_tutor: visivelTutor, fabricante: campos.fabricante || null, dose: campos.dose || null,
+            fabricacao: dataDoRotulo(campos.fabricacao), validade: dataDoRotulo(campos.validade),
+            hora_aplicacao: campos.hora_aplicacao || null, local_aplicacao: campos.local_aplicacao || null,
+            veterinario_nome: campos.veterinario_nome || null, veterinario_crmv: campos.veterinario_crmv || null,
+            veterinario_uf: campos.veterinario_uf || null, updated_at: new Date().toISOString(),
           };
-          if (vacinaEmEdicao && (vacinaEmEdicao.animal_id !== animal.id || animal.id !== animalId))
-            throw new Error("A vacina não pertence à ficha aberta.");
+          const clinicaAnimal = { clinica_id: clinicaId, animal_id: animal.id };
           const vacinas = supabaseBanco.from("oricse_portal_vacinas");
-          const operacao = vacinaEmEdicao
-            ? vacinas.update({ ...campos, updated_at: new Date().toISOString() })
-                .eq("id", vacinaEmEdicao.id)
-                .eq("clinica_id", clinicaId)
-                .eq("animal_id", animal.id)
-            : vacinas.insert({ ...campos, clinica_id: clinicaId, animal_id: animal.id });
-          const { data: salva, error } = await operacao.select(CAMPOS_VACINA).single();
-          if (error || !salva) throw new Error("Não foi possível salvar a vacina. Confira a permissão ou atualize a ficha.");
-          const registro = registroDeVacina(salva);
-          setRegistrosPortal((lista) => [...lista.filter((item) =>
-            item.fontePortal !== "vacina" || item.id !== registro.id), registro]);
+          const vermifugos = supabaseBanco.from("oricse_portal_vermifugos");
+          const camposVacina = { ...comuns, aplicada_em: data || null, reforco_em: reforcoEm || null, alvo_vacinacao: campos.alvo_vacinacao || null };
+          const camposVermifugo = { ...comuns, administrado_em: data || null, proxima_dose_em: reforcoEm || null, principio_ativo: campos.principio_ativo || null, via: campos.via || null };
+          const salvo = tipoPreventivo === "vacina"
+            ? await (anterior
+              ? vacinas.update(camposVacina).eq("id", anterior.id).match(clinicaAnimal)
+              : vacinas.insert({ ...camposVacina, ...clinicaAnimal })).select(CAMPOS_VACINA).single()
+            : await (anterior
+              ? vermifugos.update(camposVermifugo).eq("id", anterior.id).match(clinicaAnimal)
+              : vermifugos.insert({ ...camposVermifugo, ...clinicaAnimal })).select(CAMPOS_VERMIFUGO).single();
+          if (salvo.error || !salvo.data) throw new Error("Não foi possível salvar. Confira sua permissão ou atualize a ficha.");
+          const registro = registroPreventivo(salvo.data as VacinaPortal | VermifugoPortal);
+          setRegistrosPortal(lista => [...lista.filter(item => item.fontePortal !== registro.fontePortal || item.id !== registro.id), registro]);
           setModalTipo(null);
-          setVacinaEmEdicao(null);
-          toast.success(vacinaEmEdicao ? "Vacina atualizada." : "Vacina adicionada.");
+          setPreventivoEmEdicao(undefined);
+          toast.success(anterior ? "Registro atualizado." : "Registro adicionado.");
           return;
-        } else if (modalTipo === "Vermífugos") {
-          const { error } = await (supabaseBanco as any).from("oricse_portal_vermifugos").insert({
-            clinica_id: clinicaId,
-            animal_id: animal.id,
-            nome: titulo.trim(),
-            administrado_em: data || null,
-            proxima_dose_em: reforcoEm || null,
-            lote: lote.trim() || null,
-            observacoes: detalhe.trim() || null,
-            visivel_tutor: visivelTutor,
-          });
-          if (error) throw error;
         } else {
           const exame = modalTipo === "Exames";
           let driveArquivoId: string | null = null;
@@ -1044,15 +1053,22 @@ function AnimalFicha() {
               registros={registrosAnimal.filter((r) => r.tipo === aba)}
               onAdd={() => abrirNovo(aba as RegistroTipo)}
               onTogglePortal={alternarVisibilidade}
-              onEditarVacina={editarVacina}
+              onEditarPreventivo={editarPreventivo}
+              onDocumentoPreventivo={registro => setDocumentoPreventivo(registro.preventivo)}
             />
+          )}
+
+          {documentoPreventivo && documentoPreventivo.linha.animal_id === animal.id && (
+            <DocumentoPreventivo key={documentoPreventivo.linha.id} clinicaId={clinicaId} animalId={animal.id}
+              registroId={documentoPreventivo.linha.id} tipo={documentoPreventivo.tipo}
+              onClose={() => setDocumentoPreventivo(undefined)} />
           )}
 
           {modalTipo && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
               onMouseDown={(e) => {
-                if (!salvandoPortal && e.currentTarget === e.target) setModalTipo(null);
+                if (!salvandoPortal && !buscandoProfissional && e.currentTarget === e.target) setModalTipo(null);
               }}
             >
               <div role="dialog" aria-modal="true" aria-labelledby="titulo-modal-registro" className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl">
@@ -1062,12 +1078,12 @@ function AnimalFicha() {
                       {animal.nome}
                     </p>
                     <h2 id="titulo-modal-registro" className="text-2xl font-black">
-                      {vacinaEmEdicao ? "Editar vacina" : `Adicionar em ${modalTipo}`}
+                      {preventivoEmEdicao ? (tipoPreventivo === "vacina" ? "Editar vacina" : "Editar vermifugação") : `Adicionar em ${modalTipo}`}
                     </h2>
                   </div>
                   <button
                     type="button"
-                    disabled={salvandoPortal}
+                    disabled={salvandoPortal || buscandoProfissional}
                     onClick={() => setModalTipo(null)}
                     className="rounded-lg p-2 hover:bg-muted"
                   >
@@ -1076,7 +1092,7 @@ function AnimalFicha() {
                 </div>
                 <div className="mt-5 space-y-4">
                   <label className="block text-sm font-bold">
-                    {modalTipo === "Vacinas" ? "Data da aplicação" : "Data"}
+                    {tipoPreventivo ? "Data da aplicação" : "Data"}
                     <input
                       type="date"
                       value={data}
@@ -1085,7 +1101,7 @@ function AnimalFicha() {
                     />
                   </label>
                   <label className="block text-sm font-bold">
-                    {modalTipo === "Vacinas" ? "Nome da vacina" : "Título"}
+                    {tipoPreventivo === "vacina" ? "Nome comercial da vacina" : tipoPreventivo === "vermifugo" ? "Produto administrado" : "Título"}
                     <input
                       autoFocus
                       value={titulo}
@@ -1102,7 +1118,7 @@ function AnimalFicha() {
                       className="mt-1 min-h-11 w-full rounded-xl border px-3"
                     />
                   </label>
-                  {(modalTipo === "Vacinas" || modalTipo === "Vermífugos") && (
+                  {tipoPreventivo && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block text-sm font-bold">
                         {modalTipo === "Vermífugos" ? "Próxima dose" : "Próximo reforço"}
@@ -1123,6 +1139,10 @@ function AnimalFicha() {
                       </label>
                     </div>
                   )}
+                  {tipoPreventivo && (
+                    <CamposDoPreventivo tipo={tipoPreventivo} valores={dadosPreventivos} onChange={setDadosPreventivos}
+                      buscando={buscandoProfissional} onPreencher={() => void preencherProfissional()} />
+                  )}
                   {(modalTipo === "Exames" || modalTipo === "Documentos") && (
                     <label className="block text-sm font-bold">
                       Tipo
@@ -1135,7 +1155,7 @@ function AnimalFicha() {
                         className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"
                         list={modalTipo === "Documentos" ? "tipos-documento-portal" : undefined}
                       />
-                      {modalTipo === "Documentos" && <datalist id="tipos-documento-portal">{["Laudo", "Atestado", "Cartão de vacinação", "Carteira de saúde", "Resultado de exame", "Termo", "Relatório", "Orientações", "Outros"].map(t=><option key={t} value={t}/>)}</datalist>}
+                      {modalTipo === "Documentos" && <datalist id="tipos-documento-portal">{["Laudo", "Atestado", "Atestado de vacinação", "Comprovante de vermifugação", "Cartão de vacinação", "Carteira de saúde", "Resultado de exame", "Termo", "Relatório", "Orientações", "Outros"].map(t=><option key={t} value={t}/>)}</datalist>}
                     </label>
                   )}
                   {(modalTipo === "Exames" || modalTipo === "Documentos") && (
@@ -1199,7 +1219,7 @@ function AnimalFicha() {
                 <div className="mt-5 flex justify-end gap-2">
                   <button
                     type="button"
-                    disabled={salvandoPortal}
+                    disabled={salvandoPortal || buscandoProfissional}
                     onClick={() => setModalTipo(null)}
                     className="rounded-xl border px-4 py-2.5 font-bold"
                   >
@@ -1207,7 +1227,7 @@ function AnimalFicha() {
                   </button>
                   <button
                     type="button"
-                    disabled={salvandoPortal}
+                    disabled={salvandoPortal || buscandoProfissional}
                     onClick={() => void salvarRegistro()}
                     className="rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground disabled:opacity-50"
                   >
@@ -1278,6 +1298,53 @@ function AnimalFicha() {
         </div>
       </div>
     </main>
+  );
+}
+
+function CamposDoPreventivo({ tipo, valores, onChange, buscando, onPreencher }: {
+  tipo: TipoPreventivo;
+  valores: CamposPreventivos;
+  onChange: React.Dispatch<React.SetStateAction<CamposPreventivos>>;
+  buscando: boolean;
+  onPreencher: () => void;
+}) {
+  const campos: [keyof CamposPreventivos, string, string?][] = [
+    ...(tipo === "vacina"
+      ? [["alvo_vacinacao", "Vacinação contra"]] as [keyof CamposPreventivos, string][]
+      : [["principio_ativo", "Princípio ativo (quando disponível)"], ["via", "Via de administração"]] as [keyof CamposPreventivos, string][]),
+    ["dose", "Dose aplicada e unidade"],
+    ["fabricante", tipo === "vacina" ? "Fabricante" : "Fabricante (quando disponível)"],
+    ["fabricacao", "Fabricação", "DD/MM/AAAA ou MM/AAAA"],
+    ["validade", "Validade", "DD/MM/AAAA ou MM/AAAA"],
+    ["hora_aplicacao", "Horário da aplicação"],
+    ["local_aplicacao", "Local da aplicação"],
+  ];
+  function campo(chave: keyof CamposPreventivos, rotulo: string, dica?: string) {
+    return <label key={chave} className="block text-sm font-bold">
+      {rotulo}
+      <input value={valores[chave]} type={chave === "hora_aplicacao" ? "time" : "text"}
+        maxLength={chave === "veterinario_uf" ? 2 : 180} placeholder={dica}
+        onChange={e => onChange(atual => ({ ...atual, [chave]: e.target.value }))}
+        className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal" />
+    </label>;
+  }
+  return (
+    <>
+      <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
+        <legend className="px-1 text-sm font-black">Produto e aplicação</legend>
+        {campos.map(([chave, rotulo, dica]) => campo(chave, rotulo, dica))}
+      </fieldset>
+      <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
+        <legend className="px-1 text-sm font-black">Médico-veterinário responsável pelo ato</legend>
+        <div className="sm:col-span-2">{campo("veterinario_nome", "Nome completo")}</div>
+        {campo("veterinario_crmv", "Número do CRMV")}
+        {campo("veterinario_uf", "UF do CRMV")}
+        <button type="button" disabled={buscando} onClick={onPreencher}
+          className="min-h-10 justify-self-start rounded-lg border px-3 text-sm font-bold sm:col-span-2">
+          {buscando ? "Consultando…" : "Usar meu cadastro profissional"}
+        </button>
+      </fieldset>
+    </>
   );
 }
 
@@ -1484,13 +1551,15 @@ function SecaoCompleta({
   registros,
   onAdd,
   onTogglePortal,
-  onEditarVacina,
+  onEditarPreventivo,
+  onDocumentoPreventivo,
 }: {
   aba: Aba;
   registros: Registro[];
   onAdd: () => void;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
-  onEditarVacina: (registro: Registro) => void;
+  onEditarPreventivo: (registro: Registro) => void;
+  onDocumentoPreventivo: (registro: Registro) => void;
 }) {
   const Icon = iconFor(aba);
   return (
@@ -1521,15 +1590,22 @@ function SecaoCompleta({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {r.vacina && (
+                    {r.preventivo && (
+                      <>
                       <button
                         type="button"
-                        onClick={() => onEditarVacina(r)}
-                        aria-label={`Editar vacina ${r.titulo}`}
+                        onClick={() => onEditarPreventivo(r)}
+                        aria-label={`Editar ${r.titulo}`}
                         className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted"
                       >
                         <Pencil size={14} /> Editar
                       </button>
+                      <button type="button" onClick={() => onDocumentoPreventivo(r)}
+                        aria-label={`Preparar PDF de ${r.titulo}`}
+                        className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted">
+                        <FileText size={14} /> Preparar PDF
+                      </button>
+                      </>
                     )}
                     {r.fontePortal === "receita" ? (
                       <span

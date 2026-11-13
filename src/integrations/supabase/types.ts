@@ -2709,6 +2709,16 @@ export type Database = {
       }
       oricse_portal_vacinas: {
         Row: {
+          alvo_vacinacao: string | null
+          dose: string | null
+          fabricacao: string | null
+          fabricante: string | null
+          hora_aplicacao: string | null
+          local_aplicacao: string | null
+          validade: string | null
+          veterinario_crmv: string | null
+          veterinario_nome: string | null
+          veterinario_uf: string | null
           animal_id: string
           aplicada_em: string | null
           clinica_id: string
@@ -2722,6 +2732,16 @@ export type Database = {
           visivel_tutor: boolean
         }
         Insert: {
+          alvo_vacinacao?: string | null
+          dose?: string | null
+          fabricacao?: string | null
+          fabricante?: string | null
+          hora_aplicacao?: string | null
+          local_aplicacao?: string | null
+          validade?: string | null
+          veterinario_crmv?: string | null
+          veterinario_nome?: string | null
+          veterinario_uf?: string | null
           animal_id: string
           aplicada_em?: string | null
           clinica_id: string
@@ -2735,6 +2755,16 @@ export type Database = {
           visivel_tutor?: boolean
         }
         Update: {
+          alvo_vacinacao?: string | null
+          dose?: string | null
+          fabricacao?: string | null
+          fabricante?: string | null
+          hora_aplicacao?: string | null
+          local_aplicacao?: string | null
+          validade?: string | null
+          veterinario_crmv?: string | null
+          veterinario_nome?: string | null
+          veterinario_uf?: string | null
           animal_id?: string
           aplicada_em?: string | null
           clinica_id?: string
@@ -2766,6 +2796,17 @@ export type Database = {
       }
       oricse_portal_vermifugos: {
         Row: {
+          dose: string | null
+          fabricacao: string | null
+          fabricante: string | null
+          hora_aplicacao: string | null
+          local_aplicacao: string | null
+          principio_ativo: string | null
+          validade: string | null
+          veterinario_crmv: string | null
+          veterinario_nome: string | null
+          veterinario_uf: string | null
+          via: string | null
           animal_id: string
           administrado_em: string | null
           clinica_id: string
@@ -2779,6 +2820,17 @@ export type Database = {
           visivel_tutor: boolean
         }
         Insert: {
+          dose?: string | null
+          fabricacao?: string | null
+          fabricante?: string | null
+          hora_aplicacao?: string | null
+          local_aplicacao?: string | null
+          principio_ativo?: string | null
+          validade?: string | null
+          veterinario_crmv?: string | null
+          veterinario_nome?: string | null
+          veterinario_uf?: string | null
+          via?: string | null
           animal_id: string
           administrado_em?: string | null
           clinica_id: string
@@ -2792,6 +2844,17 @@ export type Database = {
           visivel_tutor?: boolean
         }
         Update: {
+          dose?: string | null
+          fabricacao?: string | null
+          fabricante?: string | null
+          hora_aplicacao?: string | null
+          local_aplicacao?: string | null
+          principio_ativo?: string | null
+          validade?: string | null
+          veterinario_crmv?: string | null
+          veterinario_nome?: string | null
+          veterinario_uf?: string | null
+          via?: string | null
           animal_id?: string
           administrado_em?: string | null
           clinica_id?: string

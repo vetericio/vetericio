@@ -7,6 +7,7 @@ import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClin
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
 import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import "./portal-tutor-area.css";
+import { dataDoRotulo, dataPreventivaBR } from "@/lib/dados-preventivos";
 import { pendenciasDosPets, type FonteCuidados } from "@/lib/portal-pet-care";
 import { prepararFotoDoPet } from "@/lib/portal-pet-photo";
 import { ArrowLeft, Camera, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, HeartPulse, Loader2, LockKeyhole, LogOut, PawPrint, ShieldCheck } from "lucide-react";
@@ -48,8 +49,14 @@ function estiloTemaPortal(tema:TemaPortal|null):CSSProperties|undefined{
 
 type Contexto={clinica_id:string;clinica_nome:string;clinica_slug:string;clinica_logo_url:string|null;tutor_id:string;tutor_nome:string;tutor_telefone:string|null;tutor_email:string|null;usuario:string};
 type Animal={id:string;nome:string;especie:string;raca:string;sexo:string;nascimento:string|null;peso_kg:number|null;foto_url:string|null};
-type Vacina={id:string;animal_id:string;nome:string;aplicada_em:string|null;reforco_em:string|null;lote:string|null;observacoes:string|null};
-type Vermifugo={id:string;animal_id:string;nome:string;administrado_em:string|null;proxima_dose_em:string|null;lote:string|null;observacoes:string|null};
+type DadosAplicacao = {
+  fabricante?: string | null; dose?: string | null; fabricacao?: string | null; validade?: string | null;
+  hora_aplicacao?: string | null; local_aplicacao?: string | null;
+  veterinario_nome?: string | null; veterinario_crmv?: string | null; veterinario_uf?: string | null;
+  alvo_vacinacao?: string | null; principio_ativo?: string | null; via?: string | null;
+};
+type Vacina=DadosAplicacao&{id:string;animal_id:string;nome:string;aplicada_em:string|null;reforco_em:string|null;lote:string|null;observacoes:string|null};
+type Vermifugo=DadosAplicacao&{id:string;animal_id:string;nome:string;administrado_em:string|null;proxima_dose_em:string|null;lote:string|null;observacoes:string|null};
 type Exame={id:string;animal_id:string;titulo:string;tipo:string;realizado_em:string|null;resultado_resumo:string|null;drive_arquivo_id:string|null};
 type Documento={id:string;animal_id:string;titulo:string;tipo:string;data_documento:string|null;observacoes:string|null;drive_arquivo_id:string|null};
 type Receita={id:string;animal_id:string;tipo:"normal"|"especial";numero:string|null;titulo:string;emitida_em:string;drive_arquivo_id:string|null};
@@ -259,9 +266,10 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
     async function carregarCuidados(ctx: Contexto) {
       const vacinasColunas = "id,animal_id,nome,aplicada_em,reforco_em,lote,observacoes";
       const vermifugosColunas = "id,animal_id,nome,administrado_em,proxima_dose_em,lote,observacoes";
+      const dadosAplicacao = "fabricante,dose,fabricacao,validade,hora_aplicacao,local_aplicacao,veterinario_nome,veterinario_crmv,veterinario_uf";
       const [vacinasBanco, vermifugosBanco, vacinasLegadas, vermifugosLegados] = await Promise.all([
-        supabaseBanco.from("oricse_portal_vacinas").select(vacinasColunas, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
-        supabaseBanco.from("oricse_portal_vermifugos").select(vermifugosColunas, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
+        supabaseBanco.from("oricse_portal_vacinas").select(`${vacinasColunas},${dadosAplicacao},alvo_vacinacao`, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
+        supabaseBanco.from("oricse_portal_vermifugos").select(`${vermifugosColunas},${dadosAplicacao},principio_ativo,via`, { count: "exact" }).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
         supabase.from("oricse_portal_vacinas").select(vacinasColunas).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
         supabase.from("oricse_portal_vermifugos").select(vermifugosColunas).eq("clinica_id", ctx.clinica_id).eq("visivel_tutor", true),
       ]);
@@ -820,8 +828,14 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   {secaoAtual.id==="documentos"&&portalConfig.exibir_documentos!==false&&<Lista titulo="Documentos, laudos e atestados" vazio="Nenhum documento liberado.">{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista>}
   {secaoAtual.id==="exames"&&<Lista titulo="Exames" vazio="Nenhum exame liberado.">{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
   {secaoAtual.id==="receitas"&&<Lista titulo="Receitas" vazio="Nenhuma receita disponível.">{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
-  {secaoAtual.id==="vacinas"&&<><Lista titulo="Cartões e carteiras em PDF" vazio="Nenhum cartão em PDF liberado.">{docsAnimal.filter(d=>d.tipo==="Cartão de vacinação"||d.tipo==="Carteira de saúde").map(d=><div key={d.id} className="flex justify-between rounded-xl border p-4"><strong>{d.titulo}</strong>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div>)}</Lista><Lista titulo="Cartão de vacinas e reforços" vazio="Nenhuma vacina ou cartão liberado.">{vacinasAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><strong>{v.nome}</strong>{v.reforco_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Reforço {dataBr(v.reforco_em)}</span>}</div><p className="text-xs text-slate-500">Aplicada {dataBr(v.aplicada_em)}{v.lote?` · Lote ${v.lote}`:""}</p>{v.observacoes&&<p className="mt-2 text-sm">{v.observacoes}</p>}</div>)}</Lista></>}
-  {secaoAtual.id==="vermifugos"&&<Lista titulo="Vermífugos e próximas doses" vazio="Nenhuma vermifugação liberada pela clínica.">{vermifugosAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{v.nome}</strong>{v.proxima_dose_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Próxima dose: {dataBr(v.proxima_dose_em)}</span>}</div><p className="mt-1 text-xs text-slate-500">Administrado: {dataBr(v.administrado_em)}{v.lote?` · Lote ${v.lote}`:""}</p>{v.observacoes&&<p className="mt-2 whitespace-pre-wrap text-sm">{v.observacoes}</p>}</div>)}</Lista>}
+  {secaoAtual.id==="vacinas"&&<><Lista titulo="Documentos de vacinação em PDF" vazio="Nenhum documento de vacinação em PDF liberado.">{docsAnimal.filter(d=>["Atestado de vacinação", "Cartão de vacinação", "Carteira de vacinação", "Carteira de saúde"].includes(d.tipo)).map(d=><div key={d.id} className="flex justify-between rounded-xl border p-4"><strong>{d.titulo}</strong>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div>)}</Lista><Lista titulo="Cartão de vacinas e reforços" vazio="Nenhuma vacina ou cartão liberado.">{vacinasAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><strong>{v.nome}</strong>{v.reforco_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Reforço {dataBr(v.reforco_em)}</span>}</div><p className="text-xs text-slate-500">Aplicada {dataBr(v.aplicada_em)}{v.lote?` · Lote ${v.lote}`:""}</p><DadosDoAto dados={v} />{v.observacoes&&<p className="mt-2 text-sm">{v.observacoes}</p>}</div>)}</Lista></>}
+  {secaoAtual.id==="vermifugos"&&<><Lista titulo="Comprovantes em PDF" vazio="Nenhum comprovante em PDF liberado.">
+    {docsAnimal.filter(d => d.tipo === "Comprovante de vermifugação" && d.drive_arquivo_id).map(d => (
+      <div key={d.id} className="flex justify-between gap-3 rounded-xl border p-4">
+        <strong>{d.titulo}</strong><BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF" />
+      </div>
+    ))}
+  </Lista><Lista titulo="Vermífugos e próximas doses" vazio="Nenhuma vermifugação liberada pela clínica.">{vermifugosAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{v.nome}</strong>{v.proxima_dose_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Próxima dose: {dataBr(v.proxima_dose_em)}</span>}</div><p className="mt-1 text-xs text-slate-500">Administrado: {dataBr(v.administrado_em)}{v.lote?` · Lote ${v.lote}`:""}</p><DadosDoAto dados={v} />{v.observacoes&&<p className="mt-2 whitespace-pre-wrap text-sm">{v.observacoes}</p>}</div>)}</Lista></>}
   {secaoAtual.id==="comanda"&&<Lista titulo="Comandas abertas e finalizadas" vazio="Nenhuma comanda disponível.">{comandasAnimal.map(c=><article key={c.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-3"><div><strong>Comanda #{String(c.numero).padStart(5,"0")}</strong><p className="text-xs text-slate-500">{c.origem} · aberta em {dataHora(c.aberta_em)}{c.finalizada_em?` · finalizada em ${dataHora(c.finalizada_em)}`:""}</p></div><span className={`rounded-full px-2 py-1 text-xs font-bold ${c.status==="Aberta"?"bg-amber-100 text-amber-900":"bg-emerald-100 text-emerald-800"}`}>{c.status}</span></div><div className="mt-3 space-y-1">{(c.itens||[]).map(i=><div key={i.id} className="flex justify-between gap-3 text-sm"><span>{i.quantidade}× {i.descricao}</span><strong>{dinheiro(i.quantidade*i.valorUnitario)}</strong></div>)}</div><div className="mt-4 grid grid-cols-3 gap-2 border-t pt-3 text-center"><div><small className="text-slate-500">Total</small><strong className="block">{dinheiro(c.total)}</strong></div><div><small className="text-slate-500">Pago</small><strong className="block">{dinheiro(c.total_pago)}</strong></div><div><small className="text-slate-500">Saldo</small><strong className="block">{dinheiro(c.saldo)}</strong></div></div>{Number(c.saldo)>0&&<div className="mt-4 rounded-xl bg-slate-50 p-3"><p className="text-sm font-bold">Pagar pelo Portal do Tutor</p><p className="mt-1 text-xs text-slate-600">Você pode quitar o saldo ou informar um adiantamento.</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input value={adiantamentos[c.id]||""} onChange={e=>setAdiantamentos(atual=>({...atual,[c.id]:e.target.value}))} inputMode="decimal" placeholder={"Valor livre · saldo "+dinheiro(c.saldo)} className="min-h-10 flex-1 rounded-lg border bg-white px-3 text-sm"/><button disabled={pagando===c.id} onClick={()=>void pagarComanda(c)} className="min-h-10 rounded-lg bg-[#702a43] px-4 text-sm font-bold text-white disabled:opacity-50">{pagando===c.id?"Abrindo...":"Pagar online"}</button></div></div>}</article>)}</Lista>}
             </div>
           )}
@@ -842,6 +856,23 @@ function Resumo({ titulo, valor, emoji, foto, onClick }: { titulo: string; valor
       <ChevronRight size={17} aria-hidden="true" />
     </button>
   );
+}
+
+function DadosDoAto({ dados }: { dados: DadosAplicacao }) {
+  const fabricacao = dataDoRotulo(dados.fabricacao || "");
+  const validade = dataDoRotulo(dados.validade || "");
+  const valores = [
+    ["Vacinação contra", dados.alvo_vacinacao], ["Princípio ativo", dados.principio_ativo],
+    ["Dose", dados.dose], ["Via", dados.via], ["Fabricante", dados.fabricante],
+    ["Fabricação", fabricacao && dataPreventivaBR(fabricacao)], ["Validade", validade && dataPreventivaBR(validade)],
+    ["Horário", dados.hora_aplicacao?.slice(0, 5)], ["Local", dados.local_aplicacao],
+    ["Veterinário", dados.veterinario_nome && [dados.veterinario_nome, dados.veterinario_crmv && `CRMV-${dados.veterinario_uf || ""} ${dados.veterinario_crmv}`].filter(Boolean).join(" · ")],
+  ].filter(([, valor]) => Boolean(valor));
+  return valores.length > 0 && <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+    {valores.map(([rotulo, valor]) => <div key={rotulo} className="flex flex-wrap gap-x-1">
+      <dt className="font-semibold">{rotulo}</dt><dd>{valor}</dd>
+    </div>)}
+  </dl>;
 }
 
 function ListaMarcacoes({ itens, estado: situacao, agendas, nomeDoPet, onAbrir }: {
