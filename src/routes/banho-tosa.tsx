@@ -30,6 +30,7 @@ function BanhoTosa(){
  const location=useLocation();
  const abaDaUrl=(hash:string):Aba=>abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
  const [aba,setAba]=useState<Aba>(()=>typeof window!=="undefined"?abaDaUrl(window.location.hash):"painel");
+ const [mostrarNovoAgendamento,setMostrarNovoAgendamento]=useState(false);
  useEffect(()=>setAba(abaDaUrl(location.hash)),[location.hash]);
  useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=qs.get("inicio");if(prof)setProfissional(prof);if(hora&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(hora))setInicio(hora);}},[location.hash,location.search]);
  const [carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
@@ -199,8 +200,8 @@ function BanhoTosa(){
   {erro&&<div role="alert" className="rounded-xl border border-destructive p-4 text-destructive">{erro}</div>}
   {carregando?<p>Carregando registros…</p>:<>
    {aba==="painel"&&<section className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Agendados hoje",doDia.length],["Em atendimento",ativos.filter(x=>x.status==="em_execucao").length],["Prontos",ativos.filter(x=>x.status==="pronto").length],["Serviços cadastrados",servicos.filter(x=>x.ativo).length]].map(([nome,valor])=><div key={String(nome)} className={card}><p className="text-sm text-muted-foreground">{nome}</p><p className="text-3xl font-bold">{valor}</p></div>)}</div><h2 className="font-bold text-xl">Próximos serviços</h2>{ativos.slice(0,10).map(registro)}</section>}
-   {aba==="agenda"&&<AgendaErrorBoundary><AgendaDayBoard mode="banho"/></AgendaErrorBoundary>}
-   {aba==="novo"&&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
+   {aba==="agenda"&&<section className="space-y-4"><div className="flex justify-end"><button type="button" onClick={()=>setMostrarNovoAgendamento(v=>!v)} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">{mostrarNovoAgendamento?"Fechar novo agendamento":"+ Novo agendamento"}</button></div><AgendaErrorBoundary><AgendaDayBoard mode="banho"/></AgendaErrorBoundary></section>}
+   {(aba==="novo" || (aba==="agenda" && mostrarNovoAgendamento))&&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
     <label>Animal<select required className={campo} value={animalId} onChange={e=>setAnimalId(e.target.value)}><option value="">Selecione</option>{animais.map(a=><option key={a.id} value={a.id}>{a.nome} — {nomesTutores.get(a.tutor_id)||"Tutor"}</option>)}</select></label>
     <label>Serviço<select required className={campo} value={servicoId} onChange={e=>setServicoId(e.target.value)}><option value="">Selecione</option>{servicos.filter(x=>x.ativo).map(x=><option key={x.id} value={x.id}>{x.nome} · {dinheiro(x.preco_centavos)}</option>)}</select></label>
     <label>Data e horário<input required type="datetime-local" className={campo} value={inicio} onChange={e=>setInicio(e.target.value)}/></label>
