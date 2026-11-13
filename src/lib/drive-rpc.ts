@@ -25,17 +25,6 @@ type FactoryArgs = {
 function erro(message: string, code = "DRIVE_RPC") {
   return { message, code };
 }
-function normalizarUsuario(valor: unknown) {
-  return String(valor ?? "")
-    .trim()
-    .replace(/^@+/, "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, ".")
-    .replace(/\.{2,}/g, ".")
-    .replace(/^\.+|\.+$/g, "");
-}
 function soHost(valor: unknown) {
   return String(valor ?? "")
     .trim()
@@ -59,16 +48,6 @@ function numero(v: unknown) {
 }
 function uuid() {
   return crypto.randomUUID();
-}
-async function sha256Hex(valor: string) {
-  const bytes = new TextEncoder().encode(valor);
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, "0")).join("");
-}
-function tokenAleatorio() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 function minutosHora(hora: string) {
   const [h = "0", m = "0"] = String(hora || "00:00")
@@ -891,67 +870,9 @@ export function createDriveRpc({ auth, fromDrive, fromIdentity, fromCanonical, g
           if (ins.error) throw ins.error;
           return { data: [{ agendamento_id: id, estado }], error: null };
         }
-        case "oricse_portal_emitir_convite": {
-          const tutorId = String(args.p_tutor_id),
-            usuarioChave = normalizarUsuario(args.p_usuario);
-          if (usuarioChave.length < 3 || usuarioChave.length > 40)
-            throw new Error("O usuário deve ter entre 3 e 40 caracteres.");
-          const ctx = await currentContext();
-          if (!ctx || !(await hasPermission(ctx.clinic.id, "recepcao.cadastros.editar")))
-            throw new Error("Sem permissão para ativar o portal deste tutor.");
-          if (!(await featureAllowed(ctx.clinic.id, "portal_tutor.acesso")))
-            throw new Error("O portal do tutor não está incluído no plano desta clínica.");
-          const { data: tutor } = await fromDrive("tutores")
-            .select("id")
-            .eq("clinica_id", ctx.clinic.id)
-            .eq("id", tutorId)
-            .maybeSingle();
-          if (!tutor) throw new Error("Tutor não encontrado.");
-          const { data: usado } = await fromIdentity("oricse_portal_tutores")
-            .select("id,tutor_id")
-            .eq("clinica_id", ctx.clinic.id)
-            .eq("usuario_chave", usuarioChave)
-            .maybeSingle();
-          if (usado && usado.tutor_id !== tutorId)
-            throw new Error("Este usuário já está em uso nesta clínica.");
-          const token = tokenAleatorio(),
-            tokenHash = await sha256Hex(token),
-            expira = new Date(Date.now() + 48 * 3600000).toISOString();
-          const { data: existente } = await fromIdentity("oricse_portal_tutores")
-            .select("*")
-            .eq("clinica_id", ctx.clinic.id)
-            .eq("tutor_id", tutorId)
-            .maybeSingle();
-          const payload = {
-            id: existente?.id || uuid(),
-            clinica_id: ctx.clinic.id,
-            tutor_id: tutorId,
-            auth_user_id: existente?.auth_user_id || null,
-            usuario: `@${usuarioChave}`,
-            usuario_chave: usuarioChave,
-            clinica_slug: ctx.clinic.slug,
-            ativo: true,
-            convite_token_hash: tokenHash,
-            convite_expira_em: expira,
-            updated_at: new Date().toISOString(),
-          };
-          const q = existente
-            ? fromIdentity("oricse_portal_tutores").update(payload).eq("id", existente.id)
-            : fromIdentity("oricse_portal_tutores").insert(payload);
-          const { error } = await q;
-          if (error) throw error;
-          return {
-            data: [
-              {
-                usuario: `@${usuarioChave}`,
-                token,
-                expira_em: expira,
-                clinica_slug: ctx.clinic.slug,
-              },
-            ],
-            error: null,
-          };
-        }
+        case "oricse_portal_emitir_convite":
+          if (!databaseRpc) throw new Error("Não foi possível acessar o cadastro do tutor.");
+          return await databaseRpc(name, args);
         case "oricse_iniciar_contratacao":
         case "oricse_iniciar_teste_gratis":
         case "oricse_validar_codigo_promocional": {
