@@ -95,3 +95,6 @@ jobs:
           if (!passed) process.exit(1);
           console.log("Production build and JavaScript assets verified");
           NODE
+
+      - name: Audit public routes and demonstrative clinic after publication
+        run: node scripts/smoke-oricse-live.mjs
