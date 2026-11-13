@@ -212,14 +212,14 @@ const areas: AreaMenu[] = [
         permissao: "administracao.permissoes",
       },
       {
+        to: "/portal-tutores",
+        rotulo: "Acesso ao Portal do Tutor",
+        permissao: "portal_tutor.gerenciar",
+      },
+      {
         portalOficial: true,
         rotulo: "Portal do Tutor",
         permissao: "administracao.site",
-      },
-      {
-        to: "/portal-tutores",
-        rotulo: "Tutores, convites e acessos",
-        permissao: "portal_tutor.gerenciar",
       },
       { to: "/temas", rotulo: "Temas", permissao: "administracao.temas" },
     ],

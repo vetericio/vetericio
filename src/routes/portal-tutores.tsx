@@ -265,7 +265,7 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
 
   const temDadosLocais=locaisValidos.length>0;
   return <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><Link to="/tutores" className="text-sm font-semibold text-muted-foreground hover:text-primary">← Tutores</Link><h1 className="mt-3 text-3xl font-black tracking-tight">Portal do Tutor</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Gerencie os acessos e convites dos tutores desta clínica.</p></div>{slug&&<a href={urlPortalDoTutor(slug)} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-bold"><ExternalLink size={16}/> Abrir portal</a>}</div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><Link to="/tutores" className="text-sm font-semibold text-muted-foreground hover:text-primary">← Tutores</Link><h1 className="mt-3 text-3xl font-black tracking-tight">Acesso ao Portal do Tutor</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Gerencie os acessos e convites dos tutores desta clínica.</p></div>{slug&&<a href={urlPortalDoTutor(slug)} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-bold"><ExternalLink size={16}/> Abrir portal</a>}</div>
 
     {modelo && slug && <EditorConvitePortalTutor clinicaId={clinicaId} clinicaNome={clinicaNome} slug={slug} salvo={modelo} aoSalvar={setModelo} />}
     {erroModelo && <div role="alert" className="mt-5 rounded-xl border bg-card p-4 text-sm">
