@@ -18,7 +18,7 @@ export const consultarIndicadoresPainel=createServerFn({method:"POST"})
     if(authError||!auth.user)throw new Error("Sessão expirada.");
     const userId=auth.user.id;
     await exigirPermissaoClinica(supabaseAdmin,userId,data.clinicaId,
-      ["caixa.financeiro.visualizar","caixa.comandas","administracao.configuracoes"]);
+      ["caixa.financeiro.visualizar","caixa.comandas","administracao.configuracoes"], data.accessToken);
     const {data:registro,error:erroRegistro}=await supabaseAdmin.from("oricse_dados_modulos")
       .select("dados").eq("clinica_id",data.clinicaId).eq("chave","estado_sistema").maybeSingle();
     if(erroRegistro)throw new Error("Erro ao carregar as preferências.");
