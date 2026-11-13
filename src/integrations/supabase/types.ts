@@ -2764,6 +2764,63 @@ export type Database = {
           },
         ]
       }
+      oricse_portal_vermifugos: {
+        Row: {
+          animal_id: string
+          administrado_em: string | null
+          clinica_id: string
+          created_at: string
+          id: string
+          lote: string | null
+          nome: string
+          observacoes: string | null
+          proxima_dose_em: string | null
+          updated_at: string
+          visivel_tutor: boolean
+        }
+        Insert: {
+          animal_id: string
+          administrado_em?: string | null
+          clinica_id: string
+          created_at?: string
+          id?: string
+          lote?: string | null
+          nome: string
+          observacoes?: string | null
+          proxima_dose_em?: string | null
+          updated_at?: string
+          visivel_tutor?: boolean
+        }
+        Update: {
+          animal_id?: string
+          administrado_em?: string | null
+          clinica_id?: string
+          created_at?: string
+          id?: string
+          lote?: string | null
+          nome?: string
+          observacoes?: string | null
+          proxima_dose_em?: string | null
+          updated_at?: string
+          visivel_tutor?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oricse_portal_vermifugos_animal_clinica_fk"
+            columns: ["clinica_id", "animal_id"]
+            isOneToOne: false
+            referencedRelation: "oricse_animais"
+            referencedColumns: ["clinica_id", "id"]
+          },
+          {
+            foreignKeyName: "oricse_portal_vermifugos_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "clinicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       oricse_precos_portal: {
         Row: {
           area: string
@@ -3616,6 +3673,10 @@ export type Database = {
           timezone: string
           tipo: string
         }[]
+      }
+      oricse_portal_salvar_foto_animal: {
+        Args: { p_animal_id: string; p_foto: string }
+        Returns: boolean
       }
       oricse_portal_atualizar_perfil: {
         Args: { p_email: string; p_telefone: string }
