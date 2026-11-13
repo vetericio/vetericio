@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { DURACOES_ATENDIMENTO, intervaloNovaAgenda } from "@/lib/configuracoes-clinica";
 import { supabaseBanco as supabase } from "@/integrations/supabase/client";
 import { salvarAgendaOnline } from "@/lib/agenda.functions";
 
@@ -94,7 +95,7 @@ const DIAS = [
   { value: 4, label: "Qui" }, { value: 5, label: "Sex" }, { value: 6, label: "Sáb" }, { value: 0, label: "Dom" },
 ];
 const CORES: CorAgenda[] = ["verde", "azul", "roxo", "laranja", "rosa", "amarelo", "vermelho", "marrom", "cinza", "azul-petroleo"];
-const DURACOES_PADRAO: Record<string, number> = { Consulta: 30, Retorno: 30, Cirurgia: 120, "Banho e Tosa": 60, Vacina: 30, Procedimento: 30, [TIPO_BLOQUEIO]: 30 };
+const DURACOES_PADRAO: Record<string, number> = { ...DURACOES_ATENDIMENTO, [TIPO_BLOQUEIO]: 30 };
 const TEMA: Record<CorAgenda, string> = {
   azul: "border-sky-400", verde: "border-emerald-500", amarelo: "border-amber-500", vermelho: "border-red-500",
   rosa: "border-pink-500", laranja: "border-orange-500", roxo: "border-violet-500", marrom: "border-amber-800",
@@ -171,7 +172,7 @@ function dataNoFuso(valor: string, timeZone: string) {
   const mapa = Object.fromEntries(partes.map((p) => [p.type, p.value]));
   return `${mapa.year}-${mapa.month}-${mapa.day}`;
 }
-function agendaFormPadrao(): AgendaForm { return { nome: "Consultas", responsavel: "", tipo: "Consultório", inicio: "08:00", fim: "17:00", diasSemana: [1,2,3,4,5], intervaloMin: 30, portalAtivo: false, modalidade: "aprovacao", antecedenciaHoras: 2, timezone: "America/Sao_Paulo", cor: "verde" }; }
+function agendaFormPadrao(intervaloMin: number): AgendaForm { return { nome: "Consultas", responsavel: "", tipo: "Consultório", inicio: "08:00", fim: "17:00", diasSemana: [1,2,3,4,5], intervaloMin, portalAtivo: false, modalidade: "aprovacao", antecedenciaHoras: 2, timezone: "America/Sao_Paulo", cor: "verde" }; }
 
 function normalizarAgenda(agenda: Partial<AgendaDb>): AgendaDb {
   const intervalo = Number(agenda.intervalo_min);
@@ -318,7 +319,9 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
       toast.error("Limite de agendas atingido. Para solicitar mais, escreva para atendimento@oricse.com.br ou fale com seu consultor.");
       return;
     }
-    setAgendaModal({ form: mode==="banho"?{...agendaFormPadrao(),nome:"Banho e tosa",tipo:"Banho e Tosa",cor:"roxo"}:agendaFormPadrao() }); }
+    const form = agendaFormPadrao(intervaloNovaAgenda(config.duracao_padrao_atendimento_min));
+    setAgendaModal({ form: mode === "banho" ? { ...form, nome: "Banho e tosa", tipo: "Banho e Tosa", cor: "roxo" } : form });
+  }
   function editarAgenda(a: AgendaDb) { setAgendaModal({ id: a.id, form: { nome:a.nome,responsavel:a.responsavel,tipo:a.tipo,inicio:hhmm(a.inicio),fim:hhmm(a.fim),diasSemana:[...a.dias_semana],intervaloMin:a.intervalo_min,portalAtivo:a.portal_ativo,modalidade:a.modalidade,antecedenciaHoras:a.antecedencia_horas,timezone:a.timezone,cor:corValida(a.cor) } }); }
 
   async function salvarAgenda() {
