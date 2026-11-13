@@ -5,7 +5,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
-import { VERSAO } from "@/lib/versao";
+import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import "./portal-tutor-area.css";
 import { pendenciasDosPets, type FonteCuidados } from "@/lib/portal-pet-care";
 import { prepararFotoDoPet } from "@/lib/portal-pet-photo";
@@ -731,13 +731,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           )}
         </div>
       </div>
-      <footer className="portal-area-footer">
-        <p className="portal-area-container">
-          <a href="https://oricse.com.br">Oricse – Soluções para o mercado pet</a>
-          <span>Desenvolvido por DIRCE Tecnologia e Veterício</span>
-          <span>© {new Date().getFullYear()} · Versão {VERSAO}</span>
-        </p>
-      </footer>
+      <RodapeInstitucional linkMarca />
     </main>
   );
 }
