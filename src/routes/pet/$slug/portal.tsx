@@ -1,12 +1,13 @@
 import { destinoPortalLegado, urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { orientacaoSenhaPortal, senhaPortalValida } from "../../../../supabase/functions/_shared/portal-password";
 import { FunctionsHttpError } from "@supabase/supabase-js";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
-import { PortalFooter } from "@/components/PortalFooter";
-import { ArrowLeft, Bell, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, Menu, PawPrint, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
+import { VERSAO } from "@/lib/versao";
+import "./portal-tutor-area.css";
+import { ArrowLeft, CalendarDays, CheckCircle2, ChevronRight, Download, FileText, FlaskConical, HeartPulse, Home, Loader2, LockKeyhole, LogOut, MessageCircle, PawPrint, ReceiptText, ShieldCheck, UserRound, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
@@ -43,38 +44,6 @@ function estiloTemaPortal(tema:TemaPortal|null):CSSProperties|undefined{
   } as CSSProperties;
 }
 
-/** Identidade única do Portal do Tutor em todos os sete modelos de site. */
-function PortalTutorBrandHeader({
-  nome, logo, slug, subtitulo, acoes,
-}:{
-  nome:string; logo:string|null|undefined; slug:string; subtitulo?:string; acoes?:ReactNode;
-}){
-  const enderecoSite=slug==="alvorada" ? "https://alvorada.oricse.com.br/" : `/c/${encodeURIComponent(slug)}`;
-  return <header className="portal-premium-header">
-    <div className="portal-premium-topline">
-      <div className="portal-premium-topline-inner">
-        <span className="portal-premium-eyebrow"><span className="portal-premium-live-dot"/> EXPERIÊNCIA EXCLUSIVA PARA TUTORES</span>
-        <a href={enderecoSite} className="portal-premium-back">← Voltar ao site da clínica</a>
-      </div>
-    </div>
-    <div className="portal-premium-brandbar">
-      <div className="portal-premium-clinic-lockup">
-        {logo ? <img className="portal-premium-clinic-logo" src={logo} alt={`Logo ${nome}`}/> : <span className="portal-premium-fallback-name">{nome}</span>}
-      </div>
-      <span className="portal-premium-brand-divider" aria-hidden="true"/>
-      <div className="portal-premium-product">
-        <img
-          className="portal-premium-product-logo"
-          src="/portal-do-tutor.svg"
-          alt="Portal do Tutor — Seu pet, sua clínica, sempre perto."
-        />
-        <p className="portal-premium-brand-subtitle">{subtitulo||"Tudo sobre o seu pet, em um só lugar."}</p>
-      </div>
-      {acoes && <div className="portal-premium-header-actions">{acoes}</div>}
-    </div>
-  </header>;
-}
-
 type Contexto={clinica_id:string;clinica_nome:string;clinica_slug:string;clinica_logo_url:string|null;tutor_id:string;tutor_nome:string;tutor_telefone:string|null;tutor_email:string|null;usuario:string};
 type Animal={id:string;nome:string;especie:string;raca:string;sexo:string;nascimento:string|null;peso_kg:number|null;foto_url:string|null};
 type Vacina={id:string;animal_id:string;nome:string;aplicada_em:string|null;reforco_em:string|null;lote:string|null;observacoes:string|null};
@@ -86,7 +55,24 @@ type Agenda={id:string;nome:string;responsavel:string;modalidade:string;tipo:str
 type Horario={inicio:string;fim:string;rotulo:string};
 type Agendamento={id:string;agenda_id:string|null;animal_id:string|null;inicio:string;fim:string;estado:string;tipo:string;observacoes:string|null};
 type Comanda={id:string;animal_id:string;numero:number;status:"Aberta"|"Finalizada";origem:string;aberta_em:string;finalizada_em:string|null;itens:Array<{id:string;descricao:string;quantidade:number;valorUnitario:number}>;pagamentos:Array<{id:string;valor:number;formaPagamento:string;data:string}>;total:number;total_pago:number;saldo:number};
-type Secao="contato"|"resumo"|"agenda"|"documentos"|"exames"|"receitas"|"vacinas"|"vermifugos"|"comanda"|"perfil";
+const secoesPortal = [
+  { id: "resumo", nome: "Visão geral", Icon: Home },
+  { id: "agenda", nome: "Agenda", Icon: CalendarDays },
+  { id: "documentos", nome: "Documentos", Icon: FileText },
+  { id: "exames", nome: "Exames", Icon: FlaskConical },
+  { id: "receitas", nome: "Receitas", Icon: ReceiptText },
+  { id: "vacinas", nome: "Vacinas", Icon: HeartPulse },
+  { id: "vermifugos", nome: "Vermífugos", Icon: ShieldCheck },
+  { id: "comanda", nome: "Financeiro", Icon: Wallet },
+  { id: "contato", nome: "Fale com a clínica", Icon: MessageCircle },
+  { id: "perfil", nome: "Meu perfil", Icon: UserRound },
+] as const;
+
+type Secao = (typeof secoesPortal)[number]["id"];
+function secaoDoEndereco(query: URLSearchParams): Secao {
+  return secoesPortal.find(({ id }) => id === query.get("secao"))?.id ?? "resumo";
+}
+
 type TipoArquivo="documento"|"exame"|"receita";
 type DesafioRecuperacao={desafioId:string;expiraEm:string;pergunta:string;alternativas:Array<{id:string;nome:string}>};
 
@@ -131,20 +117,44 @@ function amanha(){const d=new Date();d.setDate(d.getDate()+1);return dataIso(d);
 function dataBr(v?:string|null){if(!v)return"Não informado";const d=new Date(v.length===10?`${v}T12:00:00`:v);return Number.isNaN(d.getTime())?v:d.toLocaleDateString("pt-BR");}
 function dataHora(v:string){return new Date(v).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});}
 function dinheiro(v:number){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
-function emoji(especie?:string){const e=(especie||"").toLowerCase();if(e.includes("cão")||e.includes("cao")||e.includes("canin"))return"🐶";if(e.includes("gat")||e.includes("felin"))return"🐱";if(e.includes("ave"))return"🐦";return"🐾";}
 function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?"Aguardando aprovação":v==="reservado"?"Reservado":v;}
 
 export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const slug=slugDaClinica;
+  const router = useRouter();
+  const tituloSecao = useRef<HTMLHeadingElement>(null);
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string;canais_contato?:CanaisClinica}>({});
   const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [temaPortal,setTemaPortal]=useState<TemaPortal|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);const [modoDemoAlvorada,setModoDemoAlvorada]=useState(false);
   const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
   const [animais,setAnimais]=useState<Animal[]>([]);const [animalId,setAnimalId]=useState("");const [secao,setSecao]=useState<Secao>("resumo");const [vacinas,setVacinas]=useState<Vacina[]>([]);const [vermifugos,setVermifugos]=useState<Vermifugo[]>([]);const [exames,setExames]=useState<Exame[]>([]);const [documentos,setDocumentos]=useState<Documento[]>([]);const [receitas,setReceitas]=useState<Receita[]>([]);const [agendas,setAgendas]=useState<Agenda[]>([]);const [agendamentos,setAgendamentos]=useState<Agendamento[]>([]);const [comandas,setComandas]=useState<Comanda[]>([]);
   const [agendaId,setAgendaId]=useState("");const [pagando,setPagando]=useState<string|null>(null);const [adiantamentos,setAdiantamentos]=useState<Record<string,string>>({});const [dataAgenda,setDataAgenda]=useState(amanha);const [horarios,setHorarios]=useState<Horario[]>([]);const [horario,setHorario]=useState("");const [obs,setObs]=useState("");const [carregandoHorarios,setCarregandoHorarios]=useState(false);const [agendando,setAgendando]=useState(false);const [baixando,setBaixando]=useState<string|null>(null);
-  const [telefone,setTelefone]=useState("");const [email,setEmail]=useState("");const [salvandoPerfil,setSalvandoPerfil]=useState(false);const [maisAberto,setMaisAberto]=useState(false);
+  const [telefone,setTelefone]=useState("");const [email,setEmail]=useState("");const [salvandoPerfil,setSalvandoPerfil]=useState(false);
 
-  useEffect(()=>{if(typeof window==="undefined")return;const hash=new URLSearchParams(location.hash.replace(/^#/,""));const query=new URLSearchParams(location.search);const t=hash.get("ativar")||query.get("ativar")||"";const u=hash.get("usuario")||query.get("usuario")||"";const secaoLink=query.get("secao");const animalLink=query.get("animal");if(t){setToken(t);setModoAtivar(true);}if(query.get("recuperar")==="1"){setModoRecuperar(true);setModoAtivar(false);}if(u)setUsuario(u);if(secaoLink&&["resumo","agenda","documentos","exames","receitas","vacinas","vermifugos","comanda","perfil"].includes(secaoLink))setSecao(secaoLink as Secao);if(animalLink)setAnimalId(animalLink);},[]);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const codigo = hash.get("ativar") || query.get("ativar");
+    const usuarioDoLink = hash.get("usuario") || query.get("usuario");
+    if (codigo) {
+      setToken(codigo);
+      setModoAtivar(true);
+    }
+    if (query.get("recuperar") === "1") {
+      setModoRecuperar(true);
+      setModoAtivar(false);
+    }
+    if (usuarioDoLink) setUsuario(usuarioDoLink);
+
+    function lerNavegacao() {
+      const parametros = new URLSearchParams(window.location.search);
+      setSecao(secaoDoEndereco(parametros));
+      setAnimalId(parametros.get("animal") || "");
+    }
+    lerNavegacao();
+    window.addEventListener("popstate", lerNavegacao);
+    return () => window.removeEventListener("popstate", lerNavegacao);
+  }, [slug]);
   useEffect(()=>{let vivo=true;setCarregandoClinica(true);void(async()=>{
     // O site e o portal compartilham exatamente a mesma fonte de identidade.
     // O modelo escolhido na vitrine é transmitido explicitamente por URL,
@@ -179,9 +189,9 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_config_publica",{p_slug:slug});if(ativo&&data)setPortalConfig(data);})();return()=>{ativo=false};},[slug]);
   useEffect(()=>{let ativo=true;void(async()=>{const {data}=await (supabaseBanco as any).rpc("oricse_portal_extras_publicas",{p_slug:slug});if(ativo&&data)setExtrasPublicos(data);})();return()=>{ativo=false};},[slug]);
   const versaoCarregamento = useRef(0);
-  const carregar=useCallback(async()=>{
+  const carregar=useCallback(async(atualizar = false)=>{
     const versao = ++versaoCarregamento.current;
-    setCarregando(true);
+    if (!atualizar) setCarregando(true);
     try{
       const{data:ctxData,error:ctxError}=await supabaseBanco.rpc("oricse_portal_meu_contexto");if(ctxError)throw ctxError;const ctx=ctxData?.[0] as Contexto|undefined;
       if (!ctx?.tutor_id || ctx.clinica_slug !== slug) {
@@ -192,7 +202,9 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
         .eq("clinica_id", ctx.clinica_id).eq("tutor_id", ctx.tutor_id).order("nome");
       if (erroPets) throw erroPets;
       if (versao !== versaoCarregamento.current) return;
-      setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
+      if (!atualizar) {
+        setVacinas([]);setVermifugos([]);setExames([]);setDocumentos([]);setReceitas([]);setAgendas([]);setAgendamentos([]);setComandas([]);setAgendaId("");
+      }
       const lista = (pets || []) as Animal[];
       setAnimais(lista);
       setAnimalId(at => lista.some(x => x.id === at) ? at : (lista[0]?.id || ""));
@@ -203,8 +215,10 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       void carregarComplementos(ctx);
     } catch (erro) {
       if (versao !== versaoCarregamento.current) return;
-      setContexto(null);
-      setAnimais([]);
+      if (!atualizar) {
+        setContexto(null);
+        setAnimais([]);
+      }
       throw erro;
     } finally {
       if (versao === versaoCarregamento.current) setCarregando(false);
@@ -263,9 +277,44 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   }, [carregar]);
   useEffect(()=>{if(!contexto||!agendaId||!dataAgenda){setHorarios([]);return;}if(modoDemoAlvorada){const dia=`${dataAgenda}T`;const lista:Horario[]=[{inicio:`${dia}09:00:00-03:00`,fim:`${dia}09:30:00-03:00`,rotulo:"09:00"},{inicio:`${dia}10:30:00-03:00`,fim:`${dia}11:00:00-03:00`,rotulo:"10:30"},{inicio:`${dia}14:00:00-03:00`,fim:`${dia}14:30:00-03:00`,rotulo:"14:00"}];setHorarios(lista);setHorario(at=>lista.some(h=>h.inicio===at)?at:lista[0].inicio);setCarregandoHorarios(false);return;}let vivo=true;setCarregandoHorarios(true);void(async()=>{const{data,error}=await(supabase as any).rpc("oricse_portal_horarios_disponiveis",{p_agenda_id:agendaId,p_data:dataAgenda});if(!vivo)return;const lista=error?[]:(data||[]) as Horario[];setHorarios(lista);setHorario(at=>lista.some(h=>h.inicio===at)?at:(lista[0]?.inicio||""));setCarregandoHorarios(false);})();return()=>{vivo=false};},[contexto,agendaId,dataAgenda,modoDemoAlvorada]);
 
-  const animal=animais.find(a=>a.id===animalId)||null;const navegar=(destino:Secao)=>{setSecao(destino);if(typeof window!=="undefined")window.scrollTo(0,0);};const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animalId),[vacinas,animalId]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animalId),[vermifugos,animalId]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animalId),[exames,animalId]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animalId),[documentos,animalId]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animalId),[receitas,animalId]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animalId),[agendamentos,animalId]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animalId),[comandas,animalId]);const agenda=agendas.find(a=>a.id===agendaId)||null;
+  const animal = animais.find(a => a.id === animalId) || animais[0] || null;
+  const navegacao = secoesPortal.filter(({ id }) =>
+    (id !== "agenda" || portalConfig.exibir_agendamento !== false) &&
+    (id !== "documentos" || portalConfig.exibir_documentos !== false));
+  const secaoAtual = navegacao.find(({ id }) => id === secao) ?? navegacao[0];
 
-  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setSecao("resumo");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
+  function navegar(destino: Secao, novoAnimalId = animal?.id || "") {
+    const url = new URL(window.location.href);
+    if (destino === "resumo") url.searchParams.delete("secao");
+    else url.searchParams.set("secao", destino);
+    if (novoAnimalId) url.searchParams.set("animal", novoAnimalId);
+    else url.searchParams.delete("animal");
+    const endereco = url.pathname + url.search + url.hash;
+    if (endereco !== window.location.pathname + window.location.search + window.location.hash) {
+      void router.navigate({
+        to: "/$alias",
+        params: { alias: "portaldotutor" },
+        search: Object.fromEntries(url.searchParams),
+        hash: url.hash.slice(1),
+        resetScroll: false,
+        hashScrollIntoView: false,
+      });
+    }
+    setSecao(destino);
+    setAnimalId(novoAnimalId);
+    if (destino !== secaoAtual.id) {
+      requestAnimationFrame(() => {
+        const titulo = tituloSecao.current;
+        if (!titulo) return;
+        titulo.focus({ preventScroll: true });
+        if (titulo.getBoundingClientRect().top < 64) titulo.scrollIntoView({ block: "start", behavior: "instant" });
+      });
+    }
+  }
+
+  const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animal?.id),[vacinas,animal?.id]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animal?.id),[vermifugos,animal?.id]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animal?.id),[exames,animal?.id]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animal?.id),[documentos,animal?.id]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animal?.id),[receitas,animal?.id]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animal?.id),[agendamentos,animal?.id]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animal?.id),[comandas,animal?.id]);const agenda=agendas.find(a=>a.id===agendaId)||null;
+
+  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
   async function ativar(e: React.FormEvent) {
     e.preventDefault();
     const codigo = token.trim();
@@ -329,9 +378,9 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   }
   async function concluirRecuperacao(e:React.FormEvent){e.preventDefault();if(!desafioRecuperacao||!animalResposta)return void toast.error("Escolha qual é o seu pet.");if(!senhaPortalValida(senhaRecuperacao))return void toast.error(orientacaoSenhaPortal);if(senhaRecuperacao!==repeteSenhaRecuperacao)return void toast.error("As senhas não coincidem.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-complete",{body:{desafioId:desafioRecuperacao.desafioId,animalId:animalResposta,senha:senhaRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível redefinir a senha.");toast.success("Senha redefinida. Entre com seu usuário e a nova senha.");setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível redefinir a senha.");}finally{setRecuperando(false);}}
   function voltarRecuperacao(){setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}
-  async function sair(){if(!modoDemoAlvorada)await supabase.auth.signOut();setModoDemoAlvorada(false);setContexto(null);setAnimais([]);navegar("resumo");}
-  async function salvarPerfil(){setSalvandoPerfil(true);try{const{error}=await(supabase as any).rpc("oricse_portal_atualizar_perfil",{p_telefone:telefone,p_email:email});if(error)throw error;toast.success("Dados atualizados.");await carregar();}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}finally{setSalvandoPerfil(false);}}
-  async function agendar(){if(!animal||!agendaId||!horario)return;setAgendando(true);try{const{data,error}=await(supabase as any).rpc("oricse_portal_criar_agendamento",{p_agenda_id:agendaId,p_animal_id:animal.id,p_inicio:horario,p_observacoes:obs||null});if(error)throw error;toast.success(data?.[0]?.estado==="confirmado"?"Agendamento confirmado.":"Solicitação enviada.");setObs("");await carregar();}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível agendar.");}finally{setAgendando(false);}}
+  async function sair(){if(!modoDemoAlvorada)await supabase.auth.signOut();setModoDemoAlvorada(false);setContexto(null);setAnimais([]);}
+  async function salvarPerfil(){setSalvandoPerfil(true);try{const{error}=await(supabase as any).rpc("oricse_portal_atualizar_perfil",{p_telefone:telefone,p_email:email});if(error)throw error;setContexto(atual=>atual?{...atual,tutor_telefone:telefone,tutor_email:email}:atual);toast.success("Dados atualizados.");}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível salvar.");}finally{setSalvandoPerfil(false);}}
+  async function agendar(){if(!animal||!agendaId||!horario)return;setAgendando(true);try{const{data,error}=await(supabase as any).rpc("oricse_portal_criar_agendamento",{p_agenda_id:agendaId,p_animal_id:animal.id,p_inicio:horario,p_observacoes:obs||null});if(error)throw error;toast.success(data?.[0]?.estado==="confirmado"?"Agendamento confirmado.":"Solicitação enviada.");setObs("");await carregar(true);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível agendar.");}finally{setAgendando(false);}}
   async function pagarAgenda(){if(!animal||!agenda||!horario)return;setPagando("agenda");try{const{data,error}=await supabase.functions.invoke("oricse-portal-pagamentos?action=agenda",{body:{agenda_id:agenda.id,animal_id:animal.id,inicio:horario,observacoes:obs||null,slug}});if(error||!data?.checkout_url)throw new Error(data?.error||"Não foi possível abrir o pagamento.");window.location.assign(data.checkout_url);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o pagamento.");setPagando(null);}}
   async function pagarComanda(comanda:Comanda){setPagando(comanda.id);try{const texto=String(adiantamentos[comanda.id]||"").replace(/[^0-9,]/g,"").replace(",",".");const informado=Number(texto);const valor_centavos=Number.isFinite(informado)&&informado>0?Math.round(informado*100):Math.round(Number(comanda.saldo)*100);const{data,error}=await supabase.functions.invoke("oricse-portal-pagamentos?action=comanda",{body:{comanda_id:comanda.id,valor_centavos,slug}});if(error||!data?.checkout_url)throw new Error(data?.error||"Não foi possível abrir o pagamento.");window.location.assign(data.checkout_url);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o pagamento.");setPagando(null);}}
   async function abrirArquivo(id:string,tipo:TipoArquivo){const chave=`${tipo}:${id}`;setBaixando(chave);try{const{data:sessao}=await supabase.auth.getSession();const accessToken=sessao.session?.access_token;if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente.");const arquivo=await baixarDocumentoPortal({data:{accessToken,documentoId:id,tipo}});const binario=atob(arquivo.base64);const bytes=new Uint8Array(binario.length);for(let i=0;i<binario.length;i++)bytes[i]=binario.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));const aba=window.open(url,"_blank","noopener,noreferrer");if(!aba){const link=document.createElement("a");link.href=url;link.download=arquivo.nome;link.click();}setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){toast.error(e instanceof Error?e.message:"Não foi possível abrir o arquivo.");}finally{setBaixando(null);}}
@@ -339,36 +388,164 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   if(carregandoClinica)return <TelaCarregando/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
   if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
 
-  return <main className="portal-tutor-live min-h-screen bg-[#faf7f4] text-[#312530]" data-site-template={temaPortal?.modelo} style={estiloTemaPortal(temaPortal)}><PortalTutorBrandHeader
-  nome={portalConfig.nome_exibicao||contexto.clinica_nome}
-  logo={portalConfig.logo_clinica_url||contexto.clinica_logo_url||portalConfig.logo_cabecalho_url}
-  slug={slug}
-  subtitulo={portalConfig.subtitulo_cabecalho}
-  acoes={<div className="flex shrink-0 items-center gap-2">
-    <button onClick={()=>toast.info("Você está em dia com as notificações.")} aria-label="Notificações" className="portal-premium-action-circle"><Bell size={19}/></button>
-    <button onClick={()=>navegar("perfil")} aria-label="Abrir meu perfil" className="portal-premium-profile-circle">{contexto.tutor_nome.charAt(0).toUpperCase()}</button>
-  </div>}
-/><div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{extrasPublicos.opcoes?.mostrar_banner!==false&&Boolean(extrasPublicos.opcoes?.banner_titulo)&&<section className="mb-4 rounded-2xl border p-6" style={{backgroundColor:/^#[0-9a-fA-F]{6}$/.test(String(extrasPublicos.opcoes.cor_destaque||""))?String(extrasPublicos.opcoes.cor_destaque)+"20":"#e5f4ef"}}><h2 className="text-xl font-black">{String(extrasPublicos.opcoes.banner_titulo)}</h2><p className="mt-1">{String(extrasPublicos.opcoes.banner_subtitulo||"")}</p>{/^https:\/\//.test(String(extrasPublicos.opcoes.banner_link||""))&&<a className="mt-3 inline-block rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-white" href={String(extrasPublicos.opcoes.banner_link)} target="_blank" rel="noopener noreferrer">Saiba mais</a>}</section>}{extrasPublicos.opcoes?.mostrar_promocoes!==false&&Boolean(extrasPublicos.promocoes?.length)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="mb-3 font-bold">Promoções da clínica</h2><div className="grid gap-3 sm:grid-cols-2">{(extrasPublicos.promocoes||[]).map((p,i)=><div key={i} className="rounded-lg border p-3"><strong>{p.titulo}</strong><p className="text-sm">{p.descricao}</p><p className="mt-1 text-sm font-semibold">{p.desconto_percentual}% de desconto{p.cupom?" · Cupom: "+p.cupom:""}</p></div>)}</div></section>}{extrasPublicos.opcoes?.mostrar_avisos!==false&&Boolean(extrasPublicos.opcoes?.aviso_importante)&&<section className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950"><h2 className="font-bold">Aviso da clínica</h2><p className="text-sm">{String(extrasPublicos.opcoes.aviso_importante)}</p></section>}{extrasPublicos.opcoes?.mostrar_servico!==false&&Boolean(extrasPublicos.opcoes?.destaque_servico)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="font-bold">Serviço em destaque</h2><p className="text-sm">{String(extrasPublicos.opcoes.destaque_servico)}</p></section>}{Boolean(extrasPublicos.opcoes?.chamada_promocional)&&<p className="mb-4 rounded-lg bg-emerald-50 p-3 text-center font-semibold text-emerald-900">{String(extrasPublicos.opcoes.chamada_promocional)}</p>}{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{Boolean(extrasPublicos.opcoes?.politica_cancelamento)&&<p className="mb-3 rounded-lg border bg-white p-3 text-sm text-slate-700"><strong>Política de cancelamento: </strong>{String(extrasPublicos.opcoes.politica_cancelamento)}</p>}{(portalConfig.mensagem_boas_vindas||portalConfig.telefone_publico||portalConfig.whatsapp_publico)&&<div className="mb-4 rounded-xl border bg-white p-4"><p className="font-bold">{portalConfig.mensagem_boas_vindas}</p>{portalConfig.instrucoes_agendamento&&<p className="mt-1 text-sm text-slate-600">{portalConfig.instrucoes_agendamento}</p>}{(portalConfig.telefone_publico||portalConfig.whatsapp_publico)&&<p className="mt-2 text-xs text-slate-500">Contato: {extrasPublicos.opcoes?.mostrar_contato!==false?portalConfig.telefone_publico:""}{extrasPublicos.opcoes?.mostrar_whatsapp!==false&&portalConfig.whatsapp_publico&&" · WhatsApp: "+portalConfig.whatsapp_publico}</p>}</div>}
-  {secao==="contato"?<div className="mx-auto max-w-3xl"><PortalClinicContact canais={portalConfig.canais_contato||{}}/></div>:secao==="perfil"?<section className="mx-auto max-w-2xl rounded-2xl bg-white p-6"><button onClick={()=>navegar("resumo")} className="text-sm font-bold text-[#702a43]">← Voltar</button><div className="mt-5 flex items-center gap-3"><UserRound/><div><h2 className="text-2xl font-black">Meu perfil</h2><p className="text-sm text-slate-500">{contexto.usuario}</p></div></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><Campo rotulo="Telefone" valor={telefone} onChange={setTelefone}/><Campo rotulo="E-mail" valor={email} onChange={setEmail} type="email"/></div><div className="mt-5 flex flex-wrap gap-2"><button disabled={salvandoPerfil} onClick={salvarPerfil} className="min-h-11 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-50">{salvandoPerfil?"Salvando...":"Salvar"}</button><button onClick={sair} className="min-h-11 rounded-xl border border-[#e9dfdc] bg-white px-5 py-3 text-sm font-bold text-[#702a43]">Sair</button></div></section>:!animais.length?<section className="rounded-2xl border bg-white p-8 text-center"><PawPrint className="mx-auto"/><h2 className="mt-3 text-xl font-bold">Nenhum animal vinculado</h2></section>:<><p className="text-sm text-[#6e6268]">Olá, {contexto.tutor_nome.split(" ")[0]}! 👋</p><h2 className="mt-1 text-3xl font-black">Meus animais</h2><section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f8e9ee] p-4 text-[#4a2534]"><div><p className="font-bold">Acompanhe os próximos cuidados</p><p className="text-sm text-[#795866]">Confira vacinas, exames e horários disponíveis.</p></div><button onClick={()=>navegar("vacinas")} className="min-h-11 rounded-xl bg-white px-4 text-sm font-bold text-[#702a43]">Ver saúde</button></section><div className="mt-5 flex gap-3 overflow-x-auto pb-2">{animais.map(a=><button key={a.id} onClick={()=>{setAnimalId(a.id);if(!["documentos","exames","receitas","vacinas","vermifugos"].includes(secao))navegar("resumo")}} className={`min-w-[210px] rounded-2xl border bg-white p-4 text-left ${a.id===animalId?"border-[#702a43] ring-2 ring-[#5f7e9b]/10":""}`}><div className="flex items-center gap-3"><span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-2xl">{a.foto_url?<img src={a.foto_url} alt="" className="h-full w-full rounded-full object-cover"/>:emoji(a.especie)}</span><span><strong className="block">{a.nome}</strong><small className="text-slate-500">{a.especie||"Animal"}</small></span></div></button>)}</div>
-  {animal&&<div className="mt-5 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]"><aside className="self-start rounded-2xl border bg-white p-4"><div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#f9f2ee] p-4">{(portalConfig.logo_clinica_url||contexto.clinica_logo_url)?<img src={portalConfig.logo_clinica_url||contexto.clinica_logo_url||""} alt="Logo da clínica" className="h-14 w-14 shrink-0 rounded-xl object-contain"/>:<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white text-[#702a43]"><PawPrint size={24}/></div>}<div className="min-w-0 font-bold leading-snug">{portalConfig.nome_exibicao||contexto.clinica_nome}</div></div><div className="text-center"><div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl">{emoji(animal.especie)}</div><h3 className="mt-2 text-xl font-black">{animal.nome}</h3><p className="text-xs text-slate-500">{[animal.especie,animal.sexo,animal.raca].filter(Boolean).join(" · ")}</p></div><nav className="mt-5 space-y-1">{([ ["resumo","Visão geral",PawPrint],["agenda","Agenda",CalendarDays],["documentos","Documentos",FileText],["exames","Exames",FlaskConical],["receitas","Receitas",ReceiptText],["vacinas","Cartão de vacinas",HeartPulse],["vermifugos","Vermífugos",ShieldCheck],["comanda","Comandas",ReceiptText],["contato","Fale com a Clínica",UserRound] ] as const).filter(([id])=>(id!=="agenda"||portalConfig.exibir_agendamento!==false)&&(id!=="documentos"||portalConfig.exibir_documentos!==false)).map(([id,nome,Icon])=><button key={id} onClick={()=>navegar(id)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold ${secao===id?"bg-[#702a43] text-white":"hover:bg-slate-50"}`}><Icon size={16}/>{nome}</button>)}</nav></aside><section>{secao==="resumo"&&<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{portalConfig.exibir_agendamento!==false&&<Resumo titulo="Agenda" valor={`${marcacoesAnimal.length} registro(s)`} Icon={CalendarDays} onClick={()=>navegar("agenda")}/>}{portalConfig.exibir_documentos!==false&&<Resumo titulo="Documentos" valor={`${docsAnimal.length} disponível(is)`} Icon={FileText} onClick={()=>navegar("documentos")}/>}<Resumo titulo="Exames" valor={`${examesAnimal.length} registro(s)`} Icon={FlaskConical} onClick={()=>navegar("exames")}/><Resumo titulo="Receitas" valor={`${receitasAnimal.length} disponível(is)`} Icon={ReceiptText} onClick={()=>navegar("receitas")}/><Resumo titulo="Cartão de vacinas" valor={`${vacinasAnimal.length} registro(s)`} Icon={HeartPulse} onClick={()=>navegar("vacinas")}/><Resumo titulo="Vermífugos" valor={`${vermifugosAnimal.length} registro(s)`} Icon={ShieldCheck} onClick={()=>navegar("vermifugos")}/><Resumo titulo="Comandas" valor={`${comandasAnimal.length} registro(s)`} Icon={ReceiptText} onClick={()=>navegar("comanda")}/></div>}
-  {secao==="resumo"&&<div className="mt-5 grid gap-4 lg:grid-cols-2">
-   <section className="rounded-2xl border bg-white p-5"><div className="mb-4 flex items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-black"><FlaskConical size={19}/>Últimos exames</h3><button type="button" className="text-sm font-bold text-[#702a43]" onClick={()=>navegar("exames")}>Ver todos →</button></div><div className="space-y-2">{[...exames].sort((a,b)=>(b.realizado_em||"").localeCompare(a.realizado_em||"")).slice(0,3).map(e=><button key={e.id} type="button" className="flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left hover:bg-slate-50" onClick={()=>{setAnimalId(e.animal_id);navegar("exames")}}><span className="min-w-0"><strong className="block truncate text-sm">{e.titulo}</strong><span className="block text-xs text-slate-500">{animais.find(a=>a.id===e.animal_id)?.nome||"Animal"} · {dataBr(e.realizado_em)}</span></span><span className="shrink-0 text-xs font-bold text-[#702a43]">Abrir →</span></button>)}{!exames.length&&<p className="text-sm text-slate-500">Nenhum exame liberado pela clínica.</p>}</div></section>
-   <section className="rounded-2xl border bg-white p-5"><div className="mb-4 flex items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-black"><ReceiptText size={19}/>Últimas receitas</h3><button type="button" className="text-sm font-bold text-[#702a43]" onClick={()=>navegar("receitas")}>Ver todas →</button></div><div className="space-y-2">{[...receitas].sort((a,b)=>b.emitida_em.localeCompare(a.emitida_em)).slice(0,3).map(r=><button key={r.id} type="button" className="flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left hover:bg-slate-50" onClick={()=>{setAnimalId(r.animal_id);navegar("receitas")}}><span className="min-w-0"><strong className="block truncate text-sm">{r.titulo}</strong><span className="block text-xs text-slate-500">{animais.find(a=>a.id===r.animal_id)?.nome||"Animal"} · {dataBr(r.emitida_em)}</span></span><span className="shrink-0 text-xs font-bold text-[#702a43]">Abrir →</span></button>)}{!receitas.length&&<p className="text-sm text-slate-500">Nenhuma receita liberada pela clínica.</p>}</div></section>
-  </div>}
-  {secao==="resumo"&&<PortalTutorOtherServices onNavigate={id=>{const destino:Record<string,Secao>={banho:"agenda",hotel:"agenda",financeiro:"comanda",contato:"contato"};navegar(destino[id]||"resumo");}}/>}
-  {secao==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h3 className="text-xl font-black">Novo agendamento</h3>{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>setAgendaId(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>setDataAgenda(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<Loader2 className="animate-spin"/>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Sem horário disponível.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">A clínica ainda não disponibilizou horários para agendamento online.</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><div className="rounded-2xl border bg-white p-5"><h3 className="font-black">Meus agendamentos</h3><div className="mt-3 space-y-2">{marcacoesAnimal.length?marcacoesAnimal.map(a=><div key={a.id} className="flex justify-between gap-3 rounded-xl border p-3"><div><strong className="text-sm">{a.tipo}</strong><p className="text-xs text-slate-500">{dataHora(a.inicio)}</p>{agendas.find(g=>g.id===a.agenda_id)?.responsavel&&<p className="mt-1 text-xs font-semibold text-[#702a43]">Profissional: {agendas.find(g=>g.id===a.agenda_id)?.responsavel}</p>}</div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{estado(a.estado)}</span></div>):<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum agendamento.</p>}</div></div></div>}
-  {secao==="documentos"&&portalConfig.exibir_documentos!==false&&<><div className="mb-3 rounded-2xl border bg-white p-4"><h3 className="mb-2 text-sm font-black">Documentos por animal</h3><p className="mb-3 text-xs text-slate-500">Selecione o animal para atualizar os arquivos sem sair desta tela.</p><div className="flex flex-wrap gap-2">{animais.map(a=><button key={a.id} onClick={()=>setAnimalId(a.id)} className={`rounded-xl px-4 py-2 text-sm font-bold ${animalId===a.id?"bg-[#702a43] text-white":"border bg-white"}`}>{emoji(a.especie)} {a.nome}</button>)}</div></div><Lista titulo="Documentos, laudos e atestados" vazio="Nenhum documento liberado.">{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista></>}
-  {secao==="exames"&&<Lista titulo="Exames" vazio="Nenhum exame liberado.">{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
-  {secao==="receitas"&&<Lista titulo="Receitas" vazio="Nenhuma receita disponível.">{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
-  {secao==="vacinas"&&<><Lista titulo="Cartões e carteiras em PDF" vazio="Nenhum cartão em PDF liberado.">{docsAnimal.filter(d=>d.tipo==="Cartão de vacinação"||d.tipo==="Carteira de saúde").map(d=><div key={d.id} className="flex justify-between rounded-xl border p-4"><strong>{d.titulo}</strong>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div>)}</Lista><Lista titulo="Cartão de vacinas e reforços" vazio="Nenhuma vacina ou cartão liberado.">{vacinasAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><strong>{v.nome}</strong>{v.reforco_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Reforço {dataBr(v.reforco_em)}</span>}</div><p className="text-xs text-slate-500">Aplicada {dataBr(v.aplicada_em)}{v.lote?` · Lote ${v.lote}`:""}</p>{v.observacoes&&<p className="mt-2 text-sm">{v.observacoes}</p>}</div>)}</Lista></>}
-  {secao==="vermifugos"&&<Lista titulo="Vermífugos e próximas doses" vazio="Nenhuma vermifugação liberada pela clínica.">{vermifugosAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{v.nome}</strong>{v.proxima_dose_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Próxima dose: {dataBr(v.proxima_dose_em)}</span>}</div><p className="mt-1 text-xs text-slate-500">Administrado: {dataBr(v.administrado_em)}{v.lote?` · Lote ${v.lote}`:""}</p>{v.observacoes&&<p className="mt-2 whitespace-pre-wrap text-sm">{v.observacoes}</p>}</div>)}</Lista>}
-  {secao==="comanda"&&<Lista titulo="Comandas abertas e finalizadas" vazio="Nenhuma comanda disponível.">{comandasAnimal.map(c=><article key={c.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-3"><div><strong>Comanda #{String(c.numero).padStart(5,"0")}</strong><p className="text-xs text-slate-500">{c.origem} · aberta em {dataHora(c.aberta_em)}{c.finalizada_em?` · finalizada em ${dataHora(c.finalizada_em)}`:""}</p></div><span className={`rounded-full px-2 py-1 text-xs font-bold ${c.status==="Aberta"?"bg-amber-100 text-amber-900":"bg-emerald-100 text-emerald-800"}`}>{c.status}</span></div><div className="mt-3 space-y-1">{(c.itens||[]).map(i=><div key={i.id} className="flex justify-between gap-3 text-sm"><span>{i.quantidade}× {i.descricao}</span><strong>{dinheiro(i.quantidade*i.valorUnitario)}</strong></div>)}</div><div className="mt-4 grid grid-cols-3 gap-2 border-t pt-3 text-center"><div><small className="text-slate-500">Total</small><strong className="block">{dinheiro(c.total)}</strong></div><div><small className="text-slate-500">Pago</small><strong className="block">{dinheiro(c.total_pago)}</strong></div><div><small className="text-slate-500">Saldo</small><strong className="block">{dinheiro(c.saldo)}</strong></div></div>{Number(c.saldo)>0&&<div className="mt-4 rounded-xl bg-slate-50 p-3"><p className="text-sm font-bold">Pagar pelo Portal do Tutor</p><p className="mt-1 text-xs text-slate-600">Você pode quitar o saldo ou informar um adiantamento.</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input value={adiantamentos[c.id]||""} onChange={e=>setAdiantamentos(atual=>({...atual,[c.id]:e.target.value}))} inputMode="decimal" placeholder={"Valor livre · saldo "+dinheiro(c.saldo)} className="min-h-10 flex-1 rounded-lg border bg-white px-3 text-sm"/><button disabled={pagando===c.id} onClick={()=>void pagarComanda(c)} className="min-h-10 rounded-lg bg-[#702a43] px-4 text-sm font-bold text-white disabled:opacity-50">{pagando===c.id?"Abrindo...":"Pagar online"}</button></div></div>}</article>)}</Lista>}</section></div>}</>}<PortalFooter/>{animais.length>0&&<><button aria-label="Fechar mais opções" onClick={()=>setMaisAberto(false)} className={maisAberto?"fixed inset-0 z-40 bg-black/25 lg:hidden":"hidden"}/>{maisAberto&&<div className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 grid max-h-[60vh] grid-cols-2 gap-1 overflow-auto rounded-2xl bg-white p-3 shadow-2xl lg:hidden">{([["documentos","Documentos",FileText],["exames","Exames",FlaskConical],["receitas","Receitas",ReceiptText],["vermifugos","Vermífugos",ShieldCheck],["contato","Fale com a Clínica",UserRound],["perfil","Meu perfil",UserRound]] as const).map(([id,nome,Icon])=><button key={id} onClick={()=>{navegar(id);setMaisAberto(false)}} className={"flex min-h-11 items-center gap-2 rounded-xl px-3 py-3 text-left text-sm font-bold "+(secao===id?"bg-[#f8e9ee] text-[#702a43]":"text-[#5d5157]")}><Icon size={18}/>{nome}</button>)}</div>}<nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 border-t border-[#eaddd9] bg-white px-1 pb-[env(safe-area-inset-bottom)] lg:hidden">{([["resumo","Início",Home],["agenda","Agenda",CalendarDays],["vacinas","Saúde",HeartPulse],["comanda","Financeiro",ReceiptText]] as const).map(([id,nome,Icon])=><button key={id} onClick={()=>navegar(id)} className={"flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold "+(secao===id?"text-[#702a43]":"text-[#84777b]")}><Icon size={20}/>{nome}</button>)}<button onClick={()=>setMaisAberto(true)} className="flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[10px] font-semibold text-[#84777b]"><Menu size={20}/>Mais</button></nav></>}</div></main>;
+  const nomeClinica = portalConfig.nome_exibicao || contexto.clinica_nome;
+  const logoClinica = portalConfig.logo_clinica_url || contexto.clinica_logo_url || portalConfig.logo_cabecalho_url;
+  const siteClinica = new URL("/", urlPortalDoTutor(slug)).href;
+  const temNovidades = Boolean(
+    (extrasPublicos.opcoes.mostrar_banner !== false && extrasPublicos.opcoes.banner_titulo) ||
+    (extrasPublicos.opcoes.mostrar_promocoes !== false && extrasPublicos.promocoes?.length) ||
+    (extrasPublicos.opcoes.mostrar_servico !== false && extrasPublicos.opcoes.destaque_servico) ||
+    extrasPublicos.opcoes.chamada_promocional,
+  );
+
+  return (
+    <main className="portal-tutor-live portal-area" data-site-template={temaPortal?.modelo} style={estiloTemaPortal(temaPortal)}>
+      <header className="portal-area-header">
+        <div className="portal-area-container portal-area-header-inner">
+          <div className="portal-area-brand">
+            <span className="portal-area-clinic-mark">
+              {logoClinica ? <img src={logoClinica} alt="" /> : <PawPrint size={22} aria-hidden="true" />}
+            </span>
+            <div className="min-w-0">
+              <p className="portal-area-brand-title">Portal do Tutor</p>
+              <p className="portal-area-muted text-sm break-words">{nomeClinica}</p>
+            </div>
+          </div>
+          <div className="portal-area-header-actions">
+            <a href={siteClinica} className="portal-area-header-action"><ArrowLeft size={17} aria-hidden="true" /> <span>Site da clínica</span></a>
+            <button type="button" className="portal-area-header-action" onClick={sair}><LogOut size={17} aria-hidden="true" /> <span>Sair</span></button>
+          </div>
+        </div>
+      </header>
+      <div className="portal-area-container portal-area-layout">
+        <nav className="portal-area-nav" aria-label="Seções do Portal do Tutor">
+          {navegacao.map(({ id, nome, Icon }) => (
+            <button key={id} type="button" aria-current={secaoAtual.id === id ? "page" : undefined} onClick={() => navegar(id)}>
+              <Icon size={18} aria-hidden="true" /><span>{nome}</span>
+            </button>
+          ))}
+        </nav>
+        <label className="portal-area-mobile-nav">
+          <span>Seções</span>
+          <select value={secaoAtual.id} onChange={e => navegar(e.target.value as Secao)}>
+            {navegacao.map(({ id, nome }) => <option key={id} value={id}>{nome}</option>)}
+          </select>
+        </label>
+        <div className="portal-area-content">
+          {modoDemoAlvorada && <p className="portal-area-demo">Demonstração · Dados fictícios</p>}
+          <div className="portal-area-section-heading">
+            <h1 ref={tituloSecao} tabIndex={-1}>{secaoAtual.nome}</h1>
+            {animal && secaoAtual.id !== "contato" && secaoAtual.id !== "perfil" && (
+              <label className="portal-area-pet-select">
+                <span>Pet selecionado</span>
+                <select value={animal.id} onChange={e => navegar(secaoAtual.id, e.target.value)}>
+                  {animais.map(pet => <option key={pet.id} value={pet.id}>{pet.nome}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+          {secaoAtual.id === "contato" ? (
+            <div className="space-y-4">
+              <PortalClinicContact canais={portalConfig.canais_contato || {}} />
+              <div className="portal-area-clinic-info">{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{(portalConfig.telefone_publico || portalConfig.whatsapp_publico) && <p className="text-sm">Contato {extrasPublicos.opcoes?.mostrar_contato !== false ? portalConfig.telefone_publico : ""}{extrasPublicos.opcoes?.mostrar_whatsapp !== false && portalConfig.whatsapp_publico && " · WhatsApp " + portalConfig.whatsapp_publico}</p>}</div>
+            </div>
+          ) : secaoAtual.id === "perfil" ? (
+            <section className="rounded-2xl border bg-white p-5 sm:p-6"><p className="text-sm portal-area-muted">{contexto.tutor_nome} · {contexto.usuario}</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><Campo rotulo="Telefone" valor={telefone} onChange={setTelefone}/><Campo rotulo="E-mail" valor={email} onChange={setEmail} type="email"/></div><div className="mt-5 flex flex-wrap gap-2"><button disabled={salvandoPerfil} onClick={salvarPerfil} className="min-h-11 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-50">{salvandoPerfil?"Salvando...":"Salvar"}</button></div></section>
+          ) : !animal ? (
+            <section className="portal-area-empty">
+              <PawPrint size={25} aria-hidden="true" />
+              <h2>Nenhum pet vinculado</h2>
+              <button type="button" className="portal-area-text-action" onClick={() => navegar("contato")}>Fale com a clínica</button>
+            </section>
+          ) : (
+            <div className="space-y-4">
+              {secaoAtual.id === "resumo" && (
+                <>
+                  <section className="portal-area-pet">
+                    <span className="portal-area-pet-photo">
+                      {animal.foto_url ? <img src={animal.foto_url} alt="" /> : <PawPrint size={31} aria-hidden="true" />}
+                    </span>
+                    <div className="min-w-0">
+                      <h2>{animal.nome}</h2>
+                      <p className="portal-area-muted">{[animal.especie, animal.raca, animal.sexo].filter(Boolean).join(" · ")}</p>
+                    </div>
+                  </section>
+                  <div className="portal-area-shortcuts">
+                    {portalConfig.exibir_agendamento !== false && <Resumo titulo="Agenda" valor="Agendamentos e horários" Icon={CalendarDays} onClick={() => navegar("agenda")} />}
+                    {portalConfig.exibir_documentos !== false && <Resumo titulo="Documentos" valor="Laudos e arquivos" Icon={FileText} onClick={() => navegar("documentos")} />}
+                    <Resumo titulo="Vacinas" valor="Carteira e reforços" Icon={HeartPulse} onClick={() => navegar("vacinas")} />
+                  </div>
+                  {extrasPublicos.opcoes.mostrar_avisos !== false && Boolean(extrasPublicos.opcoes.aviso_importante) && (
+                    <section className="portal-area-notice">
+                      <h2 className="font-semibold">Aviso da clínica</h2>
+                      <p className="text-sm">{String(extrasPublicos.opcoes.aviso_importante)}</p>
+                    </section>
+                  )}
+                  {(examesAnimal.length > 0 || receitasAnimal.length > 0) && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {examesAnimal.length > 0 && <Lista titulo="Últimos exames" vazio="">{[...examesAnimal]
+                        .sort((a,b) => (b.realizado_em || "").localeCompare(a.realizado_em || "")).slice(0,3).map(item => (
+                          <button key={item.id} type="button" className="portal-area-activity" onClick={() => navegar("exames")}>
+                            <span>{item.titulo}</span><small>{dataBr(item.realizado_em)}</small><ChevronRight size={16} aria-hidden="true" />
+                          </button>
+                        ))}</Lista>}
+                      {receitasAnimal.length > 0 && <Lista titulo="Últimas receitas" vazio="">{[...receitasAnimal]
+                        .sort((a,b) => b.emitida_em.localeCompare(a.emitida_em)).slice(0,3).map(item => (
+                          <button key={item.id} type="button" className="portal-area-activity" onClick={() => navegar("receitas")}>
+                            <span>{item.titulo}</span><small>{dataBr(item.emitida_em)}</small><ChevronRight size={16} aria-hidden="true" />
+                          </button>
+                        ))}</Lista>}
+                    </div>
+                  )}
+                  {temNovidades && <details className="portal-area-details"><summary>Novidades da clínica</summary><div className="pt-4">{extrasPublicos.opcoes?.mostrar_banner!==false&&Boolean(extrasPublicos.opcoes?.banner_titulo)&&<section className="mb-4 rounded-2xl border p-6" style={{backgroundColor:/^#[0-9a-fA-F]{6}$/.test(String(extrasPublicos.opcoes.cor_destaque||""))?String(extrasPublicos.opcoes.cor_destaque)+"20":"#e5f4ef"}}><h2 className="text-xl font-black">{String(extrasPublicos.opcoes.banner_titulo)}</h2><p className="mt-1">{String(extrasPublicos.opcoes.banner_subtitulo||"")}</p>{/^https:\/\//.test(String(extrasPublicos.opcoes.banner_link||""))&&<a className="mt-3 inline-block rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-white" href={String(extrasPublicos.opcoes.banner_link)} target="_blank" rel="noopener noreferrer">Saiba mais</a>}</section>}{extrasPublicos.opcoes?.mostrar_promocoes!==false&&Boolean(extrasPublicos.promocoes?.length)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="mb-3 font-bold">Promoções da clínica</h2><div className="grid gap-3 sm:grid-cols-2">{(extrasPublicos.promocoes||[]).map((p,i)=><div key={i} className="rounded-lg border p-3"><strong>{p.titulo}</strong><p className="text-sm">{p.descricao}</p><p className="mt-1 text-sm font-semibold">{p.desconto_percentual}% de desconto{p.cupom?" · Cupom: "+p.cupom:""}</p></div>)}</div></section>}{extrasPublicos.opcoes?.mostrar_servico!==false&&Boolean(extrasPublicos.opcoes?.destaque_servico)&&<section className="mb-4 rounded-xl border bg-white p-4"><h2 className="font-bold">Serviço em destaque</h2><p className="text-sm">{String(extrasPublicos.opcoes.destaque_servico)}</p></section>}{Boolean(extrasPublicos.opcoes?.chamada_promocional)&&<p className="mb-4 rounded-lg bg-emerald-50 p-3 text-center font-semibold text-emerald-900">{String(extrasPublicos.opcoes.chamada_promocional)}</p>}</div></details>}
+                  {portalConfig.exibir_agendamento !== false && (
+                    <details className="portal-area-details"><summary>Outros serviços</summary>
+                      <PortalTutorOtherServices mostrarTitulo={false} onNavigate={id => navegar(id === "contato" ? "contato" : id === "financeiro" ? "comanda" : "agenda")} />
+                    </details>
+                  )}
+                </>
+              )}
+  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Novo agendamento</h2>{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>setAgendaId(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>setDataAgenda(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<Loader2 className="animate-spin"/>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Sem horário disponível.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">A clínica ainda não disponibilizou horários para agendamento online.</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><div className="rounded-2xl border bg-white p-5"><h3 className="font-black">Meus agendamentos</h3><div className="mt-3 space-y-2">{marcacoesAnimal.length?marcacoesAnimal.map(a=><div key={a.id} className="flex justify-between gap-3 rounded-xl border p-3"><div><strong className="text-sm">{a.tipo}</strong><p className="text-xs text-slate-500">{dataHora(a.inicio)}</p>{agendas.find(g=>g.id===a.agenda_id)?.responsavel&&<p className="mt-1 text-xs font-semibold text-[#702a43]">Profissional: {agendas.find(g=>g.id===a.agenda_id)?.responsavel}</p>}</div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{estado(a.estado)}</span></div>):<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum agendamento.</p>}</div></div></div>}
+  {secaoAtual.id==="documentos"&&portalConfig.exibir_documentos!==false&&<Lista titulo="Documentos, laudos e atestados" vazio="Nenhum documento liberado.">{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista>}
+  {secaoAtual.id==="exames"&&<Lista titulo="Exames" vazio="Nenhum exame liberado.">{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
+  {secaoAtual.id==="receitas"&&<Lista titulo="Receitas" vazio="Nenhuma receita disponível.">{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
+  {secaoAtual.id==="vacinas"&&<><Lista titulo="Cartões e carteiras em PDF" vazio="Nenhum cartão em PDF liberado.">{docsAnimal.filter(d=>d.tipo==="Cartão de vacinação"||d.tipo==="Carteira de saúde").map(d=><div key={d.id} className="flex justify-between rounded-xl border p-4"><strong>{d.titulo}</strong>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div>)}</Lista><Lista titulo="Cartão de vacinas e reforços" vazio="Nenhuma vacina ou cartão liberado.">{vacinasAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><strong>{v.nome}</strong>{v.reforco_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Reforço {dataBr(v.reforco_em)}</span>}</div><p className="text-xs text-slate-500">Aplicada {dataBr(v.aplicada_em)}{v.lote?` · Lote ${v.lote}`:""}</p>{v.observacoes&&<p className="mt-2 text-sm">{v.observacoes}</p>}</div>)}</Lista></>}
+  {secaoAtual.id==="vermifugos"&&<Lista titulo="Vermífugos e próximas doses" vazio="Nenhuma vermifugação liberada pela clínica.">{vermifugosAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{v.nome}</strong>{v.proxima_dose_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Próxima dose: {dataBr(v.proxima_dose_em)}</span>}</div><p className="mt-1 text-xs text-slate-500">Administrado: {dataBr(v.administrado_em)}{v.lote?` · Lote ${v.lote}`:""}</p>{v.observacoes&&<p className="mt-2 whitespace-pre-wrap text-sm">{v.observacoes}</p>}</div>)}</Lista>}
+  {secaoAtual.id==="comanda"&&<Lista titulo="Comandas abertas e finalizadas" vazio="Nenhuma comanda disponível.">{comandasAnimal.map(c=><article key={c.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-3"><div><strong>Comanda #{String(c.numero).padStart(5,"0")}</strong><p className="text-xs text-slate-500">{c.origem} · aberta em {dataHora(c.aberta_em)}{c.finalizada_em?` · finalizada em ${dataHora(c.finalizada_em)}`:""}</p></div><span className={`rounded-full px-2 py-1 text-xs font-bold ${c.status==="Aberta"?"bg-amber-100 text-amber-900":"bg-emerald-100 text-emerald-800"}`}>{c.status}</span></div><div className="mt-3 space-y-1">{(c.itens||[]).map(i=><div key={i.id} className="flex justify-between gap-3 text-sm"><span>{i.quantidade}× {i.descricao}</span><strong>{dinheiro(i.quantidade*i.valorUnitario)}</strong></div>)}</div><div className="mt-4 grid grid-cols-3 gap-2 border-t pt-3 text-center"><div><small className="text-slate-500">Total</small><strong className="block">{dinheiro(c.total)}</strong></div><div><small className="text-slate-500">Pago</small><strong className="block">{dinheiro(c.total_pago)}</strong></div><div><small className="text-slate-500">Saldo</small><strong className="block">{dinheiro(c.saldo)}</strong></div></div>{Number(c.saldo)>0&&<div className="mt-4 rounded-xl bg-slate-50 p-3"><p className="text-sm font-bold">Pagar pelo Portal do Tutor</p><p className="mt-1 text-xs text-slate-600">Você pode quitar o saldo ou informar um adiantamento.</p><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input value={adiantamentos[c.id]||""} onChange={e=>setAdiantamentos(atual=>({...atual,[c.id]:e.target.value}))} inputMode="decimal" placeholder={"Valor livre · saldo "+dinheiro(c.saldo)} className="min-h-10 flex-1 rounded-lg border bg-white px-3 text-sm"/><button disabled={pagando===c.id} onClick={()=>void pagarComanda(c)} className="min-h-10 rounded-lg bg-[#702a43] px-4 text-sm font-bold text-white disabled:opacity-50">{pagando===c.id?"Abrindo...":"Pagar online"}</button></div></div>}</article>)}</Lista>}
+            </div>
+          )}
+        </div>
+      </div>
+      <footer className="portal-area-footer">
+        <p className="portal-area-container">
+          <a href="https://oricse.com.br">Oricse – Soluções para o mercado pet</a>
+          <span>Desenvolvido por DIRCE Tecnologia e Veterício</span>
+          <span>© {new Date().getFullYear()} · Versão {VERSAO}</span>
+        </p>
+      </footer>
+    </main>
+  );
 }
 
 function TelaCarregando(){return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4]"><Loader2 className="animate-spin"/></main>}
 function Campo({rotulo,valor,onChange,type="text",inputMode,placeholder}:{rotulo:string;valor:string;onChange:(v:string)=>void;type?:string;inputMode?:React.HTMLAttributes<HTMLInputElement>["inputMode"];placeholder?:string}){return <label className="text-sm font-bold">{rotulo}<input type={type} value={valor} inputMode={inputMode} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>}
-function Resumo({titulo,valor,Icon,onClick}:{titulo:string;valor:string;Icon:typeof PawPrint;onClick:()=>void}){return <button onClick={onClick} className="rounded-2xl border bg-white p-5 text-left"><Icon className="text-[#702a43]"/><h3 className="mt-3 font-black">{titulo}</h3><p className="text-sm text-slate-500">{valor}</p></button>}
-function Lista({titulo,vazio,children}:{titulo:string;vazio:string;children:React.ReactNode}){const tem=Array.isArray(children)?children.length>0:Boolean(children);return <section className="rounded-2xl border bg-white p-5"><h3 className="text-xl font-black">{titulo}</h3><div className="mt-4 space-y-2">{tem?children:<p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">{vazio}</p>}</div></section>}
+function Resumo({ titulo, valor, Icon, onClick }: { titulo: string; valor: string; Icon: typeof PawPrint; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="portal-area-shortcut">
+      <span className="portal-area-shortcut-icon"><Icon size={21} aria-hidden="true" /></span>
+      <span className="min-w-0"><strong className="block">{titulo}</strong><small className="portal-area-muted">{valor}</small></span>
+      <ChevronRight size={17} aria-hidden="true" />
+    </button>
+  );
+}
+
+function Lista({ titulo, vazio, children }: { titulo: string; vazio: string; children: ReactNode }) {
+  const tem = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return <section className="portal-area-list">
+    <h2>{titulo}</h2>
+    <div className="mt-3 space-y-2">{tem ? children : <p className="portal-area-muted py-2 text-sm">{vazio}</p>}</div>
+  </section>;
+}
 function BotaoArquivo({id,tipo,baixando,onAbrir,rotulo="Abrir arquivo"}:{id:string;tipo:TipoArquivo;baixando:string|null;onAbrir:(id:string,tipo:TipoArquivo)=>Promise<void>;rotulo?:string}){const chave=`${tipo}:${id}`;return <button disabled={baixando===chave} onClick={()=>void onAbrir(id,tipo)} className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold text-[#702a43] disabled:opacity-50">{baixando===chave?<Loader2 size={14} className="animate-spin"/>:<Download size={14}/>} {rotulo}</button>}
 function Login(props:{
   tema:TemaPortal|null;

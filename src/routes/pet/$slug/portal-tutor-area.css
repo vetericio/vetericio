@@ -1,0 +1,205 @@
+.portal-area {
+  --area-text: var(--portal-panel-text, #30272d);
+  --area-muted: var(--portal-muted, #625560);
+  --area-panel: var(--portal-panel, #fff);
+  --area-line: var(--portal-border, #e9e1e5);
+  --area-accent: var(--portal-primary, #702a43);
+  --area-tint: color-mix(in srgb, var(--area-accent) 11%, var(--area-panel));
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--portal-bg, #f8f6f5);
+  color: var(--area-text);
+}
+
+.portal-area-container {
+  width: min(100%, 77rem);
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2.5rem);
+}
+
+.portal-area .portal-area-header {
+  background: var(--area-panel) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--area-line) !important;
+}
+
+.portal-area-header-inner, .portal-area-brand, .portal-area-header-actions, .portal-area-header-action {
+  display: flex;
+  align-items: center;
+}
+
+.portal-area-header-inner {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .45rem 1.5rem;
+  padding-block: .85rem;
+}
+
+.portal-area-brand { min-width: 0; gap: .8rem; flex: 1 1 18rem; }
+.portal-area .portal-area-brand-title { color: var(--area-text) !important; font-size: 1.12rem; letter-spacing: -.02em !important; font-weight: 750; }
+.portal-area-muted { color: var(--area-muted); }
+.portal-area-header-actions { gap: .35rem; }
+.portal-area-header-action {
+  min-height: 44px;
+  gap: .45rem;
+  border-radius: .65rem;
+  padding: .45rem .7rem;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--area-text);
+}
+.portal-area-header-action:hover { background: var(--area-tint); }
+
+.portal-area-clinic-mark, .portal-area-pet-photo, .portal-area-shortcut-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  background: var(--area-tint);
+  color: var(--area-text);
+}
+.portal-area-clinic-mark { width: 3rem; height: 3rem; border-radius: .75rem; overflow: hidden; }
+.portal-area-clinic-mark img { width: 100%; height: 100%; object-fit: contain; padding: .2rem; }
+
+.portal-area-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1.35rem, 4vw, 3rem);
+  flex: 1;
+  padding-block: clamp(1.1rem, 3vw, 2.5rem);
+}
+
+.portal-area-nav { display: grid; gap: .18rem; position: sticky; top: 1rem; }
+.portal-area-nav button {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .65rem .75rem;
+  min-height: 44px;
+  border-radius: .65rem;
+  border-inline-start: 3px solid transparent;
+  text-align: start;
+  color: var(--area-text);
+  font-size: .875rem;
+}
+.portal-area-nav button svg { flex: none; }
+.portal-area-nav button:hover, .portal-area-nav button[aria-current="page"] { background: var(--area-tint); }
+.portal-area-nav button[aria-current="page"] { font-weight: 700; border-inline-start-color: var(--area-accent); }
+.portal-area-mobile-nav { display: none; }
+
+.portal-area-content { min-width: 0; }
+.portal-area-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: .85rem 1.5rem;
+  flex-wrap: wrap;
+  margin-block: 0 1.25rem;
+}
+.portal-area .portal-area-section-heading h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4.3vw, 2.85rem);
+  line-height: 1.16;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  letter-spacing: -.04em;
+}
+.portal-area-pet-select, .portal-area-mobile-nav {
+  font-size: .875rem;
+  font-weight: 600;
+}
+.portal-area-pet-select { display: grid; gap: .35rem; min-width: min(11rem, 100%); max-width: 100%; }
+.portal-area :is(.portal-area-pet-select, .portal-area-mobile-nav) select {
+  min-height: 44px;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--area-line);
+  background: var(--area-panel);
+  padding: .45rem .7rem;
+  border-radius: .65rem !important;
+  color: var(--area-text);
+}
+
+.portal-area :is(.portal-area-pet, .portal-area-list, .portal-area-empty, .portal-area-shortcut, .portal-area-details, .portal-area-notice) {
+  background: var(--area-panel);
+  border: 1px solid var(--area-line);
+  border-radius: 1rem;
+}
+.portal-area[data-site-template] .portal-area-content :is(section, article) {
+  box-shadow: none;
+}
+.portal-area-pet { display: flex; align-items: center; gap: 1rem; padding: clamp(1rem, 2.6vw, 1.6rem); }
+.portal-area-pet-photo { width: 4rem; height: 4rem; overflow: hidden; border-radius: 50%; }
+.portal-area-pet-photo img { width: 100%; height: 100%; object-fit: cover; }
+.portal-area-pet h2 { font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 650; overflow-wrap: anywhere; }
+.portal-area-pet p { font-size: .875rem; }
+
+.portal-area-shortcuts { display: grid; gap: .7rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.portal-area-shortcut { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .6rem; padding: .85rem; min-height: 76px; text-align: start; }
+.portal-area-shortcut:hover, .portal-area-activity:hover { background: var(--area-tint); }
+.portal-area-shortcut-icon { width: 2.35rem; height: 2.35rem; border-radius: .65rem; }
+.portal-area-shortcut small { display: block; line-height: 1.3; margin-top: .15rem; }
+.portal-area-list, .portal-area-notice, .portal-area-empty { padding: clamp(1rem, 2.5vw, 1.4rem); }
+.portal-area-list h2, .portal-area-empty h2 { font-size: 1.125rem; font-weight: 700; }
+.portal-area-list :is(strong, p, small) { overflow-wrap: anywhere; }
+.portal-area-empty { display: grid; justify-items: start; gap: .65rem; }
+.portal-area-text-action { min-height: 44px; font-weight: 650; text-decoration: underline; text-underline-offset: .2em; }
+.portal-area-activity {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: .45rem;
+  width: 100%;
+  min-height: 44px;
+  padding: .55rem .65rem;
+  text-align: start;
+  border-radius: .6rem;
+  font-size: .875rem;
+}
+.portal-area-activity small, .portal-area-demo { color: var(--area-muted); }
+.portal-area-demo { font-size: .875rem; margin-bottom: .65rem; }
+.portal-area-details { padding: 0 .9rem; }
+.portal-area-details summary { min-height: 44px; padding-block: .65rem; font-weight: 600; cursor: pointer; }
+.portal-area-details[open] { padding-bottom: .75rem; }
+.portal-area-clinic-info { display: grid; gap: .6rem; }
+
+.portal-area-footer { border-top: 1px solid var(--area-line); color: var(--area-muted); font-size: .78rem; }
+.portal-area-footer p { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .85rem; padding-block: 1rem; }
+.portal-area-footer a { font-weight: 650; text-decoration: underline; text-underline-offset: .2em; }
+.portal-area :is(button, a, select, summary, h1):focus-visible {
+  outline: 2px solid var(--area-text);
+  outline-offset: 3px;
+}
+
+@media (max-width: 68rem) {
+  .portal-area-shortcuts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+}
+@media (max-width: 46rem) {
+  .portal-area-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .portal-area-nav { display: none; }
+  .portal-area-mobile-nav {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: .65rem;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: .55rem .65rem;
+    border: 1px solid var(--area-line);
+    border-radius: .75rem;
+    background: var(--area-panel);
+  }
+  .portal-area-header-actions { margin-inline-start: -.45rem; }
+  .portal-area-section-heading { align-items: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-area *, .portal-area *::before, .portal-area *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+.portal-area-section-heading h1 { scroll-margin-top: 5rem; }
