@@ -1,4 +1,3 @@
-export const CHAVE_ACESSIBILIDADE="oricse-acessibilidade-pessoal-v1";
 export type PreferenciasAcessibilidade = {
   textoAmpliado:boolean;
   contrasteReforcado:boolean;
@@ -14,14 +13,9 @@ const CLASSES:Record<keyof PreferenciasAcessibilidade,string>={
   focoDestacado:"oricse-a11y-foco",
   reduzirMovimento:"oricse-a11y-movimento",
 };
+let preferenciasDaSessao:PreferenciasAcessibilidade={...PADRAO_ACESSIBILIDADE};
 export function lerAcessibilidade():PreferenciasAcessibilidade{
-  if(typeof window==="undefined")return {...PADRAO_ACESSIBILIDADE};
-  try{
-    const bruto=window.localStorage.getItem(CHAVE_ACESSIBILIDADE);
-    if(!bruto)return {...PADRAO_ACESSIBILIDADE};
-    const dados=JSON.parse(bruto) as Record<string,unknown>;
-    return Object.fromEntries(Object.keys(CLASSES).map(k=>[k,dados?.[k]===true])) as PreferenciasAcessibilidade;
-  }catch{return {...PADRAO_ACESSIBILIDADE};}
+  return {...preferenciasDaSessao};
 }
 export function aplicarAcessibilidade(permitir:boolean){
   if(typeof document==="undefined")return;
@@ -31,7 +25,6 @@ export function aplicarAcessibilidade(permitir:boolean){
   }
 }
 export function salvarAcessibilidade(dados:PreferenciasAcessibilidade){
-  if(typeof window==="undefined")return;
-  window.localStorage.setItem(CHAVE_ACESSIBILIDADE,JSON.stringify(dados));
+  preferenciasDaSessao={...dados};
   aplicarAcessibilidade(true);
 }
