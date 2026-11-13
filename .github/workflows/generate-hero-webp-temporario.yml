@@ -1,0 +1,40 @@
+name: Gerar banner WebP da home (temporário)
+
+on:
+  push:
+    branches:
+      - perf/hero-webp-20261113
+
+permissions:
+  contents: write
+
+jobs:
+  gerar:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Criar versões responsivas sem modificar PNG original
+        run: |
+          npx --yes sharp-cli@6.1.0 -i public/oricse-capa-paisagem.png -o public/oricse-capa-paisagem.webp --format webp --quality 82
+          npx --yes sharp-cli@6.1.0 -i public/oricse-capa-paisagem.png -o public/oricse-capa-paisagem-mobile.webp --format webp --quality 80 resize 960
+          test -s public/oricse-capa-paisagem.webp
+          test -s public/oricse-capa-paisagem-mobile.webp
+          test "$(stat -c%s public/oricse-capa-paisagem.webp)" -lt "$(stat -c%s public/oricse-capa-paisagem.png)"
+          test "$(stat -c%s public/oricse-capa-paisagem-mobile.webp)" -lt "$(stat -c%s public/oricse-capa-paisagem.png)"
+          ls -lh public/oricse-capa-paisagem*
+      - name: Salvar somente imagens otimizadas na branch
+        run: |
+          git config user.name 'oricse-performance-bot'
+          git config user.email 'oricse-performance-bot@users.noreply.github.com'
+          git add public/oricse-capa-paisagem.webp public/oricse-capa-paisagem-mobile.webp
+          if ! git diff --cached --quiet; then
+            git commit -m "Gerar banners WebP responsivos da home"
+            git push origin HEAD:refs/heads/perf/hero-webp-20261113
+          fi
