@@ -1,5 +1,34 @@
 export type TipoPreventivo = "vacina" | "vermifugo";
 
+const alvosCaninos = "Cinomose, hepatite infecciosa canina, adenovirose respiratória, parvovirose, parainfluenza e leptospirose";
+const alvosFelinos = "Rinotraqueíte, calicivirose e panleucopenia felinas";
+
+export const vacinasPredefinidas = [
+  {
+    grupo: "Cães e gatos",
+    opcoes: [
+      { id: "raiva", nome: "Antirrábica (raiva)", alvo: "Raiva" },
+    ],
+  },
+  {
+    grupo: "Caninas",
+    opcoes: [
+      { id: "v8", nome: "V8 canina", alvo: alvosCaninos },
+      { id: "v10", nome: "V10 canina", alvo: alvosCaninos },
+      { id: "tosse", nome: "Tosse dos canis", alvo: "Traqueobronquite infecciosa canina" },
+    ],
+  },
+  {
+    grupo: "Felinas",
+    opcoes: [
+      { id: "v3", nome: "V3 felina", alvo: alvosFelinos },
+      { id: "v4", nome: "V4 felina", alvo: alvosFelinos + ", além de clamidiose" },
+      { id: "v5", nome: "V5 felina", alvo: alvosFelinos + ", além de clamidiose e leucemia felina (FeLV)" },
+      { id: "felv", nome: "FeLV", alvo: "Leucemia felina (FeLV)" },
+    ],
+  },
+];
+
 export const camposPreventivos = {
   fabricante: "",
   dose: "",
