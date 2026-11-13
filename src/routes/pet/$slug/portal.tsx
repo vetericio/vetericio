@@ -88,12 +88,12 @@ function dadosDemoAlvorada(clinica:ClinicaPublica,usuario:string){
   const ontem = new Date();
   ontem.setDate(ontem.getDate() - 1);
   const vacinas:Vacina[]=[
-    {id:"demo-vacina-lua",animal_id:"demo-lua",nome:"V4 felina",aplicada_em:"2026-03-12",reforco_em:"2027-03-12",lote:"ALV-2026-04",observacoes:"Aplicação registrada pela equipe Alvorada."},
+    {id:"demo-vacina-lua",animal_id:"demo-lua",nome:"V4 felina",aplicada_em:"2026-03-12",reforco_em:dataIso(),lote:"ALV-2026-04",observacoes:"Aplicação registrada pela equipe Alvorada."},
     {id:"demo-vacina-thor",animal_id:"demo-thor",nome:"Antirrábica",aplicada_em:"2026-05-08",reforco_em:"2027-05-08",lote:"ALV-2026-11",observacoes:null},
     {id:"demo-vacina-mel",animal_id:"demo-mel",nome:"V10",aplicada_em:"2026-06-20",reforco_em:"2027-06-20",lote:"ALV-2026-18",observacoes:null},
   ];
   const vermifugos:Vermifugo[]=[
-    {id:"demo-vermifugo-lua",animal_id:"demo-lua",nome:"Vermífugo felino",administrado_em:"2026-09-15",proxima_dose_em:"2026-12-15",lote:"VER-ALV-09",observacoes:"Administrado conforme orientação veterinária."},
+    {id:"demo-vermifugo-lua",animal_id:"demo-lua",nome:"Vermífugo felino",administrado_em:"2026-09-15",proxima_dose_em:dataIso(ontem),lote:"VER-ALV-09",observacoes:"Administrado conforme orientação veterinária."},
     {id:"demo-vermifugo-thor",animal_id:"demo-thor",nome:"Vermífugo cães adultos",administrado_em:"2026-10-02",proxima_dose_em:"2027-01-02",lote:"VER-ALV-10",observacoes:null},
   ];
   const exames:Exame[]=[
