@@ -105,9 +105,15 @@ export function VisualPageRuntime() {
 
     const apply = () => {
       if (!active || applying.current) return;
+      const layout = chooseLayout();
+      // A maior parte das páginas clínicas não possui patches publicados.
+      // Evita varrer imagens e o DOM inteiro em cada navegação quando não há
+      // nada para aplicar nem um layout anterior para restaurar.
+      if (!layout && !document.querySelector("[data-oricse-visual-patched], [data-oricse-visual-added]"))
+        return;
       applying.current = true;
-      applyVisualLayout(document, chooseLayout());
-      applying.current = false;
+      try { applyVisualLayout(document, layout); }
+      finally { applying.current = false; }
     };
 
     const scheduleApply = () => {
