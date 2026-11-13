@@ -52,6 +52,12 @@ jobs:
         run: node scripts/test-cotas-animais.mjs
       - name: Plan and role policy regression
         run: node scripts/test-plan-policy.mjs
+      - name: Permission manager guard regression
+        run: node scripts/test-permissoes-guardas.mjs
+      - name: Sensitive API guard regression
+        run: node scripts/test-api-permissions.mjs
+      - name: Validate authenticated isolation test syntax
+        run: node --check scripts/test-tenant-isolation-auth.mjs
       - name: Plan catalog inventory
         run: node scripts/audit-planos.mjs
       - name: UI audit

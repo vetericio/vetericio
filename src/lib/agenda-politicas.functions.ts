@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 
 const cancelarInput = z.object({
   accessToken: z.string().min(20),
@@ -23,22 +24,11 @@ export const cancelarAgendamentoPolitica = createServerFn({ method: "POST" })
     const {data:auth,error:authError}=await supabaseAdmin.auth.getUser(data.accessToken);
     if(authError||!auth.user)throw new Error("Sessão expirada.");
     const uid=auth.user.id;
-    const {data:perfil,error:erroPerfil}=await supabaseAdmin.from("app_users").select("role").eq("user_id",uid).maybeSingle();
-    if(erroPerfil)throw new Error("Não foi possível verificar o perfil.");
+    await exigirPermissaoClinica(supabaseAdmin,uid,data.clinicaId,["recepcao.agenda"],data.accessToken);
+    const {data:perfil}=await supabaseAdmin.from("app_users").select("role").eq("user_id",uid).maybeSingle();
     const adminGeral=perfil?.role==="admin";
-    const {data:vinculo,error:erroVinculo}=await supabaseAdmin.from("clinica_usuarios")
-      .select("papel").eq("user_id",uid).eq("clinica_id",data.clinicaId).eq("ativo",true).maybeSingle();
-    if(!adminGeral&&(erroVinculo||!vinculo))throw new Error("Você não está vinculado à clínica.");
-    const {data:permissoes,error:erroPermissoes}=await(supabaseAdmin as any).rpc("oricse_permissoes_efetivas",{
-      p_clinica_id:data.clinicaId,p_user_id:uid,
-    });
-    if(!adminGeral&&(erroPermissoes||!Array.isArray(permissoes)||
-      !permissoes.some((p:any)=>p.codigo==="recepcao.agenda"&&p.permitido===true))){
-      throw new Error("Seu perfil não permite cancelar agendamentos.");
-    }
-    const {data:clinica,error:erroClinica}=await supabaseAdmin.from("clinicas")
-      .select("id,status,excluido_em").eq("id",data.clinicaId).maybeSingle();
-    if(erroClinica||!clinica||clinica.status!=="ativa"||clinica.excluido_em)throw new Error("Clínica indisponível.");
+    const {data:vinculo}=await supabaseAdmin.from("clinica_usuarios").select("papel")
+      .eq("user_id",uid).eq("clinica_id",data.clinicaId).eq("ativo",true).maybeSingle();
     const {data:agendamento,error:erroAgenda}=await(supabaseAdmin as any).from("oricse_agendamentos_online")
       .select("id,clinica_id,inicio,estado,origem,observacoes").eq("id",data.agendamentoId).eq("clinica_id",data.clinicaId).maybeSingle();
     if(erroAgenda||!agendamento)throw new Error("Agendamento não encontrado nesta clínica.");

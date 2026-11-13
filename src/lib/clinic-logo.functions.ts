@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 
 import { excluirArquivoDrive, enviarArquivoDrive } from "@/lib/drive.functions";
 const inputSchema = z.object({
@@ -33,21 +34,9 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     if (erroAutenticacao || !autenticacao.user)
       throw new Error("Sessão inválida ou expirada. Entre novamente e tente enviar a logo.");
 
-    const [{ data: usuario }, { data: vinculo }] = await Promise.all([
-      supabaseAdmin.from("app_users").select("role").eq("user_id", autenticacao.user.id).maybeSingle(),
-      supabaseAdmin
-        .from("clinica_usuarios")
-        .select("papel")
-        .eq("user_id", autenticacao.user.id)
-        .eq("clinica_id", data.clinicaId)
-        .eq("ativo", true)
-        .maybeSingle(),
-    ]);
-    const podeEditar =
-      usuario?.role === "admin" ||
-      ["responsavel", "admin_clinica", "rt"].includes(vinculo?.papel || "");
-    if (!podeEditar)
-      throw new Error("Somente o responsável, RT ou administrador da plataforma pode alterar a logo desta clínica.");
+    await exigirPermissaoClinica(
+      supabaseAdmin, autenticacao.user.id, data.clinicaId, ["administracao.site"], data.accessToken,
+    );
 
     const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
     if (!bytes.length || bytes.length > MAX_BYTES)

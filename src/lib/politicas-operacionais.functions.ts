@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 
 const input = z.object({ accessToken: z.string().min(20), clinicaId: z.string().uuid() });
 
@@ -40,28 +41,8 @@ export const consultarPoliticasAgendaClinica = createServerFn({ method: "POST" }
     const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(data.accessToken);
     if (authError || !auth.user) throw new Error("Sessão expirada.");
     const userId = auth.user.id;
-    const { data: admin, error: adminError } = await supabaseAdmin.from("app_users")
-      .select("role").eq("user_id", userId).maybeSingle();
-    if (adminError) throw new Error("Falha ao consultar permissões.");
-    if (admin?.role !== "admin") {
-      const { data: vinculo, error: vinculoError } = await supabaseAdmin.from("clinica_usuarios")
-        .select("clinica_id").eq("user_id", userId)
-        .eq("clinica_id", data.clinicaId).eq("ativo", true).maybeSingle();
-      if (vinculoError || !vinculo) throw new Error("Usuário não vinculado à clínica.");
-      const { data: permissoes, error: permissoesError } = await (supabaseAdmin as any)
-        .rpc("oricse_permissoes_efetivas", {
-          p_clinica_id: data.clinicaId, p_user_id: userId,
-        });
-      if (permissoesError || !Array.isArray(permissoes) ||
-        !permissoes.some((p: any) => ["recepcao.agenda","consultorio.atendimentos","administracao.configuracoes","crm.gerenciar"].includes(p.codigo) && p.permitido === true)) {
-        throw new Error("Sem permissão para consultar estas políticas da clínica.");
-      }
-    }
-    const { data: clinica, error: clinicaError } = await supabaseAdmin.from("clinicas")
-      .select("id,status,excluido_em").eq("id", data.clinicaId).maybeSingle();
-    if (clinicaError || !clinica || clinica.status !== "ativa" || clinica.excluido_em) {
-      throw new Error("Clínica indisponível.");
-    }
+    await exigirPermissaoClinica(supabaseAdmin, userId, data.clinicaId,
+      ["recepcao.agenda","consultorio.atendimentos","administracao.configuracoes","crm.gerenciar"], data.accessToken);
     const { data: registro, error: registroError } = await supabaseAdmin.from("oricse_dados_modulos")
       .select("dados").eq("clinica_id", data.clinicaId).eq("chave", "estado_sistema").maybeSingle();
     if (registroError) throw new Error("Não foi possível carregar as políticas da clínica.");
