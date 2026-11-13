@@ -1,3 +1,4 @@
+import { slugPortalDoTutor } from "@/lib/portal-tutor-url";
 // Supabase fica restrito à autenticação e aos registros de usuários/vínculos.
 import { createClient } from '@supabase/supabase-js';
 import { brokeredPreviewStorage } from './previewAuthStorage';
@@ -57,7 +58,7 @@ function canalDrive(): PollChannel {
 
 function rotaDoPortalTutor() {
   if (typeof window === 'undefined') return false;
-  return /^\/pet\/[^/]+\/portal\/?$/.test(window.location.pathname) || (window.location.hostname.toLowerCase() === "alvorada.oricse.com.br" && /^\/portaldotutor\/?$/.test(window.location.pathname));
+  return /^\/pet\/[^/]+\/portal\/?$/.test(window.location.pathname) || (slugPortalDoTutor(window.location.hostname) && /^\/portaldotutor\/?$/.test(window.location.pathname));
 }
 function clientePrincipal() { if (!_supabase) _supabase = createSupabaseClient(); return _supabase; }
 function clientePortal() { if (!_supabasePortal) _supabasePortal = createSupabaseClient('oricse-portal-auth'); return _supabasePortal; }

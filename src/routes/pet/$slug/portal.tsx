@@ -1,3 +1,4 @@
+import { destinoPortalLegado, urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { orientacaoSenhaPortal, senhaPortalValida } from "../../../../supabase/functions/_shared/portal-password";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -15,29 +16,18 @@ import { clinicSitePresets, clinicSiteTemplates, normalizeClinicSiteConfig, type
 export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorRoute });
 
 function PortalTutorRoute() {
-  const { slug } = Route.useParams();
-  // Links antigos já distribuídos em materiais ou nos sites devem continuar
-  // funcionando, mas não podem deixar a Alvorada presa na URL antiga.
-  const rotaLegadaDaAlvorada =
-    slug === "alvorada" &&
-    typeof window !== "undefined" &&
-    window.location.hostname.toLowerCase() === "alvorada.oricse.com.br";
+  return <RedirecionarPortalLegado />;
+}
 
+export function RedirecionarPortalLegado() {
+  const [invalido, setInvalido] = useState(false);
   useEffect(() => {
-    if (!rotaLegadaDaAlvorada) return;
-    const destino = new URL("/portaldotutor", window.location.origin);
-    const parametros = new URLSearchParams(window.location.search);
-    // Tema é publicado pela clínica; não é parte da URL canônica.
-    parametros.delete("modelo");
-    destino.search = parametros.toString();
-    destino.hash = window.location.hash;
-    window.location.replace(destino.pathname + destino.search + destino.hash);
-  }, [rotaLegadaDaAlvorada]);
-
-  if (rotaLegadaDaAlvorada)
-    return <main className="min-h-screen bg-[#faf7f4] p-8 text-center text-[#312530]">Abrindo o Portal do Tutor…</main>;
-
-  return <PortalTutorClinica slugDaClinica={slug} />;
+    const { pathname, search, hash } = window.location;
+    const destino = destinoPortalLegado(pathname, search, hash);
+    if (destino) window.location.replace(destino);
+    else setInvalido(true);
+  }, []);
+  return <main className="min-h-screen bg-[#faf7f4] p-8 text-center text-[#312530]">{invalido ? "Endereço do Portal do Tutor inválido." : "Abrindo o Portal do Tutor…"}</main>;
 }
 
 type ClinicaPublica={nome:string;slug:string;logo_url:string|null};
@@ -345,9 +335,7 @@ function Login(props:{
   const p=props;
   const clinicName=p.portalConfig.nome_exibicao||p.clinica.nome;
   const clinicLogo=p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url;
-  const clinicSite=p.clinica.slug==="alvorada"
-    ? "https://alvorada.oricse.com.br/"
-    : `/c/${encodeURIComponent(p.clinica.slug)}`;
+  const clinicSite = new URL("/", urlPortalDoTutor(p.clinica.slug)).href;
   const acessoEstendido=p.modoAtivar||p.modoRecuperar;
   return <main data-visual-id="portal-tutor-login" className="portal-tutor-live portal-tutor-login-screen" data-clinic-slug={p.clinica.slug} data-site-template={p.tema?.modelo}
     data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>

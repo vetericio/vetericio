@@ -1,3 +1,4 @@
+import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { PortalTutorLoginPreview } from "./pet/$slug/portal";
 import { oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
@@ -8,7 +9,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { EditorConvitePortalTutor } from "@/components/EditorConvitePortalTutor";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import { obterModeloConvite } from "@/lib/convite-portal-tutor.functions";
-import { preencherConvite, urlPortalDoTutor, whatsappDoTutor } from "@/lib/convite-portal-tutor";
+import { preencherConvite, whatsappDoTutor } from "@/lib/convite-portal-tutor";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { type Comanda, lerComandas, saldoComanda, totalComanda, totalPagoComanda } from "@/lib/comandas";
 

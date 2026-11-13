@@ -73,25 +73,17 @@ async function validarSlugClinica(clinicaId: string, slug: string): Promise<void
   const { data, error } = await service.from("clinicas").select("slug").eq("id",clinicaId).single();
   if (error || data?.slug !== slug) throw new Error("Endereço não corresponde à clínica do tutor.");
 }
-async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, slug: string, access: string, req: Request) {
-  // Retornar ao mesmo host onde o tutor iniciou o pagamento, quando esse host
-  // pertence à própria clínica. Isso preserva a sessão após o checkout.
-  const hostEsperado = `${slug}.oricse.com.br`;
-  const entrada = origemPermitidaParaCors(req);
-  const hostEntrada = entrada ? new URL(entrada).hostname : "";
-  const retorno = entrada && (
-    hostEntrada === hostEsperado ||
-    ["oricse.com.br","app.oricse.com.br","www.oricse.com.br"].includes(hostEntrada)
-  ) ? entrada : origin;
+async function criarCheckout(pagamento: any, titulo: string, clinicaId: string, slug: string, access: string) {
+  const retorno = `https://${slug}.oricse.com.br/portaldotutor`;
   const marketplaceFee = Number(pagamento.estimativa_oricse_centavos || 0) / 100;
   const body = {
     items: [{ id: pagamento.id, title: titulo, quantity: 1, currency_id: "BRL", unit_price: Number(pagamento.bruto_centavos) / 100 }],
     external_reference: "portal:" + pagamento.id,
     marketplace_fee: marketplaceFee > 0 ? marketplaceFee : undefined,
     back_urls: {
-      success: retorno + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=sucesso",
-      pending: retorno + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=pendente",
-      failure: retorno + "/pet/" + encodeURIComponent(slug) + "/portal?pagamento=falha",
+      success: retorno + "?pagamento=sucesso",
+      pending: retorno + "?pagamento=pendente",
+      failure: retorno + "?pagamento=falha",
     },
     auto_return: "approved",
     notification_url: url + "/functions/v1/oricse-portal-pagamentos?action=webhook&referencia=portal:" + pagamento.id,
@@ -133,7 +125,7 @@ async function reservaAgenda(req: Request, body: any) {
   }).select("*").single();
   if (paymentError || !pagamento) throw new Error("Não foi possível iniciar o pagamento.");
   await service.from("oricse_agendamentos_online").update({ pagamento_id: pagamento.id }).eq("id", reserva.agendamento_id);
-  return { checkout_url: await criarCheckout(pagamento, String(reserva.descricao || "Agendamento online"), clinicaId, slug, connection.token, req) };
+  return { checkout_url: await criarCheckout(pagamento, String(reserva.descricao || "Agendamento online"), clinicaId, slug, connection.token) };
 }
 async function checkoutComanda(req: Request, body: any) {
   const tutor = await tutorAtual(req);
@@ -156,7 +148,7 @@ async function checkoutComanda(req: Request, body: any) {
     status: "criado", taxas_snapshot: { origem: "portal_tutor", comissao_oricse_centavos: comissao, adiantamento: valor < saldo },
   }).select("*").single();
   if (paymentError || !pagamento) throw new Error("Não foi possível iniciar o pagamento.");
-  return { checkout_url: await criarCheckout(pagamento, "Comanda #" + String(comanda.numero).padStart(5, "0"), tutor.clinicaId, slug, connection.token, req) };
+  return { checkout_url: await criarCheckout(pagamento, "Comanda #" + String(comanda.numero).padStart(5, "0"), tutor.clinicaId, slug, connection.token) };
 }
 async function processWebhook(req: Request) {
   const notification = await req.json();
@@ -193,7 +185,7 @@ async function processWebhook(req: Request) {
 }
 
 // Ajusta somente os cabeçalhos CORS das origens oficiais e subdomínios ORICSE.
-// Não altera os retornos de checkout, webhooks nem o processamento de pagamentos.
+
 function origemPermitidaParaCors(req: Request): string | null {
   const origem = req.headers.get("origin") || "";
   if (!origem) return null;
