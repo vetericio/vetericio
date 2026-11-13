@@ -767,9 +767,9 @@ export function ClinicSiteFull({
           src={image}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-50"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
         />
       ) : null}
       {uploadButton("hero")}
