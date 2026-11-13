@@ -30,17 +30,9 @@ function PortalTutoresComPrevia() {
 
 type TutorDb = { id: string; codigo_publico: string; nome: string; telefone: string | null; email: string | null };
 type AnimalDb = { id: string; tutor_id: string | null; nome: string };
-type PortalDb = { id:string; tutor_id:string; usuario:string; ativo:boolean; auth_user_id:string|null; convite_expira_em:string|null };
+type PortalDb = { id:string; tutor_id:string; usuario:string; ativo:boolean; auth_user_id:string|null; codigo_fixo:string };
 type TutorLocal = { id?:string; nome?:string; telefone?:string; email?:string; cpfCnpj?:string; cpf?:string; [key:string]:unknown };
 type AnimalLocal = { id?:string; tutorId?:string; tutor_id?:string; nome?:string; especie?:string; raca?:string; sexo?:string; nascimento?:string; peso?:string; foto_url?:string; [key:string]:unknown };
-type Convite = { usuario: string; token: string; expira_em: string; clinica_slug: string };
-
-function conviteValido(convite: Convite | undefined, portal: PortalDb | undefined) {
-  return convite && portal?.ativo && !portal.auth_user_id &&
-    Date.parse(portal.convite_expira_em || "") === Date.parse(convite.expira_em) &&
-    Date.parse(convite.expira_em) > Date.now() ? convite : null;
-}
-
 function soDigitos(valor?: string) { return String(valor || "").replace(/\D/g, ""); }
 function uuidValido(valor?: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(valor || "")); }
 function lerLocal<T>(chave:string):T[] {
@@ -70,9 +62,6 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
   const [modelo, setModelo] = useState<string | null>(null);
   const [erroModelo, setErroModelo] = useState("");
   const [erroPainel, setErroPainel] = useState("");
-  const [convites, setConvites] = useState<Record<string, Convite>>({});
-  const [emitindo, setEmitindo] = useState<string | null>(null);
-  const [aberturaPendente, setAberturaPendente] = useState<string | null>(null);
   const [sincronizando,setSincronizando]=useState(false);
   const [locais,setLocais]=useState(()=>lerLocal<TutorLocal>("oricse-tutores-v1"));
   const [animaisLocais,setAnimaisLocais]=useState(()=>lerLocal<AnimalLocal>("oricse-animais-v1"));
@@ -97,9 +86,7 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
         carregarPaginas<TutorDb>((inicio, fim) => supabaseBanco.from("tutores")
           .select("id,codigo_publico,nome,telefone,email").eq("clinica_id", clinicaId)
           .order("nome").order("id").range(inicio, fim)),
-        carregarPaginas<PortalDb>((inicio, fim) => supabaseBanco.from("oricse_portal_tutores")
-          .select("id,tutor_id,usuario,ativo,auth_user_id,convite_expira_em")
-          .eq("clinica_id", clinicaId).order("id").range(inicio, fim)),
+        carregarPaginas<PortalDb>((inicio, fim) => supabaseBanco.rpc("oricse_portal_codigos_da_clinica", { p_clinica_id: clinicaId }).order("id").range(inicio, fim)),
         supabaseBanco.from("clinicas").select("nome,slug").eq("id", clinicaId).single(),
         carregarPaginas<AnimalDb>((inicio, fim) => supabaseBanco.from("oricse_animais")
           .select("id,tutor_id,nome").eq("clinica_id", clinicaId).not("tutor_id", "is", null)
@@ -138,13 +125,13 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     }
     return mapa;
   }, [animais]);
-  function linkConvite(tutor: TutorDb, convite: Convite, texto: string) {
+  function linkConvite(tutor: TutorDb, portal: PortalDb, texto: string) {
     return whatsappDoTutor(tutor.telefone, preencherConvite(texto, {
       nome_tutor: tutor.nome,
       nome_clinica: clinicaNome,
-      link_portal: urlPortalDoTutor(convite.clinica_slug),
-      usuario_tutor: convite.usuario,
-      codigo_ativacao: convite.token,
+      link_portal: urlPortalDoTutor(slug),
+      usuario_tutor: portal.usuario,
+      codigo_ativacao: portal.codigo_fixo,
     }));
   }
 
@@ -220,47 +207,6 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     finally{setSincronizando(false);}
   }
 
-  async function enviarConvite(tutor: TutorDb, portal: PortalDb) {
-    if (emitindo || !modelo || !slug || portal.auth_user_id || !whatsappDoTutor(tutor.telefone, "")) return;
-    const aba = window.open("about:blank", "_blank");
-    if (aba) {
-      aba.opener = null;
-      const referrer = aba.document.createElement("meta");
-      referrer.name = "referrer";
-      referrer.content = "no-referrer";
-      aba.document.head.append(referrer);
-      aba.document.body.textContent = "Abrindo WhatsApp…";
-    }
-    setEmitindo(tutor.id);
-    setAberturaPendente(null);
-    try {
-      let convite = conviteValido(convites[tutor.id], portal);
-      if (!convite) {
-        const { data, error } = await supabaseBanco.rpc("oricse_portal_emitir_convite", {
-          p_tutor_id: tutor.id, p_usuario: portal.usuario,
-        });
-        if (error) throw error;
-        const item = data?.[0];
-        if (!item?.token) throw new Error("O convite não foi gerado.");
-        convite = item;
-        setConvites((atuais) => ({ ...atuais, [tutor.id]: item }));
-        setPortais((atuais) => atuais.map((acesso) => acesso.tutor_id === tutor.id
-          ? { ...acesso, ativo: true, usuario: item.usuario, convite_expira_em: item.expira_em }
-          : acesso));
-      }
-      const url = linkConvite(tutor, convite, modelo);
-      if (!url) throw new Error("Cadastre um telefone válido para abrir o WhatsApp.");
-      if (aba && !aba.closed) aba.location.replace(url);
-      else setAberturaPendente(tutor.id);
-    } catch (error) {
-      aba?.close();
-      toast.error(typeof error === "object" && error && "message" in error
-        ? String(error.message) : "Não foi possível preparar o convite.");
-    } finally {
-      setEmitindo(null);
-    }
-  }
-
   if (carregando && !slug) return <main className="mx-auto max-w-6xl px-5 py-10 text-sm text-muted-foreground">Carregando Portal do Tutor…</main>;
 
   const temDadosLocais=locaisValidos.length>0;
@@ -277,7 +223,7 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
     <section className="mt-6 rounded-2xl border bg-card p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-black"><Users size={19} /> Tutores cadastrados</h2>
-        <button type="button" onClick={() => void carregar()} disabled={carregando || Boolean(emitindo)}
+        <button type="button" onClick={() => void carregar()} disabled={carregando}
           className="rounded-lg border p-2 text-muted-foreground" aria-label="Atualizar tutores">
           <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
         </button>
@@ -287,15 +233,14 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
           const portal = portalPorTutor.get(tutor.id);
           const vinculados = animaisPorTutor.get(tutor.id) || [];
           const ativo = Boolean(portal?.ativo && portal.auth_user_id);
-          const convite = conviteValido(convites[tutor.id], portal);
           const temTelefone = Boolean(whatsappDoTutor(tutor.telefone, ""));
-          const urlPendente = aberturaPendente === tutor.id && convite && modelo
-            ? linkConvite(tutor, convite, modelo) : null;
           const impedimento = portal?.auth_user_id ? (ativo ? "Acesso já ativado" : "Acesso inativo")
-            : !portal ? "Usuário do portal indisponível"
+            : !portal?.codigo_fixo ? "Código do portal indisponível"
+            : !portal.ativo ? "Acesso inativo"
             : !temTelefone ? "Telefone indisponível"
             : !slug ? "Endereço do portal indisponível"
             : !modelo ? "Mensagem do convite indisponível" : "";
+          const urlConvite = !impedimento && portal && modelo ? linkConvite(tutor, portal, modelo) : null;
           return (
             <li key={tutor.id} className={`grid gap-3 rounded-xl border p-3 sm:p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center ${tutor.id === tutorIdInicial ? "border-primary bg-primary/5" : ""}`}>
               <div className="min-w-0">
@@ -319,26 +264,19 @@ function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutor
                   </dl>
                   <dl className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs">
                     <div className="min-w-0"><dt className="text-muted-foreground">@ do portal</dt><dd className="break-all font-medium">{portal?.usuario || "—"}</dd></div>
-                    <div><dt className="text-muted-foreground">Código de ativação</dt><dd className="font-medium">{convite?.token || (portal?.auth_user_id ? "Já utilizado" : "Gerado ao convidar")}</dd></div>
+                    <div><dt className="text-muted-foreground">Código de ativação</dt><dd className="font-medium">{portal?.codigo_fixo || "—"}</dd></div>
                   </dl>
                 </div>
               </div>
               <div className="flex flex-col items-start gap-1 md:items-end">
-                {urlPendente ? (
-                  <a href={urlPendente} target="_blank" rel="noreferrer" onClick={(e) => {
-                    if (conviteValido(convites[tutor.id], portal)) return;
-                    e.preventDefault();
-                    setAberturaPendente(null);
-                    toast.error("O código expirou. Clique em Enviar convite novamente.");
-                  }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
-                    <MessageCircle size={16} /> Abrir WhatsApp
+                {urlConvite ? (
+                  <a href={urlConvite} target="_blank" rel="noreferrer"
+                    className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+                    <MessageCircle size={16} /> Enviar convite
                   </a>
                 ) : (
-                  <button type="button" disabled={Boolean(impedimento || emitindo || carregando)}
-                    onClick={() => { if (portal) void enviarConvite(tutor, portal); }}
-                    className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-                    {emitindo === tutor.id ? <RefreshCw size={16} className="animate-spin" /> : <MessageCircle size={16} />}
-                    {emitindo === tutor.id ? "Preparando…" : "Enviar convite"}
+                  <button type="button" disabled className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground opacity-50">
+                    <MessageCircle size={16} /> Enviar convite
                   </button>
                 )}
                 {impedimento && <span className="text-xs text-muted-foreground">{impedimento}</span>}
