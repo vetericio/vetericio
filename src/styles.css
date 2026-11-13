@@ -2217,3 +2217,24 @@
     overflow-x: clip;
   }
 }
+
+/* Preferências de legibilidade no sistema interno, nunca aplicadas por padrão a páginas públicas. */
+html.oricse-a11y-texto { font-size: 106%; }
+html.oricse-a11y-contraste {
+  --muted-foreground: oklch(0.28 0.015 313);
+  --border: oklch(0.62 0.02 43);
+  --input: oklch(0.55 0.025 39);
+}
+html.dark.oricse-a11y-contraste {
+  --muted-foreground: oklch(0.89 0.01 260);
+  --border: oklch(0.85 0.005 260);
+}
+html.oricse-a11y-foco :is(a,button,input,select,textarea,[role="button"]):focus-visible {
+  outline: 3px solid var(--ring) !important;
+  outline-offset: 3px !important;
+}
+html.oricse-a11y-movimento *, html.oricse-a11y-movimento *::before, html.oricse-a11y-movimento *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
