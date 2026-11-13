@@ -1,4 +1,4 @@
-create or replace function public.oricse_definir_autoria_preventiva()
+create function public.oricse_definir_autoria_preventiva()
 returns trigger
 language plpgsql
 security definer
@@ -42,12 +42,11 @@ $$;
 
 revoke execute on function public.oricse_definir_autoria_preventiva() from public, anon, authenticated;
 
-drop trigger if exists oricse_autoria_preventiva on public.oricse_portal_vacinas;
 create trigger oricse_autoria_preventiva
 before insert or update on public.oricse_portal_vacinas
 for each row execute function public.oricse_definir_autoria_preventiva();
 
-create table if not exists public.oricse_selos_profissionais (
+create table public.oricse_selos_profissionais (
   user_id uuid primary key references auth.users (id) on delete cascade,
   assinatura text check (assinatura like 'data:image/png;base64,%' and length(assinatura) <= 6000000),
   carimbo text check (carimbo like 'data:image/png;base64,%' and length(carimbo) <= 6000000)
@@ -57,13 +56,11 @@ alter table public.oricse_selos_profissionais enable row level security;
 revoke all on public.oricse_selos_profissionais from public, anon, authenticated;
 grant select, insert, update on public.oricse_selos_profissionais to authenticated;
 
-drop policy if exists oricse_selos_do_perfil on public.oricse_selos_profissionais;
 create policy oricse_selos_do_perfil on public.oricse_selos_profissionais
   for all to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
-drop trigger if exists oricse_autoria_preventiva on public.oricse_portal_vermifugos;
 create trigger oricse_autoria_preventiva
 before insert or update on public.oricse_portal_vermifugos
 for each row execute function public.oricse_definir_autoria_preventiva();
