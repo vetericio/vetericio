@@ -367,7 +367,7 @@ export function LeitorCodigoBarrasCamera({
 
   function confirmarCodigoDigitado() {
     const codigo = codigoDigitado.trim();
-    if (!codigo || codigo.length > 80 || /[\\x00-\\x1f\\x7f]/.test(codigo)) {
+    if (!codigo || codigo.length > 80 || [...codigo].some(letra => letra.charCodeAt(0) < 32 || letra.charCodeAt(0) === 127)) {
       setAviso("Digite o código impresso na embalagem antes de confirmar.");
       return;
     }
