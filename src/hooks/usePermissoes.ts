@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export type PermissaoEfetiva = {
@@ -64,80 +64,127 @@ export function permissoesDaRota(pathname: string) {
   return PERMISSOES_ROTA[pathname] || null;
 }
 
+// Evita repetir as mesmas RPCs de permissões em cada card, cabeçalho, menu
+// ou página. Apenas memória desta aba; não persiste dados sensíveis no navegador.
+// A API e as policies do banco continuam responsáveis por autorizar operações.
+type SnapshotPermissoes = {
+  usuarioId: string;
+  permissoes: PermissaoEfetiva[];
+  clinicaId: string;
+  adminGlobal: boolean;
+};
+const CACHE_PERMISSOES_MS = 20_000;
+let snapshotPermissoes: SnapshotPermissoes | null = null;
+let snapshotObtidoEm = 0;
+let consultaPermissoesPendente: { usuarioId: string; promise: Promise<SnapshotPermissoes> } | null = null;
+
+async function obterPermissoesCompartilhadas(force = false): Promise<SnapshotPermissoes> {
+  const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
+  if (erroSessao) throw erroSessao;
+  const usuarioId = sessao.session?.user?.id || "";
+  if (!usuarioId) {
+    snapshotPermissoes = null;
+    snapshotObtidoEm = 0;
+    return { usuarioId: "", permissoes: [], clinicaId: "", adminGlobal: false };
+  }
+
+  if (!force && snapshotPermissoes?.usuarioId === usuarioId &&
+    Date.now() - snapshotObtidoEm < CACHE_PERMISSOES_MS) {
+    return snapshotPermissoes;
+  }
+  if (consultaPermissoesPendente?.usuarioId === usuarioId) {
+    return consultaPermissoesPendente.promise;
+  }
+
+  const promessa = (async (): Promise<SnapshotPermissoes> => {
+    const { data: plataforma, error: erroPlataforma } = await (supabase as any)
+      .from("app_users")
+      .select("role")
+      .eq("user_id", usuarioId)
+      .maybeSingle();
+    if (erroPlataforma) throw erroPlataforma;
+    const adminGlobal = plataforma?.role === "admin";
+
+    const { data: contexto, error: erroContexto } = await (supabaseBanco as any)
+      .rpc("oricse_contexto_clinica_atual");
+    if (erroContexto) throw erroContexto;
+    const clinicaId = contexto?.[0]?.clinica_id || "";
+    if (adminGlobal || !clinicaId) {
+      return { usuarioId, permissoes: [], clinicaId, adminGlobal };
+    }
+
+    const { data, error } = await (supabaseBanco as any).rpc("oricse_permissoes_efetivas", {
+      p_clinica_id: clinicaId,
+      p_user_id: usuarioId,
+    });
+    if (error) throw error;
+    return { usuarioId, clinicaId, adminGlobal: false, permissoes: (data || []) as PermissaoEfetiva[] };
+  })();
+
+  consultaPermissoesPendente = { usuarioId, promise: promessa };
+  try {
+    const resposta = await promessa;
+    snapshotPermissoes = resposta;
+    snapshotObtidoEm = Date.now();
+    return resposta;
+  } finally {
+    if (consultaPermissoesPendente?.promise === promessa) consultaPermissoesPendente = null;
+  }
+}
+
 export function usePermissoes() {
   const [permissoes, setPermissoes] = useState<PermissaoEfetiva[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [clinicaId, setClinicaId] = useState("");
   const [adminGlobal, setAdminGlobal] = useState(false);
+  // Uma resposta atrasada de uma clínica anterior não deve sobrescrever a atual.
+  const versaoConsulta = useRef(0);
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
+  const carregar = useCallback(async (forcar = false) => {
+    const versao = ++versaoConsulta.current;
+    if (forcar || !snapshotPermissoes ||
+      Date.now() - snapshotObtidoEm >= CACHE_PERMISSOES_MS) {
+      setCarregando(true);
+    }
     try {
-      const { data: sessao } = await supabase.auth.getSession();
-      if (!sessao.session?.user?.id) {
-        setPermissoes([]);
-        setClinicaId("");
-        setAdminGlobal(false);
-        return;
-      }
-
-      const { data: plataforma } = await (supabase as any)
-        .from("app_users")
-        .select("role")
-        .eq("user_id", sessao.session.user.id)
-        .maybeSingle();
-      if (plataforma?.role === "admin") {
-        setPermissoes([]);
-        setAdminGlobal(true);
-        const { data: contextoAdmin } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
-        setClinicaId(contextoAdmin?.[0]?.clinica_id || "");
-        return;
-      }
-      setAdminGlobal(false);
-
-      const { data: contexto, error: contextoError } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
-      if (contextoError) throw contextoError;
-      const id = contexto?.[0]?.clinica_id || "";
-      if (!id) {
-        setPermissoes([]);
-        setClinicaId("");
-        return;
-      }
-
-      const { data, error } = await (supabaseBanco as any).rpc("oricse_permissoes_efetivas", {
-        p_clinica_id: id,
-        p_user_id: sessao.session.user.id,
-      });
-      if (error) throw error;
-      setClinicaId(id);
-      setPermissoes((data || []) as PermissaoEfetiva[]);
+      const resultado = await obterPermissoesCompartilhadas(forcar);
+      if (versao !== versaoConsulta.current) return;
+      setPermissoes(resultado.permissoes);
+      setClinicaId(resultado.clinicaId);
+      setAdminGlobal(resultado.adminGlobal);
     } catch (error) {
+      if (versao !== versaoConsulta.current) return;
       console.error("Não foi possível carregar as permissões do usuário:", error);
       setPermissoes([]);
+      setClinicaId("");
       setAdminGlobal(false);
     } finally {
-      setCarregando(false);
+      if (versao === versaoConsulta.current) setCarregando(false);
     }
   }, []);
 
   useEffect(() => {
     void carregar();
-    // Evita fazer chamadas ao cliente de auth dentro do callback de mudança de sessão.
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      setTimeout(() => void carregar(), 0);
+    // Uma mudança de usuário ou clínica força nova consulta, sem aproveitamento
+    // indevido do snapshot anterior. TOKEN_REFRESHED não muda permissões.
+    const { data } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === "TOKEN_REFRESHED" || evento === "INITIAL_SESSION") return;
+      setTimeout(() => void carregar(true), 0);
     });
-    // Trocar de clínica na mesma sessão exige buscar as regras do novo plano.
-    const quandoAlterarClinica = () => { void carregar(); };
+    const quandoAlterarClinica = () => { void carregar(true); };
     if (typeof window !== "undefined") {
       window.addEventListener("oricse:clinica-alterada", quandoAlterarClinica);
     }
     return () => {
+      versaoConsulta.current += 1;
       data.subscription.unsubscribe();
       if (typeof window !== "undefined") {
         window.removeEventListener("oricse:clinica-alterada", quandoAlterarClinica);
       }
     };
   }, [carregar]);
+
+  const recarregar = useCallback(() => carregar(true), [carregar]);
 
   const permitidas = useMemo(
     () => new Set(permissoes.filter((p) => p.permitido).map((p) => p.codigo)),
@@ -170,6 +217,6 @@ export function usePermissoes() {
     podeAlguma,
     bloqueadaPeloPlano,
     origemDaPermissao,
-    recarregar: carregar,
+    recarregar,
   };
 }

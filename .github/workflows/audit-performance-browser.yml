@@ -1,0 +1,40 @@
+name: ORICSE - Auditoria de velocidade visual
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy ORICSE to Cloudflare
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse-publico:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Chrome
+        uses: browser-actions/setup-chrome@v2
+      - name: Validar script
+        run: node --check scripts/audit-performance-browser.mjs
+      - name: Medir LCP FCP TBT nas páginas públicas
+        continue-on-error: true
+        run: node scripts/audit-performance-browser.mjs
+      - name: Salvar relatório de navegação visual
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oricse-lighthouse-publico-${{ github.run_id }}
+          path: performance-browser-public.json
+          if-no-files-found: ignore
+          retention-days: 14

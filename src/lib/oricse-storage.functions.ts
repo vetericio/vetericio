@@ -21,15 +21,18 @@ async function contextoUsuario(accessToken: string) {
   const { data: auth, error } = await admin.auth.getUser(accessToken);
   if (error || !auth.user) throw new Error("Sessão inválida ou expirada.");
   const userId = auth.user.id;
-  const { data: perfil, error: perfilErro } = await admin.from("app_users").select("role").eq("user_id", userId).maybeSingle();
+  // Consultas independentes: fazê-las em paralelo reduz latência inicial
+  // sem alterar nenhuma decisão de vínculo, status ou autorização.
+  const [perfilResp, selecaoResp, vinculosResp] = await Promise.all([
+    admin.from("app_users").select("role").eq("user_id", userId).maybeSingle(),
+    admin.from("oricse_clinica_ativa_usuario").select("clinica_id").eq("user_id", userId).maybeSingle(),
+    admin.from("clinica_usuarios").select("clinica_id").eq("user_id", userId).eq("ativo", true),
+  ]);
+  const { data: perfil, error: perfilErro } = perfilResp;
+  const { data: selecao, error: erroSelecao } = selecaoResp;
+  const { data: vinculos, error: vinculoErro } = vinculosResp;
   if (perfilErro) throw perfilErro;
-  // A clínica escolhida é uma seleção explícita e persistida por usuário.
-  // Nunca confirmar uma gravação sem clínica: antes isso retornava { ok: true } sem salvar nada.
-  const { data: selecao, error: erroSelecao } = await admin.from("oricse_clinica_ativa_usuario")
-    .select("clinica_id").eq("user_id", userId).maybeSingle();
   if (erroSelecao) throw new Error("Não foi possível confirmar a clínica selecionada: " + erroSelecao.message);
-  const { data: vinculos, error: vinculoErro } = await admin.from("clinica_usuarios")
-    .select("clinica_id").eq("user_id", userId).eq("ativo", true);
   if (vinculoErro) throw new Error("Não foi possível verificar seus vínculos com clínicas: " + vinculoErro.message);
   let clinicaId: string | null = null;
   if (perfil?.role === "admin") {
@@ -290,22 +293,19 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
   const bruto = data?.dados;
   const estado = bruto && typeof bruto === "object" && !Array.isArray(bruto) ? bruto as Record<string, unknown> : {};
   if (filtrarLeitura && !contexto.adminGeral) {
-    const autorizado = await (async () => {
-      try { await autorizarModelosClinica(contexto.userId, contexto.clinicaId!, false); return true; }
-      catch { return false; }
-    })();
+    // As três autorizações são independentes; não bloquear a hidratação
+    // esperando uma requisição terminar para iniciar a próxima.
+    const [autorizado, politicasPermitidas, permitidoAdmin] = await Promise.all([
+      autorizarModelosClinica(contexto.userId, contexto.clinicaId!, false).then(() => true, () => false),
+      autorizarPoliticasClinica(contexto.userId, contexto.clinicaId!, false).then(() => true, () => false),
+      autorizarAdministracaoClinica(contexto.userId, contexto.clinicaId!, false).then(() => true, () => false),
+    ]);
     if (!autorizado) delete estado["oricse-modelos-documentos-v1"];
-    const politicasPermitidas = await (async () => {
-      try { await autorizarPoliticasClinica(contexto.userId, contexto.clinicaId!, false); return true; }
-      catch { return false; }
-    })();
     if (!politicasPermitidas) delete estado["oricse-politicas-operacionais-v1"];
-    const permitidoAdmin = await (async () => {
-      try { await autorizarAdministracaoClinica(contexto.userId, contexto.clinicaId!, false); return true; }
-      catch { return false; }
-    })();
-    if (!permitidoAdmin) delete estado["oricse-modulos-administrativos-v3"];
-    if (!permitidoAdmin) delete estado["oricse-lgpd-solicitacoes-v1"];
+    if (!permitidoAdmin) {
+      delete estado["oricse-modulos-administrativos-v3"];
+      delete estado["oricse-lgpd-solicitacoes-v1"];
+    }
   }
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
