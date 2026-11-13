@@ -33,6 +33,7 @@ export type IdentidadeDocumento = {
   email: string;
   municipio: string;
   logoUrl: string;
+  site?: string;
 };
 
 export function urlFundoDocumento(fundo: string, miniatura = false) {
@@ -60,3 +61,7 @@ export const MODELOS_BASE_CLINICOS = [
   { id: "d04d0000-0000-4000-8000-000000000002", categoria: "documento" },
   { id: "d04d0000-0000-4000-8000-000000000003", categoria: "termo" },
 ] as const;
+
+export function formatarDataDocumento(valor?: string) {
+  return valor && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor.split("-").reverse().join("/") : valor || "";
+}

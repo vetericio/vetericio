@@ -132,6 +132,7 @@ export async function resolverDadosReceituario(data: { accessToken: string; anim
     tutor: tutor ? {
       id: tutor.id,
       nome: string(tutor.nome),
+      nascimento: string(dadosTutor.nascimento || dadosTutor.dataNascimento || dadosTutor.data_nascimento),
       telefone: string(tutor.telefone || dadosTutor.telefone || dadosTutor.outroTelefone),
       cpf: string(tutor.cpf || dadosTutor.cpfCnpj),
       enderecoCompleto: Boolean(

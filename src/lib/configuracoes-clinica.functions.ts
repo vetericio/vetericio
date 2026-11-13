@@ -281,7 +281,7 @@ async function identidadeDocumentos(ctx: Contexto): Promise<IdentidadeDocumento>
       .select("razao_social,cnpj,clinica_telefone,clinica_email,clinica_endereco,clinica_numero,clinica_complemento,clinica_bairro,clinica_cidade,clinica_uf,clinica_cep,dados")
       .eq("clinica_criada_id", ctx.clinica.id).is("excluido_em", null)
       .order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    ctx.admin.from("clinicas").select("logo_url").eq("id", ctx.clinica.id).single(),
+    ctx.admin.from("clinicas").select("logo_url,dominio,slug").eq("id", ctx.clinica.id).single(),
     ctx.admin.from("clinic_sites").select("config").eq("clinica_id", ctx.clinica.id).maybeSingle(),
     ler(ctx, CHAVE_LOGO_DOCUMENTOS),
     ler(ctx, CHAVE_DADOS_DOCUMENTOS),
@@ -318,6 +318,7 @@ async function identidadeDocumentos(ctx: Contexto): Promise<IdentidadeDocumento>
     endereco, municipio, logoUrl,
     telefone: texto(dados?.clinica_telefone) || texto(config.phone),
     email: texto(dados?.clinica_email) || texto(config.email),
+    site: texto(cadastro.data?.dominio) || (cadastro.data?.slug ? `${cadastro.data.slug}.oricse.com.br` : ""),
   };
   const ajustes = dadosSalvos === null ? {} : dadosPapelSchema.partial().parse(dadosSalvos);
   return { ...identidade, ...ajustes, nome: ajustes.nome || identidade.nome };

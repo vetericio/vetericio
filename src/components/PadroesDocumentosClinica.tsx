@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, ImagePlus, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -7,16 +7,18 @@ import {
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
   DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, preencherTextoDocumento,
-  urlFundoDocumento, valoresModeloDocumento, type TipoModeloDocumento,
+  urlFundoDocumento, valoresModeloDocumento, type TipoModeloDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao,
 } from "@/lib/modelos-documentos";
 
 const botao = "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50";
 const exemplo = { paciente: "Luna", especie: "Canina", raca: "Sem raça definida", tutor: "Marina Exemplo", data: "13/11/2026" };
-const identificacaoExemplo = [
-  "Animal: Luna · Canina · Sem raça definida · Fêmea · 4 anos · 11 kg",
-  "Responsável: Marina Exemplo · CPF fictício · Endereço de exemplo",
-];
-const assinaturaExemplo = ["Belo Horizonte/MG, 13/11/2026", "Dra. Ana Exemplo · CRMV-MG fictício"];
+const identificacaoExemplo = {
+  paciente: { nome: exemplo.paciente, especie: exemplo.especie, raca: exemplo.raca, sexo: "Fêmea",
+    idade: "4 anos", peso: "11 kg", pelagem: "Caramelo", microchip: "Identificador fictício" },
+  tutor: { nome: exemplo.tutor, cpf: "CPF fictício", nascimento: "15/05/1992",
+    telefone: "Telefone fictício", endereco: "Rua de Exemplo, 100" },
+};
+const profissionalExemplo = "Dra. Ana Exemplo · CRMV-MG fictício";
 const camposIdentidade = [
   ["nome", "Nome da clínica", 160], ["razaoSocial", "Razão social", 220], ["cnpj", "CNPJ", 40],
   ["crmv", "Registro do estabelecimento no CRMV", 70], ["endereco", "Endereço completo", 350],
@@ -52,9 +54,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const identidade = { ...dados.identidade, ...dadosEditados };
   const modelo = modelos[tipo];
   const categoria = DOCUMENTOS[tipo];
-  const fundo = urlFundoDocumento(modelo.fundo);
   const corpo = preencherTextoDocumento(modelo.texto || categoria.exemplo, valoresModeloDocumento(identidade, exemplo));
-  const logo = modelo.usarLogo ? identidade.logoUrl : "";
 
   function atualizar(patch: Partial<typeof modelo>) {
     setDados(atual => atual && ({ ...atual, modelos: { ...atual.modelos, [tipo]: { ...atual.modelos[tipo], ...patch } } }));
@@ -82,31 +82,6 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     const identidadeAtualizada = await salvarLogoDocumentoClinica({ data: { accessToken, clinicaId, base64 } });
     setDados(atual => atual && ({ ...atual, identidade: identidadeAtualizada }));
     toast.success(arquivo ? "Logo dos documentos atualizada." : "Logo do cadastro restaurada.");
-  }
-
-  async function baixarPrevia() {
-    const { prepararPapelDocumento, criarPdfComModelo } = await import("@/lib/modelos-documentos-pdf");
-    const papel = await prepararPapelDocumento(identidade, modelo);
-    if (tipo === "receita") {
-      const { criarReceituario } = await import("@/lib/receituario");
-      const pdf = await criarReceituario({
-        demonstrativo: true, tipo: "normal", papel, paciente: exemplo.paciente, tutor: exemplo.tutor,
-        telefoneTutor: "Telefone fictício", enderecoTutor: "Endereço de exemplo", cpfTutor: "CPF fictício",
-        especie: exemplo.especie, raca: exemplo.raca, sexo: "Fêmea", peso: "11", idade: "4 anos",
-        pelagem: "Caramelo", data: exemplo.data, endereco: identidade.endereco,
-        itens: [{ id: "exemplo", medicamento: "Medicamento fictício", apresentacao: "Apresentação de exemplo",
-          quantidade: "", forma: "", intervalo: "", dias: "", observacao: "" }],
-        observacoes: corpo, profissional: { nomeCompleto: "Dra. Ana Exemplo", crmv: "fictício", crmvUf: "MG" },
-        posicoesSelos: {},
-      });
-      pdf.save("previa-receita.pdf");
-      return;
-    }
-    const pdf = await criarPdfComModelo({
-      titulo: categoria.titulo, conteudo: corpo, papel, demonstrativo: true,
-      identificacao: identificacaoExemplo, assinatura: assinaturaExemplo,
-    });
-    pdf.save("previa-" + tipo + ".pdf");
   }
 
   return <section className="space-y-5 rounded-xl border bg-card p-4 sm:p-5">
@@ -182,31 +157,116 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
         toast.success("Padrão salvo para " + categoria.titulo.toLocaleLowerCase("pt-BR") + ".");
       })}><Save size={16} /> {ocupado ? "Processando…" : "Salvar padrão deste tipo"}</button>
     </fieldset>
+    <PreviaDocumento identidade={identidade} modelo={modelo} tipo={tipo} corpo={corpo} />
+  </section>;
+}
+
+async function gerarPrevia(identidade: IdentidadeDocumento, modelo: ModeloDocumentoPadrao, tipo: TipoModeloDocumento, corpo: string) {
+  const { prepararPapelDocumento, criarPdfComModelo } = await import("@/lib/modelos-documentos-pdf");
+  const papel = await prepararPapelDocumento(identidade, modelo);
+  if (tipo === "receita") {
+    const { criarReceituario } = await import("@/lib/receituario");
+    const { paciente, tutor } = identificacaoExemplo;
+    return criarReceituario({
+      demonstrativo: true, tipo: "normal", papel, paciente: paciente.nome, tutor: tutor.nome,
+      telefoneTutor: tutor.telefone, enderecoTutor: tutor.endereco, cpfTutor: tutor.cpf, nascimentoTutor: tutor.nascimento,
+      especie: paciente.especie, raca: paciente.raca, sexo: paciente.sexo, peso: "11", idade: paciente.idade,
+      pelagem: paciente.pelagem, microchip: paciente.microchip, data: exemplo.data, endereco: identidade.endereco,
+      itens: [{ id: "exemplo", medicamento: "Medicamento fictício", apresentacao: "Apresentação de exemplo",
+        quantidade: "", forma: "", intervalo: "", dias: "", observacao: "" }],
+      observacoes: corpo, profissional: { nomeCompleto: "Dra. Ana Exemplo", crmv: "fictício", crmvUf: "MG" },
+      posicoesSelos: {},
+    });
+  }
+  return criarPdfComModelo({
+    titulo: DOCUMENTOS[tipo].titulo, conteudo: corpo, papel, demonstrativo: true,
+    identificacao: identificacaoExemplo,
+    assinatura: [[identidade.municipio, exemplo.data].filter(Boolean).join(", "), profissionalExemplo],
+  });
+}
+
+function PreviaDocumento({ identidade, modelo, tipo, corpo }: {
+  identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao; tipo: TipoModeloDocumento; corpo: string;
+}) {
+  const { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site } = identidade;
+  const { fundo, usarLogo } = modelo;
+  const configuracao = useMemo(() => ({
+    identidade: { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site },
+    modelo: { fundo, usarLogo, texto: "" }, tipo, corpo,
+  }), [nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site, fundo, usarLogo, tipo, corpo]);
+  const [resultado, setResultado] = useState<{
+    configuracao: typeof configuracao; pdf?: Awaited<ReturnType<typeof gerarPrevia>>; erro?: string;
+  } | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    const timer = window.setTimeout(() => {
+      void gerarPrevia(configuracao.identidade, configuracao.modelo, configuracao.tipo, configuracao.corpo)
+        .then(pdf => { if (ativo) setResultado({ configuracao, pdf }); })
+        .catch(erro => { if (ativo) setResultado({ configuracao, erro: erro instanceof Error ? erro.message : "Não foi possível gerar a prévia." }); });
+    }, 250);
+    return () => { ativo = false; window.clearTimeout(timer); };
+  }, [configuracao]);
+
+  const atual = resultado?.configuracao === configuracao ? resultado : null;
+  return <>
     <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">Prévia com os dados da clínica</h3>
-      <button type="button" className={botao} disabled={ocupado} onClick={() => void executar(baixarPrevia)}>
+      <button type="button" className={botao} disabled={!atual?.pdf}
+        onClick={() => atual?.pdf?.save("previa-" + tipo + ".pdf")}>
         <Download size={16} /> Baixar prévia em PDF
       </button>
     </div>
-    <div className="mx-auto min-h-[31rem] max-w-lg rounded-lg border bg-white bg-[length:100%_100%] p-[7%] text-[#252328] shadow-sm"
-      style={fundo ? { backgroundImage: `url(${fundo})` } : undefined}>
-      <article className="min-h-full rounded-md bg-white/80 p-3 sm:p-5">
-        <header className="flex items-start gap-3 border-b border-[#ded6da] pb-3">
-          {logo && <img src={logo} alt="" className="h-12 w-14 shrink-0 object-contain" />}
-          <div className="min-w-0 break-words text-xs">
-            <p className="text-base font-bold text-[#612b40]">{identidade.nome}</p>
-            {identidade.razaoSocial && identidade.razaoSocial !== identidade.nome && <p>{identidade.razaoSocial}</p>}
-            <p>{[identidade.cnpj && `CNPJ ${identidade.cnpj}`, identidade.crmv && `Registro CRMV ${identidade.crmv}`].filter(Boolean).join(" · ")}</p>
-            <p>{identidade.endereco}</p>
-            <p>{[identidade.telefone, identidade.email].filter(Boolean).join(" · ")}</p>
-          </div>
-        </header>
-        <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-[#612b40]">Prévia demonstrativa · Sem validade</p>
-        <h4 className="mb-2 mt-1 text-lg font-bold text-[#612b40]">{categoria.titulo}</h4>
-        <p className="text-xs leading-relaxed">{identificacaoExemplo.join(" / ")}</p>
-        <p className="my-4 whitespace-pre-wrap break-words text-sm leading-relaxed">{corpo}</p>
-        <p className="mt-8 border-t border-[#ded6da] pt-2 text-xs">{assinaturaExemplo.join(" · ")}</p>
-      </article>
-    </div>
-  </section>;
+    {atual?.erro && <p role="alert" className="text-sm text-destructive">{atual.erro}</p>}
+    {!atual && <p role="status" className="text-sm text-muted-foreground">Atualizando prévia…</p>}
+    {atual?.pdf && <PaginasPrevia pdf={atual.pdf} />}
+  </>;
+}
+
+function PaginasPrevia({ pdf }: { pdf: Awaited<ReturnType<typeof gerarPrevia>> }) {
+  const tela = useRef<HTMLCanvasElement>(null);
+  const [paginaComErro, setPaginaComErro] = useState<number | null>(null);
+  const [pagina, setPagina] = useState(1);
+  const paginas = pdf.getNumberOfPages();
+
+  useEffect(() => {
+    let ativo = true;
+    let tarefa: ReturnType<typeof import("pdfjs-dist")["getDocument"]> | undefined;
+    let renderizacao: import("pdfjs-dist").RenderTask | undefined;
+    void (async () => {
+      const [pdfjs, worker] = await Promise.all([
+        import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+      ]);
+      if (!ativo) return;
+      pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+      tarefa = pdfjs.getDocument({ data: new Uint8Array(pdf.output("arraybuffer")), isEvalSupported: false });
+      const doc = await tarefa.promise;
+      const folha = await doc.getPage(pagina);
+      if (!ativo || !tela.current) return;
+      const canvas = tela.current;
+      const contexto = canvas.getContext("2d");
+      if (!contexto) throw new Error("A prévia não está disponível neste navegador.");
+      const viewport = folha.getViewport({ scale: 1.7 });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      renderizacao = folha.render({ canvasContext: contexto, viewport });
+      await renderizacao.promise;
+      if (ativo) setPaginaComErro(null);
+    })().catch(() => { if (ativo) setPaginaComErro(pagina); });
+    return () => {
+      ativo = false;
+      renderizacao?.cancel();
+      void tarefa?.destroy().catch(() => {});
+    };
+  }, [pdf, pagina]);
+
+  return <div className="mx-auto w-full max-w-lg">
+    {paginaComErro === pagina && <p role="alert" className="mb-2 text-sm text-destructive">A prévia na tela está indisponível. Você pode baixar o PDF acima.</p>}
+    <canvas ref={tela} role="img" aria-label={`Prévia demonstrativa, página ${pagina} de ${paginas}`}
+      className="aspect-[210/297] h-auto w-full rounded border bg-white shadow-sm" />
+    {paginas > 1 && <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+      <button type="button" className={botao} disabled={pagina === 1} onClick={() => setPagina(pagina - 1)}>Anterior</button>
+      <span className="text-sm">{pagina} de {paginas}</span>
+      <button type="button" className={botao} disabled={pagina === paginas} onClick={() => setPagina(pagina + 1)}>Próxima</button>
+    </div>}
+  </div>;
 }

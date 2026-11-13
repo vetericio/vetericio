@@ -9,7 +9,7 @@ import { lerSelos, type TipoSelo } from "@/lib/assinatura";
 import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { formatarDataDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import { prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 import {
   criarReceituario,
@@ -79,6 +79,7 @@ export function Receituario() {
   const [paciente, setPaciente] = useState("");
   const [tutor, setTutor] = useState("");
   const [telefoneTutor, setTelefoneTutor] = useState("");
+  const [nascimentoTutor, setNascimentoTutor] = useState("");
   const [cpfTutor, setCpfTutor] = useState("");
   const [enderecoTutor, setEnderecoTutor] = useState("");
   const [idade, setIdade] = useState("");
@@ -158,6 +159,7 @@ export function Receituario() {
             setOutraEspecie(animal.especie);
           }
         }
+        setNascimentoTutor(formatarDataDocumento(dados.tutor?.nascimento));
         if (dados.tutor) {
           setTutor(dados.tutor.nome || "");
           setTelefoneTutor(dados.tutor.telefone || "");
@@ -386,7 +388,7 @@ export function Receituario() {
       }
       const numero = especial ? await emitirReceitaControladaNoBanco({ paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco }) : undefined;
       const dadosPdf = {
-        tipo: tipoReceita, numero, paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade,
+        tipo: tipoReceita, numero, paciente, tutor, telefoneTutor, nascimentoTutor, cpfTutor, enderecoTutor, idade,
         especie: especie === "Outro" ? outraEspecie.trim() : especie, raca, sexo, peso, data, itens,
         observacoes: textoFinal, endereco, posicoesSelos, papel, pelagem, microchip,
         profissional: {
@@ -453,7 +455,7 @@ export function Receituario() {
         {anamneses.length > 0 && <label className="mt-3 block"><span className={rotulo}>Puxar da Anamnese</span><select defaultValue="" onChange={(e) => escolherPaciente(e.target.value)} className={campo}><option value="">Preencher manualmente</option>{anamneses.map((item) => <option key={item.id} value={item.id}>{item.animal} {item.especie ? "· " + item.especie : ""}</option>)}</select></label>}
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label><span className={rotulo}>Paciente</span><input value={paciente} onChange={(e) => setPaciente(e.target.value)} className={campo} placeholder="Nome do animal" /></label>
-          <label><span className={rotulo}>Tutor</span><input value={tutor} onChange={(e) => setTutor(e.target.value)} className={campo} placeholder="Nome do responsável" /></label>
+          <label><span className={rotulo}>Tutor</span><input value={tutor} onChange={(e) => { setTutor(e.target.value); setNascimentoTutor(""); }} className={campo} placeholder="Nome do responsável" /></label>
           <label><span className={rotulo}>Telefone do tutor</span><input type="tel" inputMode="tel" required value={telefoneTutor} onChange={(e) => setTelefoneTutor(e.target.value)} className={campo} placeholder="(31) 99999-9999" /></label>
         </div>
         <fieldset className="mt-4"><legend className={rotulo}>Espécie</legend><div className="mt-2 grid grid-cols-3 gap-2">{(["Canina", "Felina", "Outro"] as const).map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="especie-receituario" checked={especie === opcao} onChange={() => mudarEspecie(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
