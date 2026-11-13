@@ -633,9 +633,12 @@ function RootComponent() {
       const aside = botaoIniciar.closest("aside") as HTMLElement | null;
       if (!aside) return;
 
-      botaoIniciar.textContent = "Iniciar atendimento";
-      botaoIniciar.className =
-        "flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground";
+      // Alterar textContent a cada observação recriava um nó de texto e
+      // disparava o próprio MutationObserver novamente, mesmo sem mudanças.
+      if (botaoIniciar.textContent !== "Iniciar atendimento")
+        botaoIniciar.textContent = "Iniciar atendimento";
+      const estiloIniciar = "flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground";
+      if (botaoIniciar.className !== estiloIniciar) botaoIniciar.className = estiloIniciar;
       botaoIniciar.onclick = () => {
         const animalId = localizarAnimalId(aside);
         if (!animalId) {
@@ -701,10 +704,22 @@ function RootComponent() {
       };
     };
 
-    const observer = new MutationObserver(() => aprimorarPainelAnimal());
+    // Limitar a uma execução por frame, em vez de reprocessar todo o DOM
+    // para cada mutação individual durante a renderização de consultas.
+    let frame = 0;
+    const observer = new MutationObserver(() => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        aprimorarPainelAnimal();
+      });
+    });
     observer.observe(document.body, { childList: true, subtree: true });
     aprimorarPainelAnimal();
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [location.pathname, navigate]);
 
   // Uma aba que ficou aberta após um deploy deve reconciliar a versão sozinha.
