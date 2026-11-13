@@ -168,7 +168,7 @@ export function usePermissoes() {
     // Uma mudança de usuário ou clínica força nova consulta, sem aproveitamento
     // indevido do snapshot anterior. TOKEN_REFRESHED não muda permissões.
     const { data } = supabase.auth.onAuthStateChange((evento) => {
-      if (evento === "TOKEN_REFRESHED") return;
+      if (evento === "TOKEN_REFRESHED" || evento === "INITIAL_SESSION") return;
       setTimeout(() => void carregar(true), 0);
     });
     const quandoAlterarClinica = () => { void carregar(true); };
