@@ -439,7 +439,7 @@ function PaginaInicialPlataforma() {
             background-color: #e9c9ad;
             background-image:
               linear-gradient(to bottom, rgba(255, 253, 250, 0) 74%, #fffdfa 100%),
-              url("/oricse-capa-paisagem.png?v=20261111-hero-mobile");
+              url("/oricse-capa-paisagem-mobile.webp");
             background-repeat: no-repeat;
             background-position: center, 72% 42%;
             background-size: cover, cover;
@@ -482,25 +482,19 @@ function PaginaInicialPlataforma() {
 
       <section data-visual-id="home-banner" data-visual-label="Área do banner" className="relative isolate border-t border-[#f0e3de] bg-transparent">
         {/* A capa original, sem escrita, é decorativa; textos e botões seguem reais e acessíveis. */}
-        <img
-          src="/oricse-capa-paisagem.png"
-          alt=""
-          aria-hidden="true"
-          className="hidden"
-          loading="eager"
-        />
         {capaOficialCarregada ? (
           <div data-visual-id="home-base-capa" data-visual-label="Área da capa" className="relative z-[1] w-full bg-transparent lg:aspect-[1.86]">
             {/* Fundo responsivo: exibido apenas em celulares, sem ocupar altura dupla. */}
             <div data-home-mobile-oryx aria-hidden="true" className="hidden" />
             {/* A mesma capa é mantida como base visual em todos os tamanhos. */}
             <img
-              src="/oricse-capa-paisagem.png"
+              src="/oricse-capa-paisagem.webp"
               data-visual-id="home-imagem-oryx" data-visual-label="Imagem do órix e pôr do sol" alt="Órix nas dunas ao pôr do sol"
               width={1672}
               height={941}
               className="block h-auto w-full lg:absolute lg:inset-0 lg:h-full lg:object-fill"
               loading="eager"
+              fetchPriority="high"
               decoding="async"
             />
             <div data-visual-id="home-conteudo-banner" data-visual-label="Coluna do banner" className="relative mx-auto flex max-w-7xl items-start px-5 pb-12 pt-6 sm:px-8 lg:absolute lg:inset-0 lg:block lg:max-w-none lg:p-0">
