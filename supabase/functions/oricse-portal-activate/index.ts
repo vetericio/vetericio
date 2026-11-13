@@ -35,8 +35,10 @@ Deno.serve(async(req)=>{
     const slug=String(payload?.slug??"").trim().toLowerCase();
     const usuarioChave=normalizarUsuario(payload?.usuario);
     const token=String(payload?.token??"").trim();
+    const codigoCurto=/^[A-Z]{2}[0-9]{2}$/i.test(token);
     const senha=String(payload?.senha??"");
-    if(!slug||usuarioChave.length<3||token.length<32||!senhaForte(senha))return resposta({error:"Crie uma senha com pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo."},400);
+    if(!slug||usuarioChave.length<3||(!codigoCurto&&!/^[0-9a-f]{48}$/i.test(token)))return resposta({error:"Informe o usuário e o código de ativação enviado pela clínica."},400);
+    if(!senhaForte(senha))return resposta({error:"Crie uma senha de 12 a 128 caracteres com maiúscula, minúscula, número e símbolo."},400);
 
     const url=Deno.env.get("SUPABASE_URL")!;
     const admin=createClient(url,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -49,17 +51,33 @@ Deno.serve(async(req)=>{
     if(portalError||!portal)return resposta({error:"Convite inválido ou expirado."},400);
     if(portal.auth_user_id)return resposta({error:"Este acesso já foi ativado."},409);
 
-    const tokenHash=await sha256Hex(token);
     const expirado=!portal.convite_expira_em||new Date(portal.convite_expira_em).getTime()<=Date.now();
-    if(expirado||!portal.convite_token_hash||portal.convite_token_hash!==tokenHash)return resposta({error:"Convite inválido ou expirado."},400);
+    if(expirado||!portal.convite_token_hash)return resposta({error:"Convite inválido ou expirado."},400);
+    if(codigoCurto){
+      const {data:validacao,error:erroCodigo}=await admin.rpc("oricse_portal_verificar_codigo_ativacao",{
+        p_portal_id:portal.id,p_convite_chave:portal.convite_token_hash,p_codigo:token.toUpperCase(),
+      });
+      if(erroCodigo)throw erroCodigo;
+      if(validacao==="bloqueado")return resposta({error:"Limite de tentativas atingido. Peça um novo código à clínica."},429);
+      if(validacao!=="valido")return resposta({error:"Código de ativação inválido."},400);
+    }else if(portal.convite_token_hash!==await sha256Hex(token)){
+      return resposta({error:"Convite inválido ou expirado."},400);
+    }
 
     const emailInterno=`portal+${portal.id}@auth.oricse.local`;
     const {data:criado,error:erroCriar}=await admin.auth.admin.createUser({email:emailInterno,password:senha,email_confirm:true,app_metadata:{oricse_portal_tutor:true,clinica_id:portal.clinica_id,tutor_id:portal.tutor_id}});
     if(erroCriar||!criado.user)return resposta({error:"Não foi possível ativar o acesso agora."},500);
 
     const authUserId=criado.user.id;
-    const {error:erroVinculo}=await admin.from("oricse_portal_tutores").update({auth_user_id:authUserId,convite_token_hash:null,convite_expira_em:null,updated_at:new Date().toISOString()}).eq("id",portal.id).is("auth_user_id",null);
-    if(erroVinculo){await admin.auth.admin.deleteUser(authUserId).catch(()=>undefined);return resposta({error:"Não foi possível ativar o acesso agora."},500);}
+    const {data:vinculo,error:erroVinculo}=await admin.from("oricse_portal_tutores")
+      .update({auth_user_id:authUserId,convite_token_hash:null,convite_expira_em:null,updated_at:new Date().toISOString()})
+      .eq("id",portal.id).is("auth_user_id",null).eq("convite_token_hash",portal.convite_token_hash)
+      .eq("ativo",true).gt("convite_expira_em",new Date().toISOString()).select("id").maybeSingle();
+    if(erroVinculo||!vinculo){
+      await admin.auth.admin.deleteUser(authUserId);
+      if(erroVinculo)throw erroVinculo;
+      return resposta({error:"O convite mudou ou expirou. Use o convite mais recente."},409);
+    }
     return resposta({ok:true,usuario:portal.usuario});
   }catch(error){console.error("oricse-portal-activate",error);return resposta({error:"Não foi possível ativar o acesso agora."},500);}
 });

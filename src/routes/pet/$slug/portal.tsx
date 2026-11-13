@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
@@ -221,7 +222,45 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const animal=animais.find(a=>a.id===animalId)||null;const navegar=(destino:Secao)=>{setSecao(destino);if(typeof window!=="undefined")window.scrollTo(0,0);};const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animalId),[vacinas,animalId]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animalId),[vermifugos,animalId]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animalId),[exames,animalId]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animalId),[documentos,animalId]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animalId),[receitas,animalId]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animalId),[agendamentos,animalId]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animalId),[comandas,animalId]);const agenda=agendas.find(a=>a.id===agendaId)||null;
 
   async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setSecao("resumo");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token)throw new Error(data?.error||"Usuário ou senha inválidos.");const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
-  async function ativar(e:React.FormEvent){e.preventDefault();if(novaSenha.length<8)return void toast.error("A senha precisa ter pelo menos 8 caracteres.");if(novaSenha!==repeteSenha)return void toast.error("As senhas não coincidem.");setAtivando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-activate",{body:{slug,usuario,token,senha:novaSenha}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível ativar o acesso.");toast.success("Acesso ativado. Entre com a senha criada.");setModoAtivar(false);setToken("");setNovaSenha("");setRepeteSenha("");history.replaceState({},"",location.pathname);}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível ativar.");}finally{setAtivando(false);}}
+  async function ativar(e: React.FormEvent) {
+    e.preventDefault();
+    const codigo = token.trim();
+    if (!/^(?:[a-z]{2}[0-9]{2}|[0-9a-f]{48})$/i.test(codigo)) {
+      toast.error("Informe o código de ativação enviado pela clínica.");
+      return;
+    }
+    if (novaSenha.length < 12 || novaSenha.length > 128 || !/[a-z]/.test(novaSenha) ||
+        !/[A-Z]/.test(novaSenha) || !/\d/.test(novaSenha) || !/[^A-Za-z0-9]/.test(novaSenha)) {
+      toast.error("Crie uma senha de 12 a 128 caracteres com maiúscula, minúscula, número e símbolo.");
+      return;
+    }
+    if (novaSenha !== repeteSenha) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    setAtivando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("oricse-portal-activate", {
+        body: { slug, usuario, token: codigo, senha: novaSenha },
+      });
+      const resposta = error instanceof FunctionsHttpError
+        ? await error.context.json().catch(() => null)
+        : data;
+      if (error || !data?.ok) {
+        throw new Error(resposta?.error || "Não foi possível ativar o acesso.");
+      }
+      toast.success("Acesso ativado. Entre com a senha criada.");
+      setModoAtivar(false);
+      setToken("");
+      setNovaSenha("");
+      setRepeteSenha("");
+      history.replaceState({}, "", location.pathname);
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível ativar o acesso.");
+    } finally {
+      setAtivando(false);
+    }
+  }
   async function iniciarRecuperacao(e:React.FormEvent){e.preventDefault();const cpf=cpfRecuperacao.replace(/\D/g,"");if(cpf.length!==11||!nascimentoRecuperacao)return void toast.error("Informe CPF e data de nascimento.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-start",{body:{slug,cpf,nascimento:nascimentoRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível validar os dados.");setDesafioRecuperacao(data as DesafioRecuperacao);setAnimalResposta("");toast.success("Identidade validada. Responda à pergunta para criar a nova senha.");}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível iniciar a redefinição.");}finally{setRecuperando(false);}}
   async function concluirRecuperacao(e:React.FormEvent){e.preventDefault();if(!desafioRecuperacao||!animalResposta)return void toast.error("Escolha qual é o seu pet.");if(senhaRecuperacao.length<8)return void toast.error("A senha precisa ter pelo menos 8 caracteres.");if(senhaRecuperacao!==repeteSenhaRecuperacao)return void toast.error("As senhas não coincidem.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-complete",{body:{desafioId:desafioRecuperacao.desafioId,animalId:animalResposta,senha:senhaRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível redefinir a senha.");toast.success("Senha redefinida. Entre com seu usuário e a nova senha.");setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível redefinir a senha.");}finally{setRecuperando(false);}}
   function voltarRecuperacao(){setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}
@@ -357,7 +396,7 @@ function Login(props:{
           )}
           <button onClick={p.voltarRecuperacao} className="mt-4 w-full text-sm font-bold text-[#702a43]">Voltar para o acesso</button></>
         ) : p.modoAtivar ? (
-          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken}/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
+          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken} placeholder="Ex.: SD45"/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><p className="text-xs text-muted-foreground">Use de 12 a 128 caracteres, com maiúscula, minúscula, número e símbolo.</p><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
         ) : (
           <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
