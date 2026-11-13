@@ -244,7 +244,7 @@ function RootComponent() {
   useEffect(()=>{
     const rotaPublica = ROTAS_PUBLICAS.has(location.pathname)
       || location.pathname.startsWith("/vet/")
-      || /^\\/pet\\/[^/]+(?:\\/portal)?\\/?$/.test(location.pathname)
+      || /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)
       || ROTA_CONTRATO_PUBLICO.test(location.pathname)
       || (location.pathname==="/" && Boolean(hostDaPagina()) && !isPlatformHostname(hostDaPagina()));
     aplicarAcessibilidade(autenticado===true&&!rotaPublica);
