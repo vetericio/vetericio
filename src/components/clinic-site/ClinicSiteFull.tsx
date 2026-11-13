@@ -41,12 +41,12 @@ const safeImage = (input?: string) => {
   const driveId = value.match(
     /^https:\/\/drive\.google\.com\/uc\?export=(?:view|download)&id=([^&]+)/i,
   )?.[1];
-  if (driveId) return `https://lh3.googleusercontent.com/d/${encodeURIComponent(driveId)}=w2000`;
+  if (driveId) return `https://lh3.googleusercontent.com/d/${encodeURIComponent(driveId)}=w1440`;
   const googleusercontentId = value.match(
     /^https:\/\/lh3\.googleusercontent\.com\/d\/([^/?#=]+)/i,
   )?.[1];
   if (googleusercontentId)
-    return `https://lh3.googleusercontent.com/d/${encodeURIComponent(googleusercontentId)}=w2000`;
+    return `https://lh3.googleusercontent.com/d/${encodeURIComponent(googleusercontentId)}=w1440`;
   if (/^https:\/\//i.test(value)) return value;
   return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
 };
@@ -75,7 +75,7 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
     <img
       src={url}
       alt={nome}
-      loading="eager"
+      loading="lazy"
       decoding="async"
       onError={() => setFalhou(true)}
       className="block h-full w-full object-cover object-top"
@@ -475,6 +475,8 @@ export function ClinicSiteFull({
                 <img
                   src={aboutImage}
                   alt={"Nossa estrutura - " + config.name}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -765,6 +767,9 @@ export function ClinicSiteFull({
           src={image}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-50"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
         />
       ) : null}
       {uploadButton("hero")}
@@ -900,6 +905,9 @@ export function ClinicSiteFull({
             <img
               src={image}
               alt="Momento feliz na clínica"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : null}
@@ -960,6 +968,9 @@ export function ClinicSiteFull({
             <img
               src={image}
               alt="Retrato da relação entre equipe e pet"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : null}
