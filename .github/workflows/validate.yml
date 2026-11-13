@@ -22,6 +22,8 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Validate public smoke audit script
+        run: node --check scripts/smoke-oricse-live.mjs
       - name: Browser persistence guard
         shell: bash
         run: |
