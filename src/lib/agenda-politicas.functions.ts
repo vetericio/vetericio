@@ -24,7 +24,7 @@ export const cancelarAgendamentoPolitica = createServerFn({ method: "POST" })
     const {data:auth,error:authError}=await supabaseAdmin.auth.getUser(data.accessToken);
     if(authError||!auth.user)throw new Error("Sessão expirada.");
     const uid=auth.user.id;
-    await exigirPermissaoClinica(supabaseAdmin,uid,data.clinicaId,["recepcao.agenda"]);
+    await exigirPermissaoClinica(supabaseAdmin,uid,data.clinicaId,["recepcao.agenda"],data.accessToken);
     const {data:perfil}=await supabaseAdmin.from("app_users").select("role").eq("user_id",uid).maybeSingle();
     const adminGeral=perfil?.role==="admin";
     const {data:vinculo}=await supabaseAdmin.from("clinica_usuarios").select("papel")
