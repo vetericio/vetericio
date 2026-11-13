@@ -261,7 +261,29 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       setAtivando(false);
     }
   }
-  async function iniciarRecuperacao(e:React.FormEvent){e.preventDefault();const cpf=cpfRecuperacao.replace(/\D/g,"");if(cpf.length!==11||!nascimentoRecuperacao)return void toast.error("Informe CPF e data de nascimento.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-start",{body:{slug,cpf,nascimento:nascimentoRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível validar os dados.");setDesafioRecuperacao(data as DesafioRecuperacao);setAnimalResposta("");toast.success("Identidade validada. Responda à pergunta para criar a nova senha.");}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível iniciar a redefinição.");}finally{setRecuperando(false);}}
+  async function iniciarRecuperacao(e: React.FormEvent) {
+    e.preventDefault();
+    const cpf = cpfRecuperacao.replace(/\D/g, "");
+    if (!usuario.trim() || cpf.length !== 11 || !nascimentoRecuperacao) {
+      toast.error("Informe seu @, CPF e data de nascimento.");
+      return;
+    }
+    setRecuperando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("oricse-portal-reset-start", {
+        body: { slug, usuario, cpf, nascimento: nascimentoRecuperacao },
+      });
+      const resposta = error instanceof FunctionsHttpError
+        ? await error.context.json().catch(() => null) : data;
+      if (error || !data?.ok) throw new Error(resposta?.error || "Não foi possível validar os dados.");
+      setDesafioRecuperacao(data as DesafioRecuperacao);
+      setAnimalResposta("");
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível iniciar a redefinição.");
+    } finally {
+      setRecuperando(false);
+    }
+  }
   async function concluirRecuperacao(e:React.FormEvent){e.preventDefault();if(!desafioRecuperacao||!animalResposta)return void toast.error("Escolha qual é o seu pet.");if(senhaRecuperacao.length<8)return void toast.error("A senha precisa ter pelo menos 8 caracteres.");if(senhaRecuperacao!==repeteSenhaRecuperacao)return void toast.error("As senhas não coincidem.");setRecuperando(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-reset-complete",{body:{desafioId:desafioRecuperacao.desafioId,animalId:animalResposta,senha:senhaRecuperacao}});if(error||!data?.ok)throw new Error(data?.error||"Não foi possível redefinir a senha.");toast.success("Senha redefinida. Entre com seu usuário e a nova senha.");setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível redefinir a senha.");}finally{setRecuperando(false);}}
   function voltarRecuperacao(){setModoRecuperar(false);setDesafioRecuperacao(null);setAnimalResposta("");setSenhaRecuperacao("");setRepeteSenhaRecuperacao("");history.replaceState({},"",location.pathname);}
   async function sair(){if(!modoDemoAlvorada)await supabase.auth.signOut();setModoDemoAlvorada(false);setContexto(null);setAnimais([]);navegar("resumo");}
@@ -381,6 +403,7 @@ function Login(props:{
           <><p className="text-sm text-slate-500">Confirme seus dados e reconheça um pet vinculado a esta clínica.</p>
           {!p.desafioRecuperacao ? (
             <form onSubmit={p.iniciarRecuperacao} className="mt-5 space-y-4">
+              <Campo rotulo="Usuário do portal (@)" valor={p.usuario} onChange={p.setUsuario} placeholder="@tut.seunome"/>
               <Campo rotulo="CPF" valor={p.cpfRecuperacao} onChange={p.setCpfRecuperacao} inputMode="numeric" placeholder="Somente números"/>
               <Campo rotulo="Data de nascimento" valor={p.nascimentoRecuperacao} onChange={p.setNascimentoRecuperacao} type="date"/>
               <button disabled={p.recuperando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.recuperando?"Validando...":"Continuar"}</button>

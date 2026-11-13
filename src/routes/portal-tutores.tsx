@@ -1,10 +1,14 @@
 import { PortalTutorLoginPreview } from "./pet/$slug/portal";
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
+import { oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
-import { CheckCircle2, Copy, ExternalLink, KeyRound, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, KeyRound, MessageCircle, PawPrint, RefreshCw, ShieldCheck, Upload, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { EditorConvitePortalTutor } from "@/components/EditorConvitePortalTutor";
+import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
+import { obterModeloConvite } from "@/lib/convite-portal-tutor.functions";
+import { preencherConvite, urlPortalDoTutor, whatsappDoTutor } from "@/lib/convite-portal-tutor";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { type Comanda, lerComandas, saldoComanda, totalComanda, totalPagoComanda } from "@/lib/comandas";
 
@@ -13,17 +17,23 @@ export const Route = createFileRoute("/portal-tutores")({ component: PortalTutor
 function PortalTutoresComPrevia() {
   // A prévia do Canva não exige escolher clínica ou aguardar dados de tutores.
   const location = useLocation();
+  const { clinicaId, carregando, pode } = usePermissoes();
   if (new URLSearchParams(location.searchStr).has("portal_login_preview")) {
     return <PortalTutorLoginPreview />;
   }
-  return <PortalTutores tutorIdInicial={new URLSearchParams(location.searchStr).get("tutorId") || ""} />;
+  if (carregando) return <main className="mx-auto max-w-6xl px-5 py-10 text-sm text-muted-foreground">Carregando Portal do Tutor…</main>;
+  if (!clinicaId || !pode("portal_tutor.gerenciar")) {
+    return <main className="mx-auto max-w-xl px-5 py-12 text-center"><ShieldCheck className="mx-auto text-muted-foreground" /><h1 className="mt-3 text-2xl font-bold">Portal não disponível</h1><p className="mt-2 text-sm text-muted-foreground">Selecione uma clínica com acesso à gestão do Portal do Tutor.</p><Link to="/inicio" className="mt-5 inline-block font-semibold text-primary">Voltar ao início</Link></main>;
+  }
+  return <PortalTutores key={clinicaId} clinicaId={clinicaId} tutorIdInicial={new URLSearchParams(location.searchStr).get("tutorId") || ""} />;
 }
 
-type TutorDb = { id:string; codigo_publico:string; nome:string; cpf:string; telefone:string|null; email:string|null; dados:Record<string,unknown> };
+type TutorDb = { id: string; codigo_publico: string; nome: string; telefone: string | null };
+type AnimalDb = { id: string; tutor_id: string | null; nome: string };
 type PortalDb = { id:string; tutor_id:string; usuario:string; ativo:boolean; auth_user_id:string|null; convite_expira_em:string|null; ultimo_acesso_em:string|null; created_at:string };
 type TutorLocal = { id?:string; nome?:string; telefone?:string; email?:string; cpfCnpj?:string; cpf?:string; [key:string]:unknown };
 type AnimalLocal = { id?:string; tutorId?:string; tutor_id?:string; nome?:string; especie?:string; raca?:string; sexo?:string; nascimento?:string; peso?:string; foto_url?:string; [key:string]:unknown };
-type Convite = { tutorId:string; usuario:string; token:string; expira_em:string; clinica_slug:string; link:string };
+type Convite = { clinicaId: string; tutorId:string; usuario:string; token:string; expira_em:string; clinica_slug:string; link:string };
 
 function soDigitos(valor?: string) { return String(valor || "").replace(/\D/g, ""); }
 function uuidValido(valor?: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(valor || "")); }
@@ -33,38 +43,77 @@ function lerLocal<T>(chave:string):T[] {
   catch { return []; }
 }
 
-function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
-  const { carregando:carregandoPermissao,pode,clinicaId }=usePermissoes();
+async function carregarPaginas<T>(buscar: (inicio: number, fim: number) => PromiseLike<{ data: T[] | null; error: unknown }>) {
+  const registros: T[] = [];
+  const limite = 500;
+  for (let inicio = 0; ; inicio += limite) {
+    const { data, error } = await buscar(inicio, inicio + limite - 1);
+    if (error) throw error;
+    registros.push(...(data || []));
+    if (!data || data.length < limite) return registros;
+  }
+}
+
+function PortalTutores({ clinicaId, tutorIdInicial }: { clinicaId: string; tutorIdInicial: string }) {
   const [carregando,setCarregando]=useState(true);
   const [tutores,setTutores]=useState<TutorDb[]>([]);
   const [portais,setPortais]=useState<PortalDb[]>([]);
   const [slug,setSlug]=useState("");
+  const [clinicaNome, setClinicaNome] = useState("");
+  const [animais, setAnimais] = useState<AnimalDb[]>([]);
+  const [modelo, setModelo] = useState<string | null>(null);
+  const [erroModelo, setErroModelo] = useState("");
+  const [erroPainel, setErroPainel] = useState("");
   const [selecionado,setSelecionado]=useState(tutorIdInicial);
-  const [convite,setConvite]=useState<Convite|null>(null);
+  const [convites, setConvites] = useState<Record<string, Convite>>({});
   const [emitindo,setEmitindo]=useState(false);
   const [sincronizando,setSincronizando]=useState(false);
   const [locais,setLocais]=useState(()=>lerLocal<TutorLocal>("oricse-tutores-v1"));
   const [animaisLocais,setAnimaisLocais]=useState(()=>lerLocal<AnimalLocal>("oricse-animais-v1"));
   const [comandasLocais,setComandasLocais]=useState<Comanda[]>(()=>typeof window==="undefined"?[]:lerComandas());
 
-  const carregar=useCallback(async()=>{
-    if(!clinicaId)return;
-    setCarregando(true);
-    try{
-      const [tutoresResp,portaisResp,clinicaResp]=await Promise.all([
-        supabaseBanco.from("tutores").select("id,codigo_publico,nome,cpf,telefone,email,dados").eq("clinica_id",clinicaId).order("nome"),
-        supabaseBanco.from("oricse_portal_tutores").select("id,tutor_id,usuario,ativo,auth_user_id,convite_expira_em,ultimo_acesso_em,created_at").eq("clinica_id",clinicaId).order("created_at",{ascending:false}),
-        supabaseBanco.from("clinicas").select("slug").eq("id",clinicaId).maybeSingle(),
-      ]);
-      for(const r of [tutoresResp,portaisResp,clinicaResp])if(r.error)throw r.error;
-      setTutores((tutoresResp.data||[]) as TutorDb[]);
-      setPortais((portaisResp.data||[]) as PortalDb[]);
-      setSlug(clinicaResp.data?.slug||"");
-    }catch(error){toast.error(error instanceof Error?error.message:"Não foi possível carregar os tutores.");}
-    finally{setCarregando(false);}
-  },[clinicaId]);
+  const carregarModelo = useCallback(async () => {
+    setErroModelo("");
+    try {
+      const accessToken = await tokenConfiguracoesClinica();
+      const resposta = await obterModeloConvite({ data: { accessToken, clinicaId } });
+      setModelo(resposta.modelo);
+    } catch {
+      setErroModelo("Não foi possível carregar a mensagem da clínica.");
+    }
+  }, [clinicaId]);
 
-  useEffect(()=>{void carregar();},[carregar]);
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErroPainel("");
+    try {
+      const [listaTutores, listaPortais, clinicaResp, listaAnimais] = await Promise.all([
+        carregarPaginas<TutorDb>((inicio, fim) => supabaseBanco.from("tutores")
+          .select("id,codigo_publico,nome,telefone").eq("clinica_id", clinicaId)
+          .order("nome").order("id").range(inicio, fim)),
+        carregarPaginas<PortalDb>((inicio, fim) => supabaseBanco.from("oricse_portal_tutores")
+          .select("id,tutor_id,usuario,ativo,auth_user_id,convite_expira_em,ultimo_acesso_em,created_at")
+          .eq("clinica_id", clinicaId).order("id").range(inicio, fim)),
+        supabaseBanco.from("clinicas").select("nome,slug").eq("id", clinicaId).single(),
+        carregarPaginas<AnimalDb>((inicio, fim) => supabaseBanco.from("oricse_animais")
+          .select("id,tutor_id,nome").eq("clinica_id", clinicaId).not("tutor_id", "is", null)
+          .order("nome").order("id").range(inicio, fim)),
+      ]);
+      if (clinicaResp.error) throw clinicaResp.error;
+      setTutores(listaTutores);
+      setPortais(listaPortais);
+      setAnimais(listaAnimais);
+      setSlug(clinicaResp.data.slug);
+      setClinicaNome(clinicaResp.data.nome);
+      setSelecionado((id) => listaTutores.some((tutor) => tutor.id === id) ? id : listaTutores[0]?.id || "");
+    } catch {
+      setErroPainel("Não foi possível carregar os tutores e animais desta clínica.");
+    } finally {
+      setCarregando(false);
+    }
+  }, [clinicaId]);
+
+  useEffect(() => { void carregar(); void carregarModelo(); }, [carregar, carregarModelo]);
   useEffect(()=>{
     if(typeof window==="undefined") return;
     const atualizar=()=>{ setLocais(lerLocal("oricse-tutores-v1")); setAnimaisLocais(lerLocal("oricse-animais-v1")); setComandasLocais(lerComandas()); };
@@ -76,7 +125,29 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
   const portalPorTutor=useMemo(()=>new Map(portais.map(p=>[p.tutor_id,p])),[portais]);
   const tutorSelecionado=tutores.find(t=>t.id===selecionado)||null;
   const acessoSelecionado = tutorSelecionado && portalPorTutor.get(tutorSelecionado.id);
-  const conviteSelecionado = convite?.tutorId === tutorSelecionado?.id && !acessoSelecionado?.auth_user_id ? convite : null;
+  const convite = tutorSelecionado ? convites[tutorSelecionado.id] : undefined;
+  const conviteSelecionado = convite && convite.clinicaId === clinicaId &&
+    convite.tutorId === tutorSelecionado?.id && !acessoSelecionado?.auth_user_id &&
+    Date.parse(acessoSelecionado?.convite_expira_em || "") === Date.parse(convite.expira_em) && Date.parse(convite.expira_em) > Date.now() ? convite : null;
+  const animaisPorTutor = useMemo(() => {
+    const mapa = new Map<string, AnimalDb[]>();
+    for (const animal of animais) {
+      if (!animal.tutor_id) continue;
+      const lista = mapa.get(animal.tutor_id) || [];
+      lista.push(animal);
+      mapa.set(animal.tutor_id, lista);
+    }
+    return mapa;
+  }, [animais]);
+  const urlWhatsapp = tutorSelecionado && conviteSelecionado && modelo
+    ? whatsappDoTutor(tutorSelecionado.telefone, preencherConvite(modelo, {
+        nome_tutor: tutorSelecionado.nome,
+        nome_clinica: clinicaNome,
+        link_portal: urlPortalDoTutor(conviteSelecionado.clinica_slug),
+        usuario_tutor: conviteSelecionado.usuario,
+        codigo_ativacao: conviteSelecionado.token,
+      }))
+    : null;
 
   const locaisValidos=useMemo(()=>locais.filter(t=>Boolean(t.nome?.trim())&&soDigitos(String(t.cpfCnpj||t.cpf||"")).length===11&&uuidValido(t.id)),[locais]);
   const animaisImportaveis=useMemo(()=>animaisLocais.filter(a=>uuidValido(a.id)&&Boolean(a.nome?.trim())&&Boolean(a.tutorId||a.tutor_id)),[animaisLocais]);
@@ -151,14 +222,14 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
   }
 
   async function emitirConvite(){
-    if (!tutorSelecionado || !acessoSelecionado || acessoSelecionado.auth_user_id) return;
-    setEmitindo(true);setConvite(null);
+    if (emitindo || !tutorSelecionado || !acessoSelecionado || acessoSelecionado.auth_user_id) return;
+    setEmitindo(true);
     try{
       const {data,error}=await supabaseBanco.rpc("oricse_portal_emitir_convite",{p_tutor_id:tutorSelecionado.id,p_usuario:acessoSelecionado.usuario});
       if(error)throw error;
       const item=data?.[0];if(!item?.token)throw new Error("O convite não foi gerado.");
-      const link=`${window.location.origin}/pet/${encodeURIComponent(item.clinica_slug)}/portal#ativar=${encodeURIComponent(item.token)}&usuario=${encodeURIComponent(item.usuario)}`;
-      setConvite({ ...item, link, tutorId: tutorSelecionado.id });
+      const link = `${urlPortalDoTutor(item.clinica_slug)}#ativar=${encodeURIComponent(item.token)}&usuario=${encodeURIComponent(item.usuario)}`;
+      setConvites((atuais) => ({ ...atuais, [tutorSelecionado.id]: { ...item, link, clinicaId, tutorId: tutorSelecionado.id } }));
       setPortais((atuais) => atuais.map((portal) => portal.tutor_id === tutorSelecionado.id
         ? { ...portal, convite_expira_em: item.expira_em }
         : portal));
@@ -169,28 +240,52 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
 
   async function copiar(texto:string,mensagem:string){try{await navigator.clipboard.writeText(texto);toast.success(mensagem);}catch{toast.error("Não foi possível copiar automaticamente.");}}
 
-  if(carregandoPermissao||carregando)return <main className="mx-auto max-w-6xl px-5 py-10 text-sm text-muted-foreground">Carregando portal dos tutores...</main>;
-  if(!pode("portal_tutor.gerenciar"))return <main className="mx-auto max-w-xl px-5 py-12 text-center"><ShieldCheck className="mx-auto text-muted-foreground"/><h1 className="mt-3 text-2xl font-bold">Portal não disponível</h1><p className="mt-2 text-sm text-muted-foreground">Seu usuário ou o plano desta clínica não permite gerenciar o Portal do Tutor.</p><Link to="/inicio" className="mt-5 inline-block font-semibold text-primary">Voltar ao início</Link></main>;
+  if (carregando && !slug) return <main className="mx-auto max-w-6xl px-5 py-10 text-sm text-muted-foreground">Carregando Portal do Tutor…</main>;
 
   const temDadosLocais=locaisValidos.length>0;
   return <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><Link to="/tutores" className="text-sm font-semibold text-muted-foreground hover:text-primary">← Tutores</Link><h1 className="mt-3 text-3xl font-black tracking-tight">Portal do Tutor</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Ative acessos reais para os tutores desta clínica. Cada login só enxerga os próprios animais e dados liberados.</p></div>{slug&&<a href={`/pet/${slug}/portal`} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-bold"><ExternalLink size={16}/> Abrir portal</a>}</div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><Link to="/tutores" className="text-sm font-semibold text-muted-foreground hover:text-primary">← Tutores</Link><h1 className="mt-3 text-3xl font-black tracking-tight">Portal do Tutor</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Gerencie os acessos e convites dos tutores desta clínica.</p></div>{slug&&<a href={urlPortalDoTutor(slug)} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-bold"><ExternalLink size={16}/> Abrir portal</a>}</div>
 
-    <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-primary">Conteúdos do Portal do Tutor</p>
-          <h2 className="mt-2 text-xl font-black">Documentos e cuidados de cada animal</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">Receitas, exames, laudos, atestados, cartões de vacinação, vermífugos e outros documentos são vinculados ao animal na ficha da clínica. Cada registro possui controle individual de liberação para o tutor, e os PDFs ficam disponíveis quando anexados.</p>
-        </div>
-        <Link to="/animais" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Gerenciar por animal <ExternalLink size={16}/></Link>
-      </div>
-      <p className="mt-4 rounded-xl bg-secondary/40 px-4 py-3 text-xs text-muted-foreground">Cada clínica administra exclusivamente seus registros. Conteúdos internos não são exibidos ao tutor sem liberação.</p>
-    </section>
+    {modelo && slug && <EditorConvitePortalTutor clinicaId={clinicaId} clinicaNome={clinicaNome} slug={slug} salvo={modelo} aoSalvar={setModelo} />}
+    {erroModelo && <div role="alert" className="mt-5 rounded-xl border bg-card p-4 text-sm">
+      {erroModelo} <button type="button" className="ml-2 font-semibold text-primary" onClick={() => void carregarModelo()}>Tentar novamente</button>
+    </div>}
+    {erroPainel && <p role="alert" className="mt-5 rounded-xl border bg-card p-4 text-sm">{erroPainel} <button type="button" className="ml-2 font-semibold text-primary" onClick={() => void carregar()}>Tentar novamente</button></p>}
     {temDadosLocais&&<section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><Upload className="mt-0.5 text-amber-800"/><div className="flex-1"><h2 className="font-black text-amber-950">Sincronização dos dados deste navegador</h2><p className="mt-1 text-sm text-amber-900">Localizei {locais.length} tutor(es), {animaisLocais.length} animal(is) e {comandasLocais.length} comanda(s). A sincronização só ocorre após sua confirmação e sempre para a clínica atual.</p><p className="mt-1 text-xs text-amber-800">Compatíveis agora: {locaisValidos.length} tutor(es), {animaisImportaveis.length} animal(is) e {comandasImportaveis.length} comanda(s).</p><button disabled={sincronizando||!locaisValidos.length} onClick={sincronizarDadosLocais} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber-900 px-4 text-sm font-bold text-white disabled:opacity-40">{sincronizando?<RefreshCw size={16} className="animate-spin"/>:<Upload size={16}/>} Sincronizar para esta clínica</button></div></div></section>}
 
     <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <section className="rounded-2xl border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Users size={19}/><h2 className="text-lg font-black">Tutores cadastrados</h2></div><p className="mt-1 text-xs text-muted-foreground">Selecione um tutor para consultar o usuário e gerenciar o acesso.</p></div><button onClick={()=>void carregar()} className="rounded-lg border p-2 text-muted-foreground" aria-label="Atualizar"><RefreshCw size={16}/></button></div><div className="mt-4 space-y-2">{tutores.length?tutores.map(t=>{const portal=portalPorTutor.get(t.id);return <button key={t.id} onClick={()=>setSelecionado(t.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left ${selecionado===t.id?"border-primary bg-primary/5":"hover:bg-secondary/40"}`}><span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><PawPrint size={17}/></span><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{t.nome}</strong><span className="block text-xs text-muted-foreground">{portal?.usuario || t.codigo_publico} · {t.telefone||"Sem telefone"}</span></span>{portal?.ativo && portal.auth_user_id?<span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase text-emerald-800"><CheckCircle2 size={12}/> Ativo</span>:<span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-black uppercase text-muted-foreground">{portal?.auth_user_id ? "Inativo" : "Primeiro acesso"}</span>}</button>}):<p className="rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">Nenhum tutor cadastrado no banco desta clínica.</p>}</div></section>
+      <section className="rounded-2xl border bg-card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-black"><Users size={19} /> Tutores cadastrados</h2>
+          <button type="button" onClick={() => void carregar()} disabled={carregando || emitindo} className="rounded-lg border p-2 text-muted-foreground" aria-label="Atualizar tutores"><RefreshCw size={16} className={carregando ? "animate-spin" : ""} /></button>
+        </div>
+        <div className="mt-4 space-y-2">
+          {tutores.length ? tutores.map((tutor) => {
+            const portal = portalPorTutor.get(tutor.id);
+            const vinculados = animaisPorTutor.get(tutor.id) || [];
+            const ativo = Boolean(portal?.ativo && portal.auth_user_id);
+            return (
+              <button type="button" key={tutor.id} onClick={() => setSelecionado(tutor.id)}
+                aria-pressed={selecionado === tutor.id}
+                className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left ${selecionado === tutor.id ? "border-primary bg-primary/5" : "hover:bg-secondary/40"}`}>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary"><PawPrint size={17} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <strong className="break-words text-sm">{tutor.nome}</strong>
+                    {tutor.codigo_publico && <span className="text-xs text-muted-foreground">Código do cadastro {tutor.codigo_publico}</span>}
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${ativo ? "bg-emerald-100 text-emerald-800" : "bg-secondary text-muted-foreground"}`}>
+                      {ativo ? "Ativo" : portal?.auth_user_id ? "Inativo" : "Primeiro acesso"}
+                    </span>
+                  </span>
+                  <span className="mt-2 flex flex-wrap gap-1.5">
+                    {vinculados.length ? vinculados.map((animal) => <span key={animal.id} className="break-all rounded-md border px-2 py-0.5 text-xs">{animal.nome}</span>) : <span className="text-xs text-muted-foreground">Sem animais vinculados</span>}
+                  </span>
+                </span>
+              </button>
+            );
+          }) : !erroPainel && <p className="rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">Nenhum tutor cadastrado nesta clínica.</p>}
+        </div>
+      </section>
 
       <aside className="self-start rounded-2xl border bg-card p-5 shadow-sm">
         {!tutorSelecionado ? (
@@ -207,15 +302,18 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
             <p className="mt-3 font-bold">{tutorSelecionado.nome}</p>
             {acessoSelecionado ? (
               <>
-                <p className="mt-1 break-all text-sm text-muted-foreground">Usuário do portal · <strong>{acessoSelecionado.usuario}</strong></p>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="min-w-0"><dt className="text-muted-foreground">Usuário do portal</dt><dd className="break-all font-bold">{acessoSelecionado.usuario}</dd></div>
+                  {!acessoSelecionado.auth_user_id && <div><dt className="text-muted-foreground">Código de ativação</dt><dd className="font-bold">{conviteSelecionado?.token || "Gerar convite"}</dd></div>}
+                </dl>
                 {acessoSelecionado.auth_user_id ? (
                   <p className="mt-2 text-sm">{acessoSelecionado.ativo ? "Acesso ativo" : "Acesso inativo"}{acessoSelecionado.ultimo_acesso_em && ` · Último acesso em ${new Date(acessoSelecionado.ultimo_acesso_em).toLocaleString("pt-BR")}`}</p>
                 ) : (
                   <>
                     <p className="mt-2 text-sm text-muted-foreground">Aguardando ativação pelo tutor.</p>
-                    <button type="button" disabled={emitindo} onClick={emitirConvite} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-40">
+                    <button type="button" disabled={emitindo} onClick={emitirConvite} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 font-bold text-primary disabled:opacity-40">
                       {emitindo ? <RefreshCw size={16} className="animate-spin" /> : <KeyRound size={16} />}
-                      {acessoSelecionado.convite_expira_em ? "Gerar novo convite" : "Gerar convite de ativação"}
+                      {acessoSelecionado.convite_expira_em ? "Gerar novo código" : "Gerar código de ativação"}
                     </button>
                   </>
                 )}
@@ -225,7 +323,18 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
               <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
                 <p className="text-sm font-black">Convite pronto</p>
                 <p className="mt-1 text-xs">Expira em {new Date(conviteSelecionado.expira_em).toLocaleString("pt-BR")}.</p>
-                <p className="mt-3 rounded-lg bg-white p-2 font-mono text-lg font-bold tracking-widest">{conviteSelecionado.token}</p>
+                {urlWhatsapp ? (
+                  <a href={urlWhatsapp} target="_blank" rel="noreferrer" onClick={(event) => {
+                    if (Date.parse(conviteSelecionado.expira_em) > Date.now()) return;
+                    event.preventDefault();
+                    setConvites(({ [tutorSelecionado.id]: _expirado, ...restantes }) => restantes);
+                    toast.error("O código expirou. Gere um novo convite.");
+                  }} className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-3 text-center text-sm font-bold text-white">
+                    <MessageCircle size={16} /> Enviar convite pelo WhatsApp
+                  </a>
+                ) : (
+                  <p className="mt-2 text-xs">{!modelo ? "Carregue a mensagem da clínica para enviar pelo WhatsApp." : "Cadastre um telefone válido para enviar pelo WhatsApp."}</p>
+                )}
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => copiar(conviteSelecionado.link, "Link copiado.")} className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-900 px-3 py-2 text-xs font-bold text-white"><Copy size={13} /> Copiar link</button>
                   <button type="button" onClick={() => copiar(conviteSelecionado.token, "Código copiado.")} className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold"><Copy size={13} /> Copiar código</button>
@@ -236,5 +345,16 @@ function PortalTutores({ tutorIdInicial }: { tutorIdInicial: string }){
         )}
       </aside>
     </div>
+    <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">Conteúdos do Portal do Tutor</p>
+          <h2 className="mt-2 text-xl font-black">Documentos e cuidados de cada animal</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Receitas, exames, laudos, atestados, cartões de vacinação, vermífugos e outros documentos são vinculados ao animal na ficha da clínica. Cada registro possui controle individual de liberação para o tutor, e os PDFs ficam disponíveis quando anexados.</p>
+        </div>
+        <Link to="/animais" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Gerenciar por animal <ExternalLink size={16}/></Link>
+      </div>
+      <p className="mt-4 rounded-xl bg-secondary/40 px-4 py-3 text-xs text-muted-foreground">Cada clínica administra exclusivamente seus registros. Conteúdos internos não são exibidos ao tutor sem liberação.</p>
+    </section>
   </main>;
 }
