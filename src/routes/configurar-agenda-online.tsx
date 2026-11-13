@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { consultarPoliticasAgendaClinica } from "@/lib/politicas-operacionais.functions";
+import { cancelarAgendamentoPolitica } from "@/lib/agenda-politicas.functions";
 
 export const Route = createFileRoute("/configurar-agenda-online")({ component: ConfigurarAgendaOnline });
 type Agenda={id:string;nome:string;responsavel:string;inicio:string;fim:string;dias_semana:number[];intervalo_min:number;portal_ativo:boolean;modalidade:"livre"|"aprovacao"|"pagamento";antecedencia_horas:number;tipo:string;timezone:string;portal_regra_dias?:"semanal"|"pares"|"datas";portal_datas_horarios?:Record<string,string[]>};
@@ -21,7 +22,10 @@ function ConfigurarAgendaOnline(){
  const carregar=useCallback(async()=>{
   setCarregando(true);
   const{data:{user}}=await supabase.auth.getUser();if(!user){setCarregando(false);return;}
-  const{data:vinculo,error}=await(supabase as any).from("clinica_usuarios").select("clinica_id").eq("user_id",user.id).eq("ativo",true).limit(1).maybeSingle();
+  const {data:cidSelecionada,error:erroSelecao}=await(supabase as any).rpc("oricse_clinica_ativa_obter");
+  if(erroSelecao||!cidSelecionada){toast.error("Selecione uma clínica ativa.");setCarregando(false);return;}
+  const{data:vinculo,error}=await(supabase as any).from("clinica_usuarios")
+    .select("clinica_id").eq("user_id",user.id).eq("clinica_id",cidSelecionada).eq("ativo",true).maybeSingle();
   if(error||!vinculo?.clinica_id){toast.error("Clínica não identificada.");setCarregando(false);return;}
   setClinica(vinculo.clinica_id);
   try {
@@ -50,7 +54,37 @@ function ConfigurarAgendaOnline(){
  const alterar=(id:string,patch:Partial<Agenda>)=>setAgendas(prev=>prev.map(a=>a.id===id?{...a,...patch}:a));
  async function adicionar(){if(!clinica)return;if(limiteAgendas===null||agendas.length>=limiteAgendas)return void toast.error("Limite de agendas atingido. Solicite mais em atendimento@oricse.com.br ou com seu consultor.");const{data,error}=await(supabaseBanco as any).from("oricse_agendas_online").insert({clinica_id:clinica,nome:"Nova agenda",portal_ativo:false,portal_regra_dias:"semanal",portal_datas_horarios:{},timezone:"America/Sao_Paulo",tipo:"Consulta"}).select("id,nome,responsavel,inicio,fim,dias_semana,intervalo_min,portal_ativo,modalidade,antecedencia_horas,tipo,timezone,portal_regra_dias,portal_datas_horarios").single();if(error)return toast.error(error.message);setAgendas(a=>[...a,data]);toast.success("Agenda criada.");}
  async function salvar(a:Agenda){if(!clinica)return;let datas:Record<string,string[]>={};try{datas=parseDatas(datasEditadas[a.id]||"");if(a.portal_regra_dias==="datas"&&!Object.keys(datas).length)throw new Error("Informe ao menos uma data e seus horários.");}catch(e){toast.error(e instanceof Error?e.message:"Datas inválidas.");return;}setSalvando(a.id);const{error}=await(supabaseBanco as any).from("oricse_agendas_online").update({nome:a.nome,responsavel:a.responsavel,inicio:a.inicio,fim:a.fim,dias_semana:a.dias_semana,intervalo_min:a.intervalo_min,portal_ativo:a.portal_ativo,modalidade:a.modalidade,antecedencia_horas:a.antecedencia_horas,tipo:a.tipo,timezone:a.timezone,portal_regra_dias:a.portal_regra_dias||"semanal",portal_datas_horarios:datas}).eq("id",a.id).eq("clinica_id",clinica);setSalvando(null);if(error)return toast.error(error.message);toast.success("Agenda salva.");}
- async function mudarEstado(id:string,novo:"confirmado"|"cancelado"){if(!clinica)return;setAlterandoEstado(id);const{error}=await(supabaseBanco as any).from("oricse_agendamentos_online").update({estado:novo}).eq("id",id).eq("clinica_id",clinica);setAlterandoEstado(null);if(error)return toast.error(error.message);setAgendamentos(lista=>lista.map(a=>a.id===id?{...a,estado:novo}:a));toast.success(novo==="confirmado"?"Agendamento confirmado.":"Agendamento cancelado.");}
+ async function mudarEstado(id:string,novo:"confirmado"|"cancelado"){
+  if(!clinica)return;
+  if(novo==="cancelado"){
+    if(!politica)return toast.error("Política indisponível. Atualize a agenda antes de cancelar.");
+    const motivo=window.prompt("Motivo do cancelamento (mínimo de 8 caracteres):");
+    if(motivo===null)return;
+    if(motivo.trim().length<8)return toast.error("Informe o motivo do cancelamento.");
+    if(!window.confirm("Confirmar cancelamento deste agendamento?"))return;
+    setAlterandoEstado(id);
+    try{
+      const {data:sessao}=await supabase.auth.getSession();
+      if(!sessao.session?.access_token)throw new Error("Sessão expirada.");
+      const resposta=await cancelarAgendamentoPolitica({data:{
+        accessToken:sessao.session.access_token,clinicaId:clinica,agendamentoId:id,motivo:motivo.trim()
+      }});
+      if(!resposta.ok)throw new Error("Cancelamento não confirmado.");
+      setAgendamentos(lista=>lista.map(a=>a.id===id?{...a,estado:"cancelado"}:a));
+      toast.success(resposta.aprovacaoGerencial?"Cancelamento excepcional registrado.":"Agendamento cancelado.");
+    }catch(e){toast.error(e instanceof Error?e.message:"Não foi possível cancelar.");}
+    finally{setAlterandoEstado(null);}
+    return;
+  }
+  setAlterandoEstado(id);
+  const{data,error}=await(supabaseBanco as any).from("oricse_agendamentos_online")
+    .update({estado:novo}).eq("id",id).eq("clinica_id",clinica).eq("estado","solicitado")
+    .select("id").maybeSingle();
+  setAlterandoEstado(null);
+  if(error||!data)return toast.error(error?.message||"Solicitação já alterada. Atualize a agenda.");
+  setAgendamentos(lista=>lista.map(a=>a.id===id?{...a,estado:novo}:a));
+  toast.success("Agendamento confirmado.");
+ }
  async function copiarConfirmacao(item:Agendamento){
    const template = politica?.comunicacao.confirmacaoConsulta;
    if (!template) return toast.error("Modelo de confirmação não disponível.");
