@@ -16,10 +16,11 @@ const agendaSchema = z.object({
     intervalo_min: z.number().int().min(5).max(240),
     portal_ativo: z.boolean(),
     modalidade: z.enum(['livre', 'aprovacao', 'pagamento']),
+    pagamento_valor: z.number().positive('Informe o valor do agendamento online.').max(1000000).optional(),
     antecedencia_horas: z.number().int().min(0).max(720),
     timezone: z.string().trim().min(1).max(80),
     cor: z.enum(['azul', 'verde', 'amarelo', 'vermelho', 'rosa', 'laranja', 'roxo', 'marrom', 'cinza', 'azul-petroleo']),
-  }),
+  }).refine(a => !a.portal_ativo || a.modalidade !== 'pagamento' || Boolean(a.pagamento_valor), 'Informe o valor antes de publicar a agenda paga.'),
 });
 
 export const salvarAgendaOnline = createServerFn({ method: 'POST' })

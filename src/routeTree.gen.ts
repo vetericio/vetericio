@@ -36,6 +36,7 @@ import { Route as ConfigurarAgendaOnlineRouteImport } from './routes/configurar-
 import { Route as ConfigurarPagamentosRouteImport } from './routes/configurar-pagamentos'
 import { Route as ConfigurarPortalTutorRouteImport } from './routes/configurar-portal-tutor'
 import { Route as ConsultaRouteImport } from './routes/consulta'
+import { Route as ConsultaAvulsaRouteImport } from './routes/consulta-avulsa'
 import { Route as ConsultorioRouteImport } from './routes/consultorio'
 import { Route as ContratacaoRecebidaRouteImport } from './routes/contratacao-recebida'
 import { Route as ContratarRouteImport } from './routes/contratar'
@@ -54,9 +55,11 @@ import { Route as InternacaoRouteImport } from './routes/internacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MedicacoesRouteImport } from './routes/medicacoes'
 import { Route as MercadoPagoClinicaRouteImport } from './routes/mercado-pago-clinica'
+import { Route as MigracaoAssistidaRouteImport } from './routes/migracao-assistida'
 import { Route as MinhaAtividadeRouteImport } from './routes/minha-atividade'
 import { Route as ModelosRouteImport } from './routes/modelos'
 import { Route as NovoAnimalRouteImport } from './routes/novo-animal'
+import { Route as OrcamentoVendaExpressaRouteImport } from './routes/orcamento-venda-expressa'
 import { Route as OricstudioRouteImport } from './routes/oricstudio'
 import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as PerfilClinicaRouteImport } from './routes/perfil-clinica'
@@ -84,6 +87,7 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as TodasAgendasRouteImport } from './routes/todas-agendas'
 import { Route as TutoresRouteImport } from './routes/tutores'
+import { Route as VendaExpressaRouteImport } from './routes/venda-expressa'
 import { Route as TipoSlugRouteImport } from './routes/$tipo.$slug'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as ContratoTokenRouteImport } from './routes/contrato.$token'
@@ -233,6 +237,11 @@ const ConsultaRoute = ConsultaRouteImport.update({
   path: '/consulta',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConsultaAvulsaRoute = ConsultaAvulsaRouteImport.update({
+  id: '/consulta-avulsa',
+  path: '/consulta-avulsa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConsultorioRoute = ConsultorioRouteImport.update({
   id: '/consultorio',
   path: '/consultorio',
@@ -323,6 +332,11 @@ const MercadoPagoClinicaRoute = MercadoPagoClinicaRouteImport.update({
   path: '/mercado-pago-clinica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MigracaoAssistidaRoute = MigracaoAssistidaRouteImport.update({
+  id: '/migracao-assistida',
+  path: '/migracao-assistida',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MinhaAtividadeRoute = MinhaAtividadeRouteImport.update({
   id: '/minha-atividade',
   path: '/minha-atividade',
@@ -336,6 +350,11 @@ const ModelosRoute = ModelosRouteImport.update({
 const NovoAnimalRoute = NovoAnimalRouteImport.update({
   id: '/novo-animal',
   path: '/novo-animal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrcamentoVendaExpressaRoute = OrcamentoVendaExpressaRouteImport.update({
+  id: '/orcamento-venda-expressa',
+  path: '/orcamento-venda-expressa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OricstudioRoute = OricstudioRouteImport.update({
@@ -473,6 +492,11 @@ const TutoresRoute = TutoresRouteImport.update({
   path: '/tutores',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendaExpressaRoute = VendaExpressaRouteImport.update({
+  id: '/venda-expressa',
+  path: '/venda-expressa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TipoSlugRoute = TipoSlugRouteImport.update({
   id: '/$tipo/$slug',
   path: '/$tipo/$slug',
@@ -567,6 +591,7 @@ export interface FileRoutesByFullPath {
   '/configurar-pagamentos': typeof ConfigurarPagamentosRoute
   '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
+  '/consulta-avulsa': typeof ConsultaAvulsaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratacao-recebida': typeof ContratacaoRecebidaRoute
   '/contratar': typeof ContratarRoute
@@ -585,9 +610,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
+  '/migracao-assistida': typeof MigracaoAssistidaRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/modelos': typeof ModelosRoute
   '/novo-animal': typeof NovoAnimalRoute
+  '/orcamento-venda-expressa': typeof OrcamentoVendaExpressaRoute
   '/oricstudio': typeof OricstudioRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
@@ -615,6 +642,7 @@ export interface FileRoutesByFullPath {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/todas-agendas': typeof TodasAgendasRoute
   '/tutores': typeof TutoresRoute
+  '/venda-expressa': typeof VendaExpressaRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/c/$slug': typeof CSlugRoute
   '/contrato/$token': typeof ContratoTokenRoute
@@ -656,6 +684,7 @@ export interface FileRoutesByTo {
   '/configurar-pagamentos': typeof ConfigurarPagamentosRoute
   '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
+  '/consulta-avulsa': typeof ConsultaAvulsaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratacao-recebida': typeof ContratacaoRecebidaRoute
   '/contratar': typeof ContratarRoute
@@ -674,9 +703,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
+  '/migracao-assistida': typeof MigracaoAssistidaRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/modelos': typeof ModelosRoute
   '/novo-animal': typeof NovoAnimalRoute
+  '/orcamento-venda-expressa': typeof OrcamentoVendaExpressaRoute
   '/oricstudio': typeof OricstudioRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
@@ -704,6 +735,7 @@ export interface FileRoutesByTo {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/todas-agendas': typeof TodasAgendasRoute
   '/tutores': typeof TutoresRoute
+  '/venda-expressa': typeof VendaExpressaRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/c/$slug': typeof CSlugRoute
   '/contrato/$token': typeof ContratoTokenRoute
@@ -746,6 +778,7 @@ export interface FileRoutesById {
   '/configurar-pagamentos': typeof ConfigurarPagamentosRoute
   '/configurar-portal-tutor': typeof ConfigurarPortalTutorRoute
   '/consulta': typeof ConsultaRoute
+  '/consulta-avulsa': typeof ConsultaAvulsaRoute
   '/consultorio': typeof ConsultorioRoute
   '/contratacao-recebida': typeof ContratacaoRecebidaRoute
   '/contratar': typeof ContratarRoute
@@ -764,9 +797,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/medicacoes': typeof MedicacoesRoute
   '/mercado-pago-clinica': typeof MercadoPagoClinicaRoute
+  '/migracao-assistida': typeof MigracaoAssistidaRoute
   '/minha-atividade': typeof MinhaAtividadeRoute
   '/modelos': typeof ModelosRoute
   '/novo-animal': typeof NovoAnimalRoute
+  '/orcamento-venda-expressa': typeof OrcamentoVendaExpressaRoute
   '/oricstudio': typeof OricstudioRoute
   '/pendencias': typeof PendenciasRoute
   '/perfil-clinica': typeof PerfilClinicaRoute
@@ -794,6 +829,7 @@ export interface FileRoutesById {
   '/termos-de-uso': typeof TermosDeUsoRoute
   '/todas-agendas': typeof TodasAgendasRoute
   '/tutores': typeof TutoresRoute
+  '/venda-expressa': typeof VendaExpressaRoute
   '/$tipo/$slug': typeof TipoSlugRoute
   '/c/$slug': typeof CSlugRoute
   '/contrato/$token': typeof ContratoTokenRoute
@@ -837,6 +873,7 @@ export interface FileRouteTypes {
     | '/configurar-pagamentos'
     | '/configurar-portal-tutor'
     | '/consulta'
+    | '/consulta-avulsa'
     | '/consultorio'
     | '/contratacao-recebida'
     | '/contratar'
@@ -855,9 +892,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
+    | '/migracao-assistida'
     | '/minha-atividade'
     | '/modelos'
     | '/novo-animal'
+    | '/orcamento-venda-expressa'
     | '/oricstudio'
     | '/pendencias'
     | '/perfil-clinica'
@@ -885,6 +924,7 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/todas-agendas'
     | '/tutores'
+    | '/venda-expressa'
     | '/$tipo/$slug'
     | '/c/$slug'
     | '/contrato/$token'
@@ -926,6 +966,7 @@ export interface FileRouteTypes {
     | '/configurar-pagamentos'
     | '/configurar-portal-tutor'
     | '/consulta'
+    | '/consulta-avulsa'
     | '/consultorio'
     | '/contratacao-recebida'
     | '/contratar'
@@ -944,9 +985,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
+    | '/migracao-assistida'
     | '/minha-atividade'
     | '/modelos'
     | '/novo-animal'
+    | '/orcamento-venda-expressa'
     | '/oricstudio'
     | '/pendencias'
     | '/perfil-clinica'
@@ -974,6 +1017,7 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/todas-agendas'
     | '/tutores'
+    | '/venda-expressa'
     | '/$tipo/$slug'
     | '/c/$slug'
     | '/contrato/$token'
@@ -1015,6 +1059,7 @@ export interface FileRouteTypes {
     | '/configurar-pagamentos'
     | '/configurar-portal-tutor'
     | '/consulta'
+    | '/consulta-avulsa'
     | '/consultorio'
     | '/contratacao-recebida'
     | '/contratar'
@@ -1033,9 +1078,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/medicacoes'
     | '/mercado-pago-clinica'
+    | '/migracao-assistida'
     | '/minha-atividade'
     | '/modelos'
     | '/novo-animal'
+    | '/orcamento-venda-expressa'
     | '/oricstudio'
     | '/pendencias'
     | '/perfil-clinica'
@@ -1063,6 +1110,7 @@ export interface FileRouteTypes {
     | '/termos-de-uso'
     | '/todas-agendas'
     | '/tutores'
+    | '/venda-expressa'
     | '/$tipo/$slug'
     | '/c/$slug'
     | '/contrato/$token'
@@ -1105,6 +1153,7 @@ export interface RootRouteChildren {
   ConfigurarPagamentosRoute: typeof ConfigurarPagamentosRoute
   ConfigurarPortalTutorRoute: typeof ConfigurarPortalTutorRoute
   ConsultaRoute: typeof ConsultaRoute
+  ConsultaAvulsaRoute: typeof ConsultaAvulsaRoute
   ConsultorioRoute: typeof ConsultorioRoute
   ContratacaoRecebidaRoute: typeof ContratacaoRecebidaRoute
   ContratarRoute: typeof ContratarRoute
@@ -1123,9 +1172,11 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MedicacoesRoute: typeof MedicacoesRoute
   MercadoPagoClinicaRoute: typeof MercadoPagoClinicaRoute
+  MigracaoAssistidaRoute: typeof MigracaoAssistidaRoute
   MinhaAtividadeRoute: typeof MinhaAtividadeRoute
   ModelosRoute: typeof ModelosRoute
   NovoAnimalRoute: typeof NovoAnimalRoute
+  OrcamentoVendaExpressaRoute: typeof OrcamentoVendaExpressaRoute
   OricstudioRoute: typeof OricstudioRoute
   PendenciasRoute: typeof PendenciasRoute
   PerfilClinicaRoute: typeof PerfilClinicaRoute
@@ -1153,6 +1204,7 @@ export interface RootRouteChildren {
   TermosDeUsoRoute: typeof TermosDeUsoRoute
   TodasAgendasRoute: typeof TodasAgendasRoute
   TutoresRoute: typeof TutoresRoute
+  VendaExpressaRoute: typeof VendaExpressaRoute
   TipoSlugRoute: typeof TipoSlugRoute
   CSlugRoute: typeof CSlugRoute
   ContratoTokenRoute: typeof ContratoTokenRoute
@@ -1358,6 +1410,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsultaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/consulta-avulsa': {
+      id: '/consulta-avulsa'
+      path: '/consulta-avulsa'
+      fullPath: '/consulta-avulsa'
+      preLoaderRoute: typeof ConsultaAvulsaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/consultorio': {
       id: '/consultorio'
       path: '/consultorio'
@@ -1484,6 +1543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MercadoPagoClinicaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/migracao-assistida': {
+      id: '/migracao-assistida'
+      path: '/migracao-assistida'
+      fullPath: '/migracao-assistida'
+      preLoaderRoute: typeof MigracaoAssistidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/minha-atividade': {
       id: '/minha-atividade'
       path: '/minha-atividade'
@@ -1503,6 +1569,13 @@ declare module '@tanstack/react-router' {
       path: '/novo-animal'
       fullPath: '/novo-animal'
       preLoaderRoute: typeof NovoAnimalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orcamento-venda-expressa': {
+      id: '/orcamento-venda-expressa'
+      path: '/orcamento-venda-expressa'
+      fullPath: '/orcamento-venda-expressa'
+      preLoaderRoute: typeof OrcamentoVendaExpressaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oricstudio': {
@@ -1694,6 +1767,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TutoresRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/venda-expressa': {
+      id: '/venda-expressa'
+      path: '/venda-expressa'
+      fullPath: '/venda-expressa'
+      preLoaderRoute: typeof VendaExpressaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$tipo/$slug': {
       id: '/$tipo/$slug'
       path: '/$tipo/$slug'
@@ -1809,6 +1889,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfigurarPagamentosRoute: ConfigurarPagamentosRoute,
   ConfigurarPortalTutorRoute: ConfigurarPortalTutorRoute,
   ConsultaRoute: ConsultaRoute,
+  ConsultaAvulsaRoute: ConsultaAvulsaRoute,
   ConsultorioRoute: ConsultorioRoute,
   ContratacaoRecebidaRoute: ContratacaoRecebidaRoute,
   ContratarRoute: ContratarRoute,
@@ -1827,9 +1908,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MedicacoesRoute: MedicacoesRoute,
   MercadoPagoClinicaRoute: MercadoPagoClinicaRoute,
+  MigracaoAssistidaRoute: MigracaoAssistidaRoute,
   MinhaAtividadeRoute: MinhaAtividadeRoute,
   ModelosRoute: ModelosRoute,
   NovoAnimalRoute: NovoAnimalRoute,
+  OrcamentoVendaExpressaRoute: OrcamentoVendaExpressaRoute,
   OricstudioRoute: OricstudioRoute,
   PendenciasRoute: PendenciasRoute,
   PerfilClinicaRoute: PerfilClinicaRoute,
@@ -1857,6 +1940,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosDeUsoRoute: TermosDeUsoRoute,
   TodasAgendasRoute: TodasAgendasRoute,
   TutoresRoute: TutoresRoute,
+  VendaExpressaRoute: VendaExpressaRoute,
   TipoSlugRoute: TipoSlugRoute,
   CSlugRoute: CSlugRoute,
   ContratoTokenRoute: ContratoTokenRoute,

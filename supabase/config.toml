@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.oricstudio-checkout]
 verify_jwt = false
+
+[functions.oricse-portal-pagamentos]
+verify_jwt = false

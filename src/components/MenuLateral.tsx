@@ -60,6 +60,7 @@ type MenuRoute =
   | "/minha-atividade"
   | "/banco-horas"
   | "/perfil-clinica"
+  | "/migracao-assistida"
   | "/plano-clinica"
   | "/permissoes-equipe"
   | "/portal-tutores"
@@ -201,6 +202,11 @@ const areas: AreaMenu[] = [
       {
         to: "/perfil-clinica",
         rotulo: "Configurações da clínica",
+        permissao: "administracao.configuracoes",
+      },
+      {
+        to: "/migracao-assistida",
+        rotulo: "Migração Assistida",
         permissao: "administracao.configuracoes",
       },
       {

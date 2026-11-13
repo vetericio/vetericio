@@ -25,7 +25,7 @@ type Estorno = {
   referencia_comprovante: string | null;
 };
 type LancamentoCentral = {
-  id: string; descricao: string; setor: string; valor_centavos: number;
+  id: string; origem_id: string; descricao: string; setor: string; valor_centavos: number;
   status: string; tipo: string; forma_pagamento: string; registrado_em: string;
 };
 type ResumoTurno = {
@@ -115,7 +115,7 @@ export function CaixaOperacional({
         (supabaseBanco as any).from("oricse_caixa_estornos").select("*")
           .eq("clinica_id", clinicaId).order("solicitado_em", { ascending: false }).limit(500),
         (supabaseBanco as any).from("oricse_caixa_lancamentos")
-          .select("id,descricao,setor,valor_centavos,status,tipo,forma_pagamento,registrado_em")
+          .select("id,origem_id,descricao,setor,valor_centavos,status,tipo,forma_pagamento,registrado_em")
           .eq("clinica_id", clinicaId).eq("tipo", "entrada").eq("status", "pago")
           .order("registrado_em", { ascending: false }).limit(500),
       ]);
@@ -175,6 +175,19 @@ export function CaixaOperacional({
     setPainelAuxiliar(null);
     setOperacao(proxima);
   }
+
+  useEffect(() => {
+    if (!podeOperar || !lancamentosCentrais.length) return;
+    const origem = new URLSearchParams(window.location.search).get("estornoOrigem");
+    if (!origem) return;
+    const movimento = lancamentosCentrais.find(item => item.origem_id===origem);
+    if (!movimento) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("estornoOrigem");
+    window.history.replaceState(window.history.state,"",url);
+    abrirOperacao("estorno");
+    setLancamentoId(movimento.id);
+  },[lancamentosCentrais,podeOperar]);
 
   async function confirmar() {
     if (!clinicaId || !operacao || ocupado) return;

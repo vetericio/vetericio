@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { driveAccessToken, driveFetch } from "@/lib/drive-kv.server";
+import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 
-const schema=z.object({accessToken:z.string().min(20),documentoId:z.string().uuid(),tipo:z.enum(["documento","exame","receita"]).default("documento")});
+const schema=z.object({accessToken:z.string().min(20),documentoId:z.string().uuid(),clinicaEquipeId:z.string().uuid().optional(),tipo:z.enum(["documento","exame","receita"]).default("documento")});
 
 async function driveQuery(accessToken:string,table:string,filters:any[]){
   const {executarDriveDbInterno}=await import("@/lib/drive-db.functions");
@@ -41,42 +42,39 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
       .select("id,clinica_id,animal_id,drive_arquivo_id,visivel_tutor")
       .eq("id",data.documentoId).maybeSingle();
     if(erroCanonico)throw new Error("Não foi possível verificar a autorização do documento.");
-    if(canonico && canonico.visivel_tutor !== true) throw new Error("Documento não liberado ao tutor.");
+    if(canonico && !data.clinicaEquipeId && canonico.visivel_tutor !== true) throw new Error("Documento não liberado ao tutor.");
     let registro: any=canonico;
-    if(!registro){
+    if(!registro && !data.clinicaEquipeId){
       const resposta=await driveQuery(data.accessToken,tabela,[{kind:"eq",column:"id",value:data.documentoId},{kind:"eq",column:"visivel_tutor",value:true}]);
       if(resposta.error)throw new Error(resposta.error.message);
       registro=resposta.data;
     }
     if(!registro?.drive_arquivo_id || !registro.clinica_id)throw new Error("Este arquivo ainda não está disponível para download.");
-    // Um tutor pode estar vinculado a varias clinicas: selecionar a clinica do documento.
-    const {data:portal,error:erroPortal}=await supabaseAdmin.from("oricse_portal_tutores")
-      .select("clinica_id,tutor_id,ativo")
-      .eq("auth_user_id",authData.user.id).eq("clinica_id",registro.clinica_id)
-      .eq("ativo",true).limit(1).maybeSingle();
-    if(erroPortal||!portal)throw new Error("Você não tem acesso a este arquivo.");
-    // O arquivo precisa pertencer a um animal do tutor autenticado, na mesma clínica.
-    // A conferência explícita é necessária porque esta rota utiliza cliente administrativo.
-    const {data:animalPermitido,error:erroAnimal}=await supabaseAdmin
-      .from("oricse_animais")
-      .select("id")
-      .eq("id",registro.animal_id)
-      .eq("clinica_id",portal.clinica_id)
-      .eq("tutor_id",portal.tutor_id)
-      .maybeSingle();
-    if(erroAnimal||!animalPermitido)throw new Error("Você não tem acesso a este documento.");
+    const clinicaId: string = registro.clinica_id;
+    if (data.clinicaEquipeId) {
+      if (clinicaId!==data.clinicaEquipeId) throw new Error("Arquivo indisponível nesta clínica.");
+      await exigirPermissaoClinica(supabaseAdmin,authData.user.id,clinicaId,["consultorio.atendimentos"],data.accessToken);
+    } else {
+      const {data:portal,error:erroPortal}=await supabaseAdmin.from("oricse_portal_tutores")
+        .select("tutor_id").eq("auth_user_id",authData.user.id).eq("clinica_id",clinicaId)
+        .eq("ativo",true).maybeSingle();
+      if(erroPortal||!portal)throw new Error("Você não tem acesso a este arquivo.");
+      const {data:animalPermitido,error:erroAnimal}=await supabaseAdmin.from("oricse_animais").select("id")
+        .eq("id",registro.animal_id).eq("clinica_id",clinicaId).eq("tutor_id",portal.tutor_id).maybeSingle();
+      if(erroAnimal||!animalPermitido)throw new Error("Você não tem acesso a este documento.");
+    }
 
     const token=await driveAccessToken("https://www.googleapis.com/auth/drive.readonly");
     const { data: vinculo, error: erroVinculo } = canonico
       ? await supabaseAdmin.from("drive_arquivos").select("drive_file_id")
-          .eq("id", registro.drive_arquivo_id).eq("clinica_id", portal.clinica_id).maybeSingle()
+          .eq("id", registro.drive_arquivo_id).eq("clinica_id", clinicaId).maybeSingle()
       : { data: null, error: null };
     if (erroVinculo || (canonico && !vinculo)) throw new Error("Não foi possível verificar o vínculo do arquivo.");
     const arquivo = vinculo
       ? await consultarArquivo(token, vinculo.drive_file_id)
       : await localizarArquivo(token, String(registro.drive_arquivo_id));
     if(!arquivo)throw new Error("Arquivo não encontrado no Google Drive.");
-    if(arquivo.appProperties?.clinicaId&&String(arquivo.appProperties.clinicaId)!==String(portal.clinica_id))throw new Error("Você não tem acesso a este arquivo.");
+    if(arquivo.appProperties?.clinicaId&&String(arquivo.appProperties.clinicaId)!==String(clinicaId))throw new Error("Você não tem acesso a este arquivo.");
     if(arquivo.appProperties?.entidadeTipo==="animal" &&
       String(arquivo.appProperties.entidadeId||"")!==String(registro.animal_id)){
       throw new Error("O arquivo não pertence ao animal autorizado.");

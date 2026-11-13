@@ -26,6 +26,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
+import { ComandaAtendimento } from "@/components/ComandaAtendimento";
+import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
@@ -285,7 +287,7 @@ function registroPreventivo(linha: VacinaPortal | VermifugoPortal): Registro {
 }
 
 function AnimalFicha() {
-  const busca = useSearch({ strict: false }) as { animalId?: unknown };
+  const busca = useSearch({ strict: false }) as { animalId?: unknown; comandaId?: unknown };
   const animalId = typeof busca.animalId === "string" ? busca.animalId : "";
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [tutor, setTutor] = useState<Tutor | null>(null);
@@ -754,21 +756,18 @@ function AnimalFicha() {
         : registro.fontePortal === "exame"
           ? "oricse_portal_exames"
           : "oricse_portal_documentos";
-    setRegistrosPortal((lista) =>
-      lista.map((item) => (item.id === registro.id ? { ...item, visivelTutor: valor } : item)),
-    );
-    const { error } = await (supabaseBanco as any)
+    const { data: confirmado, error } = await (supabaseBanco as any)
       .from(tabela)
       .update({ visivel_tutor: valor, updated_at: new Date().toISOString() })
       .eq("id", registro.id)
-      .eq("clinica_id", clinicaId);
-    if (error) {
-      setRegistrosPortal((lista) =>
-        lista.map((item) => (item.id === registro.id ? { ...item, visivelTutor: !valor } : item)),
-      );
+      .eq("clinica_id", clinicaId)
+      .eq("animal_id", registro.animalId)
+      .select("id").maybeSingle();
+    if (error || !confirmado) {
       toast.error("Não foi possível alterar a visibilidade no portal.");
       return;
     }
+    setRegistrosPortal(lista => lista.map(item => item.id===registro.id ? {...item,visivelTutor:valor} : item));
     toast.success(
       valor
         ? registro.fontePortal === "exame" || registro.fontePortal === "documento"
@@ -948,7 +947,8 @@ function AnimalFicha() {
             </div>
           </section>
 
-          {aba === "Visão geral" ? (
+          {clinicaId && typeof busca.comandaId==="string" && <ComandaAtendimento key={busca.comandaId} id={busca.comandaId} clinicaId={clinicaId} />}
+        {aba === "Visão geral" ? (
             <div className="mt-4 grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
               <aside className="space-y-4">
                 <Painel titulo="Resumo clínico">
@@ -1052,6 +1052,19 @@ function AnimalFicha() {
             />
           ) : (
             <SecaoCompleta
+              onBaixarDocumento={async (registro) => {
+                try {
+                  const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+                  if (!token || !clinicaId) throw new Error("Sessão expirada.");
+                  const arquivo = await baixarDocumentoPortal({data:{accessToken:token,documentoId:registro.id,
+                    tipo:registro.fontePortal==="exame"?"exame":registro.fontePortal==="receita"?"receita":"documento",clinicaEquipeId:clinicaId}});
+                  const bytes = Uint8Array.from(atob(arquivo.base64), letra=>letra.charCodeAt(0));
+                  const url = URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));
+                  const link = document.createElement("a");
+                  link.href=url; link.download=arquivo.nome||"documento.pdf"; link.click();
+                  setTimeout(()=>URL.revokeObjectURL(url),1000);
+                } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível baixar o PDF."); }
+              }}
               aba={aba}
               registros={registrosAnimal.filter((r) => r.tipo === aba)}
               onAdd={() => abrirNovo(aba as RegistroTipo)}
@@ -1559,6 +1572,7 @@ function SecaoCompleta({
   aba,
   registros,
   onAdd,
+  onBaixarDocumento,
   onTogglePortal,
   onEditarPreventivo,
   onDocumentoPreventivo,
@@ -1566,6 +1580,7 @@ function SecaoCompleta({
   aba: Aba;
   registros: Registro[];
   onAdd: () => void;
+  onBaixarDocumento: (registro: Registro) => void;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
   onEditarPreventivo: (registro: Registro) => void;
   onDocumentoPreventivo: (registro: Registro) => void;
@@ -1599,6 +1614,7 @@ function SecaoCompleta({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {r.driveArquivoId && <button type="button" onClick={()=>onBaixarDocumento(r)} className="rounded-xl border px-3 py-2 text-xs font-bold">Baixar PDF</button>}
                     {r.preventivo && (
                       <>
                       <button
