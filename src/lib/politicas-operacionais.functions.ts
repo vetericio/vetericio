@@ -42,7 +42,7 @@ export const consultarPoliticasAgendaClinica = createServerFn({ method: "POST" }
     if (authError || !auth.user) throw new Error("Sessão expirada.");
     const userId = auth.user.id;
     await exigirPermissaoClinica(supabaseAdmin, userId, data.clinicaId,
-      ["recepcao.agenda","consultorio.atendimentos","administracao.configuracoes","crm.gerenciar"]);
+      ["recepcao.agenda","consultorio.atendimentos","administracao.configuracoes","crm.gerenciar"], data.accessToken);
     const { data: registro, error: registroError } = await supabaseAdmin.from("oricse_dados_modulos")
       .select("dados").eq("clinica_id", data.clinicaId).eq("chave", "estado_sistema").maybeSingle();
     if (registroError) throw new Error("Não foi possível carregar as políticas da clínica.");
