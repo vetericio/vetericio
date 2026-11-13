@@ -736,7 +736,7 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
         <button
           type="button"
           onClick={aoAdicionar}
-          className={`mb-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${icone === "produto" ? "bg-primary text-primary-foreground" : "border bg-card hover:bg-muted"}`}
+          className={`mb-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${icone === "produto" ? "bg-primary text-primary-foreground" : "bg-[#692b40] text-white"}`}
         >
           <Plus size={17} /> Adicionar {icone === "produto" ? "produto" : "serviço"}
         </button>
