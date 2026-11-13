@@ -19,6 +19,7 @@ type Tutor = {
   email?: string;
   tipoPessoa: "Pessoa física" | "Pessoa jurídica";
   codigoPublico?: string;
+  usuarioPortal?: string;
   cpfCnpj?: string;
   rg?: string;
   tipoDocumento?: string;
@@ -153,9 +154,15 @@ function Tutores() {
   const [buscandoCep, setBuscandoCep] = useState(false);
 
   async function atualizarBanco(id: string) {
-    const {data,error}=await (supabaseBanco as any).rpc("oricse_tutores_tela",{p_clinica:id});
-    if(error)throw error;
-    setTutores(data?.tutores||[]);setAnimais(data?.animais||[]);
+    const [{ data, error }, portais] = await Promise.all([
+      (supabaseBanco as any).rpc("oricse_tutores_tela", { p_clinica: id }),
+      supabaseBanco.from("oricse_portal_tutores").select("tutor_id,usuario").eq("clinica_id", id),
+    ]);
+    if (error) throw error;
+    if (portais.error) toast.error("Não foi possível consultar os usuários do Portal do Tutor.");
+    const usuarios = new Map(portais.data?.map(({ tutor_id, usuario }) => [tutor_id, usuario]));
+    setTutores((data?.tutores || []).map((tutor: Tutor) => ({ ...tutor, usuarioPortal: usuarios.get(tutor.id) })));
+    setAnimais(data?.animais || []);
   }
   useEffect(()=>{let ativo=true;(async()=>{try{
     const {data:{user}}=await supabaseBanco.auth.getUser();
@@ -183,7 +190,7 @@ function Tutores() {
   const resultados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     if (!q) return tutoresOrdenados;
-    return tutoresOrdenados.filter((t) => [t.nome, t.nomeSocial, t.telefone, t.outroTelefone, t.email, t.cpfCnpj, codigoPublicoTutor(t)].some((v) => (v || "").toLowerCase().includes(q)));
+    return tutoresOrdenados.filter((t) => [t.nome, t.nomeSocial, t.telefone, t.outroTelefone, t.email, t.cpfCnpj, codigoPublicoTutor(t), t.usuarioPortal].some((v) => (v || "").toLowerCase().includes(q)));
   }, [busca, tutoresOrdenados]);
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
@@ -229,7 +236,8 @@ function Tutores() {
   async function salvarTutor() {
     if(!clinicaId)return toast.error("Clínica não identificada.");
     if(!form.nome.trim()||!soDigitos(form.telefone).length)return toast.error("Informe nome e telefone.");
-    const {error}=await (supabaseBanco as any).rpc("oricse_tutor_salvar_tela",{p_clinica:clinicaId,p_dados:form,p_id:editandoId});
+    const { usuarioPortal: _usuarioPortal, ...dados } = form;
+    const {error}=await (supabaseBanco as any).rpc("oricse_tutor_salvar_tela",{p_clinica:clinicaId,p_dados:dados,p_id:editandoId});
     if(error)return toast.error(error.message);
     await atualizarBanco(clinicaId);
     toast.success(editandoId?"Tutor atualizado no Supabase.":"Tutor cadastrado no Supabase.");
@@ -266,6 +274,18 @@ function Tutores() {
             <label className="text-sm font-semibold">Outro telefone<input value={form.outroTelefone} onChange={(e) => set("outroTelefone", mascaraTelefone(e.target.value))} className={campo}/></label>
             <label className="sm:col-span-2 text-sm font-semibold">E-mail<input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className={campo}/></label>
           </Bloco>
+
+          {modo === "editar" && form.usuarioPortal && (
+            <Bloco titulo="Portal do Tutor">
+              <label className="min-w-0 text-sm font-semibold">
+                Usuário do portal
+                <input readOnly value={form.usuarioPortal} className={campo} />
+              </label>
+              <a href={`/portal-tutores?tutorId=${encodeURIComponent(editandoId || "")}`} className="self-end rounded-xl border px-4 py-3 text-center text-sm font-semibold text-primary">
+                Gerenciar acesso ao portal
+              </a>
+            </Bloco>
+          )}
 
           <Bloco titulo="Documentos e perfil">
             <label className="text-sm font-semibold">Tipo de pessoa *<select value={form.tipoPessoa} onChange={(e) => set("tipoPessoa", e.target.value as Tutor["tipoPessoa"])} className={campo}><option>Pessoa física</option><option>Pessoa jurídica</option></select></label>
@@ -318,6 +338,7 @@ function TutorCard({ tutor, animais, onEdit, clinicaId }: { tutor: Tutor; animai
         {tutor.email && <><span className="text-muted-foreground">·</span><span className="min-w-0 truncate text-muted-foreground">{tutor.email}</span></>}
       </div>
 
+      {tutor.usuarioPortal && <p className="mt-1 break-all text-xs text-muted-foreground">Portal do Tutor · <strong className="text-primary">{tutor.usuarioPortal}</strong></p>}
       <div className="mt-2 border-t pt-2">
         {pets.length ? <div className="space-y-1.5">{pets.map((pet) => <div key={pet.id} className="flex min-w-0 items-center gap-1.5">
           <PawPrint size={14} className="shrink-0 text-primary"/>
