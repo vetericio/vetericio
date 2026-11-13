@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays, ChevronRight, Download, FileText, LockKeyhole, Save, Upload } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { PadroesDocumentosClinica } from "@/components/PadroesDocumentosClinica";
 import { ConfiguracaoModelosDocumentos } from "@/components/ConfiguracaoModelosDocumentos";
 import { LIMITE_PDF_TERMO, TIPOS_ATENDIMENTO } from "@/lib/configuracoes-clinica";
 import { salvarCopiaPdfPadrao, tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
@@ -71,7 +72,8 @@ function PerfilClinica() {
             )}
             {config.podeEditarDocumentos && (
               <div hidden={categoria !== "documentos"}>
-                <ConfigTermos clinicaId={config.id} inicial={config.pdf} />
+                {categoria === "documentos" && <PadroesDocumentosClinica key={config.id} clinicaId={config.id} />}
+                <div className="mt-4"><ConfigTermos clinicaId={config.id} inicial={config.pdf} /></div>
                 <details className="mt-4 rounded-xl border bg-card p-4" onToggle={(e) => { if (e.currentTarget.open) setAbrirEditor(true); }}>
                   <summary className="cursor-pointer text-sm font-semibold">Editor de modelos clínicos</summary>
                   {abrirEditor && <ConfiguracaoModelosDocumentos clinica={config.nome} podeGerenciar />}

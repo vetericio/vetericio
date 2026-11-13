@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { lerPreferenciaReceitaPortal, motivoFinalReceitaPortal } from "@/lib/receita-portal-state";
 import { lerSelos, type TipoSelo } from "./assinatura";
+import { desenharIdentidadeDocumento, desenharPapelDocumento, type PapelDocumento } from "@/lib/modelos-documentos-pdf";
 
 // A mesma logo oficial do app, incorporada para emitir o PDF também offline.
 const LOGO_PDF_DATA_URL =
@@ -93,8 +94,13 @@ export type DadosReceituario = {
     mapa?: string | null;
     telefone?: string | null;
     endereco?: string | null;
+    email?: string | null;
   };
   posicoesSelos: Partial<Record<TipoSelo, PosicaoSeloReceituario>>;
+  papel?: PapelDocumento;
+  pelagem?: string;
+  microchip?: string;
+  demonstrativo?: boolean;
 };
 
 function linhasProfissional(dados: DadosReceituario): string[] {
@@ -105,6 +111,7 @@ function linhasProfissional(dados: DadosReceituario): string[] {
     `Médico-Veterinário · CRMV-${profissional.crmvUf} ${profissional.crmv}`,
     profissional.mapa ? `Registro MAPA ${profissional.mapa}` : "",
     profissional.telefone ? `Telefone: ${profissional.telefone}` : "",
+    ...(dados.papel ? [profissional.endereco || "", profissional.email || ""] : []),
   ].filter(Boolean);
 }
 
@@ -184,7 +191,20 @@ export async function criarReceituario(dados: DadosReceituario) {
   const cabecalho = () => {
     y = margem;
     doc.setTextColor(0);
-    try {
+    if (dados.papel) {
+      desenharPapelDocumento(doc, dados.papel);
+      y = desenharIdentidadeDocumento(doc, dados.papel, margem, y + 17, 72 / 25.4);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      for (const linha of linhasProfissional(dados)) {
+        for (const parte of doc.splitTextToSize(linha, largura) as string[]) {
+          doc.text(parte, margem, y);
+          y += 11;
+        }
+      }
+      y += 8;
+    } else {
+      try {
       doc.addImage(LOGO_PDF_DATA_URL, "PNG", margem, y - 8, 45, 49);
     } catch {
       // A identidade textual continua mesmo sem a imagem.
@@ -198,6 +218,7 @@ export async function criarReceituario(dados: DadosReceituario) {
       doc.text(linha, margem + 56, y + 22 + indice * 10),
     );
     y += 66;
+    }
     doc.setDrawColor(20, 130, 116);
     doc.setLineWidth(1.2);
     doc.line(margem, y, margem + largura, y);
@@ -210,6 +231,12 @@ export async function criarReceituario(dados: DadosReceituario) {
       doc.text(`Nº ${dados.numero}`, margem + largura, y, { align: "right" });
     }
     y += 22;
+    if (dados.demonstrativo) {
+      doc.setFontSize(9);
+      doc.setTextColor("#612b40");
+      doc.text("PRÉVIA DEMONSTRATIVA · SEM VALIDADE", margem, y);
+      y += 13;
+    }
 
     const linhas = (texto: string, max: number) =>
       doc.splitTextToSize(texto || "-", max) as string[];
@@ -253,6 +280,15 @@ export async function criarReceituario(dados: DadosReceituario) {
     celula("PESO", peso, margem + 415, y + primeiraAltura);
     celula("IDADE", idade, margem + 465, y + primeiraAltura);
     y += primeiraAltura + segundaAltura + 27;
+    if (dados.pelagem || dados.microchip) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const idAnimal = [dados.pelagem && "Pelagem: " + dados.pelagem, dados.microchip && "Microchip: " + dados.microchip].filter(Boolean).join(" · ");
+      for (const linha of idAnimal ? doc.splitTextToSize(idAnimal, largura) as string[] : []) {
+        doc.text(linha, margem, y);
+        y += 12;
+      }
+    }
   };
 
   const novaPagina = () => {
@@ -330,13 +366,13 @@ export async function criarReceituario(dados: DadosReceituario) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(
-    `Belo Horizonte, ${dados.data.trim() || new Date().toLocaleDateString("pt-BR")}.`,
+    `${dados.papel ? (dados.papel.clinica.municipio ? dados.papel.clinica.municipio + ", " : "") : "Belo Horizonte, "}${dados.data.trim() || new Date().toLocaleDateString("pt-BR")}.`,
     margem + largura,
     areaSelos.y - 10,
     { align: "right" },
   );
 
-  const { assinatura, carimbo } = await lerSelos();
+  const { assinatura, carimbo } = dados.demonstrativo ? { assinatura: null, carimbo: null } : await lerSelos();
   if (assinatura && dados.posicoesSelos.assinatura) {
     desenharSelo(doc, assinatura, dados.posicoesSelos.assinatura, areaSelos);
   }
@@ -367,7 +403,7 @@ export async function criarReceituario(dados: DadosReceituario) {
       }),
     );
     doc.text(
-      "Telefone do Médico-Veterinário: (31) 99551.2795",
+      dados.profissional?.telefone ? "Telefone do médico-veterinário: " + dados.profissional.telefone : "",
       margem + largura / 2,
       rodapeY + 14 + Math.max(endereco.length, 1) * 12,
       { align: "center" },

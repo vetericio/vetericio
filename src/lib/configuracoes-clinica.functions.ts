@@ -3,6 +3,11 @@ import { z } from "zod";
 import { DURACOES_ATENDIMENTO, LIMITE_PDF_TERMO } from "@/lib/configuracoes-clinica";
 import { exigirPermissaoClinica, clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";
 
+import {
+  FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO,
+  type IdentidadeDocumento, type ModeloDocumentoPadrao, type TipoModeloDocumento,
+} from "@/lib/modelos-documentos";
+
 const sessao = z.object({ accessToken: z.string().min(20) });
 const clinicaSchema = sessao.extend({ clinicaId: z.string().uuid() });
 const duracao = z.number().int().min(5).max(720);
@@ -242,4 +247,156 @@ export const baixarPdfPadraoTermos = createServerFn({ method: "POST" })
       throw new Error("O PDF padrão está indisponível.");
     }
     return { nome: pdf.nome, base64: bytes.toString("base64") };
+  });
+
+const modeloDocumentoSchema = z.object({
+  fundo: z.string().refine((id) => id === "" || FUNDOS_DOCUMENTOS.some(([fundo]) => fundo === id)),
+  texto: z.string().max(25000),
+  usarLogo: z.boolean(),
+}).strict();
+const tipoModeloSchema = z.enum(TIPOS_MODELO_DOCUMENTO);
+const logoDocumentoSchema = z.object({ driveId: z.string().regex(/^[\w-]+$/) });
+const CHAVE_LOGO_DOCUMENTOS = "logo_documentos";
+
+async function lerModeloDocumento(ctx: Contexto, tipo: TipoModeloDocumento) {
+  const valor = await ler(ctx, "modelo_documento:" + tipo);
+  return valor === null ? { fundo: "", texto: "", usarLogo: true } : modeloDocumentoSchema.parse(valor);
+}
+
+const dadosPapelSchema = z.object({
+  nome: z.string().trim().max(160),
+  razaoSocial: z.string().trim().max(220),
+  cnpj: z.string().trim().max(40),
+  crmv: z.string().trim().max(70),
+  endereco: z.string().trim().max(350),
+  telefone: z.string().trim().max(70),
+  email: z.string().trim().max(160),
+  municipio: z.string().trim().max(120),
+}).strict();
+const CHAVE_DADOS_DOCUMENTOS = "dados_documentos";
+
+async function identidadeDocumentos(ctx: Contexto): Promise<IdentidadeDocumento> {
+  const [contrato, cadastro, site, logoSalva, dadosSalvos] = await Promise.all([
+    ctx.admin.from("oricse_contratacoes")
+      .select("razao_social,cnpj,clinica_telefone,clinica_email,clinica_endereco,clinica_numero,clinica_complemento,clinica_bairro,clinica_cidade,clinica_uf,clinica_cep,dados")
+      .eq("clinica_criada_id", ctx.clinica.id).is("excluido_em", null)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    ctx.admin.from("clinicas").select("logo_url").eq("id", ctx.clinica.id).single(),
+    ctx.admin.from("clinic_sites").select("config").eq("clinica_id", ctx.clinica.id).maybeSingle(),
+    ler(ctx, CHAVE_LOGO_DOCUMENTOS),
+    ler(ctx, CHAVE_DADOS_DOCUMENTOS),
+  ]);
+  if (contrato.error || cadastro.error || site.error) {
+    throw new Error("Não foi possível consultar a identidade da clínica.");
+  }
+  const dados = contrato.data;
+  const extras = (dados?.dados || {}) as Record<string, unknown>;
+  const config = (site.data?.config || {}) as Record<string, unknown>;
+  const texto = (valor: unknown) => typeof valor === "string" ? valor.trim() : "";
+  const municipio = [dados?.clinica_cidade, dados?.clinica_uf].filter(Boolean).join("/");
+  const rua = [dados?.clinica_endereco, dados?.clinica_numero].filter(Boolean).join(", ");
+  const endereco = rua ? [rua, dados?.clinica_complemento, dados?.clinica_bairro, municipio,
+    dados?.clinica_cep && "CEP " + dados.clinica_cep].filter(Boolean).join(" · ") : texto(config.address);
+  const url = [cadastro.data?.logo_url, config.logoUrl].map(texto)
+    .find((candidata) => /^(https:\/\/|\/(?!\/))/.test(candidata)) || "";
+  let logoUrl = url;
+  if (logoSalva) {
+    const { driveId } = logoDocumentoSchema.parse(logoSalva);
+    const { driveAccessToken, driveFetch } = await import("@/lib/drive-kv.server");
+    try {
+      const token = await driveAccessToken("https://www.googleapis.com/auth/drive.readonly");
+      const resposta = await driveFetch(token, "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(driveId) + "?alt=media");
+      const bytes = Buffer.from(await resposta.arrayBuffer());
+      if (pngDocumentoValido(bytes)) logoUrl = "data:image/png;base64," + bytes.toString("base64");
+    } catch {
+      // A identidade cadastrada mantém a emissão disponível se o Drive falhar.
+    }
+  }
+  const identidade = {
+    nome: ctx.clinica.nome, razaoSocial: texto(dados?.razao_social), cnpj: texto(dados?.cnpj),
+    crmv: texto(extras.registro_crmv_estabelecimento || extras.clinica_crmv),
+    endereco, municipio, logoUrl,
+    telefone: texto(dados?.clinica_telefone) || texto(config.phone),
+    email: texto(dados?.clinica_email) || texto(config.email),
+  };
+  const ajustes = dadosSalvos === null ? {} : dadosPapelSchema.partial().parse(dadosSalvos);
+  return { ...identidade, ...ajustes, nome: ajustes.nome || identidade.nome };
+}
+
+export const obterModelosDocumentoClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    exigirGestor(ctx, data.clinicaId);
+    const [identidade, modelos] = await Promise.all([
+      identidadeDocumentos(ctx),
+      Promise.all(TIPOS_MODELO_DOCUMENTO.map(async (tipo) => [tipo, await lerModeloDocumento(ctx, tipo)] as const)),
+    ]);
+    return { identidade, modelos: Object.fromEntries(modelos) as Record<TipoModeloDocumento, ModeloDocumentoPadrao> };
+  });
+
+export const obterModeloDocumentoEmissao = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.extend({ tipo: tipoModeloSchema }).parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    confirmarClinica(ctx, data.clinicaId);
+    await autorizarTermos(ctx);
+    const [identidade, modelo] = await Promise.all([identidadeDocumentos(ctx), lerModeloDocumento(ctx, data.tipo)]);
+    return { identidade, modelo };
+  });
+
+export const salvarModeloDocumentoClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.extend({ tipo: tipoModeloSchema, modelo: modeloDocumentoSchema }).parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    exigirGestor(ctx, data.clinicaId);
+    await gravar(ctx, "modelo_documento:" + data.tipo, data.modelo);
+    return { ok: true };
+  });
+
+export const salvarDadosDocumentoClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.extend({ dados: dadosPapelSchema.partial() }).parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    exigirGestor(ctx, data.clinicaId);
+    const anteriores = await ler(ctx, CHAVE_DADOS_DOCUMENTOS);
+    await gravar(ctx, CHAVE_DADOS_DOCUMENTOS, {
+      ...(anteriores === null ? {} : dadosPapelSchema.partial().parse(anteriores)), ...data.dados,
+    });
+    return { ok: true };
+  });
+
+const LIMITE_LOGO_DOCUMENTO = 1_000_000;
+function pngDocumentoValido(bytes: Buffer) {
+  return bytes.length >= 33 && bytes.length <= LIMITE_LOGO_DOCUMENTO &&
+    bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) &&
+    bytes.toString("ascii", 12, 16) === "IHDR" &&
+    [bytes.readUInt32BE(16), bytes.readUInt32BE(20)].every((medida) => medida > 0 && medida <= 480);
+}
+
+export const salvarLogoDocumentoClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.extend({
+    base64: z.string().min(1).max(Math.ceil(LIMITE_LOGO_DOCUMENTO / 3) * 4).regex(/^[A-Za-z0-9+/]+={0,2}$/).nullable(),
+  }).parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    exigirGestor(ctx, data.clinicaId);
+    if (data.base64 === null) {
+      const { error } = await ctx.admin.from("oricse_config").delete().eq("chave", chaveClinica(data.clinicaId, CHAVE_LOGO_DOCUMENTOS));
+      if (error) throw new Error("Não foi possível voltar à logo cadastrada.");
+    } else {
+      const bytes = Buffer.from(data.base64, "base64");
+      if (!pngDocumentoValido(bytes)) throw new Error("Envie uma logo PNG válida de até 1 MB.");
+      const { driveAccessToken, driveFetch, writeDriveFile } = await import("@/lib/drive-kv.server");
+      const token = await driveAccessToken();
+      const arquivo = await writeDriveFile(token, ["Clinicas", "clinica-" + data.clinicaId, "Identidade dos documentos"],
+        crypto.randomUUID() + ".png", bytes, "image/png");
+      try {
+        await gravar(ctx, CHAVE_LOGO_DOCUMENTOS, { driveId: arquivo.id });
+      } catch (erro) {
+        await driveFetch(token, "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(arquivo.id), { method: "DELETE" }).catch(() => {});
+        throw erro;
+      }
+    }
+    return identidadeDocumentos(ctx);
   });

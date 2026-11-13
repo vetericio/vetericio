@@ -14,5 +14,7 @@ export async function obterAutorClinico() {
     id: sessao.user.id, nome, numeroCrmv, uf,
     crmv: numeroCrmv && uf ? `CRMV-${uf} ${numeroCrmv}` : "",
     identificacao: nome || conta,
+    endereco: perfil?.endereco?.trim() || "",
+    telefone: perfil?.telefone?.trim() || "",
   };
 }

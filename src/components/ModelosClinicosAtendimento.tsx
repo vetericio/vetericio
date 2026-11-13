@@ -8,11 +8,18 @@ import { listarModelosClinicos } from "@/lib/oricse-storage.functions";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { registrarDocumentoClinicoAssinado, alterarPublicacaoDocumentoClinico } from "@/lib/documento-clinico.functions";
 
+import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
+import { DOCUMENTOS, MODELOS_BASE_CLINICOS, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { criarPdfComModelo, prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
+
+type TipoClinico = "pedido" | "documento" | "termo";
+type PadraoClinico = Awaited<ReturnType<typeof obterModeloDocumentoEmissao>>;
 type Modelo = { id: string; nome: string; categoria: string; texto: string; versao: number };
 type Contexto = Awaited<ReturnType<typeof obterDadosReceituario>>;
 
-function preencher(texto: string, dados: Contexto) {
+function preencher(texto: string, dados: Contexto, identidade?: PadraoClinico["identidade"]) {
   const valores: Record<string,string> = {
+    ...(identidade ? valoresModeloDocumento(identidade, { paciente: "", tutor: "", data: "" }) : {}),
     clinica: dados.clinicaNome || "",
     endereco_clinica: dados.clinicaEndereco || "",
     paciente: dados.animal?.nome || "",
@@ -23,31 +30,7 @@ function preencher(texto: string, dados: Contexto) {
     veterinario: "{{veterinario}}",
     crmv: "{{crmv}}",
   };
-  const pendentes = new Set<string>();
-  const resultado = texto.replace(/\{\{([a-z_]+)\}\}/g, (original, chave: string) => {
-    if (!Object.prototype.hasOwnProperty.call(valores, chave)) { pendentes.add(original); return original; }
-    if (!valores[chave]) { pendentes.add(original); return original; }
-    return valores[chave];
-  });
-  return { resultado, pendentes: [...pendentes] };
-}
-async function criarPdf(titulo: string, conteudo: string) {
-  const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(11);
-  const largura = pdf.internal.pageSize.getWidth() - 36;
-  const limite = pdf.internal.pageSize.getHeight() - 22;
-  let y = 22;
-  for (const linha of conteudo.split("\n")) {
-    for (const parte of pdf.splitTextToSize(linha || " ", largura) as string[]) {
-      if (y >= limite) { pdf.addPage(); y = 22; }
-      pdf.text(parte || " ", 18, y);
-      y += 6;
-    }
-  }
-  const nome = titulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0,65) || "documento";
-  return { pdf, filename: nome + ".pdf" };
+  return preencherTextoDocumento(texto, valores);
 }
 export function ModelosClinicosAtendimento() {
   const [profissional,setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
@@ -55,6 +38,9 @@ export function ModelosClinicosAtendimento() {
   const [dados,setDados] = useState<Contexto | null>(null);
   const [selecionado,setSelecionado] = useState("");
   const [conteudo,setConteudo] = useState("");
+  const [textoInicial, setTextoInicial] = useState("");
+  const [padrao, setPadrao] = useState<PadraoClinico | null>(null);
+  const [abrindoModelo, setAbrindoModelo] = useState(false);
   const [carregando,setCarregando] = useState(true);
   const [emitindo,setEmitindo] = useState(false);
   const [erro,setErro] = useState("");
@@ -90,7 +76,10 @@ export function ModelosClinicosAtendimento() {
         setDados(contexto);
         setProfissional(autor);
         // Receitas usam o fluxo próprio com assinatura e controles especiais.
-        setModelos(lista.filter((item) => item.categoria !== "receita"));
+        setModelos([
+          ...MODELOS_BASE_CLINICOS.map(base => ({ ...base, nome: DOCUMENTOS[base.categoria].titulo, texto: DOCUMENTOS[base.categoria].exemplo, versao: 0 })),
+          ...lista.filter((item) => item.categoria !== "receita" && !MODELOS_BASE_CLINICOS.some(base => base.id === item.id)),
+        ]);
       } catch(e) {
         if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível carregar os modelos.");
       } finally { if (ativo) setCarregando(false); }
@@ -99,19 +88,34 @@ export function ModelosClinicosAtendimento() {
   }, []);
 
   const modelo = useMemo(() => modelos.find((item) => item.id === selecionado), [modelos,selecionado]);
-  function escolher(id: string) {
-    if (modelo && conteudo !== preencher(modelo.texto, dados!).resultado && !window.confirm("Descartar as alterações deste documento?")) return;
-    const m = modelos.find((item) => item.id === id);
-    setSelecionado(id);
-    setConteudo(m && dados ? preencher(m.texto,dados).resultado : "");
-    setReferencia(m ? { id:m.id,versao:m.versao } : null);
-    setRegistro(null);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);
+  async function escolher(id: string) {
+    if (!dados || abrindoModelo || emitindo) return;
+    if (modelo && conteudo !== textoInicial && !window.confirm("Descartar as alterações deste documento?")) return;
+    const m = modelos.find(item => item.id === id);
+    setAbrindoModelo(true);
+    try {
+      const { data: sessao } = await supabase.auth.getSession();
+      if (!sessao.session?.access_token) throw new Error("Sessão expirada.");
+      const configuracao = m ? await obterModeloDocumentoEmissao({ data: {
+        accessToken: sessao.session.access_token, clinicaId: dados.clinicaId, tipo: m.categoria as TipoClinico,
+      } }) : null;
+      const base = m && MODELOS_BASE_CLINICOS.some(item => item.id === m.id);
+      const texto = m ? preencher(base && configuracao?.modelo.texto ? configuracao.modelo.texto : m.texto, dados, configuracao?.identidade) : "";
+      setSelecionado(id);
+      setPadrao(configuracao);
+      setTextoInicial(texto);
+      setConteudo(texto);
+      setReferencia(m ? { id:m.id,versao:m.versao } : null);
+      setRegistro(null);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível carregar o modelo.");
+    } finally { setAbrindoModelo(false); }
   }
   const pendencias = useMemo(() => [...conteudo.matchAll(/\{\{[^{}]+\}\}/g)].map((m) => m[0])
     .filter(campo => campo !== "{{veterinario}}" && campo !== "{{crmv}}"), [conteudo]);
   const perfilCompleto = Boolean(profissional?.nome && profissional.crmv);
   async function exportar(arquivar: boolean) {
-    if (!modelo || !dados?.animal?.id || !dados.clinicaId) return;
+    if (!modelo || !padrao || !dados?.animal?.id || !dados.clinicaId) return;
     if (!conteudo.trim()) return toast.error("Preencha o conteúdo antes de gerar o documento.");
     if (pendencias.length) return toast.error("Preencha os campos pendentes antes de gerar: " + [...new Set(pendencias)].join(", "));
     if (conteudo.length > 25000) return toast.error("Documento acima do limite de 25 mil caracteres.");
@@ -122,7 +126,23 @@ export function ModelosClinicosAtendimento() {
       if (!autor.nome || !autor.crmv) throw new Error("Complete nome, CRMV e UF no cadastro profissional do seu perfil.");
       const texto = conteudo.replace(/\{\{(veterinario|crmv)\}\}/g,
         (_original, campo) => campo === "veterinario" ? autor.nome : autor.crmv);
-      const { pdf,filename } = await criarPdf(modelo.nome, `Médico-veterinário: ${autor.nome} · ${autor.crmv}\n\n${texto}`);
+      const papel = await prepararPapelDocumento(padrao.identidade, padrao.modelo);
+      const pdf = await criarPdfComModelo({
+        titulo: modelo.nome, conteudo: texto, papel,
+        identificacao: [
+          [dados.animal.nome, dados.animal.especie, dados.animal.raca, dados.animal.sexo,
+            dados.animal.idade || dados.animal.nascimento, dados.animal.pelagem,
+            dados.animal.peso && dados.animal.peso + " kg", dados.animal.microchip && "Microchip " + dados.animal.microchip].filter(Boolean).join(" · "),
+          ["Responsável: " + (dados.tutor?.nome || ""), dados.tutor?.cpf && "CPF " + dados.tutor.cpf,
+            dados.tutor?.endereco].filter(Boolean).join(" · "),
+        ],
+        assinatura: [
+          [padrao.identidade.municipio, new Date().toLocaleDateString("pt-BR")].filter(Boolean).join(", "),
+          autor.nome + " · " + autor.crmv,
+          [autor.endereco, autor.telefone, padrao.identidade.email].filter(Boolean).join(" · "),
+        ],
+      });
+      const filename = (modelo.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 65) || "documento") + ".pdf";
       if (!arquivar) {
         pdf.save(filename);
         toast.success("PDF gerado para conferência. Não é um documento assinado.");
@@ -239,13 +259,14 @@ export function ModelosClinicosAtendimento() {
       </div>
     </div>
     <label className="block text-sm font-medium">Escolher modelo
-      <select value={selecionado} onChange={(e) => escolher(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3 font-normal">
+      <select value={selecionado} disabled={abrindoModelo || emitindo} onChange={(e) => void escolher(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3 font-normal">
         <option value="">Selecione um documento...</option>
-        {modelos.map((m)=><option value={m.id} key={m.id}>{m.nome} · v{m.versao}</option>)}
+        {modelos.map((m)=><option value={m.id} key={m.id}>{m.nome}{m.versao ? ` · v${m.versao}` : " · Padrão da clínica"}</option>)}
       </select>
     </label>
     {!modelos.length && <p className="mt-3 text-sm text-muted-foreground">Nenhum modelo clínico disponível. O administrador ou RT pode criar modelos nas Configurações da Clínica.</p>}
-    {modelo && <div className="mt-4 space-y-3">
+    {abrindoModelo && <p role="status" className="mt-3 text-sm">Carregando modelo…</p>}
+    {modelo && !abrindoModelo && <div className="mt-4 space-y-3">
       <p className="text-sm font-medium">
         {perfilCompleto ? `Médico-veterinário: ${profissional?.nome} · ${profissional?.crmv}`
           : "Complete nome, CRMV e UF no cadastro profissional do seu perfil."}

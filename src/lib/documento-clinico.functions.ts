@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { driveAccessToken, driveFetch } from "@/lib/drive-kv.server";
 
+import { MODELOS_BASE_CLINICOS } from "@/lib/modelos-documentos";
+
 const autenticacaoSchema = z.object({
   accessToken: z.string().min(20),
   clinicaId: z.string().uuid(),
@@ -55,6 +57,11 @@ async function conferirAnimal(admin: SupabaseAdmin, clinicaId: string, animalId:
   if (error || !animal) throw new Error("Animal e tutor não estão vinculados a esta clínica.");
 }
 async function conferirModelo(admin: SupabaseAdmin, clinicaId: string, modeloId: string, versao: number, categoria: string) {
+  const base = MODELOS_BASE_CLINICOS.find(item => item.id === modeloId);
+  if (base) {
+    if (base.categoria !== categoria || versao !== 0) throw new Error("Modelo padrão inválido.");
+    return;
+  }
   const { data, error } = await admin.from("oricse_dados_modulos")
     .select("dados").eq("clinica_id",clinicaId).eq("chave","estado_sistema").maybeSingle();
   if (error) throw new Error("Não foi possível verificar a biblioteca de modelos.");
