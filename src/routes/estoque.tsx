@@ -180,9 +180,9 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
           : Promise.resolve({data:[],error:null}),
       ]);
       if (estoqueResult.error) throw estoqueResult.error;
-      if (caixaResult.error && podeVerCaixa) throw caixaResult.error;
       setHistoricoEstoque(estoqueResult.data || []);
-      setHistoricoCaixa(caixaResult.data || []);
+      if (caixaResult.error) setErroHistorico("O Caixa não liberou a consulta dos dados financeiros para este usuário; o histórico de estoque permanece disponível.");
+      setHistoricoCaixa(caixaResult.error ? [] : caixaResult.data || []);
       setHistoricoVendas(vendasResult.error ? [] : vendasResult.data || []);
       setHistoricoItensVenda(itensVendaResult.error ? [] : itensVendaResult.data || []);
     } catch (error) {
