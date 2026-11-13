@@ -24,6 +24,7 @@ import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/sup
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
 import { aplicarTema, carregarCor, carregarTema } from "@/lib/tema";
+import { aplicarAcessibilidade } from "@/lib/acessibilidade-sistema";
 import {
   TenantContext,
   hostDaPagina,
@@ -240,6 +241,16 @@ function RootComponent() {
     Boolean(hostDaPagina()) &&
     !isPlatformHostname(hostDaPagina());
   const [autenticado, setAutenticado] = useState<boolean | null>(null);
+  useEffect(()=>{
+    const rotaPublica = ROTAS_PUBLICAS.has(location.pathname)
+      || location.pathname.startsWith("/vet/")
+      || /^\/pet\/[^/]+(?:\/portal)?\/?$/.test(location.pathname)
+      || ROTA_CONTRATO_PUBLICO.test(location.pathname)
+      || (location.pathname==="/" && Boolean(hostDaPagina()) && !isPlatformHostname(hostDaPagina()));
+    aplicarAcessibilidade(autenticado===true&&!rotaPublica);
+    return ()=>aplicarAcessibilidade(false);
+  },[autenticado,location.pathname]);
+
   const [role, setRole] = useState<string | null>(null);
   const [acessoTeste, setAcessoTeste] = useState<any>(null);
   const [acessoAssinatura, setAcessoAssinatura] = useState<any>(null);

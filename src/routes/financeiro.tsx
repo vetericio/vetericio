@@ -44,6 +44,7 @@ import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { CaixaOperacional } from "@/components/financeiro/CaixaOperacional";
+import { consultarIndicadoresPainel } from "@/lib/indicadores-painel.functions";
 
 export const Route = createFileRoute("/financeiro")({ component: Financeiro });
 
@@ -217,6 +218,22 @@ function lerTutores(): TutorFinanceiro[] {
 export function Financeiro() {
   const [aba, setAba] = useState<Aba>("inicio");
   const { clinicaId, pode } = usePermissoes();
+  const [indicadoresAtivos,setIndicadoresAtivos]=useState<Awaited<ReturnType<typeof consultarIndicadoresPainel>>|null>(null);
+  const [erroIndicadores,setErroIndicadores]=useState("");
+  useEffect(()=>{
+    if(!clinicaId){setIndicadoresAtivos(null);return;}
+    let ativo=true;
+    void (async()=>{
+      try{
+        const {data:sessao}=await supabase.auth.getSession();
+        if(!sessao.session?.access_token)throw new Error("Sessão expirada.");
+        const prefs=await consultarIndicadoresPainel({data:{accessToken:sessao.session.access_token,clinicaId}});
+        if(ativo){setIndicadoresAtivos(prefs);setErroIndicadores("");}
+      }catch(e){if(ativo){setIndicadoresAtivos(null);setErroIndicadores(e instanceof Error?e.message:"Preferências indisponíveis.");}}
+    })();
+    return()=>{ativo=false;};
+  },[clinicaId]);
+
   const [estadiasHotel, setEstadiasHotel] = useState<Array<{id:string;status:string;valor_diaria_centavos:number;valor_final_centavos:number|null;chegada_prevista:string;saida_prevista:string;checkout_em:string|null}>>([]);
   const [erroHotel, setErroHotel] = useState("");
   const [caixaGeral,setCaixaGeral]=useState<Array<{id:string;setor:string;descricao:string;valor_centavos:number;forma_pagamento:string;registrado_em:string;status:string;tipo:string;detalhes?:{tutor?:string;tutorId?:string;observacao?:string};data_competencia?:string|null}>>([]);
@@ -760,8 +777,17 @@ export function Financeiro() {
           </div>
           {erroCaixaGeral&&<p role="alert" className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{erroCaixaGeral}</p>}
           {carregandoCaixa&&<p role="status" className="mt-3 text-sm text-muted-foreground">Atualizando lançamentos por setor...</p>}
+          {erroIndicadores&&<p className="mt-2 text-xs text-muted-foreground">Preferências de indicadores não carregadas. Exibindo todos os setores para evitar ocultar valores: {erroIndicadores}</p>}
           <div className="mt-4 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-5">
-            {SETORES_FINANCEIROS.map(({id,titulo,icone:Icone})=>{
+            {SETORES_FINANCEIROS.filter(({id})=>{
+              if(!indicadoresAtivos)return true;
+              const visiveis:Partial<Record<SetorFinanceiro,boolean>>={
+                consultas:indicadoresAtivos.consultas,exames:indicadoresAtivos.exames,
+                internacao:indicadoresAtivos.internacao,hotelzinho:indicadoresAtivos.hotel,
+                banho_tosa:indicadoresAtivos.banhoTosa,venda_expressa:indicadoresAtivos.vendaExpressa,
+              };
+              return visiveis[id]!==false;
+            }).map(({id,titulo,icone:Icone})=>{
               const valores=resumoSetores[id];
               return <article key={id} className="min-w-0 rounded-xl border border-border/70 bg-secondary/25 p-3.5">
                 <div className="flex items-center gap-2">
