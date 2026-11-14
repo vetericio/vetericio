@@ -66,7 +66,10 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const identidade = { ...dados.identidade, ...dadosEditados };
   const modelo = modelos[tipo];
   const categoria = DOCUMENTOS[tipo];
-  const corpo = preencherTextoDocumento(modelo.texto || categoria.exemplo, valoresModeloDocumento(identidade, exemplo));
+  const usaTextoPadrao = tipo === "pedido" || tipo === "documento" || tipo === "termo";
+  const corpo = usaTextoPadrao
+    ? preencherTextoDocumento(modelo.texto || categoria.exemplo, valoresModeloDocumento(identidade, exemplo))
+    : "";
 
   function atualizar(patch: Partial<typeof modelo>) {
     setDados(atual => atual && ({ ...atual, modelos: { ...atual.modelos, [tipo]: { ...atual.modelos[tipo], ...patch } } }));
@@ -99,7 +102,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   return <section className="space-y-5 rounded-xl border bg-card p-4 sm:p-5">
     <div>
       <h2 className="text-lg font-semibold">Modelos e fundos de documentos</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Escolha o fundo e o texto padrão para cada tipo de documento da {identidade.nome}.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Personalize os modelos de documento da {identidade.nome}.</p>
     </div>
     <fieldset disabled={ocupado} className="space-y-4">
       <label className="block max-w-sm text-sm font-semibold">Tipo de documento
@@ -174,15 +177,17 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           </label>
         </div>
       </fieldset>
-      <label className="block text-sm font-semibold">
-        {["receita", "vacina", "vermifugo"].includes(tipo) ? "Orientações adicionais padrão" : "Texto padrão"}
-        <textarea rows={6} maxLength={25000} value={modelo.texto} placeholder={categoria.exemplo}
-          onChange={e => atualizar({ texto: e.target.value })} className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
-      </label>
-      <div className="flex flex-wrap gap-1.5" aria-label="Inserir campo do documento">
-        {campos.map(([chave, rotulo]) => <button key={chave} type="button" className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
-          onClick={() => atualizar({ texto: modelo.texto + (modelo.texto ? " " : "") + "{{" + chave + "}}" })}>{rotulo}</button>)}
-      </div>
+      {usaTextoPadrao && <>
+        <label className="block text-sm font-semibold">
+          Texto padrão
+          <textarea rows={6} maxLength={25000} value={modelo.texto} placeholder={categoria.exemplo}
+            onChange={e => atualizar({ texto: e.target.value })} className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
+        </label>
+        <div className="flex flex-wrap gap-1.5" aria-label="Inserir campo do documento">
+          {campos.map(([chave, rotulo]) => <button key={chave} type="button" className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+            onClick={() => atualizar({ texto: modelo.texto + (modelo.texto ? " " : "") + "{{" + chave + "}}" })}>{rotulo}</button>)}
+        </div>
+      </>}
       <button type="button" className={botao + " bg-primary text-primary-foreground"} onClick={() => void executar(async () => {
         const accessToken = await tokenConfiguracoesClinica();
         await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo, modelo } });

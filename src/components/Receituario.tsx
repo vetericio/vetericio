@@ -9,7 +9,7 @@ import { lerSelos, type TipoSelo } from "@/lib/assinatura";
 import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { formatarDataDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { formatarDataDocumento } from "@/lib/modelos-documentos";
 import { prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 import {
   criarReceituario,
@@ -94,7 +94,6 @@ export function Receituario() {
   const [itens, setItens] = useState<ItemReceituario[]>(() => [novoItem()]);
   const [observacoes, setObservacoes] = useState("");
   const [padraoReceita, setPadraoReceita] = useState<Awaited<ReturnType<typeof obterModeloDocumentoEmissao>> | null>(null);
-  const [usarTextoPadrao, setUsarTextoPadrao] = useState(true);
   const [pelagem, setPelagem] = useState("");
   const [microchip, setMicrochip] = useState("");
   const [endereco, setEndereco] = useState("");
@@ -327,7 +326,7 @@ export function Receituario() {
         metadata: { animalId, tutorId, paciente, tutor, tipoReceita, numero: numero || null },
       },
     });
-    const dados = { paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes: observacoesReceita(), endereco };
+    const dados = { paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco };
     const { error } = await (supabaseBanco as any).from("oricse_portal_receitas").insert({
       clinica_id: clinicaId,
       tutor_id: tutorId,
@@ -344,17 +343,6 @@ export function Receituario() {
       criado_por: userId,
     });
     if (error) throw error;
-  }
-
-  function textoPadraoReceita() {
-    if (!padraoReceita) return "";
-    return preencherTextoDocumento(padraoReceita.modelo.texto, valoresModeloDocumento(padraoReceita.identidade, {
-      paciente, especie: especie === "Outro" ? outraEspecie : especie, raca, tutor, data,
-    }));
-  }
-
-  function observacoesReceita() {
-    return [observacoes, tipoReceita === "normal" && usarTextoPadrao ? textoPadraoReceita() : ""].filter(Boolean).join("\n\n");
   }
 
   const gerar = async () => {
@@ -382,15 +370,11 @@ export function Receituario() {
       const papel = !especial && padraoReceita
         ? await prepararPapelDocumento({ ...padraoReceita.identidade, endereco }, padraoReceita.modelo)
         : undefined;
-      const textoFinal = observacoesReceita();
-      if (!especial && /\{\{[a-z_]+\}\}/.test(textoFinal)) {
-        throw new Error("Preencha os campos do texto padrão ou revise as orientações da receita.");
-      }
       const numero = especial ? await emitirReceitaControladaNoBanco({ paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco }) : undefined;
       const dadosPdf = {
         tipo: tipoReceita, numero, paciente, tutor, telefoneTutor, nascimentoTutor, cpfTutor, enderecoTutor, idade,
         especie: especie === "Outro" ? outraEspecie.trim() : especie, raca, sexo, peso, data, itens,
-        observacoes: textoFinal, endereco, posicoesSelos, papel, pelagem, microchip,
+        observacoes, endereco, posicoesSelos, papel, pelagem, microchip,
         profissional: {
           nomeCompleto: profissional.nome_completo,
           crmv: profissional.crmv, crmvUf: profissional.crmv_uf,
@@ -475,17 +459,6 @@ export function Receituario() {
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3"><h2 className="font-display font-semibold text-foreground">Prescrição</h2><button type="button" onClick={() => setItens((atual) => [...atual, novoItem()])} className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"><Plus className="h-4 w-4" /> Medicamento</button></div>
         <div className="mt-3 space-y-3">{itens.map((item, indice) => { const posologia = montarPosologia(item); return <article key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-foreground">{indice + 1}. Medicamento</p>{itens.length > 1 && <button type="button" onClick={() => setItens((atual) => atual.filter((medicamento) => medicamento.id !== item.id))} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-destructive" aria-label={"Remover medicamento " + (indice + 1)}><Trash2 className="h-4 w-4" /></button>}</div><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_0.48fr]"><label><span className={rotulo}>Medicamento</span><input value={item.medicamento} onChange={(e) => atualizarItem(item.id, "medicamento", e.target.value)} className={campo} placeholder="Dipirona" /></label><label><span className={rotulo}>Apresentação</span><input value={item.apresentacao} onChange={(e) => atualizarItem(item.id, "apresentacao", e.target.value)} className={campo} placeholder="500 mg" /></label></div><p className={"mt-4 " + rotulo}>Posologia</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><label><span className="text-xs text-muted-foreground">Quantidade</span><input value={item.quantidade} onChange={(e) => atualizarItem(item.id, "quantidade", e.target.value)} inputMode="decimal" className={campo} placeholder="1" /></label><label><span className="text-xs text-muted-foreground">Forma</span><select value={item.forma} onChange={(e) => atualizarItem(item.id, "forma", e.target.value)} className={campo}>{FORMAS_MEDICAMENTO.map((opcao) => <option key={opcao.valor} value={opcao.valor}>{opcao.valor}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Intervalo</span><select value={item.intervalo} onChange={(e) => atualizarItem(item.id, "intervalo", e.target.value)} className={campo}>{INTERVALOS_RECEITUARIO.map((horas) => <option key={horas} value={horas}>{"a cada " + horas + "h"}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Por quantos dias?</span><input value={item.dias} onChange={(e) => atualizarItem(item.id, "dias", e.target.value)} inputMode="numeric" className={campo} placeholder="7" /></label></div><div className="mt-3 rounded-xl bg-primary/10 px-3 py-2 text-sm leading-relaxed text-primary">{posologia || "A frase da posologia aparece aqui enquanto você preenche."}</div><label className="mt-3 block"><span className="text-xs text-muted-foreground">Observação desta medicação (opcional)</span><input value={item.observacao} onChange={(e) => atualizarItem(item.id, "observacao", e.target.value)} className={campo} placeholder="Ex.: administrar após alimentação" /></label></article>; })}</div>
-        {tipoReceita === "normal" && padraoReceita?.modelo.texto && (
-          <div className="mt-4 rounded-lg border p-3">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={usarTextoPadrao} onChange={e => setUsarTextoPadrao(e.target.checked)} />
-              Incluir as orientações padrão da clínica
-            </label>
-            {usarTextoPadrao && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{textoPadraoReceita()}</p>}
-            {usarTextoPadrao && <button type="button" className="mt-2 text-sm font-semibold text-primary underline"
-              onClick={() => { setObservacoes(observacoesReceita()); setUsarTextoPadrao(false); }}>Editar nesta receita</button>}
-          </div>
-        )}
         <label className="mt-4 block"><span className={rotulo}>Orientações gerais</span><textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} className={campo} placeholder="Orientações adicionais para o tutor (opcional)" /></label>
       </section>
 
