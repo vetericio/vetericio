@@ -7,9 +7,11 @@ import { obterPerfilPessoa } from "@/lib/admin-users.functions";
 import { useAnamneses } from "@/hooks/useAnamneses";
 import { lerSelos, type TipoSelo } from "@/lib/assinatura";
 import { racasParaEspecie, type EspecieReceituario } from "@/lib/racas";
-import { enviarArquivoDrive } from "@/lib/drive.functions";
+import { enviarAnexoPortal } from "@/lib/drive.functions";
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
 import { formatarDataDocumento, limparOrientacoesPadraoReceita, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { hojeNoBrasil } from "@/lib/dados-preventivos";
+import type { Database } from "@/integrations/supabase/types";
 import { prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 import {
   criarReceituario,
@@ -57,6 +59,12 @@ const POSICOES_PADRAO: Record<TipoSelo, PosicaoSeloReceituario> = {
   carimbo: { x: 0.58, y: 0.14, largura: 0.24 },
 };
 
+type ReceitaPendente = {
+  registro: Database["public"]["Tables"]["oricse_portal_receitas"]["Insert"] & { id: string };
+  nome: string;
+  base64: string;
+};
+
 type CampoItem =
   "medicamento" | "apresentacao" | "quantidade" | "forma" | "intervalo" | "dias" | "observacao";
 
@@ -100,8 +108,10 @@ export function Receituario() {
   const [endereco, setEndereco] = useState("");
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [mensagemDados, setMensagemDados] = useState("");
-  const [tutorIdCanonico, setTutorIdCanonico] = useState("");
-  const [clinicaIdCanonica, setClinicaIdCanonica] = useState("");
+  const [animalSolicitado, setAnimalSolicitado] = useState(false);
+  const [vinculo, setVinculo] = useState<{ animalId: string; tutorId: string; clinicaId: string } | null>(null);
+  const [pendente, setPendente] = useState<ReceitaPendente | null>(null);
+  const [erroRegistro, setErroRegistro] = useState("");
   const [selos, setSelos] = useState<Record<TipoSelo, string | null>>({ assinatura: null, carimbo: null });
   const [posicoesSelos, setPosicoesSelos] = useState<Partial<Record<TipoSelo, PosicaoSeloReceituario>>>({});
   const [gerando, setGerando] = useState(false);
@@ -116,6 +126,7 @@ export function Receituario() {
       const params = new URLSearchParams(window.location.search);
       const animalId = params.get("animalId") || "";
       const tutorId = params.get("tutorId") || "";
+      setAnimalSolicitado(Boolean(animalId));
       try {
         const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
         if (erroSessao || !sessao.session?.access_token)
@@ -131,7 +142,9 @@ export function Receituario() {
         if (!ativo) return;
         setPelagem(dados.animal?.pelagem || "");
         setMicrochip(dados.animal?.microchip || "");
-        if (dados.clinicaId) setClinicaIdCanonica(dados.clinicaId);
+        if (dados.animal && dados.tutor && dados.clinicaId) {
+          setVinculo({ animalId: dados.animal.id, tutorId: dados.tutor.id, clinicaId: dados.clinicaId });
+        }
         if (dados.clinicaEndereco) setEndereco(dados.clinicaEndereco);
         if (dados.animal) {
           const animal = dados.animal;
@@ -165,7 +178,6 @@ export function Receituario() {
           setTelefoneTutor(dados.tutor.telefone || "");
           setCpfTutor(dados.tutor.cpf || "");
           setEnderecoTutor(dados.tutor.endereco || "");
-          setTutorIdCanonico(dados.tutor.id);
         }
         if (!dados.clinicaEndereco) {
           setMensagemDados("Endereço da clínica não encontrado no cadastro. Confira e preencha antes de gerar o PDF.");
@@ -284,66 +296,34 @@ export function Receituario() {
     window.addEventListener("pointerup", soltar);
   };
 
-  async function publicarNoPortal(doc: Awaited<ReturnType<typeof criarReceituario>>, textoFinal: string, numero?: string) {
-    const params = new URLSearchParams(window.location.search);
-    const animalId = params.get("animalId") || "";
-    const tutorId = tutorIdCanonico || params.get("tutorId") || "";
-    if (!animalId || !tutorId) {
-      toast.info("PDF gerado. Esta receita não foi vinculada ao Portal do Tutor porque não há animal/tutor canônico na URL.");
-      return;
-    }
+  async function registrarReceita({ registro, nome, base64 }: ReceitaPendente) {
     const { data: sessao } = await supabase.auth.getSession();
     const accessToken = sessao.session?.access_token;
-    const userId = sessao.session?.user?.id;
-    if (!accessToken || !userId) throw new Error("Sessão não encontrada para publicar a receita.");
-    let clinicaId = clinicaIdCanonica;
-    if (!clinicaId) {
-      const { data: contexto, error: contextoError } = await (supabaseBanco as any).rpc("oricse_contexto_clinica_atual");
-      if (contextoError) throw contextoError;
-      clinicaId = String(contexto?.[0]?.clinica_id || "");
+    if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente para salvar a receita.");
+
+    const anexo = await enviarAnexoPortal({ data: {
+      accessToken, clinicaId: registro.clinica_id, animalId: registro.animal_id, registroId: registro.id,
+      categoria: "receitas", tutorId: registro.tutor_id, nome, base64,
+    } });
+    const { error } = await supabaseBanco.from("oricse_portal_receitas").upsert({
+      ...registro, drive_arquivo_id: anexo.arquivoId,
+    }, { onConflict: "id", ignoreDuplicates: true });
+    if (error) throw new Error("O PDF foi anexado, mas o prontuário ainda não foi atualizado.");
+
+    setPendente(null);
+    setErroRegistro("");
+    toast.success(registro.visivel_tutor
+      ? "Receita salva no prontuário e disponível no Portal do Tutor."
+      : "Receita salva no prontuário com acesso interno.");
+  }
+
+  async function tentarRegistrar(receita: ReceitaPendente) {
+    try {
+      await registrarReceita(receita);
+    } catch (erro) {
+      setPendente(receita);
+      setErroRegistro(erro instanceof Error ? erro.message : "Não foi possível concluir o registro da receita.");
     }
-    if (!clinicaId) throw new Error("Clínica atual não identificada.");
-    const { data: animalCanonico, error: animalError } = await (supabaseBanco as any)
-      .from("oricse_animais").select("id,tutor_id,nome").eq("id", animalId).eq("clinica_id", clinicaId).maybeSingle();
-    if (animalError) throw animalError;
-    if (!animalCanonico || String(animalCanonico.tutor_id) !== tutorId) {
-      toast.info("PDF gerado. A receita não foi publicada porque o animal/tutor ainda não está vinculado ao banco desta clínica.");
-      return;
-    }
-    const nomeSeguro = paciente.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "animal";
-    const nomeArquivo = `${tipoReceita === "especial" ? "receita-especial" : "receita"}-${nomeSeguro}-${Date.now()}.pdf`;
-    const base64 = doc.output("datauristring");
-    const upload = await enviarArquivoDrive({
-      data: {
-        accessToken,
-        clinicaId,
-        categoria: "receitas",
-        nome: nomeArquivo,
-        mimeType: "application/pdf",
-        base64,
-        visibilidade: enviarPortal ? "tutor" : "interno",
-        entidadeTipo: "receita",
-        entidadeId: animalId,
-        metadata: { animalId, tutorId, paciente, tutor, tipoReceita, numero: numero || null },
-      },
-    });
-    const dados = { paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes: textoFinal, endereco };
-    const { error } = await (supabaseBanco as any).from("oricse_portal_receitas").insert({
-      clinica_id: clinicaId,
-      tutor_id: tutorId,
-      animal_id: animalId,
-      drive_arquivo_id: upload.arquivo.id,
-      tipo: tipoReceita,
-      numero: numero || null,
-      titulo: tipoReceita === "especial" ? "Receita de controle especial" : "Receita veterinária",
-      emitida_em: new Date().toISOString(),
-      visivel_tutor: enviarPortal,
-      motivo_ocultacao: enviarPortal ? null : motivoOcultacao,
-      motivo_outro: !enviarPortal && motivoOcultacao === "outro" ? motivoOutro.trim() : null,
-      dados,
-      criado_por: userId,
-    });
-    if (error) throw error;
   }
 
   const orientacoesPadrao = tipoReceita === "normal" && padraoReceita
@@ -354,6 +334,13 @@ export function Receituario() {
 
   const gerar = async () => {
     if (gerando || carregandoDados) return;
+    if (pendente) {
+      setGerando(true);
+      try { await tentarRegistrar(pendente); }
+      finally { setGerando(false); }
+      return;
+    }
+    if (animalSolicitado && !vinculo) return void toast.error("Abra a receita pela ficha do animal com um tutor vinculado.");
     if (!paciente.trim()) return void toast.error("Informe o nome do paciente.");
     if (!endereco.trim()) return void toast.error("Confirme o endereço da clínica para o rodapé do receituário.");
     if (!telefoneTutor.trim()) return void toast.error("Informe o telefone do tutor.");
@@ -361,8 +348,8 @@ export function Receituario() {
     if (!especie) return void toast.error("Selecione a espécie.");
     if (especie === "Outro" && !outraEspecie.trim()) return void toast.error("Informe a outra espécie.");
     if (tipoReceita === "especial" && (!tutor.trim() || !enderecoTutor.trim() || !cpfTutor.trim())) return void toast.error("Receita de controle especial exige tutor, CPF/CNPJ e endereço do tutor.");
-    if (!enviarPortal && !motivoOcultacao) return void toast.error("Selecione o motivo para não enviar a receita ao Portal do Tutor.");
-    if (!enviarPortal && motivoOcultacao === "outro" && motivoOutro.trim().length < 3) return void toast.error("Explique o motivo em pelo menos 3 caracteres.");
+    if (vinculo && !enviarPortal && !motivoOcultacao) return void toast.error("Selecione o motivo para não enviar a receita ao Portal do Tutor.");
+    if (vinculo && !enviarPortal && motivoOcultacao === "outro" && motivoOutro.trim().length < 3) return void toast.error("Explique o motivo em pelo menos 3 caracteres.");
     const textoPadraoSelecionado = usarOrientacoesPadrao ? orientacoesPadrao : "";
     if (/\{\{[a-z_]+\}\}/.test(textoPadraoSelecionado)) {
       return void toast.error("Revise as orientações padrão nas Configurações da clínica ou desmarque sua inclusão nesta receita.");
@@ -396,13 +383,22 @@ export function Receituario() {
       };
       const doc = await criarReceituario(dadosPdf);
       const pacienteArquivo = paciente.trim().replace(/\s+/g, "-").toLowerCase();
-      doc.save(`${tipoReceita === "especial" ? "receita-controle-especial" : "receituario"}-${pacienteArquivo || "oricse"}.pdf`);
-      try {
-        await publicarNoPortal(doc, textoFinal, numero);
-        toast.success(enviarPortal ? "Receituário gerado e enviado ao Portal do Tutor." : "Receituário gerado e mantido oculto do Portal do Tutor.");
-      } catch (portalError) {
-        console.error("Falha ao publicar receita no portal:", portalError);
-        toast.warning("PDF gerado, mas não foi possível registrar esta receita no Portal do Tutor.");
+      const titulo = especial ? "Receita de controle especial" : "Receita veterinária";
+      const nome = `${especial ? "receita-controle-especial" : "receituario"}-${pacienteArquivo || "oricse"}.pdf`;
+      doc.save(nome);
+      if (vinculo) {
+        await tentarRegistrar({
+          nome, base64: doc.output("datauristring"),
+          registro: {
+            id: crypto.randomUUID(), clinica_id: vinculo.clinicaId, animal_id: vinculo.animalId,
+            tutor_id: vinculo.tutorId, tipo: tipoReceita, numero: numero || null, titulo,
+            emitida_em: hojeNoBrasil(), resumo: itens.map(item => item.medicamento.trim()).filter(Boolean).join(", ") || null,
+            visivel_tutor: enviarPortal, motivo_ocultacao: enviarPortal ? null : motivoOcultacao,
+            motivo_outro: !enviarPortal && motivoOcultacao === "outro" ? motivoOutro.trim() : null,
+          },
+        });
+      } else {
+        toast.success("PDF avulso baixado.");
       }
     } catch (erro) {
       console.error("Falha ao gerar receituário:", erro);
@@ -424,73 +420,84 @@ export function Receituario() {
         <p className="mt-1 text-sm text-muted-foreground">Preencha somente o necessário e a receita sai completa.</p>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <h2 className="font-display font-semibold text-foreground">Tipo de receita</h2>
-        <div className="mt-3 flex gap-2">
-          {([ ["normal", "Normal"], ["especial", "Controle especial"] ] as const).map(([valor, nome]) => (
-            <label key={valor} className={escolha}><input type="radio" name="tipo-receita" className="sr-only" checked={tipoReceita === valor} onChange={() => setTipoReceita(valor)} />{nome}</label>
-          ))}
-        </div>
-        {tipoReceita === "especial" && <p className="mt-2 text-xs text-muted-foreground">Sai com número sequencial (ano) e exige tutor, CPF/CNPJ e endereço do tutor.</p>}
-      </section>
+      {erroRegistro && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        PDF baixado. {erroRegistro} Use “Tentar salvar receita” para concluir o registro deste PDF.
+      </p>}
+      <fieldset disabled={Boolean(pendente) || gerando} className="min-w-0 space-y-4">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="font-display font-semibold text-foreground">Tipo de receita</h2>
+          <div className="mt-3 flex gap-2">
+            {([ ["normal", "Normal"], ["especial", "Controle especial"] ] as const).map(([valor, nome]) => (
+              <label key={valor} className={escolha}><input type="radio" name="tipo-receita" className="sr-only" checked={tipoReceita === valor} onChange={() => setTipoReceita(valor)} />{nome}</label>
+            ))}
+          </div>
+          {tipoReceita === "especial" && <p className="mt-2 text-xs text-muted-foreground">Sai com número sequencial (ano) e exige tutor, CPF/CNPJ e endereço do tutor.</p>}
+        </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div><h2 className="font-display font-semibold text-foreground">Portal do Tutor</h2><p className="mt-1 text-sm text-muted-foreground">Por padrão, toda receita vinculada a um animal é disponibilizada ao tutor.</p></div>
-          <input type="checkbox" checked={enviarPortal} onChange={(e) => { setEnviarPortal(e.target.checked); if (e.target.checked) { setMotivoOcultacao(""); setMotivoOutro(""); } }} className="h-5 w-5 accent-primary" aria-label="Enviar para o Portal do Tutor" />
-        </div>
-        <div className={`mt-3 rounded-xl border p-3 ${enviarPortal ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
-          <strong className="text-sm">Enviar para o Portal do Tutor: {enviarPortal ? "Sim" : "Não"}</strong>
-          {!enviarPortal && <div className="mt-3 space-y-3"><label className="block"><span className={rotulo}>Motivo obrigatório</span><select value={motivoOcultacao} onChange={(e) => { setMotivoOcultacao(e.target.value); if (e.target.value !== "outro") setMotivoOutro(""); }} className={campo}><option value="">Selecione o motivo</option>{MOTIVOS_OCULTACAO.map(([valor,nome]) => <option key={valor} value={valor}>{nome}</option>)}</select></label>{motivoOcultacao === "outro" && <label className="block"><span className={rotulo}>Explique o motivo</span><textarea value={motivoOutro} onChange={(e) => setMotivoOutro(e.target.value)} rows={3} className={campo} placeholder="Descreva por que esta receita não deve aparecer no portal" /></label>}</div>}
-        </div>
-      </section>
+        {vinculo ? (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div><h2 className="font-display font-semibold text-foreground">Portal do Tutor</h2><p className="mt-1 text-sm text-muted-foreground">Por padrão, toda receita vinculada a um animal é disponibilizada ao tutor.</p></div>
+            <input type="checkbox" checked={enviarPortal} onChange={(e) => { setEnviarPortal(e.target.checked); if (e.target.checked) { setMotivoOcultacao(""); setMotivoOutro(""); } }} className="h-5 w-5 accent-primary" aria-label="Enviar para o Portal do Tutor" />
+          </div>
+          <div className={`mt-3 rounded-xl border p-3 ${enviarPortal ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+            <strong className="text-sm">Enviar para o Portal do Tutor: {enviarPortal ? "Sim" : "Não"}</strong>
+            {!enviarPortal && <div className="mt-3 space-y-3"><label className="block"><span className={rotulo}>Motivo obrigatório</span><select value={motivoOcultacao} onChange={(e) => { setMotivoOcultacao(e.target.value); if (e.target.value !== "outro") setMotivoOutro(""); }} className={campo}><option value="">Selecione o motivo</option>{MOTIVOS_OCULTACAO.map(([valor,nome]) => <option key={valor} value={valor}>{nome}</option>)}</select></label>{motivoOcultacao === "outro" && <label className="block"><span className={rotulo}>Explique o motivo</span><textarea value={motivoOutro} onChange={(e) => setMotivoOutro(e.target.value)} rows={3} className={campo} placeholder="Descreva por que esta receita não deve aparecer no portal" /></label>}</div>}
+          </div>
+        </section>
+        ) : !carregandoDados && !animalSolicitado && (
+          <p className="rounded-xl border bg-card p-4 text-sm">
+            Receita avulsa para download. Para salvar no prontuário e no Portal do Tutor, emita pela <a href="/animais" className="font-semibold text-primary underline">ficha do animal</a>.
+          </p>
+        )}
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <h2 className="font-display font-semibold text-foreground">Paciente</h2>
-        {(carregandoDados || mensagemDados) && <p role="status" className="mt-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-foreground">{carregandoDados ? "Buscando os dados do atendimento e da clínica..." : mensagemDados}</p>}
-        {anamneses.length > 0 && <label className="mt-3 block"><span className={rotulo}>Puxar da Anamnese</span><select defaultValue="" onChange={(e) => escolherPaciente(e.target.value)} className={campo}><option value="">Preencher manualmente</option>{anamneses.map((item) => <option key={item.id} value={item.id}>{item.animal} {item.especie ? "· " + item.especie : ""}</option>)}</select></label>}
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label><span className={rotulo}>Paciente</span><input value={paciente} onChange={(e) => setPaciente(e.target.value)} className={campo} placeholder="Nome do animal" /></label>
-          <label><span className={rotulo}>Tutor</span><input value={tutor} onChange={(e) => { setTutor(e.target.value); setNascimentoTutor(""); }} className={campo} placeholder="Nome do responsável" /></label>
-          <label><span className={rotulo}>Telefone do tutor</span><input type="tel" inputMode="tel" required value={telefoneTutor} onChange={(e) => setTelefoneTutor(e.target.value)} className={campo} placeholder="(31) 99999-9999" /></label>
-        </div>
-        <fieldset className="mt-4"><legend className={rotulo}>Espécie</legend><div className="mt-2 grid grid-cols-3 gap-2">{(["Canina", "Felina", "Outro"] as const).map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="especie-receituario" checked={especie === opcao} onChange={() => mudarEspecie(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
-        {especie === "Outro" && <label className="mt-3 block"><span className={rotulo}>Qual espécie?</span><input value={outraEspecie} onChange={(e) => setOutraEspecie(e.target.value)} className={campo} placeholder="Ex.: Equina" /></label>}
-        <div className="mt-4 grid gap-3 sm:grid-cols-[1.4fr_0.7fr_0.55fr]">
-          <div><span className={rotulo}>Raça</span><div ref={racaAreaRef} className="relative" onBlur={(evento) => { if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) setRacaAberta(false); }}><div className="relative"><input value={racaAberta ? buscaRaca : raca} onChange={(evento) => { setBuscaRaca(evento.target.value); setRaca(evento.target.value); setRacaAberta(true); }} onFocus={() => { setBuscaRaca(""); setRacaAberta(true); }} onKeyDown={(evento) => { if (evento.key === "Escape") setRacaAberta(false); const primeiraRaca = racasFiltradas[0]; if (evento.key === "Enter" && primeiraRaca) { evento.preventDefault(); escolherRaca(primeiraRaca); } }} role="combobox" aria-label="Raça do animal" aria-expanded={racaAberta} aria-controls="lista-racas-receituario" aria-autocomplete="list" autoComplete="off" className={campo + " pr-11"} placeholder="Toque para ver as raças ou digite para buscar" /><button type="button" aria-label={racaAberta ? "Fechar lista de raças" : "Mostrar todas as raças"} aria-expanded={racaAberta} onPointerDown={(evento) => evento.preventDefault()} onClick={() => { setBuscaRaca(""); setRacaAberta((aberta) => !aberta); }} className="absolute inset-y-0 right-1 my-1 flex w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"><ChevronDown className="h-4 w-4" /></button></div>{racaAberta && <div id="lista-racas-receituario" role="listbox" aria-label="Raças disponíveis" className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"><p className="px-3 py-2 text-xs text-muted-foreground">{racasFiltradas.length ? racasFiltradas.length + " resultados" : "Nenhuma raça encontrada"}</p>{racasFiltradas.map((opcao) => <button key={opcao} type="button" role="option" aria-selected={raca === opcao} onPointerDown={(evento) => evento.preventDefault()} onClick={() => escolherRaca(opcao)} className={"block min-h-10 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary " + (raca === opcao ? "bg-primary/10 font-semibold text-primary" : "")}>{opcao}</button>)}</div>}</div></div>
-          <fieldset><legend className={rotulo}>Sexo</legend><div className="mt-1 flex gap-2">{["Macho", "Fêmea"].map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="sexo-receituario" checked={sexo === opcao} onChange={() => setSexo(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
-          <label><span className={rotulo}>Peso</span><input value={peso} onChange={(e) => setPeso(e.target.value.replace(".", ","))} inputMode="decimal" className={campo} placeholder="kg" /></label>
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3"><label><span className={rotulo}>CPF/CNPJ do tutor</span><input value={cpfTutor} onChange={(e) => setCpfTutor(e.target.value)} className={campo} placeholder="Documento" /></label><label><span className={rotulo}>Idade do paciente</span><input value={idade} onChange={(e) => setIdade(e.target.value)} className={campo} placeholder="Ex.: 5 anos" /></label><label><span className={rotulo}>Endereço do tutor</span><input value={enderecoTutor} onChange={(e) => setEnderecoTutor(e.target.value)} className={campo} placeholder="Endereço completo" /></label></div>
-        {tipoReceita === "normal" && <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label><span className={rotulo}>Pelagem ou plumagem</span><input value={pelagem} onChange={e => setPelagem(e.target.value)} className={campo} maxLength={100} /></label>
-          <label><span className={rotulo}>Microchip</span><input value={microchip} onChange={e => setMicrochip(e.target.value)} className={campo} maxLength={45} /></label>
-        </div>}
-      </section>
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="font-display font-semibold text-foreground">Paciente</h2>
+          {(carregandoDados || mensagemDados) && <p role="status" className="mt-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-foreground">{carregandoDados ? "Buscando os dados do atendimento e da clínica..." : mensagemDados}</p>}
+          {!vinculo && anamneses.length > 0 && <label className="mt-3 block"><span className={rotulo}>Puxar da Anamnese</span><select defaultValue="" onChange={(e) => escolherPaciente(e.target.value)} className={campo}><option value="">Preencher manualmente</option>{anamneses.map((item) => <option key={item.id} value={item.id}>{item.animal} {item.especie ? "· " + item.especie : ""}</option>)}</select></label>}
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <label><span className={rotulo}>Paciente</span><input readOnly={Boolean(vinculo)} value={paciente} onChange={(e) => setPaciente(e.target.value)} className={campo} placeholder="Nome do animal" /></label>
+            <label><span className={rotulo}>Tutor</span><input readOnly={Boolean(vinculo)} value={tutor} onChange={(e) => { setTutor(e.target.value); setNascimentoTutor(""); }} className={campo} placeholder="Nome do responsável" /></label>
+            <label><span className={rotulo}>Telefone do tutor</span><input type="tel" inputMode="tel" required value={telefoneTutor} onChange={(e) => setTelefoneTutor(e.target.value)} className={campo} placeholder="(31) 99999-9999" /></label>
+          </div>
+          <fieldset className="mt-4"><legend className={rotulo}>Espécie</legend><div className="mt-2 grid grid-cols-3 gap-2">{(["Canina", "Felina", "Outro"] as const).map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="especie-receituario" checked={especie === opcao} onChange={() => mudarEspecie(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
+          {especie === "Outro" && <label className="mt-3 block"><span className={rotulo}>Qual espécie?</span><input value={outraEspecie} onChange={(e) => setOutraEspecie(e.target.value)} className={campo} placeholder="Ex.: Equina" /></label>}
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1.4fr_0.7fr_0.55fr]">
+            <div><span className={rotulo}>Raça</span><div ref={racaAreaRef} className="relative" onBlur={(evento) => { if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) setRacaAberta(false); }}><div className="relative"><input value={racaAberta ? buscaRaca : raca} onChange={(evento) => { setBuscaRaca(evento.target.value); setRaca(evento.target.value); setRacaAberta(true); }} onFocus={() => { setBuscaRaca(""); setRacaAberta(true); }} onKeyDown={(evento) => { if (evento.key === "Escape") setRacaAberta(false); const primeiraRaca = racasFiltradas[0]; if (evento.key === "Enter" && primeiraRaca) { evento.preventDefault(); escolherRaca(primeiraRaca); } }} role="combobox" aria-label="Raça do animal" aria-expanded={racaAberta} aria-controls="lista-racas-receituario" aria-autocomplete="list" autoComplete="off" className={campo + " pr-11"} placeholder="Toque para ver as raças ou digite para buscar" /><button type="button" aria-label={racaAberta ? "Fechar lista de raças" : "Mostrar todas as raças"} aria-expanded={racaAberta} onPointerDown={(evento) => evento.preventDefault()} onClick={() => { setBuscaRaca(""); setRacaAberta((aberta) => !aberta); }} className="absolute inset-y-0 right-1 my-1 flex w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"><ChevronDown className="h-4 w-4" /></button></div>{racaAberta && <div id="lista-racas-receituario" role="listbox" aria-label="Raças disponíveis" className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"><p className="px-3 py-2 text-xs text-muted-foreground">{racasFiltradas.length ? racasFiltradas.length + " resultados" : "Nenhuma raça encontrada"}</p>{racasFiltradas.map((opcao) => <button key={opcao} type="button" role="option" aria-selected={raca === opcao} onPointerDown={(evento) => evento.preventDefault()} onClick={() => escolherRaca(opcao)} className={"block min-h-10 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary " + (raca === opcao ? "bg-primary/10 font-semibold text-primary" : "")}>{opcao}</button>)}</div>}</div></div>
+            <fieldset><legend className={rotulo}>Sexo</legend><div className="mt-1 flex gap-2">{["Macho", "Fêmea"].map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="sexo-receituario" checked={sexo === opcao} onChange={() => setSexo(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
+            <label><span className={rotulo}>Peso</span><input value={peso} onChange={(e) => setPeso(e.target.value.replace(".", ","))} inputMode="decimal" className={campo} placeholder="kg" /></label>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3"><label><span className={rotulo}>CPF/CNPJ do tutor</span><input value={cpfTutor} onChange={(e) => setCpfTutor(e.target.value)} className={campo} placeholder="Documento" /></label><label><span className={rotulo}>Idade do paciente</span><input value={idade} onChange={(e) => setIdade(e.target.value)} className={campo} placeholder="Ex.: 5 anos" /></label><label><span className={rotulo}>Endereço do tutor</span><input value={enderecoTutor} onChange={(e) => setEnderecoTutor(e.target.value)} className={campo} placeholder="Endereço completo" /></label></div>
+          {tipoReceita === "normal" && <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label><span className={rotulo}>Pelagem ou plumagem</span><input value={pelagem} onChange={e => setPelagem(e.target.value)} className={campo} maxLength={100} /></label>
+            <label><span className={rotulo}>Microchip</span><input value={microchip} onChange={e => setMicrochip(e.target.value)} className={campo} maxLength={45} /></label>
+          </div>}
+        </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3"><h2 className="font-display font-semibold text-foreground">Prescrição</h2><button type="button" onClick={() => setItens((atual) => [...atual, novoItem()])} className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"><Plus className="h-4 w-4" /> Medicamento</button></div>
-        <div className="mt-3 space-y-3">{itens.map((item, indice) => { const posologia = montarPosologia(item); return <article key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-foreground">{indice + 1}. Medicamento</p>{itens.length > 1 && <button type="button" onClick={() => setItens((atual) => atual.filter((medicamento) => medicamento.id !== item.id))} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-destructive" aria-label={"Remover medicamento " + (indice + 1)}><Trash2 className="h-4 w-4" /></button>}</div><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_0.48fr]"><label><span className={rotulo}>Medicamento</span><input value={item.medicamento} onChange={(e) => atualizarItem(item.id, "medicamento", e.target.value)} className={campo} placeholder="Dipirona" /></label><label><span className={rotulo}>Apresentação</span><input value={item.apresentacao} onChange={(e) => atualizarItem(item.id, "apresentacao", e.target.value)} className={campo} placeholder="500 mg" /></label></div><p className={"mt-4 " + rotulo}>Posologia</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><label><span className="text-xs text-muted-foreground">Quantidade</span><input value={item.quantidade} onChange={(e) => atualizarItem(item.id, "quantidade", e.target.value)} inputMode="decimal" className={campo} placeholder="1" /></label><label><span className="text-xs text-muted-foreground">Forma</span><select value={item.forma} onChange={(e) => atualizarItem(item.id, "forma", e.target.value)} className={campo}>{FORMAS_MEDICAMENTO.map((opcao) => <option key={opcao.valor} value={opcao.valor}>{opcao.valor}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Intervalo</span><select value={item.intervalo} onChange={(e) => atualizarItem(item.id, "intervalo", e.target.value)} className={campo}>{INTERVALOS_RECEITUARIO.map((horas) => <option key={horas} value={horas}>{"a cada " + horas + "h"}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Por quantos dias?</span><input value={item.dias} onChange={(e) => atualizarItem(item.id, "dias", e.target.value)} inputMode="numeric" className={campo} placeholder="7" /></label></div><div className="mt-3 rounded-xl bg-primary/10 px-3 py-2 text-sm leading-relaxed text-primary">{posologia || "A frase da posologia aparece aqui enquanto você preenche."}</div><label className="mt-3 block"><span className="text-xs text-muted-foreground">Observação desta medicação (opcional)</span><input value={item.observacao} onChange={(e) => atualizarItem(item.id, "observacao", e.target.value)} className={campo} placeholder="Ex.: administrar após alimentação" /></label></article>; })}</div>
-        {orientacoesPadrao && <div className="mt-4 rounded-lg border p-3">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={usarOrientacoesPadrao} onChange={e => setUsarOrientacoesPadrao(e.target.checked)} />
-            Incluir as orientações padrão da clínica
-          </label>
-          {usarOrientacoesPadrao && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{orientacoesPadrao}</p>}
-        </div>}
-        <label className="mt-4 block"><span className={rotulo}>Orientações gerais</span><textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} className={campo} placeholder="Orientações adicionais para o tutor (opcional)" /></label>
-      </section>
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3"><h2 className="font-display font-semibold text-foreground">Prescrição</h2><button type="button" onClick={() => setItens((atual) => [...atual, novoItem()])} className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"><Plus className="h-4 w-4" /> Medicamento</button></div>
+          <div className="mt-3 space-y-3">{itens.map((item, indice) => { const posologia = montarPosologia(item); return <article key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-foreground">{indice + 1}. Medicamento</p>{itens.length > 1 && <button type="button" onClick={() => setItens((atual) => atual.filter((medicamento) => medicamento.id !== item.id))} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-destructive" aria-label={"Remover medicamento " + (indice + 1)}><Trash2 className="h-4 w-4" /></button>}</div><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_0.48fr]"><label><span className={rotulo}>Medicamento</span><input value={item.medicamento} onChange={(e) => atualizarItem(item.id, "medicamento", e.target.value)} className={campo} placeholder="Dipirona" /></label><label><span className={rotulo}>Apresentação</span><input value={item.apresentacao} onChange={(e) => atualizarItem(item.id, "apresentacao", e.target.value)} className={campo} placeholder="500 mg" /></label></div><p className={"mt-4 " + rotulo}>Posologia</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><label><span className="text-xs text-muted-foreground">Quantidade</span><input value={item.quantidade} onChange={(e) => atualizarItem(item.id, "quantidade", e.target.value)} inputMode="decimal" className={campo} placeholder="1" /></label><label><span className="text-xs text-muted-foreground">Forma</span><select value={item.forma} onChange={(e) => atualizarItem(item.id, "forma", e.target.value)} className={campo}>{FORMAS_MEDICAMENTO.map((opcao) => <option key={opcao.valor} value={opcao.valor}>{opcao.valor}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Intervalo</span><select value={item.intervalo} onChange={(e) => atualizarItem(item.id, "intervalo", e.target.value)} className={campo}>{INTERVALOS_RECEITUARIO.map((horas) => <option key={horas} value={horas}>{"a cada " + horas + "h"}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Por quantos dias?</span><input value={item.dias} onChange={(e) => atualizarItem(item.id, "dias", e.target.value)} inputMode="numeric" className={campo} placeholder="7" /></label></div><div className="mt-3 rounded-xl bg-primary/10 px-3 py-2 text-sm leading-relaxed text-primary">{posologia || "A frase da posologia aparece aqui enquanto você preenche."}</div><label className="mt-3 block"><span className="text-xs text-muted-foreground">Observação desta medicação (opcional)</span><input value={item.observacao} onChange={(e) => atualizarItem(item.id, "observacao", e.target.value)} className={campo} placeholder="Ex.: administrar após alimentação" /></label></article>; })}</div>
+          {orientacoesPadrao && <div className="mt-4 rounded-lg border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={usarOrientacoesPadrao} onChange={e => setUsarOrientacoesPadrao(e.target.checked)} />
+              Incluir as orientações padrão da clínica
+            </label>
+            {usarOrientacoesPadrao && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{orientacoesPadrao}</p>}
+          </div>}
+          <label className="mt-4 block"><span className={rotulo}>Orientações gerais</span><textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} className={campo} placeholder="Orientações adicionais para o tutor (opcional)" /></label>
+        </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <h2 className="font-display font-semibold text-foreground">Assinatura e carimbo</h2><p className="mt-1 text-sm text-muted-foreground">Adicione e arraste para definir onde cada um ficará no final da receita.</p>
-        <div ref={areaSelosRef} className="relative mt-3 aspect-[595/150] touch-none select-none overflow-hidden rounded-xl border border-dashed border-primary/50 bg-white"><p className="absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Área de assinatura e carimbo</p>{(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => { const posicao = posicoesSelos[tipo]; const selo = selos[tipo]; if (!posicao || !selo) return null; return <div key={tipo} onPointerDown={(e) => iniciarGestoSelo(e, tipo, "mover")} className="absolute cursor-move rounded border border-dashed border-primary bg-white/40 p-0.5 shadow-sm" style={{ left: String(posicao.x * 100) + "%", top: String(posicao.y * 100) + "%", width: String(posicao.largura * 100) + "%" }}><img src={selo} alt={tipo === "assinatura" ? "Assinatura" : "Carimbo"} className="pointer-events-none max-h-16 w-full object-contain" /><button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={() => setPosicoesSelos((atual) => { const proximo = { ...atual }; delete proximo[tipo]; return proximo; })} className="absolute -left-2 -top-2 rounded-full bg-destructive p-0.5 text-destructive-foreground" aria-label={"Remover " + tipo}><X className="h-3 w-3" /></button><span onPointerDown={(e) => iniciarGestoSelo(e, tipo, "tamanho")} className="absolute -bottom-2 -right-2 h-5 w-5 cursor-se-resize rounded-full border border-background bg-primary" aria-label={"Ajustar tamanho de " + tipo} /></div>; })}</div>
-        <div className="mt-3 flex flex-wrap gap-2">{(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => <button key={tipo} type="button" onClick={() => adicionarSelo(tipo)} className="rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70">{tipo === "assinatura" ? "+ Assinatura" : "+ Carimbo"}</button>)}</div>
-        {!selos.assinatura && !selos.carimbo && <p className="mt-2 text-xs text-muted-foreground">Cadastre a assinatura e o carimbo em Assinar um documento.</p>}
-      </section>
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="font-display font-semibold text-foreground">Assinatura e carimbo</h2><p className="mt-1 text-sm text-muted-foreground">Adicione e arraste para definir onde cada um ficará no final da receita.</p>
+          <div ref={areaSelosRef} className="relative mt-3 aspect-[595/150] touch-none select-none overflow-hidden rounded-xl border border-dashed border-primary/50 bg-white"><p className="absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Área de assinatura e carimbo</p>{(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => { const posicao = posicoesSelos[tipo]; const selo = selos[tipo]; if (!posicao || !selo) return null; return <div key={tipo} onPointerDown={(e) => iniciarGestoSelo(e, tipo, "mover")} className="absolute cursor-move rounded border border-dashed border-primary bg-white/40 p-0.5 shadow-sm" style={{ left: String(posicao.x * 100) + "%", top: String(posicao.y * 100) + "%", width: String(posicao.largura * 100) + "%" }}><img src={selo} alt={tipo === "assinatura" ? "Assinatura" : "Carimbo"} className="pointer-events-none max-h-16 w-full object-contain" /><button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={() => setPosicoesSelos((atual) => { const proximo = { ...atual }; delete proximo[tipo]; return proximo; })} className="absolute -left-2 -top-2 rounded-full bg-destructive p-0.5 text-destructive-foreground" aria-label={"Remover " + tipo}><X className="h-3 w-3" /></button><span onPointerDown={(e) => iniciarGestoSelo(e, tipo, "tamanho")} className="absolute -bottom-2 -right-2 h-5 w-5 cursor-se-resize rounded-full border border-background bg-primary" aria-label={"Ajustar tamanho de " + tipo} /></div>; })}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => <button key={tipo} type="button" onClick={() => adicionarSelo(tipo)} className="rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70">{tipo === "assinatura" ? "+ Assinatura" : "+ Carimbo"}</button>)}</div>
+          {!selos.assinatura && !selos.carimbo && <p className="mt-2 text-xs text-muted-foreground">Cadastre a assinatura e o carimbo em Assinar um documento.</p>}
+        </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
 
-      <button type="button" onClick={() => void gerar()} disabled={gerando || carregandoDados} className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-14 w-auto max-w-3xl items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-60"><FileDown className="h-5 w-5" />{gerando ? "Gerando PDF…" : carregandoDados ? "Carregando dados..." : "Gerar receituário em PDF"}</button>
+      </fieldset>
+      <button type="button" onClick={() => void gerar()} disabled={gerando || carregandoDados} className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-14 w-auto max-w-3xl items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-60"><FileDown className="h-5 w-5" />{gerando ? "Processando receita…" : carregandoDados ? "Carregando dados..." : pendente ? "Tentar salvar receita" : "Gerar receituário em PDF"}</button>
     </main>
   );
 }

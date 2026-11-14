@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { PASTAS_DRIVE, PORTAL_PDF_MAX_BYTES, type DriveCategoria } from "@/lib/drive-storage";
-import { clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";
+import { clienteSupabaseUsuario, exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 
 const CATEGORIAS = ["identidade","tutores","animais","exames","receitas","documentos","imagens","backups","portal-tutor","outros"] as const satisfies readonly DriveCategoria[];
 const DEFAULT_ROOT_FOLDER_ID = "1YK5KPgXQCM1odC2axUg1Yj4J2Q0objQz";
@@ -80,8 +80,9 @@ export const enviarArquivoDrive = createServerFn({ method: "POST" })
 const anexoPortalSchema = uploadSchema.pick({ accessToken: true, clinicaId: true, nome: true, base64: true }).extend({
   registroId: z.string().uuid(),
   animalId: z.string().uuid(),
-  categoria: z.enum(["documentos", "exames"]),
-});
+  categoria: z.enum(["documentos", "exames", "receitas"]),
+  tutorId: z.string().uuid().optional(),
+}).refine(dados => dados.categoria !== "receitas" || Boolean(dados.tutorId), "Confirme o tutor da receita.");
 
 export const enviarAnexoPortal = createServerFn({ method: "POST" })
   .validator((input: unknown) => anexoPortalSchema.parse(input))
@@ -93,14 +94,21 @@ export const enviarAnexoPortal = createServerFn({ method: "POST" })
 
     const admin = await carregarSupabaseAdmin();
     const { userId } = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
-    const usuario = clienteSupabaseUsuario(data.accessToken);
-    const { data: permitido, error: erroPermissao } = await usuario.rpc("oricse_usuario_pode_permissao", {
-      p_clinica_id: data.clinicaId, p_codigo: "consultorio.atendimentos",
-    });
-    if (erroPermissao || permitido !== true) throw new Error("Seu acesso não permite anexar documentos nesta clínica.");
-    const { data: animal, error: erroAnimal } = await admin.from("oricse_animais").select("id")
+    if (data.categoria === "receitas") {
+      await exigirPermissaoClinica(admin, userId, data.clinicaId, ["consultorio.receituario"], data.accessToken);
+    } else {
+      const usuario = clienteSupabaseUsuario(data.accessToken);
+      const { data: permitido, error: erroPermissao } = await usuario.rpc("oricse_usuario_pode_permissao", {
+        p_clinica_id: data.clinicaId, p_codigo: "consultorio.atendimentos",
+      });
+      if (erroPermissao || permitido !== true) throw new Error("Seu acesso não permite anexar documentos nesta clínica.");
+    }
+    const { data: animal, error: erroAnimal } = await admin.from("oricse_animais").select("id,tutor_id")
       .eq("id", data.animalId).eq("clinica_id", data.clinicaId).maybeSingle();
     if (erroAnimal || !animal) throw new Error("Animal não encontrado nesta clínica.");
+    if (data.categoria === "receitas" && animal.tutor_id !== data.tutorId) {
+      throw new Error("O tutor do animal mudou. Reabra a ficha para conferir o cadastro.");
+    }
 
     const { data: anterior, error: erroAnterior } = await admin.from("drive_arquivos")
       .select("id,clinica_id,entidade_id,entidade_tipo,categoria,enviado_por")
@@ -114,18 +122,31 @@ export const enviarAnexoPortal = createServerFn({ method: "POST" })
       return { arquivoId: anterior.id as string };
     }
 
-    const upload = await enviarAoDrive({
-      ...data, mimeType: "application/pdf", visibilidade: "interno",
-      entidadeTipo: "animal", entidadeId: data.animalId,
-    }, userId, bytes, data.registroId);
+    const arquivoPendente = data.categoria === "receitas"
+      ? await localizarPorRegistro(await accessTokenGoogle(), data.registroId)
+      : null;
+    if (arquivoPendente) {
+      const propriedades = arquivoPendente.appProperties;
+      if (propriedades?.clinicaId !== data.clinicaId || propriedades.enviadoPor !== userId ||
+          propriedades.entidadeTipo !== "animal" || propriedades.entidadeId !== data.animalId ||
+          propriedades.categoria !== data.categoria || arquivoPendente.mimeType !== "application/pdf") {
+        throw new Error("O anexo não pertence a esta ficha.");
+      }
+    }
+    const arquivo = arquivoPendente
+      ? { driveId: arquivoPendente.id, nome: arquivoPendente.name, pastaId: null }
+      : (await enviarAoDrive({
+          ...data, mimeType: "application/pdf", visibilidade: "interno",
+          entidadeTipo: "animal", entidadeId: data.animalId,
+        }, userId, bytes, data.registroId)).arquivo;
     const { error } = await admin.from("drive_arquivos").insert({
-      id: upload.arquivo.id, clinica_id: data.clinicaId, categoria: data.categoria,
-      nome: upload.arquivo.nome, mime_type: "application/pdf", tamanho_bytes: bytes.byteLength,
-      drive_file_id: upload.arquivo.driveId, drive_folder_id: upload.arquivo.pastaId,
+      id: data.registroId, clinica_id: data.clinicaId, categoria: data.categoria,
+      nome: arquivo.nome, mime_type: "application/pdf", tamanho_bytes: bytes.byteLength,
+      drive_file_id: arquivo.driveId, drive_folder_id: arquivo.pastaId,
       visibilidade: "interno", entidade_tipo: "animal", entidade_id: data.animalId, enviado_por: userId,
     });
     if (error) throw new Error("O PDF foi enviado, mas não foi possível vinculá-lo ao cadastro do animal. Tente salvar novamente.");
-    return { arquivoId: upload.arquivo.id };
+    return { arquivoId: data.registroId };
   });
 
 export const localizarArquivoDrive=createServerFn({method:"POST"}).validator((i:unknown)=>arquivoSchema.parse(i)).handler(async({data})=>{const admin=await carregarSupabaseAdmin();await usuarioAutorizado(admin,data.accessToken,data.clinicaId);const token=await accessTokenGoogle();const a=await localizarPorRegistro(token,data.registroId);if(!a)throw new Error("Arquivo não encontrado no Google Drive.");if(a.appProperties?.clinicaId!==data.clinicaId)throw new Error("Arquivo pertence a outra clínica.");return{registroId:data.registroId,driveId:a.id,nome:a.name,mimeType:a.mimeType,size:a.size?Number(a.size):null,url:a.webViewLink||`https://drive.google.com/open?id=${a.id}`,appProperties:a.appProperties||{}};});
