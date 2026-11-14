@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, ImagePlus, Save } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   obterModelosDocumentoClinica, salvarDadosDocumentoClinica, salvarLogoDocumentoClinica, salvarModeloDocumentoClinica,
 } from "@/lib/configuracoes-clinica.functions";
@@ -44,6 +45,9 @@ const campos = [
 
 export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterModelosDocumentoClinica>> | null>(null);
+  const [aba, setAba] = useState("modelos");
+  const [orientacoes, setOrientacoes] = useState("");
+  const receitaSalva = useRef<ModeloDocumentoPadrao | null>(null);
   const [tipo, setTipo] = useState<TipoModeloDocumento>("receita");
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -56,10 +60,9 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
       .then(resposta => {
         if (!ativo) return;
         const receita = resposta.modelos.receita;
-        setDados({
-          ...resposta,
-          modelos: { ...resposta.modelos, receita: { ...receita, texto: limparOrientacoesPadraoReceita(receita.texto) } },
-        });
+        receitaSalva.current = receita;
+        setOrientacoes(limparOrientacoesPadraoReceita(receita.texto));
+        setDados(resposta);
       })
       .catch((e: Error) => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
@@ -74,7 +77,10 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const modelo = modelos[tipo];
   const categoria = DOCUMENTOS[tipo];
   const usaTextoPadrao = tipo === "pedido" || tipo === "documento" || tipo === "termo";
-  const textoPrevia = tipo === "receita" ? limparOrientacoesPadraoReceita(modelo.texto)
+  const editandoOrientacoes = aba === "orientacoes";
+  const orientacoesEditadas = limparOrientacoesPadraoReceita(orientacoes);
+  const textoPrevia = editandoOrientacoes ? orientacoesEditadas
+    : tipo === "receita" ? limparOrientacoesPadraoReceita(modelo.texto)
     : usaTextoPadrao ? modelo.texto || categoria.exemplo : "";
   const corpo = preencherTextoDocumento(textoPrevia, valoresModeloDocumento(identidade, exemplo));
 
@@ -87,6 +93,20 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     try { await acao(); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Não foi possível concluir."); }
     finally { setOcupado(false); }
+  }
+
+  async function salvarOrientacoes() {
+    const receita = receitaSalva.current;
+    if (!receita) return;
+    const modeloSalvo = { ...receita, texto: orientacoesEditadas };
+    const accessToken = await tokenConfiguracoesClinica();
+    await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo: "receita", modelo: modeloSalvo } });
+    receitaSalva.current = modeloSalvo;
+    setDados(atual => atual && ({
+      ...atual, modelos: { ...atual.modelos, receita: { ...atual.modelos.receita, texto: modeloSalvo.texto } },
+    }));
+    setOrientacoes(modeloSalvo.texto);
+    toast.success("Orientações da receita salvas.");
   }
 
   async function trocarLogo(arquivo: File | null) {
@@ -106,111 +126,129 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     toast.success(arquivo ? "Logo dos documentos atualizada." : "Logo do cadastro restaurada.");
   }
 
-  return <section className="space-y-5 rounded-xl border bg-card p-4 sm:p-5">
-    <div>
-      <h2 className="text-lg font-semibold">Modelos e fundos de documentos</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Personalize os modelos de documento da {identidade.nome}.</p>
-    </div>
-    <fieldset disabled={ocupado} className="space-y-4">
-      <label className="block max-w-sm text-sm font-semibold">Tipo de documento
-        <select value={tipo} onChange={e => setTipo(e.target.value as TipoModeloDocumento)} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3 font-normal">
-          {TIPOS_MODELO_DOCUMENTO.map(chave => <option key={chave} value={chave}>{DOCUMENTOS[chave].titulo}</option>)}
-        </select>
-      </label>
-      <div className="flex flex-wrap items-center gap-2 border-y py-3">
-        <label className="mr-auto flex min-h-10 items-center gap-2 text-sm font-medium">
-          <input type="checkbox" checked={modelo.usarLogo} onChange={e => atualizar({ usarLogo: e.target.checked })} />
-          Mostrar logo neste tipo de documento
-        </label>
-        <label className={botao + " cursor-pointer"}><ImagePlus size={16} /> Enviar logo dos documentos
-          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={e => {
-            const arquivo = e.target.files?.[0]; e.target.value = "";
-            if (arquivo) void executar(() => trocarLogo(arquivo));
-          }} />
-        </label>
-        {identidade.logoUrl.startsWith("data:") && <button type="button" className={botao}
-          onClick={() => void executar(() => trocarLogo(null))}>Usar logo do cadastro</button>}
+  return <Tabs value={aba} onValueChange={setAba} className="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
+    <TabsList aria-label="Configurações dos documentos" className="h-auto w-full flex-wrap justify-start">
+      <TabsTrigger value="modelos" className="min-h-10">Modelos e fundos</TabsTrigger>
+      <TabsTrigger value="orientacoes" className="min-h-10">Orientações da receita</TabsTrigger>
+    </TabsList>
+    <TabsContent value="modelos" className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold">Modelos e fundos de documentos</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Personalize os modelos de documento da {identidade.nome}.</p>
       </div>
-      <details className="rounded-lg border p-3">
-        <summary className="cursor-pointer text-sm font-semibold">Dados impressos da clínica</summary>
-        <p className="mt-2 text-xs text-muted-foreground">Os dados vêm do cadastro. Salve aqui ajustes que devem aparecer apenas nos documentos.</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {camposIdentidade.map(([chave, rotulo, max]) => <label key={chave} className="text-sm font-medium">
-            {rotulo}
-            <input className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal" maxLength={max}
-              value={identidade[chave]} onChange={e => setDadosEditados(atual => ({ ...atual, [chave]: e.target.value }))} />
-          </label>)}
+      <fieldset disabled={ocupado} className="space-y-4">
+        <label className="block max-w-sm text-sm font-semibold">Tipo de documento
+          <select value={tipo} onChange={e => setTipo(e.target.value as TipoModeloDocumento)} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3 font-normal">
+            {TIPOS_MODELO_DOCUMENTO.map(chave => <option key={chave} value={chave}>{DOCUMENTOS[chave].titulo}</option>)}
+          </select>
+        </label>
+        <div className="flex flex-wrap items-center gap-2 border-y py-3">
+          <label className="mr-auto flex min-h-10 items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={modelo.usarLogo} onChange={e => atualizar({ usarLogo: e.target.checked })} />
+            Mostrar logo neste tipo de documento
+          </label>
+          <label className={botao + " cursor-pointer"}><ImagePlus size={16} /> Enviar logo dos documentos
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={e => {
+              const arquivo = e.target.files?.[0]; e.target.value = "";
+              if (arquivo) void executar(() => trocarLogo(arquivo));
+            }} />
+          </label>
+          {identidade.logoUrl.startsWith("data:") && <button type="button" className={botao}
+            onClick={() => void executar(() => trocarLogo(null))}>Usar logo do cadastro</button>}
         </div>
-        <button type="button" className={botao + " mt-3"} disabled={!Object.keys(dadosEditados).length} onClick={() => void executar(async () => {
-          if (!identidade.nome.trim()) throw new Error("Informe o nome da clínica.");
-          const accessToken = await tokenConfiguracoesClinica();
-          await salvarDadosDocumentoClinica({ data: { accessToken, clinicaId, dados: dadosEditados } });
-          setDados(atual => atual && ({ ...atual, identidade }));
-          setDadosEditados({});
-          toast.success("Dados dos documentos salvos.");
-        })}><Save size={16} /> Salvar dados dos documentos</button>
-      </details>
-      <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Fundo do documento</legend>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-6">
-          {[["", "Sem fundo"], ...FUNDOS_DOCUMENTOS].map(([id, nome]) => (
-            <button type="button" key={id} aria-pressed={modelo.fundo === id} onClick={() => atualizar({ fundo: id })}
-              className={`rounded-lg border p-2 text-left text-xs ${modelo.fundo === id ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:bg-muted"}`}>
-              <div className="aspect-[210/297] overflow-hidden rounded border bg-white">
-                {id && <img src={urlFundoDocumento(id, true)} alt="" width={160} height={227} loading="lazy" className="h-full w-full object-cover" />}
-              </div>
-              <span className="mt-1.5 block font-medium">{nome}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Cor dos quadros de Paciente e Tutor</legend>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Cores predefinidas">
-            {coresQuadros.map(([nome, cor]) => (
-              <button key={cor} type="button" aria-label={nome} title={nome}
-                aria-pressed={modelo.corQuadros.toLowerCase() === cor}
-                onClick={() => atualizar({ corQuadros: cor })}
-                className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary">
-                <span aria-hidden="true" className="size-7 rounded-md border border-black/15" style={{ backgroundColor: cor }} />
+        <details className="rounded-lg border p-3">
+          <summary className="cursor-pointer text-sm font-semibold">Dados impressos da clínica</summary>
+          <p className="mt-2 text-xs text-muted-foreground">Os dados vêm do cadastro. Salve aqui ajustes que devem aparecer apenas nos documentos.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {camposIdentidade.map(([chave, rotulo, max]) => <label key={chave} className="text-sm font-medium">
+              {rotulo}
+              <input className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal" maxLength={max}
+                value={identidade[chave]} onChange={e => setDadosEditados(atual => ({ ...atual, [chave]: e.target.value }))} />
+            </label>)}
+          </div>
+          <button type="button" className={botao + " mt-3"} disabled={!Object.keys(dadosEditados).length} onClick={() => void executar(async () => {
+            if (!identidade.nome.trim()) throw new Error("Informe o nome da clínica.");
+            const accessToken = await tokenConfiguracoesClinica();
+            await salvarDadosDocumentoClinica({ data: { accessToken, clinicaId, dados: dadosEditados } });
+            setDados(atual => atual && ({ ...atual, identidade }));
+            setDadosEditados({});
+            toast.success("Dados dos documentos salvos.");
+          })}><Save size={16} /> Salvar dados dos documentos</button>
+        </details>
+        <fieldset>
+          <legend className="mb-2 text-sm font-semibold">Fundo do documento</legend>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-6">
+            {[["", "Sem fundo"], ...FUNDOS_DOCUMENTOS].map(([id, nome]) => (
+              <button type="button" key={id} aria-pressed={modelo.fundo === id} onClick={() => atualizar({ fundo: id })}
+                className={`rounded-lg border p-2 text-left text-xs ${modelo.fundo === id ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:bg-muted"}`}>
+                <div className="aspect-[210/297] overflow-hidden rounded border bg-white">
+                  {id && <img src={urlFundoDocumento(id, true)} alt="" width={160} height={227} loading="lazy" className="h-full w-full object-cover" />}
+                </div>
+                <span className="mt-1.5 block font-medium">{nome}</span>
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-xs font-medium">
-            Personalizada
-            <input type="color" value={modelo.corQuadros} onChange={e => atualizar({ corQuadros: e.target.value })}
-              className="h-10 w-12 cursor-pointer rounded-lg border bg-background p-1" />
+        </fieldset>
+        <fieldset>
+          <legend className="mb-2 text-sm font-semibold">Cor dos quadros de Paciente e Tutor</legend>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Cores predefinidas">
+              {coresQuadros.map(([nome, cor]) => (
+                <button key={cor} type="button" aria-label={nome} title={nome}
+                  aria-pressed={modelo.corQuadros.toLowerCase() === cor}
+                  onClick={() => atualizar({ corQuadros: cor })}
+                  className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary">
+                  <span aria-hidden="true" className="size-7 rounded-md border border-black/15" style={{ backgroundColor: cor }} />
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-xs font-medium">
+              Personalizada
+              <input type="color" value={modelo.corQuadros} onChange={e => atualizar({ corQuadros: e.target.value })}
+                className="h-10 w-12 cursor-pointer rounded-lg border bg-background p-1" />
+            </label>
+          </div>
+        </fieldset>
+        {usaTextoPadrao && <>
+          <label className="block text-sm font-semibold">
+            Texto padrão
+            <textarea rows={6} maxLength={25000} value={modelo.texto} placeholder={categoria.exemplo}
+              onChange={e => atualizar({ texto: e.target.value })} className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
           </label>
-        </div>
+          <div className="flex flex-wrap gap-1.5" aria-label="Inserir campo do documento">
+            {campos.map(([chave, rotulo]) => <button key={chave} type="button" className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+              onClick={() => atualizar({ texto: modelo.texto + (modelo.texto ? " " : "") + "{{" + chave + "}}" })}>{rotulo}</button>)}
+          </div>
+        </>}
+        <button type="button" className={botao + " bg-primary text-primary-foreground"} onClick={() => void executar(async () => {
+          const accessToken = await tokenConfiguracoesClinica();
+          const modeloSalvo = tipo === "receita" ? { ...modelo, texto: limparOrientacoesPadraoReceita(modelo.texto) } : modelo;
+          await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo, modelo: modeloSalvo } });
+          if (tipo === "receita") receitaSalva.current = modeloSalvo;
+          atualizar(modeloSalvo);
+          toast.success("Padrão salvo para " + categoria.titulo.toLocaleLowerCase("pt-BR") + ".");
+        })}><Save size={16} /> {ocupado ? "Processando…" : "Salvar padrão deste tipo"}</button>
       </fieldset>
-      {tipo === "receita" && <label className="block text-sm font-semibold">
-        Orientações padrão da receita
-        <textarea rows={4} maxLength={25000} value={modelo.texto} placeholder="Digite as orientações que a clínica usa nas receitas simples."
-          onChange={e => atualizar({ texto: e.target.value })} className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
-        <span className="mt-1 block text-xs font-normal text-muted-foreground">Deixe em branco para emitir sem texto padrão.</span>
-      </label>}
-      {usaTextoPadrao && <>
-        <label className="block text-sm font-semibold">
-          Texto padrão
-          <textarea rows={6} maxLength={25000} value={modelo.texto} placeholder={categoria.exemplo}
-            onChange={e => atualizar({ texto: e.target.value })} className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
-        </label>
-        <div className="flex flex-wrap gap-1.5" aria-label="Inserir campo do documento">
-          {campos.map(([chave, rotulo]) => <button key={chave} type="button" className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
-            onClick={() => atualizar({ texto: modelo.texto + (modelo.texto ? " " : "") + "{{" + chave + "}}" })}>{rotulo}</button>)}
-        </div>
-      </>}
-      <button type="button" className={botao + " bg-primary text-primary-foreground"} onClick={() => void executar(async () => {
-        const accessToken = await tokenConfiguracoesClinica();
-        const modeloSalvo = tipo === "receita" ? { ...modelo, texto: limparOrientacoesPadraoReceita(modelo.texto) } : modelo;
-        await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo, modelo: modeloSalvo } });
-        atualizar(modeloSalvo);
-        toast.success("Padrão salvo para " + categoria.titulo.toLocaleLowerCase("pt-BR") + ".");
-      })}><Save size={16} /> {ocupado ? "Processando…" : "Salvar padrão deste tipo"}</button>
-    </fieldset>
-    <PreviaDocumento identidade={identidade} modelo={modelo} tipo={tipo} corpo={corpo} />
-  </section>;
+    </TabsContent>
+    <TabsContent value="orientacoes" className="space-y-4">
+      <h2 className="text-lg font-semibold">Orientações padrão da receita</h2>
+      <form onSubmit={e => { e.preventDefault(); void executar(salvarOrientacoes); }}>
+        <fieldset disabled={ocupado} className="space-y-3">
+          <label className="block text-sm font-semibold">
+            Texto sugerido nas receitas simples
+            <textarea rows={5} maxLength={25000} value={orientacoes} onChange={e => setOrientacoes(e.target.value)}
+              aria-describedby="ajuda-orientacoes-receita" className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
+          </label>
+          <p id="ajuda-orientacoes-receita" className="text-xs text-muted-foreground">Deixe em branco para emitir sem texto padrão.</p>
+          <button type="submit" className={botao + " bg-primary text-primary-foreground"}>
+            <Save size={16} /> {ocupado ? "Salvando…" : "Salvar orientações"}
+          </button>
+        </fieldset>
+      </form>
+    </TabsContent>
+    <PreviaDocumento identidade={identidade} modelo={editandoOrientacoes ? modelos.receita : modelo}
+      tipo={editandoOrientacoes ? "receita" : tipo} corpo={corpo} />
+  </Tabs>;
 }
 
 async function gerarPrevia(identidade: IdentidadeDocumento, modelo: ModeloDocumentoPadrao, tipo: TipoModeloDocumento, corpo: string) {
