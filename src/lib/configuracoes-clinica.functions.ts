@@ -4,7 +4,7 @@ import { DURACOES_ATENDIMENTO, LIMITE_PDF_TERMO } from "@/lib/configuracoes-clin
 import { exigirPermissaoClinica, clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";
 
 import {
-  FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO,
+  COR_QUADROS_PADRAO, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO,
   type IdentidadeDocumento, type ModeloDocumentoPadrao, type TipoModeloDocumento,
 } from "@/lib/modelos-documentos";
 
@@ -253,6 +253,7 @@ const modeloDocumentoSchema = z.object({
   fundo: z.string().refine((id) => id === "" || FUNDOS_DOCUMENTOS.some(([fundo]) => fundo === id)),
   texto: z.string().max(25000),
   usarLogo: z.boolean(),
+  corQuadros: z.string().regex(/^#[0-9a-f]{6}$/i).default(COR_QUADROS_PADRAO),
 }).strict();
 const tipoModeloSchema = z.enum(TIPOS_MODELO_DOCUMENTO);
 const logoDocumentoSchema = z.object({ driveId: z.string().regex(/^[\w-]+$/) });
@@ -260,7 +261,7 @@ const CHAVE_LOGO_DOCUMENTOS = "logo_documentos";
 
 async function lerModeloDocumento(ctx: Contexto, tipo: TipoModeloDocumento) {
   const valor = await ler(ctx, "modelo_documento:" + tipo);
-  return valor === null ? { fundo: "", texto: "", usarLogo: true } : modeloDocumentoSchema.parse(valor);
+  return valor === null ? { fundo: "", texto: "", usarLogo: true, corQuadros: COR_QUADROS_PADRAO } : modeloDocumentoSchema.parse(valor);
 }
 
 const dadosPapelSchema = z.object({

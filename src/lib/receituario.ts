@@ -209,7 +209,7 @@ export async function criarReceituario(dados: DadosReceituario) {
           idade: dados.idade, peso: dados.peso ? dados.peso + " kg" : "", pelagem: dados.pelagem, microchip: dados.microchip },
         tutor: { nome: dados.tutor, cpf: dados.cpfTutor, telefone: dados.telefoneTutor,
           endereco: dados.enderecoTutor, nascimento: dados.nascimentoTutor },
-      }, margem, y, fator);
+      }, margem, y, fator, dados.papel.corQuadros);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(19);
       doc.text("Receita veterinária", margem, y);

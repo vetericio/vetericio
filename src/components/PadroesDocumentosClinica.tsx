@@ -6,7 +6,7 @@ import {
 } from "@/lib/configuracoes-clinica.functions";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
-  DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, preencherTextoDocumento,
+  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, preencherTextoDocumento,
   urlFundoDocumento, valoresModeloDocumento, type TipoModeloDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao,
 } from "@/lib/modelos-documentos";
 
@@ -142,6 +142,16 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           ))}
         </div>
       </fieldset>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm font-semibold">
+          Cor dos quadros de Paciente e Tutor
+          <input type="color" value={modelo.corQuadros}
+            onChange={e => atualizar({ corQuadros: e.target.value })}
+            className="mt-1 block h-10 w-20 cursor-pointer rounded-lg border bg-background p-1" />
+        </label>
+        <button type="button" className={botao} disabled={modelo.corQuadros === COR_QUADROS_PADRAO}
+          onClick={() => atualizar({ corQuadros: COR_QUADROS_PADRAO })}>Voltar ao azul padrão</button>
+      </div>
       <label className="block text-sm font-semibold">
         {["receita", "vacina", "vermifugo"].includes(tipo) ? "Orientações adicionais padrão" : "Texto padrão"}
         <textarea rows={6} maxLength={25000} value={modelo.texto} placeholder={categoria.exemplo}
@@ -189,11 +199,11 @@ function PreviaDocumento({ identidade, modelo, tipo, corpo }: {
   identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao; tipo: TipoModeloDocumento; corpo: string;
 }) {
   const { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site } = identidade;
-  const { fundo, usarLogo } = modelo;
+  const { fundo, usarLogo, corQuadros } = modelo;
   const configuracao = useMemo(() => ({
     identidade: { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site },
-    modelo: { fundo, usarLogo, texto: "" }, tipo, corpo,
-  }), [nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site, fundo, usarLogo, tipo, corpo]);
+    modelo: { fundo, usarLogo, corQuadros, texto: "" }, tipo, corpo,
+  }), [nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site, fundo, usarLogo, corQuadros, tipo, corpo]);
   const [resultado, setResultado] = useState<{
     configuracao: typeof configuracao; pdf?: Awaited<ReturnType<typeof gerarPrevia>>; erro?: string;
   } | null>(null);

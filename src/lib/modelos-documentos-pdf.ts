@@ -1,11 +1,12 @@
 import type { jsPDF } from "jspdf";
-import { urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao } from "@/lib/modelos-documentos";
+import { COR_QUADROS_PADRAO, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao } from "@/lib/modelos-documentos";
 
 export type PapelDocumento = {
   clinica: IdentidadeDocumento;
   fundo: Uint8Array | null;
   logo: string;
   protegerLeitura?: boolean;
+  corQuadros?: string;
 };
 
 export async function carregarLogoDocumento(url: string): Promise<string> {
@@ -37,7 +38,7 @@ export async function prepararPapelDocumento(clinica: IdentidadeDocumento, model
     }) : null,
     modelo.usarLogo && clinica.logoUrl ? carregarLogoDocumento(clinica.logoUrl).catch(() => "") : "",
   ]);
-  return { clinica, fundo, logo, protegerLeitura: ["04", "05", "07", "08", "09", "10"].includes(modelo.fundo) };
+  return { clinica, fundo, logo, corQuadros: modelo.corQuadros, protegerLeitura: ["04", "05", "07", "08", "09", "10"].includes(modelo.fundo) };
 }
 
 export function desenharPapelDocumento(pdf: jsPDF, papel: PapelDocumento) {
@@ -94,7 +95,7 @@ export function desenharIdentidadeDocumento(pdf: jsPDF, papel: PapelDocumento, m
 }
 
 export function desenharIdentificacaoDocumento(
-  pdf: jsPDF, { paciente, tutor }: IdentificacaoDocumento, margem: number, topo: number, fator = 1,
+  pdf: jsPDF, { paciente, tutor }: IdentificacaoDocumento, margem: number, topo: number, fator = 1, cor = COR_QUADROS_PADRAO,
 ) {
   const espaco = 7 * fator;
   const largura = (pdf.internal.pageSize.getWidth() - margem * 2 - espaco) / 2;
@@ -123,11 +124,17 @@ export function desenharIdentificacaoDocumento(
   }));
   const altura = Math.max(38 * fator, 12 * fator +
     Math.max(...conteudos.map(linhas => linhas.reduce((total, linha) => total + linha.altura, 0))));
+  const [r, g, b] = [1, 3, 5].map(inicio => {
+    const canal = parseInt(cor.slice(inicio, inicio + 2), 16) / 255;
+    return canal <= 0.04045 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4;
+  });
+  const luminancia = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const corTexto = luminancia >= 0.179 ? 0 : 255;
   colunas.forEach(({ titulo }, indice) => {
     const x = margem + indice * (largura + espaco);
-    pdf.setFillColor(166, 196, 217);
+    pdf.setFillColor(cor);
     pdf.rect(x, topo, largura, altura, "F");
-    pdf.setTextColor(0);
+    pdf.setTextColor(corTexto);
     pdf.setFont("helvetica", "bold");
     pdf.text(titulo, x + largura / 2, topo + 5.3 * fator, { align: "center" });
     pdf.setFont("helvetica", "normal");
@@ -138,6 +145,7 @@ export function desenharIdentificacaoDocumento(
       y += linha.altura;
     }
   });
+  pdf.setTextColor(0);
   return topo + altura + 7 * fator;
 }
 
@@ -182,7 +190,7 @@ export async function criarPdfComModelo({
     }
   }
   iniciarPagina();
-  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y);
+  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1, (papel ?? fundoSemIdentidade)?.corQuadros);
   escrever(titulo, true, 19);
   y += 3;
   for (const linha of conteudo.split("\n")) escrever(linha);
