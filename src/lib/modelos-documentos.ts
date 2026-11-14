@@ -17,10 +17,13 @@ export const FUNDOS_DOCUMENTOS = [
   ["11", "Cantos bege"], ["12", "Linhas em verde sálvia"],
 ] as const;
 
+export const COR_QUADROS_PADRAO = "#a6c4d9";
+
 export type ModeloDocumentoPadrao = {
   fundo: string;
   texto: string;
   usarLogo: boolean;
+  corQuadros: string;
 };
 
 export type IdentidadeDocumento = {
