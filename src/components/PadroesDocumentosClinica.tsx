@@ -11,6 +11,18 @@ import {
 } from "@/lib/modelos-documentos";
 
 const botao = "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50";
+const coresQuadros = [
+  ["Azul padrão", COR_QUADROS_PADRAO],
+  ["Azul petróleo", "#28566a"],
+  ["Verde sálvia", "#b8cbb4"],
+  ["Verde menta", "#c3e5d8"],
+  ["Rosa", "#efc8d7"],
+  ["Lilás", "#dacdef"],
+  ["Pêssego", "#f3d1b7"],
+  ["Bege", "#e5d6bb"],
+  ["Cinza", "#d6dce2"],
+  ["Vinho", "#74364e"],
+] as const;
 const exemplo = { paciente: "Luna", especie: "Canina", raca: "Sem raça definida", tutor: "Marina Exemplo", data: "13/11/2026" };
 const identificacaoExemplo = {
   paciente: { nome: exemplo.paciente, especie: exemplo.especie, raca: exemplo.raca, sexo: "Fêmea",
@@ -142,16 +154,26 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           ))}
         </div>
       </fieldset>
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm font-semibold">
-          Cor dos quadros de Paciente e Tutor
-          <input type="color" value={modelo.corQuadros}
-            onChange={e => atualizar({ corQuadros: e.target.value })}
-            className="mt-1 block h-10 w-20 cursor-pointer rounded-lg border bg-background p-1" />
-        </label>
-        <button type="button" className={botao} disabled={modelo.corQuadros === COR_QUADROS_PADRAO}
-          onClick={() => atualizar({ corQuadros: COR_QUADROS_PADRAO })}>Voltar ao azul padrão</button>
-      </div>
+      <fieldset>
+        <legend className="mb-2 text-sm font-semibold">Cor dos quadros de Paciente e Tutor</legend>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Cores predefinidas">
+            {coresQuadros.map(([nome, cor]) => (
+              <button key={cor} type="button" aria-label={nome} title={nome}
+                aria-pressed={modelo.corQuadros.toLowerCase() === cor}
+                onClick={() => atualizar({ corQuadros: cor })}
+                className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary">
+                <span aria-hidden="true" className="size-7 rounded-md border border-black/15" style={{ backgroundColor: cor }} />
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-xs font-medium">
+            Personalizada
+            <input type="color" value={modelo.corQuadros} onChange={e => atualizar({ corQuadros: e.target.value })}
+              className="h-10 w-12 cursor-pointer rounded-lg border bg-background p-1" />
+          </label>
+        </div>
+      </fieldset>
       <label className="block text-sm font-semibold">
         {["receita", "vacina", "vermifugo"].includes(tipo) ? "Orientações adicionais padrão" : "Texto padrão"}
         <textarea rows={6} maxLength={25000} value={modelo.texto} placeholder={categoria.exemplo}
