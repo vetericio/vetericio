@@ -51,6 +51,11 @@ export function preencherTextoDocumento(texto: string, valores: Record<string, s
   );
 }
 
+export function limparOrientacoesPadraoReceita(texto: string) {
+  const linhaDeIdentificacao = /^(?:\{\{(?:paciente|raca|especie)\}\}[ \t]*)+$/;
+  return texto.split(/\r?\n/).filter(linha => !linhaDeIdentificacao.test(linha.trim())).join("\n").trim();
+}
+
 export function valoresModeloDocumento(
   clinica: IdentidadeDocumento,
   contexto: { paciente: string; especie?: string; raca?: string; tutor: string; data: string },

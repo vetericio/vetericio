@@ -6,7 +6,7 @@ import {
 } from "@/lib/configuracoes-clinica.functions";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
-  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, preencherTextoDocumento,
+  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, limparOrientacoesPadraoReceita, preencherTextoDocumento,
   urlFundoDocumento, valoresModeloDocumento, type TipoModeloDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao,
 } from "@/lib/modelos-documentos";
 
@@ -53,7 +53,14 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     let ativo = true;
     tokenConfiguracoesClinica()
       .then(accessToken => obterModelosDocumentoClinica({ data: { accessToken, clinicaId } }))
-      .then(resposta => { if (ativo) setDados(resposta); })
+      .then(resposta => {
+        if (!ativo) return;
+        const receita = resposta.modelos.receita;
+        setDados({
+          ...resposta,
+          modelos: { ...resposta.modelos, receita: { ...receita, texto: limparOrientacoesPadraoReceita(receita.texto) } },
+        });
+      })
       .catch((e: Error) => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
   }, [clinicaId]);
@@ -67,9 +74,9 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const modelo = modelos[tipo];
   const categoria = DOCUMENTOS[tipo];
   const usaTextoPadrao = tipo === "pedido" || tipo === "documento" || tipo === "termo";
-  const corpo = usaTextoPadrao
-    ? preencherTextoDocumento(modelo.texto || categoria.exemplo, valoresModeloDocumento(identidade, exemplo))
-    : "";
+  const textoPrevia = tipo === "receita" ? limparOrientacoesPadraoReceita(modelo.texto)
+    : usaTextoPadrao ? modelo.texto || categoria.exemplo : "";
+  const corpo = preencherTextoDocumento(textoPrevia, valoresModeloDocumento(identidade, exemplo));
 
   function atualizar(patch: Partial<typeof modelo>) {
     setDados(atual => atual && ({ ...atual, modelos: { ...atual.modelos, [tipo]: { ...atual.modelos[tipo], ...patch } } }));
@@ -177,6 +184,12 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           </label>
         </div>
       </fieldset>
+      {tipo === "receita" && <label className="block text-sm font-semibold">
+        Orientações padrão da receita
+        <textarea rows={4} maxLength={25000} value={modelo.texto} placeholder="Digite as orientações que a clínica usa nas receitas simples."
+          onChange={e => atualizar({ texto: e.target.value })} className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
+        <span className="mt-1 block text-xs font-normal text-muted-foreground">Deixe em branco para emitir sem texto padrão.</span>
+      </label>}
       {usaTextoPadrao && <>
         <label className="block text-sm font-semibold">
           Texto padrão
@@ -190,7 +203,9 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
       </>}
       <button type="button" className={botao + " bg-primary text-primary-foreground"} onClick={() => void executar(async () => {
         const accessToken = await tokenConfiguracoesClinica();
-        await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo, modelo } });
+        const modeloSalvo = tipo === "receita" ? { ...modelo, texto: limparOrientacoesPadraoReceita(modelo.texto) } : modelo;
+        await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo, modelo: modeloSalvo } });
+        atualizar(modeloSalvo);
         toast.success("Padrão salvo para " + categoria.titulo.toLocaleLowerCase("pt-BR") + ".");
       })}><Save size={16} /> {ocupado ? "Processando…" : "Salvar padrão deste tipo"}</button>
     </fieldset>
