@@ -4,12 +4,29 @@ import { ArrowLeft, CalendarClock, Check, Mail, MessageCircle, RefreshCw, Settin
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Crm360Panel } from "@/components/Crm360Panel";
 import { CrmModelosDaCentral } from "@/components/CrmModelosDaCentral";
 
-export const Route = createFileRoute("/crm")({ component: Crm });
+export const Route = createFileRoute("/crm")({
+  component: CRM_EM_PREPARACAO ? CrmEmPreparacao : Crm,
+});
+
+function CrmEmPreparacao() {
+  return (
+    <main className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-12 pt-6 sm:px-6">
+      <Link to="/inicio" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
+        <ArrowLeft size={17} aria-hidden="true" /> Voltar ao início
+      </Link>
+      <section className="rounded-xl border bg-card p-5">
+        <h1 className="text-xl font-semibold">Gestão de clientes</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Módulo em preparação · Em breve</p>
+      </section>
+    </main>
+  );
+}
 
 type TipoCrm = "aniversario" | "vacina" | "lembrete_consulta" | "retorno" | "pos_cirurgico" | "inativo" | "campanha" | "resultado_exame" | "documento_portal" | "receita_portal" | "cobranca" | "hotelzinho" | "banho_tosa" | "pesquisa_satisfacao";
 type CanalCrm = "whatsapp" | "email" | "manual";

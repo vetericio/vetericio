@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
-import { SO_COM_PLANTAO } from "@/lib/navegacao";
+import { CRM_EM_PREPARACAO, SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 type MenuRoute =
@@ -81,6 +81,7 @@ type ItemMenu = {
 type AreaMenu = {
   titulo: string;
   icone: typeof CalendarCheck;
+  emPreparacao?: boolean;
   itens: ItemMenu[];
 };
 
@@ -147,6 +148,7 @@ const areas: AreaMenu[] = [
   {
     titulo: "Gestão de clientes",
     icone: Users,
+    emPreparacao: CRM_EM_PREPARACAO,
     itens: [
       { to: "/crm", rotulo: "Retornos, vacinas e aniversários", permissao: "crm.visualizar" },
       { to: "/crm", rotulo: "Avisos e atualizações para tutores", permissao: "crm.enviar" },
@@ -355,6 +357,16 @@ export function MenuLateral({
           const itens = itensVisiveis(area);
           if (itens.length === 0) return null;
           const Icone = area.icone;
+          if (area.emPreparacao) return (
+            <div key={area.titulo} className="flex min-h-12 items-center gap-3 rounded-xl border border-dashed border-border px-3 py-2.5">
+              <Icone className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 flex-1 text-sm font-semibold">
+                {area.titulo}
+                <span className="block text-[11px] font-normal text-muted-foreground">Módulo em preparação</span>
+              </span>
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Em breve</span>
+            </div>
+          );
           const ativo = itens.some(
             (item) => item.to === location.pathname && (item.to === "/oricstudio" || item.to === "/venda-expressa" || (!!item.permissao && pode(item.permissao))),
           );
