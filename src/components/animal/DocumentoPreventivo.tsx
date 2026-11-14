@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { obterDocumentoPreventivo } from "@/lib/documento-preventivo.functions";
 import type { DadosDocumentoPreventivo } from "@/lib/documento-preventivo-pdf";
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import type { TipoPreventivo } from "@/lib/dados-preventivos";
 
 const identificacaoVazia = {
@@ -60,10 +59,7 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
           emailProfissional: resposta.profissional.email,
         });
         setPadrao(modelo);
-        setOrientacoes(preencherTextoDocumento(modelo.modelo.texto, valoresModeloDocumento(modelo.identidade, {
-          paciente: resposta.paciente.nome, tutor: resposta.tutor.nome,
-          especie: resposta.paciente.especie, raca: resposta.paciente.raca, data: new Date().toLocaleDateString("pt-BR"),
-        })));
+        setOrientacoes("");
         setDados(resposta);
       } catch (falha) {
         if (ativo) setErro(falha instanceof Error ? falha.message : "Não foi possível preparar o PDF.");
@@ -75,10 +71,6 @@ export function DocumentoPreventivo({ clinicaId, animalId, registroId, tipo, onC
   async function baixar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!dados || !padrao || gerando) return;
-    if (/\{\{[a-z_]+\}\}/.test(orientacoes)) {
-      setErro("Revise os campos pendentes no texto das orientações.");
-      return;
-    }
     if (comEstabelecimento && !/^[0-9A-Z]{12}\d{2}$/i.test(identificacao.cnpj.replace(/[.\-/\s]/g, ""))) {
       setErro("Informe um CNPJ com 14 caracteres.");
       return;
