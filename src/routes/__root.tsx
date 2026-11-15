@@ -835,6 +835,7 @@ function RootComponent() {
   const assinaturaBloqueada = role !== "admin" && acessoAssinatura?.situacao === "bloqueada";
   const assinaturaEmAviso = role !== "admin" && acessoAssinatura?.situacao === "aviso";
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !telaSistemaCongelado && !testeExpirado && !assinaturaBloqueada;
+  const rotaDePlantao = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const mostrarBloqueioAssinatura = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && assinaturaBloqueada;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
@@ -895,12 +896,21 @@ function RootComponent() {
         )}
         {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && (
-          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
+          <div className={`${menuFixo ? "pl-16 lg:pl-80" : ""} ${rotaDePlantao ? "" : "oricse-cabecalho-compacto"}`}>
             <OptionalRuntimeBoundary fallback={<div className="border-b bg-background p-3 text-sm"><a className="font-semibold underline" href="/inicio">Início</a><span className="mx-3">·</span><a className="font-semibold underline" href="/admin">Administração</a></div>}>
               <Suspense fallback={null}>
                 <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
               </Suspense>
             </OptionalRuntimeBoundary>
+            {!rotaDePlantao && (
+              <Link
+                to="/inicio"
+                aria-label="Ir para o Início"
+                className="fixed right-3 top-3 z-40 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-white shadow-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                <img src="/oricse-favicon-180.png?v=16" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
+              </Link>
+            )}
           </div>
         )}
         {mostrarClinico && (

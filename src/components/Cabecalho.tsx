@@ -6,6 +6,7 @@ import { useRegistros } from "@/hooks/useRegistros";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { useSiteBranding } from "@/hooks/useSiteBranding";
 import { useProtecaoDadosLocais } from "@/hooks/useProtecaoDadosLocais";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { MenuLateral } from "@/components/MenuLateral";
@@ -32,7 +33,7 @@ export function Cabecalho({
   aoMudarMenuFixo: (fixo: boolean) => void;
 }) {
   const location = useLocation();
-  const { carregando: carregandoPermissoes, pode } = usePermissoes();
+  const { carregando: carregandoPermissoes, pode, permitidas, adminGlobal } = usePermissoes();
   useProtecaoDadosLocais();
   const plantaoArea = [
     "/internacao",
@@ -69,101 +70,108 @@ export function Cabecalho({
   }, []);
 
   return (
-    <>
+    <header className="oricse-cabecalho relative border-b border-border bg-card/60">
       <CrmBackgroundSync />
       <ComandasBackgroundSync />
       <MenuLateral fixo={menuFixo} aoMudarFixo={aoMudarMenuFixo} />
-      <Link
-        to="/inicio"
-        aria-label="Ir para o Início"
-        className="fixed right-3 top-3 z-40 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-white shadow-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      <div
+        className={`mx-auto w-full max-w-5xl px-4 text-center ${plantaoArea ? "pb-3 pt-3" : "pb-1 pt-1"}`}
       >
-        <img src="/oricse-favicon-180.png?v=16" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
-      </Link>
-      {plantaoArea && (
-        <header className="oricse-cabecalho relative border-b border-border bg-card/60">
-          <div className="mx-auto w-full max-w-5xl px-4 py-3 text-center">
-            <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-              Ficha de Avaliação da Internação
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
-              {plantao && podeGerenciarPlantao && (
-                <button
-                  type="button"
-                  onClick={() => definirTurno(null)}
-                  className="ml-2 underline underline-offset-2 hover:text-foreground"
-                >
-                  alterar
-                </button>
-              )}
-            </p>
+        <div className={plantaoArea ? "mb-1 flex justify-center" : "mb-0 flex justify-center"}>
+          <img
+            src="/oricse-logo-oryx.svg?v=15"
+            alt="Oricse — sistema veterinário e petshop"
+            className={`h-auto w-full object-contain ${plantaoArea ? "max-w-[90px] sm:max-w-[110px]" : "max-w-[90px] sm:max-w-[110px]"}`}
+          />
+        </div>
 
-            {carregado && podeGerenciarPlantao && (
-              <div className="mt-3">
-                {plantao ? (
-                  <button
-                    type="button"
-                    onClick={finalizarPlantao}
-                    className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Finalizar plantão
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIniciarAberto(true)}
-                    className="w-full max-w-xs rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    Iniciar plantão
-                  </button>
-                )}
-              </div>
+        {plantaoArea && (
+          <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+            Ficha de Avaliação da Internação
+          </p>
+        )}
+        {plantaoArea && (
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
+            {plantao && podeGerenciarPlantao && (
+              <button
+                type="button"
+                onClick={() => definirTurno(null)}
+                className="ml-2 underline underline-offset-2 hover:text-foreground"
+              >
+                alterar
+              </button>
             )}
+          </p>
+        )}
 
-            <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
+        {plantaoArea && carregado && podeGerenciarPlantao && (
+          <div className="mt-3">
+            {plantao ? (
+              <button
+                type="button"
+                onClick={finalizarPlantao}
+                className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
+              >
+                Finalizar plantão
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIniciarAberto(true)}
+                className="w-full max-w-xs rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Iniciar plantão
+              </button>
+            )}
+          </div>
+        )}
 
-            <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
-              {LINKS.map((item) => {
-                const permissao = PERMISSAO_LINK[item.to];
-                if (permissao && !carregandoPermissoes && !pode(permissao)) return null;
-                const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
-                if (bloqueado)
-                  return (
-                    <button
-                      key={item.to}
-                      type="button"
-                      disabled={!podeGerenciarPlantao}
-                      onClick={() => podeGerenciarPlantao && setIniciarAberto(true)}
-                      className={`${base} bg-secondary/40 text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60`}
-                    >
-                      {item.rotulo}
-                      {podeGerenciarPlantao ? " · inicie o plantão" : ""}
-                    </button>
-                  );
+        <DialogoTurno aberto={iniciarAberto} onFechar={() => setIniciarAberto(false)} />
+
+        {plantaoArea && (
+          <nav className="mx-auto mt-3 flex max-w-2xl flex-wrap justify-center gap-2">
+            {LINKS.map((item) => {
+              const permissao = PERMISSAO_LINK[item.to];
+              if (permissao && !carregandoPermissoes && !pode(permissao)) return null;
+              const bloqueado = !plantao && SO_COM_PLANTAO.includes(item.to);
+              if (bloqueado)
                 return (
-                  <Link
+                  <button
                     key={item.to}
-                    to={item.to}
-                    {...(item.exato ? { activeOptions: { exact: true } } : {})}
-                    activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
-                    inactiveProps={{
-                      className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
-                    }}
+                    type="button"
+                    disabled={!podeGerenciarPlantao}
+                    onClick={() => podeGerenciarPlantao && setIniciarAberto(true)}
+                    className={`${base} bg-secondary/40 text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60`}
                   >
                     {item.rotulo}
-                  </Link>
+                    {podeGerenciarPlantao ? " · inicie o plantão" : ""}
+                  </button>
                 );
-              })}
-            </nav>
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  {...(item.exato ? { activeOptions: { exact: true } } : {})}
+                  activeProps={{ className: `${base} bg-primary text-primary-foreground` }}
+                  inactiveProps={{
+                    className: `${base} bg-secondary text-secondary-foreground hover:bg-secondary/70`,
+                  }}
+                >
+                  {item.rotulo}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
-            <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
-              Total de registros do plantão de hoje: {registros.length}
-            </p>
-            <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />
-          </div>
-        </header>
-      )}
-    </>
+        {plantaoArea && (
+          <p className="mt-2 text-xs font-semibold text-foreground sm:text-sm">
+            Total de registros do plantão de hoje: {registros.length}
+          </p>
+        )}
+        {plantaoArea && <ConfirmarAcao pedido={confirmacao.pedido} onFechar={confirmacao.fechar} />}
+      </div>
+    </header>
   );
 }

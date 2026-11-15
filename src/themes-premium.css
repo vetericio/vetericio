@@ -1,4 +1,7 @@
 /* ORICSE: acabamentos visuais dos temas, isolados por classe. */
+.oricse-cabecalho-compacto > .oricse-cabecalho { display: contents; }
+.oricse-cabecalho-compacto > .oricse-cabecalho > .mx-auto,
+.oricse-cabecalho-compacto > .oricse-cabecalho::before { display: none; }
 .oricse-menu {
   background: var(--menu-fundo, var(--card));
   color: var(--menu-texto, var(--card-foreground));
@@ -313,6 +316,7 @@ html.tema-industrial.oricse-a11y-contraste { --muted-foreground: #e4e6e7; }
 .natal-vivo-canto--direito{right:-35px;width:clamp(90px,10vw,170px);transform:scaleX(-1)}
 .natal-vivo-luzes{display:none}
 .tema-natal-premium .oricse-cabecalho{position:relative;z-index:1;min-height:192px;background:transparent!important;border-bottom:1px solid #d4b16d80;backdrop-filter:none!important;filter:none!important;transform:none!important;contain:none!important;box-shadow:none}
+.tema-natal-premium .oricse-cabecalho:has(.oricse-menu-lateral) { z-index: 2; }
 .tema-natal-premium .oricse-cabecalho::before{content:"";position:absolute;top:0;right:0;width:100%;height:10px;background:linear-gradient(90deg,#750814,#ae1b25,#750814);z-index:-1}
 .tema-natal-premium .oricse-cabecalho>.mx-auto{padding-top:25px;padding-bottom:16px;min-height:192px}
 .tema-natal-premium .oricse-cabecalho img{position:relative;width:142px!important;max-width:142px!important;height:150px;object-fit:contain}
