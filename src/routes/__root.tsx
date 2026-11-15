@@ -906,9 +906,9 @@ function RootComponent() {
               <Link
                 to="/inicio"
                 aria-label="Ir para o Início"
-                className="fixed right-3 top-3 z-40 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-white shadow-sm hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="oricse-logo-inicio fixed right-3 top-3 z-40 grid size-16 place-items-center rounded-xl border border-border bg-background shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                <img src="/oricse-favicon-180.png?v=16" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
+                <span aria-hidden="true" className="oricse-logo-inicio-imagem size-14" />
               </Link>
             )}
           </div>

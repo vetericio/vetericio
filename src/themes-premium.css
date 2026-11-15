@@ -2,6 +2,13 @@
 .oricse-cabecalho-compacto > .oricse-cabecalho { display: contents; }
 .oricse-cabecalho-compacto > .oricse-cabecalho > .mx-auto,
 .oricse-cabecalho-compacto > .oricse-cabecalho::before { display: none; }
+.oricse-logo-inicio-imagem {
+  background: url('/logos/oricse-menu-preta.webp') center / contain no-repeat;
+}
+:is(.tema-black, .tema-verde-cinza, .tema-cansado, .tema-industrial) .oricse-logo-inicio-imagem {
+  background-image: url('/logos/oricse-menu-branca.webp');
+}
+.oricse-logo-inicio:hover { border-color: var(--ring); }
 .oricse-menu {
   background: var(--menu-fundo, var(--card));
   color: var(--menu-texto, var(--card-foreground));
