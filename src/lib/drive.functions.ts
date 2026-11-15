@@ -73,7 +73,7 @@ export const enviarArquivoDrive = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const admin = await carregarSupabaseAdmin();
     const usuario = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
-    const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+    const bytes = Buffer.from(data.base64.replace(/^data:[^,]*;base64,/i, ""), "base64");
     return enviarAoDrive(data, usuario.userId, bytes);
   });
 
@@ -87,7 +87,7 @@ const anexoPortalSchema = uploadSchema.pick({ accessToken: true, clinicaId: true
 export const enviarAnexoPortal = createServerFn({ method: "POST" })
   .validator((input: unknown) => anexoPortalSchema.parse(input))
   .handler(async ({ data }) => {
-    const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+    const bytes = Buffer.from(data.base64.replace(/^data:[^,]*;base64,/i, ""), "base64");
     if (bytes.byteLength > PORTAL_PDF_MAX_BYTES || bytes.subarray(0, 5).toString("ascii") !== "%PDF-") {
       throw new Error("Envie um arquivo PDF válido de até 20 MB.");
     }
