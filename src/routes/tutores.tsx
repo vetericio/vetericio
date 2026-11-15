@@ -6,6 +6,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { codigoPublicoTutor, gerarCodigoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
 import { inserirDadosDeTeste } from "@/lib/dados-teste";
+import { cpfValido } from "@/lib/cpf";
 
 export const Route = createFileRoute("/tutores")({ component: Tutores });
 
@@ -144,6 +145,7 @@ function mascaraDocumento(v: string, tipo: Tutor["tipoPessoa"]) {
 function Tutores() {
   const [modo, setModo] = useState<Modo>("procurar");
   const [form, setForm] = useState(vazio);
+  const [erroCpf, setErroCpf] = useState("");
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [clinicaId,setClinicaId]=useState("");
@@ -194,16 +196,19 @@ function Tutores() {
   }, [busca, tutoresOrdenados]);
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+    if (k === "cpfCnpj" || k === "tipoPessoa") setErroCpf("");
     setForm((f) => ({ ...f, [k]: v }));
   }
 
   function abrirNovo() {
+    setErroCpf("");
     setEditandoId(null);
     setForm(vazio);
     setModo("novo");
   }
 
   function abrirEdicao(tutor: Tutor) {
+    setErroCpf("");
     const { id, criadoEm, ...dados } = tutor;
     setEditandoId(id);
     setForm({ ...vazio, ...dados });
@@ -236,6 +241,15 @@ function Tutores() {
   async function salvarTutor() {
     if(!clinicaId)return toast.error("Clínica não identificada.");
     if(!form.nome.trim()||!soDigitos(form.telefone).length)return toast.error("Informe nome e telefone.");
+    const cpf = form.cpfCnpj?.trim() || "";
+    const documentoAnterior = tutores.find(tutor => tutor.id === editandoId);
+    if (form.tipoPessoa === "Pessoa física" && cpf && !cpfValido(cpf)
+      && !(documentoAnterior?.tipoPessoa === form.tipoPessoa
+        && soDigitos(documentoAnterior.cpfCnpj || "") === soDigitos(cpf))) {
+      setErroCpf("CPF inválido. Confira os 11 dígitos informados.");
+      document.getElementById("tutor-documento")?.focus();
+      return;
+    }
     const { usuarioPortal: _usuarioPortal, ...dados } = form;
     const {error}=await (supabaseBanco as any).rpc("oricse_tutor_salvar_tela",{p_clinica:clinicaId,p_dados:dados,p_id:editandoId});
     if(error)return toast.error(error.message);
@@ -289,7 +303,11 @@ function Tutores() {
 
           <Bloco titulo="Documentos e perfil">
             <label className="text-sm font-semibold">Tipo de pessoa *<select value={form.tipoPessoa} onChange={(e) => set("tipoPessoa", e.target.value as Tutor["tipoPessoa"])} className={campo}><option>Pessoa física</option><option>Pessoa jurídica</option></select></label>
-            <label className="text-sm font-semibold">{form.tipoPessoa === "Pessoa jurídica" ? "CNPJ" : "CPF"}<input value={form.cpfCnpj} onChange={(e) => set("cpfCnpj", mascaraDocumento(e.target.value, form.tipoPessoa))} className={campo}/></label>
+            <label className="text-sm font-semibold">
+              {form.tipoPessoa === "Pessoa jurídica" ? "CNPJ" : "CPF"}
+              <input id="tutor-documento" inputMode="numeric" value={form.cpfCnpj} aria-invalid={Boolean(erroCpf)} aria-describedby={erroCpf ? "tutor-erro-cpf" : undefined} onChange={(e) => set("cpfCnpj", mascaraDocumento(e.target.value, form.tipoPessoa))} className={campo}/>
+              {erroCpf && <span id="tutor-erro-cpf" role="alert" className="mt-1 block text-sm text-destructive">{erroCpf}</span>}
+            </label>
             <label className="text-sm font-semibold">RG<input value={form.rg} onChange={(e) => set("rg", e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Nascimento<input type="date" value={form.nascimento} onChange={(e) => set("nascimento", e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Sexo<select value={form.sexo} onChange={(e) => set("sexo", e.target.value)} className={campo}><option value="">Não informado</option><option>Masculino</option><option>Feminino</option><option>Outro</option></select></label>

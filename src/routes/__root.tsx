@@ -34,6 +34,7 @@ import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { isPlatformHostname } from "@/lib/public-clinic-site";
+import { slugPortalDoTutor } from "@/lib/portal-tutor-url";
 import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { ORICSE_SISTEMA_CONGELADO, rotaEditavelProtegida } from "@/lib/oricse-freeze";
 
@@ -356,9 +357,9 @@ function RootComponent() {
         return;
       }
       try {
-        const { data, error } = await supabase.rpc("oricse_clinica_publica_portal", {
+        const { data, error } = await supabaseBanco.rpc("oricse_clinica_publica_portal", {
           p_host: host || undefined,
-          p_slug: slug || undefined,
+          p_slug: slug || slugPortalDoTutor(host) || undefined,
         });
         if (error) throw error;
         const clinica = data?.[0];
@@ -725,6 +726,8 @@ function RootComponent() {
         if (!resposta.ok || !(resposta.headers.get("content-type") || "").includes("json")) return;
         const versaoPublicada = (await resposta.json() as {build?: string}).build;
         if (!ativo || !versaoPublicada || versaoPublicada === versaoDestaAba) return;
+        // Não interromper digitação, autofill, recuperação ou envio no Portal do Tutor.
+        if (document.querySelector('[data-visual-id="portal-tutor-login"]')) return;
         // Use o estado da URL durante a atualização, sem persistir dados
         // no armazenamento do navegador.
         const atual = new URL(window.location.href);
@@ -764,7 +767,9 @@ function RootComponent() {
       if (document.querySelector("main, [data-oricse-page]")) {
         const atual = new URL(window.location.href);
         atual.searchParams.delete("oricse_module_retry");
-        atual.searchParams.delete("oricse_build");
+        if (atual.searchParams.get("oricse_build") === import.meta.env.VITE_ORICSE_BUILD_ID) {
+          atual.searchParams.delete("oricse_build");
+        }
         window.history.replaceState(window.history.state, "", atual.pathname + atual.search + atual.hash);
       }
     }, 10000);

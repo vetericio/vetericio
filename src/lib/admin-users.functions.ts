@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
+import { cpfValido } from "@/lib/cpf";
 
 const papelSchema = z.enum(["rt", "veterinario", "auxiliar_estagiario", "recepcao"]);
 const dadosPessoaSchema = z.object({
@@ -20,13 +21,7 @@ const atualizarPessoaSchema = z.object({ accessToken:z.string().min(20), userId:
 function validarCpf(cpf: string): string | null {
   const digitos = cpf.replace(/\D/g, "");
   if (!digitos) return null;
-  if (digitos.length !== 11 || /^(\d)\1{10}$/.test(digitos)) throw new Error("CPF inválido.");
-  const digito = (tamanho: number) => {
-    const soma = [...digitos.slice(0, tamanho)].reduce((acc, n, i) => acc + Number(n) * (tamanho + 1 - i), 0);
-    const resto = (soma * 10) % 11;
-    return resto === 10 ? 0 : resto;
-  };
-  if (digito(9) !== Number(digitos[9]) || digito(10) !== Number(digitos[10])) throw new Error("CPF inválido.");
+  if (!cpfValido(digitos)) throw new Error("CPF inválido.");
   return digitos;
 }
 

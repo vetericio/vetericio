@@ -151,7 +151,8 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string;canais_contato?:CanaisClinica}>({});
   const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [sitePublicado,setSitePublicado]=useState<PublicClinicSite|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);const [modoDemoAlvorada,setModoDemoAlvorada]=useState(false);
-  const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
+  const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);
+  const [erroLogin, setErroLogin] = useState("");const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
   const [animais,setAnimais]=useState<Animal[]>([]);const [animalId,setAnimalId]=useState("");const [secao,setSecao]=useState<Secao>("resumo");const [vacinas,setVacinas]=useState<Vacina[]>([]);const [vermifugos,setVermifugos]=useState<Vermifugo[]>([]);const [exames,setExames]=useState<Exame[]>([]);const [documentos,setDocumentos]=useState<Documento[]>([]);const [receitas,setReceitas]=useState<Receita[]>([]);const [agendas,setAgendas]=useState<Agenda[]>([]);const [agendamentos,setAgendamentos]=useState<Agendamento[]>([]);const [comandas,setComandas]=useState<Comanda[]>([]);
   const [estadoAgendas, setEstadoAgendas] = useState<"carregando" | "pronto" | "erro">("carregando");
   const [estadoMarcacoes, setEstadoMarcacoes] = useState<"carregando" | "pronto" | "erro">("carregando");
@@ -469,7 +470,51 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 
   const vacinasAnimal=useMemo(()=>vacinas.filter(v=>v.animal_id===animal?.id),[vacinas,animal?.id]);const vermifugosAnimal=useMemo(()=>vermifugos.filter(v=>v.animal_id===animal?.id),[vermifugos,animal?.id]);const examesAnimal=useMemo(()=>exames.filter(e=>e.animal_id===animal?.id),[exames,animal?.id]);const docsAnimal=useMemo(()=>documentos.filter(d=>d.animal_id===animal?.id),[documentos,animal?.id]);const receitasAnimal=useMemo(()=>receitas.filter(r=>r.animal_id===animal?.id),[receitas,animal?.id]);const marcacoesAnimal=useMemo(()=>agendamentos.filter(a=>a.animal_id===animal?.id),[agendamentos,animal?.id]);const comandasAnimal=useMemo(()=>comandas.filter(c=>c.animal_id===animal?.id),[comandas,animal?.id]);const agenda=agendas.find(a=>a.id===agendaId)||null;
 
-  async function entrar(e:React.FormEvent){e.preventDefault();if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuario);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setEstadoAgendas("pronto");setEstadoMarcacoes("pronto");setEstadoAvisos("pronto");setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}setLogin(true);try{const{data,error}=await supabase.functions.invoke("oricse-portal-login",{body:{slug,usuario,senha}});if(error||!data?.access_token||!data?.refresh_token){const resposta=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):data;throw new Error(resposta?.error||"Não foi possível entrar.");}const r=await supabase.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});if(r.error)throw r.error;setSenha("");await carregar();}catch(err){toast.error(err instanceof Error?err.message:"Não foi possível entrar.");}finally{setLogin(false);}}
+  async function entrar(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (login) return;
+    const formulario = new FormData(event.currentTarget);
+    const usuarioEnviado = String(formulario.get("usuario") ?? "").trim();
+    const senhaEnviada = String(formulario.get("senha") ?? "");
+    setErroLogin("");
+    if(slug.trim().toLowerCase()==="alvorada"){const demo=dadosDemoAlvorada(clinica as ClinicaPublica,usuarioEnviado);setModoDemoAlvorada(true);setContexto(demo.contexto);setTelefone(demo.contexto.tutor_telefone||"");setEmail(demo.contexto.tutor_email||"");setAnimais(demo.animais);setFontesCuidados({vacinas:"completa",vermifugos:"completa"});setVacinas(demo.vacinas);setVermifugos(demo.vermifugos);setExames(demo.exames);setDocumentos(demo.documentos);setReceitas(demo.receitas);setAgendas(demo.agendas);setEstadoAgendas("pronto");setEstadoMarcacoes("pronto");setEstadoAvisos("pronto");setAgendamentos(demo.agendamentos);setComandas(demo.comandas);setAnimalId(at=>demo.animais.some(a=>a.id===at)?at:demo.animais[0].id);setAgendaId(demo.agendas[0].id);setSenha("");setCarregando(false);return;}
+    if (!usuarioEnviado || !senhaEnviada) {
+      setErroLogin("Informe o usuário e a senha.");
+      event.currentTarget.querySelector<HTMLInputElement>(
+        usuarioEnviado ? 'input[name="senha"]' : 'input[name="usuario"]',
+      )?.focus();
+      return;
+    }
+
+    setLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("oricse-portal-login", {
+        body: { slug, usuario: usuarioEnviado, senha: senhaEnviada },
+      });
+      if (error || !data?.access_token || !data?.refresh_token) {
+        const resposta = error instanceof FunctionsHttpError
+          ? await error.context.json().catch(() => null)
+          : data;
+        throw new Error(resposta?.error || "Não foi possível entrar agora. Tente novamente.");
+      }
+      const { error: erroSessao } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (erroSessao) throw new Error("Não foi possível iniciar sua sessão. Tente novamente.");
+      setSenha("");
+      try {
+        await carregar();
+      } catch (erro) {
+        if (erro instanceof Error) throw erro;
+        throw new Error("Não foi possível carregar o acesso desta clínica. Tente novamente.");
+      }
+    } catch (erro) {
+      setErroLogin(erro instanceof Error ? erro.message : "Não foi possível entrar. Tente novamente.");
+    } finally {
+      setLogin(false);
+    }
+  }
   async function ativar(e: React.FormEvent) {
     e.preventDefault();
     const codigo = token.trim();
@@ -585,7 +630,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   }
 
   if(carregandoClinica)return <TelaCarregando/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
-  if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
+  if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} erroLogin={erroLogin} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
 
   const naVisaoGeral = secaoAtual.id === "resumo";
   const petsPorId = new Map(animais.map(pet => [pet.id, pet]));
@@ -847,7 +892,13 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
 }
 
 function TelaCarregando(){return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4]"><Loader2 className="animate-spin"/></main>}
-function Campo({rotulo,valor,onChange,type="text",inputMode,placeholder}:{rotulo:string;valor:string;onChange:(v:string)=>void;type?:string;inputMode?:React.HTMLAttributes<HTMLInputElement>["inputMode"];placeholder?:string}){return <label className="text-sm font-bold">{rotulo}<input type={type} value={valor} inputMode={inputMode} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>}
+function Campo({ rotulo, valor, onChange, type = "text", ...input }: {
+  rotulo: string;
+  valor: string;
+  onChange: (v: string) => void;
+} & Pick<React.InputHTMLAttributes<HTMLInputElement>, "type" | "inputMode" | "placeholder" | "name" | "autoComplete" | "aria-describedby">) {
+  return <label className="text-sm font-bold">{rotulo}<input {...input} type={type} value={valor} onChange={e=>onChange(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>;
+}
 function Resumo({ titulo, valor, emoji, foto, onClick }: { titulo: string; valor: string; emoji: string; foto?: string | null; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="portal-area-shortcut">
@@ -928,8 +979,8 @@ function Login(props:{
   cpfRecuperacao:string;setCpfRecuperacao:(v:string)=>void;nascimentoRecuperacao:string;setNascimentoRecuperacao:(v:string)=>void;
   desafioRecuperacao:DesafioRecuperacao|null;animalResposta:string;setAnimalResposta:(v:string)=>void;
   senhaRecuperacao:string;setSenhaRecuperacao:(v:string)=>void;repeteSenhaRecuperacao:string;setRepeteSenhaRecuperacao:(v:string)=>void;
-  entrar:(e:React.FormEvent)=>void;ativar:(e:React.FormEvent)=>void;iniciarRecuperacao:(e:React.FormEvent)=>void;concluirRecuperacao:(e:React.FormEvent)=>void;voltarRecuperacao:()=>void;
-  login:boolean;ativando:boolean;recuperando:boolean;
+  entrar:(e:React.FormEvent<HTMLFormElement>)=>void;ativar:(e:React.FormEvent)=>void;iniciarRecuperacao:(e:React.FormEvent)=>void;concluirRecuperacao:(e:React.FormEvent)=>void;voltarRecuperacao:()=>void;
+  erroLogin?:string;login:boolean;ativando:boolean;recuperando:boolean;
 }){
   const p=props;
   const clinicName=p.portalConfig.nome_exibicao||p.clinica.nome;
@@ -1009,7 +1060,12 @@ function Login(props:{
         ) : p.modoAtivar ? (
           <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken} placeholder="Ex.: SD45"/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
         ) : (
-          <><form onSubmit={p.entrar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Senha" valor={p.senha} onChange={p.setSenha} type="password"/><button data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button></form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
+          <><form onSubmit={p.entrar} className="mt-5 space-y-4" aria-busy={p.login}>
+            <Campo rotulo="Usuário" name="usuario" autoComplete="username" valor={p.usuario} onChange={p.setUsuario} aria-describedby={p.erroLogin ? "portal-login-erro" : undefined}/>
+            <Campo rotulo="Senha" name="senha" autoComplete="current-password" valor={p.senha} onChange={p.setSenha} type="password" aria-describedby={p.erroLogin ? "portal-login-erro" : undefined}/>
+            {p.erroLogin && <p id="portal-login-erro" role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm font-semibold text-red-900">{p.erroLogin}</p>}
+            <button type="submit" data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button>
+          </form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
         )}
         </div>
         <p data-visual-id="portal-tutor-login-safety" className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
