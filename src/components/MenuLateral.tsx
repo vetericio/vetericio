@@ -515,6 +515,27 @@ export function MenuLateral({
           );
   };
 
+  const logoNoTopo = (
+    <div className="oricse-menu-marca mx-auto grid w-fit max-w-full shrink-0 place-items-center rounded-xl p-1 lg:px-3">
+      <span
+        role="img"
+        aria-label="Oricse"
+        className="oricse-menu-marca-imagem aspect-[360/212] w-28 max-w-full"
+      />
+    </div>
+  );
+
+  const atalhoInicio = (compacto = false) => (
+    <Link
+      to="/inicio"
+      aria-label="Ir para o Início"
+      onClick={() => setAberto(false)}
+      className={`oricse-logo-inicio mx-auto grid shrink-0 place-items-center rounded-xl border border-border bg-background shadow-sm ${compacto ? "size-11" : "mt-4 size-16"}`}
+    >
+      <span aria-hidden="true" className={`oricse-logo-inicio-imagem ${compacto ? "size-9" : "size-14"}`} />
+    </Link>
+  );
+
   const navegacao = (menuFixo = false) => (
     <>
       <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
@@ -557,6 +578,7 @@ export function MenuLateral({
         {menuFixo ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
         {menuFixo ? "Usar menu por três riscos" : "Fixar menu na lateral"}
       </button>
+      {atalhoInicio()}
     </>
   );
 
@@ -571,8 +593,9 @@ export function MenuLateral({
   return (
     <>
       {fixo && (
-        <aside className="oricse-menu oricse-menu-lateral fixed inset-y-0 left-0 z-40 w-16 border-r p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
-          <div className="hidden items-center gap-2 px-1 lg:flex">
+        <aside className="oricse-menu oricse-menu-lateral fixed inset-y-0 left-0 z-40 flex w-16 flex-col border-r p-2 shadow-xl lg:block lg:w-80 lg:overflow-y-auto lg:p-4">
+          {logoNoTopo}
+          <div className="mt-3 hidden items-center gap-2 px-1 lg:flex">
             <Menu className="h-5 w-5 shrink-0 text-primary" />
             <h2 className="shrink-0 font-bold">Menu</h2>
             {identificacao}
@@ -580,7 +603,7 @@ export function MenuLateral({
           <div className="hidden lg:block">{navegacao(true)}</div>
           <nav
             aria-label="Atalhos fixos do sistema"
-            className="flex h-full flex-col items-center gap-2 lg:hidden"
+            className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto pb-1 [&>*]:shrink-0 lg:hidden"
           >
             <span className="flex h-11 w-11 items-center justify-center rounded-xl text-primary">
               <Menu className="h-5 w-5" />
@@ -626,6 +649,7 @@ export function MenuLateral({
             >
               <PanelLeftClose className="h-5 w-5" />
             </button>
+            {atalhoInicio(true)}
           </nav>
         </aside>
       )}
@@ -640,7 +664,8 @@ export function MenuLateral({
           </button>
         </SheetTrigger>
         <SheetContent side="left" className="oricse-menu w-80 overflow-y-auto">
-          <SheetHeader className="flex-row items-center gap-2 space-y-0 pr-7">
+          {logoNoTopo}
+          <SheetHeader className="mt-3 flex-row items-center gap-2 space-y-0 pr-7">
             <SheetTitle className="oricse-menu-title shrink-0">Menu</SheetTitle>
             {identificacao}
           </SheetHeader>
