@@ -72,6 +72,7 @@ type SnapshotPermissoes = {
   usuarioId: string;
   permissoes: PermissaoEfetiva[];
   clinicaId: string;
+  clinicaNome: string;
   clinicaSlug: string;
   adminGlobal: boolean;
 };
@@ -87,7 +88,7 @@ async function obterPermissoesCompartilhadas(force = false): Promise<SnapshotPer
   if (!usuarioId) {
     snapshotPermissoes = null;
     snapshotObtidoEm = 0;
-    return { usuarioId: "", permissoes: [], clinicaId: "", clinicaSlug: "", adminGlobal: false };
+    return { usuarioId: "", permissoes: [], clinicaId: "", clinicaNome: "", clinicaSlug: "", adminGlobal: false };
   }
 
   if (!force && snapshotPermissoes?.usuarioId === usuarioId &&
@@ -111,9 +112,10 @@ async function obterPermissoesCompartilhadas(force = false): Promise<SnapshotPer
       .rpc("oricse_contexto_clinica_atual");
     if (erroContexto) throw erroContexto;
     const clinicaId = contexto?.[0]?.clinica_id || "";
+    const clinicaNome = contexto?.[0]?.clinica_nome || "";
     const clinicaSlug = contexto?.[0]?.clinica_slug || "";
     if (adminGlobal || !clinicaId) {
-      return { usuarioId, permissoes: [], clinicaId, clinicaSlug, adminGlobal };
+      return { usuarioId, permissoes: [], clinicaId, clinicaNome, clinicaSlug, adminGlobal };
     }
 
     const { data, error } = await (supabaseBanco as any).rpc("oricse_permissoes_efetivas", {
@@ -121,7 +123,7 @@ async function obterPermissoesCompartilhadas(force = false): Promise<SnapshotPer
       p_user_id: usuarioId,
     });
     if (error) throw error;
-    return { usuarioId, clinicaId, clinicaSlug, adminGlobal: false, permissoes: (data || []) as PermissaoEfetiva[] };
+    return { usuarioId, clinicaId, clinicaNome, clinicaSlug, adminGlobal: false, permissoes: (data || []) as PermissaoEfetiva[] };
   })();
 
   consultaPermissoesPendente = { usuarioId, promise: promessa };
@@ -139,7 +141,9 @@ export function usePermissoes() {
   const [permissoes, setPermissoes] = useState<PermissaoEfetiva[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [clinicaId, setClinicaId] = useState("");
+  const [clinicaNome, setClinicaNome] = useState("");
   const [clinicaSlug, setClinicaSlug] = useState("");
+  const [usuarioId, setUsuarioId] = useState("");
   const [adminGlobal, setAdminGlobal] = useState(false);
   // Uma resposta atrasada de uma clínica anterior não deve sobrescrever a atual.
   const versaoConsulta = useRef(0);
@@ -155,14 +159,18 @@ export function usePermissoes() {
       if (versao !== versaoConsulta.current) return;
       setPermissoes(resultado.permissoes);
       setClinicaId(resultado.clinicaId);
+      setClinicaNome(resultado.clinicaNome);
       setClinicaSlug(resultado.clinicaSlug);
+      setUsuarioId(resultado.usuarioId);
       setAdminGlobal(resultado.adminGlobal);
     } catch (error) {
       if (versao !== versaoConsulta.current) return;
       console.error("Não foi possível carregar as permissões do usuário:", error);
       setPermissoes([]);
       setClinicaId("");
+      setClinicaNome("");
       setClinicaSlug("");
+      setUsuarioId("");
       setAdminGlobal(false);
     } finally {
       if (versao === versaoConsulta.current) setCarregando(false);
@@ -218,7 +226,9 @@ export function usePermissoes() {
     bloqueadasPeloPlano,
     carregando,
     clinicaId,
+    clinicaNome,
     clinicaSlug,
+    usuarioId,
     adminGlobal,
     pode,
     podeAlguma,

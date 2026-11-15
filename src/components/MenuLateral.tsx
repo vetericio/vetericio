@@ -28,6 +28,7 @@ import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { CRM_EM_PREPARACAO, ORICSTUDIO_EM_PREPARACAO, SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { obterAutorClinico } from "@/lib/perfil-clinico";
 
 type MenuRoute =
   | "/recepcao"
@@ -275,6 +276,7 @@ export function MenuLateral({
   const [maisOpcoesAberto, setMaisOpcoesAberto] = useState(false);
   const [turnoAberto, setTurnoAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
+  const [profissional, setProfissional] = useState<{ id: string; nome: string } | null>(null);
   const { plantao } = usePlantaoAtual();
   const {
     carregando: carregandoPermissoes,
@@ -282,11 +284,24 @@ export function MenuLateral({
     podeAlguma,
     bloqueadaPeloPlano,
     adminGlobal,
+    clinicaNome,
     clinicaSlug,
+    usuarioId,
   } = usePermissoes();
   const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (!usuarioId) return;
+    let ativo = true;
+    void obterAutorClinico().then(({ id, nome }) => {
+      if (ativo && id === usuarioId) setProfissional({ id, nome });
+    }).catch(() => {
+      if (ativo) setProfissional(null);
+    });
+    return () => { ativo = false; };
+  }, [usuarioId]);
 
   useEffect(() => {
     if (areasOpcionais.some((area) => area.itens.some((item) => item.to === location.pathname))) {
@@ -545,13 +560,22 @@ export function MenuLateral({
     </>
   );
 
+  const nomeProfissional = profissional?.id === usuarioId ? profissional.nome : "";
+  const identificacao = (
+    <div className="ml-auto min-w-0 text-right text-[11px] leading-tight">
+      {nomeProfissional && <p className="truncate font-semibold" title={nomeProfissional}>{nomeProfissional}</p>}
+      {clinicaNome && <p className="truncate text-muted-foreground" title={clinicaNome}>{clinicaNome}</p>}
+    </div>
+  );
+
   return (
     <>
       {fixo && (
         <aside className="oricse-menu oricse-menu-lateral fixed inset-y-0 left-0 z-40 w-16 border-r p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
           <div className="hidden items-center gap-2 px-1 lg:flex">
-            <Menu className="h-5 w-5 text-primary" />
-            <h2 className="font-bold">Menu</h2>
+            <Menu className="h-5 w-5 shrink-0 text-primary" />
+            <h2 className="shrink-0 font-bold">Menu</h2>
+            {identificacao}
           </div>
           <div className="hidden lg:block">{navegacao(true)}</div>
           <nav
@@ -616,8 +640,9 @@ export function MenuLateral({
           </button>
         </SheetTrigger>
         <SheetContent side="left" className="oricse-menu w-80 overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="oricse-menu-title">Menu</SheetTitle>
+          <SheetHeader className="flex-row items-center gap-2 space-y-0 pr-7">
+            <SheetTitle className="oricse-menu-title shrink-0">Menu</SheetTitle>
+            {identificacao}
           </SheetHeader>
           {navegacao(false)}
         </SheetContent>
