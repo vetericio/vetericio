@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { ORICSTUDIO_EM_PREPARACAO } from "@/lib/navegacao";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
@@ -17,8 +18,24 @@ import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, 
 export const Route = createFileRoute("/oricstudio")({
   validateSearch: (search: Record<string, unknown>) => ({ ambiente: search.ambiente === "plataforma" ? "plataforma" as const : undefined }),
   head: () => ({ meta: [{ title: "OricStúdio — ORICSE" }] }),
-  component: OricStudio,
+  component: OricStudioRoute,
 });
+
+function OricStudioRoute() {
+  const { ambiente } = Route.useSearch();
+  if (!ORICSTUDIO_EM_PREPARACAO || ambiente === "plataforma") return <OricStudio />;
+  return (
+    <main className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-12 pt-6 sm:px-6">
+      <Link to="/inicio" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
+        <ArrowLeft size={17} aria-hidden="true" /> Voltar ao início
+      </Link>
+      <section className="rounded-xl border bg-card p-5">
+        <h1 className="text-xl font-semibold">Meu OricStúdio</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Módulo em preparação · Em breve</p>
+      </section>
+    </main>
+  );
+}
 
 type Status = "rascunho" | "aguardando_aprovacao" | "aprovado";
 type Tipo = "imagem" | "carrossel" | "reels" | "story";
