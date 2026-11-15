@@ -222,6 +222,23 @@ function mensagemReforco(item: ReforcoItem) {
 export function Recepcao() {
   const [clinicaId, setClinicaId] = useState("");
   const [revisaoAgenda, setRevisaoAgenda] = useState(0);
+  const [avisoAgendamento, setAvisoAgendamento] = useState("");
+
+  function abrirNovoAgendamento() {
+    const agenda = document.getElementById("agenda-recepcao");
+    const horario = agenda?.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]:enabled');
+    if (horario) {
+      setAvisoAgendamento("");
+      horario.focus();
+      horario.click();
+      return;
+    }
+
+    setAvisoAgendamento("Não há horário livre nesta data. Escolha outro dia ou outra agenda.");
+    agenda?.scrollIntoView({ behavior: "smooth", block: "start" });
+    agenda?.querySelector<HTMLButtonElement>('[data-oricse-data-agenda]')?.focus({ preventScroll: true });
+  }
+
   const [fila, setFila] = useState<FilaResumo[]>([]);
   const [erroFila,setErroFila]=useState("");
   const [tutores, setTutores] = useState<TutorAniversario[]>(lerTutores);
@@ -381,7 +398,7 @@ export function Recepcao() {
           <h1 className="mt-1 text-3xl font-bold">Recepção</h1>
           <p className="mt-1 text-muted-foreground">Cadastros, fila e agenda da clínica em uma única visão.</p>
         </div>
-        <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={() => { const livre = document.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]'); if (livre) { livre.click(); livre.scrollIntoView({ behavior: "smooth", block: "center" }); } else if (document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')) { document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')?.click(); } else { document.getElementById("agenda-recepcao")?.scrollIntoView({ behavior: "smooth", block: "start" }); toast.info("Não há horário livre visível nesta data. Escolha outra data ou agenda."); } }} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
+        <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={abrirNovoAgendamento} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
       </div>
 
       <div className={`mt-6 grid items-start gap-4 ${filaVisivel || clinicaId ? "xl:grid-cols-[300px_minmax(0,1fr)]" : "grid-cols-1"}`}>
@@ -421,8 +438,9 @@ export function Recepcao() {
             <CalendarDays size={19} className="text-primary" />
             <h2 className="font-black">Agenda</h2>
           </div>
+          {avisoAgendamento && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">{avisoAgendamento}</p>}
           <div className="agenda-recepcao-wrap min-w-0">
-            <AgendaErrorBoundary><AgendaDayBoard mode="recepcao" revisao={revisaoAgenda} /></AgendaErrorBoundary>
+            <AgendaErrorBoundary><AgendaDayBoard mode="recepcao" revisao={revisaoAgenda} aoMudarSelecao={() => setAvisoAgendamento("")} /></AgendaErrorBoundary>
           </div>
         </section>
       </div>
