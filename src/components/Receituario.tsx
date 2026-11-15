@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, FileDown, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, FileDown, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
@@ -59,10 +59,14 @@ const POSICOES_PADRAO: Record<TipoSelo, PosicaoSeloReceituario> = {
   carimbo: { x: 0.58, y: 0.14, largura: 0.24 },
 };
 
-type ReceitaPendente = {
+type AcaoReceita = "download" | "baixar-e-salvar" | "salvar";
+
+type ReceitaGerada = {
+  chave: string;
+  documento: Awaited<ReturnType<typeof criarReceituario>>;
+  salva: boolean;
   registro: Database["public"]["Tables"]["oricse_portal_receitas"]["Insert"] & { id: string };
   nome: string;
-  base64: string;
 };
 
 type CampoItem =
@@ -108,13 +112,13 @@ export function Receituario() {
   const [endereco, setEndereco] = useState("");
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [mensagemDados, setMensagemDados] = useState("");
-  const [animalSolicitado, setAnimalSolicitado] = useState(false);
   const [vinculo, setVinculo] = useState<{ animalId: string; tutorId: string; clinicaId: string } | null>(null);
-  const [pendente, setPendente] = useState<ReceitaPendente | null>(null);
+  const receitaGerada = useRef<ReceitaGerada | null>(null);
+  const processando = useRef(false);
   const [erroRegistro, setErroRegistro] = useState("");
   const [selos, setSelos] = useState<Record<TipoSelo, string | null>>({ assinatura: null, carimbo: null });
   const [posicoesSelos, setPosicoesSelos] = useState<Partial<Record<TipoSelo, PosicaoSeloReceituario>>>({});
-  const [gerando, setGerando] = useState(false);
+  const [acaoAtual, setAcaoAtual] = useState<AcaoReceita | null>(null);
   const [tipoReceita, setTipoReceita] = useState<TipoReceita>("normal");
   const [enviarPortal, setEnviarPortal] = useState(true);
   const [motivoOcultacao, setMotivoOcultacao] = useState("");
@@ -126,7 +130,6 @@ export function Receituario() {
       const params = new URLSearchParams(window.location.search);
       const animalId = params.get("animalId") || "";
       const tutorId = params.get("tutorId") || "";
-      setAnimalSolicitado(Boolean(animalId));
       try {
         const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
         if (erroSessao || !sessao.session?.access_token)
@@ -296,34 +299,15 @@ export function Receituario() {
     window.addEventListener("pointerup", soltar);
   };
 
-  async function registrarReceita({ registro, nome, base64 }: ReceitaPendente) {
-    const { data: sessao } = await supabase.auth.getSession();
-    const accessToken = sessao.session?.access_token;
-    if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente para salvar a receita.");
-
+  async function registrarReceita({ registro, nome, documento }: ReceitaGerada, accessToken: string) {
     const anexo = await enviarAnexoPortal({ data: {
       accessToken, clinicaId: registro.clinica_id, animalId: registro.animal_id, registroId: registro.id,
-      categoria: "receitas", tutorId: registro.tutor_id, nome, base64,
+      categoria: "receitas", tutorId: registro.tutor_id, nome, base64: documento.output("datauristring"),
     } });
     const { error } = await supabaseBanco.from("oricse_portal_receitas").upsert({
       ...registro, drive_arquivo_id: anexo.arquivoId,
     }, { onConflict: "id", ignoreDuplicates: true });
     if (error) throw new Error("O PDF foi anexado, mas o prontuário ainda não foi atualizado.");
-
-    setPendente(null);
-    setErroRegistro("");
-    toast.success(registro.visivel_tutor
-      ? "Receita salva no prontuário e disponível no Portal do Tutor."
-      : "Receita salva no prontuário com acesso interno.");
-  }
-
-  async function tentarRegistrar(receita: ReceitaPendente) {
-    try {
-      await registrarReceita(receita);
-    } catch (erro) {
-      setPendente(receita);
-      setErroRegistro(erro instanceof Error ? erro.message : "Não foi possível concluir o registro da receita.");
-    }
   }
 
   const orientacoesPadrao = tipoReceita === "normal" && padraoReceita
@@ -332,15 +316,8 @@ export function Receituario() {
       }))
     : "";
 
-  const gerar = async () => {
-    if (gerando || carregandoDados) return;
-    if (pendente) {
-      setGerando(true);
-      try { await tentarRegistrar(pendente); }
-      finally { setGerando(false); }
-      return;
-    }
-    if (animalSolicitado && !vinculo) return void toast.error("Abra a receita pela ficha do animal com um tutor vinculado.");
+  const gerar = async (acao: AcaoReceita) => {
+    if (processando.current || carregandoDados || !vinculo) return;
     if (!paciente.trim()) return void toast.error("Informe o nome do paciente.");
     if (!endereco.trim()) return void toast.error("Confirme o endereço da clínica para o rodapé do receituário.");
     if (!telefoneTutor.trim()) return void toast.error("Informe o telefone do tutor.");
@@ -348,63 +325,77 @@ export function Receituario() {
     if (!especie) return void toast.error("Selecione a espécie.");
     if (especie === "Outro" && !outraEspecie.trim()) return void toast.error("Informe a outra espécie.");
     if (tipoReceita === "especial" && (!tutor.trim() || !enderecoTutor.trim() || !cpfTutor.trim())) return void toast.error("Receita de controle especial exige tutor, CPF/CNPJ e endereço do tutor.");
-    if (vinculo && !enviarPortal && !motivoOcultacao) return void toast.error("Selecione o motivo para não enviar a receita ao Portal do Tutor.");
-    if (vinculo && !enviarPortal && motivoOcultacao === "outro" && motivoOutro.trim().length < 3) return void toast.error("Explique o motivo em pelo menos 3 caracteres.");
+    if (!enviarPortal && !motivoOcultacao) return void toast.error("Selecione o motivo para não enviar a receita ao Portal do Tutor.");
+    if (!enviarPortal && motivoOcultacao === "outro" && motivoOutro.trim().length < 3) return void toast.error("Explique o motivo em pelo menos 3 caracteres.");
     const textoPadraoSelecionado = usarOrientacoesPadrao ? orientacoesPadrao : "";
     if (/\{\{[a-z_]+\}\}/.test(textoPadraoSelecionado)) {
       return void toast.error("Revise as orientações padrão nas Configurações da clínica ou desmarque sua inclusão nesta receita.");
     }
     const textoFinal = [observacoes.trim(), textoPadraoSelecionado].filter(Boolean).join("\n\n");
-    setGerando(true);
+    const dadosEmissao = {
+      paciente, tutor, telefoneTutor, nascimentoTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie,
+      raca, sexo, peso, data, itens, observacoes: textoFinal, endereco, pelagem, microchip,
+    };
+    const chave = JSON.stringify([
+      vinculo, tipoReceita, dadosEmissao, selos, posicoesSelos, enviarPortal, motivoOcultacao, motivoOutro,
+    ]);
+    processando.current = true;
+    setAcaoAtual(acao);
+    setErroRegistro("");
     try {
-      // Os dados do prescritor vêm sempre da conta autenticada, não de outro usuário.
-      const { data: sessaoPerfil } = await supabase.auth.getSession();
-      const token = sessaoPerfil.session?.access_token;
-      if (!token) throw new Error("Entre novamente para identificar o profissional.");
-      const profissional = await obterPerfilPessoa({ data: { accessToken: token } });
-      if (!profissional?.nome_completo || !profissional.crmv || !profissional.crmv_uf) {
-        throw new Error("Cadastre nome completo, CRMV e UF no cadastro pessoal antes de emitir receitas.");
+      let receita = receitaGerada.current;
+      if (receita?.chave !== chave || !receita.salva) {
+        const { data: sessaoPerfil } = await supabase.auth.getSession();
+        const token = sessaoPerfil.session?.access_token;
+        if (!token) throw new Error("Entre novamente para salvar a receita.");
+        if (receita?.chave !== chave) {
+          const profissional = await obterPerfilPessoa({ data: { accessToken: token } });
+          if (!profissional?.nome_completo || !profissional.crmv || !profissional.crmv_uf) {
+            throw new Error("Cadastre nome completo, CRMV e UF no cadastro pessoal antes de emitir receitas.");
+          }
+          const especial = tipoReceita === "especial";
+          const papel = !especial && padraoReceita
+            ? await prepararPapelDocumento({ ...padraoReceita.identidade, endereco }, padraoReceita.modelo)
+            : undefined;
+          const numero = especial ? await emitirReceitaControladaNoBanco(dadosEmissao) : undefined;
+          const dadosPdf = {
+            ...dadosEmissao, tipo: tipoReceita, numero,
+            especie: especie === "Outro" ? outraEspecie.trim() : especie, posicoesSelos, papel,
+            profissional: {
+              nomeCompleto: profissional.nome_completo,
+              crmv: profissional.crmv, crmvUf: profissional.crmv_uf,
+              mapa: profissional.mapa, telefone: profissional.telefone, endereco: profissional.endereco,
+              email: padraoReceita?.identidade.email,
+            },
+          };
+          const documento = await criarReceituario(dadosPdf);
+          const pacienteArquivo = paciente.trim().replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 120).toLowerCase();
+          const titulo = especial ? "Receita de controle especial" : "Receita veterinária";
+          const nome = `${especial ? "receita-controle-especial" : "receituario"}-${pacienteArquivo || "oricse"}.pdf`;
+          receita = {
+            chave, documento, nome, salva: false,
+            registro: {
+              id: crypto.randomUUID(), clinica_id: vinculo.clinicaId, animal_id: vinculo.animalId,
+              tutor_id: vinculo.tutorId, tipo: tipoReceita, numero: numero || null, titulo,
+              emitida_em: hojeNoBrasil(), resumo: itens.map(item => item.medicamento.trim()).filter(Boolean).join(", ") || null,
+              visivel_tutor: enviarPortal, motivo_ocultacao: enviarPortal ? null : motivoOcultacao,
+              motivo_outro: !enviarPortal && motivoOcultacao === "outro" ? motivoOutro.trim() : null,
+            },
+          };
+          receitaGerada.current = receita;
+        }
+        await registrarReceita(receita, token);
+        receita.salva = true;
+        toast.success(receita.registro.visivel_tutor
+          ? "Receita salva no prontuário e disponível no Portal do Tutor."
+          : "Receita salva no prontuário com acesso interno.");
       }
-      const especial = tipoReceita === "especial";
-      const papel = !especial && padraoReceita
-        ? await prepararPapelDocumento({ ...padraoReceita.identidade, endereco }, padraoReceita.modelo)
-        : undefined;
-      const numero = especial ? await emitirReceitaControladaNoBanco({ paciente, tutor, telefoneTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie, raca, sexo, peso, data, itens, observacoes, endereco }) : undefined;
-      const dadosPdf = {
-        tipo: tipoReceita, numero, paciente, tutor, telefoneTutor, nascimentoTutor, cpfTutor, enderecoTutor, idade,
-        especie: especie === "Outro" ? outraEspecie.trim() : especie, raca, sexo, peso, data, itens,
-        observacoes: textoFinal, endereco, posicoesSelos, papel, pelagem, microchip,
-        profissional: {
-          nomeCompleto: profissional.nome_completo,
-          crmv: profissional.crmv, crmvUf: profissional.crmv_uf,
-          mapa: profissional.mapa, telefone: profissional.telefone, endereco: profissional.endereco,
-          email: padraoReceita?.identidade.email,
-        },
-      };
-      const doc = await criarReceituario(dadosPdf);
-      const pacienteArquivo = paciente.trim().replace(/\s+/g, "-").toLowerCase();
-      const titulo = especial ? "Receita de controle especial" : "Receita veterinária";
-      const nome = `${especial ? "receita-controle-especial" : "receituario"}-${pacienteArquivo || "oricse"}.pdf`;
-      doc.save(nome);
-      if (vinculo) {
-        await tentarRegistrar({
-          nome, base64: doc.output("datauristring"),
-          registro: {
-            id: crypto.randomUUID(), clinica_id: vinculo.clinicaId, animal_id: vinculo.animalId,
-            tutor_id: vinculo.tutorId, tipo: tipoReceita, numero: numero || null, titulo,
-            emitida_em: hojeNoBrasil(), resumo: itens.map(item => item.medicamento.trim()).filter(Boolean).join(", ") || null,
-            visivel_tutor: enviarPortal, motivo_ocultacao: enviarPortal ? null : motivoOcultacao,
-            motivo_outro: !enviarPortal && motivoOcultacao === "outro" ? motivoOutro.trim() : null,
-          },
-        });
-      } else {
-        toast.success("PDF avulso baixado.");
-      }
+      if (acao !== "salvar") receita.documento.save(receita.nome);
     } catch (erro) {
-      console.error("Falha ao gerar receituário:", erro);
-      toast.error(erro instanceof Error ? erro.message : "Não foi possível gerar o PDF. Tente novamente.");
+      setErroRegistro(erro instanceof Error ? erro.message : "Não foi possível concluir a emissão da receita.");
     } finally {
-      setGerando(false);
+      processando.current = false;
+      setAcaoAtual(null);
     }
   };
 
@@ -421,9 +412,9 @@ export function Receituario() {
       </section>
 
       {erroRegistro && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-        PDF baixado. {erroRegistro} Use “Tentar salvar receita” para concluir o registro deste PDF.
+        {erroRegistro}
       </p>}
-      <fieldset disabled={Boolean(pendente) || gerando} className="min-w-0 space-y-4">
+      <fieldset disabled={Boolean(acaoAtual)} className="min-w-0 space-y-4">
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-display font-semibold text-foreground">Tipo de receita</h2>
           <div className="mt-3 flex gap-2">
@@ -437,7 +428,7 @@ export function Receituario() {
         {vinculo ? (
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
-            <div><h2 className="font-display font-semibold text-foreground">Portal do Tutor</h2><p className="mt-1 text-sm text-muted-foreground">Por padrão, toda receita vinculada a um animal é disponibilizada ao tutor.</p></div>
+            <div><h2 className="font-display font-semibold text-foreground">Portal do Tutor</h2><p className="mt-1 text-sm text-muted-foreground">Toda receita é salva no prontuário. Marque para liberar o PDF ao tutor deste animal.</p></div>
             <input type="checkbox" checked={enviarPortal} onChange={(e) => { setEnviarPortal(e.target.checked); if (e.target.checked) { setMotivoOcultacao(""); setMotivoOutro(""); } }} className="h-5 w-5 accent-primary" aria-label="Enviar para o Portal do Tutor" />
           </div>
           <div className={`mt-3 rounded-xl border p-3 ${enviarPortal ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
@@ -445,9 +436,9 @@ export function Receituario() {
             {!enviarPortal && <div className="mt-3 space-y-3"><label className="block"><span className={rotulo}>Motivo obrigatório</span><select value={motivoOcultacao} onChange={(e) => { setMotivoOcultacao(e.target.value); if (e.target.value !== "outro") setMotivoOutro(""); }} className={campo}><option value="">Selecione o motivo</option>{MOTIVOS_OCULTACAO.map(([valor,nome]) => <option key={valor} value={valor}>{nome}</option>)}</select></label>{motivoOcultacao === "outro" && <label className="block"><span className={rotulo}>Explique o motivo</span><textarea value={motivoOutro} onChange={(e) => setMotivoOutro(e.target.value)} rows={3} className={campo} placeholder="Descreva por que esta receita não deve aparecer no portal" /></label>}</div>}
           </div>
         </section>
-        ) : !carregandoDados && !animalSolicitado && (
+        ) : !carregandoDados && (
           <p className="rounded-xl border bg-card p-4 text-sm">
-            Receita avulsa para download. Para salvar no prontuário e no Portal do Tutor, emita pela <a href="/animais" className="font-semibold text-primary underline">ficha do animal</a>.
+            Selecione o paciente na <a href="/animais" className="font-semibold text-primary underline">lista de animais</a> e abra o receituário pela ficha dele.
           </p>
         )}
 
@@ -497,7 +488,20 @@ export function Receituario() {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
 
       </fieldset>
-      <button type="button" onClick={() => void gerar()} disabled={gerando || carregandoDados} className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto flex min-h-14 w-auto max-w-3xl items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-base font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-60"><FileDown className="h-5 w-5" />{gerando ? "Processando receita…" : carregandoDados ? "Carregando dados..." : pendente ? "Tentar salvar receita" : "Gerar receituário em PDF"}</button>
+      {vinculo && <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-3xl grid-cols-[1fr_1.45fr_1fr] gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg sm:gap-2 sm:p-2">
+        {([
+          ["download", "Download", Download],
+          ["baixar-e-salvar", "Download e salvar", FileDown],
+          ["salvar", "Salvar", Save],
+        ] as const).map(([acao, rotuloAcao, Icone]) => (
+          <button key={acao} type="button" onClick={() => void gerar(acao)} disabled={Boolean(acaoAtual) || carregandoDados}
+            className={`flex min-h-11 items-center justify-center gap-1 rounded-xl px-1 text-xs font-semibold disabled:opacity-60 sm:gap-2 sm:px-3 sm:text-sm ${acao === "salvar" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border hover:bg-muted"}`}>
+            <Icone className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />
+            {acaoAtual === acao ? "Salvando…" : rotuloAcao}
+          </button>
+        ))}
+      </div>}
+
     </main>
   );
 }
