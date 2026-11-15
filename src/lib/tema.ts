@@ -19,6 +19,7 @@ export type TemaId =
   | "feliz"
   | "rock"
   | "veterico"
+  | "jade"
   | "minha-cor"
   | "rosa";
 
@@ -36,12 +37,13 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   { id: "rosa", nome: "Rosa", classe: "tema-rosa", descricao: "Rosa blush, ameixa e detalhes delicados" },
   { id: "natal", nome: "Natal Vivo", classe: "tema-natal-premium", descricao: "Natal sofisticado: pinheiros, luzes quentes e detalhes vermelhos e dourados" },
   { id: "rock", nome: "Rock", classe: "tema-rock", descricao: "Palco, guitarras, amplificadores, aço e luzes de show" },
+  { id: "jade", nome: "Jade Imperial", classe: "tema-jade", descricao: "Verde-jade, marfim e detalhes em latão" },
 ];
 
 const CHAVE = "veterico-tema-v2";
 const CHAVE_COR = "veterico-tema-cor-v1";
 const CHAVE_PERSONALIZADOS = "veterico-temas-personalizados-v1";
-const CLASSES = ["tema-vet", "tema-escuro", "tema-sobrio", "tema-fofo", "tema-black", "tema-cinza", "tema-noite", "tema-esponja", "tema-gatinhos", "tema-verde-cinza", "tema-pro", "tema-laranja", "tema-natal", "tema-jack", "tema-cansado", "tema-feliz", "tema-rock", "tema-veterico", "tema-minha-cor", "tema-rosa", "tema-natal-premium"];
+const CLASSES = [...TEMAS.map(({ classe }) => classe), "tema-fofo", "tema-cinza", "tema-noite", "tema-esponja", "tema-gatinhos", "tema-laranja", "tema-natal", "tema-jack", "tema-feliz", "tema-minha-cor"];
 
 /** Temas calmos, de cores neutras — separados dos divertidos na tela de Temas. */
 export const TEMAS_SOBRIOS: TemaId[] = TEMAS.map((tema) => tema.id);

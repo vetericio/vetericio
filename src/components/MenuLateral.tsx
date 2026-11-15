@@ -377,7 +377,8 @@ export function MenuLateral({
                 type="button"
                 aria-expanded={abertoGrupo}
                 onClick={() => setExpandido(abertoGrupo ? null : area.titulo)}
-                className={`flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors ${ativo ? "bg-primary/10 text-primary" : "bg-secondary/40 hover:bg-secondary"}`}
+                className="oricse-menu-trigger flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors"
+                data-current={ativo || undefined}
               >
                 <Icone className="h-5 w-5 shrink-0" />
                 <span className="flex-1">{area.titulo}</span>
@@ -386,7 +387,7 @@ export function MenuLateral({
                 />
               </button>
               {abertoGrupo && (
-                <div className={area.titulo === "Gestão de clientes" ? "bg-background py-1" : "space-y-1 bg-background p-2"}>
+                <div className={`oricse-menu-panel ${area.titulo === "Gestão de clientes" ? "py-1" : "space-y-1 p-2"}`}>
                   {itens.map((item, i) => {
                     const chave = (item.to || item.rotulo) + i;
                     if (item.separador) {
@@ -430,7 +431,7 @@ export function MenuLateral({
                           key={chave}
                           type="button"
                           onClick={() => { setAberto(false); navigate({ to: "/planos" }); toast.info("Faça um upgrade do plano ORICSE para liberar este recurso."); }}
-                          className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground opacity-55"
+                          className="oricse-menu-item flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground"
                         >
                           <span className="flex-1">{item.rotulo}</span>
                           <Lock className="h-4 w-4 shrink-0" aria-label="Recurso não incluído no plano" />
@@ -452,7 +453,7 @@ export function MenuLateral({
                             setAberto(false);
                             setTurnoAberto(true);
                           }}
-                          className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                          className="oricse-menu-item w-full rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground disabled:cursor-not-allowed"
                         >
                           {item.rotulo}
                           <span className="block text-[11px]">
@@ -464,7 +465,7 @@ export function MenuLateral({
                       );
                     if (item.portalOficial) {
                       const slug = clinicaSlug.trim();
-                      const classe = "block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors";
+                      const classe = "oricse-menu-item block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors";
                       if (carregandoPermissoes || !slug) {
                         return <button key={chave} type="button" disabled={carregandoPermissoes}
                           className={`${classe} w-full text-left text-muted-foreground`}
@@ -474,7 +475,7 @@ export function MenuLateral({
                       }
                       const href = urlPortalDoTutor(slug);
                       return <a key={chave} href={href} onClick={() => setAberto(false)}
-                        className={`${classe} hover:bg-secondary`}>{item.rotulo}</a>;
+                        className={classe}>{item.rotulo}</a>;
                     }
                     if (!item.to) return null;
                     return (
@@ -483,9 +484,10 @@ export function MenuLateral({
                         to={item.to}
                         hash={item.abaHotel || undefined}
                         onClick={() => setAberto(false)}
+                        data-current={location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) || undefined}
                         className={area.titulo === "Gestão de clientes"
-                          ? "flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors hover:bg-secondary/60 focus-visible:bg-secondary focus-visible:outline-none"
-                          : `block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors ${location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                          ? "oricse-menu-item flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors"
+                          : "oricse-menu-item block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors"}
                       >
                         {item.rotulo}
                       </Link>
@@ -508,14 +510,14 @@ export function MenuLateral({
               aria-expanded={maisOpcoesAberto}
               aria-controls="oricse-menu-mais-opcoes"
               onClick={() => setMaisOpcoesAberto((atual) => !atual)}
-              className="flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors bg-secondary/40 hover:bg-secondary"
+              className="oricse-menu-trigger flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm font-semibold transition-colors"
             >
               <Settings className="h-5 w-5 shrink-0" />
               <span className="flex-1">Mais opções</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${maisOpcoesAberto ? "rotate-180" : ""}`} />
             </button>
             {maisOpcoesAberto && (
-              <div id="oricse-menu-mais-opcoes" className="ml-5 space-y-2 border-l-[3px] border-primary/40 bg-secondary/20 py-3 pl-3 pr-2">
+              <div id="oricse-menu-mais-opcoes" className="oricse-menu-panel ml-5 space-y-2 border-l-[3px] border-border py-3 pl-3 pr-2">
                 {areasOpcionais.map(renderArea)}
               </div>
             )}
@@ -525,7 +527,7 @@ export function MenuLateral({
           type="button"
           disabled={saindo}
           onClick={sair}
-          className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          className="oricse-menu-item flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold text-destructive disabled:cursor-not-allowed"
         >
           <LogOut className="h-5 w-5" />
           {saindo ? "Saindo..." : "Sair da conta"}
@@ -534,7 +536,7 @@ export function MenuLateral({
       <button
         type="button"
         onClick={() => alterarModo(!menuFixo)}
-        className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold hover:bg-secondary"
+        className="oricse-menu-item mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold"
       >
         {menuFixo ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
         {menuFixo ? "Usar menu por três riscos" : "Fixar menu na lateral"}
@@ -545,7 +547,7 @@ export function MenuLateral({
   return (
     <>
       {fixo && (
-        <aside className="oricse-menu-lateral fixed inset-y-0 left-0 z-40 w-16 border-r bg-card p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
+        <aside className="oricse-menu oricse-menu-lateral fixed inset-y-0 left-0 z-40 w-16 border-r p-2 shadow-xl lg:w-80 lg:overflow-y-auto lg:p-4">
           <div className="hidden items-center gap-2 px-1 lg:flex">
             <Menu className="h-5 w-5 text-primary" />
             <h2 className="font-bold">Menu</h2>
@@ -572,7 +574,8 @@ export function MenuLateral({
                   aria-label={`Abrir ${area.titulo}`}
                   title={area.titulo}
                   onClick={() => abrirAreaCompacta(area.titulo)}
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-colors ${ativo ? "border-primary bg-primary text-primary-foreground" : "border-border/70 hover:bg-secondary"}`}
+                  data-current={ativo || undefined}
+                  className="oricse-menu-item flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 transition-colors"
                 >
                   <Icone className="h-5 w-5" />
                 </button>
@@ -584,7 +587,7 @@ export function MenuLateral({
                 aria-label="Abrir Mais opções"
                 title="Mais opções"
                 onClick={() => { setMaisOpcoesAberto(true); setExpandido(null); setAberto(true); }}
-                className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 hover:bg-secondary"
+                className="oricse-menu-item flex h-11 w-11 items-center justify-center rounded-xl border border-border/70"
               >
                 <Settings className="h-5 w-5" />
               </button>
@@ -594,7 +597,7 @@ export function MenuLateral({
               aria-label="Usar menu por três riscos"
               title="Usar menu por três riscos"
               onClick={() => alterarModo(false)}
-              className="mt-auto flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 hover:bg-secondary"
+              className="oricse-menu-item mt-auto flex h-11 w-11 items-center justify-center rounded-xl border border-border/70"
             >
               <PanelLeftClose className="h-5 w-5" />
             </button>
@@ -611,9 +614,9 @@ export function MenuLateral({
             <Menu className="h-5 w-5" />
           </button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-80 overflow-y-auto">
+        <SheetContent side="left" className="oricse-menu w-80 overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Menu</SheetTitle>
+            <SheetTitle className="oricse-menu-title">Menu</SheetTitle>
           </SheetHeader>
           {navegacao(false)}
         </SheetContent>
