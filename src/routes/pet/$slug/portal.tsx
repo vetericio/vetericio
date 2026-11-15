@@ -1,7 +1,7 @@
-import { destinoPortalLegado, urlPortalDoTutor } from "@/lib/portal-tutor-url";
+import { destinoPortalLegado, urlSiteDaClinica } from "@/lib/portal-tutor-url";
 import { orientacaoSenhaPortal, senhaPortalValida } from "../../../../supabase/functions/_shared/portal-password";
 import { FunctionsHttpError } from "@supabase/supabase-js";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClinicContact";
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
@@ -14,8 +14,8 @@ import { ArrowLeft, Camera, CalendarDays, CheckCircle2, ChevronRight, Download, 
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
-import { loadPublicClinicSite } from "@/lib/public-clinic-site";
-import { clinicSitePresets, clinicSiteTemplates, normalizeClinicSiteConfig, type ClinicSiteTemplate } from "@/lib/clinic-site";
+import { loadPublicClinicSiteForPortal, type PublicClinicSite } from "@/lib/public-clinic-site";
+import { clinicSitePresets, normalizeClinicSiteConfig, findClinicSiteTemplate, resolveClinicSiteTemplate, type ClinicSiteTemplate } from "@/lib/clinic-site";
 
 export const Route = createFileRoute("/pet/$slug/portal")({ component: PortalTutorRoute });
 
@@ -150,7 +150,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   });
   const [extrasPublicos,setExtrasPublicos]=useState<{opcoes:Record<string,unknown>;promocoes?:Array<{titulo:string;descricao:string;cupom:string;desconto_percentual:number}>}>({opcoes:{}});
   const [portalConfig,setPortalConfig]=useState<{mensagem_boas_vindas?:string;telefone_publico?:string;whatsapp_publico?:string;instrucoes_agendamento?:string;exibir_agendamento?:boolean;exibir_documentos?:boolean;nome_exibicao?:string;logo_clinica_url?:string;logo_cabecalho_url?:string;titulo_cabecalho?:string;subtitulo_cabecalho?:string;canais_contato?:CanaisClinica}>({});
-  const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [temaPortal,setTemaPortal]=useState<TemaPortal|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);const [modoDemoAlvorada,setModoDemoAlvorada]=useState(false);
+  const [clinica,setClinica]=useState<ClinicaPublica|null>(null);const [sitePublicado,setSitePublicado]=useState<PublicClinicSite|null>(null);const [carregandoClinica,setCarregandoClinica]=useState(true);const [carregando,setCarregando]=useState(true);const [contexto,setContexto]=useState<Contexto|null>(null);const [modoDemoAlvorada,setModoDemoAlvorada]=useState(false);
   const [usuario,setUsuario]=useState("");const [senha,setSenha]=useState("");const [login,setLogin]=useState(false);const [modoAtivar,setModoAtivar]=useState(false);const [token,setToken]=useState("");const [novaSenha,setNovaSenha]=useState("");const [repeteSenha,setRepeteSenha]=useState("");const [ativando,setAtivando]=useState(false);const [modoRecuperar,setModoRecuperar]=useState(false);const [cpfRecuperacao,setCpfRecuperacao]=useState("");const [nascimentoRecuperacao,setNascimentoRecuperacao]=useState("");const [desafioRecuperacao,setDesafioRecuperacao]=useState<DesafioRecuperacao|null>(null);const [animalResposta,setAnimalResposta]=useState("");const [senhaRecuperacao,setSenhaRecuperacao]=useState("");const [repeteSenhaRecuperacao,setRepeteSenhaRecuperacao]=useState("");const [recuperando,setRecuperando]=useState(false);
   const [animais,setAnimais]=useState<Animal[]>([]);const [animalId,setAnimalId]=useState("");const [secao,setSecao]=useState<Secao>("resumo");const [vacinas,setVacinas]=useState<Vacina[]>([]);const [vermifugos,setVermifugos]=useState<Vermifugo[]>([]);const [exames,setExames]=useState<Exame[]>([]);const [documentos,setDocumentos]=useState<Documento[]>([]);const [receitas,setReceitas]=useState<Receita[]>([]);const [agendas,setAgendas]=useState<Agenda[]>([]);const [agendamentos,setAgendamentos]=useState<Agendamento[]>([]);const [comandas,setComandas]=useState<Comanda[]>([]);
   const [estadoAgendas, setEstadoAgendas] = useState<"carregando" | "pronto" | "erro">("carregando");
@@ -184,13 +184,25 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
     window.addEventListener("popstate", lerNavegacao);
     return () => window.removeEventListener("popstate", lerNavegacao);
   }, [slug]);
+  const busca = useLocation({ select: (location) => location.searchStr });
+  const modeloSolicitado = slug === "alvorada"
+    ? findClinicSiteTemplate(new URLSearchParams(busca).get("modelo"))
+    : undefined;
+  const modelo = modeloSolicitado ?? resolveClinicSiteTemplate(sitePublicado?.template);
+  const temaPortal: TemaPortal = {
+    modelo,
+    cores: slug === "alvorada" || !sitePublicado
+      ? clinicSitePresets[modelo]
+      : normalizeClinicSiteConfig(sitePublicado.config),
+  };
+
   useEffect(()=>{let vivo=true;setCarregandoClinica(true);void(async()=>{
     // O site e o portal compartilham exatamente a mesma fonte de identidade.
     // O modelo escolhido na vitrine é transmitido explicitamente por URL,
     // sem depender de cookies, do referer ou de dados de outra clínica.
     const [clinicaResp,site] = await Promise.all([
       (supabaseBanco as any).rpc("oricse_clinica_publica_portal",{p_slug:slug}),
-      loadPublicClinicSite(slug).catch(error=>{console.warn("Tema público indisponível:",error);return null;}),
+      loadPublicClinicSiteForPortal({data:slug}).catch(error=>{console.warn("Tema público indisponível:",error);return null;}),
     ]);
     if(!vivo)return;
     const registro=Array.isArray(clinicaResp.data)?clinicaResp.data[0]:null;
@@ -198,19 +210,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
       setClinica({nome:registro.clinica_nome,slug:registro.clinica_slug,logo_url:registro.clinica_logo_url||null});
     else setClinica(null);
 
-    const publicado=site&&clinicSiteTemplates.includes(site.template as ClinicSiteTemplate)
-      ? site.template as ClinicSiteTemplate : "essencial";
-    const solicitado=typeof window!=="undefined" ? new URLSearchParams(window.location.search).get("modelo") : null;
-    const modelo=slug==="alvorada"&&clinicSiteTemplates.includes(solicitado as ClinicSiteTemplate)
-      ? solicitado as ClinicSiteTemplate : publicado;
-    const configuracao=site?normalizeClinicSiteConfig(site.config):null;
-    const cores:CoresPortal=slug==="alvorada"||!configuracao
-      ? clinicSitePresets[modelo]
-      : {
-          primaryColor:configuracao.primaryColor,secondaryColor:configuracao.secondaryColor,
-          backgroundColor:configuracao.backgroundColor,textColor:configuracao.textColor,
-        };
-    setTemaPortal({modelo,cores});
+    setSitePublicado(site);
     setCarregandoClinica(false);
   })().catch(error=>{console.error("Não foi possível carregar o Portal do Tutor:",error);if(vivo){setClinica(null);setCarregandoClinica(false);}});
   return()=>{vivo=false};},[slug]);
@@ -610,7 +610,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const cuidadosIncompletos = Object.values(fontesCuidados).some(fonte => fonte === "parcial" || fonte === "indisponivel");
   const nomeClinica = portalConfig.nome_exibicao || contexto.clinica_nome;
   const logoClinica = portalConfig.logo_clinica_url || contexto.clinica_logo_url || portalConfig.logo_cabecalho_url;
-  const siteClinica = new URL("/", urlPortalDoTutor(slug)).href;
+  const siteClinica = urlSiteDaClinica(slug, temaPortal?.modelo);
   const temNovidades = Boolean(
     (extrasPublicos.opcoes.mostrar_banner !== false && extrasPublicos.opcoes.banner_titulo) ||
     (extrasPublicos.opcoes.mostrar_promocoes !== false && extrasPublicos.promocoes?.length) ||
@@ -934,7 +934,7 @@ function Login(props:{
   const p=props;
   const clinicName=p.portalConfig.nome_exibicao||p.clinica.nome;
   const clinicLogo=p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url;
-  const clinicSite = new URL("/", urlPortalDoTutor(p.clinica.slug)).href;
+  const clinicSite = urlSiteDaClinica(p.clinica.slug, p.tema?.modelo);
   const acessoEstendido=p.modoAtivar||p.modoRecuperar;
   return <main data-visual-id="portal-tutor-login" className="portal-tutor-live portal-tutor-login-screen" data-clinic-slug={p.clinica.slug} data-site-template={p.tema?.modelo}
     data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>

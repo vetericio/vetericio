@@ -10,6 +10,14 @@ export const clinicSiteTemplates = [
   "horizonte",
 ] as const;
 export type ClinicSiteTemplate = (typeof clinicSiteTemplates)[number];
+export function resolveClinicSiteTemplate(value: unknown): ClinicSiteTemplate {
+  return findClinicSiteTemplate(value) ?? "prestige";
+}
+
+export function findClinicSiteTemplate(value: unknown): ClinicSiteTemplate | undefined {
+  return clinicSiteTemplates.find((template) => template === value);
+}
+
 export const clinicSiteTemplateLabels: Record<ClinicSiteTemplate, string> = {
   signatura: "Signature",
   prestige: "Élan",

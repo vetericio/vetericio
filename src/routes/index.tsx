@@ -2,7 +2,7 @@ import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { useState, type ReactNode } from "react";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import { CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, Heart, Bookmark, Images, Instagram, Megaphone, MessageCircle, Package, Settings, Sparkles } from "lucide-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 
 import {
   ArrowRight, BadgeDollarSign, Bath, CalendarDays, Check, ClipboardList,
@@ -14,9 +14,9 @@ import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import { AlvoradaDemoShowcase } from "@/components/clinic-site/AlvoradaDemoShowcase";
 import { ClinicSiteRenderer } from "@/components/clinic-site/ClinicSiteRenderer";
 import {
-  clinicSiteTemplates,
   normalizeClinicSiteConfig,
-  type ClinicSiteTemplate,
+  findClinicSiteTemplate,
+  resolveClinicSiteTemplate,
 } from "@/lib/clinic-site";
 import {
   findPublicClinicSlug,
@@ -70,18 +70,20 @@ export const Route = createFileRoute("/")({
 
 function PaginaInicial() {
   const resultado = Route.useLoaderData();
+  const busca = useLocation({ select: (location) => location.searchStr });
   const bootstrap = "visual" in resultado ? <script id="oricse-visual-bootstrap" type="application/json" dangerouslySetInnerHTML={{ __html: JSON.stringify(resultado.visual).replace(/</g, "\\u003c") }} /> : null;
   if (resultado.tipo === "plataforma") return <>{bootstrap}<PaginaInicialPlataforma /></>;
 
   if (resultado.tipo === "clinica") {
     const { slug, site } = resultado;
-    const template: ClinicSiteTemplate = clinicSiteTemplates.includes(site.template as ClinicSiteTemplate)
-      ? (site.template as ClinicSiteTemplate)
-      : "prestige";
+    const template = resolveClinicSiteTemplate(site.template);
+    const modeloVitrine = slug === "alvorada"
+      ? findClinicSiteTemplate(new URLSearchParams(busca).get("modelo")) ?? template
+      : template;
     const config = normalizeClinicSiteConfig(site.config);
 
     return <>{bootstrap}{slug === "alvorada" ? (
-      <AlvoradaDemoShowcase initialTemplate={template} config={config} clinicSlug={slug} />
+      <AlvoradaDemoShowcase key={modeloVitrine} initialTemplate={modeloVitrine} config={config} clinicSlug={slug} />
     ) : (
       <ClinicSiteRenderer template={template} config={config} clinicSlug={slug} />
     )}</>;

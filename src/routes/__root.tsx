@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import premiumCss from "../themes-premium.css?url";
@@ -22,7 +22,7 @@ import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
-import { aplicarTema, carregarCor, carregarTema } from "@/lib/tema";
+import { limparTema, restaurarTema } from "@/lib/tema";
 import { aplicarAcessibilidade } from "@/lib/acessibilidade-sistema";
 import {
   TenantContext,
@@ -258,7 +258,13 @@ function RootComponent() {
   const [portalError, setPortalError] = useState<string | null>(null);
   const [acessoPortalNegado, setAcessoPortalNegado] = useState(false);
   const [slugClinicaAtual, setSlugClinicaAtual] = useState("");
-  const [dadosDriveProntos, setDadosDriveProntos] = useState(false);
+  const [escopoCarregado, setEscopoCarregado] = useState<string | null>(null);
+  const [tentativaHidratacao, setTentativaHidratacao] = useState(0);
+  // A administração da plataforma pode abrir sem uma clínica selecionada.
+  const adminSemEstadoClinico = autenticado && role === "admin" &&
+    (location.pathname === "/admin" || location.pathname.startsWith("/admin/"));
+  const escopoClinico = autenticado && !adminSemEstadoClinico ? `${role}:${slugClinicaAtual}` : null;
+  const dadosDriveProntos = adminSemEstadoClinico || (escopoClinico !== null && escopoCarregado === escopoClinico);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [menuFixo, setMenuFixo] = useState(false);
   const [quantidadeClinicasAtivas, setQuantidadeClinicasAtivas] = useState<number | null>(null);
@@ -506,43 +512,21 @@ function RootComponent() {
 
   useEffect(() => {
     let ativo = true;
-    if (!autenticado) {
-      limparMemoriaOricse();
-      setDadosDriveProntos(false);
-      return () => {
-        ativo = false;
-      };
-    }
-    // O Admin da plataforma não precisa de dados operacionais na página /admin,
-    // mas ao abrir uma clínica deve carregar o estado selecionado antes de editar.
-    if (role === "admin" && (location.pathname === "/admin" || location.pathname.startsWith("/admin/"))) {
-      setDadosDriveProntos(true);
-      setErroCarregamento(null);
-      return () => { ativo = false; };
-    }
-    setDadosDriveProntos(false);
+    setEscopoCarregado(null);
     setErroCarregamento(null);
+    if (!autenticado) limparMemoriaOricse();
+    if (escopoClinico === null) return;
+
     void hidratarOricseStorage(true)
       .then(() => {
-        if (ativo) { setDadosDriveProntos(true); setErroCarregamento(null); }
+        if (ativo) setEscopoCarregado(escopoClinico);
       })
       .catch((error) => {
         console.error("Não foi possível carregar o estado operacional do PostgreSQL:", error);
-        if (ativo) {
-          setDadosDriveProntos(false);
-          setErroCarregamento(error instanceof Error ? error.message : "Falha de carregamento da clínica.");
-        }
+        if (ativo) setErroCarregamento(error instanceof Error ? error.message : "Falha de carregamento da clínica.");
       });
     return () => { ativo = false; };
-  }, [autenticado, role, role === "admin" ? location.pathname.startsWith("/admin") : null]);
-
-  useEffect(() => {
-    // O tema pertence ao app inteiro. Reaplicá-lo após a hidratação do estado
-    // da clínica e nas trocas de rota evita que uma tela ou montagem do rodapé
-    // o substitua pelo tema padrão.
-    if (!autenticado || !dadosDriveProntos || role === "admin") return;
-    aplicarTema(carregarTema(), carregarCor());
-  }, [autenticado, dadosDriveProntos, role, location.pathname]);
+  }, [autenticado, escopoClinico, tentativaHidratacao]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("visual_editor") && autenticado === true && role === "admin") return;
@@ -834,7 +818,13 @@ function RootComponent() {
   const testeAtivo = Boolean(acessoTeste?.teste_ativo);
   const assinaturaBloqueada = role !== "admin" && acessoAssinatura?.situacao === "bloqueada";
   const assinaturaEmAviso = role !== "admin" && acessoAssinatura?.situacao === "aviso";
-  const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !telaSistemaCongelado && !testeExpirado && !assinaturaBloqueada;
+  const temaClinicoPronto = dadosDriveProntos && escopoClinico !== null && !rotaAdmin && !rotaPublica;
+  useLayoutEffect(() => {
+    if (!temaClinicoPronto) return;
+    restaurarTema();
+    return limparTema;
+  }, [temaClinicoPronto, escopoClinico]);
+  const mostrarClinico = temaClinicoPronto && !telaSistemaCongelado && !testeExpirado && !assinaturaBloqueada;
   const rotaDePlantao = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const mostrarBloqueioAssinatura = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && assinaturaBloqueada;
@@ -976,21 +966,19 @@ function RootComponent() {
                 <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <button type="button" className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" onClick={() => {
                     setErroCarregamento(null);
-                    void hidratarOricseStorage(true).then(() => setDadosDriveProntos(true)).catch((error) => {
-                      setErroCarregamento(error instanceof Error ? error.message : "Falha ao carregar os dados.");
-                    });
+                    setTentativaHidratacao((tentativa) => tentativa + 1);
                   }}>Tentar novamente</button>
                   {role === "admin" && <Link to="/admin" className="rounded-xl border px-4 py-2 text-sm font-semibold">Selecionar clínica no Admin</Link>}
                 </div>
               </section>
             </main>
           ) : (
-            <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
+            <div className="flex min-h-dvh items-center justify-center bg-[#f4f4f5] text-sm text-[#52525b]" role="status">
               Carregando os dados da clínica...
             </div>
           )
         ) : autenticado === null && !rotaPublica && !rotaAdmin ? (
-          <div className="min-h-screen" />
+          <div className="min-h-dvh bg-[#f4f4f5]" />
         ) : mostrarBloqueioAssinatura ? (
           <main className="flex min-h-[75vh] items-center justify-center bg-background px-4 py-10"><section className="w-full max-w-xl rounded-3xl border bg-card p-7 text-center shadow-lg"><div className="text-4xl">🔒</div><p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-primary">Assinatura ORICSE</p><h1 className="mt-2 text-3xl font-bold">{acessoAssinatura?.titulo || "Acesso administrativo bloqueado"}</h1><p className="mt-3 text-muted-foreground">{acessoAssinatura?.mensagem || "Regularize a assinatura para continuar usando o sistema."}</p><div className="mt-5 rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">O Portal do Tutor continua ativo, incluindo documentos, agenda e pagamentos online.</div><Link to="/plano-clinica" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">Ver assinatura e regularizar</Link></section></main>
         ) : mostrarBloqueioTeste ? (

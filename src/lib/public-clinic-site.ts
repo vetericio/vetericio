@@ -1,3 +1,4 @@
+import { createServerFn } from "@tanstack/react-start";
 import type { ClinicSiteConfig } from "@/lib/clinic-site";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://mwrmfcyrdxfxssebgknz.supabase.co";
@@ -38,6 +39,15 @@ export async function loadPublicClinicSite(slug: string): Promise<PublicClinicSi
   return (await response.json() as PublicClinicSite[])[0] || null;
 }
 
+
+/** Use a mesma consulta pública da página da clínica no navegador. */
+export const loadPublicClinicSiteForPortal = createServerFn({ method: "GET" })
+  .validator((slug: unknown) => typeof slug === "string" ? slug : "")
+  .handler(async ({ data: slug }) => {
+    const { setResponseHeader } = await import("@tanstack/react-start/server");
+    setResponseHeader("cache-control", "no-store");
+    return loadPublicClinicSite(slug);
+  });
 
 /** Layout publicado para a primeira pintura pública; rascunhos nunca são expostos. */
 export async function loadPublicVisualDocument(): Promise<PublicVisualDocument> {
