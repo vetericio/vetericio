@@ -26,7 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
-import { CRM_EM_PREPARACAO, SO_COM_PLANTAO } from "@/lib/navegacao";
+import { CRM_EM_PREPARACAO, ORICSTUDIO_EM_PREPARACAO, SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 type MenuRoute =
@@ -177,6 +177,7 @@ const areas: AreaMenu[] = [
   {
     titulo: "Meu OricStúdio",
     icone: Instagram,
+    emPreparacao: ORICSTUDIO_EM_PREPARACAO,
     itens: [{ to: "/oricstudio", rotulo: "Gestão de redes sociais" }],
   },
   {
@@ -571,10 +572,10 @@ export function MenuLateral({
                 <button
                   key={area.titulo}
                   type="button"
-                  aria-label={`Abrir ${area.titulo}`}
-                  title={area.titulo}
+                  aria-label={area.emPreparacao ? `${area.titulo} · Em breve` : `Abrir ${area.titulo}`}
+                  title={area.emPreparacao ? `${area.titulo} · Em breve` : area.titulo}
                   onClick={() => abrirAreaCompacta(area.titulo)}
-                  data-current={ativo || undefined}
+                  data-current={(ativo && !area.emPreparacao) || undefined}
                   className="oricse-menu-item flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 transition-colors"
                 >
                   <Icone className="h-5 w-5" />
