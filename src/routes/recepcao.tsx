@@ -1,7 +1,7 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, Mail, MessageCircle, PawPrint, Plus, ReceiptText, UserRound, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { AprovacoesAgenda } from "@/components/agenda/AprovacoesAgenda";
@@ -238,9 +238,6 @@ export function Recepcao() {
     if (typeof window === "undefined") return true;
     return oricseStorage.getItem(FILA_VISIVEL_KEY) !== "false";
   });
-  const agendaWrapRef = useRef<HTMLDivElement>(null);
-  const barraTopoRef = useRef<HTMLDivElement>(null);
-  const [larguraTrilho, setLarguraTrilho] = useState(0);
 
   const aguardando = useMemo(() => fila
     .filter((item) => !item.status || item.status === "Aguardando")
@@ -320,56 +317,6 @@ export function Recepcao() {
       ativa=false;
       window.removeEventListener("storage", atualizar);
       window.removeEventListener("focus", atualizar);
-    };
-  }, []);
-
-  useEffect(() => {
-    const wrap = agendaWrapRef.current;
-    const barra = barraTopoRef.current;
-    if (!wrap || !barra) return;
-
-    let trilho: HTMLElement | null = null;
-    let sincronizando = false;
-
-    const syncDaAgenda = () => {
-      if (!trilho || sincronizando) return;
-      sincronizando = true;
-      barra.scrollLeft = trilho.scrollLeft;
-      requestAnimationFrame(() => { sincronizando = false; });
-    };
-
-    const syncDaBarra = () => {
-      if (!trilho || sincronizando) return;
-      sincronizando = true;
-      trilho.scrollLeft = barra.scrollLeft;
-      requestAnimationFrame(() => { sincronizando = false; });
-    };
-
-    const localizar = () => {
-      // A grade pode aparecer depois do carregamento assíncrono da agenda.
-      const novoTrilho = wrap.querySelector<HTMLElement>('[data-oricse-agenda-trilho="true"]');
-      if (novoTrilho !== trilho) {
-        trilho?.removeEventListener("scroll", syncDaAgenda);
-        trilho = novoTrilho;
-        trilho?.addEventListener("scroll", syncDaAgenda, { passive: true });
-      }
-      const largura = trilho?.scrollWidth || barra.clientWidth;
-      setLarguraTrilho((atual) => atual === largura ? atual : largura);
-      if (trilho) barra.scrollLeft = trilho.scrollLeft;
-    };
-
-    barra.addEventListener("scroll", syncDaBarra, { passive: true });
-    const observer = new MutationObserver(localizar);
-    observer.observe(wrap, { childList: true, subtree: true });
-    const resize = new ResizeObserver(localizar);
-    resize.observe(wrap);
-    localizar();
-
-    return () => {
-      trilho?.removeEventListener("scroll", syncDaAgenda);
-      barra.removeEventListener("scroll", syncDaBarra);
-      observer.disconnect();
-      resize.disconnect();
     };
   }, []);
 
@@ -470,14 +417,11 @@ export function Recepcao() {
         </div>
 
         <section id="agenda-recepcao" className="min-w-0 scroll-mt-4 rounded-2xl border-2 border-primary/15 bg-primary/[0.015] p-2 sm:p-3">
-          <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <div className="flex items-center gap-2"><CalendarDays size={19} className="text-primary"/><h2 className="font-black">Agenda</h2></div>
-            <span className="text-xs text-muted-foreground">Arraste a barra para navegar entre as agendas</span>
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <CalendarDays size={19} className="text-primary" />
+            <h2 className="font-black">Agenda</h2>
           </div>
-          <div ref={barraTopoRef} className="mb-2 overflow-x-auto rounded-lg border bg-white px-1 py-1 [scrollbar-width:auto]">
-            <div style={{ width: Math.max(larguraTrilho, 1), height: 2 }} />
-          </div>
-          <div ref={agendaWrapRef} className="agenda-recepcao-wrap min-w-0">
+          <div className="agenda-recepcao-wrap min-w-0">
             <AgendaErrorBoundary><AgendaDayBoard mode="recepcao" revisao={revisaoAgenda} /></AgendaErrorBoundary>
           </div>
         </section>
