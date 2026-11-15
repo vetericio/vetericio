@@ -16,9 +16,7 @@ import premiumCss from "../themes-premium.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
-import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { hidratarOricseStorage, limparMemoriaOricse } from "@/lib/oricse-storage";
 import { migrarCodigosTutoresLocais } from "@/lib/codigo-tutor";
@@ -32,16 +30,26 @@ import {
 } from "@/lib/tenant-context";
 import { ClinicasAtivasContext } from "@/lib/clinicas-ativas-context";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { isPlatformHostname } from "@/lib/public-clinic-site";
 import { slugPortalDoTutor } from "@/lib/portal-tutor-url";
-import { VisualPageRuntime } from "@/components/VisualPageRuntime";
 import { ORICSE_SISTEMA_CONGELADO, rotaEditavelProtegida } from "@/lib/oricse-freeze";
 
 // O cabeçalho clínico inicia sincronizações e dependências próprias. Mantê-lo
 // fora do bundle inicial deixa login, início e administração responsivos.
 const Cabecalho = lazy(() =>
   import("@/components/Cabecalho").then((module) => ({ default: module.Cabecalho })),
+);
+const AlarmeAtivo = lazy(() =>
+  import("@/components/AlarmeAtivo").then((module) => ({ default: module.AlarmeAtivo })),
+);
+const NatalVivoDecoracao = lazy(() =>
+  import("@/components/NatalVivoDecoracao").then((module) => ({ default: module.NatalVivoDecoracao })),
+);
+const AdminShell = lazy(() =>
+  import("@/components/admin/AdminShell").then((module) => ({ default: module.AdminShell })),
+);
+const VisualPageRuntime = lazy(() =>
+  import("@/components/VisualPageRuntime").then((module) => ({ default: module.VisualPageRuntime })),
 );
 
 // A customização visual é opcional: uma falha num chunk dela não pode derrubar
@@ -873,7 +881,7 @@ function RootComponent() {
   if (location.pathname === "/termos-de-uso" || location.pathname === "/politica-de-privacidade" || location.pathname === "/contratacao-recebida") {
     return (
       <QueryClientProvider client={queryClient}>
-        <VisualPageRuntime />
+        <Suspense fallback={null}><VisualPageRuntime /></Suspense>
         <Outlet />
       </QueryClientProvider>
     );
@@ -885,10 +893,10 @@ function RootComponent() {
       <TenantContext.Provider value={contextoPortal}>
         {mostrarRuntimeVisual && (
           <OptionalRuntimeBoundary>
-            <VisualPageRuntime />
+            <Suspense fallback={null}><VisualPageRuntime /></Suspense>
           </OptionalRuntimeBoundary>
         )}
-        {mostrarClinico && <NatalVivoDecoracao />}
+        {mostrarClinico && <Suspense fallback={null}><NatalVivoDecoracao /></Suspense>}
         {mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
             <OptionalRuntimeBoundary fallback={<div className="border-b bg-background p-3 text-sm"><a className="font-semibold underline" href="/inicio">Início</a><span className="mx-3">·</span><a className="font-semibold underline" href="/admin">Administração</a></div>}>
@@ -900,7 +908,7 @@ function RootComponent() {
         )}
         {mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
-            <AlarmeAtivo />
+            <Suspense fallback={null}><AlarmeAtivo /></Suspense>
           </div>
         )}
         {assinaturaEmAviso && mostrarClinico && <div className={menuFixo ? "pl-16 lg:pl-80" : ""}><div className="mx-auto mt-3 max-w-4xl rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-950">{acessoAssinatura?.mensagem || "Sua assinatura venceu. Regularize para evitar o bloqueio."}</div></div>}
@@ -1003,7 +1011,7 @@ function RootComponent() {
             </section>
           </main>
         ) : rotaAdmin && autenticado && role === "admin" ? (
-          <AdminShell><Outlet /></AdminShell>
+          <Suspense fallback={<Outlet />}><AdminShell><Outlet /></AdminShell></Suspense>
         ) : (
           <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
             <Outlet />
