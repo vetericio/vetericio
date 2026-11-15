@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -7,7 +7,6 @@ import { TEMA_CALMO } from "@/lib/conforto";
 import {
   CORES_RAPIDAS,
   TEMAS,
-  aplicarCorPersonalizada,
   aplicarTema,
   aplicarTemaPersonalizado,
   carregarTemasPersonalizados,
@@ -17,6 +16,7 @@ import {
   salvarTemaPersonalizado,
   excluirTemaPersonalizado,
   type TemaPersonalizado,
+  type SelecaoTema,
   type TemaId,
 } from "@/lib/tema";
 
@@ -42,21 +42,12 @@ export const Route = createFileRoute("/temas")({
 });
 
 function PaginaTemas() {
-  const [tema, setTema] = useState<TemaId>("original");
-  const [cor, setCor] = useState("#6F293B");
-  const [personalizados, setPersonalizados] = useState<TemaPersonalizado[]>([]);
+  const [tema, setTema] = useState<SelecaoTema>(carregarTema);
+  const [cor, setCor] = useState(carregarCor);
+  const [personalizados, setPersonalizados] = useState(carregarTemasPersonalizados);
   const [foto, setFoto] = useState("");
   const [nomePersonalizado, setNomePersonalizado] = useState("");
   const { conforto, definirModo } = useConforto();
-
-  useEffect(() => {
-    const salvo = carregarTema();
-    const corSalva = carregarCor();
-    setTema(salvo);
-    setCor(corSalva);
-    setPersonalizados(carregarTemasPersonalizados());
-    aplicarTema(salvo, corSalva);
-  }, []);
 
   const escolher = (id: TemaId) => {
     setTema(id);
@@ -68,7 +59,6 @@ function PaginaTemas() {
     salvarCor(nova);
     setTema("minha-cor");
     aplicarTema("minha-cor", nova);
-    aplicarCorPersonalizada(nova);
   };
 
   const lerFoto = (arquivo: File) => {
@@ -87,9 +77,20 @@ function PaginaTemas() {
     };
     if (!salvarTemaPersonalizado(novo)) { toast.error("Você já atingiu o limite de 2 temas."); return; }
     setPersonalizados(carregarTemasPersonalizados());
-    aplicarTemaPersonalizado(novo);
+    escolherPersonalizado(novo);
     setNomePersonalizado("");
     toast.success("Tema personalizado salvo.");
+  };
+
+  const escolherPersonalizado = (personalizado: TemaPersonalizado) => {
+    setTema(`personalizado:${personalizado.id}`);
+    aplicarTemaPersonalizado(personalizado);
+  };
+
+  const removerPersonalizado = (id: string) => {
+    excluirTemaPersonalizado(id);
+    setPersonalizados(carregarTemasPersonalizados());
+    if (tema === `personalizado:${id}`) escolher("veterico");
   };
 
   const escolherModo = (modo: "veterico" | "calmo") => {
@@ -229,7 +230,7 @@ function PaginaTemas() {
         </div>
         {foto && <img src={foto} alt="Prévia do fundo" className="mt-3 h-28 w-full rounded-xl object-cover" />}
         <button type="button" onClick={salvarPersonalizado} className="mt-3 w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground">Salvar tema ({personalizados.length}/2)</button>
-        {personalizados.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{personalizados.map((p) => <div key={p.id} className="overflow-hidden rounded-xl border border-border bg-background"><button type="button" onClick={() => aplicarTemaPersonalizado(p)} className="block w-full text-left"><img src={p.fundo} alt="" className="h-20 w-full object-cover" /><span className="block truncate px-2 py-1.5 text-xs font-semibold text-foreground">{p.nome}</span></button><button type="button" onClick={() => { excluirTemaPersonalizado(p.id); setPersonalizados(carregarTemasPersonalizados()); }} className="w-full border-t border-border px-2 py-1 text-[10px] text-destructive">Excluir</button></div>)}</div>}
+        {personalizados.length > 0 && <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{personalizados.map((p) => <div key={p.id} className="overflow-hidden rounded-xl border border-border bg-background"><button type="button" onClick={() => escolherPersonalizado(p)} aria-pressed={tema === `personalizado:${p.id}`} className="block w-full text-left"><img src={p.fundo} alt="" className="h-20 w-full object-cover" /><span className="block truncate px-2 py-1.5 text-xs font-semibold text-foreground">{p.nome}</span></button><button type="button" onClick={() => removerPersonalizado(p.id)} className="w-full border-t border-border px-2 py-1 text-[10px] text-destructive">Excluir</button></div>)}</div>}
       </section>
     </main>
   );

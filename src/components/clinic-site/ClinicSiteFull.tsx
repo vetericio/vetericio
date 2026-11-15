@@ -136,7 +136,9 @@ export function ClinicSiteFull({
   const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
   const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
   const portalHref = publishedSlug
-    ? urlPortalDoTutor(publishedSlug) + (publishedSlug === "alvorada" ? "" : "?secao=agenda")
+    ? publishedSlug === "alvorada"
+      ? urlPortalDoTutor(publishedSlug, template)
+      : urlPortalDoTutor(publishedSlug) + "?secao=agenda"
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
   const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";

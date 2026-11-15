@@ -107,6 +107,11 @@ function permissoesDaChave(chave: string): string[] {
   return [];
 }
 
+// A leitura da identidade visual é comum a toda a equipe da clínica ativa.
+const chavesTemaClinico = new Set([
+  "veterico-tema-v1", "veterico-tema-v2", "veterico-tema-cor-v1", "veterico-temas-personalizados-v1",
+]);
+
 async function obterPermissoesUsuario(
   accessToken: string,
   contexto: { userId: string; clinicaId: string | null },
@@ -310,9 +315,10 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
     .map(([chave, valor]) => [chave, valor as string] as const);
-  if (filtrarLeitura && !contexto.adminGeral && pares.some(([chave]) => permissoesDaChave(chave).length)) {
+  if (filtrarLeitura && !contexto.adminGeral && pares.some(([chave]) => !chavesTemaClinico.has(chave) && permissoesDaChave(chave).length)) {
     const permitidas = await obterPermissoesUsuario(accessToken, contexto);
     pares = pares.filter(([chave]) => {
+      if (chavesTemaClinico.has(chave)) return true;
       const exigidas = permissoesDaChave(chave);
       return !exigidas.length || exigidas.some((codigo) => permitidas.has(codigo));
     });

@@ -1,4 +1,4 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
+import { oricseStorage } from "@/lib/oricse-storage";
 export type TemaId =
   | "original"
   | "vet"
@@ -22,6 +22,8 @@ export type TemaId =
   | "jade"
   | "minha-cor"
   | "rosa";
+
+export type SelecaoTema = TemaId | `personalizado:${string}`;
 
 export type TemaPersonalizado = { id: string; nome: string; cor: string; fundo: string };
 
@@ -91,15 +93,14 @@ const VARS_CUSTOM = [
   "--chart-2",
 ];
 
-export function carregarTema(): TemaId {
+export function carregarTema(): SelecaoTema {
   if (typeof window === "undefined") return "veterico";
   const salvo = oricseStorage.getItem(CHAVE);
   if (salvo?.startsWith("personalizado:")) {
-    const personalizado = carregarTemasPersonalizados().find((t) => salvo === `personalizado:${t.id}`);
-    if (personalizado) aplicarTemaPersonalizado(personalizado);
-    return "veterico";
+    const tema = carregarTemasPersonalizados().find(({ id }) => salvo === `personalizado:${id}`);
+    if (tema) return `personalizado:${tema.id}`;
   }
-  return TEMAS.some((t) => t.id === salvo) ? (salvo as TemaId) : "veterico";
+  return salvo === "minha-cor" ? salvo : TEMAS.find(({ id }) => id === salvo)?.id ?? "veterico";
 }
 
 export function carregarCor(): string {
@@ -139,38 +140,57 @@ export function excluirTemaPersonalizado(id: string) {
   oricseStorage.setItem(CHAVE_PERSONALIZADOS, JSON.stringify(temas));
 }
 
-export function aplicarTemaPersonalizado(tema: TemaPersonalizado) {
-  aplicarCorPersonalizada(tema.cor);
-  const alvo = document.documentElement;
-  alvo.classList.remove(...CLASSES);
-  alvo.style.setProperty("--tema-fundo-imagem", `url(${JSON.stringify(tema.fundo)})`);
-  document.body.style.backgroundImage = `linear-gradient(oklch(0.08 0.02 270 / 35%), oklch(0.08 0.02 270 / 35%)), url(${JSON.stringify(tema.fundo)})`;
-  document.body.style.backgroundSize = "cover";
-  document.body.style.backgroundAttachment = "fixed";
-  document.body.style.backgroundPosition = "center";
-  try { oricseStorage.setItem(CHAVE, `personalizado:${tema.id}`); } catch { /* ignore */ }
-  window.dispatchEvent(new Event("vetericio:tema"));
-}
-
-export function aplicarTema(id: TemaId, cor = carregarCor()) {
+export function limparTema() {
   if (typeof document === "undefined") return;
   const alvo = document.documentElement;
   alvo.classList.remove(...CLASSES);
+  alvo.style.removeProperty("--tema-fundo-imagem");
   document.body.style.backgroundImage = "";
   document.body.style.backgroundSize = "";
   document.body.style.backgroundAttachment = "";
-  for (const v of VARS_CUSTOM) alvo.style.removeProperty(v);
+  document.body.style.backgroundPosition = "";
+  for (const variavel of VARS_CUSTOM) alvo.style.removeProperty(variavel);
+}
 
-  const tema = TEMAS.find((t) => t.id === id);
-  if (tema?.classe) alvo.classList.add(tema.classe);
-  if (id === "minha-cor") aplicarCorPersonalizada(cor);
-
-  try {
-    oricseStorage.setItem(CHAVE, id);
-  } catch {
-    /* armazenamento indisponível */
+function renderizarTema(id: SelecaoTema, cor: string, personalizado?: TemaPersonalizado) {
+  if (typeof document === "undefined") return;
+  limparTema();
+  const alvo = document.documentElement;
+  if (personalizado) {
+    aplicarCorPersonalizada(personalizado.cor);
+    const fundo = `url(${JSON.stringify(personalizado.fundo)})`;
+    alvo.style.setProperty("--tema-fundo-imagem", fundo);
+    document.body.style.backgroundImage = `linear-gradient(oklch(0.08 0.02 270 / 35%), oklch(0.08 0.02 270 / 35%)), ${fundo}`;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundAttachment = "fixed";
+    document.body.style.backgroundPosition = "center";
+  } else {
+    const tema = TEMAS.find((item) => item.id === id);
+    if (tema) alvo.classList.add(tema.classe);
+    if (id === "minha-cor") aplicarCorPersonalizada(cor);
   }
   window.dispatchEvent(new Event("vetericio:tema"));
+}
+
+export function restaurarTema() {
+  const id = carregarTema();
+  const personalizado = id.startsWith("personalizado:")
+    ? carregarTemasPersonalizados().find((tema) => id === `personalizado:${tema.id}`)
+    : undefined;
+  renderizarTema(id, carregarCor(), personalizado);
+}
+
+export function aplicarTemaPersonalizado(tema: TemaPersonalizado) {
+  if (typeof window === "undefined") return;
+  const id = `personalizado:${tema.id}` as const;
+  renderizarTema(id, tema.cor, tema);
+  oricseStorage.setItem(CHAVE, id);
+}
+
+export function aplicarTema(id: TemaId, cor = carregarCor()) {
+  if (typeof window === "undefined") return;
+  renderizarTema(id, cor);
+  oricseStorage.setItem(CHAVE, id);
 }
 
 /* ---------- cor personalizada ---------- */
