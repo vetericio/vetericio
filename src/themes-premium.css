@@ -73,19 +73,6 @@ html.oricse-a11y-foco .oricse-menu :is(a, button):focus-visible {
   --menu-hover-texto: #e3f7ff;
   --menu-sair: #ffc4be;
 }
-.tema-rock .oricse-menu {
-  --menu-fundo: linear-gradient(155deg, #242124, #101012);
-  --menu-painel: #151518;
-  --menu-texto: #f8f3ed;
-  --menu-suave: #d1c1be;
-  --menu-grupo: #322b2e;
-  --menu-grupo-texto: #f8f3ed;
-  --menu-hover: #402e33;
-  --menu-hover-texto: #f8f3ed;
-  --menu-ativo: #9b202a;
-  --menu-ativo-texto: #fff;
-  --menu-sair: #ffbfb9;
-}
 :is(.tema-black, .tema-cansado) .oricse-menu {
   --menu-suave: #b7bec7;
   --menu-sair: #ffbfb9;
@@ -193,29 +180,78 @@ html.oricse-a11y-foco .oricse-menu :is(a, button):focus-visible {
 .tema-verde-cinza main .text-slate-900,.tema-verde-cinza main .text-slate-800 {color:#e3f7ff;}
 .tema-verde-cinza main .text-slate-500,.tema-verde-cinza main .text-slate-600 {color:#abc3d7;}
 
-/* Rock: palco real e equipamentos em camadas atrás da interface. */
-.rock-decoracao {display:none;position:fixed;inset:0;z-index:0;pointer-events:none!important;overflow:hidden;}
-.rock-decoracao * {pointer-events:none!important;user-select:none;}
-.tema-rock .rock-decoracao {display:block;}
-.rock-equipamento {position:absolute;bottom:-30px;width:clamp(150px,17vw,310px);height:auto;filter:drop-shadow(0 5px 12px #0009);}
-.rock-equipamento--esquerdo {left:0;}
-.rock-equipamento--direito {right:-40px;width:clamp(110px,12vw,230px);transform:scaleX(-1);}
-.tema-rock body {background:#111113 url('/temas/rock-palco.webp') center top/cover fixed no-repeat;}
-.tema-rock .oricse-cabecalho {min-height:190px;background:linear-gradient(180deg,#09090b22,#0c0c0f88);border-bottom:2px solid #9a282f;box-shadow:0 5px 18px #0006;}
-.tema-rock .oricse-cabecalho>.mx-auto {padding-top:28px;padding-bottom:18px;}
-.tema-rock .oricse-cabecalho img {filter:brightness(0) invert(1) drop-shadow(0 2px 5px #000);}
-.tema-rock main,.tema-rock footer {position:relative;z-index:1;}
-.tema-rock main .bg-white,.tema-rock main .bg-card,.tema-rock main .bg-slate-50 {background:linear-gradient(135deg,#242426f7,#151518f7)!important;color:#f8f3ed;border-color:#6e6263;box-shadow:0 7px 20px #0008,inset 0 1px #ffffff18;}
-.tema-rock main > section {border-top:2px solid #ae353d;}
-.tema-rock .oricse-menu-lateral nav > div {border-color:#69555a;}
-.tema-rock .bg-primary {background:linear-gradient(135deg,#c72e39,#981a25);color:#fff;box-shadow:inset 0 1px #ffbba63d,0 3px 8px #0005;}
-.tema-rock input,.tema-rock textarea,.tema-rock select {background:#17171b!important;color:#f8f3ed;border-color:#76636a;}
-.tema-rock th {background:#34272c;color:#f5d8cf;}
-.tema-rock main .text-slate-900,.tema-rock main .text-slate-800 {color:#f8f3ed;}
-.tema-rock main .text-slate-500,.tema-rock main .text-slate-600 {color:#c1b8b7;}
+/* Industrial mantém o ID de Rock para preservar a escolha salva. */
+.tema-industrial {
+  --background: #171a1d;
+  --foreground: #f0efeb;
+  --card: #24282c;
+  --card-foreground: #f0efeb;
+  --popover: #24282c;
+  --popover-foreground: #f0efeb;
+  --primary: #ebb16c;
+  --primary-foreground: #241a11;
+  --secondary: #343a40;
+  --secondary-foreground: #f0efeb;
+  --muted: #2b3035;
+  --muted-foreground: #c3c6c8;
+  --accent: #4b4034;
+  --accent-foreground: #fff0df;
+  --border: #636a70;
+  --input: #697178;
+  --ring: #ebb16c;
+  --sidebar: #1d2125;
+  --sidebar-foreground: #f0efeb;
+  --sidebar-primary: #ebb16c;
+  --sidebar-primary-foreground: #241a11;
+  --sidebar-accent: #343a40;
+  --sidebar-accent-foreground: #f0efeb;
+  --sidebar-border: #636a70;
+  --sidebar-ring: #ebb16c;
+  --chart-1: #ebb16c;
+  --chart-2: #a0bccb;
+  --radius: 0.45rem;
+  --industrial-fundo: url('/temas/industrial-galpao.webp');
+}
+html.tema-industrial.oricse-a11y-contraste { --muted-foreground: #e4e6e7; }
+.tema-industrial body {
+  background: linear-gradient(#10131630, #101316a6 36%, #101316e6), var(--industrial-fundo) center top / cover no-repeat var(--background);
+  background-attachment: fixed;
+}
+.tema-industrial .oricse-cabecalho {
+  min-height: 150px;
+  background: linear-gradient(180deg, #11141840, #15181bbf);
+  border-bottom: 2px solid #ad7d4d;
+}
+.tema-industrial .oricse-cabecalho img { filter: brightness(0) invert(1) drop-shadow(0 2px 5px #000); }
+.tema-industrial .oricse-menu {
+  --menu-fundo: linear-gradient(155deg, #2a3035, #16191c);
+  --menu-painel: #1d2125;
+  --menu-suave: #c3c6c8;
+  --menu-hover: #3b4349;
+  --menu-sair: #ffbfb9;
+}
+.tema-industrial main :is(.bg-white, .bg-card, .bg-slate-50) {
+  background: var(--card) !important;
+  color: var(--card-foreground);
+  border-color: var(--border);
+}
+.tema-industrial input:not([type="checkbox"], [type="radio"], [type="color"]),
+.tema-industrial textarea,
+.tema-industrial select { background-color: var(--background); color: var(--foreground); border-color: var(--input); }
+.tema-industrial th { background: var(--secondary); color: var(--secondary-foreground); }
+.tema-industrial main :is(.text-slate-900, .text-slate-800) { color: var(--foreground); }
+.tema-industrial main :is(.text-slate-500, .text-slate-600) { color: var(--muted-foreground); }
 [data-theme-preview].tema-verde-cinza > .bg-background {background:linear-gradient(#071424cc,#071424e6),url('/temas/aurora-boreal.webp') center/cover #071424;}
-[data-theme-preview].tema-rock > .bg-background {background:linear-gradient(#111113cc,#111113e6),url('/temas/rock-palco.webp') center/cover #111113;}
-@media(max-width:640px){.tema-rock .oricse-cabecalho{min-height:150px}.tema-verde-cinza .oricse-cabecalho{min-height:140px}.rock-equipamento{width:115px;opacity:.75}.rock-equipamento--direito{width:95px;right:-30px}}
+[data-theme-preview].tema-industrial > .bg-background {
+  background: linear-gradient(#171a1dcc, #171a1de6), var(--industrial-fundo) center top / cover no-repeat var(--background);
+}
+@media(max-width:640px){
+  .tema-industrial body {
+    background: linear-gradient(#10131630, #101316a6 260px, var(--background) 780px),
+      var(--industrial-fundo) 8% top / auto 780px no-repeat var(--background);
+  }
+  .tema-verde-cinza .oricse-cabecalho { min-height: 140px; }
+}
 
 /* Clínico: verde cirúrgico, azul hospitalar e branco. */
 .tema-vet body {background:#edf8f6;}

@@ -637,41 +637,6 @@
   background-repeat: repeat;
 }
 
-/* Tema rock. */
-.tema-rock {
-  --background: #111113;
-  --foreground: #f8f3ed;
-  --card: #202024;
-  --card-foreground: #f8f3ed;
-  --popover: #202024;
-  --popover-foreground: #f8f3ed;
-  --primary: #c82f35;
-  --primary-foreground: #ffffff;
-  --secondary: #2b2b30;
-  --secondary-foreground: #f8f3ed;
-  --muted: #2b2b30;
-  --muted-foreground: #c1b8b7;
-  --accent: #4b3535;
-  --accent-foreground: #f8f3ed;
-  --border: #575157;
-  --input: #575157;
-  --ring: #c82f35;
-  --sidebar: #151517;
-  --sidebar-foreground: #f8f3ed;
-  --sidebar-primary: #c82f35;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #f8f3ed;
-  --sidebar-border: #575157;
-  --chart-1: #c82f35;
-  --chart-2: #e6b260;
-  --radius: 0.45rem;
-}
-
-.tema-rock body {
-  background-color: #111113;
-}
-
 /* Tema Veterício: cores e padrão da logo (laranja + azul-petróleo). */
 .tema-veterico {
   --background: oklch(0.9778 0.0079 73.74);
