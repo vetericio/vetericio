@@ -437,35 +437,37 @@ export function Recepcao() {
         <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={() => { const livre = document.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]'); if (livre) { livre.click(); livre.scrollIntoView({ behavior: "smooth", block: "center" }); } else if (document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')) { document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')?.click(); } else { document.getElementById("agenda-recepcao")?.scrollIntoView({ behavior: "smooth", block: "start" }); toast.info("Não há horário livre visível nesta data. Escolha outra data ou agenda."); } }} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
       </div>
 
-      {clinicaId && <AprovacoesAgenda key={clinicaId} clinicaId={clinicaId} aoAprovar={() => setRevisaoAgenda(atual => atual + 1)} />}
-      <div className={`mt-6 grid items-start gap-4 ${filaVisivel ? "xl:grid-cols-[300px_minmax(0,1fr)]" : "grid-cols-1"}`}>
-        {filaVisivel ? (
-          <aside className="min-w-0 rounded-2xl border-2 border-primary/25 bg-white shadow-sm xl:sticky xl:top-3">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div className="flex items-center gap-2"><ClipboardList size={19} className="text-primary"/><h2 className="font-black">Fila de espera</h2></div>
-              <button type="button" onClick={() => setFilaVisivel(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" title="Ocultar fila de espera" aria-label="Ocultar fila de espera"><EyeOff size={17}/></button>
-            </div>
-            <div className="max-h-[68vh] overflow-y-auto">
-              {aguardando.length === 0 ? <div className="p-5 text-center text-sm text-muted-foreground">{erroFila || "Ninguém aguardando."}</div> : aguardando.map((item, index) => {
-                const chegada = item.chegadaEm || item.entradaEm;
-                return <div key={item.id || index} className="border-b px-4 py-3 last:border-b-0">
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 text-xs font-black text-primary">#{index + 1}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-bold">{emojiEspecie(item.especie)} {item.animalNome || item.animal || "Paciente"}</div>
-                      <div className="truncate text-xs text-muted-foreground">{item.tutorNome || item.tutor || "Tutor"}</div>
-                      <div className="mt-1 flex items-center justify-between gap-2 text-[11px]"><span>Chegada {hora(chegada)}</span><strong className="text-primary">{tempoEspera(chegada)}</strong></div>
-                      {item.motivo && <div className="mt-1 truncate text-xs text-muted-foreground">{item.motivo}</div>}
+      <div className={`mt-6 grid items-start gap-4 ${filaVisivel || clinicaId ? "xl:grid-cols-[300px_minmax(0,1fr)]" : "grid-cols-1"}`}>
+        <div className="min-w-0 space-y-3 xl:sticky xl:top-3 xl:max-h-[calc(100dvh-1.5rem)] xl:overflow-y-auto">
+        {clinicaId && <AprovacoesAgenda key={clinicaId} clinicaId={clinicaId} aoAprovar={() => setRevisaoAgenda(atual => atual + 1)} />}
+          {filaVisivel ? (
+            <aside className="min-w-0 rounded-2xl border-2 border-primary/25 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <div className="flex items-center gap-2"><ClipboardList size={19} className="text-primary"/><h2 className="font-black">Fila de espera</h2></div>
+                <button type="button" onClick={() => setFilaVisivel(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" title="Ocultar fila de espera" aria-label="Ocultar fila de espera"><EyeOff size={17}/></button>
+              </div>
+              <div className="max-h-[68vh] overflow-y-auto">
+                {aguardando.length === 0 ? <div className="p-5 text-center text-sm text-muted-foreground">{erroFila || "Ninguém aguardando."}</div> : aguardando.map((item, index) => {
+                  const chegada = item.chegadaEm || item.entradaEm;
+                  return <div key={item.id || index} className="border-b px-4 py-3 last:border-b-0">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 text-xs font-black text-primary">#{index + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-bold">{emojiEspecie(item.especie)} {item.animalNome || item.animal || "Paciente"}</div>
+                        <div className="truncate text-xs text-muted-foreground">{item.tutorNome || item.tutor || "Tutor"}</div>
+                        <div className="mt-1 flex items-center justify-between gap-2 text-[11px]"><span>Chegada {hora(chegada)}</span><strong className="text-primary">{tempoEspera(chegada)}</strong></div>
+                        {item.motivo && <div className="mt-1 truncate text-xs text-muted-foreground">{item.motivo}</div>}
+                      </div>
                     </div>
-                  </div>
-                </div>;
-              })}
-            </div>
-            <Link to="/fila-espera" className="m-3 flex min-h-10 items-center justify-center rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">Abrir fila completa</Link>
-          </aside>
-        ) : (
-          <button type="button" onClick={() => setFilaVisivel(true)} className="mb-1 inline-flex w-fit items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-semibold shadow-sm"><Eye size={17} className="text-primary"/> Mostrar fila de espera</button>
-        )}
+                  </div>;
+                })}
+              </div>
+              <Link to="/fila-espera" className="m-3 flex min-h-10 items-center justify-center rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">Abrir fila completa</Link>
+            </aside>
+          ) : (
+            <button type="button" onClick={() => setFilaVisivel(true)} className="mb-1 inline-flex w-fit items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-semibold shadow-sm"><Eye size={17} className="text-primary"/> Mostrar fila de espera</button>
+          )}
+        </div>
 
         <section id="agenda-recepcao" className="min-w-0 scroll-mt-4 rounded-2xl border-2 border-primary/15 bg-primary/[0.015] p-2 sm:p-3">
           <div className="mb-2 flex items-center justify-between gap-3 px-1">
