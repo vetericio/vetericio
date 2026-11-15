@@ -36,7 +36,7 @@ export const TEMAS: { id: TemaId; nome: string; classe: string; descricao: strin
   { id: "cansado", nome: "Conforto", classe: "tema-cansado", descricao: "Contraste suave para longas jornadas" },
   { id: "rosa", nome: "Rosa", classe: "tema-rosa", descricao: "Rosa blush, ameixa e detalhes delicados" },
   { id: "natal", nome: "Natal Vivo", classe: "tema-natal-premium", descricao: "Natal sofisticado: pinheiros, luzes quentes e detalhes vermelhos e dourados" },
-  { id: "rock", nome: "Rock", classe: "tema-rock", descricao: "Palco, guitarras, amplificadores, aço e luzes de show" },
+  { id: "rock", nome: "Industrial", classe: "tema-industrial", descricao: "Aço escuro, concreto aparente e luz âmbar de galpão" },
   { id: "jade", nome: "Jade Imperial", classe: "tema-jade", descricao: "Verde-jade, marfim e detalhes em latão" },
 ];
 

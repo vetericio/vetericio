@@ -16,7 +16,6 @@ import premiumCss from "../themes-premium.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { RockDecoracao } from "@/components/RockDecoracao";
 import { AlarmeAtivo } from "@/components/AlarmeAtivo";
 import { Rodape } from "@/components/Rodape";
 import { NatalVivoDecoracao } from "@/components/NatalVivoDecoracao";
@@ -895,7 +894,6 @@ function RootComponent() {
           </OptionalRuntimeBoundary>
         )}
         {mostrarClinico && <NatalVivoDecoracao />}
-        {mostrarClinico && <RockDecoracao />}
         {mostrarClinico && (
           <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
             <OptionalRuntimeBoundary fallback={<div className="border-b bg-background p-3 text-sm"><a className="font-semibold underline" href="/inicio">Início</a><span className="mx-3">·</span><a className="font-semibold underline" href="/admin">Administração</a></div>}>
