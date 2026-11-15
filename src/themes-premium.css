@@ -1,7 +1,9 @@
 /* ORICSE: acabamentos visuais dos temas, isolados por classe. */
-.oricse-menu-marca { background-color: #f8f3eb; }
 .oricse-menu-marca-imagem {
   background: url('/logos/oricse-menu-horizontal.webp') center / contain no-repeat;
+}
+:is(.dark, .tema-vet, .tema-verde-cinza, .tema-black, .tema-cansado, .tema-natal-premium, .tema-industrial, .tema-jade) .oricse-menu-marca-imagem {
+  filter: brightness(0) invert(1);
 }
 .oricse-logo-inicio-imagem {
   background: url('/logos/oricse-menu-preta.webp') center / contain no-repeat;
