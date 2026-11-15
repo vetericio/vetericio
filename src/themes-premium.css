@@ -313,7 +313,6 @@ html.tema-industrial.oricse-a11y-contraste { --muted-foreground: #e4e6e7; }
 .natal-vivo-canto--direito{right:-35px;width:clamp(90px,10vw,170px);transform:scaleX(-1)}
 .natal-vivo-luzes{display:none}
 .tema-natal-premium .oricse-cabecalho{position:relative;z-index:1;min-height:192px;background:transparent!important;border-bottom:1px solid #d4b16d80;backdrop-filter:none!important;filter:none!important;transform:none!important;contain:none!important;box-shadow:none}
-.tema-natal-premium .oricse-cabecalho:has(.oricse-menu-lateral) { z-index: 2; }
 .tema-natal-premium .oricse-cabecalho::before{content:"";position:absolute;top:0;right:0;width:100%;height:10px;background:linear-gradient(90deg,#750814,#ae1b25,#750814);z-index:-1}
 .tema-natal-premium .oricse-cabecalho>.mx-auto{padding-top:25px;padding-bottom:16px;min-height:192px}
 .tema-natal-premium .oricse-cabecalho img{position:relative;width:142px!important;max-width:142px!important;height:150px;object-fit:contain}
@@ -326,12 +325,12 @@ html.tema-industrial.oricse-a11y-contraste { --muted-foreground: #e4e6e7; }
 .tema-natal-premium .bg-primary{background:linear-gradient(130deg,#a01426,#780914)!important;color:#fff9ef!important;box-shadow:0 2px 3px #6b0d2020}
 .tema-natal-premium input,.tema-natal-premium textarea,.tema-natal-premium select{background:#fffcf7!important;border-color:#d1b68c!important;box-shadow:inset 0 1px 2px #5941190d}
 .tema-natal-premium th{background:#f2e7d3;color:#4a2f1d}
-.tema-natal-premium .oricse-cabecalho aside.oricse-menu-lateral{z-index:40;top:60px;bottom:0;height:auto;padding:18px 18px 185px;border-right:2px solid #c5a15d!important;box-shadow:4px 0 15px #172d1438}
+.tema-natal-premium aside.oricse-menu-lateral{z-index:40;top:60px;bottom:0;height:auto;padding:18px 18px 185px;border-right:2px solid #c5a15d!important;box-shadow:4px 0 15px #172d1438}
 .tema-natal-premium .oricse-menu-lateral h2{font-size:20px;color:#fff8e8}
 .tema-natal-premium .oricse-menu-lateral nav{margin-top:22px}
 .tema-natal-premium .oricse-menu-lateral nav>div{border-color:#be9b57b3;border-radius:17px}
 @media(min-width:1024px){.tema-natal-premium main{max-width:1440px;padding-left:64px;padding-right:64px}}
-@media(max-width:1023px){.tema-natal-premium .oricse-cabecalho aside.oricse-menu-lateral{padding:8px 8px 100px}.natal-vivo-guirlanda--esquerda{width:65vw;top:-50px}.natal-vivo-guirlanda--direita{width:52vw;top:-50px}.natal-vivo-canto--esquerdo{width:180px}.natal-vivo-canto--direito{width:95px}}
+@media(max-width:1023px){.tema-natal-premium aside.oricse-menu-lateral{padding:8px 8px 100px}.natal-vivo-guirlanda--esquerda{width:65vw;top:-50px}.natal-vivo-guirlanda--direita{width:52vw;top:-50px}.natal-vivo-canto--esquerdo{width:180px}.natal-vivo-canto--direito{width:95px}}
 @media(max-width:640px){.tema-natal-premium .oricse-cabecalho,.tema-natal-premium .oricse-cabecalho>.mx-auto{min-height:145px}.tema-natal-premium .oricse-cabecalho>.mx-auto{padding-top:28px}.tema-natal-premium .oricse-cabecalho img{width:105px!important;height:105px;max-width:105px!important}.natal-vivo-guirlanda--esquerda{width:90vw;left:-30vw;top:-35px}.natal-vivo-guirlanda--direita{width:80vw;right:-30vw;top:-38px}.natal-vivo-canto--esquerdo{width:125px;opacity:.82}.natal-vivo-canto--direito{width:75px;opacity:.8}.tema-natal-premium main>section.bg-white::before{display:none}}
 
 /* A prévia usa as cores do próprio cartão, mesmo ao navegar com outro tema. */
