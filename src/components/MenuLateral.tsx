@@ -561,10 +561,10 @@ export function MenuLateral({
   );
 
   const nomeProfissional = profissional?.id === usuarioId ? profissional.nome : "";
-  const identificacao = (
-    <div className="ml-auto min-w-0 text-right text-[11px] leading-tight">
-      {nomeProfissional && <p className="truncate font-semibold" title={nomeProfissional}>{nomeProfissional}</p>}
-      {clinicaNome && <p className="truncate text-muted-foreground" title={clinicaNome}>{clinicaNome}</p>}
+  const identificacao = (nomeProfissional || clinicaNome) && (
+    <div className="ml-auto w-1/2 min-w-0 shrink-0 rounded-lg border border-current/15 bg-current/5 px-2 py-1.5 text-right text-[11px] leading-tight [overflow-wrap:anywhere]">
+      {nomeProfissional && <p className="font-semibold">{nomeProfissional}</p>}
+      {clinicaNome && <p className="text-muted-foreground">{clinicaNome}</p>}
     </div>
   );
 
