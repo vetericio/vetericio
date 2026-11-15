@@ -835,7 +835,6 @@ function RootComponent() {
   const assinaturaBloqueada = role !== "admin" && acessoAssinatura?.situacao === "bloqueada";
   const assinaturaEmAviso = role !== "admin" && acessoAssinatura?.situacao === "aviso";
   const mostrarClinico = autenticado && !rotaAdmin && !rotaPublica && !telaSistemaCongelado && !testeExpirado && !assinaturaBloqueada;
-  const rotaDePlantao = ["/internacao", "/registros", "/anamnese", "/curva", "/alarmes", "/pendencias", "/plantoes"].includes(location.pathname);
   const mostrarBloqueioTeste = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && testeExpirado;
   const mostrarBloqueioAssinatura = autenticado && role !== "admin" && !rotaAdmin && !rotaPublica && assinaturaBloqueada;
   const telaAdminRestrita = rotaAdmin && autenticado !== null && role !== "admin";
@@ -896,21 +895,12 @@ function RootComponent() {
         )}
         {mostrarClinico && <NatalVivoDecoracao />}
         {mostrarClinico && (
-          <div className={`${menuFixo ? "pl-16 lg:pl-80" : ""} ${rotaDePlantao ? "" : "oricse-cabecalho-compacto"}`}>
+          <div className={menuFixo ? "pl-16 lg:pl-80" : ""}>
             <OptionalRuntimeBoundary fallback={<div className="border-b bg-background p-3 text-sm"><a className="font-semibold underline" href="/inicio">Início</a><span className="mx-3">·</span><a className="font-semibold underline" href="/admin">Administração</a></div>}>
               <Suspense fallback={null}>
                 <Cabecalho menuFixo={menuFixo} aoMudarMenuFixo={alterarMenuFixo} />
               </Suspense>
             </OptionalRuntimeBoundary>
-            {!rotaDePlantao && (
-              <Link
-                to="/inicio"
-                aria-label="Ir para o Início"
-                className="oricse-logo-inicio fixed right-3 top-3 z-40 grid size-16 place-items-center rounded-xl border border-border bg-background shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                <span aria-hidden="true" className="oricse-logo-inicio-imagem size-14" />
-              </Link>
-            )}
           </div>
         )}
         {mostrarClinico && (
