@@ -229,7 +229,7 @@ export class AgendaErrorBoundary extends Component<{ children: ReactNode }, { fa
   }
 }
 
-export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
+export function AgendaDayBoard({ mode, revisao = 0 }: { mode: AgendaMode; revisao?: number }) {
   const navigate=useNavigate();
   const [clinicaId, setClinicaId] = useState("");
   const [agendas, setAgendas] = useState<AgendaDb[]>([]);
@@ -295,7 +295,7 @@ export function AgendaDayBoard({ mode }: { mode: AgendaMode }) {
     } finally { setCarregando(false); }
   }, [data,mode]);
 
-  useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => { void carregar(); }, [carregar, revisao]);
   useEffect(() => {
     if (!clinicaId) return;
     const canal = supabase.channel(`oricse-agenda-${mode}-${clinicaId}`)

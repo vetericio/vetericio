@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, CircleDollarSign, ClipboardList, Eye, EyeOff, 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
+import { AprovacoesAgenda } from "@/components/agenda/AprovacoesAgenda";
 import { AgendaDayBoard, AgendaErrorBoundary } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
 
@@ -219,6 +220,8 @@ function mensagemReforco(item: ReforcoItem) {
 }
 
 export function Recepcao() {
+  const [clinicaId, setClinicaId] = useState("");
+  const [revisaoAgenda, setRevisaoAgenda] = useState(0);
   const [fila, setFila] = useState<FilaResumo[]>([]);
   const [erroFila,setErroFila]=useState("");
   const [tutores, setTutores] = useState<TutorAniversario[]>(lerTutores);
@@ -291,7 +294,13 @@ export function Recepcao() {
     let ativa=true;
     const carregarFilaBanco=async()=>{
       const {data:cid,error:eCtx}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
-      if(eCtx||!cid){if(ativa)setErroFila("Selecione a clínica no Início.");return;}
+      if (!ativa) return;
+      if (eCtx || typeof cid !== "string" || !cid) {
+        setClinicaId("");
+        setErroFila("Selecione a clínica no Início.");
+        return;
+      }
+      setClinicaId(cid);
       const {data,error}=await (supabaseBanco as any).rpc("oricse_fila_tela",{p_clinica:cid});
       if(!ativa)return;
       if(error){setErroFila(error.message);return;}
@@ -428,6 +437,7 @@ export function Recepcao() {
         <div className="flex flex-wrap gap-2"><a href="/comandas?origem=Recepção" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={17}/> Abrir comanda</a><button type="button" onClick={() => { const livre = document.querySelector<HTMLButtonElement>('[data-oricse-agendar-livre="true"]'); if (livre) { livre.click(); livre.scrollIntoView({ behavior: "smooth", block: "center" }); } else if (document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')) { document.querySelector<HTMLButtonElement>('[data-oricse-criar-agenda="true"]')?.click(); } else { document.getElementById("agenda-recepcao")?.scrollIntoView({ behavior: "smooth", block: "start" }); toast.info("Não há horário livre visível nesta data. Escolha outra data ou agenda."); } }} className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">+ Novo agendamento</button></div>
       </div>
 
+      {clinicaId && <AprovacoesAgenda key={clinicaId} clinicaId={clinicaId} aoAprovar={() => setRevisaoAgenda(atual => atual + 1)} />}
       <div className={`mt-6 grid items-start gap-4 ${filaVisivel ? "xl:grid-cols-[300px_minmax(0,1fr)]" : "grid-cols-1"}`}>
         {filaVisivel ? (
           <aside className="min-w-0 rounded-2xl border-2 border-primary/25 bg-white shadow-sm xl:sticky xl:top-3">
@@ -466,7 +476,7 @@ export function Recepcao() {
             <div style={{ width: Math.max(larguraTrilho, 1), height: 2 }} />
           </div>
           <div ref={agendaWrapRef} className="agenda-recepcao-wrap min-w-0">
-            <AgendaErrorBoundary><AgendaDayBoard mode="recepcao" /></AgendaErrorBoundary>
+            <AgendaErrorBoundary><AgendaDayBoard mode="recepcao" revisao={revisaoAgenda} /></AgendaErrorBoundary>
           </div>
         </section>
       </div>
