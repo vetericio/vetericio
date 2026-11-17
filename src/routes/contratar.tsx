@@ -5,7 +5,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/contratar")({ component: Contratar });
+export const Route = createFileRoute("/contratar")({
+  validateSearch: ({ plano, ciclo, retorno, pedido }: Record<string, unknown>): Partial<Record<"plano" | "ciclo" | "retorno" | "pedido", string>> => ({
+    plano: typeof plano === "string" ? plano : undefined,
+    ciclo: typeof ciclo === "string" ? ciclo : undefined,
+    retorno: typeof retorno === "string" ? retorno : undefined,
+    pedido: typeof pedido === "string" ? pedido : undefined,
+  }),
+  component: Contratar,
+});
 
 type Dados = Record<string, string> & { quantidade_usuarios: string };
 
@@ -178,11 +186,14 @@ function brl(valor: number) {
 }
 
 function Contratar() {
-  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const planoParam = params.get("plano") || "solo-2026";
+  const {
+    plano: planoParam = "solo-2026",
+    ciclo: cicloParam,
+    retorno: retornoPagamento,
+    pedido: pedidoRetorno,
+  } = Route.useSearch();
   const plano = Object.prototype.hasOwnProperty.call(PLANOS_CONTRATACAO, planoParam) ? planoParam : "solo-2026";
   const ehTesteGratis = false;
-  const cicloParam=params.get("ciclo");
   const cicloInicial:CicloContratacao=CICLOS.some((item)=>item.codigo===cicloParam)?cicloParam as Exclude<CicloContratacao,"teste">:"mensal";
   const [ciclo,setCiclo]=useState<CicloContratacao>(cicloInicial);
   const [modoRenovacao,setModoRenovacao]=useState<"automatica_cartao"|"manual">("automatica_cartao");
@@ -272,15 +283,13 @@ function Contratar() {
     } finally { setVerificandoSlug(false); }
   }
 
-  const retornoPagamento = params.get("retorno");
-  const pedidoRetorno = params.get("pedido");
   useEffect(() => {
     if (!retornoPagamento || !["sucesso","pendente","falha","isento"].includes(retornoPagamento)) return;
     const url = new URL("/contratacao-recebida", window.location.origin);
     url.searchParams.set("retorno", retornoPagamento);
     if (pedidoRetorno && /^[0-9a-f-]{36}$/i.test(pedidoRetorno)) url.searchParams.set("pedido", pedidoRetorno);
     window.location.replace(url.toString());
-  }, [retornoPagamento]);
+  }, [pedidoRetorno, retornoPagamento]);
 
   async function abrirCheckout(id: string) {
     if (!id || abrindoCheckout) return;
