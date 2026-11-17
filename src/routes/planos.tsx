@@ -7,6 +7,9 @@ import { BENEFICIOS_ORICSE, NIVEIS_PLANOS, permitidoNoNivel } from "@/lib/benefi
 import { PLANOS_PADRAO } from "@/lib/drive-seed";
 
 export const Route = createFileRoute("/planos")({
+  validateSearch: ({ ciclo }: Record<string, unknown>): { ciclo?: "mensal" | "anual" } => ({
+    ciclo: ciclo === "mensal" || ciclo === "anual" ? ciclo : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Planos e preços — ORICSE" },
@@ -90,7 +93,7 @@ const PERGUNTAS_FREQUENTES = [
 
 function Planos() {
   const [planos, setPlanos] = useState<Plano[]>(planosIniciais);
-  const [ciclo, setCiclo] = useState<"mensal" | "anual">("mensal");
+  const { ciclo = "mensal" } = Route.useSearch();
   const [regras, setRegras] = useState<Map<string, boolean>>(new Map());
   const [comparar, setComparar] = useState(false);
   const [busca, setBusca] = useState("");
@@ -210,8 +213,8 @@ function Planos() {
               <p className="mt-4 text-base leading-7 text-[#765c66]">Você vê o que entra em cada plano — inclusive o que ainda não entra.</p>
             </div>
             <div className="flex w-fit items-center gap-1 rounded-2xl border border-[#ddc7c4] bg-white p-1.5 shadow-sm" role="group" aria-label="Período de pagamento">
-              <button type="button" onClick={() => setCiclo("mensal")} className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${ciclo === "mensal" ? "bg-[#4A1826] text-white shadow-sm" : "text-[#735661] hover:bg-[#faf0ed]"}`}>Mensal</button>
-              <button type="button" onClick={() => setCiclo("anual")} className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${ciclo === "anual" ? "bg-[#4A1826] text-white shadow-sm" : "text-[#735661] hover:bg-[#faf0ed]"}`}>Anual <span className="hidden sm:inline">· economize 2 meses</span></button>
+              <Link to="/planos" search={{ ciclo: "mensal" }} hash="planos" resetScroll={false} hashScrollIntoView={false} aria-current={ciclo === "mensal" ? "true" : undefined} className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${ciclo === "mensal" ? "bg-[#4A1826] text-white shadow-sm" : "text-[#735661] hover:bg-[#faf0ed]"}`}>Mensal</Link>
+              <Link to="/planos" search={{ ciclo: "anual" }} hash="planos" resetScroll={false} hashScrollIntoView={false} aria-current={ciclo === "anual" ? "true" : undefined} className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${ciclo === "anual" ? "bg-[#4A1826] text-white shadow-sm" : "text-[#735661] hover:bg-[#faf0ed]"}`}>Anual <span className="hidden sm:inline">· economize 2 meses</span></Link>
             </div>
           </div>
 

@@ -5,6 +5,16 @@ const publica = ["/", "/solucoes", "/planos", "/demonstracao", "/termos-de-uso",
 const demo = process.env.ORICSE_SMOKE_DEMO || "https://alvorada.oricse.com.br";
 const alvos = [
   ...publica.map((rota)=>({nome:rota,url:base+rota})),
+  {
+    nome: "planos anuais no HTML inicial",
+    url: base + "/planos?ciclo=anual",
+    conteudoEsperado: /por ano · equivalente a 10 mensalidades/,
+  },
+  {
+    nome: "contratação Master Anual no HTML inicial",
+    url: base + "/contratar?plano=master-2026&ciclo=anual",
+    conteudoEsperado: /Plano\s+Master\s*·\s*Anual/,
+  },
   {nome:"site demonstrativo Alvorada",url:demo+"/"},
   {nome:"Portal do Tutor demonstrativo",url:demo+"/portaldotutor"},
 ];
@@ -20,12 +30,15 @@ for (const item of alvos) {
     const tipo=response.headers.get("content-type")||"";
     const local=new URL(response.url);
     const login=local.pathname==="/login"||local.pathname.startsWith("/entrar");
+    const conteudoCorreto = !item.conteudoEsperado ||
+      item.conteudoEsperado.test(body.replace(/<!--[\s\S]*?-->/g, ""));
     const falha=response.status!==200||login||!/text\/html/i.test(tipo)||body.length<250||
-      /<title>\s*(404|not found|just a moment)/i.test(body);
+      /<title>\s*(404|not found|just a moment)/i.test(body)||!conteudoCorreto;
     if(falha){
       falhas.push(item.nome+": HTTP "+response.status+
         (login?" (redirecionado ao login)":"")+
-        " · content-type "+tipo+" · tamanho "+body.length);
+        " · content-type "+tipo+" · tamanho "+body.length+
+        (conteudoCorreto?"":" · conteúdo esperado ausente"));
     }
     console.log((falha?"FAIL":"OK")+" "+item.nome+" · HTTP "+response.status+" · "+body.length+" bytes");
   }catch(error){
