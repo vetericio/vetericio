@@ -72,6 +72,7 @@ type ItemMenu = {
   to?: MenuRoute;
   rotulo: string;
   descricao?: string;
+  destaque?: "venda" | "orcamento";
   permissao?: string;
   emBreve?: boolean;
   moduloEmPreparacao?: boolean;
@@ -178,14 +179,16 @@ const areas: AreaMenu[] = [
     itens: [
       {
         to: "/venda-expressa",
-        rotulo: "Abrir PDV · fazer venda",
+        rotulo: "Abrir PDV (Fazer venda)",
         descricao: "Registra a venda no caixa e baixa o estoque.",
+        destaque: "venda",
         permissao: "caixa.comandas",
       },
       {
         to: "/orcamento-venda-expressa",
-        rotulo: "Orçamento · não faz venda",
+        rotulo: "Fazer orçamento (Não faz vendas)",
         descricao: "Não registra no caixa e não baixa o estoque.",
+        destaque: "orcamento",
         permissao: "caixa.comandas",
       },
     ],
@@ -515,6 +518,7 @@ export function MenuLateral({
                         to={item.to}
                         hash={item.abaHotel || undefined}
                         onClick={() => setAberto(false)}
+                        data-destaque={item.destaque}
                         data-current={location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) || undefined}
                         className={area.titulo === "Gestão de clientes"
                           ? "oricse-menu-item flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors"
