@@ -167,6 +167,16 @@ export default {
           }
         }
       }
+      // O identificador de release é um arquivo estático gerado no deploy.
+      // Sem este desvio ele coincide com a rota dinâmica /$alias e retorna
+      // HTML, fazendo a confirmação pós-publicação acusar falso negativo.
+      if (url.pathname === "/oricse-build.json") {
+        const assets = getWorkerBindings(env)?.ASSETS;
+        if (assets) {
+          const asset = await assets.fetch(request);
+          if (asset.ok) return securityHeaders(asset, url.pathname);
+        }
+      }
       if (url.pathname.startsWith("/api/cep/")) {
         if (request.method !== "GET") return securityHeaders(new Response(null, { status: 405 }), url.pathname);
         return securityHeaders(await consultarCepNoServidor(url.pathname.slice("/api/cep/".length)), url.pathname);
