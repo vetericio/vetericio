@@ -445,8 +445,8 @@ function RootComponent() {
         setAcessoPortalNegado(true);
         return;
       }
-      setAcessoPortalNegado(Boolean(portal && papel !== "admin" && (erroContexto || clinica.clinica_id !== portal.clinica_id)));
-      if (papel !== "admin") {
+      setAcessoPortalNegado(Boolean(portal && papel !== "admin" && (erroContexto || clinica?.clinica_id !== portal.clinica_id)));
+      if (papel !== "admin" && clinica) {
         setSlugClinicaAtual(clinica.clinica_slug || "");
         if (typeof clinica.clinica_nome === "string")
           migrarCodigosTutoresLocais(clinica.clinica_nome);
