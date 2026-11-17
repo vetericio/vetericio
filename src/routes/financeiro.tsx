@@ -21,7 +21,6 @@ import {
   BedDouble,
   Scissors,
   ShoppingCart,
-  Syringe,
   Activity,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -113,7 +112,7 @@ function normalizar(valor: string) {
     .trim();
 }
 type SetorFinanceiro =
-  | "consultas" | "exames" | "internacao" | "procedimentos" | "vacinas"
+  | "consultas" | "exames" | "internacao" | "procedimentos"
   | "hotelzinho" | "banho_tosa" | "venda_expressa" | "produtos" | "comandas" | "outros";
 type PeriodoSetorial = "hoje" | "mes" | "todos";
 
@@ -122,11 +121,10 @@ const SETORES_FINANCEIROS = [
   { id: "exames", titulo: "Exames", icone: Microscope },
   { id: "internacao", titulo: "Internação", icone: BedDouble },
   { id: "procedimentos", titulo: "Cirurgias e procedimentos", icone: Activity },
-  { id: "vacinas", titulo: "Vacinas", icone: Syringe },
+  { id: "produtos", titulo: "Farmácia, produtos e vacinas", icone: Package },
   { id: "hotelzinho", titulo: "Hotelzinho", icone: PawPrint },
   { id: "banho_tosa", titulo: "Banho e Tosa", icone: Scissors },
   { id: "venda_expressa", titulo: "Venda Expressa", icone: ShoppingCart },
-  { id: "produtos", titulo: "Farmácia e produtos", icone: Package },
   { id: "comandas", titulo: "Comandas sem setor", icone: CreditCard },
   { id: "outros", titulo: "Outros", icone: ClipboardList },
 ] as const;
@@ -140,7 +138,7 @@ function setorDoLancamento(categoria: string): SetorFinanceiro {
   if (/exam|laboratori|diagnostic|radiograf|raio x|ultrass|tomograf/.test(n)) return "exames";
   if (/internac|hospitaliz|diaria clinica/.test(n)) return "internacao";
   if (/cirurg|procediment|anestesi|odontolog/.test(n)) return "procedimentos";
-  if (/vacin|imuniz/.test(n)) return "vacinas";
+  if (/vacin|imuniz/.test(n)) return "produtos";
   if (/consult|atendimento clinico|retorno veterinario/.test(n)) return "consultas";
   if (/produto|farmac|medicament|racao|pet ?shop|acessorio|varejo/.test(n)) return "produtos";
   return "outros"; // Categorias desconhecidas não são atribuídas arbitrariamente.
