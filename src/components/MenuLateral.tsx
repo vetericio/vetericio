@@ -54,6 +54,7 @@ type MenuRoute =
   | "/crm"
   | "/oricstudio"
   | "/venda-expressa"
+  | "/orcamento-venda-expressa"
   | "/financeiro"
   | "/comandas"
   | "/estoque"
