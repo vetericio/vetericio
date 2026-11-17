@@ -72,18 +72,20 @@ function Login() {
         return;
       }
 
-      // Uma senha válida não define a clínica: o vínculo pertence à identidade
-      // autenticada e deve ser confirmado pelo banco antes do redirecionamento.
-      const { data: perfil, error: erroPerfil } = await (supabaseBanco as any)
-        .from("app_users")
-        .select("role")
-        .eq("user_id", login.user.id)
-        .maybeSingle();
+      // As duas consultas dependem apenas da sessão recém-criada. Executá-las
+      // juntas preserva a validação de identidade e de vínculo sem somar duas
+      // viagens de rede antes de abrir o painel.
+      const [{ data: perfil, error: erroPerfil }, { data: contexto, error: erroContexto }] = await Promise.all([
+        (supabaseBanco as any)
+          .from("app_users")
+          .select("role")
+          .eq("user_id", login.user.id)
+          .maybeSingle(),
+        supabaseBanco.rpc("oricse_contexto_clinica_atual"),
+      ]);
       if (erroPerfil || !perfil) throw new Error("Não foi possível validar sua conta. Tente novamente.");
 
       if (perfil.role !== "admin") {
-        const { data: contexto, error: erroContexto } = await (supabaseBanco as any)
-          .rpc("oricse_contexto_clinica_atual");
         if (erroContexto) throw new Error("Não foi possível identificar a clínica vinculada. Tente novamente.");
         if (!contexto?.[0]?.clinica_id) {
           await supabase.auth.signOut();

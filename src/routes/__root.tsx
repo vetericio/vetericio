@@ -420,52 +420,36 @@ function RootComponent() {
         }
         return;
       }
-      const { data, error } = await (supabase as any)
-        .from("app_users")
-        .select("user_id, role")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
+      const [{ data: perfil, error: erroPerfil }, { data: contexto, error: erroContexto }] = await Promise.all([
+        (supabase as any)
+          .from("app_users")
+          .select("user_id, role")
+          .eq("user_id", session.user.id)
+          .maybeSingle(),
+        supabaseBanco.rpc("oricse_contexto_clinica_atual"),
+      ]);
       if (!estaAtual()) return;
-      if (error || !data?.user_id) {
+      if (erroPerfil || !perfil?.user_id) {
         setAutenticado(false);
         setRole(null);
         setAcessoTeste(null);
         setAcessoPortalNegado(false);
         return;
       }
-      const papel = data.role || "usuario";
-      setAcessoPortalNegado(false);
+      const papel = perfil.role || "usuario";
+      const clinica = contexto?.[0];
+      if (papel !== "admin" && (erroContexto || !clinica)) {
+        setAutenticado(true);
+        setRole(papel);
+        setAcessoTeste(null);
+        setAcessoPortalNegado(true);
+        return;
+      }
+      setAcessoPortalNegado(Boolean(portal && papel !== "admin" && (erroContexto || clinica.clinica_id !== portal.clinica_id)));
       if (papel !== "admin") {
-        try {
-          // Identidade e vínculos vivem no PostgreSQL; o proxy de operações do Drive
-          // pode não conter o cadastro da clínica e negar acesso indevidamente.
-          const { data: contexto, error: erroContexto } = await supabaseBanco.rpc(
-            "oricse_contexto_clinica_atual",
-          );
-          if (!estaAtual()) return;
-          if (erroContexto) throw erroContexto;
-          const clinica = contexto?.[0];
-          if (!clinica?.clinica_id)
-            throw new Error("Este usuário ainda não está vinculado a uma clínica.");
-          setSlugClinicaAtual(clinica.clinica_slug || "");
-          if (typeof clinica.clinica_nome === "string")
-            migrarCodigosTutoresLocais(clinica.clinica_nome);
-          if (portal && clinica.clinica_id !== portal.clinica_id) {
-            setAcessoPortalNegado(true);
-          } else if (portal) {
-            const { data: permitido, error: erroAcesso } = await supabaseBanco.rpc(
-              "oricse_usuario_pode_acessar_portal",
-              { p_clinica_id: portal.clinica_id },
-            );
-            if (!estaAtual()) return;
-            if (erroAcesso) throw erroAcesso;
-            setAcessoPortalNegado(!permitido);
-          }
-        } catch (error) {
-          if (!estaAtual()) return;
-          console.error("Não foi possível validar o acesso à clínica:", error);
-          setAcessoPortalNegado(true);
-        }
+        setSlugClinicaAtual(clinica.clinica_slug || "");
+        if (typeof clinica.clinica_nome === "string")
+          migrarCodigosTutoresLocais(clinica.clinica_nome);
       }
       if (!estaAtual()) return;
       setAutenticado(true);
