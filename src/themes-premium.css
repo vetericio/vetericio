@@ -44,6 +44,21 @@ html.oricse-a11y-foco .oricse-menu :is(a, button):focus-visible {
   outline-width: 3px !important;
 }
 .oricse-menu .text-muted-foreground { color: var(--menu-suave, var(--muted-foreground)); }
+.oricse-menu .oricse-menu-item[data-destaque="venda"] {
+  background: #14532d;
+  color: #f0fdf4;
+}
+.oricse-menu .oricse-menu-item[data-destaque="orcamento"] {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.oricse-menu .oricse-menu-item[data-destaque="venda"]:is(:hover, [data-current]) {
+  background: #166534;
+}
+.oricse-menu .oricse-menu-item[data-destaque="orcamento"]:is(:hover, [data-current]) {
+  background: #fecaca;
+}
+.oricse-menu .oricse-menu-item[data-destaque] .text-muted-foreground { color: inherit; }
 .oricse-menu .text-primary { color: var(--menu-texto, var(--foreground)); }
 .oricse-menu .text-destructive { color: var(--menu-sair, var(--destructive)); }
 .oricse-menu-item:not(:disabled):is(.text-muted-foreground, .text-destructive):hover {
