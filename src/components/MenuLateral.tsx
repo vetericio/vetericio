@@ -70,6 +70,7 @@ type MenuRoute =
 type ItemMenu = {
   to?: MenuRoute;
   rotulo: string;
+  descricao?: string;
   permissao?: string;
   emBreve?: boolean;
   moduloEmPreparacao?: boolean;
@@ -174,8 +175,18 @@ const areas: AreaMenu[] = [
     titulo: "Venda Expressa",
     icone: ShoppingCart,
     itens: [
-      { to: "/venda-expressa", rotulo: "Abrir PDV", permissao: "caixa.comandas" },
-      { to: "/orcamento-venda-expressa", rotulo: "Orçamento", permissao: "caixa.comandas" },
+      {
+        to: "/venda-expressa",
+        rotulo: "Abrir PDV · fazer venda",
+        descricao: "Registra a venda no caixa e baixa o estoque.",
+        permissao: "caixa.comandas",
+      },
+      {
+        to: "/orcamento-venda-expressa",
+        rotulo: "Orçamento · não faz venda",
+        descricao: "Não registra no caixa e não baixa o estoque.",
+        permissao: "caixa.comandas",
+      },
     ],
   },
   {
@@ -508,7 +519,8 @@ export function MenuLateral({
                           ? "oricse-menu-item flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors"
                           : "oricse-menu-item block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors"}
                       >
-                        {item.rotulo}
+                        <span className="block font-semibold">{item.rotulo}</span>
+                        {item.descricao && <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">{item.descricao}</span>}
                       </Link>
                     );
                   })}
