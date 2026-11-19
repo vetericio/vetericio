@@ -117,3 +117,17 @@ create policy oricse_selos_leitura_demo on public.oricse_selos_profissionais
     coalesce(lower(auth.jwt() ->> 'email'), '') <> 'alvorada@vetericio.local'
     and coalesce(auth.jwt() -> 'app_metadata' ->> 'oricse_demo_clinica', '') <> 'alvorada'
   );
+
+-- O painel usa a função de servidor, que valida alterações do estado legado.
+-- Evita que a conta demo grave o JSON bruto ou consulte imagens de selos por PostgREST.
+drop policy if exists oricse_estado_acesso_demo on public.oricse_dados_modulos;
+create policy oricse_estado_acesso_demo on public.oricse_dados_modulos
+  as restrictive for all to authenticated
+  using (
+    coalesce(lower(auth.jwt() ->> 'email'), '') <> 'alvorada@vetericio.local'
+    and coalesce(auth.jwt() -> 'app_metadata' ->> 'oricse_demo_clinica', '') <> 'alvorada'
+  )
+  with check (
+    coalesce(lower(auth.jwt() ->> 'email'), '') <> 'alvorada@vetericio.local'
+    and coalesce(auth.jwt() -> 'app_metadata' ->> 'oricse_demo_clinica', '') <> 'alvorada'
+  );
