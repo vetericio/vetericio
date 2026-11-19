@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { AVISO_DEMO_COBRANCA, contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
+import { sameJournalValue } from "@/lib/drive-journal.server";
 import { validarVersaoEstado } from "@/lib/drive-cas";
 
 const inputSchema = z.object({ accessToken: z.string().min(20) });
@@ -54,7 +56,7 @@ async function contextoUsuario(accessToken: string) {
   if (erroClinica || !clinica || clinica.status !== "ativa" || clinica.excluido_em) {
     throw new Error("A clínica selecionada não está ativa ou não foi encontrada.");
   }
-  return { userId, clinicaId, adminGeral: perfil?.role === "admin" };
+  return { userId, clinicaId, demo: contaDemoAlvorada(auth.user), adminGeral: perfil?.role === "admin" };
 }
 
 /**
@@ -312,6 +314,10 @@ async function lerEstado(accessToken: string, filtrarLeitura = false) {
       delete estado["oricse-lgpd-solicitacoes-v1"];
     }
   }
+  if (filtrarLeitura && contexto.demo) {
+    delete estado["veterico-assinatura-v1"];
+    delete estado["veterico-carimbo-v1"];
+  }
   let pares = Object.entries(estado)
     .filter(([, valor]) => typeof valor === "string")
     .map(([chave, valor]) => [chave, valor as string] as const);
@@ -333,10 +339,31 @@ export const carregarEstadoOricseDrive = createServerFn({ method: "POST" })
     return { estado, atualizadoEm: null as string | null };
   });
 
+function pagamentosDeModulos(chave: string, valor: string | null | undefined): unknown[] {
+  const registros: unknown = JSON.parse(valor ?? "[]");
+  if (!Array.isArray(registros)) throw new Error("Registros financeiros inválidos.");
+  if (chave === "oricse-comandas-v1") {
+    return registros.filter((r) => Array.isArray(r?.pagamentos) && r.pagamentos.length)
+      .map((r) => ({ id: r.id, pagamentos: r.pagamentos }));
+  }
+  return registros.filter((r) => r?.tipo === "Entrada" && r.status === "Pago");
+}
+
 export async function salvarEstadoOricseInterno(data: z.infer<typeof salvarSchema>) {
   const { contexto, estado } = await lerEstado(data.accessToken);
   if (!contexto.clinicaId) throw new Error("Clínica atual não identificada. Nenhuma gravação foi confirmada.");
   await validarAlteracoesPorPlano(data.accessToken, contexto, data.alteracoes);
+  if (contexto.demo) {
+    for (const { chave, valor } of data.alteracoes) {
+      if (["veterico-assinatura-v1", "veterico-carimbo-v1"].includes(chave)) {
+        exigirEmissaoDisponivel(true);
+      }
+      if (["oricse-comandas-v1", "oricse-financeiro-lancamentos-v1"].includes(chave) &&
+        !sameJournalValue(pagamentosDeModulos(chave, estado[chave]), pagamentosDeModulos(chave, valor))) {
+        throw new Error(AVISO_DEMO_COBRANCA);
+      }
+    }
+  }
   for (const alteracao of data.alteracoes) {
     if (alteracao.chave !== "oricse-politicas-operacionais-v1") continue;
     if (alteracao.valor === null || alteracao.valor.length > 12000) throw new Error("Políticas operacionais inválidas.");

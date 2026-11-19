@@ -1,3 +1,4 @@
+import { contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { driveAccessToken, driveFetch } from "@/lib/drive-kv.server";
@@ -31,6 +32,7 @@ async function obterAdmin() {
 async function autorizarProfissional(admin: SupabaseAdmin, token: string, clinicaId: string) {
   const { data: auth, error: authError } = await admin.auth.getUser(token);
   if (authError || !auth.user) throw new Error("Sessão expirada. Faça login novamente.");
+  exigirEmissaoDisponivel(contaDemoAlvorada(auth.user));
   const userId = auth.user.id;
   const { data: clinica, error: clinicaError } = await admin.from("clinicas")
     .select("id,status,excluido_em").eq("id",clinicaId).maybeSingle();

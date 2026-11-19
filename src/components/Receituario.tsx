@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Download, FileDown, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -85,6 +87,7 @@ async function emitirReceitaControladaNoBanco(dados: Record<string, unknown>): P
 }
 
 export function Receituario() {
+  const demoAlvorada = useDemoAlvorada();
   const { anamneses } = useAnamneses();
   const areaSelosRef = useRef<HTMLDivElement>(null);
   const racaAreaRef = useRef<HTMLDivElement>(null);
@@ -317,6 +320,7 @@ export function Receituario() {
     : "";
 
   const gerar = async (acao: AcaoReceita) => {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (processando.current || carregandoDados || !vinculo) return;
     if (!paciente.trim()) return void toast.error("Informe o nome do paciente.");
     if (!endereco.trim()) return void toast.error("Confirme o endereço da clínica para o rodapé do receituário.");
@@ -488,7 +492,7 @@ export function Receituario() {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
 
       </fieldset>
-      {vinculo && <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-3xl grid-cols-[1fr_1.45fr_1fr] gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg sm:gap-2 sm:p-2">
+      {vinculo && !demoAlvorada && <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-3xl grid-cols-[1fr_1.45fr_1fr] gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg sm:gap-2 sm:p-2">
         {([
           ["download", "Download", Download],
           ["baixar-e-salvar", "Download e salvar", FileDown],

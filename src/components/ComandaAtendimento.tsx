@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ReceiptText } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +20,7 @@ const formas = [
 ];
 
 export function ComandaAtendimento({ id, clinicaId }: { id: string; clinicaId: string }) {
+  const demoAlvorada = useDemoAlvorada();
   const { pode } = usePermissoes();
   const [comanda, setComanda] = useState<{
     numero: number;
@@ -61,6 +64,7 @@ export function ComandaAtendimento({ id, clinicaId }: { id: string; clinicaId: s
 
   async function receber(e: FormEvent) {
     e.preventDefault();
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if (!comanda || emEnvio.current) return;
     const centavos = Math.round(parseValorMonetario(valor) * 100);
     if (

@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AssinarDocumento } from "@/components/AssinarDocumento";
@@ -25,6 +27,8 @@ export const Route = createFileRoute("/assinar")({
 });
 
 function PaginaAssinar() {
+  const demoAlvorada = useDemoAlvorada();
+  if (demoAlvorada) return <p className="mx-auto max-w-xl p-6 text-center">{AVISO_DEMO_DOCUMENTOS}</p>;
   return (
     <ProtegidoPorSenha area="assinar" titulo="Assinatura protegida">
       <main>

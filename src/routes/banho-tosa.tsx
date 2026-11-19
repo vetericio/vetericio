@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
@@ -26,6 +28,7 @@ const isoLocal=()=>{const d=new Date();return `${hoje()}T${String(d.getHours()).
 const card="rounded-2xl border bg-card p-4 shadow-sm";
 const campo="mt-1 w-full min-h-11 rounded-xl border bg-background px-3 text-foreground";
 function BanhoTosa(){
+  const demoAlvorada = useDemoAlvorada();
  const {clinicaId,carregando:carregandoPermissoes,adminGlobal,pode}=usePermissoes();
  const location=useLocation();
  const abaDaUrl=(hash:string):Aba=>hash.replace(/^#/, "")==="novo"?"agenda":abas.find(a=>a.id===hash.replace(/^#/, ""))?.id||"painel";
@@ -132,6 +135,7 @@ function BanhoTosa(){
  }
  async function registrarPagamento(e:FormEvent){
   e.preventDefault();
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
   if(!detalhe||!clinicaId||salvando)return;
   const total=detalhe.valor_centavos+extras.filter(x=>x.agendamento_id===detalhe.id).reduce((n,x)=>n+Math.round(x.quantidade*x.valor_unitario_centavos),0);
   const pago=pagamentos.filter(x=>x.agendamento_banho_tosa_id===detalhe.id).reduce((n,x)=>n+x.valor_centavos,0);
@@ -181,7 +185,7 @@ function BanhoTosa(){
       <form onSubmit={registrarPagamento} className="mt-2 flex flex-wrap items-end gap-2">
         <label className="text-sm">Pagamento (R$)<input className={campo} inputMode="numeric" placeholder="0,00" value={valorPagamento} onChange={e=>setValorPagamento(digitarCentavos(e.target.value))}/></label>
         <label className="text-sm">Forma<select className={campo} value={formaPagamento} onChange={e=>setFormaPagamento(e.target.value)}>{["Pix","Dinheiro","Débito","Crédito","Transferência"].map(x=><option key={x}>{x}</option>)}</select></label>
-        <button disabled={salvando||!pode("caixa.comandas")&&!pode("caixa.financeiro.gerenciar")&&!adminGlobal} className="rounded-xl bg-primary px-4 py-3 text-primary-foreground disabled:opacity-50">Registrar recebimento</button>
+        <button disabled={demoAlvorada||salvando||!pode("caixa.comandas")&&!pode("caixa.financeiro.gerenciar")&&!adminGlobal} className="rounded-xl bg-primary px-4 py-3 text-primary-foreground disabled:opacity-50">Registrar recebimento</button>
       </form>
     </div>
     <label className="block text-sm font-semibold">Observações da entrega<textarea className={campo} value={saida} onChange={e=>setSaida(e.target.value)} placeholder="Orientações ao tutor e observações finais…"/></label>

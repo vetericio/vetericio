@@ -1,3 +1,4 @@
+import { contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos } from "@/lib/dados-preventivos";
@@ -21,6 +22,7 @@ export const obterDocumentoPreventivo = createServerFn({ method: "POST" })
     const { supabaseAdmin: admin } = await import("@/integrations/supabase/client.server");
     const { data: { user }, error: erroSessao } = await admin.auth.getUser(data.accessToken);
     if (erroSessao || !user) throw new Error("Entre novamente para preparar o documento.");
+    exigirEmissaoDisponivel(contaDemoAlvorada(user));
     await exigirPermissaoClinica(admin, user.id, data.clinicaId, ["consultorio.atendimentos"], data.accessToken);
     const { data: vinculo, error: erroVinculo } = await admin.from("clinica_usuarios").select("papel")
       .eq("clinica_id", data.clinicaId).eq("user_id", user.id).eq("ativo", true).maybeSingle();

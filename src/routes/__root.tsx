@@ -1,3 +1,5 @@
+import { contaDemoAlvorada } from "@/lib/demo-alvorada";
+import { DemoAlvoradaContext } from "@/lib/demo-alvorada-context";
 import { oricseStorage } from "@/lib/oricse-storage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -251,6 +253,7 @@ function RootComponent() {
     return ()=>aplicarAcessibilidade(false);
   },[autenticado,location.pathname]);
 
+  const [demoAlvorada, setDemoAlvorada] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [acessoTeste, setAcessoTeste] = useState<any>(null);
   const [acessoAssinatura, setAcessoAssinatura] = useState<any>(null);
@@ -410,6 +413,7 @@ function RootComponent() {
     async function validarSessao(session: any) {
       const geracao = ++validacaoAtual;
       const estaAtual = () => ativo && geracao === validacaoAtual;
+      setDemoAlvorada(contaDemoAlvorada(session?.user));
       if (!session?.user?.id) {
         if (estaAtual()) {
           setAutenticado(false);
@@ -990,7 +994,14 @@ function RootComponent() {
           <AdminShell><Outlet /></AdminShell>
         ) : (
           <div className={mostrarClinico && menuFixo ? "pl-16 lg:pl-80" : ""}>
-            <Outlet />
+            <DemoAlvoradaContext.Provider value={demoAlvorada}>
+              {demoAlvorada && !rotaPublica && (
+                <p role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">
+                  Demonstração Alvorada · Use dados fictícios. Cobranças, emissão e assinatura de documentos estão desativadas.
+                </p>
+              )}
+              <Outlet />
+            </DemoAlvoradaContext.Provider>
           </div>
         )}
         {mostrarClinico && (

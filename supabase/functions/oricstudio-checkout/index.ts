@@ -50,6 +50,10 @@ async function checkout(req:Request){
   if(!userToken)return json({error:"Faça login na sua clínica."},401);
   const {data:user,error:authError}=await db.auth.getUser(userToken);
   if(authError||!user.user?.email||!user.user.id)return json({error:"Sessão expirada ou sem e-mail."},401);
+  if (user.user.app_metadata.oricse_demo_clinica === "alvorada" ||
+      user.user.email.toLowerCase() === "alvorada@vetericio.local") {
+    return json({error:"Cobranças estão indisponíveis na demonstração Alvorada."},403);
+  }
   const email=user.user.email;
   const body=await req.json().catch(()=>null) as {solicitacao_id?:string}|null;
   if(!uuid(body?.solicitacao_id))return json({error:"Solicitação inválida."},400);

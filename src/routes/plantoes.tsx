@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -43,6 +45,7 @@ export const Route = createFileRoute("/plantoes")({
 });
 
 function Plantoes() {
+  const demoAlvorada = useDemoAlvorada();
   const { plantoes, setPlantoes } = usePlantoes();
   const [aberto, setAberto] = useState<string | null>(null);
   const [baixando, setBaixando] = useState<string | null>(null);
@@ -93,6 +96,7 @@ function Plantoes() {
   };
 
   const pdf = async (p: Plantao) => {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     try {
       await exportarPdf(p.registros, {
         ...(p.curvas ? { curvas: p.curvas } : {}),
@@ -107,6 +111,7 @@ function Plantoes() {
   };
 
   const visualizarPdf = async (p: Plantao) => {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     try {
       await exportarPdf(p.registros, {
         ...(p.curvas ? { curvas: p.curvas } : {}),
@@ -121,6 +126,7 @@ function Plantoes() {
   };
 
   const baixarTodos = async () => {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (plantoes.length === 0) {
       toast.info("Nenhum plantão salvo para baixar.");
       return;

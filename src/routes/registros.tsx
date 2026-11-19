@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -64,6 +66,7 @@ function normalizar(texto: string) {
 }
 
 function Registros() {
+  const demoAlvorada = useDemoAlvorada();
   const { registros, setRegistros, carregado } = useRegistros();
   const finalizar = useFinalizarPlantao();
   const navigate = useNavigate();
@@ -229,6 +232,7 @@ function Registros() {
   };
 
   const gerarPdf = async () => {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     const quando = assinadoEm.trim() || agoraTexto();
     setAssinarAberto(false);
     try {
@@ -444,7 +448,7 @@ function Registros() {
           />
           <AlertDialogFooter>
             <AlertDialogCancel className="min-h-11">Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="min-h-11" onClick={gerarPdf}>
+            <AlertDialogAction className="min-h-11" disabled={demoAlvorada} onClick={gerarPdf}>
               Gerar PDF
             </AlertDialogAction>
           </AlertDialogFooter>

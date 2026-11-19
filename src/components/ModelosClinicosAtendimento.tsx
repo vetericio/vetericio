@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { useEffect, useMemo, useState } from "react";
 import { FileDown, FileText, Save, ShieldAlert, FileCheck2, Upload, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +35,7 @@ function preencher(texto: string, dados: Contexto, identidade?: PadraoClinico["i
   return preencherTextoDocumento(texto, valores);
 }
 export function ModelosClinicosAtendimento() {
+  const demoAlvorada = useDemoAlvorada();
   const [profissional,setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [modelos,setModelos] = useState<Modelo[]>([]);
   const [dados,setDados] = useState<Contexto | null>(null);
@@ -115,6 +118,7 @@ export function ModelosClinicosAtendimento() {
     .filter(campo => campo !== "{{veterinario}}" && campo !== "{{crmv}}"), [conteudo]);
   const perfilCompleto = Boolean(profissional?.nome && profissional.crmv);
   async function exportar(arquivar: boolean) {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!modelo || !padrao || !dados?.animal?.id || !dados.clinicaId) return;
     if (!conteudo.trim()) return toast.error("Preencha o conteúdo antes de gerar o documento.");
     if (pendencias.length) return toast.error("Preencha os campos pendentes antes de gerar: " + [...new Set(pendencias)].join(", "));
@@ -188,6 +192,7 @@ export function ModelosClinicosAtendimento() {
     setArquivoAssinado(arquivo);setRegistro(null);setUploadPendente(null);setAssinaturaConferida(false);
   }
   async function registrarAssinado() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!modelo || !dados?.animal?.id || !dados?.tutorId || !dados.clinicaId || !arquivoAssinado || !assinaturaConferida || !perfilCompleto) return;
     if (!conteudo.trim() || pendencias.length) return toast.error("Revise e preencha todos os campos do documento.");
     if (!window.confirm("Confirmar o registro do PDF assinado? Ele ficará privado até sua liberação expressa.")) return;
@@ -230,6 +235,7 @@ export function ModelosClinicosAtendimento() {
     finally { setEmitindo(false); }
   }
   async function alterarVisibilidade() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!registro || !dados?.clinicaId) return;
     const proximo = !registro.visivel;
     if (!window.confirm(proximo
@@ -276,6 +282,7 @@ export function ModelosClinicosAtendimento() {
           className="mt-1 w-full rounded-lg border bg-background p-3 font-mono text-sm leading-relaxed"/>
       </label>
       {pendencias.length > 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Campos a preencher: {[...new Set(pendencias)].join(", ")}</p>}
+      {!demoAlvorada && <>
       <p className="text-xs text-muted-foreground">O rascunho permanece privado. Para registrar uma emissão, assine o PDF pelo procedimento adequado, importe o arquivo assinado e confirme. Assinatura gráfica não equivale à certificação digital.</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={emitindo || !perfilCompleto || Boolean(pendencias.length)} onClick={()=>void exportar(false)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-semibold disabled:opacity-50"><FileDown size={17}/> Baixar PDF</button>
@@ -318,6 +325,7 @@ export function ModelosClinicosAtendimento() {
           </button>
         </div>}
       </div>
+      </>}
     </div>}
   </section>;
 }

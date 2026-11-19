@@ -1,3 +1,4 @@
+import { contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { PASTAS_DRIVE, PORTAL_PDF_MAX_BYTES, type DriveCategoria } from "@/lib/drive-storage";
@@ -19,7 +20,7 @@ async function tokenServiceAccount(){const email=process.env["GOOGLE_DRIVE_SERVI
 async function tokenOAuth(){const clientId=process.env["GOOGLE_DRIVE_CLIENT_ID"];const clientSecret=process.env["GOOGLE_DRIVE_CLIENT_SECRET"];const refreshToken=process.env["GOOGLE_DRIVE_REFRESH_TOKEN"];if(!clientId||!clientSecret||!refreshToken)return null;const r=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:clientId,client_secret:clientSecret,refresh_token:refreshToken,grant_type:"refresh_token"})});const j=await r.json() as {access_token?:string;error?:string;error_description?:string};if(!r.ok||!j.access_token)throw new Error(j.error_description||j.error||"Falha ao autenticar Google Drive.");return j.access_token;}
 async function accessTokenGoogle(){return await tokenServiceAccount()||await tokenOAuth()||Promise.reject(new Error("Google Drive não está configurado no backend."));}
 async function gfetch(token:string,url:string,init:RequestInit={}){const h=new Headers(init.headers);h.set("authorization",`Bearer ${token}`);const r=await fetch(url,{...init,headers:h});if(!r.ok)throw new Error(`Google Drive: ${r.status} ${await r.text().catch(()=>r.statusText)}`);return r;}
-async function usuarioAutorizado(admin:SupabaseAdmin,accessToken:string,clinicaId:string){const {data:a,error}=await admin.auth.getUser(accessToken);if(error||!a.user)throw new Error("Sessão inválida ou expirada.");const uid=a.user.id;const {data:p}=await admin.from("app_users").select("role").eq("user_id",uid).maybeSingle();if(p?.role==="admin")return{userId:uid,admin:true};const {data:v}=await admin.from("clinica_usuarios").select("ativo").eq("clinica_id",clinicaId).eq("user_id",uid).eq("ativo",true).maybeSingle();if(!v)throw new Error("Você não tem acesso a esta clínica.");return{userId:uid,admin:false};}
+async function usuarioAutorizado(admin:SupabaseAdmin,accessToken:string,clinicaId:string){const {data:a,error}=await admin.auth.getUser(accessToken);if(error||!a.user)throw new Error("Sessão inválida ou expirada.");const uid=a.user.id;const demo=contaDemoAlvorada(a.user);const {data:p}=await admin.from("app_users").select("role").eq("user_id",uid).maybeSingle();if(p?.role==="admin")return{userId:uid,admin:true,demo};const {data:v}=await admin.from("clinica_usuarios").select("ativo").eq("clinica_id",clinicaId).eq("user_id",uid).eq("ativo",true).maybeSingle();if(!v)throw new Error("Você não tem acesso a esta clínica.");return{userId:uid,admin:false,demo};}
 async function buscarOuCriarPasta(token:string,parentId:string,nome:string){const escaped=nome.replace(/'/g,"\\'");const q=encodeURIComponent(`'${parentId}' in parents and name='${escaped}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);const r=await gfetch(token,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=10`);const j=await r.json() as {files?:Array<{id:string;name:string}>};const e=j.files?.find(x=>x.name===nome);if(e)return e.id;const c=await gfetch(token,"https://www.googleapis.com/drive/v3/files?fields=id",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:nome,mimeType:"application/vnd.google-apps.folder",parents:[parentId]})});return((await c.json()) as {id:string}).id;}
 async function localizarArquivoNome(token:string,parentId:string,nome:string){const escaped=nome.replace(/'/g,"\\'");const q=encodeURIComponent(`'${parentId}' in parents and name='${escaped}' and trashed=false`);const r=await gfetch(token,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&pageSize=10`);const j=await r.json() as {files?:Array<{id:string;name:string;modifiedTime?:string}>};return j.files?.find(x=>x.name===nome)||null;}
 async function lerJson<T>(token:string,fileId:string,padrao:T):Promise<T>{try{const r=await gfetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);return JSON.parse(await r.text()) as T}catch{return padrao}}
@@ -74,6 +75,7 @@ export const enviarArquivoDrive = createServerFn({ method: "POST" })
     const admin = await carregarSupabaseAdmin();
     const usuario = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
     const bytes = Buffer.from(data.base64.replace(/^data:[^,]*;base64,/i, ""), "base64");
+    if (["documentos", "exames", "receitas"].includes(data.categoria)) exigirEmissaoDisponivel(usuario.demo);
     return enviarAoDrive(data, usuario.userId, bytes);
   });
 
@@ -93,7 +95,8 @@ export const enviarAnexoPortal = createServerFn({ method: "POST" })
     }
 
     const admin = await carregarSupabaseAdmin();
-    const { userId } = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
+    const { userId, demo } = await usuarioAutorizado(admin, data.accessToken, data.clinicaId);
+    exigirEmissaoDisponivel(demo);
     if (data.categoria === "receitas") {
       await exigirPermissaoClinica(admin, userId, data.clinicaId, ["consultorio.receituario"], data.accessToken);
     } else {

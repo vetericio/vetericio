@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Banknote, CheckCircle2, ClipboardList,
@@ -80,6 +82,7 @@ export function CaixaOperacional({
   clinicaId, recebido, pendente, despesas, podeOperar, podeAprovar,
   lancamentosLegadosNoDia, onNovoLancamento, onVerLancamentos,
 }: Props) {
+  const demoAlvorada = useDemoAlvorada();
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [ajustes, setAjustes] = useState<Ajuste[]>([]);
   const [estornos, setEstornos] = useState<Estorno[]>([]);
@@ -256,6 +259,7 @@ export function CaixaOperacional({
   }
 
   async function gerarPdfFechamento(turno: Turno) {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (turno.status !== "fechado" || !turno.resumo_fechamento) return void toast.error("Fechamento ainda não confirmado.");
     try {
       const { jsPDF } = await import("jspdf");

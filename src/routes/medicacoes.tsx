@@ -1,3 +1,4 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -89,6 +90,7 @@ function formatarPeso(digitos: string): string {
 }
 
 function PaginaMedicacoes() {
+  const demoAlvorada = useDemoAlvorada();
   const { medicamentos, setMedicamentos, salvar, remover, carregado } = useMedicamentos();
   const [busca, setBusca] = useState("");
   const [peso, setPeso] = useState("");
@@ -232,6 +234,7 @@ function PaginaMedicacoes() {
           </button>
           <button
             type="button"
+            disabled={demoAlvorada}
             onClick={async () => {
               const { exportarPdfMedicamentos } = await import("@/lib/pdf-medicamentos");
               await exportarPdfMedicamentos(medicamentos);
