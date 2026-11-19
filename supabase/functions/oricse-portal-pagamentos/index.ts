@@ -51,8 +51,9 @@ async function tutorAtual(req: Request, slug: string) {
   if (error || !data.user) throw new Error("Sessão inválida.");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error("Endereço da clínica inválido.");
   const { data: clinica, error: erroClinica } = await service.from("clinicas")
-    .select("id").eq("slug", slug).eq("status", "ativa").is("excluido_em", null).maybeSingle();
+    .select("id,slug").eq("slug", slug).eq("status", "ativa").is("excluido_em", null).maybeSingle();
   if (erroClinica || !clinica) throw new Error("Clínica indisponível.");
+  if (clinica.slug === "alvorada") throw new Error("O Portal do Tutor da demonstração Alvorada não aceita cobranças.");
   const { data: tutor, error: tutorError } = await service.from("oricse_portal_tutores")
     .select("auth_user_id,clinica_id,tutor_id").eq("auth_user_id", data.user.id)
     .eq("clinica_id",clinica.id).eq("ativo", true).maybeSingle();

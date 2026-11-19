@@ -1,3 +1,4 @@
+import { AVISO_DEMO_COBRANCA, contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ACOES_LEGADAS, FUNCIONALIDADES_POR_PLANO, PERMISSOES_PADRAO, PERMITIDAS_POR_PAPEL, seedTabela } from "@/lib/drive-seed";
@@ -19,7 +20,17 @@ const querySchema = z.object({
   accessToken: z.string().nullable().optional(), table: z.string().regex(/^[a-zA-Z0-9_]+$/), operation: z.enum(["select", "insert", "update", "delete", "upsert"]), payload: z.unknown().optional(), columns: z.string().optional(), filters: z.array(filterSchema).default([]), order: z.array(z.object({ column: z.string(), ascending: z.boolean().default(true) })).default([]), limit: z.number().int().positive().max(10000).optional(), range: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]).optional(), single: z.enum(["none", "single", "maybeSingle"]).default("none"), head: z.boolean().default(false), count: z.string().nullable().optional(), onConflict: z.string().optional(), expectedRows: z.record(z.record(z.unknown())).optional(), requestId: z.string().uuid().optional(),
 });
 
-type AuthContext = { admin: boolean; userId: string | null; clinicas: string[]; portal: Array<{ clinicaId: string; tutorId: string }> };
+const TABELAS_COBRANCA = new Set([
+  "oricse_pagamentos", "oricstudio_solicitacoes", "oricse_banho_tosa_pagamentos",
+  "oricse_vendas_expressas", "oricse_vendas_expressas_itens",
+]);
+
+const TABELAS_EMISSAO = new Set([
+  "oricse_portal_documentos", "oricse_portal_exames", "oricse_portal_receitas",
+  "oricse_receitas_controladas", "oricse_selos_profissionais",
+]);
+
+type AuthContext = { demo: boolean; admin: boolean; userId: string | null; clinicas: string[]; portal: Array<{ clinicaId: string; tutorId: string }> };
 
 function root() { return process.env["ORICSE_DRIVE_ROOT_FOLDER_ID"] || process.env["GOOGLE_DRIVE_ROOT_FOLDER_ID"] || DEFAULT_ROOT_FOLDER_ID; }
 function b64(v: string | Buffer) { return (typeof v === "string" ? Buffer.from(v) : v).toString("base64url"); }
@@ -87,7 +98,7 @@ async function readTable(t: string, table: string) {
 
 async function authContext(accessToken?: string | null): Promise<AuthContext> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  if (!accessToken) return { admin: false, userId: null, clinicas: [], portal: [] };
+  if (!accessToken) return { demo: false, admin: false, userId: null, clinicas: [], portal: [] };
   const { data: a, error } = await supabaseAdmin.auth.getUser(accessToken); if (error || !a.user) throw new Error("Sessão inválida ou expirada.");
   const uid = a.user.id;
   const [{ data: p }, { data: v }, { data: portal }] = await Promise.all([
@@ -95,7 +106,7 @@ async function authContext(accessToken?: string | null): Promise<AuthContext> {
     supabaseAdmin.from("clinica_usuarios").select("clinica_id").eq("user_id", uid).eq("ativo", true),
     supabaseAdmin.from("oricse_portal_tutores").select("clinica_id,tutor_id").eq("auth_user_id", uid).eq("ativo", true),
   ]);
-  return { admin: p?.role === "admin", userId: uid, clinicas: (v || []).map((x: any) => String(x.clinica_id)), portal: (portal || []).map((x: any) => ({ clinicaId: String(x.clinica_id), tutorId: String(x.tutor_id) })) };
+  return { demo: contaDemoAlvorada(a.user), admin: p?.role === "admin", userId: uid, clinicas: (v || []).map((x: any) => String(x.clinica_id)), portal: (portal || []).map((x: any) => ({ clinicaId: String(x.clinica_id), tutorId: String(x.tutor_id) })) };
 }
 
 function cmp(a: any, b: any) { if (a === b) return 0; if (a == null) return -1; if (b == null) return 1; return a > b ? 1 : -1; }
@@ -170,6 +181,12 @@ export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coo
   const ctx = await authContext(q.accessToken);
   if (!ctx.userId && !(q.operation === "select" && PUBLIC_READ.has(q.table))) throw new Error("Autenticação necessária.");
   if (q.operation !== "select" && !ctx.admin && GLOBAL_ADMIN_ONLY.has(q.table)) throw new Error("Apenas a administração da plataforma pode alterar estes dados.");
+  if (q.operation !== "select" && q.operation !== "delete" && TABELAS_EMISSAO.has(q.table)) {
+    exigirEmissaoDisponivel(ctx.demo);
+  }
+  if (ctx.demo && q.operation !== "select" && q.operation !== "delete" && TABELAS_COBRANCA.has(q.table)) {
+    throw new Error(AVISO_DEMO_COBRANCA);
+  }
   // Atribuir permissões individuais requer gestão de equipe. Um funcionário
   // comum não pode usar a API do Drive para elevar o próprio nível de acesso.
   if (q.operation !== "select" && !ctx.admin && q.table === "oricse_permissoes_usuario") {

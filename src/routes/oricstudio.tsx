@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
@@ -87,6 +89,7 @@ function chaveDia(data: Date) {
 }
 
 function OricStudio() {
+  const demoAlvorada = useDemoAlvorada();
   const { ambiente } = Route.useSearch();
   const modoPlataforma = ambiente === "plataforma";
   // A interface é única: apenas o provedor de dados muda entre a clínica e a ORICSE.
@@ -441,6 +444,7 @@ function OricStudio() {
     window.location.assign(url);
   }
   async function solicitarOricstudio() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if(!contexto||!comercial?.comercializacao_ativa||mensalidadeOricstudio===null||pedidoAberto)return;
     if(!window.confirm(`Contratar OricStúdio para ${contexto.clinica_nome}, com ${quantidadeContratacao} conta(s), por ${precoBRL(mensalidadeOricstudio)}/mês? Você será encaminhado ao Mercado Pago. O acesso só será liberado após a confirmação do pagamento.`))return;
     setSolicitando(true);
@@ -455,6 +459,7 @@ function OricStudio() {
     }finally{setSolicitando(false);}
   }
   async function retomarCheckoutOricstudio() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if(!pedidoAberto||solicitando)return;
     setSolicitando(true);
     try{await abrirCheckoutOricstudio(pedidoAberto.id);}

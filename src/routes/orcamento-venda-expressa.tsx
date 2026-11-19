@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, FileDown, ImageDown, Plus, Printer, Send, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -17,6 +19,7 @@ const texto = (v: unknown) => typeof v === "string" ? v.trim() : "";
 const numero = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0;
 
 function OrcamentoVendaExpressa() {
+  const demoAlvorada = useDemoAlvorada();
   const { clinicaId, carregando: verificando, adminGlobal, pode } = usePermissoes();
   const autorizado = adminGlobal || pode("caixa.comandas") || pode("caixa.financeiro.gerenciar");
   const [clinica, setClinica] = useState<Clinica>({});
@@ -55,6 +58,10 @@ function OrcamentoVendaExpressa() {
     setLinhas(v => [...v, { id: crypto.randomUUID(), produtoId: primeiro.id, quantidade: 1 }]);
   }
   function gerarCanvas() {
+    if (demoAlvorada) {
+      toast.info(AVISO_DEMO_DOCUMENTOS);
+      return null;
+    }
     if (!linhas.length || linhas.some(l => !l.produtoId || !Number.isFinite(l.quantidade) || l.quantidade <= 0)) {
       toast.error("Inclua itens e quantidades válidas."); return null;
     }

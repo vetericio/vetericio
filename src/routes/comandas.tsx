@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { oricseStorage } from "@/lib/oricse-storage";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { createFileRoute } from "@tanstack/react-router";
@@ -90,6 +92,7 @@ function origemDaUrl(): OrigemComanda {
 }
 
 export function Comandas() {
+  const demoAlvorada = useDemoAlvorada();
   const [comandasCanonicas, setComandasCanonicas] = useState<Comanda[]>([]);
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
   const { clinicaId, carregando: carregandoPermissoes } = usePermissoes();
@@ -425,6 +428,7 @@ export function Comandas() {
 
   function registrarPagamento(evento: FormEvent) {
     evento.preventDefault();
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if (!comandaSelecionada || comandaSelecionada.status !== "Aberta") return;
     const valorBruto = parseValorMonetario(valorPagamento);
     const valor = Math.round((valorBruto + Number.EPSILON) * 100) / 100;

@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, CreditCard, Minus, Package, Plus, RefreshCw, Search, ShoppingCart, Star, Trash2, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -32,6 +34,7 @@ const centavosTexto = (t: string) => {
   return v && Number.isFinite(n) ? Math.round(n * 100) : Number.NaN;
 };
 function VendaExpressa() {
+  const demoAlvorada = useDemoAlvorada();
   const { clinicaId, carregando: carregandoPermissoes, pode, adminGlobal } = usePermissoes();
   const autorizado = adminGlobal || pode("caixa.financeiro.gerenciar") || pode("caixa.comandas");
   const [produtos, setProdutos] = useState<ItemCatalogo[]>([]);
@@ -170,6 +173,7 @@ function VendaExpressa() {
   };
   async function finalizar(e: FormEvent) {
     e.preventDefault();
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if (finalizando || !autorizado || !clinicaId || !carrinho.length) return;
     if (forma === "Dinheiro" && (!Number.isFinite(valorRecebido) || valorRecebido < total))
       return void toast.error("Informe o dinheiro recebido, igual ou maior que o total.");

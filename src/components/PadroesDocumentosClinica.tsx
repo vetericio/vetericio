@@ -1,3 +1,4 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, ImagePlus, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -278,6 +279,7 @@ async function gerarPrevia(identidade: IdentidadeDocumento, modelo: ModeloDocume
 function PreviaDocumento({ identidade, modelo, tipo, corpo }: {
   identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao; tipo: TipoModeloDocumento; corpo: string;
 }) {
+  const demoAlvorada = useDemoAlvorada();
   const { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site } = identidade;
   const { fundo, usarLogo, corQuadros } = modelo;
   const configuracao = useMemo(() => ({
@@ -301,7 +303,7 @@ function PreviaDocumento({ identidade, modelo, tipo, corpo }: {
   return <>
     <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">Prévia com os dados da clínica</h3>
-      <button type="button" className={botao} disabled={!atual?.pdf}
+      <button type="button" className={botao} disabled={demoAlvorada || !atual?.pdf}
         onClick={() => atual?.pdf?.save("previa-" + tipo + ".pdf")}>
         <Download size={16} /> Baixar prévia em PDF
       </button>

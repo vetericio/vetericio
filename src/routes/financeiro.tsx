@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -214,6 +216,7 @@ function lerTutores(): TutorFinanceiro[] {
 }
 
 export function Financeiro() {
+  const demoAlvorada = useDemoAlvorada();
   const [aba, setAba] = useState<Aba>("inicio");
   const { clinicaId, pode } = usePermissoes();
   const [indicadoresAtivos,setIndicadoresAtivos]=useState<Awaited<ReturnType<typeof consultarIndicadoresPainel>>|null>(null);
@@ -396,6 +399,7 @@ export function Financeiro() {
 
   async function salvarLancamento(evento: FormEvent) {
     evento.preventDefault();
+    if (demoAlvorada && form.tipo === "Entrada" && form.status === "Pago") return void toast.info(AVISO_DEMO_COBRANCA);
     const valor = parseValorMonetario(form.valor);
     if (!form.descricao.trim()) return void toast.error("Informe a descrição do lançamento.");
     if (!Number.isFinite(valor) || valor <= 0) return void toast.error("Informe um valor válido.");
@@ -508,6 +512,7 @@ export function Financeiro() {
   }
 
   function darBaixa(id: string) {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if (id.startsWith("caixa:")) {
       setBaixaCentralId(id.slice("caixa:".length));
       setFormaBaixa("Pix");
@@ -528,6 +533,7 @@ export function Financeiro() {
   }
 
   async function confirmarBaixaCentral() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_COBRANCA);
     if (!baixaCentralId || salvandoBaixa) return;
     setSalvandoBaixa(true);
     try {

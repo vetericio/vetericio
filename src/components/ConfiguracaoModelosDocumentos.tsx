@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Eye, FileDown, FilePlus2, History, Printer, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -31,6 +33,7 @@ function escapar(valor: string) {
   return valor.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { podeGerenciar: boolean; clinica: string }) {
+  const demoAlvorada = useDemoAlvorada();
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [selecionado, setSelecionado] = useState<Modelo | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -106,6 +109,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
     } catch { toast.error("Não foi possível ler o arquivo."); }
   }
   function imprimir() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!selecionado) return;
     const janela = window.open("", "_blank");
     if (!janela) return toast.error("Habilite a abertura de janelas para imprimir.");
@@ -113,6 +117,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
     janela.document.write(html); janela.document.close(); janela.focus(); janela.print();
   }
   async function baixarPdf() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!selecionado) return;
     setGerandoPdf(true);
     try {
@@ -162,7 +167,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
           <div className="flex flex-wrap items-center gap-2 border-t pt-3">
             <button type="button" onClick={()=>setPreview(v=>!v)} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><Eye size={15}/> {preview?"Ocultar prévia":"Visualizar"}</button>
             <button type="button" onClick={imprimir} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><Printer size={15}/> Imprimir</button>
-            <button type="button" disabled={gerandoPdf} onClick={()=>void baixarPdf()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold disabled:opacity-50"><FileDown size={15}/> {gerandoPdf?"Gerando...":"Baixar PDF"}</button>
+            <button type="button" disabled={demoAlvorada || gerandoPdf} onClick={()=>void baixarPdf()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold disabled:opacity-50"><FileDown size={15}/> {gerandoPdf?"Gerando...":"Baixar PDF"}</button>
             {podeGerenciar && <><button type="button" onClick={()=>escolher({...selecionado,id:crypto.randomUUID(),nome:selecionado.nome+" (cópia)",versao:0,historico:[],atualizadoEm:""})} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><Copy size={15}/> Duplicar</button>
               <button type="button" disabled={salvando} onClick={()=>void salvar()} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"><Save size={15}/>{salvando?"Salvando...":"Salvar modelo"}</button>
               {modelos.some((m)=>m.id===selecionado.id) && <button type="button" disabled={salvando} onClick={()=>void excluir()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs text-destructive"><Trash2 size={15}/> Excluir</button>}</>}

@@ -1,3 +1,5 @@
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
@@ -287,6 +289,7 @@ function registroPreventivo(linha: VacinaPortal | VermifugoPortal): Registro {
 }
 
 function AnimalFicha() {
+  const demoAlvorada = useDemoAlvorada();
   const busca = useSearch({ strict: false }) as { animalId?: unknown; comandaId?: unknown };
   const animalId = typeof busca.animalId === "string" ? busca.animalId : "";
   const [animal, setAnimal] = useState<Animal | null>(null);
@@ -631,6 +634,9 @@ function AnimalFicha() {
 
   async function salvarRegistro() {
     if (!animal || !modalTipo || salvandoPortal) return;
+    if (demoAlvorada && (modalTipo === "Documentos" || (modalTipo === "Exames" && arquivoPdf))) {
+      return void toast.info(AVISO_DEMO_DOCUMENTOS);
+    }
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
     if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
@@ -720,7 +726,7 @@ function AnimalFicha() {
             titulo: titulo.trim(),
             tipo: tipoDetalhe.trim() || (exame ? "Exame" : "Documento"),
             drive_arquivo_id: driveArquivoId,
-            visivel_tutor: visivelTutor,
+            visivel_tutor: visivelTutor && !demoAlvorada,
           };
           const { error } = exame
             ? await supabaseBanco.from("oricse_portal_exames").upsert({
@@ -739,7 +745,7 @@ function AnimalFicha() {
         setModalTipo(null);
         setArquivoPdf(null);
         toast.success(
-          visivelTutor && ["Exames", "Documentos"].includes(modalTipo)
+          visivelTutor && !demoAlvorada && ["Exames", "Documentos"].includes(modalTipo)
             ? `${modalTipo} disponível no Portal. O aviso com link foi adicionado ao CRM.`
             : `${modalTipo} adicionado no banco.`,
         );
@@ -769,6 +775,9 @@ function AnimalFicha() {
 
   async function alternarVisibilidade(registro: Registro, valor: boolean) {
     if (!registro.fontePortal || !clinicaId || registro.fontePortal === "receita") return;
+    if (demoAlvorada && ["exame", "documento"].includes(registro.fontePortal)) {
+      return void toast.info(AVISO_DEMO_DOCUMENTOS);
+    }
     const tabela =
       registro.fontePortal === "vacina"
         ? "oricse_portal_vacinas"
@@ -1091,7 +1100,7 @@ function AnimalFicha() {
               onAdd={() => abrirNovo(aba as RegistroTipo)}
               onTogglePortal={alternarVisibilidade}
               onEditarPreventivo={editarPreventivo}
-              onDocumentoPreventivo={registro => setDocumentoPreventivo(registro.preventivo)}
+              onDocumentoPreventivo={demoAlvorada ? undefined : registro => setDocumentoPreventivo(registro.preventivo)}
             />
           )}
 
@@ -1626,7 +1635,7 @@ function SecaoCompleta({
   onBaixarDocumento: (registro: Registro) => void;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
   onEditarPreventivo: (registro: Registro) => void;
-  onDocumentoPreventivo: (registro: Registro) => void;
+  onDocumentoPreventivo?: (registro: Registro) => void;
 }) {
   const Icon = iconFor(aba);
   return (
@@ -1668,11 +1677,11 @@ function SecaoCompleta({
                       >
                         <Pencil size={14} /> Editar
                       </button>
-                      <button type="button" onClick={() => onDocumentoPreventivo(r)}
+                      {onDocumentoPreventivo && <button type="button" onClick={() => onDocumentoPreventivo(r)}
                         aria-label={`Preparar PDF de ${r.titulo}`}
                         className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted">
                         <FileText size={14} /> Preparar PDF
-                      </button>
+                      </button>}
                       </>
                     )}
                     {r.fontePortal === "receita" ? (
