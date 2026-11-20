@@ -165,6 +165,17 @@ const Acupuncture = createLucideIcon("VetericioAcupuncture", [
   accent("M11.45 16.01h1.1"),
 ]);
 
+const Neurology = createLucideIcon("VetericioNeurology", [
+  silhouette(
+    "M12 5.5C11 2.6 6.8 2.5 5.6 5.3a3.4 3.4 0 0 0-2.7 4.5 3.7 3.7 0 0 0 0 5.1 3.4 3.4 0 0 0 3.1 4.3c1.5 2.5 4.9 2.2 6-.2 1.1 2.4 4.5 2.7 6 .2a3.4 3.4 0 0 0 3.1-4.3 3.7 3.7 0 0 0 0-5.1 3.4 3.4 0 0 0-2.7-4.5C17.2 2.5 13 2.6 12 5.5Z",
+  ),
+  outline("M12 5.5V19m-6.4-13.7a3.4 3.4 0 0 1 3.3 1.8m9.5-1.8a3.4 3.4 0 0 0-3.3 1.8"),
+  detail(
+    "M2.9 9.8c1.9-.7 3.8.1 4.5 1.6m13.7-1.6c-1.9-.7-3.8.1-4.5 1.6M6 19.2c-.4-1.5.2-3 1.5-3.8m10.5 3.8c.4-1.5-.2-3-1.5-3.8",
+  ),
+  accent("M10 11.6 12 13l2-1.4"),
+]);
+
 const MoreCare = createLucideIcon("VetericioMoreCare", [
   silhouette("M10.13 5.85h3.74v4.28h4.28v3.74h-4.28v4.28h-3.74v-4.28H5.85v-3.74h4.28Z"),
   detail("M3.4 10.1a8.85 8.85 0 0 1 5.33-5.91m11.87 9.7a8.85 8.85 0 0 1-5.33 5.92"),
@@ -189,5 +200,6 @@ export const vetericioServiceIcons: Record<string, LucideIcon> = {
   Fisiatria: Rehabilitation,
   Oncologia: Oncology,
   Acupuntura: Acupuncture,
+  "Neurologia veterinária": Neurology,
   "E muito mais...": MoreCare,
 };
