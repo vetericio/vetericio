@@ -243,7 +243,7 @@
 
   .vetericio-portal-login-grid {
     grid-template-columns: minmax(0, 1fr);
-    padding-block: 0.625rem;
+    padding-block: 0.5625rem;
   }
 
   .vetericio-portal-welcome {
@@ -315,6 +315,10 @@
 
   .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-welcome-copy {
     padding-bottom: 1.25rem;
+  }
+
+  .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-form {
+    padding-block: clamp(1rem, 3svh, 2rem);
   }
 }
 
