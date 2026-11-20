@@ -32,9 +32,6 @@ function ler(): Modelo[] {
 function novo(base?: typeof padroes[number]): Modelo {
   return { id: crypto.randomUUID(), nome: base?.nome || "Documento clínico", categoria: base?.categoria || "documento", texto: base?.texto || DOCUMENTOS.documento.exemplo, versao: 0, historico: [], atualizadoEm: "" };
 }
-function escapar(valor: string) {
-  return valor.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
 export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaId }: { podeGerenciar: boolean; clinica: string; clinicaId: string }) {
   const demoAlvorada = useDemoAlvorada();
   const [modelos, setModelos] = useState<Modelo[]>([]);
@@ -179,7 +176,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaI
     setGerandoPdf(true);
     try {
       const pdf = await gerarPdfModelo(selecionado);
-      const arquivo = selecionado.nome.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,70)||"modelo";
+      const arquivo = selecionado.nome.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,70)||"modelo";
       pdf.save("previa-"+arquivo+".pdf");
       toast.success("Prévia com cabeçalho e identificação padronizados.");
     } catch(e) { toast.error(e instanceof Error ? e.message : "Erro ao gerar PDF."); }
@@ -233,7 +230,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaI
             {pdfPrevia && <PaginasPrevia pdf={pdfPrevia} />}
           </section>}
           {selecionado.historico?.length>0 && <details className="rounded-lg border p-3"><summary className="cursor-pointer text-xs font-semibold"><History size={14} className="mr-1 inline"/> Histórico de versões ({selecionado.historico.length})</summary><div className="mt-2 space-y-2">{selecionado.historico.map((v,i)=><div key={i} className="flex items-center justify-between gap-2 text-xs"><span>Versão {v.numero} · {v.data ? new Date(v.data).toLocaleString("pt-BR") : "Data indisponível"}</span>{podeGerenciar && <button type="button" onClick={()=>{if(window.confirm("Recuperar o texto desta versão? Salve para registrar a alteração."))setSelecionado({...selecionado,texto:v.texto});}} className="font-semibold text-primary">Recuperar texto</button>}</div>)}</div></details>}
-          <p className="text-xs text-muted-foreground">Prévia não equivale a emissão nem assinatura. Modelos de receitas controladas continuam sujeitos às exigências legais e ao fluxo próprio.</p>
+          <p className="text-xs text-muted-foreground">Prévia não equivale a emissão nem assinatura. O texto-base de termos é provisório e deve ser revisado pelo responsável técnico antes do uso. Receitas controladas seguem o fluxo próprio.</p>
         </>}
       </div>
     </div>
