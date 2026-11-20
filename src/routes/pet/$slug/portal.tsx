@@ -1070,6 +1070,7 @@ function Login(props:{
   if (isVetericio) return (
     <VetericioPortalLogin
       site={clinicSite}
+      extended={acessoEstendido}
       style={estiloTemaPortal(p.tema)}
       title={p.modoRecuperar ? "Recupere seu acesso" : p.modoAtivar ? "Ative seu primeiro acesso" : "Entre no seu portal"}
       description={p.modoRecuperar ? "Vamos ajudar você a voltar ao portal do seu pet." : p.modoAtivar ? "Use o código que a equipe enviou e escolha sua senha." : "Use seu usuário e sua senha para continuar."}
