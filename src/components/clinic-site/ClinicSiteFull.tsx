@@ -1,4 +1,12 @@
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
+import { VetericioCareComparison } from "./VetericioCareComparison";
+import {
+  VetericioAbout,
+  VetericioHeader,
+  VetericioHero,
+  VetericioVisitSteps,
+} from "./VetericioEditorial";
+import { VetericioServices } from "./VetericioServices";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -337,7 +345,11 @@ export function ClinicSiteFull({
   const mapLink = config.address
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
     : "";
-  const sectionOrder = config.sectionOrder.length ? config.sectionOrder : [...clinicSiteSections];
+  const sectionOrder: ClinicSiteSection[] = isVetericio
+    ? ["servicos", "galeria", "equipe", "faq", "contato"]
+    : config.sectionOrder.length
+      ? config.sectionOrder
+      : [...clinicSiteSections];
   const visible = (section: ClinicSiteSection) => !config.hiddenSections.includes(section);
   const ink = minimal
     ? "border-slate-200/80"
@@ -502,7 +514,13 @@ export function ClinicSiteFull({
   };
 
   const sections: Record<ClinicSiteSection, ReactNode> = {
-    servicos: config.services.length ? (
+    servicos: isVetericio ? (
+      <VetericioServices
+        key="servicos"
+        services={config.services}
+        descriptions={vetericioServiceDescriptions}
+      />
+    ) : config.services.length ? (
       <section
         key="servicos"
         id="servicos"
@@ -511,16 +529,10 @@ export function ClinicSiteFull({
       >
         <div className="mx-auto max-w-7xl">
           {heading(
-            king
-              ? "Cuidado, em capítulos"
-              : isVetericio
-                ? "Cuidado que vira confiança"
-                : "O que fazemos",
+            king ? "Cuidado, em capítulos" : "O que fazemos",
             king
               ? "Cada encontro muda a próxima página da história."
-              : isVetericio
-                ? "O que seu pet precisa. O que você precisa ouvir. Em cada etapa."
-                : "Cuidado para cada fase da vida.",
+              : "Cuidado para cada fase da vida.",
           )}
           <div
             className={
@@ -555,50 +567,23 @@ export function ClinicSiteFull({
                             : " bg-white/35")
                 }
               >
-                {isVetericio ? (
-                  <span className="mb-7 block text-4xl leading-none" aria-hidden="true">
-                    {[
-                      "🩺",
-                      "🔬",
-                      "🧬",
-                      "🏠",
-                      "🐾",
-                      "💉",
-                      "👁️",
-                      "💧",
-                      "❤️",
-                      "🦷",
-                      "🐱",
-                      "⚖️",
-                      "🖥️",
-                      "🥕",
-                      "🦿",
-                      "🎗️",
-                      "🪡",
-                    ][index] || "🐶"}
-                  </span>
-                ) : (
-                  <div
-                    className={
-                      "mb-7 flex h-11 w-11 items-center justify-center bg-[var(--site-primary)] text-white " +
-                      (rounded ? "rounded-full" : "rounded-lg")
-                    }
-                  >
-                    {index % 3 === 0 ? (
-                      <Heart size={21} />
-                    ) : index % 3 === 1 ? (
-                      <ShieldCheck size={21} />
-                    ) : (
-                      <PawPrint size={21} />
-                    )}
-                  </div>
-                )}
+                <div
+                  className={
+                    "mb-7 flex h-11 w-11 items-center justify-center bg-[var(--site-primary)] text-white " +
+                    (rounded ? "rounded-full" : "rounded-lg")
+                  }
+                >
+                  {index % 3 === 0 ? (
+                    <Heart size={21} />
+                  ) : index % 3 === 1 ? (
+                    <ShieldCheck size={21} />
+                  ) : (
+                    <PawPrint size={21} />
+                  )}
+                </div>
                 <h3 className="text-xl font-extrabold">{service}</h3>
                 <p className="mt-3 text-sm leading-6 opacity-70">
-                  {isVetericio
-                    ? vetericioServiceDescriptions[service] ||
-                      "Atenção, clareza e cuidado em cada passo."
-                    : "Orientação profissional e acompanhamento cuidadoso."}
+                  Orientação profissional e acompanhamento cuidadoso.
                 </p>
               </article>
             ))}
@@ -1158,73 +1143,127 @@ export function ClinicSiteFull({
       style={style}
       data-clinic-template={template}
     >
-      {(bold || signatura || prime) && config.emergency24h ? (
+      {!isVetericio && (bold || signatura || prime) && config.emergency24h ? (
         <div className="bg-[var(--site-primary)] px-4 py-2 text-center text-xs font-black uppercase tracking-widest text-white">
           Atendimento de emergência 24h · Cuidado contínuo para o seu pet
         </div>
       ) : null}
-      <header
-        className={
-          "relative z-10 border-b border-current/10 " +
-          (organic || signatura
-            ? "bg-[var(--site-secondary)]"
-            : prime
-              ? "bg-white"
-              : friendly
-                ? "bg-[#FFF8ED]"
-                : king
-                  ? "bg-[#101526] text-[#F2EBE1] border-white/15"
-                  : "")
-        }
-        // Élan: halo contínuo no cabeçalho inteiro, evitando recortes da área clara.
-        style={
-          luxe
-            ? {
-                backgroundImage:
-                  "radial-gradient(ellipse clamp(295px, 47vw, 630px) 220px at clamp(125px, 16vw, 210px) 50%, rgba(250,245,234,0.97) 0%, rgba(250,245,234,0.94) 32%, rgba(250,245,234,0.63) 54%, rgba(250,245,234,0.16) 78%, rgba(250,245,234,0) 100%)",
-              }
-            : undefined
-        }
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
-          {brand}
-          <nav
-            aria-label="Navegação do site"
-            className={
-              "hidden items-center text-sm font-semibold lg:flex " +
-              (luxe
-                ? "gap-4 rounded-full border border-white/10 bg-[#15251F]/80 px-4 py-2.5 text-[#FFF9EE] shadow-[0_4px_16px_rgba(0,0,0,0.14)] backdrop-blur-sm"
-                : "gap-6 opacity-85")
-            }
-          >
-            {sectionOrder
+      {isVetericio ? (
+        <VetericioHeader
+          actionHref={actionHref}
+          brand={
+            <a
+              href="#inicio"
+              className="flex items-center gap-2.5"
+              aria-label="Início da Veterício"
+            >
+              <img
+                src="/vetericio-logo-oficial.png"
+                alt=""
+                width={40}
+                height={44}
+                className="h-11 w-10 object-contain"
+              />
+              <span className="font-serif text-[1.7rem] leading-none tracking-tight sm:text-3xl">
+                Veterício
+              </span>
+            </a>
+          }
+          links={[
+            { href: "#em-casa", label: "Em casa" },
+            { href: "#como-funciona", label: "Como funciona" },
+            ...sectionOrder
               .filter(
                 (section) =>
                   visible(section) &&
-                  (section !== "equipe" || config.team.length) &&
-                  (section !== "galeria" || gallery.length),
+                  (section === "servicos" || section === "faq" || section === "contato"),
               )
-              .map((section) => (
-                <a key={section} href={"#" + section} className="hover:text-[var(--site-primary)]">
-                  {clinicSiteSectionLabels[section]}
-                </a>
-              ))}
-          </nav>
-          <a
-            href={actionHref}
-            className={
-              "inline-flex min-h-10 shrink-0 items-center gap-2 px-3 text-xs font-extrabold sm:px-5 sm:text-sm " +
-              buttonShape +
-              (bold ? " bg-[var(--site-secondary)]" : " bg-[var(--site-primary)] text-white")
-            }
-          >
-            <CalendarDays size={16} /> <span className="hidden sm:inline">Portal do Tutor</span>
-            <span className="sm:hidden">Portal do Tutor</span>
-          </a>
-        </div>
-      </header>
+              .map((section) => ({
+                href: `#${section}`,
+                label: section === "faq" ? "Dúvidas" : clinicSiteSectionLabels[section],
+              })),
+          ]}
+        />
+      ) : (
+        <header
+          className={
+            "relative z-10 border-b border-current/10 " +
+            (organic || signatura
+              ? "bg-[var(--site-secondary)]"
+              : prime
+                ? "bg-white"
+                : friendly
+                  ? "bg-[#FFF8ED]"
+                  : king
+                    ? "bg-[#101526] text-[#F2EBE1] border-white/15"
+                    : "")
+          }
+          // Élan: halo contínuo no cabeçalho inteiro, evitando recortes da área clara.
+          style={
+            luxe
+              ? {
+                  backgroundImage:
+                    "radial-gradient(ellipse clamp(295px, 47vw, 630px) 220px at clamp(125px, 16vw, 210px) 50%, rgba(250,245,234,0.97) 0%, rgba(250,245,234,0.94) 32%, rgba(250,245,234,0.63) 54%, rgba(250,245,234,0.16) 78%, rgba(250,245,234,0) 100%)",
+                }
+              : undefined
+          }
+        >
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
+            {brand}
+            <nav
+              aria-label="Navegação do site"
+              className={
+                "hidden items-center text-sm font-semibold lg:flex " +
+                (luxe
+                  ? "gap-4 rounded-full border border-white/10 bg-[#15251F]/80 px-4 py-2.5 text-[#FFF9EE] shadow-[0_4px_16px_rgba(0,0,0,0.14)] backdrop-blur-sm"
+                  : "gap-6 opacity-85")
+              }
+            >
+              {sectionOrder
+                .filter(
+                  (section) =>
+                    visible(section) &&
+                    (section !== "equipe" || config.team.length) &&
+                    (section !== "galeria" || gallery.length),
+                )
+                .map((section) => (
+                  <a
+                    key={section}
+                    href={"#" + section}
+                    className="hover:text-[var(--site-primary)]"
+                  >
+                    {clinicSiteSectionLabels[section]}
+                  </a>
+                ))}
+            </nav>
+            <a
+              href={actionHref}
+              className={
+                "inline-flex min-h-10 shrink-0 items-center gap-2 px-3 text-xs font-extrabold sm:px-5 sm:text-sm " +
+                buttonShape +
+                (bold ? " bg-[var(--site-secondary)]" : " bg-[var(--site-primary)] text-white")
+              }
+            >
+              <CalendarDays size={16} /> <span className="hidden sm:inline">Portal do Tutor</span>
+              <span className="sm:hidden">Portal do Tutor</span>
+            </a>
+          </div>
+        </header>
+      )}
 
-      {prime ? (
+      {isVetericio ? (
+        <>
+          <VetericioHero
+            title={config.slogan}
+            description={config.description}
+            actionHref={actionHref}
+            poster="/clinic-site/vetericio/meow-cruella-hero.webp"
+          />
+          {visible("sobre") && <VetericioAbout actionHref={actionHref} />}
+          <VetericioCareComparison />
+          <VetericioVisitSteps />
+        </>
+      ) : prime ? (
         primeHero
       ) : friendly ? (
         classHero
