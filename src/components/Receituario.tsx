@@ -94,7 +94,15 @@ async function emitirReceitaControladaNoBanco(dados: Record<string, unknown>): P
   return data;
 }
 
-export function Receituario() {
+export function Receituario({
+  embutido = false, animalIdInicial, tutorIdInicial, onSalva,
+}: {
+  embutido?: boolean;
+  animalIdInicial?: string;
+  tutorIdInicial?: string;
+  onSalva?: () => void;
+} = {}) {
+  const Container = embutido ? "section" : "main";
   const demoAlvorada = useDemoAlvorada();
   const { anamneses } = useAnamneses();
   const racaAreaRef = useRef<HTMLDivElement>(null);
@@ -139,8 +147,8 @@ export function Receituario() {
     let ativo = true;
     async function preencher() {
       const params = new URLSearchParams(window.location.search);
-      const animalId = params.get("animalId") || "";
-      const tutorId = params.get("tutorId") || "";
+      const animalId = animalIdInicial || params.get("animalId") || "";
+      const tutorId = tutorIdInicial || params.get("tutorId") || "";
       try {
         const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
         if (erroSessao || !sessao.session?.access_token)
@@ -216,7 +224,7 @@ export function Receituario() {
     }
     void preencher();
     return () => { ativo = false; };
-  }, []);
+  }, [animalIdInicial, tutorIdInicial]);
 
   useEffect(() => {
     let pedido = 0;
@@ -380,6 +388,7 @@ export function Receituario() {
         }
         await registrarReceita(receita, token);
         receita.salva = true;
+        onSalva?.();
         toast.success(receita.registro.visivel_tutor
           ? "Receita salva no prontuário e disponível no Portal do Tutor."
           : "Receita salva no prontuário com acesso interno.");
@@ -399,11 +408,11 @@ export function Receituario() {
   const escolherRaca = (opcao: string) => { setRaca(opcao); setBuscaRaca(""); setRacaAberta(false); };
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 pb-28">
-      <section>
+    <Container className={embutido ? "mx-auto w-full max-w-3xl space-y-4 py-2 pb-5" : "mx-auto w-full max-w-3xl space-y-4 px-4 py-5 pb-28"}>
+      {!embutido && <section>
         <h1 className="font-display text-xl font-semibold text-foreground">Receituário</h1>
         <p className="mt-1 text-sm text-muted-foreground">Preencha somente o necessário e a receita sai completa.</p>
-      </section>
+      </section>}
 
       {erroRegistro && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
         {erroRegistro}
@@ -549,7 +558,7 @@ export function Receituario() {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm"><h2 className="font-display font-semibold text-foreground">Final da receita</h2><div className="mt-3 grid gap-3 sm:grid-cols-[0.7fr_1.3fr]"><label><span className={rotulo}>Data</span><input value={data} onChange={(e) => setData(e.target.value)} className={campo} placeholder="dd/mm/aaaa" /></label><label><span className={rotulo}>Endereço da clínica</span><textarea value={endereco} onChange={(e) => setEndereco(e.target.value)} rows={2} className={campo} placeholder="Endereço cadastrado da clínica" /></label></div><p className="mt-2 text-xs text-muted-foreground">A data e o endereço da clínica aparecem no rodapé do PDF. O endereço pessoal do profissional não é utilizado.</p></section>
 
       </fieldset>
-      {vinculo && !demoAlvorada && <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-3xl grid-cols-[1fr_1.45fr_1fr] gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg sm:gap-2 sm:p-2">
+      {vinculo && !demoAlvorada && <div className={embutido ? "mt-4 grid w-full grid-cols-[1fr_1.45fr_1fr] gap-1.5 rounded-2xl border bg-card p-1.5 shadow-sm sm:gap-2 sm:p-2" : "fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-3xl grid-cols-[1fr_1.45fr_1fr] gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg sm:gap-2 sm:p-2"}>
         {([
           ["download", "Download", Download],
           ["baixar-e-salvar", "Download e salvar", FileDown],
@@ -563,6 +572,6 @@ export function Receituario() {
         ))}
       </div>}
 
-    </main>
+    </Container>
   );
 }
