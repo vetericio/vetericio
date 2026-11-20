@@ -29,7 +29,7 @@ function securityHeaders(response: Response, pathname?: string): Response {
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   if (pathname !== "/api/public/clinic-image" || !headers.has("content-security-policy")) headers.set(
     "content-security-policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://oricse.com.br/api/public/clinic-image https://*.supabase.co https://drive.google.com https://drive.usercontent.google.com https://lh3.googleusercontent.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://oricse.com.br/api/public/clinic-image https://*.supabase.co https://drive.google.com https://drive.usercontent.google.com https://lh3.googleusercontent.com https://images.unsplash.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
   );
   // Prévias do editor são sempre no mesmo domínio; sites externos continuam bloqueados.
   headers.set("x-frame-options", "SAMEORIGIN");
