@@ -1,4 +1,5 @@
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
+import { LOGO_PDF_DATA_URL } from "@/lib/logo";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -182,8 +183,9 @@ export function ClinicSiteFull({
         ctaLabel: "Agendar atendimento",
       }
     : inputConfig;
+  const logoSrc = isVetericio ? LOGO_PDF_DATA_URL : safeImage(config.logoUrl);
   const [logoFailed, setLogoFailed] = useState(false);
-  useEffect(() => setLogoFailed(false), [config.logoUrl]);
+  useEffect(() => setLogoFailed(false), [logoSrc]);
   const rounded = !luxe && !bold && !minimal && !prime;
   const buttonShape = luxe
     ? "rounded-none"
@@ -348,10 +350,10 @@ export function ClinicSiteFull({
       aria-label={"Início - " + config.name}
       className="flex min-w-0 items-center gap-3"
     >
-      {safeHttps(config.logoUrl) && !logoFailed ? (
+      {logoSrc && !logoFailed ? (
         <span className="flex h-[72px] w-[min(48vw,240px)] shrink-0 items-center justify-start sm:w-[240px]">
           <img
-            src={safeImage(config.logoUrl)}
+            src={logoSrc}
             className="h-full w-full object-contain object-left"
             alt={config.name}
             width={240}
