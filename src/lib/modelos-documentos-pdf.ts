@@ -10,12 +10,13 @@ export type PapelDocumento = {
 };
 
 export async function carregarLogoDocumento(url: string): Promise<string> {
+  const caminho = url.replace(/^https:\/\/oricse\.com\.br(?=\/api\/public\/clinic-image\?)/i, "");
   const imagem = new Image();
   imagem.crossOrigin = "anonymous";
   await new Promise<void>((resolve, reject) => {
     imagem.onload = () => resolve();
     imagem.onerror = () => reject(new Error("Não foi possível carregar a logo da clínica."));
-    imagem.src = url;
+    imagem.src = caminho;
   });
   const escala = Math.min(1, 480 / Math.max(imagem.naturalWidth, imagem.naturalHeight));
   const canvas = document.createElement("canvas");
@@ -27,6 +28,16 @@ export async function carregarLogoDocumento(url: string): Promise<string> {
   return canvas.toDataURL("image/png");
 }
 
+export async function prepararLogoDocumento(clinica: IdentidadeDocumento, usarLogo: boolean) {
+  if (!usarLogo) return "";
+  for (const fonte of [clinica.logoUrl, clinica.logoAlternativa]) {
+    if (!fonte) continue;
+    const logo = await carregarLogoDocumento(fonte).catch(() => "");
+    if (logo) return logo;
+  }
+  return "";
+}
+
 export async function prepararPapelDocumento(clinica: IdentidadeDocumento, modelo: ModeloDocumentoPadrao): Promise<PapelDocumento> {
   const url = urlFundoDocumento(modelo.fundo);
   const [fundo, logo] = await Promise.all([
@@ -36,7 +47,7 @@ export async function prepararPapelDocumento(clinica: IdentidadeDocumento, model
       }
       return new Uint8Array(await resposta.arrayBuffer());
     }) : null,
-    modelo.usarLogo && clinica.logoUrl ? carregarLogoDocumento(clinica.logoUrl).catch(() => "") : "",
+    prepararLogoDocumento(clinica, modelo.usarLogo),
   ]);
   return { clinica, fundo, logo, corQuadros: modelo.corQuadros, protegerLeitura: ["04", "05", "07", "08", "09", "10"].includes(modelo.fundo) };
 }
@@ -96,7 +107,9 @@ export function desenharIdentidadeDocumento(pdf: jsPDF, papel: PapelDocumento, m
 
 export function desenharIdentificacaoDocumento(
   pdf: jsPDF, { paciente, tutor }: IdentificacaoDocumento, margem: number, topo: number, fator = 1, cor = COR_QUADROS_PADRAO,
+  estilo?: "receita",
 ) {
+  const receita = estilo === "receita";
   const espaco = 7 * fator;
   const largura = (pdf.internal.pageSize.getWidth() - margem * 2 - espaco) / 2;
   type Campo = readonly [string, string?];
@@ -107,12 +120,12 @@ export function desenharIdentificacaoDocumento(
       [["Microchip", paciente.microchip]], [["Pelagem", paciente.pelagem]], [["Outros identificadores", paciente.outros]],
     ] },
     { titulo: "TUTOR", linhas: [
-      [["Nome", tutor.nome]], [["CPF", tutor.cpf]], [["Data de nascimento", tutor.nascimento]],
+      [["Nome", tutor.nome]], [[receita ? "CPF/CNPJ" : "CPF", tutor.cpf]], [["Data de nascimento", tutor.nascimento]],
       [["Telefone", tutor.telefone]], [["Endereço", tutor.endereco]],
     ] },
   ];
   const passo = 4.4 * fator;
-  const margemInterna = 3 * fator;
+  const margemInterna = (receita ? 4 : 3) * fator;
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
   const conteudos = colunas.map(({ linhas }) => linhas.map(linha => {
@@ -122,7 +135,7 @@ export function desenharIdentificacaoDocumento(
       pdf.splitTextToSize(`${rotulo}: ${valor}`, coluna - (campos.length > 1 ? 2 * fator : 0)) as string[]);
     return { coluna, valores, altura: Math.max(0, ...valores.map(valor => valor.length)) * passo };
   }));
-  const altura = Math.max(38 * fator, 12 * fator +
+  const altura = Math.max((receita ? 28 : 38) * fator, (receita ? 16 : 12) * fator +
     Math.max(...conteudos.map(linhas => linhas.reduce((total, linha) => total + linha.altura, 0))));
   const [r, g, b] = [1, 3, 5].map(inicio => {
     const canal = parseInt(cor.slice(inicio, inicio + 2), 16) / 255;
@@ -132,13 +145,25 @@ export function desenharIdentificacaoDocumento(
   const corTexto = luminancia >= 0.179 ? 0 : 255;
   colunas.forEach(({ titulo }, indice) => {
     const x = margem + indice * (largura + espaco);
-    pdf.setFillColor(cor);
-    pdf.rect(x, topo, largura, altura, "F");
-    pdf.setTextColor(corTexto);
+    if (receita) {
+      pdf.setFillColor("#fcfcfa");
+      pdf.setDrawColor("#d7ddda");
+      pdf.setLineWidth(0.2 * fator);
+      pdf.roundedRect(x, topo, largura, altura, 2.6 * fator, 2.6 * fator, "FD");
+      pdf.setDrawColor(cor);
+      pdf.setLineWidth(0.6 * fator);
+      pdf.line(x + margemInterna, topo + 8.2 * fator, x + largura - margemInterna, topo + 8.2 * fator);
+      pdf.setTextColor("#203630");
+    } else {
+      pdf.setFillColor(cor);
+      pdf.rect(x, topo, largura, altura, "F");
+      pdf.setTextColor(corTexto);
+    }
     pdf.setFont("helvetica", "bold");
-    pdf.text(titulo, x + largura / 2, topo + 5.3 * fator, { align: "center" });
+    pdf.text(titulo, receita ? x + margemInterna : x + largura / 2, topo + (receita ? 6 : 5.3) * fator,
+      { align: receita ? "left" : "center" });
     pdf.setFont("helvetica", "normal");
-    let y = topo + 11 * fator;
+    let y = topo + (receita ? 13.8 : 11) * fator;
     for (const linha of conteudos[indice]) {
       linha.valores.forEach((valor, coluna) => valor.forEach((texto, n) =>
         pdf.text(texto, x + margemInterna + coluna * linha.coluna, y + n * passo)));

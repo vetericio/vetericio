@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { DURACOES_ATENDIMENTO, LIMITE_PDF_TERMO } from "@/lib/configuracoes-clinica";
 import { exigirPermissaoClinica, clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";
+import { storedClinicLogoPreview } from "@/lib/clinic-logo-preview";
+import { vetericioBrand } from "@/lib/vetericio-brand";
 
 import {
   COR_QUADROS_PADRAO, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO,
@@ -282,7 +284,7 @@ async function identidadeDocumentos(ctx: Contexto): Promise<IdentidadeDocumento>
       .select("razao_social,cnpj,clinica_telefone,clinica_email,clinica_endereco,clinica_numero,clinica_complemento,clinica_bairro,clinica_cidade,clinica_uf,clinica_cep,dados")
       .eq("clinica_criada_id", ctx.clinica.id).is("excluido_em", null)
       .order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    ctx.admin.from("clinicas").select("logo_url,dominio,slug").eq("id", ctx.clinica.id).single(),
+    ctx.admin.from("clinicas").select("logo_url,logo_previa,dominio,slug").eq("id", ctx.clinica.id).single(),
     ctx.admin.from("clinic_sites").select("config").eq("clinica_id", ctx.clinica.id).maybeSingle(),
     ler(ctx, CHAVE_LOGO_DOCUMENTOS),
     ler(ctx, CHAVE_DADOS_DOCUMENTOS),
@@ -300,6 +302,8 @@ async function identidadeDocumentos(ctx: Contexto): Promise<IdentidadeDocumento>
     dados?.clinica_cep && "CEP " + dados.clinica_cep].filter(Boolean).join(" · ") : texto(config.address);
   const url = [cadastro.data?.logo_url, config.logoUrl].map(texto)
     .find((candidata) => /^(https:\/\/|\/(?!\/))/.test(candidata)) || "";
+  const logoPrevia = storedClinicLogoPreview(cadastro.data?.logo_previa, url);
+  const logoAlternativa = logoPrevia || (cadastro.data?.slug === vetericioBrand.slug ? vetericioBrand.logo : "");
   let logoUrl = url;
   if (logoSalva) {
     const { driveId } = logoDocumentoSchema.parse(logoSalva);
@@ -316,7 +320,7 @@ async function identidadeDocumentos(ctx: Contexto): Promise<IdentidadeDocumento>
   const identidade = {
     nome: ctx.clinica.nome, razaoSocial: texto(dados?.razao_social), cnpj: texto(dados?.cnpj),
     crmv: texto(extras.registro_crmv_estabelecimento || extras.clinica_crmv),
-    endereco, municipio, logoUrl,
+    endereco, municipio, logoUrl, logoAlternativa,
     telefone: texto(dados?.clinica_telefone) || texto(config.phone),
     email: texto(dados?.clinica_email) || texto(config.email),
     site: texto(cadastro.data?.dominio) || (cadastro.data?.slug ? `${cadastro.data.slug}.oricse.com.br` : ""),

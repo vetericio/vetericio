@@ -36,6 +36,7 @@ export type IdentidadeDocumento = {
   email: string;
   municipio: string;
   logoUrl: string;
+  logoAlternativa?: string;
   site?: string;
 };
 

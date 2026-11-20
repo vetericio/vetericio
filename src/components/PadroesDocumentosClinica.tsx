@@ -52,7 +52,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const [tipo, setTipo] = useState<TipoModeloDocumento>("receita");
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [dadosEditados, setDadosEditados] = useState<Partial<Omit<NonNullable<typeof dados>["identidade"], "logoUrl">>>({});
+  const [dadosEditados, setDadosEditados] = useState<Partial<Omit<NonNullable<typeof dados>["identidade"], "logoUrl" | "logoAlternativa">>>({});
 
   useEffect(() => {
     let ativo = true;
@@ -280,12 +280,12 @@ function PreviaDocumento({ identidade, modelo, tipo, corpo }: {
   identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao; tipo: TipoModeloDocumento; corpo: string;
 }) {
   const demoAlvorada = useDemoAlvorada();
-  const { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site } = identidade;
+  const { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, logoAlternativa, site } = identidade;
   const { fundo, usarLogo, corQuadros } = modelo;
   const configuracao = useMemo(() => ({
-    identidade: { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site },
+    identidade: { nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, logoAlternativa, site },
     modelo: { fundo, usarLogo, corQuadros, texto: "" }, tipo, corpo,
-  }), [nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, site, fundo, usarLogo, corQuadros, tipo, corpo]);
+  }), [nome, razaoSocial, endereco, cnpj, crmv, telefone, email, municipio, logoUrl, logoAlternativa, site, fundo, usarLogo, corQuadros, tipo, corpo]);
   const [resultado, setResultado] = useState<{
     configuracao: typeof configuracao; pdf?: Awaited<ReturnType<typeof gerarPrevia>>; erro?: string;
   } | null>(null);
