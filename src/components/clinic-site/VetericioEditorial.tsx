@@ -35,7 +35,7 @@ export function VetericioHeader({
         <div className="flex min-h-[72px] min-w-0 items-center">{brand}</div>
         <nav
           aria-label="Navegação do site"
-          className="order-last flex w-full flex-wrap justify-center gap-x-5 border-t border-[#003D4C]/10 text-xs font-semibold sm:gap-x-7 lg:order-none lg:w-auto lg:border-0 lg:text-sm"
+          className="order-last flex w-full flex-wrap justify-between gap-x-1 whitespace-nowrap border-t border-[#003D4C]/10 text-[11px] font-semibold min-[380px]:text-xs sm:justify-center sm:gap-x-7 lg:order-none lg:w-auto lg:border-0 lg:text-sm"
         >
           {links.map(({ href, label }) => (
             <a key={href} href={href} className="py-3 underline-offset-4 hover:underline">
