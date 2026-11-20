@@ -93,6 +93,34 @@ export function preencherTextoDocumento(texto: string, valores: Record<string, s
   );
 }
 
+/**
+ * Modelos antigos continham logo/cabeçalho e identificação dentro do texto.
+ * O gerador atual insere esses dados uma única vez, de forma padronizada.
+ * Só remove linhas reconhecíveis do cabeçalho legado, preservando o conteúdo
+ * clínico ou jurídico redigido pela clínica e nunca alterando registros salvos.
+ */
+export function extrairCorpoModeloClinico(texto: string): string {
+  const linhas = texto.replace(/\\r\\n/g, "\\n").split("\\n");
+  const prefixo = [
+    /^\\s*\\{\\{clinica\\}\\}\\s*$/,
+    /^\\s*\\{\\{endereco_clinica\\}\\}\\s*$/,
+    /^\\s*(RECEITUÁRIO VETERINÁRIO|PEDIDO DE EXAME|DECLARAÇÃO|TERMO DE CONSENTIMENTO|TÍTULO DO DOCUMENTO)\\s*$/i,
+    /^\\s*Paciente:\\s*\\{\\{paciente\\}\\}.*$/i,
+    /^\\s*Animal:\\s*\\{\\{paciente\\}\\}.*$/i,
+    /^\\s*Tutor:\\s*\\{\\{tutor\\}\\}.*$/i,
+  ];
+  const tinhaCabecalho = linhas.slice(0, 9).some(linha => prefixo.some(regra => regra.test(linha)));
+  if (!tinhaCabecalho) return texto;
+  while (linhas.length && (linhas[0].trim() === "" || prefixo.some(regra => regra.test(linhas[0])))) linhas.shift();
+  while (linhas.length && linhas[linhas.length - 1].trim() === "") linhas.pop();
+  // Retira exclusivamente o rodapé fixo dos modelos ORICSE antigos.
+  if (linhas.length && /^\\s*\\{\\{veterinario\\}\\}\\s*[-–]\\s*CRMV\\s*\\{\\{crmv\\}\\}\\s*$/i.test(linhas[linhas.length - 1])) {
+    linhas.pop();
+    if (linhas.length && /^\\s*(Data:\\s*)?\\{\\{data\\}\\}\\s*$/i.test(linhas[linhas.length - 1])) linhas.pop();
+  }
+  return linhas.join("\\n").trim();
+}
+
 export function limparOrientacoesPadraoReceita(texto: string) {
   const linhaDeIdentificacao = /^(?:\{\{(?:paciente|raca|especie)\}\}[ \t]*)+$/;
   return texto.split(/\r?\n/).filter(linha => !linhaDeIdentificacao.test(linha.trim())).join("\n").trim();
