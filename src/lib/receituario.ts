@@ -59,10 +59,10 @@ export type ItemReceituario = {
 };
 
 export type PosicaoSeloReceituario = {
-  /** posição no espaço reservado para assinatura e carimbo, entre 0 e 1 */
+  /** posição relativa à prévia livre do final da página, entre 0 e 1 */
   x: number;
   y: number;
-  /** largura relativa ao espaço reservado, entre 0 e 1 */
+  /** largura relativa à largura da prévia, entre 0 e 1 */
   largura: number;
 };
 
@@ -178,12 +178,19 @@ export function caixaSeloReceituario(
   posicao: PosicaoSeloReceituario,
   imagem: { largura: number; altura: number },
   larguraArea: number,
+  alturaArea: number,
 ) {
+  // Usa toda a prévia e o mesmo cálculo de caixa na interface e no PDF.
   const larguraRelativa = Math.min(0.9, Math.max(0.08, posicao.largura));
-  const x = Math.min(1 - larguraRelativa, Math.max(0, posicao.x)) * larguraArea;
-  const y = Math.min(0.78, Math.max(0, posicao.y)) * ALTURA_SELOS;
-  const escala = Math.min(larguraArea * larguraRelativa / imagem.largura, (ALTURA_SELOS - y) / imagem.altura);
-  return { x, y, largura: imagem.largura * escala, altura: imagem.altura * escala };
+  const escala = Math.min(
+    (larguraArea * larguraRelativa) / imagem.largura,
+    alturaArea / imagem.altura,
+  );
+  const largura = imagem.largura * escala;
+  const altura = imagem.altura * escala;
+  const x = Math.min(larguraArea - largura, Math.max(0, posicao.x * larguraArea));
+  const y = Math.min(alturaArea - altura, Math.max(0, posicao.y * alturaArea));
+  return { x, y, largura, altura };
 }
 
 function desenharSelo(
@@ -194,7 +201,7 @@ function desenharSelo(
 ) {
   try {
     const props = doc.getImageProperties(imagem);
-    const caixa = caixaSeloReceituario(posicao, { largura: props.width, altura: props.height }, area.largura);
+    const caixa = caixaSeloReceituario(posicao, { largura: props.width, altura: props.height }, area.largura, area.altura);
     doc.addImage(
       imagem,
       props.fileType,
@@ -224,14 +231,18 @@ function layoutRodapeReceituario(doc: DocumentoPDF, dados: DadosRodape) {
   const contatos = linhasProfissional(dados).flatMap((linha) => doc.splitTextToSize(linha, largura) as string[]);
   const alturaIdentificacao = 24 + 11 * contatos.length;
   const linhaY = rodapeY - alturaIdentificacao;
-  const areaSelos = { x: margem, y: linhaY - 5 - ALTURA_SELOS, largura, altura: ALTURA_SELOS };
+  // A prévia completa do rodapé é a área interativa.
+  // A reserva de conteúdo da receita permanece independente da edição.
+  const topo = linhaY - 5 - ALTURA_SELOS - 23;
+  const fim = rodapeY - 7;
+  const areaSelos = { x: 0, y: topo, largura: larguraPagina, altura: fim - topo };
   const centro = larguraPagina / 2;
   const municipio = dados.papel ? dados.papel.clinica.municipio : "Belo Horizonte";
   const data = dados.data.trim() || new Date().toLocaleDateString("pt-BR");
   const alinhamento = personalizado ? "center" : "right";
   const textos = [
     { valor: `${municipio ? municipio + ", " : ""}${data}.`, x: personalizado ? centro : margem + largura,
-      y: areaSelos.y - 10, tamanho: 10, alinhamento },
+      y: linhaY - 5 - ALTURA_SELOS - 10, tamanho: 10, alinhamento },
     { valor: "Assinatura do médico-veterinário", x: centro, y: linhaY + 12, tamanho: 9, alinhamento: "center" as const },
     ...contatos.map((valor, indice) => ({
       valor, x: centro, y: linhaY + 24 + indice * 11, tamanho: 9, alinhamento: "center" as const,
@@ -242,7 +253,7 @@ function layoutRodapeReceituario(doc: DocumentoPDF, dados: DadosRodape) {
       largura: doc.getTextWidth(texto.valor) };
   });
   return { areaSelos, margem, largura, larguraPagina, endereco, rodapeY, linhaY, centro, textos, personalizado,
-    topo: areaSelos.y - 23, fim: rodapeY - 7 };
+    topo, fim };
 }
 
 export async function prepararPreviaRodapeReceituario(dados: DadosRodape) {
@@ -255,7 +266,7 @@ export async function criarReceituario(dados: DadosReceituario) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const rodape = layoutRodapeReceituario(doc, dados);
   const { personalizado, margem, largura, endereco, rodapeY, areaSelos } = rodape;
-  const limiteConteudo = areaSelos.y - 28;
+  const limiteConteudo = rodape.linhaY - 5 - ALTURA_SELOS - 28;
   let y = margem;
 
   const cabecalho = () => {
