@@ -179,6 +179,7 @@ export function ClinicSiteFull({
           "Fisiatria",
           "Oncologia",
           "Acupuntura",
+          "Neurologia veterinária",
           "E muito mais...",
         ],
         aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
@@ -505,6 +506,8 @@ export function ClinicSiteFull({
     Fisiatria: "Apoio à mobilidade, conforto e recuperação funcional.",
     Oncologia: "Acompanhamento técnico e acolhedor em cada etapa necessária.",
     Acupuntura: "Cuidado complementar focado em conforto e bem-estar.",
+    "Neurologia veterinária":
+      "Avaliação e acompanhamento de alterações no cérebro, na medula e nos nervos do seu pet.",
     "E muito mais...": "Fale com a nossa equipe sobre o que seu pet precisa.",
   };
 
