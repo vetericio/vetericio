@@ -346,7 +346,7 @@ function PreviaDocumento({ identidade, modelo, tipo, corpo }: {
   </>;
 }
 
-function PaginasPrevia({ pdf }: { pdf: Awaited<ReturnType<typeof gerarPrevia>> }) {
+export function PaginasPrevia({ pdf }: { pdf: Awaited<ReturnType<typeof gerarPrevia>> }) {
   const tela = useRef<HTMLCanvasElement>(null);
   const [paginaComErro, setPaginaComErro] = useState<number | null>(null);
   const [pagina, setPagina] = useState(1);
