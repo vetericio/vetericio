@@ -33,6 +33,17 @@ import {
 } from "@/lib/clinic-site";
 
 const vetericioLogo = "/clinic-site/vetericio/logo-oficial.webp";
+const vetericioGallery = [
+  { file: "meow-editorial.webp", description: "Meow, gato cinza e branco, dentro de casa" },
+  { file: "yzma-quintal.webp", description: "Yzma sentada na grama do quintal" },
+  { file: "cruella-colo.webp", description: "Cruella descansando no colo no sofá" },
+  { file: "pug-sala.webp", description: "Pug preto deitado no tapete da sala" },
+  {
+    file: "dalmata-hospital.webp",
+    description: "Dálmata recebendo atenção no hospital veterinário",
+  },
+  { file: "gato-janela.webp", description: "Gato laranja descansando junto à janela" },
+];
 
 type Props = {
   template: ClinicSiteTemplate;
@@ -173,14 +184,9 @@ export function ClinicSiteFull({
         aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
         aboutText:
           "A Veterício nasceu para tornar a medicina veterinária mais próxima. Vamos até sua casa, avaliamos seu pet e explicamos cada etapa do cuidado. Quando o atendimento precisa continuar no hospital, nossa equipe cuida do transporte e do procedimento.",
-        galleryUrls: [
-          "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-editorial.webp",
-          "https://vetericio.oricse.com.br/clinic-site/vetericio/yzma.webp",
-          "https://vetericio.oricse.com.br/clinic-site/vetericio/cruella.webp",
-          "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1200&q=85",
-          "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=1200&q=85",
-          "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=1200&q=85",
-        ],
+        galleryUrls: vetericioGallery.map(
+          ({ file }) => `https://vetericio.oricse.com.br/clinic-site/vetericio/${file}`,
+        ),
         faqItems: [
           {
             question: "Como começo a cuidar com a Veterício?",
@@ -677,28 +683,34 @@ export function ClinicSiteFull({
               isVetericio ? "Cães e gatos, cada um com seu jeito." : "Conheça nosso espaço.",
             )}
             <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {gallerySlots.map((src, i) => (
-                <figure
-                  key={src + "-" + i}
-                  className={
-                    "relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels
-                  }
-                >
-                  {safeImage(imageOverrides[`gallery-${i}`]) || src ? (
-                    <img
-                      src={safeImage(imageOverrides[`gallery-${i}`]) || src}
-                      alt={"Foto " + (i + 1) + " de " + config.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center opacity-50">
-                      <ImagePlus size={38} />
-                    </div>
-                  )}
-                  {uploadButton(`gallery-${i}`)}
-                </figure>
-              ))}
+              {gallerySlots.map((src, i) => {
+                const uploadedSrc = safeImage(imageOverrides[`gallery-${i}`]);
+                const photoSrc = uploadedSrc || src;
+                const description =
+                  isVetericio && !uploadedSrc ? vetericioGallery[i]?.description : undefined;
+                return (
+                  <figure
+                    key={src + "-" + i}
+                    className={
+                      "relative aspect-[4/3] overflow-hidden bg-[var(--site-secondary)] " + panels
+                    }
+                  >
+                    {photoSrc ? (
+                      <img
+                        src={photoSrc}
+                        alt={description || "Foto " + (i + 1) + " de " + config.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center opacity-50">
+                        <ImagePlus size={38} />
+                      </div>
+                    )}
+                    {uploadButton(`gallery-${i}`)}
+                  </figure>
+                );
+              })}
             </div>
           </div>
         </section>
