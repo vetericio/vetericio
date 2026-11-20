@@ -456,7 +456,7 @@ export async function criarPdfComModelo({
     }
   }
   iniciarPagina();
-  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1, (papel ?? fundoSemIdentidade)?.corQuadros, papel?.tema ? "receita" : undefined, papel?.tema);
+  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1, (papel ?? fundoSemIdentidade)?.corQuadros, "receita", papel?.tema);
   escrever(titulo, true, 19);
   y += 3;
   for (const linha of conteudo.split("\n")) escrever(linha);
