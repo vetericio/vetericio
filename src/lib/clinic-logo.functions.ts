@@ -36,6 +36,7 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
 
     await exigirPermissaoClinica(
       supabaseAdmin, autenticacao.user.id, data.clinicaId, ["administracao.site"], data.accessToken,
+      { permitirBloqueadaParaAdmin: data.categoria === "logo" },
     );
 
     const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
@@ -60,11 +61,14 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     const logoUrl = upload.arquivo.publicUrl;
     if (!logoUrl) throw new Error("Não foi possível gerar o endereço público da logo.");
     if (data.categoria === "logo") {
-      const { error: erroClinica } = await supabaseAdmin
+      const { data: clinicaAtualizada, error: erroClinica } = await supabaseAdmin
         .from("clinicas")
         .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
-        .eq("id", data.clinicaId);
-      if (erroClinica) {
+        .eq("id", data.clinicaId)
+        .is("excluido_em", null)
+        .select("id")
+        .maybeSingle();
+      if (erroClinica || !clinicaAtualizada) {
         try {
           await excluirArquivoDrive({
             data: {

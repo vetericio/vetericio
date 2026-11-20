@@ -306,6 +306,7 @@ function Admin() {
   const [arquivosDrive, setArquivosDrive] = useState(0);
   const [pasta, setPasta] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [salvandoCadastroClinica, setSalvandoCadastroClinica] = useState<string | null>(null);
   const [excluindoClinica, setExcluindoClinica] = useState(false);
   const [confirmacaoExclusao, setConfirmacaoExclusao] = useState("");
   const [logoArquivo, setLogoArquivo] = useState<File | null>(null);
@@ -990,26 +991,29 @@ function Admin() {
   );
 
   async function salvarClinica() {
-    if (!selecionada) return;
-    setOcupado(true);
+    if (!selecionada || ocupado || salvandoCadastroClinica || enviandoLogoClinica || alterandoStatusClinica) return;
+    setSalvandoCadastroClinica(selecionada.id);
     try {
-      const { error } = await (supabaseBanco as any).from("clinicas").update({
+      const { data, error } = await (supabaseBanco as any).from("clinicas").update({
         nome: selecionada.nome.trim(),
         slug: limparSlug(selecionada.slug || ""),
         tipo_publico: selecionada.tipo_publico || "vet",
         status: selecionada.status,
         plano: selecionada.plano,
-        dominio: selecionada.dominio?.trim() || null,
         limite_usuarios: Math.max(1, Number(selecionada.limite_usuarios) || 1),
         observacoes: selecionada.observacoes?.trim() || null,
-        logo_url: selecionada.logo_url?.trim() || null,
         updated_at: new Date().toISOString(),
-      }).eq("id", selecionada.id);
+      }).eq("id", selecionada.id).is("excluido_em", null).select(CAMPOS_CLINICA).maybeSingle();
       if (error) throw error;
-      await carregarTudo();
+      if (!data) throw new Error("O banco não confirmou a atualização. Atualize o cadastro e tente novamente.");
+
+      const atualizada: Clinica = data;
+      setClinicas(lista => lista.map(item => item.id === atualizada.id ? atualizada : item)
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+      setSelecionada(atual => atual?.id === atualizada.id ? atualizada : atual);
       toast.success("Clínica atualizada.");
     } catch (e) { const erro = e as { code?: string; message?: string }; toast.error(erro.code === "23505" ? "Este nome já está em uso por outra clínica ou parceiro." : (erro.message || "Não foi possível salvar a clínica.")); }
-    finally { setOcupado(false); }
+    finally { setSalvandoCadastroClinica(null); }
   }
 
   async function confirmarExclusaoClinica() {
@@ -1041,16 +1045,12 @@ function Admin() {
   }
 
   async function enviarLogoDaClinica(file?: File) {
-    if (!selecionada || !file) return;
+    if (!selecionada || !file || ocupado || salvandoCadastroClinica || enviandoLogoClinica || alterandoStatusClinica) return;
     const permitidos = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
     if (!permitidos.includes(file.type)) return toast.error("Use PNG, JPG, WEBP ou SVG.");
     if (file.size > 5 * 1024 * 1024) return toast.error("A logo deve ter no máximo 5 MB.");
     setEnviandoLogoClinica(true);
     try {
-      if (!drive?.root_folder_id) {
-        await garantirPastaOricse({ data: { accessToken: await tokenAtual(), clinicaId: selecionada.id } });
-        await carregarDrive(selecionada.id);
-      }
       const resultado = await enviarLogoClinica({
         data: {
           accessToken: await tokenAtual(), clinicaId: selecionada.id, fileName: file.name,
@@ -1058,11 +1058,9 @@ function Admin() {
           base64: await arquivoEmBase64(file),
         },
       });
-      const { error: logoPersistError } = await (supabaseBanco as any).from("clinicas").update({ logo_url: resultado.logoUrl, updated_at: new Date().toISOString() }).eq("id", selecionada.id);
-      if (logoPersistError) throw logoPersistError;
-      setSelecionada({ ...selecionada, logo_url: resultado.logoUrl });
-      await carregarTudo();
-      toast.success("Logo salva na pasta Logo do Drive da clínica.");
+      setSelecionada(atual => atual?.id === selecionada.id ? { ...atual, logo_url: resultado.logoUrl } : atual);
+      setClinicas(lista => lista.map(item => item.id === selecionada.id ? { ...item, logo_url: resultado.logoUrl } : item));
+      toast.success("Logo salva no Drive da clínica.");
     } catch (e) { toast.error((e as Error).message || "Não foi possível enviar a logo."); }
     finally { setEnviandoLogoClinica(false); }
   }
@@ -1333,7 +1331,24 @@ function Admin() {
     </div>;
   };
 
-  const renderCadastroClinica = () => !selecionada ? null : <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-bold">Cadastro</h2><p className="text-sm text-muted-foreground">Dados gerais e configuração comercial da clínica.</p></div><button disabled={ocupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground"><Save size={17}/> Salvar</button></div><div className="mt-5 grid gap-4 md:grid-cols-2">
+  const cadastroSalvando = selecionada?.id === salvandoCadastroClinica;
+  const cadastroOcupado = Boolean(ocupado || salvandoCadastroClinica || enviandoLogoClinica || alterandoStatusClinica);
+
+  const renderCadastroClinica = () => !selecionada ? null : <Card>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 className="text-2xl font-bold">Cadastro</h2>
+        <p className="text-sm text-muted-foreground">Dados gerais e configuração comercial da clínica.</p>
+      </div>
+      <button type="button" disabled={cadastroOcupado} onClick={salvarClinica} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground disabled:opacity-60">
+        <Save size={17}/> {cadastroSalvando ? "Salvando…" : "Salvar"}
+      </button>
+    </div>
+    {cadastroSalvando && <div className="mt-4 space-y-1.5">
+      <p role="status" className="text-sm font-medium text-primary">Salvando as alterações…</p>
+      <progress aria-label="Salvando cadastro da clínica" className="block h-2 w-full accent-primary"/>
+    </div>}
+    <fieldset disabled={cadastroSalvando} aria-busy={cadastroSalvando} className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
     <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <label className="text-sm font-semibold">Tipo de parceiro<select value={selecionada.tipo_publico || "vet"} onChange={(e) => setSelecionada({ ...selecionada, tipo_publico: e.target.value as Clinica["tipo_publico"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="vet">Veterinário / clínica veterinária</option><option value="pet">Pet shop</option></select></label>
     <label className="text-sm font-semibold md:col-span-2">Nome do endereço ORICSE<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="whitespace-nowrap text-muted-foreground">https://</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none" placeholder="nomedaclinica"/><span className="whitespace-nowrap text-muted-foreground">.oricse.com.br</span></div><p className="mt-1 text-xs font-normal text-muted-foreground">Nome único, sem espaços. Salve e acesse “Site e domínios” para publicar o endereço ou conectar o domínio próprio.</p></label>
@@ -1341,10 +1356,10 @@ function Admin() {
     <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <div className="rounded-xl border bg-slate-50 p-3 text-sm md:self-end"><p className="font-semibold">Domínios e site público</p><p className="mt-1 text-xs text-muted-foreground">Gerenciados exclusivamente por você em “Site e domínios”.</p></div>
-    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="Logo da clínica" className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 text-xs text-muted-foreground">Sem logo</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={enviandoLogoClinica} onChange={(e) => { const arquivo = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(arquivo); }}/></label></div></div>
+    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="Logo da clínica" className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 text-xs text-muted-foreground">Sem logo</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={cadastroOcupado} onChange={(e) => { const arquivo = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(arquivo); }}/></label></div></div>
     <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
-     </div>
-     <div className="mt-8 rounded-xl border border-red-300 bg-red-50 p-4"><h3 className="font-bold text-red-700">Zona de perigo</h3><p className="mt-1 text-sm text-red-700">Excluir esta clínica remove definitivamente seus dados e acessos.</p><button type="button" disabled={ocupado} onClick={() => { setConfirmacaoExclusao(""); setExcluindoClinica(true); }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white"><Trash2 size={17}/> Excluir clínica</button></div>
+    </fieldset>
+     <div className="mt-8 rounded-xl border border-red-300 bg-red-50 p-4"><h3 className="font-bold text-red-700">Zona de perigo</h3><p className="mt-1 text-sm text-red-700">Excluir esta clínica remove definitivamente seus dados e acessos.</p><button type="button" disabled={cadastroOcupado} onClick={() => { setConfirmacaoExclusao(""); setExcluindoClinica(true); }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white"><Trash2 size={17}/> Excluir clínica</button></div>
      <Dialog open={excluindoClinica} onOpenChange={(aberto) => { if (!ocupado) { setExcluindoClinica(aberto); if (!aberto) setConfirmacaoExclusao(""); } }}><DialogContent><DialogHeader><DialogTitle className="text-red-700">Excluir "{selecionada.nome}"?</DialogTitle><DialogDescription>Leia os avisos antes de continuar.</DialogDescription></DialogHeader>
        <ol className="list-decimal space-y-2 pl-5 text-sm"><li><strong>Exclusão recuperável.</strong> A clínica ficará bloqueada e disponível na Lixeira por até 360 dias.</li><li><strong>Dados preservados:</strong> usuários, tutores, catálogo e configurações serão mantidos apenas para eventual restauração.</li><li><strong>Arquivos e vínculos preservados.</strong> Restaurar não reativa o funcionamento automaticamente.</li></ol>
        <label className="text-sm font-semibold">Digite <span className="font-mono text-red-700">APAGAR</span> para confirmar<input value={confirmacaoExclusao} onChange={(e) => setConfirmacaoExclusao(e.target.value)} autoComplete="off" className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
@@ -1954,7 +1969,7 @@ function Admin() {
 
   // Ações rápidas persistem diretamente no servidor e só confirmam sucesso após ler o estado salvo.
   async function alternarStatusClinica(clinica: Clinica) {
-    if (alterandoStatusClinica || clinica.status === "cancelada") return;
+    if (alterandoStatusClinica || salvandoCadastroClinica || enviandoLogoClinica || clinica.status === "cancelada") return;
     const proximo: Clinica["status"] = clinica.status === "ativa" ? "bloqueada" : "ativa";
     setAlterandoStatusClinica(clinica.id);
     try {
@@ -1994,7 +2009,7 @@ function Admin() {
     if (selecionada) return <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button type="button" onClick={() => setSelecionada(null)} className="inline-flex min-h-9 items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm font-semibold hover:bg-slate-50"><ArrowLeft size={15}/> Todas as clínicas</button>
-        <button type="button" disabled={alterandoStatusClinica !== null || selecionada.status === "cancelada"} onClick={() => void alternarStatusClinica(selecionada)} className={"inline-flex min-h-9 items-center rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 " + (selecionada.status === "ativa" ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-primary text-primary-foreground")}>
+        <button type="button" disabled={cadastroOcupado || selecionada.status === "cancelada"} onClick={() => void alternarStatusClinica(selecionada)} className={"inline-flex min-h-9 items-center rounded-lg px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 " + (selecionada.status === "ativa" ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-primary text-primary-foreground")}>
           {alterandoStatusClinica === selecionada.id ? "Salvando..." : selecionada.status === "ativa" ? "Bloquear acesso" : selecionada.status === "cancelada" ? "Conta cancelada" : "Ativar clínica"}
         </button>
       </div>
@@ -2007,7 +2022,7 @@ function Admin() {
             <h2 className="truncate text-xl font-black">{selecionada.nome}</h2>
             <p className="text-xs text-muted-foreground">{selecionada.slug}.oricse.com.br · {selecionada.plano} · {selecionada.status}</p>
           </div>
-          <button type="button" onClick={() => { void carregarTudo(); void carregarSolicitacoes(); }} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs font-bold"><RefreshCcw size={13}/> Atualizar</button>
+          <button type="button" disabled={cadastroOcupado} onClick={() => { void carregarTudo(); void carregarSolicitacoes(); }} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs font-bold"><RefreshCcw size={13}/> Atualizar</button>
         </div>
         <nav aria-label="Seções da clínica" className="flex flex-wrap gap-1 px-3 py-2">
           {abas.map(({ id, nome, Icone }) => <button key={id} type="button" onClick={() => setAbaClinica(id)} aria-current={abaClinica === id ? "page" : undefined} className={"inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition " + (abaClinica === id ? "bg-primary text-primary-foreground" : "text-slate-700 hover:bg-slate-100")}><Icone size={15}/>{nome}</button>)}
@@ -2067,7 +2082,7 @@ function Admin() {
               <div className="min-w-0 text-xs"><p className="truncate font-bold">{clinica.plano}</p><p className="text-muted-foreground">{ativos} de {clinica.limite_usuarios} acessos</p></div>
               <div className="flex flex-wrap gap-1.5 text-xs"><span className={"rounded-full px-2 py-1 font-bold " + (ativa ? "bg-emerald-50 text-emerald-700" : clinica.status === "cancelada" ? "bg-slate-200 text-slate-700" : "bg-amber-50 text-amber-900")}>{clinica.status}</span><span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{clinica.status_financeiro.replaceAll("_", " ")}</span></div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <button type="button" disabled={alterandoStatusClinica !== null || clinica.status === "cancelada"} onClick={() => void alternarStatusClinica(clinica)} className={"min-h-9 rounded-lg px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 " + (ativa ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-emerald-700 text-white")}>{modificando ? "Salvando..." : ativa ? "Bloquear" : clinica.status === "cancelada" ? "Cancelada" : "Ativar"}</button>
+                <button type="button" disabled={cadastroOcupado || clinica.status === "cancelada"} onClick={() => void alternarStatusClinica(clinica)} className={"min-h-9 rounded-lg px-3 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 " + (ativa ? "border border-amber-300 bg-amber-50 text-amber-900" : "bg-emerald-700 text-white")}>{modificando ? "Salvando..." : ativa ? "Bloquear" : clinica.status === "cancelada" ? "Cancelada" : "Ativar"}</button>
                 <button type="button" onClick={() => abrirClinicaNoAdmin(clinica, "usuarios")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Equipe</button>
                 <button type="button" onClick={() => abrirClinicaNoAdmin(clinica, "site")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Site</button>
                 <button type="button" onClick={() => abrirClinicaNoAdmin(clinica, "dados")} className="min-h-9 rounded-lg border px-3 text-xs font-bold hover:bg-white">Dados</button>

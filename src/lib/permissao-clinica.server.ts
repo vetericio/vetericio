@@ -11,19 +11,22 @@ export async function exigirPermissaoClinica(
   clinicaId: string,
   codigos: readonly string[],
   accessToken: string,
+  { permitirBloqueadaParaAdmin = false } = {},
 ): Promise<void> {
   if (!userId || !clinicaId || !accessToken || codigos.length === 0)
     throw new Error("Identificação ou permissão inválida.");
 
   const { data: clinica, error: erroClinica } = await admin.from("clinicas")
     .select("id,status,excluido_em").eq("id", clinicaId).maybeSingle();
-  if (erroClinica || !clinica || clinica.status !== "ativa" || clinica.excluido_em)
+  if (erroClinica || !clinica || clinica.excluido_em ||
+      (clinica.status !== "ativa" && !(permitirBloqueadaParaAdmin && clinica.status === "bloqueada")))
     throw new Error("Clínica indisponível.");
 
   const { data: perfil, error: erroPerfil } = await admin.from("app_users")
     .select("role").eq("user_id", userId).maybeSingle();
   if (erroPerfil) throw new Error("Não foi possível verificar o acesso.");
   if (perfil?.role === "admin") return;
+  if (clinica.status !== "ativa") throw new Error("Clínica indisponível.");
 
   const { data: vinculo, error: erroVinculo } = await admin.from("clinica_usuarios")
     .select("user_id").eq("clinica_id", clinicaId).eq("user_id", userId)
