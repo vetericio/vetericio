@@ -468,16 +468,11 @@ export function ClinicSiteFull({
   const vetericioServiceDescriptions: Record<string, string> = {
     Consultas:
       "Avaliação clínica completa, com escuta, cuidado e orientação clara para sua família.",
-    Exames:
-      "Apoio diagnóstico para entender melhor o que seu pet está precisando.",
-    Cirurgias:
-      "Procedimentos planejados com atenção ao bem-estar e à segurança de cada paciente.",
-    "Atendimento domiciliar":
-      "Cuidado veterinário onde seu pet se sente mais tranquilo: em casa.",
-    "Pet sitter":
-      "Presença profissional, carinho e observação para sua rotina ficar mais leve.",
-    Vacinas:
-      "Prevenção e atualização vacinal para cuidar hoje e proteger o amanhã.",
+    Exames: "Apoio diagnóstico para entender melhor o que seu pet está precisando.",
+    Cirurgias: "Procedimentos planejados com atenção ao bem-estar e à segurança de cada paciente.",
+    "Atendimento domiciliar": "Cuidado veterinário onde seu pet se sente mais tranquilo: em casa.",
+    "Pet sitter": "Presença profissional, carinho e observação para sua rotina ficar mais leve.",
+    Vacinas: "Prevenção e atualização vacinal para cuidar hoje e proteger o amanhã.",
   };
 
   const sections: Record<ClinicSiteSection, ReactNode> = {
