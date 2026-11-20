@@ -51,6 +51,21 @@ const safeImage = (input?: string) => {
   if (/^https:\/\//i.test(value)) return value;
   return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(value) ? value : "";
 };
+const directDriveFallback = (input?: string) => {
+  try {
+    const url = new URL((input || "").trim());
+    if (url.hostname === "oricse.com.br" && url.pathname === "/api/public/clinic-image") {
+      const file = url.searchParams.get("file") || "";
+      return /^[A-Za-z0-9_-]{12,160}$/.test(file)
+        ? `https://lh3.googleusercontent.com/d/${encodeURIComponent(file)}=w1440`
+        : "";
+    }
+  } catch {
+    // Sem alternativa pública para esta origem.
+  }
+  return "";
+};
+
 const safeTeamPhoto = (input: string) => {
   const value = safeImage(input);
   if (value) return value;
@@ -167,6 +182,8 @@ export function ClinicSiteFull({
         ctaLabel: "Agendar atendimento",
       }
     : inputConfig;
+  const [logoFailed, setLogoFailed] = useState(false);
+  useEffect(() => setLogoFailed(false), [config.logoUrl]);
   const rounded = !luxe && !bold && !minimal && !prime;
   const buttonShape = luxe
     ? "rounded-none"
@@ -331,15 +348,23 @@ export function ClinicSiteFull({
       aria-label={"Início - " + config.name}
       className="flex min-w-0 items-center gap-3"
     >
-      {safeHttps(config.logoUrl) ? (
+      {safeHttps(config.logoUrl) && !logoFailed ? (
         <span className="flex h-[72px] w-[min(48vw,240px)] shrink-0 items-center justify-start sm:w-[240px]">
           <img
-            src={config.logoUrl}
+            src={safeImage(config.logoUrl)}
             className="h-full w-full object-contain object-left"
             alt={config.name}
             width={240}
             height={72}
             decoding="async"
+            onError={(event) => {
+              const fallback = directDriveFallback(config.logoUrl);
+              if (fallback && event.currentTarget.src !== fallback) {
+                event.currentTarget.src = fallback;
+                return;
+              }
+              setLogoFailed(true);
+            }}
           />
         </span>
       ) : (
