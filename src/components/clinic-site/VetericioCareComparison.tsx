@@ -1,29 +1,55 @@
-import { Hospital, House, Stethoscope } from "lucide-react";
+import { Hospital, House } from "lucide-react";
 
 const careSettings = [
   {
     title: "Em casa",
     icon: House,
-    advantage:
-      "Sem carro nem sala de espera, o pet fica em um ambiente familiar. O veterinário pode observar como ele anda, descansa e se comporta na rotina.",
-    limitation:
-      "Alguns exames, cirurgias e internações precisam de uma estrutura que a visita domiciliar não oferece.",
+    cardStyle: "border-[#003D4C]/30 bg-[#E6F1EE]",
+    iconStyle: "bg-[#003D4C] text-white",
+    benefits: [
+      {
+        title: "Mais conforto para o pet",
+        description:
+          "Ele fica perto de você, no ambiente que conhece. Isso pode deixar a consulta mais tranquila para gatos e pets que ficam agitados no trajeto.",
+      },
+      {
+        title: "Mais praticidade para você",
+        description:
+          "Você recebe a equipe com hora marcada, sem ter que organizar o transporte, pegar trânsito ou passar pela sala de espera.",
+      },
+      {
+        title: "Uma avaliação que leva a rotina em conta",
+        description:
+          "O veterinário pode observar como seu pet se movimenta, onde come e como descansa. Esses detalhes ajudam a orientar o cuidado.",
+      },
+    ],
+    noteTitle: "E se precisar do hospital?",
+    note: "Se o procedimento exigir estrutura hospitalar, a equipe da Veterício leva seu pet ao hospital e realiza todo o procedimento lá.",
   },
   {
-    title: "Clínica ou pet shop com atendimento veterinário",
-    icon: Stethoscope,
-    advantage:
-      "É uma opção para consultas, vacinas e procedimentos ambulatoriais, conforme os serviços oferecidos no local.",
-    limitation:
-      "Exige deslocamento e pode envolver espera. A disponibilidade de exames e de outros procedimentos varia de um estabelecimento para outro.",
-  },
-  {
-    title: "Hospital veterinário",
+    title: "No hospital veterinário",
     icon: Hospital,
-    advantage:
-      "Tem estrutura para cuidados mais complexos, como cirurgias, internação e monitoramento, conforme os recursos da unidade.",
-    limitation:
-      "O deslocamento e o ambiente novo podem incomodar alguns pets. Em uma emergência, procure um hospital veterinário com pronto atendimento.",
+    cardStyle: "border-[#003D4C]/15 bg-[#FFFCF8]",
+    iconStyle: "bg-[#F9E9DC] text-[#9D3D1D]",
+    benefits: [
+      {
+        title: "Estrutura para procedimentos",
+        description:
+          "Equipamentos para exames e centro cirúrgico, conforme os recursos de cada hospital.",
+      },
+      {
+        title: "Internação e monitoramento",
+        description:
+          "Quando o pet precisa ficar em observação, o hospital pode oferecer acompanhamento e cuidados intensivos conforme a estrutura disponível.",
+      },
+      {
+        title: "Pronto atendimento em emergências",
+        description:
+          "Em caso de emergência, procure diretamente um hospital veterinário com pronto atendimento.",
+      },
+    ],
+    noteTitle: "O que considerar na ida",
+    note: "A ida envolve deslocamento e pode ter espera. Alguns pets ficam mais agitados durante o trajeto ou em um ambiente desconhecido.",
   },
 ] as const;
 
@@ -43,38 +69,43 @@ export function VetericioCareComparison() {
             O que muda quando o veterinário vai até o pet
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#36555B] sm:text-lg">
-            Para muitos cães e gatos, ficar no próprio ambiente torna a consulta mais tranquila.
-            Quando o pet precisa de equipamentos ou monitoramento, a estrutura do local também faz
-            parte do cuidado.
+            Na consulta de rotina, o veterinário pode ir até vocês. Compare o conforto de receber a
+            equipe em casa com os recursos que o hospital oferece quando o caso pede mais estrutura.
           </p>
         </div>
 
-        <div className="mt-9 grid gap-3 lg:mt-12 lg:grid-cols-3 lg:gap-4">
-          {careSettings.map(({ title, icon: Icon, advantage, limitation }) => (
-            <article
-              key={title}
-              className="grid gap-y-5 rounded-2xl border border-[#003D4C]/15 bg-[#FFFCF8] p-5 sm:p-7 lg:row-span-3 lg:grid-rows-subgrid"
-            >
-              <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F9E9DC] text-[#9D3D1D]">
-                  <Icon size={20} strokeWidth={1.7} aria-hidden="true" />
-                </span>
-                <h3 className="self-center text-xl font-semibold leading-tight">{title}</h3>
-              </div>
-              <div className="border-t border-[#003D4C]/15 pt-4">
-                <p className="text-sm font-semibold text-[#9D3D1D]">Vantagens</p>
-                <p className="mt-2 text-sm leading-relaxed text-[#36555B] sm:text-base">
-                  {advantage}
-                </p>
-              </div>
-              <div className="border-t border-[#003D4C]/15 pt-4">
-                <p className="text-sm font-semibold text-[#9D3D1D]">Limites</p>
-                <p className="mt-2 text-sm leading-relaxed text-[#36555B] sm:text-base">
-                  {limitation}
-                </p>
-              </div>
-            </article>
-          ))}
+        <div className="mt-9 grid gap-4 md:grid-cols-2 lg:mt-12 lg:gap-5">
+          {careSettings.map(
+            ({ title, icon: Icon, cardStyle, iconStyle, benefits, noteTitle, note }) => (
+              <article
+                key={title}
+                className={`grid gap-y-5 rounded-2xl border p-5 sm:p-7 md:row-span-3 md:grid-rows-subgrid lg:p-8 ${cardStyle}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`grid size-11 shrink-0 place-items-center rounded-full ${iconStyle}`}
+                  >
+                    <Icon size={21} strokeWidth={1.7} aria-hidden="true" />
+                  </span>
+                  <h3 className="text-xl font-semibold leading-tight sm:text-2xl">{title}</h3>
+                </div>
+                <ul className="space-y-4 border-t border-[#003D4C]/15 pt-5">
+                  {benefits.map(({ title, description }) => (
+                    <li key={title}>
+                      <h4 className="font-semibold">{title}</h4>
+                      <p className="mt-1 text-sm leading-relaxed text-[#36555B] sm:text-base">
+                        {description}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                <div className="border-t border-[#003D4C]/15 pt-4">
+                  <h4 className="text-sm font-semibold text-[#9D3D1D]">{noteTitle}</h4>
+                  <p className="mt-2 text-sm leading-relaxed text-[#36555B] sm:text-base">{note}</p>
+                </div>
+              </article>
+            ),
+          )}
         </div>
       </div>
     </section>
