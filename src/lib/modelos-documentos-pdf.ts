@@ -70,7 +70,7 @@ export function desenharPapelDocumento(pdf: jsPDF, papel: PapelDocumento) {
 export type IdentificacaoDocumento = {
   paciente: {
     nome: string; especie?: string; raca?: string; idade?: string; peso?: string;
-    sexo?: string; microchip?: string; pelagem?: string; outros?: string;
+    sexo?: string; microchip?: string; pelagem?: string; castrado?: string; outros?: string;
   };
   tutor: { nome?: string; cpf?: string; nascimento?: string; telefone?: string; endereco?: string };
 };
@@ -113,12 +113,25 @@ export function desenharIdentificacaoDocumento(
   const espaco = 7 * fator;
   const largura = (pdf.internal.pageSize.getWidth() - margem * 2 - espaco) / 2;
   type Campo = readonly [string, string?];
+  const linhasPaciente: Campo[][] = receita ? [
+    [["Nome", paciente.nome]],
+    [["Espécie", paciente.especie], ["Peso", paciente.peso]],
+    [["Raça", paciente.raca], ["Idade", paciente.idade]],
+    [["Sexo", paciente.sexo]],
+    [["Pelagem", paciente.pelagem], ["Castrado", paciente.castrado]],
+    [["Microchip", paciente.microchip]],
+    [["Outros identificadores", paciente.outros]],
+  ] : [
+    [["Nome", paciente.nome]],
+    [["Espécie", paciente.especie], ["Raça", paciente.raca]],
+    [["Idade", paciente.idade], ["Peso", paciente.peso]],
+    [["Sexo", paciente.sexo]],
+    [["Microchip", paciente.microchip]],
+    [["Pelagem", paciente.pelagem]],
+    [["Outros identificadores", paciente.outros]],
+  ];
   const colunas: { titulo: string; linhas: Campo[][] }[] = [
-    { titulo: "PACIENTE", linhas: [
-      [["Nome", paciente.nome]], [["Espécie", paciente.especie], ["Raça", paciente.raca]],
-      [["Idade", paciente.idade], ["Peso", paciente.peso]], [["Sexo", paciente.sexo]],
-      [["Microchip", paciente.microchip]], [["Pelagem", paciente.pelagem]], [["Outros identificadores", paciente.outros]],
-    ] },
+    { titulo: "PACIENTE", linhas: linhasPaciente },
     { titulo: "TUTOR", linhas: [
       [["Nome", tutor.nome]], [[receita ? "CPF/CNPJ" : "CPF", tutor.cpf]], [["Data de nascimento", tutor.nascimento]],
       [["Telefone", tutor.telefone]], [["Endereço", tutor.endereco]],

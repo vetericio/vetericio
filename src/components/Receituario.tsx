@@ -127,6 +127,7 @@ export function Receituario({
   const [perfilEmissor, setPerfilEmissor] = useState<PerfilEmissor | null>(null);
   const [padraoReceita, setPadraoReceita] = useState<Awaited<ReturnType<typeof obterModeloDocumentoEmissao>> | null>(null);
   const [pelagem, setPelagem] = useState("");
+  const [castrado, setCastrado] = useState("Não informado");
   const [microchip, setMicrochip] = useState("");
   const [endereco, setEndereco] = useState("");
   const [carregandoDados, setCarregandoDados] = useState(true);
@@ -164,6 +165,7 @@ export function Receituario({
         });
         if (!ativo) return;
         setPelagem(dados.animal?.pelagem || "");
+        setCastrado(dados.animal?.castrado || "Não informado");
         setMicrochip(dados.animal?.microchip || "");
         if (dados.animal && dados.tutor && dados.clinicaId) {
           setVinculo({ animalId: dados.animal.id, tutorId: dados.tutor.id, clinicaId: dados.clinicaId });
@@ -336,7 +338,7 @@ export function Receituario({
     const textoFinal = [observacoes.trim(), textoPadraoSelecionado].filter(Boolean).join("\n\n");
     const dadosEmissao = {
       paciente, tutor, telefoneTutor, nascimentoTutor, cpfTutor, enderecoTutor, idade, especie, outraEspecie,
-      raca, sexo, peso, data, itens, observacoes: textoFinal, endereco, pelagem, microchip,
+      raca, sexo, peso, data, itens, observacoes: textoFinal, endereco, pelagem, castrado, microchip,
     };
     const chave = JSON.stringify([
       vinculo, tipoReceita, dadosEmissao, selos, posicoesSelos, enviarPortal, motivoOcultacao, motivoOutro,
@@ -462,8 +464,9 @@ export function Receituario({
             <label><span className={rotulo}>Peso</span><input value={peso} onChange={(e) => setPeso(e.target.value.replace(".", ","))} inputMode="decimal" className={campo} placeholder="kg" /></label>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-3"><label><span className={rotulo}>CPF/CNPJ do tutor</span><input value={cpfTutor} onChange={(e) => setCpfTutor(e.target.value)} className={campo} placeholder="Documento" /></label><label><span className={rotulo}>Idade do paciente</span><input value={idade} onChange={(e) => setIdade(e.target.value)} className={campo} placeholder="Ex.: 8 meses ou 5 anos" /></label><label><span className={rotulo}>Endereço do tutor</span><input value={enderecoTutor} onChange={(e) => setEnderecoTutor(e.target.value)} className={campo} placeholder="Endereço completo" /></label></div>
-          {tipoReceita === "normal" && <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {tipoReceita === "normal" && <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label><span className={rotulo}>Pelagem ou plumagem</span><input value={pelagem} onChange={e => setPelagem(e.target.value)} className={campo} maxLength={100} /></label>
+            <label><span className={rotulo}>Castrado</span><select value={castrado} onChange={e => setCastrado(e.target.value)} className={campo}><option>Não informado</option><option>Sim</option><option>Não</option></select></label>
             <label><span className={rotulo}>Microchip</span><input value={microchip} onChange={e => setMicrochip(e.target.value)} className={campo} maxLength={45} /></label>
           </div>}
         </section>

@@ -101,6 +101,7 @@ export type DadosReceituario = {
   nomeClinica?: string;
   papel?: PapelDocumento;
   pelagem?: string;
+  castrado?: string;
   microchip?: string;
   demonstrativo?: boolean;
 };
@@ -261,6 +262,13 @@ export async function prepararPreviaRodapeReceituario(dados: DadosRodape) {
   return layoutRodapeReceituario(new jsPDF({ unit: "pt", format: "a4" }), dados);
 }
 
+function sexoPacienteNoDocumento(sexo: string) {
+  const valor = sexo.trim().toLocaleLowerCase("pt-BR");
+  if (valor === "macho" || valor === "masculino") return "Masculino";
+  if (valor === "fêmea" || valor === "femea" || valor === "feminino") return "Feminino";
+  return sexo;
+}
+
 export async function criarReceituario(dados: DadosReceituario) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -283,8 +291,8 @@ export async function criarReceituario(dados: DadosReceituario) {
         y += 17;
       }
       y = desenharIdentificacaoDocumento(doc, {
-        paciente: { nome: dados.paciente, especie: dados.especie, raca: dados.raca, sexo: dados.sexo,
-          idade: dados.idade, peso: dados.peso ? dados.peso + " kg" : "", pelagem: dados.pelagem, microchip: dados.microchip },
+        paciente: { nome: dados.paciente, especie: dados.especie, raca: dados.raca, sexo: sexoPacienteNoDocumento(dados.sexo),
+          idade: dados.idade, peso: dados.peso ? dados.peso + " kg" : "", pelagem: dados.pelagem, castrado: dados.castrado, microchip: dados.microchip },
         tutor: { nome: dados.tutor, cpf: dados.cpfTutor, telefone: dados.telefoneTutor,
           endereco: dados.enderecoTutor, nascimento: dados.nascimentoTutor },
       }, margem, y, fator, dados.papel.corQuadros, "receita");
@@ -335,8 +343,8 @@ export async function criarReceituario(dados: DadosReceituario) {
     }
 
     y = desenharIdentificacaoDocumento(doc, {
-      paciente: { nome: dados.paciente, especie: dados.especie, raca: dados.raca, sexo: dados.sexo,
-        idade: dados.idade, peso: dados.peso ? dados.peso + " kg" : "", pelagem: dados.pelagem, microchip: dados.microchip },
+      paciente: { nome: dados.paciente, especie: dados.especie, raca: dados.raca, sexo: sexoPacienteNoDocumento(dados.sexo),
+        idade: dados.idade, peso: dados.peso ? dados.peso + " kg" : "", pelagem: dados.pelagem, castrado: dados.castrado, microchip: dados.microchip },
       tutor: { nome: dados.tutor, cpf: dados.cpfTutor, telefone: dados.telefoneTutor,
         endereco: dados.enderecoTutor, nascimento: dados.nascimentoTutor },
     }, margem, y, 72 / 25.4, undefined, "receita");

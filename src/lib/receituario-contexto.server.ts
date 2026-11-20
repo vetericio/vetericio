@@ -127,6 +127,9 @@ export async function resolverDadosReceituario(data: { accessToken: string; anim
       idade: string(dadosAnimal.idade),
       nascimento: string(animal.nascimento),
       pelagem: string(dadosAnimal.pelagem || dadosAnimal.cor),
+      castrado: typeof dadosAnimal.castrado === "boolean"
+        ? (dadosAnimal.castrado ? "Sim" : "Não")
+        : string(dadosAnimal.castrado) || "Não informado",
       microchip: string(dadosAnimal.microchip),
     } : null,
     tutor: tutor ? {
