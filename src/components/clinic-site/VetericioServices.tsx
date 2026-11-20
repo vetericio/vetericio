@@ -1,45 +1,4 @@
-import {
-  Bone,
-  Cat,
-  Droplet,
-  Eye,
-  HeartPulse,
-  House,
-  Microscope,
-  Monitor,
-  PawPrint,
-  Plus,
-  Ribbon,
-  ScanLine,
-  Scissors,
-  Stethoscope,
-  Syringe,
-  Target,
-  Utensils,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
-
-const serviceIcons: Record<string, LucideIcon> = {
-  Consultas: Stethoscope,
-  Exames: Microscope,
-  Cirurgias: Scissors,
-  "Atendimento domiciliar": House,
-  "Pet sitter": PawPrint,
-  Vacinas: Syringe,
-  Oftalmologia: Eye,
-  Nefrologia: Droplet,
-  Cardiologia: HeartPulse,
-  "Odontologia veterinária": ScanLine,
-  "Medicina felina": Cat,
-  Endocrinologia: Workflow,
-  Ultrassonografia: Monitor,
-  Nutrição: Utensils,
-  Fisiatria: Bone,
-  Oncologia: Ribbon,
-  Acupuntura: Target,
-  "E muito mais...": Plus,
-};
+import { Consultation, vetericioServiceIcons } from "./vetericio-service-icons";
 
 const primaryServices = new Set([
   "Atendimento domiciliar",
@@ -90,19 +49,17 @@ export function VetericioServices({
             </h3>
             <ul className={`grid gap-4 sm:grid-cols-2 sm:gap-5 ${columns}`}>
               {items.map((service, index) => {
-                const Icon = serviceIcons[service] || Stethoscope;
+                const Icon = vetericioServiceIcons[service] || Consultation;
                 return (
                   <li
                     key={service}
                     className="overflow-hidden rounded-2xl border border-[#03394D]/15 bg-white shadow-[0_8px_24px_#03394D0D]"
                   >
                     <div
-                      className={`grid h-28 place-items-center bg-[#03394D] text-white sm:h-32 ${brandPanels[index % brandPanels.length]}`}
+                      className={`grid h-[7.25rem] place-items-center bg-[#03394D] text-white sm:h-36 ${brandPanels[index % brandPanels.length]}`}
                       aria-hidden="true"
                     >
-                      <span className="grid size-[4.25rem] place-items-center rounded-full border border-white/45 sm:size-[4.75rem]">
-                        <Icon size={33} strokeWidth={1.4} />
-                      </span>
+                      <Icon className="size-[3.75rem] sm:size-[4.75rem]" strokeWidth={1.15} />
                     </div>
                     <div className="relative p-5 before:absolute before:left-5 before:top-0 before:h-0.5 before:w-8 before:bg-[#FF6402] sm:px-6 sm:before:left-6">
                       <h4 className="text-balance font-serif text-[1.4rem] leading-tight tracking-tight">
