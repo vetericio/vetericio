@@ -92,6 +92,26 @@ export const MODELOS_BASE_CLINICOS = [
   { id: "d04d0000-0000-4000-8000-000000000003", categoria: "termo" },
 ] as const;
 
+/** Formato longo usado na data de emissão e assinatura dos documentos.
+ * Mantém a data original no cadastro e não interfere em validade/lote/nascimento.
+ * Aceita data ISO, BR e cidade/UF antes da data.
+ */
+export function formatarDataExtensoDocumento(valor: string): string {
+  const meses = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+  ];
+  return valor.replace(/\\b(?:([0-9]{1,2})\\/([0-9]{1,2})\\/([0-9]{4})|([0-9]{4})-([0-9]{2})-([0-9]{2}))\\b/g,
+    (original, diaBR: string | undefined, mesBR: string | undefined, anoBR: string | undefined,
+      anoISO: string | undefined, mesISO: string | undefined, diaISO: string | undefined) => {
+      const dia = Number(diaBR ?? diaISO), mes = Number(mesBR ?? mesISO), ano = Number(anoBR ?? anoISO);
+      if (!Number.isInteger(ano) || ano < 1000 || ano > 9999 || mes < 1 || mes > 12 || dia < 1 || dia > 31) return original;
+      const data = new Date(Date.UTC(ano, mes - 1, dia));
+      if (data.getUTCFullYear() !== ano || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) return original;
+      return `${dia} de ${meses[mes - 1]} de ${ano}`;
+    });
+}
+
 export function formatarDataDocumento(valor?: string) {
   return valor && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor.split("-").reverse().join("/") : valor || "";
 }
