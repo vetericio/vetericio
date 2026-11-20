@@ -741,8 +741,12 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                   site: siteClinica,
                   instagram: portalConfig.canais_contato?.instagram || (extrasPublicos.opcoes.mostrar_instagram !== false ? String(extrasPublicos.opcoes.instagram || "") : undefined),
                   facebook: portalConfig.canais_contato?.facebook || String(extrasPublicos.opcoes.facebook || ""),
-                  whatsapp: sitePublicado?.config.whatsapp || portalConfig.canais_contato?.whatsapp || portalConfig.whatsapp_publico,
-                  telefone: sitePublicado?.config.phone || portalConfig.canais_contato?.telefone || portalConfig.telefone_publico,
+                  whatsapp: portalConfig.canais_contato?.whatsapp || (extrasPublicos.opcoes.mostrar_whatsapp !== false
+                    ? sitePublicado?.config.whatsapp || portalConfig.whatsapp_publico
+                    : undefined),
+                  telefone: portalConfig.canais_contato?.telefone || (extrasPublicos.opcoes.mostrar_contato !== false
+                    ? sitePublicado?.config.phone || portalConfig.telefone_publico
+                    : undefined),
                 } : portalConfig.canais_contato || {}}
               />
               {!isVetericio && <div className="portal-area-clinic-info">{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{(portalConfig.telefone_publico || portalConfig.whatsapp_publico) && <p className="text-sm">Contato {extrasPublicos.opcoes?.mostrar_contato !== false ? portalConfig.telefone_publico : ""}{extrasPublicos.opcoes?.mostrar_whatsapp !== false && portalConfig.whatsapp_publico && " · WhatsApp " + portalConfig.whatsapp_publico}</p>}</div>}
