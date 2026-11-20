@@ -10,17 +10,16 @@ export function VetericioCareComparison({ actionHref }: { actionHref: string }) 
   return (
     <section
       id="em-casa"
-      data-clinic-section="inicio"
       aria-labelledby="vetericio-care-comparison-title"
       className="bg-[#FBF6EF] px-5 py-10 text-[#003D4C] sm:px-8 sm:py-16"
     >
       <div className="mx-auto max-w-7xl">
-        <h1
+        <h2
           id="vetericio-care-comparison-title"
           className="max-w-3xl text-balance font-serif text-[clamp(2.35rem,5vw,4.5rem)] leading-[1.02] tracking-tight"
         >
           Seu pet fica em casa. O veterinário vai até ele.
-        </h1>
+        </h2>
         <div className="mt-7 grid gap-3 md:grid-cols-[1.2fr_1fr] lg:mt-9 lg:gap-5">
           <article className="rounded-2xl bg-[#003D4C] p-5 text-white sm:p-7 lg:p-8">
             <h2 className="flex items-center gap-3 text-xl font-semibold sm:text-2xl">

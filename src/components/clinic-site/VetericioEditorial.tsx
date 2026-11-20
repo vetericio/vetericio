@@ -119,7 +119,12 @@ export function VetericioHero({
   }, []);
 
   return (
-    <section id="video" aria-labelledby="vetericio-video-title" className="relative bg-[#FCFAF6]">
+    <section
+      id="video"
+      data-clinic-section="inicio"
+      aria-labelledby="vetericio-video-title"
+      className="relative bg-[#FCFAF6]"
+    >
       <div
         ref={mediaRef}
         className="relative aspect-[4/3] overflow-hidden bg-[#063742] sm:aspect-[16/9] lg:aspect-auto lg:h-[clamp(33rem,68svh,49rem)]"
@@ -129,7 +134,7 @@ export function VetericioHero({
           alt=""
           width={1600}
           height={900}
-          loading="lazy"
+          fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover object-[55%_45%] lg:left-[25%] lg:w-3/4"
         />
         <video
@@ -168,12 +173,12 @@ export function VetericioHero({
       </div>
       <div className="relative mx-auto max-w-[1440px] px-5 py-9 sm:px-9 sm:py-12 lg:pointer-events-none lg:absolute lg:inset-0 lg:z-10 lg:flex lg:items-center lg:px-16 xl:px-24">
         <div className="max-w-xl text-[#003D4C] lg:pointer-events-auto lg:text-white">
-          <h2
+          <h1
             id="vetericio-video-title"
             className="text-balance font-serif text-[clamp(2.5rem,6vw,4.75rem)] leading-[.99] tracking-[-.04em]"
           >
             {title}
-          </h2>
+          </h1>
           <p className="mt-5 max-w-[33rem] text-[15px] leading-7 lg:text-[17px] lg:leading-8">
             {description}
           </p>
