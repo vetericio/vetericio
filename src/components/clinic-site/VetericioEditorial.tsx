@@ -1,3 +1,4 @@
+import { vetericioBrand } from "@/lib/vetericio-brand";
 import { ArrowDown, ArrowRight, CalendarDays, Menu, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -293,7 +294,7 @@ export function VetericioAbout({ actionHref }: { actionHref: string }) {
       <div className="mx-auto grid max-w-[1600px] items-center md:grid-cols-[.42fr_.58fr]">
         <div className="px-6 py-14 text-center sm:px-12 md:py-16 lg:px-16 xl:px-20">
           <h2 className="mx-auto max-w-[27rem] text-balance font-serif text-4xl leading-[1.05] tracking-tight lg:text-5xl">
-            Por mais dias bons.
+            {vetericioBrand.slogan}
           </h2>
           <p className="mx-auto mt-5 max-w-[29rem] text-base leading-8">
             O lugar onde seu pet come, dorme e brinca também conta a história da saúde dele. Em
@@ -308,7 +309,7 @@ export function VetericioAbout({ actionHref }: { actionHref: string }) {
           </a>
         </div>
         <img
-          src={`${mediaRoot}/meow-em-casa.webp`}
+          src={vetericioBrand.photo}
           alt="Meow, um gato cinza e branco, descansando na caminha em casa"
           width={1200}
           height={900}

@@ -1,3 +1,4 @@
+import { vetericioBrand } from "@/lib/vetericio-brand";
 import { ArrowUpRight, Clock3, Globe2, Instagram, Linkedin, Mail, MapPin, MessageCircle, Phone, Youtube } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -37,8 +38,9 @@ function CardCanal({icone,nome,detalhe,url,acao,demonstracao}:CardCanalProps){
  </div>;
 }
 
-export function PortalClinicContact({canais,demonstracao=false}:{canais:CanaisClinica;demonstracao?:boolean}){
- const whats=whatsappUrl(canais.whatsapp);
+export function PortalClinicContact({canais,demonstracao=false,vetericio=false}:{canais:CanaisClinica;demonstracao?:boolean;vetericio?:boolean}){
+ const whatsapp=whatsappUrl(canais.whatsapp);
+ const whats=whatsapp&&vetericio ? `${whatsapp}?text=${encodeURIComponent(vetericioBrand.whatsappMessage)}` : whatsapp;
  const sociais=[
   {chave:"instagram",nome:"Instagram",icone:<Instagram size={27}/>,acao:"Abrir Instagram"},
   {chave:"facebook",nome:"Facebook",icone:<Globe2 size={27}/>,acao:"Abrir Facebook"},
@@ -52,12 +54,20 @@ export function PortalClinicContact({canais,demonstracao=false}:{canais:CanaisCl
  const email=emailUrl(canais.email), telefone=telefoneUrl(canais.telefone), mapa=mapaUrl(canais.endereco);
  const possuiCanal=Boolean(whats||redes.length||email||telefone||mapa||limpar(canais.horario));
  return <section className="space-y-7 rounded-2xl bg-white p-5 sm:p-8">
-  <header><h2 className="text-2xl font-black tracking-tight text-[#312530] sm:text-3xl">Fale com a Clínica</h2><p className="mt-2 text-sm text-[#786b73] sm:text-base">Escolha como deseja entrar em contato. Estamos aqui para ajudar você e seu pet.</p></header>
+  {vetericio ? (
+    <div>
+      <p className="text-sm leading-6">Fale com a gente para tirar dúvidas e combinar o cuidado que seu pet precisa.</p>
+      <dl className="mt-4 space-y-2 text-sm">
+        <div className="flex flex-wrap gap-x-2"><dt className="font-semibold">Local de atendimento</dt><dd>{vetericioBrand.location}</dd></div>
+        <div className="flex flex-wrap gap-x-2"><dt className="font-semibold">Horário</dt><dd>{vetericioBrand.hours}</dd></div>
+      </dl>
+    </div>
+  ) : <header><h2 className="text-2xl font-black tracking-tight text-[#312530] sm:text-3xl">Fale com a Clínica</h2><p className="mt-2 text-sm text-[#786b73] sm:text-base">Escolha como deseja entrar em contato. Estamos aqui para ajudar você e seu pet.</p></header>}
   {!possuiCanal&&<p className="rounded-xl bg-[#faf7f8] p-5 text-sm text-[#786b73]">A clínica ainda não disponibilizou canais de contato neste portal.</p>}
   {whats&&<section aria-label="Contato principal" className="rounded-2xl bg-[#fbf5f7] p-5 sm:p-7">
     <div className="flex flex-wrap items-center justify-between gap-5">
       <div className="flex min-w-0 items-center gap-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#702a43] text-white"><MessageCircle size={30}/></div><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-wider text-[#8b5b6d]">Contato principal</p><h3 className="mt-1 text-xl font-black text-[#312530] sm:text-2xl">WhatsApp da clínica</h3><p className="mt-1 text-sm text-[#786b73]">{limpar(canais.whatsapp)}</p></div></div>
-      <BotaoCanal url={whats} rotulo="Chamar no WhatsApp" principal demonstracao={demonstracao}/>
+      <BotaoCanal url={whats} rotulo={vetericio ? "Falar no WhatsApp" : "Chamar no WhatsApp"} principal demonstracao={demonstracao}/>
     </div>
    </section>}
   {redes.length>0&&<section><h3 className="mb-4 text-base font-extrabold text-[#312530]">Redes sociais e site</h3><div className="grid gap-4 sm:grid-cols-2">{redes.map(s=><CardCanal key={s.chave} icone={s.icone} nome={s.nome} detalhe={s.chave==="site"?new URL(s.url).hostname:perfilRede(s.url)} url={s.url} acao={s.acao} demonstracao={demonstracao}/>)}</div></section>}

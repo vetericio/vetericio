@@ -1,3 +1,4 @@
+import { vetericioBrand } from "@/lib/vetericio-brand";
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { VetericioCareComparison } from "./VetericioCareComparison";
@@ -34,7 +35,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-const vetericioLogo = "/clinic-site/vetericio/marca-horizontal.webp";
+const vetericioLogo = vetericioBrand.logo;
 const vetericioGallery = [
   { file: "meow-editorial.webp", description: "Meow, gato cinza e branco, dentro de casa" },
   { file: "yzma-quintal.webp", description: "Yzma sentada na grama do quintal" },
@@ -147,20 +148,17 @@ export function ClinicSiteFull({
   const currentHost = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
   const pathSlug = currentPath.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
   const hostSlug = currentHost.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
-  const isVetericio = (clinicSlug || pathSlug || hostSlug).toLowerCase() === "vetericio";
+  const isVetericio = (clinicSlug || pathSlug || hostSlug).toLowerCase() === vetericioBrand.slug;
   // Identidade exclusiva da Veterício: conteúdo institucional e paleta própria,
   // sem afetar nenhuma outra clínica publicada.
   const config: ClinicSiteConfig = isVetericio
     ? {
         ...inputConfig,
-        name: "Veterício Serviços Veterinários",
+        name: vetericioBrand.name,
         slogan: "A clínica veterinária que vai até sua casa",
         description:
           "Nossa equipe atende seu pet em casa. Se ele precisar de estrutura hospitalar, nós o levamos ao hospital e realizamos todo o procedimento lá.",
-        primaryColor: "#4A1826",
-        secondaryColor: "#EFE4DA",
-        backgroundColor: "#FBF7F1",
-        textColor: "#092F38",
+        ...vetericioBrand.colors,
         heroImageUrl:
           "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-cruella-hero.webp",
         services: [
@@ -222,7 +220,7 @@ export function ClinicSiteFull({
       ? `55${whatsAppNumber}`
       : whatsAppNumber;
   const whatsAppHref = `https://wa.me/${whatsAppRecipient}${
-    isVetericio ? `?text=${encodeURIComponent("Oi, vim do site vetericio.")}` : ""
+    isVetericio ? `?text=${encodeURIComponent(vetericioBrand.whatsappMessage)}` : ""
   }`;
   // Todos os botões de agendamento levam diretamente ao Portal do Tutor da
   // clínica, inclusive em domínios personalizados. O contexto autenticado não
@@ -335,8 +333,8 @@ export function ClinicSiteFull({
       )
     ) : null;
   const social = realUrl(config.instagramUrl);
-  const location = isVetericio ? "Belo Horizonte e região metropolitana" : config.address;
-  const hours = isVetericio ? "Agendado no seu melhor tempo" : config.hours;
+  const location = isVetericio ? vetericioBrand.location : config.address;
+  const hours = isVetericio ? vetericioBrand.hours : config.hours;
   const mapLink =
     !isVetericio && config.address
       ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)

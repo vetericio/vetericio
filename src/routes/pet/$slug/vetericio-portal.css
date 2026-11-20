@@ -1,0 +1,258 @@
+.portal-tutor-live.vetericio-portal {
+  --portal-panel: #fffcf8;
+  --portal-panel-text: var(--portal-ink);
+  --portal-input: var(--portal-panel);
+  --portal-border: #d9c8bc;
+  --portal-muted: #3d5456;
+  --portal-soft: #f3e9e1;
+  --portal-on-primary: #fffcf8;
+  --portal-radius: 1rem;
+  --portal-field-radius: 0.75rem;
+  --portal-button-radius: 999px;
+  --portal-font-heading: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --portal-shadow: 0 12px 32px #4a182610;
+  min-height: 100dvh;
+  background: var(--portal-bg);
+  color: var(--portal-ink);
+  color-scheme: light;
+}
+
+.vetericio-portal :is(h1, h2) {
+  font-family: var(--portal-font-heading);
+  letter-spacing: -0.035em;
+}
+
+.vetericio-portal :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--portal-primary);
+  outline-offset: 3px;
+}
+
+.vetericio-portal-logo {
+  display: block;
+  width: clamp(8rem, 19vw, 13rem);
+  height: auto;
+}
+
+.vetericio-portal-top {
+  border-bottom: 1px solid color-mix(in srgb, var(--portal-ink) 12%, transparent);
+}
+
+.vetericio-portal-top > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 73px;
+  max-width: 90rem;
+  padding-inline: clamp(1rem, 3vw, 2.25rem);
+  margin-inline: auto;
+}
+
+.vetericio-portal-back,
+.vetericio-portal-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  color: var(--portal-primary);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.vetericio-portal :is(.vetericio-portal-back, .vetericio-portal-help):hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.vetericio-portal-login-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: stretch;
+  width: min(100%, 82rem);
+  margin-inline: auto;
+  padding: clamp(1.25rem, 5vw, 4rem) clamp(1rem, 3vw, 2.25rem);
+}
+
+.vetericio-portal-welcome {
+  display: flex;
+  flex-direction: column;
+  background: var(--portal-ink);
+  color: var(--portal-panel);
+  border-radius: 1rem 0 0 1rem;
+  overflow: hidden;
+}
+
+.vetericio-portal-welcome > img {
+  width: 100%;
+  height: clamp(13rem, 35vh, 24rem);
+  object-fit: cover;
+  object-position: center 48%;
+}
+
+.vetericio-portal-welcome-copy {
+  flex: 1;
+  padding: clamp(1.5rem, 4vw, 3.25rem);
+}
+
+.vetericio-portal-welcome h1 {
+  font-size: clamp(2.25rem, 4.7vw, 4.7rem);
+  line-height: 1.02;
+}
+
+.vetericio-portal-slogan {
+  margin-top: 0.7rem;
+  color: #f2b99e;
+  font-family: var(--portal-font-heading);
+  font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+}
+
+.vetericio-portal-welcome-copy > p:last-child {
+  max-width: 37ch;
+  margin-top: 0.65rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.vetericio-portal-form {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: var(--portal-panel);
+  border: 1px solid var(--portal-border);
+  border-radius: 0 1rem 1rem 0;
+  box-shadow: var(--portal-shadow);
+}
+
+.vetericio-portal-form h2 {
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  line-height: 1.12;
+}
+
+.vetericio-portal-lead {
+  margin-block: 0.75rem 1.4rem;
+  color: var(--portal-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.vetericio-portal-help {
+  align-self: flex-start;
+  margin-top: 0.75rem;
+}
+
+.vetericio-portal :is(input, textarea, select) {
+  background: var(--portal-input);
+  color: var(--portal-panel-text);
+  border-color: var(--portal-border);
+  border-radius: var(--portal-field-radius);
+}
+
+.vetericio-portal :is(button, a)[class~="bg-[#702a43]"] {
+  background: var(--portal-primary);
+  color: var(--portal-on-primary);
+  border-radius: var(--portal-button-radius);
+}
+
+.vetericio-portal :is(button, a)[class~="bg-[#702a43]"]:hover {
+  background: #703144;
+}
+
+.vetericio-portal [class*="text-[#702a43]"] {
+  color: var(--portal-primary);
+}
+
+.vetericio-portal :is(.text-slate-500, .text-slate-600, .text-muted-foreground),
+.vetericio-portal
+  :is([class~="text-[#786b73]"], [class~="text-[#7b6b73]"], [class~="text-[#8b5b6d]"]) {
+  color: var(--portal-muted);
+}
+
+.vetericio-portal [class~="text-[#312530]"] {
+  color: var(--portal-ink);
+}
+
+.vetericio-portal :is([class~="bg-[#faf7f8]"], [class~="bg-[#fbf5f7]"], .bg-slate-50) {
+  background: var(--portal-soft);
+}
+
+.vetericio-portal [class~="bg-[#f6eaf0]"] {
+  background: var(--portal-secondary);
+}
+
+.vetericio-portal.portal-area .portal-area-header {
+  background: var(--portal-bg) !important;
+}
+
+.vetericio-portal .portal-area-brand {
+  flex-wrap: wrap;
+}
+
+.vetericio-portal .portal-area-brand-title {
+  font-family: var(--portal-font-heading);
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.vetericio-portal .portal-area-header-action {
+  border-radius: 999px;
+}
+
+.vetericio-portal .portal-area-nav button[aria-current="page"] {
+  background: var(--portal-primary);
+  color: var(--portal-on-primary);
+}
+
+.vetericio-portal .portal-area-nav button[aria-current="page"]:focus-visible {
+  outline-offset: 3px;
+}
+
+.vetericio-portal .portal-area-section-heading h1 {
+  font-weight: 400;
+}
+
+.vetericio-portal .portal-area-intro {
+  margin: -0.6rem 0 1.25rem;
+  color: var(--portal-muted);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.vetericio-portal .portal-area-list > h2 {
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+
+.vetericio-portal.portal-area :is(section, article, div).bg-white {
+  background: var(--portal-panel);
+  border-color: var(--portal-border);
+}
+
+.vetericio-portal :is(.portal-area-shortcut-icon, .portal-area-pet-photo) {
+  background: var(--portal-soft);
+  color: var(--portal-primary);
+}
+
+@media (max-width: 47.99rem) {
+  .vetericio-portal-login-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vetericio-portal-welcome {
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .vetericio-portal-welcome > img {
+    height: clamp(8.5rem, 31vw, 12rem);
+  }
+
+  .vetericio-portal-welcome-copy {
+    padding: 1.15rem 1.25rem 1.4rem;
+  }
+
+  .vetericio-portal-form {
+    border-radius: 0 0 1rem 1rem;
+  }
+}
