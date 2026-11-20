@@ -39,7 +39,7 @@ import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
 import { diagnosticarDnsDominio, prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
 import { ativarSiteOricse } from "@/lib/clinic-site-publish.functions";
 import { dominiosUnicosPorClinica, normalizarDominio, rotuloDisponibilidadeDominio, type EstadoOnlineDominio } from "@/lib/clinic-domain-status";
-import { prestigeDefault } from "@/lib/clinic-site";
+import { normalizeClinicMediaUrl, prestigeDefault } from "@/lib/clinic-site";
 import { SiteDaClinica } from "@/routes/site-da-clinica";
 import { enviarArquivoPublicoPlataforma } from "@/lib/platform-drive.functions";
 import { ClinicUsersPanel } from "@/components/admin/ClinicUsersPanel";
@@ -314,6 +314,7 @@ function Admin() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [salvandoLogo, setSalvandoLogo] = useState(false);
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
+  const [logoClinicaComErro, setLogoClinicaComErro] = useState<string | null>(null);
   const [gradeTaxas, setGradeTaxas] = useState<{ modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] }>({ modalidades: [], segmentos: [], comissoes: [] });
   const [salvandoTaxas, setSalvandoTaxas] = useState(false);
   const [erroTaxas, setErroTaxas] = useState<string | null>(null);
@@ -334,6 +335,7 @@ function Admin() {
   const [confirmarInterrupcao, setConfirmarInterrupcao] = useState(false);
   const [excluindoDominio, setExcluindoDominio] = useState<string | null>(null);
   const slugCadastrado = clinicas.find(c => c.id === selecionada?.id)?.slug || "";
+  const logoClinicaUrl = normalizeClinicMediaUrl(selecionada?.logo_url) || selecionada?.logo_url;
 
   useEffect(() => {
     // Ao trocar de clínica, feche o editor anterior antes de abrir outro.
@@ -1084,6 +1086,7 @@ function Admin() {
       });
       setSelecionada(atual => atual?.id === selecionada.id ? { ...atual, logo_url: resultado.logoUrl } : atual);
       setClinicas(lista => lista.map(item => item.id === selecionada.id ? { ...item, logo_url: resultado.logoUrl } : item));
+      setLogoClinicaComErro(null);
       toast.success("Logo salva no Drive da clínica.");
     } catch (e) { toast.error((e as Error).message || "Não foi possível enviar a logo."); }
     finally { setEnviandoLogoClinica(false); }
@@ -1380,7 +1383,7 @@ function Admin() {
     <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <div className="rounded-xl border bg-slate-50 p-3 text-sm md:self-end"><p className="font-semibold">Domínios e site público</p><p className="mt-1 text-xs text-muted-foreground">Gerenciados exclusivamente por você em “Site e domínios”.</p></div>
-    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{selecionada.logo_url ? <img src={selecionada.logo_url} alt="Logo da clínica" className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 text-xs text-muted-foreground">Sem logo</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={cadastroOcupado} onChange={(e) => { const arquivo = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(arquivo); }}/></label></div></div>
+    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{logoClinicaUrl && logoClinicaComErro !== logoClinicaUrl ? <img key={logoClinicaUrl} src={logoClinicaUrl} alt="Logo da clínica" onError={() => setLogoClinicaComErro(logoClinicaUrl)} className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 p-3 text-center text-xs text-muted-foreground">{logoClinicaUrl ? "Não foi possível carregar a logo." : "Sem logo"}</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={cadastroOcupado} onChange={(e) => { const arquivo = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(arquivo); }}/></label></div></div>
     <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
     </fieldset>
      <div className="mt-8 rounded-xl border border-red-300 bg-red-50 p-4"><h3 className="font-bold text-red-700">Zona de perigo</h3><p className="mt-1 text-sm text-red-700">Excluir esta clínica remove definitivamente seus dados e acessos.</p><button type="button" disabled={cadastroOcupado} onClick={() => { setConfirmacaoExclusao(""); setExcluindoClinica(true); }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white"><Trash2 size={17}/> Excluir clínica</button></div>
@@ -2040,7 +2043,7 @@ function Admin() {
       <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
           <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-50">
-            {selecionada.logo_url ? <img src={selecionada.logo_url} alt="" className="max-h-full max-w-full object-contain"/> : <Building2 size={22} className="text-muted-foreground"/>}
+            {logoClinicaUrl && logoClinicaComErro !== logoClinicaUrl ? <img src={logoClinicaUrl} alt="" onError={() => setLogoClinicaComErro(logoClinicaUrl)} className="max-h-full max-w-full object-contain"/> : <Building2 size={22} className="text-muted-foreground"/>}
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-xl font-black">{selecionada.nome}</h2>
@@ -2100,7 +2103,7 @@ function Admin() {
             const modificando = alterandoStatusClinica === clinica.id;
             return <div key={clinica.id} className="grid items-center gap-2 px-4 py-3 transition hover:bg-slate-50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] lg:gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100">{clinica.logo_url ? <img src={clinica.logo_url} alt="" className="max-h-full max-w-full object-contain"/> : <Building2 size={19} className="text-slate-500"/>}</div>
+                <div className="flex h-10 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100">{clinica.logo_url ? <img src={normalizeClinicMediaUrl(clinica.logo_url) || clinica.logo_url} alt="" loading="lazy" className="max-h-full max-w-full object-contain"/> : <Building2 size={19} className="text-slate-500"/>}</div>
                 <div className="min-w-0"><button type="button" onClick={() => abrirClinicaNoAdmin(clinica)} className="block max-w-full truncate text-left text-sm font-bold hover:text-primary hover:underline">{clinica.nome}</button><p className="truncate text-xs text-muted-foreground">{clinica.slug ? clinica.slug + ".oricse.com.br" : "Endereço não configurado"}</p></div>
               </div>
               <div className="min-w-0 text-xs"><p className="truncate font-bold">{clinica.plano}</p><p className="text-muted-foreground">{ativos} de {clinica.limite_usuarios} acessos</p></div>
