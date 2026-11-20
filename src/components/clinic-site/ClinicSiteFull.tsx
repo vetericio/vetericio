@@ -1159,7 +1159,11 @@ export function ClinicSiteFull({
 
   return (
     <main
-      className={"min-h-screen w-full overflow-x-clip " + outer}
+      className={
+        "min-h-screen w-full overflow-x-clip " +
+        outer +
+        (isVetericio ? " [&>section]:scroll-mt-[57px] lg:[&>section]:scroll-mt-[37px]" : "")
+      }
       style={style}
       data-clinic-template={template}
     >
