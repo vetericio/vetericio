@@ -82,7 +82,7 @@ export function valoresModeloDocumento(
   clinica: IdentidadeDocumento,
   contexto: { paciente: string; especie?: string; raca?: string; tutor: string; data: string },
 ) {
-  return { ...contexto, clinica: clinica.nome, endereco_clinica: clinica.endereco,
+  return { ...contexto, data: formatarDataExtensoDocumento(contexto.data), clinica: clinica.nome, endereco_clinica: clinica.endereco,
     cnpj_clinica: clinica.cnpj, telefone_clinica: clinica.telefone, email_clinica: clinica.email };
 }
 
