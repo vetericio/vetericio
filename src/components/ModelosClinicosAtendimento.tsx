@@ -11,7 +11,7 @@ import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { registrarDocumentoClinicoAssinado, alterarPublicacaoDocumentoClinico } from "@/lib/documento-clinico.functions";
 
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { DOCUMENTOS, MODELOS_BASE_CLINICOS, formatarDataDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { DOCUMENTOS, MODELOS_BASE_CLINICOS, extrairCorpoModeloClinico, formatarDataDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import { criarPdfComModelo, prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 
 type TipoClinico = "pedido" | "documento" | "termo";
