@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, CalendarDays, Pause, Play } from "lucide-react";
+import { ArrowDown, ArrowRight, CalendarDays, Menu, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const mediaRoot = "/clinic-site/vetericio";
@@ -29,28 +29,113 @@ export function VetericioHeader({
   brand: ReactNode;
   links: { href: string; label: string }[];
 }) {
+  const [compact, setCompact] = useState(false);
+  const mobileMenu = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    // Compactar quando o conteúdo alcançar a base do cabeçalho menor.
+    const update = () => setCompact(window.scrollY >= (desktop.matches ? 36 : 58));
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    desktop.addEventListener("change", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      desktop.removeEventListener("change", update);
+    };
+  }, []);
+
   return (
-    <header id="inicio" className="border-b border-[#092F38]/10 bg-[#FBF7F1] text-[#092F38]">
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-4 px-5 sm:px-9">
-        <div className="flex min-h-[72px] min-w-0 items-center">{brand}</div>
-        <nav
-          aria-label="Navegação do site"
-          className="order-last flex w-full flex-wrap justify-between gap-x-1 whitespace-nowrap border-t border-[#092F38]/10 text-[11px] font-semibold min-[380px]:text-xs sm:justify-center sm:gap-x-7 lg:order-none lg:w-auto lg:border-0 lg:text-sm"
+    <>
+      <div id="inicio" />
+      <div className="pointer-events-none sticky top-0 z-40 min-h-[115px] min-[380px]:min-h-[114px] lg:min-h-[73px]">
+        <header
+          data-compact={compact}
+          className="pointer-events-auto relative border-b border-[#092F38]/10 bg-[#FBF7F1] text-[#092F38]"
         >
-          {links.map(({ href, label }) => (
-            <a key={href} href={href} className="py-3 underline-offset-4 hover:underline">
-              {label}
+          <div
+            className={
+              "mx-auto flex max-w-[1440px] items-center justify-between px-5 sm:px-9 " +
+              (compact ? "h-14 gap-x-2 lg:h-9 lg:gap-x-4" : "flex-wrap gap-x-4")
+            }
+          >
+            <div
+              className={
+                "flex min-w-0 items-center " +
+                (compact
+                  ? "[&_img]:w-24 min-[360px]:[&_img]:w-32 sm:[&_img]:w-40 lg:[&_img]:w-28"
+                  : "min-h-[72px]")
+              }
+            >
+              {brand}
+            </div>
+            <nav
+              aria-label="Navegação do site"
+              className={
+                compact
+                  ? "hidden items-center gap-x-7 text-sm font-semibold lg:flex"
+                  : "order-last flex w-full flex-wrap justify-between gap-x-1 whitespace-nowrap border-t border-[#092F38]/10 text-[11px] font-semibold min-[380px]:text-xs sm:justify-center sm:gap-x-7 lg:order-none lg:w-auto lg:border-0 lg:text-sm"
+              }
+            >
+              {links.map(({ href, label }) => (
+                <a
+                  key={href}
+                  href={href}
+                  className={
+                    compact
+                      ? "py-1 underline-offset-4 hover:underline"
+                      : "py-3 underline-offset-4 hover:underline"
+                  }
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+            <a
+              href={actionHref}
+              className={
+                "inline-flex shrink-0 items-center gap-2 rounded-full border border-[#4A1826]/40 px-3 text-xs font-semibold text-[#4A1826] hover:bg-[#4A1826] hover:text-white sm:px-5 sm:text-sm " +
+                (compact ? "ml-auto min-h-9 lg:ml-0 lg:min-h-7" : "min-h-11")
+              }
+            >
+              <CalendarDays size={16} aria-hidden="true" /> Portal do Tutor
             </a>
-          ))}
-        </nav>
-        <a
-          href={actionHref}
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#4A1826]/40 px-3 text-xs font-semibold text-[#4A1826] hover:bg-[#4A1826] hover:text-white sm:px-5 sm:text-sm"
-        >
-          <CalendarDays size={16} aria-hidden="true" /> Portal do Tutor
-        </a>
+            {compact && (
+              <details
+                ref={mobileMenu}
+                className="shrink-0 lg:hidden"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && event.currentTarget.open) {
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+              >
+                <summary className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-[#092F38]/25 [&::-webkit-details-marker]:hidden">
+                  <Menu size={19} aria-hidden="true" />
+                  <span className="sr-only">Menu</span>
+                </summary>
+                <nav
+                  aria-label="Navegação do site"
+                  className="absolute inset-x-0 top-full max-h-[70dvh] overflow-y-auto border-b border-[#092F38]/10 bg-[#FBF7F1] px-5 py-2 shadow-md sm:px-9"
+                >
+                  {links.map(({ href, label }) => (
+                    <a
+                      key={href}
+                      href={href}
+                      onClick={() => mobileMenu.current?.removeAttribute("open")}
+                      className="flex min-h-11 items-center text-sm font-semibold underline-offset-4 hover:underline"
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </nav>
+              </details>
+            )}
+          </div>
+        </header>
       </div>
-    </header>
+    </>
   );
 }
 
