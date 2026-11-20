@@ -2,12 +2,32 @@ export const TIPOS_MODELO_DOCUMENTO = ["receita", "pedido", "documento", "termo"
 export type TipoModeloDocumento = (typeof TIPOS_MODELO_DOCUMENTO)[number];
 
 export const DOCUMENTOS = {
-  receita: { titulo: "Receita simples", exemplo: "Orientações adicionais ao responsável pelo animal." },
-  pedido: { titulo: "Pedido de exame", exemplo: "Exames solicitados:\n\nJustificativa clínica:" },
-  documento: { titulo: "Documento clínico", exemplo: "O animal {{paciente}}, sob responsabilidade de {{tutor}}, compareceu para atendimento veterinário em {{data}}." },
-  termo: { titulo: "Termo de consentimento", exemplo: "Procedimento proposto:\n\nRiscos, benefícios e alternativas explicados:\n\nDeclaro que recebi as orientações e autorizo o procedimento descrito.\n\nAssinatura do responsável: ______________________________" },
-  vacina: { titulo: "Atestado de vacinação", exemplo: "Orientações após a aplicação." },
-  vermifugo: { titulo: "Comprovante de vermifugação", exemplo: "Orientações após a administração." },
+  // Somente o corpo é personalizável. Clínica, paciente, tutor, título e
+  // assinatura são sempre compostos pelo gerador padronizado do PDF.
+  receita: {
+    titulo: "Receita simples",
+    exemplo: "Orientações ao responsável pelo animal {{paciente}}:\n\nCuidados recomendados:\n\nObservações adicionais:",
+  },
+  pedido: {
+    titulo: "Pedido de exame",
+    exemplo: "Solicito avaliação complementar para o animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nExames solicitados:\n\nJustificativa clínica:\n\nOrientações ao responsável:",
+  },
+  documento: {
+    titulo: "Documento clínico",
+    exemplo: "Confirmo que o animal {{paciente}}, sob responsabilidade de {{tutor}}, foi atendido em {{data}}.\n\nDescrição do atendimento:\n\nConduta e orientações:",
+  },
+  termo: {
+    titulo: "Termo e consentimento",
+    exemplo: "Eu, {{tutor}}, responsável pelo animal {{paciente}}, declaro ter recebido explicações sobre o atendimento ou procedimento abaixo.\n\nProcedimento proposto:\n\nOrientações, riscos e alternativas discutidos:\n\nObservações:\n\nEspaço para manifestação e assinatura do responsável:",
+  },
+  vacina: {
+    titulo: "Atestado de vacinação",
+    exemplo: "Registro de vacinação referente ao animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nOrientações após a aplicação:\n\nRecomendações para acompanhamento:",
+  },
+  vermifugo: {
+    titulo: "Comprovante de vermifugação",
+    exemplo: "Registro de vermifugação referente ao animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nOrientações após a administração:\n\nRecomendações para acompanhamento:",
+  },
 } satisfies Record<TipoModeloDocumento, { titulo: string; exemplo: string }>;
 
 export const FUNDOS_DOCUMENTOS = [
