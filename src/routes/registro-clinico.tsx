@@ -10,6 +10,7 @@ import { type ItemComanda as ItemComandaPersistida, dataLocalISO, parseValorMone
 
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Receituario } from "@/components/Receituario";
+import { Medicacoes } from "@/components/Medicacoes";
 import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 import type { Medicacao } from "@/lib/ficha";
 import { categoriaExame, EXAMES_PADRAO, type CategoriaExame } from "@/lib/exames-catalogo";
@@ -104,6 +105,11 @@ function numeroMoeda(valor: string) { const numero=parseValorMonetario(valor); r
 function moeda(valor: number) { return valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
 function valorCampo(valor: number | string | null | undefined) { const numero=Number(valor); return Number.isFinite(numero)?numero.toFixed(2).replace(".",","):""; }
 
+function resumoMedicacoes(lista: Medicacao[]) {
+  return lista.map(item => [item.nome, item.dose, item.quantidade, item.via,
+    item.duracao ? `a cada ${item.duracao}` : "", item.observacao].filter(Boolean).join(" · ")).join("\n");
+}
+
 function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", medicacoesDetalhadas:[], conduta:"", retorno:"" }; }
 
 function RegistroClinico(){
@@ -122,6 +128,7 @@ function RegistroClinico(){
   const [modo,setModo]=useState<""|"consulta"|"procedimento">(()=>{ const tipo=params.get("tipo"); return tipo==="consulta"||tipo==="procedimento"?tipo:""; });
   const [etapa,setEtapa]=useState(1);
   const [receitaEmitida,setReceitaEmitida]=useState(false);
+  const [receituarioAtivado,setReceituarioAtivado]=useState(false);
   const [consulta,setConsulta]=useState<ConsultaForm>(()=>formConsultaVazio());
   const [procedimento,setProcedimento]=useState<ProcedimentoForm>({tipo:"",indicacao:"",equipe:"",anestesia:"",achados:"",materiais:"",intercorrencias:"",posOperatorio:"",observacoes:""});
   const [aberto,setAberto]=useState<string|null>(null);
@@ -169,6 +176,7 @@ function RegistroClinico(){
     finally{if(ativo)setCatalogoCarregando(false);}
   }
   void carregarCatalogo(); return()=>{ativo=false}; },[clinicaAnimalId]);
+  useEffect(()=>{if(modo==="consulta"&&etapa===7)setReceituarioAtivado(true);},[modo,etapa]);
   useEffect(()=>{ if(etapa!==8||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:Boolean(itemCatalogo)||Boolean(existente?.precoConfigurado) } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
 
@@ -383,11 +391,16 @@ function RegistroClinico(){
               </div>)}</div>
               <div className="mt-4"><Textarea label="Outros exames / observações" value={consulta.examesSolicitados} onChange={v=>setConsulta({...consulta,examesSolicitados:v})} placeholder="Você também pode complementar manualmente o pedido..."/></div>
             </section>}
-            {etapa===7&&<section className="min-w-0 space-y-4">
+            {(etapa===7||receituarioAtivado)&&<section className={etapa===7?"min-w-0 space-y-4":"hidden"}>
               <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
                 <h3 className="font-black">Receituário do paciente</h3>
                 <p className="mt-1 text-sm text-muted-foreground">Preencha, assine e salve a receita aqui, dentro da consulta. Os dados do animal, do tutor e da clínica serão carregados automaticamente.</p>
               </div>
+              <details className="rounded-2xl border bg-white p-4">
+                <summary className="cursor-pointer text-sm font-black text-primary">Medicações da consulta com cálculo pelo peso (opcional)</summary>
+                <div className="mt-4"><Medicacoes lista={consulta.medicacoesDetalhadas} especie={/gato|fel/i.test(animal.especie||"")?"Gato":"Cachorro"} peso={consulta.peso||animal.peso||""} onChange={medicacoesDetalhadas=>setConsulta(f=>({...f,medicacoesDetalhadas,medicacoes:resumoMedicacoes(medicacoesDetalhadas)}))}/></div>
+                <div className="mt-4"><Textarea label="Medicações / observações da consulta" value={consulta.medicacoes} onChange={v=>setConsulta({...consulta,medicacoes:v})} placeholder="Observações para o prontuário clínico..."/></div>
+              </details>
               <ProtegidoPorSenha area="receituario" titulo="Receituário protegido">
                 <Receituario embutido animalIdInicial={animal.id} tutorIdInicial={tutor?.id} onSalva={()=>setReceitaEmitida(true)}/>
               </ProtegidoPorSenha>
