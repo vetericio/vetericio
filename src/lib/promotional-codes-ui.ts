@@ -1,9 +1,6 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { supabaseBanco } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "oricse-promo-aplicado-v1";
 const ADMIN_ID = "oricse-promo-admin";
-const CHECKOUT_ID = "oricse-promo-checkout";
 
 type Promo = {
   id: string;
@@ -20,15 +17,6 @@ type Promo = {
   duracao: "primeiro_mes" | "recorrente";
 };
 
-type PromoAplicado = {
-  codigo: string;
-  plano: string;
-  valor_original: number;
-  desconto_aplicado: number;
-  valor_final: number;
-  duracao: string;
-};
-
 function txt(el: Element | null) { return (el?.textContent || "").replace(/\s+/g, " ").trim(); }
 function esc(v: unknown) { return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c)); }
 function brl(v: number) { return Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -36,18 +24,6 @@ function dataBR(v?: string | null) { if (!v) return "Sem limite"; const d = new 
 function upper(v: string) { return v.trim().toUpperCase().replace(/\s+/g, "-"); }
 function toIso(v: string) { return v ? new Date(v).toISOString() : null; }
 function fromIso(v?: string | null) { if (!v) return ""; const d = new Date(v); const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }
-
-function lerPromoAplicado(): PromoAplicado | null {
-  try { return JSON.parse(oricseSession.getItem(STORAGE_KEY) || "null"); } catch { return null; }
-}
-function salvarPromoAplicado(v: PromoAplicado | null) {
-  if (!v) oricseSession.removeItem(STORAGE_KEY); else oricseSession.setItem(STORAGE_KEY, JSON.stringify(v));
-}
-
-function instalarInterceptadorRpc() {
-  // O checkout React envia o código validado diretamente no pedido.
-  // Mantemos o módulo para o gestor de códigos no Admin, sem alterar o payload do pedido no navegador.
-}
 
 function estiloBase() {
   if (document.getElementById("oricse-promo-style")) return;
@@ -59,8 +35,7 @@ function estiloBase() {
     .oricse-promo-btn{border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;background:hsl(var(--primary));color:hsl(var(--primary-foreground))}.oricse-promo-btn.secondary{background:white;color:hsl(var(--foreground));border:1px solid hsl(var(--border))}.oricse-promo-btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}.oricse-promo-btn:disabled{opacity:.45;cursor:not-allowed}
     .oricse-promo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.oricse-promo-field{display:flex;flex-direction:column;gap:5px;font-size:.82rem;font-weight:700}.oricse-promo-field input,.oricse-promo-field select{min-height:44px;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--background));padding:0 12px;font:inherit;font-weight:500;color:hsl(var(--foreground))}.oricse-promo-checks{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0}.oricse-promo-checks label{display:flex;align-items:center;gap:7px;font-size:.88rem;font-weight:650}
     .oricse-promo-list{display:grid;gap:10px;margin-top:14px}.oricse-promo-row{border:1px solid hsl(var(--border));border-radius:14px;padding:13px;display:grid;grid-template-columns:minmax(150px,1.2fr) minmax(130px,.8fr) minmax(180px,1fr) auto;gap:10px;align-items:center}.oricse-promo-code{font-weight:900;letter-spacing:.04em}.oricse-promo-meta{font-size:.78rem;color:hsl(var(--muted-foreground));margin-top:3px}.oricse-promo-badge{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:.72rem;font-weight:800;background:#dcfce7;color:#166534}.oricse-promo-badge.off{background:#f1f5f9;color:#475569}.oricse-promo-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
-    .oricse-promo-checkout{border:1px dashed hsl(var(--primary));background:hsl(var(--primary)/.035);border-radius:16px;padding:14px;margin:16px 0}.oricse-promo-line{display:flex;gap:8px;align-items:center}.oricse-promo-line input{flex:1;min-width:0;min-height:44px;border:1px solid hsl(var(--border));border-radius:12px;padding:0 12px;text-transform:uppercase}.oricse-promo-result{margin-top:9px;font-size:.88rem}.oricse-promo-result.ok{color:#047857;font-weight:700}.oricse-promo-result.err{color:#b91c1c;font-weight:700}
-    @media(max-width:720px){.oricse-promo-grid{grid-template-columns:1fr}.oricse-promo-row{grid-template-columns:1fr}.oricse-promo-actions{justify-content:flex-start}.oricse-promo-line{align-items:stretch;flex-direction:column}}
+    @media(max-width:720px){.oricse-promo-grid{grid-template-columns:1fr}.oricse-promo-row{grid-template-columns:1fr}.oricse-promo-actions{justify-content:flex-start}}
   `;
   document.head.appendChild(style);
 }
@@ -161,80 +136,13 @@ function garantirAdmin() {
   void montarAdmin(section);
 }
 
-function acharTotalCheckout(botao: HTMLButtonElement) {
-  const area = botao.closest("section") || document.body;
-  const texto = txt(area);
-  const matches = [...texto.matchAll(/Total:\s*R\$\s*([\d.]+,\d{2})/gi)];
-  const raw = matches.at(-1)?.[1];
-  if (!raw) return 0;
-  return Number(raw.replace(/\./g, "").replace(",", ".")) || 0;
-}
-
-function dadosContratacao() {
-  try { return JSON.parse(oricseStorage.getItem("oricse-contratacao") || "{}"); } catch { return {}; }
-}
-
-function garantirCheckout() {
-  if (location.pathname !== "/contratar" || document.getElementById(CHECKOUT_ID)) return;
-  const botao = [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => ["Ir para pagamento", "Preparando..."].includes(txt(b)));
-  if (!botao) return;
-  const params = new URLSearchParams(location.search);
-  const plano = params.get("plano") || "essencial";
-  if (plano === "teste-gratis") return;
-  const box = document.createElement("div");
-  box.id = CHECKOUT_ID;
-  box.className = "oricse-promo-checkout";
-  const salvo = lerPromoAplicado();
-  if (salvo && salvo.plano !== plano) salvarPromoAplicado(null);
-  box.innerHTML = `<div class="oricse-promo-title" style="font-size:.95rem">Tenho um código promocional</div><div class="oricse-promo-sub">Digite o código antes de seguir para o pagamento.</div><div class="oricse-promo-line" style="margin-top:10px"><input data-code placeholder="CÓDIGO" value="${esc(salvo?.plano === plano ? salvo.codigo : "")}"><button type="button" class="oricse-promo-btn" data-apply>Aplicar</button>${salvo?.plano === plano ? '<button type="button" class="oricse-promo-btn secondary" data-remove>Remover</button>' : ""}</div><div data-result class="oricse-promo-result ${salvo?.plano === plano ? "ok" : ""}">${salvo?.plano === plano ? `Código ${esc(salvo.codigo)} aplicado: −${brl(salvo.desconto_aplicado)} · Total com desconto: ${brl(salvo.valor_final)}${salvo.duracao === "recorrente" ? " · desconto recorrente" : " · somente no primeiro mês"}` : ""}</div>`;
-  botao.parentElement?.insertBefore(box, botao);
-
-  const aplicar = box.querySelector<HTMLButtonElement>("[data-apply]")!;
-  const input = box.querySelector<HTMLInputElement>("[data-code]")!;
-  const result = box.querySelector<HTMLElement>("[data-result]")!;
-  aplicar.addEventListener("click", async () => {
-    const codigo = upper(input.value);
-    if (!codigo) return;
-    const total = acharTotalCheckout(botao);
-    if (total <= 0) { result.className = "oricse-promo-result err"; result.textContent = "Não foi possível identificar o valor da contratação."; return; }
-    const dados = dadosContratacao();
-    const documento = String(dados.cnpj || dados.responsavel_cpf || "");
-    aplicar.disabled = true;
-    result.className = "oricse-promo-result";
-    result.textContent = "Validando código...";
-    const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", { p_codigo: codigo, p_plano_codigo: plano, p_documento: documento, p_valor_base: total, p_ciclo: String(dados.ciclo || ""), p_modo_renovacao: String(dados.modo_renovacao || "") });
-    aplicar.disabled = false;
-    if (error || !data?.valido) {
-      salvarPromoAplicado(null);
-      result.className = "oricse-promo-result err";
-      result.textContent = error?.message || data?.mensagem || "Código inválido.";
-      return;
-    }
-    const promo: PromoAplicado = { codigo: data.codigo, plano, valor_original: Number(data.valor_original), desconto_aplicado: Number(data.desconto_aplicado), valor_final: Number(data.valor_final), duracao: String(data.duracao || "primeiro_mes") };
-    salvarPromoAplicado(promo);
-    input.value = promo.codigo;
-    result.className = "oricse-promo-result ok";
-    result.textContent = `Código ${promo.codigo} aplicado: −${brl(promo.desconto_aplicado)} · Total com desconto: ${brl(promo.valor_final)}${promo.duracao === "recorrente" ? " · desconto recorrente" : " · somente no primeiro mês"}`;
-    if (!box.querySelector("[data-remove]")) {
-      const remover = document.createElement("button");
-      remover.type = "button"; remover.className = "oricse-promo-btn secondary"; remover.dataset.remove = "1"; remover.textContent = "Remover";
-      box.querySelector(".oricse-promo-line")?.appendChild(remover);
-      remover.addEventListener("click", () => { salvarPromoAplicado(null); input.value = ""; result.textContent = ""; remover.remove(); });
-    }
-  });
-  box.querySelector<HTMLButtonElement>("[data-remove]")?.addEventListener("click", (ev) => { salvarPromoAplicado(null); input.value = ""; result.textContent = ""; (ev.currentTarget as HTMLElement).remove(); });
-}
-
 function varrer() {
   estiloBase();
   garantirAdmin();
-  garantirCheckout();
   if (location.pathname !== "/admin") document.getElementById(ADMIN_ID)?.remove();
-  if (location.pathname !== "/contratar") document.getElementById(CHECKOUT_ID)?.remove();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
-  instalarInterceptadorRpc();
   const iniciar = () => {
     varrer();
     const observer = new MutationObserver(() => varrer());

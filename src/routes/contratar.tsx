@@ -1,9 +1,11 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, BadgeCheck, Check, ChevronLeft, ChevronRight, CreditCard, ChevronDown, ExternalLink, Minus, Plus, TicketPercent, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { cpfValido } from "@/lib/cpf";
 
 export const Route = createFileRoute("/contratar")({
   validateSearch: ({ plano, ciclo, retorno, pedido }: Record<string, unknown>): Partial<Record<"plano" | "ciclo" | "retorno" | "pedido", string>> => ({
@@ -17,13 +19,15 @@ export const Route = createFileRoute("/contratar")({
 
 type Dados = Record<string, string> & { quantidade_usuarios: string };
 
-type PromoAplicado = {
-  codigo: string;
-  valor_original: number;
-  desconto_aplicado: number;
-  valor_final: number;
-  duracao: "primeiro_mes" | "recorrente";
-};
+const CHAVE_CUPOM_CONTRATACAO = "oricse-cupom-contratacao";
+const CPF_INVALIDO = "CPF inválido. Confira os 11 dígitos informados.";
+
+function formatarCpf(cpf: string) {
+  return cpf.replace(/\D/g, "")
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3}\.\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3}\.\d{3}\.\d{3})(\d)/, "$1-$2");
+}
 
 const VAZIO: Dados = {
   clinica_nome: "", razao_social: "", cnpj: "", clinica_telefone: "", clinica_email: "", clinica_cep: "", clinica_endereco: "", clinica_numero: "", clinica_complemento: "", clinica_bairro: "", clinica_cidade: "", clinica_uf: "",
@@ -208,7 +212,8 @@ function Contratar() {
     return () => document.removeEventListener("pointerdown", fecharAoClicarFora);
   }, []);
   const [dados, setDados] = useState<Dados>(() => { try { return {...VAZIO,...JSON.parse(oricseStorage.getItem("oricse-contratacao") || "{}")}; } catch { return VAZIO; } });
-  const [configPlano, setConfigPlano] = useState<any>(() => PLANOS_CONTRATACAO[plano as keyof typeof PLANOS_CONTRATACAO] || null);
+  const [planoConsultado, setPlanoConsultado] = useState<any>(null);
+  const configPlano = planoConsultado?.codigo === plano ? planoConsultado : PLANOS_CONTRATACAO[plano as keyof typeof PLANOS_CONTRATACAO];
   const [texto, setTexto] = useState<any>(TEXTO_PADRAO);
   const [termos, setTermos] = useState(false);
   const [privacidade, setPrivacidade] = useState(false);
@@ -216,10 +221,11 @@ function Contratar() {
   const [enviando, setEnviando] = useState(false);
   const [pedido, setPedido] = useState<any>(null);
   const [abrindoCheckout, setAbrindoCheckout] = useState(false);
-  const [codigoPromocional, setCodigoPromocional] = useState("");
-  const [promoAplicado, setPromoAplicado] = useState<PromoAplicado | null>(null);
+  const [codigoSelecionado, setCodigoSelecionado] = useState(() => oricseSession.getItem(CHAVE_CUPOM_CONTRATACAO) ?? "");
+  const [codigoPromocional, setCodigoPromocional] = useState(codigoSelecionado);
   const [validandoPromo, setValidandoPromo] = useState(false);
   const [erroPromo, setErroPromo] = useState("");
+  const [cpfVerificado, setCpfVerificado] = useState(false);
   const [erroValidacao, setErroValidacao] = useState("");
   const [logoDataUrl, setLogoDataUrl] = useState("");
   const [logoNome, setLogoNome] = useState("");
@@ -301,7 +307,7 @@ function Contratar() {
       window.location.assign(destino.toString());
       return;
     }
-    if (valorCobrado === 0 && promoAplicado?.codigo) {
+    if (valorDoPedido === 0 && codigoSelecionado) {
       toast.error("O pedido com isenção integral não pode ser enviado para pagamento. Consulte sua solicitação.");
       return;
     }
@@ -315,6 +321,7 @@ function Contratar() {
       if (!res.ok || typeof data.checkout_url !== "string" || !data.checkout_url.startsWith("https://www.mercadopago.com")) {
         throw new Error(data.error || "Checkout indisponível");
       }
+      oricseSession.removeItem(CHAVE_CUPOM_CONTRATACAO);
       window.location.assign(data.checkout_url);
     } catch(e) {
       toast.error(e instanceof Error ? e.message : "Falha ao abrir o pagamento");
@@ -324,24 +331,18 @@ function Contratar() {
 
 
   useEffect(() => {
+    let ativo = true;
     void (async () => {
       const [planoResp, cfgResp] = await Promise.all([
         (supabase as any).from("oricse_planos").select("codigo,nome,usuarios_inclusos,preco_mensal,preco_trimestral,preco_semestral,preco_anual,preco_bienal").eq("codigo", plano).maybeSingle(),
         (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
       ]);
+      if (!ativo) return;
       if (cfgResp.data?.valor) setTexto({ ...TEXTO_PADRAO, ...cfgResp.data.valor });
-      if (planoResp.data) {
-        setConfigPlano(planoResp.data);
-        setDados(atual => {
-          const atualQtd = Math.max(1, Number(atual.quantidade_usuarios) || 1);
-          const minimoInicial = ehTesteGratis ? 1 : Math.min(atualQtd, Math.max(1, Number(planoResp.data.usuarios_inclusos) || 1));
-          const novo = { ...atual, quantidade_usuarios: String(minimoInicial) };
-          oricseStorage.setItem("oricse-contratacao", JSON.stringify(novo));
-          return novo;
-        });
-      }
+      setPlanoConsultado(planoResp.data);
     })();
-  }, [plano, ehTesteGratis]);
+    return () => { ativo = false; };
+  }, [plano]);
 
   const planoConhecido = ehTesteGratis || plano in PLANOS_CONTRATACAO;
   const nomePlano = useMemo(() => configPlano?.nome || plano.charAt(0).toUpperCase()+plano.slice(1), [configPlano, plano]);
@@ -399,37 +400,12 @@ function Contratar() {
   const valorBase=ehTesteGratis?0:parseBRL(precoDoCiclo(configPlano,ciclo));
   const valorTotal=ehTesteGratis?0:valorBase+adicionalCiclo;
   const cicloNome=nomeDoCiclo(ciclo);
-  const descontoPromocional = promoAplicado?.desconto_aplicado || 0;
-  const valorCobrado = Math.max(0, promoAplicado?.valor_final ?? valorTotal);
-
-  const explicacaoPerfis = String(texto.perfis_texto || TEXTO_PADRAO.perfis_texto)
-    .replaceAll("{incluidos}", String(perfisIncluidos))
-    .replaceAll("{perfil}", perfisIncluidos === 1 ? "perfil" : "perfis")
-    .replaceAll("{valor}", brl(valorPerfilExtraMensal));
-
-  function limparPromocao() {
-    setPromoAplicado(null);
-    setErroPromo("");
-  }
-
-  function trocarCiclo(proximo: Exclude<CicloContratacao,"teste">) {
-    if (ciclo === proximo) return;
-    setCiclo(proximo);
-    if(typeof window!=="undefined"){const url=new URL(window.location.href);url.searchParams.set("ciclo",proximo);window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);}
-    limparPromocao();
-  }
-
-  async function aplicarCodigoPromocional() {
-    const codigo = codigoPromocional.trim().toUpperCase().replace(/\s+/g, "-");
-    if (!codigo) {
-      setErroPromo("Digite um código promocional para aplicar.");
-      return;
-    }
-    setValidandoPromo(true);
-    setErroPromo("");
-    try {
-      const documento = String(dados.cnpj || dados.responsavel_cpf || "");
-      // Consulta pública em PostgreSQL (mesma fonte do checkout), sem exigir login.
+  const documento = (dados.cnpj || dados.responsavel_cpf || "").replace(/\D/g, "");
+  const queryClient = useQueryClient();
+  const consultaPromocional = (codigo: string) => ({
+    queryKey: ["oricse-cotacao-cupom", codigo, plano, documento, valorTotal, ciclo, modoRenovacao],
+    retry: false,
+    queryFn: async () => {
       const { data, error } = await (supabaseBanco as any).rpc("oricse_validar_codigo_promocional", {
         p_codigo: codigo,
         p_plano_codigo: plano,
@@ -440,35 +416,76 @@ function Contratar() {
       });
       const validacao = Array.isArray(data) ? data[0] : data;
       if (error || !validacao?.valido) {
-        setPromoAplicado(null);
-        const mensagem = String(error?.message || validacao?.mensagem || "").trim();
-        setErroPromo(mensagem && mensagem !== "undefined" && mensagem !== "null"
-          ? mensagem
-          : "Não foi possível validar o código. Confira o plano selecionado e tente novamente.");
-        return;
+        throw new Error(validacao?.mensagem || error?.message || "Não foi possível validar o código. Tente novamente.");
       }
-      setCodigoPromocional(String(validacao.codigo || codigo));
-      setPromoAplicado({
+      return {
         codigo: String(validacao.codigo || codigo),
-        valor_original: Number(validacao.valor_original ?? valorTotal),
         desconto_aplicado: Number(validacao.desconto_aplicado || 0),
         valor_final: Number(validacao.valor_final ?? valorTotal),
-        duracao: validacao.duracao === "recorrente" ? "recorrente" : "primeiro_mes",
-      });
-    } catch {
-      setPromoAplicado(null);
-      setErroPromo("Não foi possível validar o código agora. Tente novamente.");
+        duracao: validacao.duracao,
+      };
+    },
+  });
+  const cotacaoPromo = useQuery({
+    ...consultaPromocional(codigoSelecionado),
+    enabled: etapa === 3 && !!codigoSelecionado && valorTotal > 0,
+  });
+  const promoAplicado = !cotacaoPromo.isFetching && !cotacaoPromo.isError ? cotacaoPromo.data : undefined;
+  const aguardandoCupom = Boolean(codigoSelecionado && valorTotal > 0 && cotacaoPromo.isFetching);
+  const cupomSemCotacao = Boolean(codigoSelecionado && !promoAplicado);
+  const descontoPromocional = promoAplicado?.desconto_aplicado || 0;
+  const valorCobrado = Math.max(0, promoAplicado?.valor_final ?? valorTotal);
+  const cpfTemErro = cpfVerificado && !cpfValido(dados.responsavel_cpf);
+
+  const explicacaoPerfis = String(texto.perfis_texto || TEXTO_PADRAO.perfis_texto)
+    .replaceAll("{incluidos}", String(perfisIncluidos))
+    .replaceAll("{perfil}", perfisIncluidos === 1 ? "perfil" : "perfis")
+    .replaceAll("{valor}", brl(valorPerfilExtraMensal));
+
+  function removerCodigoPromocional() {
+    oricseSession.removeItem(CHAVE_CUPOM_CONTRATACAO);
+    setCodigoSelecionado("");
+    setCodigoPromocional("");
+    setErroPromo("");
+  }
+
+  function trocarCiclo(proximo: Exclude<CicloContratacao,"teste">) {
+    if (ciclo === proximo) return;
+    setCiclo(proximo);
+    if(typeof window!=="undefined"){const url=new URL(window.location.href);url.searchParams.set("ciclo",proximo);window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);}
+  }
+
+  async function aplicarCodigoPromocional() {
+    if (validandoPromo || enviando || valorTotal <= 0) return;
+    const codigo = codigoPromocional.trim().toUpperCase().replace(/\s+/g, "-");
+    if (!codigo) {
+      setErroPromo("Digite um código promocional para aplicar.");
+      return;
+    }
+    setValidandoPromo(true);
+    setErroPromo("");
+    try {
+      const promocao = await queryClient.fetchQuery({ ...consultaPromocional(codigo), staleTime: 0 });
+      oricseSession.setItem(CHAVE_CUPOM_CONTRATACAO, promocao.codigo);
+      setCodigoSelecionado(promocao.codigo);
+      setCodigoPromocional(promocao.codigo);
+    } catch (error) {
+      setErroPromo(error instanceof Error ? error.message : "Não foi possível validar o código agora. Tente novamente.");
     } finally {
       setValidandoPromo(false);
     }
   }
 
   const mudarQuantidade = (delta: number) => {
-    limparPromocao();
     salvarLocal({ ...dados, quantidade_usuarios: String(Math.max(1, quantidadeUsuarios + delta)) });
   };
 
   function validarAtual() {
+    if (etapa === 1 && !cpfValido(dados.responsavel_cpf)) {
+      setCpfVerificado(true);
+      document.getElementById("responsavel-cpf")?.focus();
+      return false;
+    }
     const obrigatoriosClinica = ["clinica_nome","clinica_telefone","clinica_email","clinica_cep","clinica_endereco","clinica_numero","clinica_bairro","clinica_cidade","clinica_uf"];
     const obrigatoriosResponsavel = ["responsavel_nome","responsavel_cpf","responsavel_email","responsavel_telefone","responsavel_cep","responsavel_endereco","responsavel_numero","responsavel_bairro","responsavel_cidade","responsavel_uf"];
     if (etapa === 2 && obterOperacoes(dados).length === 0) {
@@ -501,6 +518,7 @@ function Contratar() {
   }
 
   async function continuarPagamento() {
+    if (enviando || validandoPromo || cupomSemCotacao) return;
     if (!planoConhecido || (!ehTesteGratis && (!configPlano || valorBase <= 0))) { toast.error("Não foi possível validar o valor deste plano. Volte à página de planos."); return; }
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
     if (plano === "master-2026" && !aceitouFidelidadeMaster) { toast.error("Confirme ciência da fidelidade de 12 meses do plano Master."); return; }
@@ -522,7 +540,7 @@ function Contratar() {
       adicional_perfis_ciclo: adicionalCiclo,
       valor_base: valorBase,
       valor_total: valorCobrado,
-      promo_codigo: promoAplicado?.codigo || null,
+      promo_codigo: codigoSelecionado || null,
       aceitou_termos: true,
       aceitou_privacidade: true,
       fidelidade_meses: plano === "master-2026" ? 12 : 0,
@@ -537,12 +555,13 @@ function Contratar() {
     setEtapa(4);
     if (!ehTesteGratis && novoPedido?.id) {
       if (novoPedido.status === "isento_aguardando_aprovacao") {
+        oricseSession.removeItem(CHAVE_CUPOM_CONTRATACAO);
         toast.success("Solicitação enviada para análise.");
         const destino = new URL("/contratacao-recebida", window.location.origin);
         destino.searchParams.set("retorno", "isento");
         destino.searchParams.set("pedido", String(novoPedido.id));
         window.location.assign(destino.toString());
-      } else if (valorCobrado > 0) {
+      } else if (Number(novoPedido.valor_total ?? (novoPedido.valor_exibido ? parseBRL(novoPedido.valor_exibido) : valorCobrado)) > 0) {
         toast.success("Contratação registrada. Revise o pedido e siga para o pagamento.");
       } else {
         // Nunca iniciar checkout para R$ 0,00. O servidor é a fonte
@@ -552,10 +571,8 @@ function Contratar() {
     }
   }
 
-  const pedidoIsento = !ehTesteGratis && Boolean(pedido?.id) &&
-    (pedido?.status === "isento_aguardando_aprovacao" ||
-      (Number(pedido?.valor_total ?? valorCobrado) === 0 &&
-       Boolean(promoAplicado?.codigo) && descontoPromocional > 0));
+  const pedidoIsento = !ehTesteGratis && pedido?.status === "isento_aguardando_aprovacao";
+  const valorDoPedido = Number(pedido?.valor_total ?? (pedido?.valor_exibido ? parseBRL(pedido.valor_exibido) : valorCobrado));
   const crmvObrigatorio = etapa > 1 && exigeCrmv(dados);
 
   return <main className="min-h-screen bg-background px-4 py-6 sm:px-6"><div className="mx-auto max-w-4xl">
@@ -571,7 +588,24 @@ function Contratar() {
       <p className="mt-2 text-sm text-muted-foreground">Informe os dados da pessoa responsável pela contratação e pelo relacionamento com a Oricse.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {campo("Nome completo","responsavel_nome",dados,salvarLocal)}
-        {campo("CPF","responsavel_cpf",dados,salvarLocal)}
+        <div>
+          <label htmlFor="responsavel-cpf" className="text-sm font-semibold">CPF <span className="text-destructive">*</span></label>
+          <input
+            id="responsavel-cpf"
+            name="responsavel_cpf"
+            type="text"
+            inputMode="numeric"
+            required
+            placeholder="000.000.000-00"
+            value={formatarCpf(dados.responsavel_cpf)}
+            onChange={e => salvarLocal({ ...dados, responsavel_cpf: e.currentTarget.value.replace(/\D/g, "") })}
+            onBlur={() => { if (dados.responsavel_cpf) setCpfVerificado(true); }}
+            aria-invalid={cpfTemErro}
+            aria-describedby={cpfTemErro ? "responsavel-cpf-erro" : undefined}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal aria-invalid:border-destructive"
+          />
+          {cpfTemErro && <p id="responsavel-cpf-erro" role="alert" className="mt-1 text-sm font-semibold text-destructive">{CPF_INVALIDO}</p>}
+        </div>
         {campo("CRMV","responsavel_crmv",dados,salvarLocal,crmvObrigatorio)}
         <label className="text-sm font-semibold">UF do CRMV{crmvObrigatorio&&<span className="text-destructive"> *</span>}
           <select value={dados.responsavel_crmv_uf} onChange={e=>salvarLocal({...dados,responsavel_crmv_uf:e.target.value})} required={crmvObrigatorio} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal" aria-label="UF do CRMV">
@@ -601,6 +635,7 @@ function Contratar() {
 
 
     {etapa===3 && <section className="mt-5 rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
+      <fieldset disabled={enviando} className="min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Revisão do pedido</p><h2 className="mt-1 text-2xl font-bold">3. Revisão</h2><p className="mt-1 text-sm text-muted-foreground">Confira os dados da contratação, escolha o período e aplique seu código antes de pagar.</p></div>
         {!ehTesteGratis && <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-bold text-primary">Plano {nomePlano}</div>}
@@ -623,12 +658,13 @@ function Contratar() {
 
           <div className="flex h-full min-w-0 flex-col rounded-2xl border border-primary/25 bg-primary/[0.035] p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold">Resumo do pagamento</h3><p className="mt-1 text-sm text-muted-foreground">O valor abaixo é o que seguirá para o Mercado Pago.</p></div><BadgeCheck size={21} className="text-primary"/></div>
-            <dl className="mt-5 space-y-3 text-sm"><div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Plano {nomePlano}</dt><dd className="text-right font-semibold">{brl(valorBase)}</dd></div>{perfisExtras > 0 && <div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Perfis adicionais</dt><dd className="text-right font-semibold">{brl(adicionalCiclo)}</dd></div>}<div className="flex items-start justify-between gap-4 border-t pt-3"><dt className="text-muted-foreground">Subtotal</dt><dd className="text-right font-semibold">{brl(valorTotal)}</dd></div>{promoAplicado && <div className="contents"><div className="flex items-start justify-between gap-4 text-emerald-700"><dt className="flex items-center gap-1.5"><TicketPercent size={16}/> Código {promoAplicado.codigo}</dt><dd className="font-bold">− {brl(descontoPromocional)}</dd></div><p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">{promoAplicado.duracao === "recorrente" ? "Desconto recorrente aplicado ao plano." : "Desconto válido apenas para o primeiro período de cobrança."}</p></div>}<div className="flex items-end justify-between gap-4 border-t pt-4"><dt><p className="font-bold">Total a pagar agora</p><p className="mt-1 text-xs text-muted-foreground">{cicloNome.toLowerCase() + " · " + (modoRenovacao === "automatica_cartao" ? "cartão com renovação automática" : "renovação manual")}</p></dt><dd className="text-right text-2xl font-extrabold text-primary">{brl(valorCobrado)}</dd></div>{promoAplicado?.duracao === "primeiro_mes" && <div className="flex items-start justify-between gap-4 text-xs text-muted-foreground"><dt>Após a promoção</dt><dd>{brl(valorTotal)} por período</dd></div>}</dl>
+            <dl className="mt-5 space-y-3 text-sm"><div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Plano {nomePlano}</dt><dd className="text-right font-semibold">{brl(valorBase)}</dd></div>{perfisExtras > 0 && <div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Perfis adicionais</dt><dd className="text-right font-semibold">{brl(adicionalCiclo)}</dd></div>}<div className="flex items-start justify-between gap-4 border-t pt-3"><dt className="text-muted-foreground">Subtotal</dt><dd className="text-right font-semibold">{brl(valorTotal)}</dd></div>{promoAplicado && <div className="contents"><div className="flex items-start justify-between gap-4 text-emerald-700"><dt className="flex items-center gap-1.5"><TicketPercent size={16}/> Código {promoAplicado.codigo}</dt><dd className="font-bold">− {brl(descontoPromocional)}</dd></div><p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">{promoAplicado.duracao === "recorrente" ? "Desconto recorrente aplicado ao plano." : "Desconto válido apenas para o primeiro período de cobrança."}</p></div>}<div className="flex items-end justify-between gap-4 border-t pt-4"><dt><p className="font-bold">Total a pagar agora</p><p className="mt-1 text-xs text-muted-foreground">{cicloNome.toLowerCase() + " · " + (modoRenovacao === "automatica_cartao" ? "cartão com renovação automática" : "renovação manual")}</p></dt><dd className="text-right text-2xl font-extrabold text-primary">{aguardandoCupom ? "Calculando…" : cupomSemCotacao ? "—" : brl(valorCobrado)}</dd></div>{promoAplicado?.duracao === "primeiro_mes" && <div className="flex items-start justify-between gap-4 text-xs text-muted-foreground"><dt>Após a promoção</dt><dd>{brl(valorTotal)} por período</dd></div>}</dl>
             <div className="mt-5 grid gap-2 rounded-xl border bg-background/70 p-3 text-xs text-muted-foreground sm:grid-cols-2"><p><span className="font-semibold text-foreground">Clínica:</span> {dados.clinica_nome || "Dados informados na etapa 1"}</p><p><span className="font-semibold text-foreground">Responsável:</span> {dados.responsavel_nome || "Dados informados na etapa 2"}</p></div>
             <div id="oricse-promo-checkout" className="mt-5 flex-1 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.025] p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><TicketPercent size={19} className="text-primary"/><h3 className="font-bold">Código promocional</h3></div><p className="mt-1 text-sm text-muted-foreground">Tem um cupom? Aplique-o antes de seguir para o pagamento.</p></div>{promoAplicado && <button type="button" onClick={()=>{setCodigoPromocional("");limparPromocao();}} className="text-sm font-bold text-primary underline underline-offset-4">Remover código</button>}</div>
-          <div className="mt-4 flex flex-col gap-2"><input aria-label="Código promocional" value={codigoPromocional} onChange={e=>{setCodigoPromocional(e.target.value.toUpperCase());setErroPromo("");}} onKeyDown={e=>{if(e.key === "Enter"){e.preventDefault();void aplicarCodigoPromocional();}}} placeholder="DIGITE SEU CÓDIGO" className="min-h-12 flex-1 rounded-xl border bg-background px-4 font-bold tracking-wide uppercase outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"/><button type="button" onClick={()=>void aplicarCodigoPromocional()} disabled={validandoPromo} className="min-h-12 rounded-xl bg-primary px-5 font-bold text-primary-foreground disabled:opacity-60">{validandoPromo ? "Validando..." : promoAplicado ? "Atualizar código" : "Aplicar código"}</button></div>
-          {erroPromo && <p role="alert" className="mt-3 text-sm font-semibold text-destructive">{erroPromo}</p>}
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><TicketPercent size={19} className="text-primary"/><h3 className="font-bold">Código promocional</h3></div><p className="mt-1 text-sm text-muted-foreground">Tem um cupom? Aplique-o antes de seguir para o pagamento.</p></div>{codigoSelecionado && <button type="button" disabled={validandoPromo} onClick={removerCodigoPromocional} className="text-sm font-bold text-primary underline underline-offset-4">Remover código</button>}</div>
+          <div className="mt-4 flex flex-col gap-2"><input aria-label="Código promocional" disabled={validandoPromo} value={codigoPromocional} onChange={e=>{setCodigoPromocional(e.target.value.toUpperCase());setErroPromo("");}} onKeyDown={e=>{if(e.key === "Enter"){e.preventDefault();void aplicarCodigoPromocional();}}} placeholder="DIGITE SEU CÓDIGO" className="min-h-12 flex-1 rounded-xl border bg-background px-4 font-bold tracking-wide uppercase outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"/><button type="button" onClick={()=>void aplicarCodigoPromocional()} disabled={validandoPromo || valorTotal <= 0} className="min-h-12 rounded-xl bg-primary px-5 font-bold text-primary-foreground disabled:opacity-60">{validandoPromo ? "Validando..." : codigoSelecionado ? "Atualizar código" : "Aplicar código"}</button></div>
+          {(erroPromo || cotacaoPromo.error) && <p role="alert" className="mt-3 text-sm font-semibold text-destructive">{erroPromo || cotacaoPromo.error?.message}</p>}
+          {cupomSemCotacao && <p role="status" className="mt-3 text-sm font-semibold">{aguardandoCupom ? `Recalculando o desconto do código ${codigoSelecionado}…` : `Código ${codigoSelecionado} mantido na contratação.`}</p>}
           {promoAplicado && <p className="mt-3 flex items-center gap-2 text-sm font-bold text-emerald-700"><BadgeCheck size={17}/> Código {promoAplicado.codigo} aplicado: você economiza {brl(descontoPromocional)}.</p>}
         </div>
           </div>
@@ -654,9 +690,10 @@ function Contratar() {
         </label>
       </div>}
       <div className="mt-5 space-y-4 border-t pt-5 text-sm"><div className="flex items-start gap-3"><input id="aceitar-termos" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={termos} onChange={e=>setTermos(e.target.checked)}/><div><label htmlFor="aceitar-termos" className="cursor-pointer">Li e concordo com os </label><Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Termos de Uso <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div><div className="flex items-start gap-3"><input id="aceitar-privacidade" type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={privacidade} onChange={e=>setPrivacidade(e.target.checked)}/><div><label htmlFor="aceitar-privacidade" className="cursor-pointer">Li e concordo com a </label><Link to="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600 underline decoration-2 underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400">Política de Privacidade <ExternalLink size={14} aria-hidden="true"/></Link><span className="ml-1"> e tratamento de dados.</span><span className="ml-1 text-xs text-muted-foreground">(clique para ler)</span></div></div></div>
+      </fieldset>
     </section>}
 
-    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : "4. Pagamento"}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(Number(pedido?.valor_total??valorCobrado))} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>Desconto:</b> {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedidoIsento?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&!pedidoIsento&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}{pedidoIsento&&pedido?.id&&<a href={`/contratacao-recebida?retorno=isento&pedido=${encodeURIComponent(String(pedido.id))}`} className="mt-4 block w-full rounded-xl border border-primary px-4 py-3 text-center font-semibold text-primary">Ver solicitação recebida</a>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedidoIsento?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
+    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : "4. Pagamento"}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(valorDoPedido)} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>{codigoSelecionado ? `Código ${codigoSelecionado}:` : "Desconto:"}</b> − {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedidoIsento?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&!pedidoIsento&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}{pedidoIsento&&pedido?.id&&<a href={`/contratacao-recebida?retorno=isento&pedido=${encodeURIComponent(String(pedido.id))}`} className="mt-4 block w-full rounded-xl border border-primary px-4 py-3 text-center font-semibold text-primary">Ver solicitação recebida</a>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedidoIsento?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
 
     {etapa===5 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">
       <Check className="mx-auto text-primary" size={42}/>
@@ -667,9 +704,9 @@ function Contratar() {
 
     {etapa<4 && erroValidacao && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm font-semibold text-destructive">{erroValidacao}</p>}
     {etapa<=3 && <div className="mt-5 flex items-center justify-between gap-3">
-      {etapa>1?<button type="button" onClick={()=>{setErroValidacao("");setEtapa(etapa-1);}} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> Voltar</button>:<span/>}
+      {etapa>1?<button type="button" disabled={enviando || validandoPromo} onClick={()=>{setErroValidacao("");setEtapa(etapa-1);}} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> Voltar</button>:<span/>}
       {etapa<3?<button type="button" onClick={()=>void avancarEtapa()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50">Continuar <ChevronRight size={18}/></button>
-      :<button type="button" disabled={enviando} onClick={()=>void continuarPagamento()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?"Enviando...":valorCobrado===0?"Enviar para aprovação":"Ir para pagamento"}</button>}
+      :<button type="button" disabled={enviando || validandoPromo || cupomSemCotacao} onClick={()=>void continuarPagamento()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?"Enviando...":valorCobrado===0?"Enviar para aprovação":"Ir para pagamento"}</button>}
     </div>}
   </div></main>;
 }
