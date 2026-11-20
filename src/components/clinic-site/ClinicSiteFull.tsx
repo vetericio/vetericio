@@ -1253,14 +1253,14 @@ export function ClinicSiteFull({
 
       {isVetericio ? (
         <>
+          <VetericioCareComparison actionHref={actionHref} />
+          {visible("sobre") && <VetericioAbout actionHref={actionHref} />}
           <VetericioHero
             title={config.slogan}
             description={config.description}
             actionHref={actionHref}
             poster="/clinic-site/vetericio/meow-cruella-hero.webp"
           />
-          {visible("sobre") && <VetericioAbout actionHref={actionHref} />}
-          <VetericioCareComparison />
           <VetericioVisitSteps />
         </>
       ) : prime ? (
