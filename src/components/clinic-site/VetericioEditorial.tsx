@@ -30,7 +30,7 @@ export function VetericioHeader({
   links: { href: string; label: string }[];
 }) {
   return (
-    <header className="border-b border-[#003D4C]/10 bg-[#FCFAF6] text-[#003D4C]">
+    <header id="inicio" className="border-b border-[#003D4C]/10 bg-[#FCFAF6] text-[#003D4C]">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-4 px-5 sm:px-9">
         <div className="flex min-h-[72px] min-w-0 items-center">{brand}</div>
         <nav
@@ -119,7 +119,7 @@ export function VetericioHero({
   }, []);
 
   return (
-    <section id="inicio" data-clinic-section="inicio" className="relative bg-[#FCFAF6]">
+    <section id="video" aria-labelledby="vetericio-video-title" className="relative bg-[#FCFAF6]">
       <div
         ref={mediaRef}
         className="relative aspect-[4/3] overflow-hidden bg-[#063742] sm:aspect-[16/9] lg:aspect-auto lg:h-[clamp(33rem,68svh,49rem)]"
@@ -129,7 +129,7 @@ export function VetericioHero({
           alt=""
           width={1600}
           height={900}
-          fetchPriority="high"
+          loading="lazy"
           className="absolute inset-0 h-full w-full object-cover object-[55%_45%] lg:left-[25%] lg:w-3/4"
         />
         <video
@@ -155,7 +155,7 @@ export function VetericioHero({
           <button
             type="button"
             onClick={() => togglePlayback.current()}
-            aria-label={playing ? "Pausar vídeo de abertura" : "Reproduzir vídeo de abertura"}
+            aria-label={playing ? "Pausar vídeo" : "Reproduzir vídeo"}
             className="absolute bottom-4 right-4 z-20 grid size-11 place-items-center rounded-full border border-white/65 bg-[#002C36]/85 text-white hover:bg-[#002C36] sm:bottom-6 sm:right-6"
           >
             {playing ? (
@@ -168,9 +168,12 @@ export function VetericioHero({
       </div>
       <div className="relative mx-auto max-w-[1440px] px-5 py-9 sm:px-9 sm:py-12 lg:pointer-events-none lg:absolute lg:inset-0 lg:z-10 lg:flex lg:items-center lg:px-16 xl:px-24">
         <div className="max-w-xl text-[#003D4C] lg:pointer-events-auto lg:text-white">
-          <h1 className="text-balance font-serif text-[clamp(2.5rem,6vw,4.75rem)] leading-[.99] tracking-[-.04em]">
+          <h2
+            id="vetericio-video-title"
+            className="text-balance font-serif text-[clamp(2.5rem,6vw,4.75rem)] leading-[.99] tracking-[-.04em]"
+          >
             {title}
-          </h1>
+          </h2>
           <p className="mt-5 max-w-[33rem] text-[15px] leading-7 lg:text-[17px] lg:leading-8">
             {description}
           </p>
@@ -215,10 +218,10 @@ export function VetericioAbout({ actionHref }: { actionHref: string }) {
           </a>
         </div>
         <img
-          src={`${mediaRoot}/meow.webp`}
-          alt="Meow, um gato cinza e branco"
-          width={1000}
-          height={750}
+          src={`${mediaRoot}/meow-em-casa.webp`}
+          alt="Meow, um gato cinza e branco, descansando na caminha em casa"
+          width={1200}
+          height={900}
           loading="lazy"
           decoding="async"
           className="aspect-[5/4] h-full max-h-[620px] w-full object-cover object-center sm:aspect-[4/3] md:aspect-auto md:min-h-[420px]"

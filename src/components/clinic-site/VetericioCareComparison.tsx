@@ -1,112 +1,65 @@
-import { Hospital, House } from "lucide-react";
+import { ArrowRight, Check, Hospital, House } from "lucide-react";
 
-const careSettings = [
-  {
-    title: "Em casa",
-    icon: House,
-    cardStyle: "border-[#003D4C]/30 bg-[#E6F1EE]",
-    iconStyle: "bg-[#003D4C] text-white",
-    benefits: [
-      {
-        title: "Mais conforto para o pet",
-        description:
-          "Ele fica perto de você, no ambiente que conhece. Isso pode deixar a consulta mais tranquila para gatos e pets que ficam agitados no trajeto.",
-      },
-      {
-        title: "Mais praticidade para você",
-        description:
-          "Você recebe a equipe com hora marcada, sem ter que organizar o transporte, pegar trânsito ou passar pela sala de espera.",
-      },
-      {
-        title: "Uma avaliação que leva a rotina em conta",
-        description:
-          "O veterinário pode observar como seu pet se movimenta, onde come e como descansa. Esses detalhes ajudam a orientar o cuidado.",
-      },
-    ],
-    noteTitle: "E se precisar do hospital?",
-    note: "Se o procedimento exigir estrutura hospitalar, a equipe da Veterício leva seu pet ao hospital e realiza todo o procedimento lá.",
-  },
-  {
-    title: "No hospital veterinário",
-    icon: Hospital,
-    cardStyle: "border-[#003D4C]/15 bg-[#FFFCF8]",
-    iconStyle: "bg-[#F9E9DC] text-[#9D3D1D]",
-    benefits: [
-      {
-        title: "Estrutura para procedimentos",
-        description:
-          "Equipamentos para exames e centro cirúrgico, conforme os recursos de cada hospital.",
-      },
-      {
-        title: "Internação e monitoramento",
-        description:
-          "Quando o pet precisa ficar em observação, o hospital pode oferecer acompanhamento e cuidados intensivos conforme a estrutura disponível.",
-      },
-      {
-        title: "Pronto atendimento em emergências",
-        description:
-          "Em caso de emergência, procure diretamente um hospital veterinário com pronto atendimento.",
-      },
-    ],
-    noteTitle: "O que considerar na ida",
-    note: "A ida envolve deslocamento e pode ter espera. Alguns pets ficam mais agitados durante o trajeto ou em um ambiente desconhecido.",
-  },
-] as const;
+const homeBenefits = [
+  "Seu pet fica perto de você, no lugar que conhece.",
+  "Você evita o trânsito e a sala de espera.",
+  "Avaliamos seu pet no ambiente onde ele vive.",
+];
 
-export function VetericioCareComparison() {
+export function VetericioCareComparison({ actionHref }: { actionHref: string }) {
   return (
     <section
       id="em-casa"
+      data-clinic-section="inicio"
       aria-labelledby="vetericio-care-comparison-title"
-      className="scroll-mt-24 bg-[#FBF6EF] px-5 py-16 text-[#003D4C] sm:px-8 sm:py-24"
+      className="bg-[#FBF6EF] px-5 py-10 text-[#003D4C] sm:px-8 sm:py-16"
     >
       <div className="mx-auto max-w-7xl">
-        <div className="max-w-3xl">
-          <h2
-            id="vetericio-care-comparison-title"
-            className="text-balance font-serif text-4xl leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl"
-          >
-            O que muda quando o veterinário vai até o pet
-          </h2>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#36555B] sm:text-lg">
-            Na consulta de rotina, o veterinário pode ir até vocês. Compare o conforto de receber a
-            equipe em casa com os recursos que o hospital oferece quando o caso pede mais estrutura.
-          </p>
+        <h1
+          id="vetericio-care-comparison-title"
+          className="max-w-3xl text-balance font-serif text-[clamp(2.35rem,5vw,4.5rem)] leading-[1.02] tracking-tight"
+        >
+          Seu pet fica em casa. O veterinário vai até ele.
+        </h1>
+        <div className="mt-7 grid gap-3 md:grid-cols-[1.2fr_1fr] lg:mt-9 lg:gap-5">
+          <article className="rounded-2xl bg-[#003D4C] p-5 text-white sm:p-7 lg:p-8">
+            <h2 className="flex items-center gap-3 text-xl font-semibold sm:text-2xl">
+              <House className="shrink-0 text-[#BEE5DE]" size={27} aria-hidden="true" />
+              Em casa
+            </h2>
+            <ul role="list" className="mt-5 space-y-2.5 text-sm leading-relaxed sm:text-base">
+              {homeBenefits.map((benefit) => (
+                <li key={benefit} className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 shrink-0 text-[#BEE5DE]" size={19} aria-hidden="true" />
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+            <a
+              href={actionHref}
+              className="mt-6 inline-flex min-h-12 items-center gap-3 rounded-full bg-[#F6DFCB] px-5 text-sm font-semibold text-[#003D4C] hover:bg-white"
+            >
+              Agendar visita em casa <ArrowRight size={17} aria-hidden="true" />
+            </a>
+          </article>
+          <article className="rounded-2xl border border-[#003D4C]/20 bg-[#FFFCF8] p-5 sm:p-7 lg:p-8">
+            <h2 className="flex items-center gap-3 text-xl font-semibold sm:text-2xl">
+              <Hospital className="shrink-0 text-[#9D3D1D]" size={27} aria-hidden="true" />
+              No hospital
+            </h2>
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-[#36555B] sm:text-base">
+              Para cirurgias, internação e exames que exigem estrutura hospitalar.
+            </p>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-[#36555B] sm:text-base">
+              <strong className="font-semibold text-[#003D4C]">Em emergência,</strong> vá direto a
+              um hospital veterinário com pronto atendimento.
+            </p>
+          </article>
         </div>
-
-        <div className="mt-9 grid gap-4 md:grid-cols-2 lg:mt-12 lg:gap-5">
-          {careSettings.map(
-            ({ title, icon: Icon, cardStyle, iconStyle, benefits, noteTitle, note }) => (
-              <article
-                key={title}
-                className={`grid gap-y-5 rounded-2xl border p-5 sm:p-7 md:row-span-3 md:grid-rows-subgrid lg:p-8 ${cardStyle}`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`grid size-11 shrink-0 place-items-center rounded-full ${iconStyle}`}
-                  >
-                    <Icon size={21} strokeWidth={1.7} aria-hidden="true" />
-                  </span>
-                  <h3 className="text-xl font-semibold leading-tight sm:text-2xl">{title}</h3>
-                </div>
-                <ul className="space-y-4 border-t border-[#003D4C]/15 pt-5">
-                  {benefits.map(({ title, description }) => (
-                    <li key={title}>
-                      <h4 className="font-semibold">{title}</h4>
-                      <p className="mt-1 text-sm leading-relaxed text-[#36555B] sm:text-base">
-                        {description}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-                <div className="border-t border-[#003D4C]/15 pt-4">
-                  <h4 className="text-sm font-semibold text-[#9D3D1D]">{noteTitle}</h4>
-                  <p className="mt-2 text-sm leading-relaxed text-[#36555B] sm:text-base">{note}</p>
-                </div>
-              </article>
-            ),
-          )}
-        </div>
+        <p className="mt-5 max-w-3xl text-sm leading-relaxed text-[#36555B] sm:text-base">
+          Se a visita indicar um procedimento no hospital, a Veterício leva seu pet e faz o
+          procedimento lá.
+        </p>
       </div>
     </section>
   );
