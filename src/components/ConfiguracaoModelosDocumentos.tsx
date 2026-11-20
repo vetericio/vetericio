@@ -112,7 +112,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaI
       const texto = await file.text();
       if (texto.length > 25000) return toast.error("O texto deve ter até 25 mil caracteres.");
       const categoriaBase = categoria !== "todos" ? padroes.find(item => item.categoria === categoria) : undefined;
-      setSelecionado({ ...novo(categoriaBase), texto });
+      setSelecionado({ ...novo(categoriaBase), texto: extrairCorpoModeloClinico(texto) });
       toast.info("Texto importado para o corpo. Confira e salve.");
     } catch { toast.error("Não foi possível ler o arquivo."); }
   }
