@@ -102,3 +102,48 @@ export const obterDocumentoPreventivo = createServerFn({ method: "POST" })
     if (pendencias.length) throw new Error("Complete ou confira: " + pendencias.join(", ") + ".");
     return { tipo: data.tipo, ato, profissional, paciente, tutor: ficha.tutor, estabelecimento };
   });
+
+/**
+ * Captura a data/hora da gravação e o município do contrato da clínica ativa.
+ * Não recebe local nem horário do formulário, evitando dados digitados arbitrariamente.
+ */
+const momentoAplicacaoSchema = z.object({
+  accessToken: z.string().min(20),
+  clinicaId: z.string().uuid(),
+});
+
+export const obterMomentoLocalAplicacao = createServerFn({ method: "POST" })
+  .validator((entrada: unknown) => momentoAplicacaoSchema.parse(entrada))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin: admin } = await import("@/integrations/supabase/client.server");
+    const { data: sessao, error: erroSessao } = await admin.auth.getUser(data.accessToken);
+    if (erroSessao || !sessao.user) throw new Error("Sua sessão expirou. Entre novamente.");
+    await exigirPermissaoClinica(admin, sessao.user.id, data.clinicaId, ["consultorio.atendimentos"], data.accessToken);
+
+    const { data: contrato, error: erroContrato } = await admin.from("oricse_contratacoes")
+      .select("clinica_cidade,clinica_uf")
+      .eq("clinica_criada_id", data.clinicaId)
+      .is("excluido_em", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (erroContrato) throw new Error("Não foi possível consultar a cidade da clínica.");
+    const cidade = texto(contrato?.clinica_cidade);
+    const uf = texto(contrato?.clinica_uf).toUpperCase();
+    if (!cidade) throw new Error("Cadastre a cidade da clínica antes de registrar a aplicação.");
+
+    const agora = new Date();
+    const zona = "America/Sao_Paulo";
+    const dataAplicacao = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(agora);
+    const horaAplicacao = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: zona, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).format(agora);
+    return {
+      data: dataAplicacao,
+      hora: horaAplicacao,
+      local: [cidade, uf].filter(Boolean).join("/"),
+      registradoEm: agora.toISOString(),
+    };
+  });

@@ -32,6 +32,7 @@ import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
+import { obterMomentoLocalAplicacao } from "@/lib/documento-preventivo.functions";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, vacinasPredefinidas, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
@@ -381,6 +382,26 @@ function AnimalFicha() {
     return () => { ativo = false; };
   }, [tipoPreventivo, preventivoEmEdicao]);
 
+  // Prévia da cidade e do horário, sem confiar no relógio local na gravação.
+  useEffect(() => {
+    if (!tipoPreventivo || preventivoEmEdicao || !clinicaId) return;
+    let ativo = true;
+    void (async () => {
+      const { data: sessao } = await supabaseBanco.auth.getSession();
+      const accessToken = sessao.session?.access_token;
+      if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente.");
+      const momento = await obterMomentoLocalAplicacao({ data: { accessToken, clinicaId } });
+      if (!ativo) return;
+      setData(momento.data);
+      setDadosPreventivos(atual => ({
+        ...atual, hora_aplicacao: momento.hora, local_aplicacao: momento.local,
+      }));
+    })().catch(erro => {
+      if (ativo) toast.error(erro instanceof Error ? erro.message : "Não foi possível identificar a clínica.");
+    });
+    return () => { ativo = false; };
+  }, [tipoPreventivo, preventivoEmEdicao, clinicaId]);
+
   async function carregarConteudosPortal() {
     if (!animalId) return;
     try {
@@ -618,8 +639,12 @@ function AnimalFicha() {
     setTipoVacina(id);
     if (id === "outro") {
       setTitulo("");
-      setDadosPreventivos(camposPreventivos);
-      setData("");
+      setDadosPreventivos(atual => ({
+        ...camposPreventivos,
+        hora_aplicacao: atual.hora_aplicacao,
+        local_aplicacao: atual.local_aplicacao,
+      }));
+      setData(hojeNoBrasil());
       setReforcoEm("");
       setLote("");
       setDetalhe("");
@@ -653,20 +678,32 @@ function AnimalFicha() {
           if (!anterior && (!profissional?.nome || !profissional.crmv || erroProfissional)) {
             throw new Error(erroProfissional || "Aguarde a identificação do perfil profissional.");
           }
+          // Novos atos recebem o instante e a cidade do servidor ao salvar.
+          // Edições preservam os dados históricos da aplicação.
+          let momento: { data: string; hora: string; local: string } | null = null;
+          if (!anterior) {
+            const { data: sessao } = await supabaseBanco.auth.getSession();
+            const accessToken = sessao.session?.access_token;
+            if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente.");
+            momento = await obterMomentoLocalAplicacao({ data: { accessToken, clinicaId } });
+          }
           const campos = normalizarCamposPreventivos({
             ...dadosPreventivos,
+            hora_aplicacao: anterior ? anterior.hora_aplicacao : momento?.hora,
+            local_aplicacao: anterior ? anterior.local_aplicacao : momento?.local,
             veterinario_nome: anterior ? anterior.veterinario_nome : profissional?.nome,
             veterinario_crmv: anterior ? anterior.veterinario_crmv : profissional?.numeroCrmv,
             veterinario_uf: anterior ? anterior.veterinario_uf : profissional?.uf,
           });
           const dataAnterior = anterior ? ("aplicada_em" in anterior ? anterior.aplicada_em : anterior.administrado_em) : null;
+          const dataAplicacao = anterior ? dataAnterior || "" : momento?.data || "";
           const retornoAnterior = anterior ? ("reforco_em" in anterior ? anterior.reforco_em : anterior.proxima_dose_em) : null;
           const legadoIncompleto = anterior && pendenciasPreventivo(tipoPreventivo, {
             ...normalizarCamposPreventivos(anterior), nome: anterior.nome, data: dataAnterior || "",
             lote: anterior.lote || "", retorno: retornoAnterior || "",
           }).length > 0;
           const pendencias = pendenciasPreventivo(tipoPreventivo, {
-            ...campos, nome: titulo, data, lote, retorno: reforcoEm,
+            ...campos, nome: titulo, data: dataAplicacao, lote, retorno: reforcoEm,
           }, !legadoIncompleto);
           if (pendencias.length) throw new Error("Confira: " + pendencias.join(", ") + ".");
           if (animal.id !== animalId || (anterior && anterior.animal_id !== animal.id)) {
@@ -682,8 +719,8 @@ function AnimalFicha() {
           const clinicaAnimal = { clinica_id: clinicaId, animal_id: animal.id };
           const vacinas = supabaseBanco.from("oricse_portal_vacinas");
           const vermifugos = supabaseBanco.from("oricse_portal_vermifugos");
-          const camposVacina = { ...comuns, aplicada_em: data || null, reforco_em: reforcoEm || null, alvo_vacinacao: campos.alvo_vacinacao || null };
-          const camposVermifugo = { ...comuns, administrado_em: data || null, proxima_dose_em: reforcoEm || null, principio_ativo: campos.principio_ativo || null, via: campos.via || null };
+          const camposVacina = { ...comuns, aplicada_em: dataAplicacao || null, reforco_em: reforcoEm || null, alvo_vacinacao: campos.alvo_vacinacao || null };
+          const camposVermifugo = { ...comuns, administrado_em: dataAplicacao || null, proxima_dose_em: reforcoEm || null, principio_ativo: campos.principio_ativo || null, via: campos.via || null };
           const salvo = tipoPreventivo === "vacina"
             ? await (anterior
               ? vacinas.update(camposVacina).eq("id", anterior.id).match(clinicaAnimal)
@@ -1158,9 +1195,13 @@ function AnimalFicha() {
                     <input
                       type="date"
                       value={data}
-                      onChange={(e) => setData(e.target.value)}
+                      readOnly={Boolean(tipoPreventivo)}
+                      onChange={tipoPreventivo ? undefined : (e) => setData(e.target.value)}
                       className="mt-1 min-h-11 w-full rounded-xl border px-3"
                     />
+                    {tipoPreventivo && <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                      {preventivoEmEdicao ? "Data histórica do ato, preservada na edição." : "Data automática, confirmada no momento de salvar."}
+                    </span>}
                   </label>
                   <label className="block text-sm font-bold">
                     {tipoPreventivo === "vacina" ? "Nome comercial da vacina" : tipoPreventivo === "vermifugo" ? "Produto administrado" : "Título"}
@@ -1383,8 +1424,6 @@ function CamposDoPreventivo({ tipo, valores, onChange, profissional, erro }: {
     ["fabricante", tipo === "vacina" ? "Fabricante" : "Fabricante (quando disponível)"],
     ["fabricacao", "Fabricação", "DD/MM/AAAA ou MM/AAAA"],
     ["validade", "Validade", "DD/MM/AAAA ou MM/AAAA"],
-    ["hora_aplicacao", "Horário da aplicação"],
-    ["local_aplicacao", "Local da aplicação"],
   ];
   function campo(chave: keyof CamposPreventivos, rotulo: string, dica?: string) {
     return <label key={chave} className="block text-sm font-bold">
@@ -1406,6 +1445,21 @@ function CamposDoPreventivo({ tipo, valores, onChange, profissional, erro }: {
       <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
         <legend className="px-1 text-sm font-black">Produto e aplicação</legend>
         {campos.map(([chave, rotulo, dica]) => campo(chave, rotulo, dica))}
+        <div className="block text-sm font-bold">
+          Horário da aplicação
+          <div className="mt-1 flex min-h-11 items-center rounded-xl border bg-muted/30 px-3 font-normal">
+            {valores.hora_aplicacao || "Automático ao salvar"}
+          </div>
+        </div>
+        <div className="block text-sm font-bold">
+          Município da aplicação
+          <div className="mt-1 flex min-h-11 items-center rounded-xl border bg-muted/30 px-3 font-normal">
+            {valores.local_aplicacao || "Cidade da clínica, ao salvar"}
+          </div>
+        </div>
+        <p className="text-xs font-normal text-muted-foreground sm:col-span-2">
+          Data, horário e município são preenchidos automaticamente. A edição preserva o registro original.
+        </p>
       </fieldset>
       <fieldset className="grid gap-3 rounded-xl border p-3 sm:grid-cols-2">
         <legend className="px-1 text-sm font-black">Médico-veterinário responsável pelo ato</legend>
