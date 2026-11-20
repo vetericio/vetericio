@@ -8,7 +8,7 @@ import {
 } from "@/lib/configuracoes-clinica.functions";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
-  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, limparOrientacoesPadraoReceita, preencherTextoDocumento,
+  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, limparOrientacoesPadraoReceita, obterTemaDocumentoPremium, preencherTextoDocumento,
   urlFundoDocumento, valoresModeloDocumento, type TipoModeloDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao,
 } from "@/lib/modelos-documentos";
 
@@ -28,7 +28,7 @@ const coresQuadros = [
 const exemplo = { paciente: "Luna", especie: "Canina", raca: "Sem raça definida", tutor: "Marina Exemplo", data: "13/11/2026" };
 const identificacaoExemplo = {
   paciente: { nome: exemplo.paciente, especie: exemplo.especie, raca: exemplo.raca, sexo: "Fêmea",
-    idade: "4 anos", peso: "11 kg", pelagem: "Caramelo", microchip: "Identificador fictício" },
+    idade: "4 anos", peso: "11 kg", pelagem: "Caramelo", castrado: "Sim", microchip: "Identificador fictício" },
   tutor: { nome: exemplo.tutor, cpf: "CPF fictício", nascimento: "15/05/1992",
     telefone: "Telefone fictício", endereco: "Rua de Exemplo, 100" },
 };
@@ -177,17 +177,49 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           })}><Save size={16} /> Salvar dados dos documentos</button>
         </details>
         <fieldset>
-          <legend className="mb-2 text-sm font-semibold">Fundo do documento</legend>
+          <legend className="mb-2 text-sm font-semibold">Fundo e tema do documento</legend>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Os temas premium funcionam com a logo e os dados desta clínica. A escolha é independente para cada tipo de documento.
+          </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-6">
-            {[["", "Sem fundo"], ...FUNDOS_DOCUMENTOS].map(([id, nome]) => (
-              <button type="button" key={id} aria-pressed={modelo.fundo === id} onClick={() => atualizar({ fundo: id })}
-                className={`rounded-lg border p-2 text-left text-xs ${modelo.fundo === id ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:bg-muted"}`}>
-                <div className="aspect-[210/297] overflow-hidden rounded border bg-white">
-                  {id && <img src={urlFundoDocumento(id, true)} alt="" width={160} height={227} loading="lazy" className="h-full w-full object-cover" />}
-                </div>
-                <span className="mt-1.5 block font-medium">{nome}</span>
-              </button>
-            ))}
+            {[["", "Sem fundo"], ...FUNDOS_DOCUMENTOS].map(([id, nome]) => {
+              const tema = obterTemaDocumentoPremium(id);
+              const centralizado = id === "14";
+              const logoMiniatura = identidade.logoUrl || identidade.logoAlternativa;
+              return (
+                <button type="button" key={id} aria-pressed={modelo.fundo === id}
+                  onClick={() => atualizar({ fundo: id, ...(tema ? { corQuadros: tema.acento } : {}) })}
+                  className={`rounded-lg border p-2 text-left text-xs ${modelo.fundo === id ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:bg-muted"}`}>
+                  <div className="aspect-[210/297] overflow-hidden rounded border bg-white">
+                    {tema ? <div className="relative flex h-full flex-col overflow-hidden p-2" style={{ backgroundColor: tema.papel, color: tema.texto }}>
+                      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: tema.acento }} />
+                      <div className={`flex min-h-8 items-center gap-1 ${centralizado ? "flex-col justify-center" : ""} ${id === "15" ? "rounded-sm px-1 py-1" : ""}`}
+                        style={id === "15" ? { backgroundColor: tema.acento, color: "#ffffff" } : undefined}>
+                        {logoMiniatura ? <img src={logoMiniatura} alt="" loading="lazy" className="h-5 max-w-7 object-contain"
+                          style={id === "15" ? { backgroundColor: "#ffffff", borderRadius: 3 } : undefined} /> :
+                          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-sm border text-[5px]" style={{ borderColor: tema.acento }}>LOGO</span>}
+                        <span className="min-w-0 truncate text-[7px] font-bold">{identidade.nome || "Sua clínica"}</span>
+                      </div>
+                      <div className={`my-2 font-serif text-[11px] ${centralizado ? "text-center tracking-widest" : ""}`}>
+                        {tipo === "receita" ? "Receituário" : DOCUMENTOS[tipo].titulo}
+                      </div>
+                      <div className="mb-2 h-px" style={{ backgroundColor: tema.acento }} />
+                      <div className="grid grid-cols-2 gap-1">
+                        {["PACIENTE", "TUTOR"].map(titulo => <div key={titulo} className="rounded-sm border px-1 py-1 text-left"
+                          style={{ backgroundColor: tema.quadro, borderColor: tema.borda }}>
+                          <div className="mb-1 text-[5px] font-bold" style={{ color: tema.acento }}>{titulo}</div>
+                          <div className="space-y-1">{[0,1,2].map(n => <div key={n} className="h-px opacity-30" style={{ backgroundColor: tema.texto, width: `${92 - n * 12}%` }} />)}</div>
+                        </div>)}
+                      </div>
+                      <div className="mt-3 text-[7px] font-bold" style={{ color: tema.acento }}>PRESCRIÇÃO</div>
+                      <div className="mt-1 space-y-1">{[0,1,2,3].map(n => <div key={n} className="h-px opacity-20" style={{ backgroundColor: tema.texto, width: `${95 - n * 9}%` }} />)}</div>
+                      <div className="mt-auto mx-auto mb-2 h-px w-1/2" style={{ backgroundColor: tema.acento }} />
+                    </div> : id && <img src={urlFundoDocumento(id, true)} alt="" width={160} height={227} loading="lazy" className="h-full w-full object-cover" />}
+                  </div>
+                  <span className="mt-1.5 block font-medium">{nome}</span>
+                </button>
+              );
+            })}
           </div>
         </fieldset>
         <fieldset>
@@ -262,7 +294,7 @@ async function gerarPrevia(identidade: IdentidadeDocumento, modelo: ModeloDocume
       demonstrativo: true, tipo: "normal", papel, paciente: paciente.nome, tutor: tutor.nome,
       telefoneTutor: tutor.telefone, enderecoTutor: tutor.endereco, cpfTutor: tutor.cpf, nascimentoTutor: tutor.nascimento,
       especie: paciente.especie, raca: paciente.raca, sexo: paciente.sexo, peso: "11", idade: paciente.idade,
-      pelagem: paciente.pelagem, microchip: paciente.microchip, data: exemplo.data, endereco: identidade.endereco,
+      pelagem: paciente.pelagem, castrado: paciente.castrado, microchip: paciente.microchip, data: exemplo.data, endereco: identidade.endereco,
       itens: [{ id: "exemplo", medicamento: "Medicamento fictício", apresentacao: "Apresentação de exemplo",
         quantidade: "", forma: "", intervalo: "", dias: "", observacao: "" }],
       observacoes: corpo, profissional: { nomeCompleto: "Dra. Ana Exemplo", crmv: "fictício", crmvUf: "MG" },

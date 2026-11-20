@@ -1,5 +1,5 @@
 import type { jsPDF } from "jspdf";
-import { COR_QUADROS_PADRAO, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao } from "@/lib/modelos-documentos";
+import { COR_QUADROS_PADRAO, obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao, type TemaDocumentoPremium } from "@/lib/modelos-documentos";
 
 export type PapelDocumento = {
   clinica: IdentidadeDocumento;
@@ -7,6 +7,7 @@ export type PapelDocumento = {
   logo: string;
   protegerLeitura?: boolean;
   corQuadros?: string;
+  tema?: TemaDocumentoPremium | null;
 };
 
 export async function carregarLogoDocumento(url: string): Promise<string> {
@@ -49,12 +50,92 @@ export async function prepararPapelDocumento(clinica: IdentidadeDocumento, model
     }) : null,
     prepararLogoDocumento(clinica, modelo.usarLogo),
   ]);
-  return { clinica, fundo, logo, corQuadros: modelo.corQuadros, protegerLeitura: ["04", "05", "07", "08", "09", "10"].includes(modelo.fundo) };
+  return {
+    clinica, fundo, logo, corQuadros: modelo.corQuadros,
+    tema: obterTemaDocumentoPremium(modelo.fundo),
+    protegerLeitura: ["04", "05", "07", "08", "09", "10"].includes(modelo.fundo),
+  };
+}
+
+
+// Temas vetoriais: margens, cores e ornamentos permanecem nítidos no PDF A4.
+// A logo e a identificação são inseridas separadamente para cada clínica.
+function desenharTemaPremiumDocumento(pdf: jsPDF, tema: TemaDocumentoPremium) {
+  const largura = pdf.internal.pageSize.getWidth();
+  const altura = pdf.internal.pageSize.getHeight();
+  const m = largura * 0.036;
+  pdf.setFillColor(tema.papel);
+  pdf.rect(0, 0, largura, altura, "F");
+  const linha = (y: number, cor: string = tema.acento, espessura = 0.6) => {
+    pdf.setDrawColor(cor);
+    pdf.setLineWidth(espessura);
+    pdf.line(m, y, largura - m, y);
+  };
+  if (tema.id === "13") {
+    pdf.setFillColor("#111111");
+    pdf.rect(0, 0, largura, altura * 0.006, "F");
+    pdf.rect(0, altura * 0.992, largura, altura * 0.008, "F");
+    linha(altura * 0.092, "#242424", 0.75);
+  } else if (tema.id === "14") {
+    pdf.setDrawColor("#bc984f");
+    pdf.setLineWidth(0.65);
+    pdf.rect(m, altura * 0.013, largura - m * 2, altura * 0.967, "S");
+    pdf.setLineWidth(0.25);
+    pdf.rect(m * 1.25, altura * 0.018, largura - m * 2.5, altura * 0.957, "S");
+    linha(altura * 0.088, "#c3a06a", 0.4);
+  } else if (tema.id === "15") {
+    pdf.setFillColor("#64243d");
+    pdf.rect(0, 0, largura, altura * 0.119, "F");
+    pdf.setDrawColor("#d8abb9");
+    pdf.setLineWidth(0.5);
+    pdf.line(m, altura * 0.982, largura - m, altura * 0.982);
+    for (let n = 0; n < 3; n++) {
+      pdf.setDrawColor(n === 0 ? "#edd3d9" : "#e8c7d2");
+      pdf.ellipse(largura * 0.965, altura * 0.175, largura * (0.06 + n * 0.03), altura * (0.022 + n * 0.01), "S");
+    }
+  } else if (tema.id === "16") {
+    pdf.setFillColor("#00899a");
+    pdf.rect(0, 0, largura, altura * 0.009, "F");
+    linha(altura * 0.107, "#00899a", 0.6);
+    pdf.setDrawColor("#d6eff0");
+    pdf.setLineWidth(0.6);
+    for (let n = 0; n < 3; n++) {
+      pdf.ellipse(largura * 0.98, altura * (0.43 + n * 0.022), largura * 0.09, altura * 0.023, "S");
+    }
+  } else if (tema.id === "17") {
+    pdf.setFillColor("#e9f0e7");
+    pdf.roundedRect(m, altura * 0.022, largura - m * 2, altura * 0.084, m * 0.25, m * 0.25, "F");
+    linha(altura * 0.111, "#8aa68d", 0.4);
+    pdf.setDrawColor("#90ac93");
+    pdf.setLineWidth(0.55);
+    const bx = largura * 0.90, by = altura * 0.91;
+    pdf.line(bx, by, bx + largura * 0.027, by - altura * 0.105);
+    for (let n = 0; n < 5; n++) {
+      const y = by - altura * (0.02 + n * 0.019);
+      const x = bx + largura * (0.005 + n * 0.004);
+      pdf.ellipse(x + (n % 2 ? 5 : -5), y, 5, 2.4, "S");
+    }
+  } else if (tema.id === "18") {
+    pdf.setFillColor("#c97654");
+    pdf.rect(0, 0, largura, altura * 0.01, "F");
+    pdf.rect(0, altura * 0.989, largura, altura * 0.011, "F");
+    linha(altura * 0.12, "#c97654", 0.5);
+    pdf.setDrawColor("#edcdbf");
+    pdf.setLineWidth(0.6);
+    for (let n = 0; n < 3; n++) {
+      pdf.ellipse(largura * 0.98, altura * 0.22, largura * (0.11 + n * 0.03), altura * (0.042 + n * 0.02), "S");
+    }
+  }
+  pdf.setTextColor("#202020");
 }
 
 export function desenharPapelDocumento(pdf: jsPDF, papel: PapelDocumento) {
   const largura = pdf.internal.pageSize.getWidth();
   const altura = pdf.internal.pageSize.getHeight();
+  if (papel.tema) {
+    desenharTemaPremiumDocumento(pdf, papel.tema);
+    return;
+  }
   if (papel.fundo) {
     pdf.addImage(papel.fundo, "JPEG", 0, 0, largura, altura, "fundo-documento");
     if (!papel.protegerLeitura) return;
@@ -78,6 +159,51 @@ export type IdentificacaoDocumento = {
 export function desenharIdentidadeDocumento(pdf: jsPDF, papel: PapelDocumento, margem: number, inicio: number, fator = 1) {
   const { clinica, logo } = papel;
   const largura = pdf.internal.pageSize.getWidth() - margem * 2;
+  if (papel.tema) {
+    const tema = papel.tema;
+    const larguraPagina = pdf.internal.pageSize.getWidth();
+    const centro = larguraPagina / 2;
+    const atelier = tema.id === "14";
+    const vinho = tema.id === "15";
+    const topo = inicio - (atelier ? 15 : 12) * fator;
+    const maxLogoLargura = (atelier ? 16 : 24) * fator;
+    const maxLogoAltura = (atelier ? 14 : 19) * fator;
+    let larguraLogo = 0;
+    if (logo) {
+      const imagem = pdf.getImageProperties(logo);
+      const escala = Math.min(maxLogoLargura / imagem.width, maxLogoAltura / imagem.height);
+      larguraLogo = imagem.width * escala;
+      const xLogo = atelier ? centro - larguraLogo / 2 : margem;
+      if (vinho) {
+        pdf.setFillColor("#ffffff");
+        pdf.roundedRect(xLogo - 1 * fator, topo - 1 * fator, larguraLogo + 2 * fator, imagem.height * escala + 2 * fator, 1.4 * fator, 1.4 * fator, "F");
+      }
+      pdf.addImage(logo, "PNG", xLogo, topo, larguraLogo, imagem.height * escala, "logo-clinica");
+    }
+    const xTexto = atelier ? centro : margem + (logo ? maxLogoLargura + 3 * fator : 0);
+    const larguraTexto = atelier ? largura : larguraPagina - margem - xTexto;
+    const alinhamento = atelier ? "center" : "left";
+    const corTexto = vinho ? "#ffffff" : tema.texto;
+    pdf.setTextColor(corTexto);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(atelier ? 11 : 13);
+    const nome = pdf.splitTextToSize(clinica.nome, larguraTexto).slice(0, 2) as string[];
+    const nomeY = atelier ? inicio + 4 * fator : topo + 5 * fator;
+    nome.forEach((texto, indice) => pdf.text(texto, xTexto, nomeY + indice * 4.3 * fator, { align: alinhamento }));
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    const detalhes = [
+      clinica.razaoSocial !== clinica.nome ? clinica.razaoSocial : "",
+      [clinica.endereco, clinica.telefone].filter(Boolean).join(" · "),
+      [clinica.cnpj && `CNPJ ${clinica.cnpj}`, clinica.crmv && `CRMV ${clinica.crmv}`].filter(Boolean).join(" · "),
+      [clinica.email, clinica.site].filter(Boolean).join(" · "),
+    ].filter(Boolean).flatMap(valor => pdf.splitTextToSize(valor, larguraTexto) as string[]).slice(0, 5);
+    const detalhesY = nomeY + nome.length * 4.3 * fator + 1 * fator;
+    detalhes.forEach((texto, indice) => pdf.text(texto, xTexto, detalhesY + indice * 3.1 * fator, { align: alinhamento }));
+    pdf.setTextColor("#202020");
+    // O título do documento começa abaixo do cabeçalho, sem sobrepor a identidade.
+    return Math.max(inicio + (atelier ? 22 : 12) * fator, detalhesY + detalhes.length * 3.1 * fator + 4 * fator);
+  }
   const recuo = logo ? 35 * fator : 0;
   if (logo) {
     const imagem = pdf.getImageProperties(logo);
@@ -108,6 +234,7 @@ export function desenharIdentidadeDocumento(pdf: jsPDF, papel: PapelDocumento, m
 export function desenharIdentificacaoDocumento(
   pdf: jsPDF, { paciente, tutor }: IdentificacaoDocumento, margem: number, topo: number, fator = 1, cor = COR_QUADROS_PADRAO,
   estilo?: "receita",
+  tema?: TemaDocumentoPremium | null,
 ) {
   const receita = estilo === "receita";
   const espaco = 7 * fator;
@@ -159,14 +286,14 @@ export function desenharIdentificacaoDocumento(
   colunas.forEach(({ titulo }, indice) => {
     const x = margem + indice * (largura + espaco);
     if (receita) {
-      pdf.setFillColor("#fcfcfa");
-      pdf.setDrawColor("#d7ddda");
+      pdf.setFillColor(tema?.quadro || "#fcfcfa");
+      pdf.setDrawColor(tema?.borda || "#d7ddda");
       pdf.setLineWidth(0.2 * fator);
       pdf.roundedRect(x, topo, largura, altura, 2.6 * fator, 2.6 * fator, "FD");
-      pdf.setDrawColor(cor);
+      pdf.setDrawColor(tema?.acento || cor);
       pdf.setLineWidth(0.6 * fator);
       pdf.line(x + margemInterna, topo + 8.2 * fator, x + largura - margemInterna, topo + 8.2 * fator);
-      pdf.setTextColor("#203630");
+      pdf.setTextColor(tema?.texto || "#203630");
     } else {
       pdf.setFillColor(cor);
       pdf.rect(x, topo, largura, altura, "F");
@@ -228,7 +355,7 @@ export async function criarPdfComModelo({
     }
   }
   iniciarPagina();
-  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1, (papel ?? fundoSemIdentidade)?.corQuadros);
+  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1, (papel ?? fundoSemIdentidade)?.corQuadros, papel?.tema ? "receita" : undefined, papel?.tema);
   escrever(titulo, true, 19);
   y += 3;
   for (const linha of conteudo.split("\n")) escrever(linha);

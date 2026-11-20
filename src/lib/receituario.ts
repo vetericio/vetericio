@@ -284,6 +284,41 @@ export async function criarReceituario(dados: DadosReceituario) {
       const fator = 72 / 25.4;
       desenharPapelDocumento(doc, dados.papel);
       y = desenharIdentidadeDocumento(doc, dados.papel, margem, 23 * fator, fator);
+      if (dados.papel.tema) {
+        const tema = dados.papel.tema;
+        const centro = doc.internal.pageSize.getWidth() / 2;
+        const centralizado = tema.id === "14";
+        const titulo = tema.id === "15" || tema.id === "17" ? "Receituário veterinário"
+          : tema.id === "14" ? "R E C E I T U Á R I O"
+          : tema.id === "13" ? "RECEITUÁRIO" : "Receituário";
+        doc.setFont("times", "bold");
+        doc.setFontSize(centralizado ? 22 : tema.id === "15" ? 24 : 27);
+        doc.setTextColor(tema.texto);
+        doc.text(titulo, centralizado ? centro : margem, y + 12, { align: centralizado ? "center" : "left" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(tema.acento);
+        const legenda = centralizado ? "ATENDIMENTO CLÍNICO VETERINÁRIO" : "VETERINÁRIO";
+        doc.text(legenda, centralizado ? centro : margem, y + 29, { align: centralizado ? "center" : "left" });
+        y += 44;
+        if (dados.demonstrativo) {
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor("#6a5e62");
+          doc.setFontSize(8.5);
+          doc.text("PRÉVIA DEMONSTRATIVA · SEM VALIDADE", centro, y, { align: "center" });
+          y += 16;
+        }
+        y = desenharIdentificacaoDocumento(doc, {
+          paciente: { nome: dados.paciente, especie: dados.especie, raca: dados.raca, sexo: sexoPacienteNoDocumento(dados.sexo),
+            idade: dados.idade, peso: dados.peso ? dados.peso + " kg" : "", pelagem: dados.pelagem, castrado: dados.castrado, microchip: dados.microchip },
+          tutor: { nome: dados.tutor, cpf: dados.cpfTutor, telefone: dados.telefoneTutor,
+            endereco: dados.enderecoTutor, nascimento: dados.nascimentoTutor },
+        }, margem, y, fator, tema.acento, "receita", tema);
+        y += 17;
+        doc.setTextColor(0);
+        if (y + 40 > limiteConteudo) throw new Error("Os dados de identificação são longos demais para o receituário. Revise o cadastro.");
+        return;
+      }
       if (dados.demonstrativo) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8.5);
