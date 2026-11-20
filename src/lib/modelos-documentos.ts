@@ -15,7 +15,26 @@ export const FUNDOS_DOCUMENTOS = [
   ["05", "Ilustrações veterinárias"], ["06", "Animais nas bordas"], ["07", "Aquarela de animais"],
   ["08", "Patinhas rosa e lilás"], ["09", "Cães e gatos em tons pastel"], ["10", "Animais em cinza"],
   ["11", "Cantos bege"], ["12", "Linhas em verde sálvia"],
+  ["13", "Preto & Branco"], ["14", "Atelier"],
+  ["15", "Vinho Nobre"], ["16", "Atlântico"],
+  ["17", "Sálvia"], ["18", "Terracota"],
 ] as const;
+
+export const TEMAS_DOCUMENTOS_PREMIUM = {
+  "13": { nome: "Preto & Branco", acento: "#202020", texto: "#1e1e1e", papel: "#ffffff", quadro: "#fdfdfc", borda: "#d4d4d4" },
+  "14": { nome: "Atelier", acento: "#9a722d", texto: "#282119", papel: "#fcf9f2", quadro: "#fffdf8", borda: "#c9aa73" },
+  "15": { nome: "Vinho Nobre", acento: "#64243d", texto: "#3f2431", papel: "#fffcfb", quadro: "#f7edf0", borda: "#d9b8c5" },
+  "16": { nome: "Atlântico", acento: "#007f90", texto: "#073b47", papel: "#fbfefe", quadro: "#eaf6f7", borda: "#a2d4da" },
+  "17": { nome: "Sálvia", acento: "#5a8065", texto: "#234d38", papel: "#fbfcf8", quadro: "#f3f8f1", borda: "#b3c9b4" },
+  "18": { nome: "Terracota", acento: "#ba6749", texto: "#56352c", papel: "#fffbf8", quadro: "#fbefe7", borda: "#e5bba9" },
+} as const;
+
+export type TemaDocumentoPremium = typeof TEMAS_DOCUMENTOS_PREMIUM[keyof typeof TEMAS_DOCUMENTOS_PREMIUM] & { id: string };
+
+export function obterTemaDocumentoPremium(id: string): TemaDocumentoPremium | null {
+  const tema = TEMAS_DOCUMENTOS_PREMIUM[id as keyof typeof TEMAS_DOCUMENTOS_PREMIUM];
+  return tema ? { ...tema, id } : null;
+}
 
 export const COR_QUADROS_PADRAO = "#a6c4d9";
 
@@ -41,6 +60,8 @@ export type IdentidadeDocumento = {
 };
 
 export function urlFundoDocumento(fundo: string, miniatura = false) {
+  // Os seis novos temas são vetoriais: não dependem de imagens JPG nem WebP.
+  if (obterTemaDocumentoPremium(fundo)) return "";
   return FUNDOS_DOCUMENTOS.some(([id]) => id === fundo)
     ? `/fundos-documentos/${fundo}.${miniatura ? "webp" : "jpg"}`
     : "";
