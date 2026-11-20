@@ -108,11 +108,23 @@ export function PreviaAssinaturaReceita({
     const dy = (evento.clientY - atual.y) / atual.alturaArea;
     const largura =
       atual.modo === "tamanho"
-        ? Math.min(0.7, Math.max(0.08, inicial.largura + dx))
+        ? Math.min(0.9, Math.max(0.08, inicial.largura + dx))
         : inicial.largura;
-    const x = Math.min(1 - largura, Math.max(0, inicial.x + (atual.modo === "mover" ? dx : 0)));
-    const y = atual.modo === "mover" ? Math.min(0.78, Math.max(0, inicial.y + dy)) : inicial.y;
-    setPosicoes((anterior) => ({ ...anterior, [tipo]: { x, y, largura } }));
+    const candidato = {
+      largura,
+      x: Math.max(0, inicial.x + (atual.modo === "mover" ? dx : 0)),
+      y: Math.max(0, inicial.y + (atual.modo === "mover" ? dy : 0)),
+    };
+    const tamanho = dimensoes[tipo];
+    if (!tamanho) return;
+    const caixa = caixaSeloReceituario(candidato, tamanho, atual.larguraArea, atual.alturaArea);
+    setPosicoes((anterior) => ({
+      ...anterior, [tipo]: {
+        x: caixa.x / atual.larguraArea,
+        y: caixa.y / atual.alturaArea,
+        largura,
+      },
+    }));
   }
 
   function terminar(evento: PointerEvent) {
@@ -160,7 +172,7 @@ export function PreviaAssinaturaReceita({
       </svg>
       <div
         ref={areaRef}
-        className="absolute select-none outline outline-1 outline-dashed outline-slate-300"
+        className="absolute select-none"
         style={{
           left: `${(area.x / larguraPagina) * 100}%`,
           top: `${((area.y - topo) / alturaPrevia) * 100}%`,
@@ -175,7 +187,7 @@ export function PreviaAssinaturaReceita({
           const posicao = posicoes[tipo];
           const tamanho = dimensoes[tipo];
           if (!selo || !posicao || !tamanho) return null;
-          const caixa = caixaSeloReceituario(posicao, tamanho, area.largura);
+          const caixa = caixaSeloReceituario(posicao, tamanho, area.largura, area.altura);
           return (
             <div
               key={tipo}
