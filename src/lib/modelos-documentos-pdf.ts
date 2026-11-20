@@ -1,5 +1,5 @@
 import type { jsPDF } from "jspdf";
-import { COR_QUADROS_PADRAO, obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao, type TemaDocumentoPremium } from "@/lib/modelos-documentos";
+import { COR_QUADROS_PADRAO, formatarDataExtensoDocumento, obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao, type TemaDocumentoPremium } from "@/lib/modelos-documentos";
 
 export type PapelDocumento = {
   clinica: IdentidadeDocumento;
@@ -467,7 +467,10 @@ export async function criarPdfComModelo({
     if (y + 24 + linhas.length * 5 > 273) { pdf.addPage(); iniciarPagina(); }
     y += 7;
     definirFonte(false, 10);
-    if (data) pdf.text(data, centro, y, { align: "center" });
+    if (data) {
+      const dataExtenso = formatarDataExtensoDocumento(data.trim()).replace(/\.$/, "");
+      pdf.text(`${dataExtenso}.`, centro, y, { align: "center" });
+    }
     y += 12;
     pdf.setDrawColor(90);
     pdf.line(centro - 30, y, centro + 30, y);
