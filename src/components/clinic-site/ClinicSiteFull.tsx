@@ -138,7 +138,8 @@ export function ClinicSiteFull({
         secondaryColor: "#D7F1F3",
         backgroundColor: "#F7FBFB",
         textColor: "#003D4C",
-        heroImageUrl: "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-cruella-hero.webp",
+        heroImageUrl:
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-cruella-hero.webp",
         services: [
           "Consultas",
           "Exames",
