@@ -240,7 +240,7 @@ export function VetericioVisitSteps() {
   return (
     <section
       id="como-funciona"
-      className="bg-[#E6F1EE] px-5 py-14 text-[#003D4C] sm:px-9 sm:py-20"
+      className="bg-[#4A1826] px-5 py-14 text-white sm:px-9 sm:py-20"
       aria-labelledby="vetericio-visit-steps"
     >
       <div className="mx-auto max-w-6xl">
@@ -252,9 +252,9 @@ export function VetericioVisitSteps() {
         </h2>
         <ol className="mt-10 grid grid-cols-1 gap-7 md:grid-cols-3 md:gap-9">
           {steps.map(({ title, text }, index) => (
-            <li key={title} className="border-t border-[#003D4C]/25 pt-5">
+            <li key={title} className="border-t border-white/30 pt-5">
               <span
-                className="flex size-9 items-center justify-center rounded-full bg-[#003D4C] text-sm font-semibold text-white"
+                className="flex size-9 items-center justify-center rounded-full bg-white text-sm font-semibold text-[#4A1826]"
                 aria-hidden="true"
               >
                 {index + 1}
