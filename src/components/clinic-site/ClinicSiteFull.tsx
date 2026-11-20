@@ -87,7 +87,7 @@ function FotoPublicaDoProfissional({ url, nome }: { url: string; nome: string })
 
 export function ClinicSiteFull({
   template,
-  config,
+  config: inputConfig,
   clinicSlug,
   onUploadImage,
   uploadingSlot,
@@ -105,6 +105,68 @@ export function ClinicSiteFull({
   const king = template === "popular";
   const minimal = template === "essencial";
   const organic = template === "horizonte";
+  const currentPath = typeof window === "undefined" ? "" : window.location.pathname;
+  const currentHost = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
+  const pathSlug = currentPath.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
+  const hostSlug = currentHost.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
+  const isVetericio = (clinicSlug || pathSlug || hostSlug).toLowerCase() === "vetericio";
+  // Identidade exclusiva da Veterício: conteúdo institucional e paleta própria,
+  // sem afetar nenhuma outra clínica publicada.
+  const config: ClinicSiteConfig = isVetericio
+    ? {
+        ...inputConfig,
+        name: "Veterício Serviços Veterinários",
+        slogan: "Cuidado veterinário que acolhe toda a família.",
+        description:
+          "Na Veterício, cada consulta começa com escuta, atenção e orientações claras para o bem-estar do seu pet.",
+        primaryColor: "#F05A1A",
+        secondaryColor: "#D7F1F3",
+        backgroundColor: "#F7FBFB",
+        textColor: "#003D4C",
+        heroImageUrl:
+          inputConfig.heroImageUrl ||
+          "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1800&q=88",
+        services: [
+          "Consulta e avaliação clínica",
+          "Prevenção e acompanhamento",
+          "Orientação para a família",
+          "Cuidado personalizado",
+        ],
+        aboutTitle: "Cuidar bem é olhar o pet por inteiro.",
+        aboutText:
+          "A Veterício une conhecimento técnico, escuta e respeito à individualidade de cada animal. Nosso compromisso é orientar sua família com clareza e construir, junto com você, escolhas mais seguras para cada etapa da vida do seu pet.",
+        galleryUrls:
+          inputConfig.galleryUrls.length > 0
+            ? inputConfig.galleryUrls
+            : [
+                "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=1200&q=85",
+                "https://images.unsplash.com/photo-1583511655826-05700d52f4d9?auto=format&fit=crop&w=1200&q=85",
+              ],
+        faqItems: [
+          {
+            question: "Como agendo um atendimento?",
+            answer:
+              "Você pode iniciar pelo Portal do Tutor ou falar com a nossa equipe pelo WhatsApp para consultar os horários disponíveis.",
+          },
+          {
+            question: "Quais cuidados a Veterício oferece?",
+            answer:
+              "Conte para a equipe o que seu pet precisa. Assim, orientamos o caminho mais adequado para o atendimento.",
+          },
+          {
+            question: "O que levo na primeira consulta?",
+            answer:
+              "Se tiver, leve a carteirinha de vacinação, exames anteriores e informações sobre a rotina do seu pet.",
+          },
+          {
+            question: "Posso tirar dúvidas antes de ir?",
+            answer:
+              "Sim. Use o WhatsApp para falar com a equipe e receber as orientações iniciais.",
+          },
+        ],
+        ctaLabel: "Agendar atendimento",
+      }
+    : inputConfig;
   const rounded = !luxe && !bold && !minimal && !prime;
   const buttonShape = luxe
     ? "rounded-none"
@@ -130,18 +192,17 @@ export function ClinicSiteFull({
   // clínica, inclusive em domínios personalizados. O contexto autenticado não
   // é necessário: a rota identifica a clínica pelo slug público.
   const { portal: tenantPortal } = useTenantContext();
-  const caminhoAtual = typeof window === "undefined" ? "" : window.location.pathname;
-  const hostAtual = typeof window === "undefined" ? "" : window.location.hostname.toLowerCase();
-  const routeSlug = caminhoAtual.match(/^\/c\/([a-z0-9-]+)\/?$/i)?.[1] || "";
-  const subdomainSlug = hostAtual.match(/^([a-z0-9-]+)\.oricse\.com\.br$/)?.[1] || "";
-  const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || routeSlug || subdomainSlug;
+  const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || pathSlug || hostSlug;
   const portalHref = publishedSlug
     ? publishedSlug === "alvorada"
       ? urlPortalDoTutor(publishedSlug, template)
       : urlPortalDoTutor(publishedSlug) + "?secao=agenda"
     : "";
   const actionHref = portalHref || realUrl(config.bookingUrl) || "#contato";
-  const actionLabel = publishedSlug === "alvorada" ? "Agendar atendimento" : "Portal do Tutor";
+  const actionLabel =
+    publishedSlug === "alvorada" || publishedSlug === "vetericio"
+      ? "Agendar atendimento"
+      : "Portal do Tutor";
   // Fotos exclusivas da demonstração da Alvorada. Os outros temas e clínicas não mudam.
   const classAlvorada = friendly && publishedSlug === "alvorada";
   const elanAlvorada = luxe && publishedSlug === "alvorada";
