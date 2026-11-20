@@ -118,34 +118,69 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaI
       toast.info("Arquivo carregado. Confira e clique em Salvar modelo.");
     } catch { toast.error("Não foi possível ler o arquivo."); }
   }
-  function imprimir() {
+  async function gerarPdfModelo(modelo: Modelo): Promise<jsPDF> {
+    if (!identidade) throw new Error("Os dados da clínica ainda não foram carregados. Atualize esta tela.");
+    const { prepararPapelDocumento, criarPdfComModelo } = await import("@/lib/modelos-documentos-pdf");
+    const papel = await prepararPapelDocumento(identidade.identidade, identidade.modelos[modelo.categoria]);
+    const corpo = preencher(extrairCorpoModeloClinico(modelo.texto));
+    return criarPdfComModelo({
+      titulo: categorias[modelo.categoria],
+      conteudo: corpo,
+      papel,
+      demonstrativo: true,
+      identificacao: {
+        paciente: {
+          nome: "Luna", especie: "Canina", raca: "SRD", idade: "4 anos", peso: "11 kg",
+          sexo: "Feminino", pelagem: "Caramelo", castrado: "Sim",
+        },
+        tutor: {
+          nome: "Marina Exemplo", cpf: "CPF fictício", nascimento: "15/05/1992",
+          telefone: "Telefone fictício", endereco: "Endereço de exemplo",
+        },
+      },
+      assinatura: [
+        [identidade.identidade.municipio, new Date().toLocaleDateString("pt-BR")].filter(Boolean).join(", "),
+        "Dra. Ana Exemplo · CRMV-MG fictício",
+      ],
+    });
+  }
+  useEffect(() => {
+    if (!preview || !selecionado || !identidade) {
+      setPdfPrevia(null);
+      return;
+    }
+    let ativo = true;
+    setPdfPrevia(null);
+    setErroPrevia("");
+    const timer = window.setTimeout(() => {
+      void gerarPdfModelo(selecionado).then(pdf => { if (ativo) setPdfPrevia(pdf); })
+        .catch(e => { if (ativo) setErroPrevia(e instanceof Error ? e.message : "Falha na prévia."); });
+    }, 350);
+    return () => { ativo = false; window.clearTimeout(timer); };
+  }, [preview, selecionado, identidade]);
+  async function imprimir() {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!selecionado) return;
     const janela = window.open("", "_blank");
-    if (!janela) return toast.error("Habilite a abertura de janelas para imprimir.");
-    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapar(selecionado.nome)}</title><style>body{font:12pt Arial,sans-serif;max-width:760px;margin:35px auto;white-space:pre-wrap;line-height:1.55;padding:12px}@media print{body{margin:15mm}}</style></head><body>${escapar(preencher(selecionado.texto))}</body></html>`;
-    janela.document.write(html); janela.document.close(); janela.focus(); janela.print();
+    if (!janela) return void toast.error("Permita a abertura de janelas para imprimir.");
+    try {
+      const pdf = await gerarPdfModelo(selecionado);
+      pdf.autoPrint();
+      janela.location.href = URL.createObjectURL(pdf.output("blob"));
+    } catch (e) {
+      janela.close();
+      toast.error(e instanceof Error ? e.message : "Não foi possível abrir a impressão.");
+    }
   }
   async function baixarPdf() {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!selecionado) return;
     setGerandoPdf(true);
     try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ unit:"mm", format:"a4" });
-      doc.setFont("helvetica","normal"); doc.setFontSize(11);
-      const largura = doc.internal.pageSize.getWidth(), altura = doc.internal.pageSize.getHeight();
-      let y=22;
-      for (const linha of preencher(selecionado.texto).split("\n")) {
-        const partes = doc.splitTextToSize(linha || " ", largura-36) as string[];
-        for (const parte of partes) {
-          if (y>altura-22) { doc.addPage(); y=22; }
-          doc.text(parte || " ", 18, y); y+=6;
-        }
-      }
-      const arquivo = selecionado.nome.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,70)||"modelo";
-      doc.save(arquivo+".pdf");
-      toast.success("Prévia PDF criada. Confira antes de emitir.");
+      const pdf = await gerarPdfModelo(selecionado);
+      const arquivo = selecionado.nome.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,70)||"modelo";
+      pdf.save("previa-"+arquivo+".pdf");
+      toast.success("Prévia com cabeçalho e identificação padronizados.");
     } catch(e) { toast.error(e instanceof Error ? e.message : "Erro ao gerar PDF."); }
     finally { setGerandoPdf(false); }
   }
