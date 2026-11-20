@@ -304,11 +304,25 @@
   }
 }
 
-@media (max-width: 47.99rem) and (max-height: 46rem) {
+@media (min-width: 48rem) and (max-height: 46rem) {
+  .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-login-grid {
+    padding-bottom: 0.5rem;
+  }
+
+  .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-welcome > img {
+    height: clamp(10.5rem, 44svh, 28rem);
+  }
+
+  .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-welcome-copy {
+    padding-bottom: 1.25rem;
+  }
+}
+
+@media (max-width: 47.99rem) and (max-height: 50rem) {
   .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-welcome {
     position: relative;
     justify-content: flex-end;
-    min-height: clamp(10rem, 28svh, 13rem);
+    min-height: clamp(10rem, 27svh, 13.25rem);
   }
 
   .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-welcome > img {
@@ -321,7 +335,29 @@
   .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-welcome-copy {
     position: relative;
     flex: none;
-    padding-top: 2rem;
-    background: linear-gradient(transparent, #092f38 54%);
+    padding: 1.25rem 1rem 0.75rem;
+    background: linear-gradient(transparent, var(--portal-ink) 42%);
+  }
+
+  .vetericio-portal-login[data-portal-auth-mode="login"]
+    .vetericio-portal-welcome-copy
+    > p:last-child,
+  .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-lead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .vetericio-portal-login[data-portal-auth-mode="login"] .vetericio-portal-form {
+    padding-block: 0.875rem;
+  }
+
+  .vetericio-portal-login[data-portal-auth-mode="login"] .portal-one-screen-form {
+    margin-top: 0.625rem;
   }
 }
