@@ -825,8 +825,18 @@ export function ClinicSiteFull({
                 : "Entre em contato para consultar serviços, horários e informações de atendimento."}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {action(actionLabel)}
-              {config.phone ? (
+              {action(isVetericio ? "Agendar" : actionLabel)}
+              {isVetericio && hasWhatsApp ? (
+                <a
+                  href={whatsAppHref}
+                  className={
+                    "inline-flex items-center gap-2 border border-current/25 px-5 py-3 text-sm font-bold " +
+                    buttonShape
+                  }
+                >
+                  <MessageCircle size={17} aria-hidden="true" /> Falar no WhatsApp
+                </a>
+              ) : config.phone ? (
                 <a
                   href={"tel:" + waNumber(config.phone)}
                   className={
