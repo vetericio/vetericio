@@ -147,18 +147,28 @@ export function ClinicSiteFull({
           "Atendimento domiciliar",
           "Pet sitter",
           "Vacinas",
+          "Oftalmologia",
+          "Nefrologia",
+          "Cardiologia",
+          "Odontologia veterinária",
+          "Medicina felina",
+          "Endocrinologia",
+          "Ultrassonografia",
+          "Nutrição",
+          "Fisiatria",
+          "Oncologia",
+          "Acupuntura",
         ],
         aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
         aboutText:
           "A Veterício nasceu para tornar a medicina veterinária mais próxima: atendimento atento, comunicação clara e respeito absoluto ao vínculo de vocês. Aqui, a técnica orienta; o cuidado acolhe.",
         galleryUrls: [
-          "https://vetericio.oricse.com.br/clinic-site/vetericio/meow.webp",
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-editorial.webp",
           "https://vetericio.oricse.com.br/clinic-site/vetericio/yzma.webp",
           "https://vetericio.oricse.com.br/clinic-site/vetericio/cruella.webp",
           "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1200&q=85",
           "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=1200&q=85",
           "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=1200&q=85",
-          "https://vetericio.oricse.com.br/clinic-site/vetericio/dr-fabricio.webp",
         ],
         faqItems: [
           {
@@ -474,6 +484,17 @@ export function ClinicSiteFull({
     "Atendimento domiciliar": "Cuidado veterinário onde seu pet se sente mais tranquilo: em casa.",
     "Pet sitter": "Presença profissional, carinho e observação para sua rotina ficar mais leve.",
     Vacinas: "Prevenção e atualização vacinal para cuidar hoje e proteger o amanhã.",
+    Oftalmologia: "Atenção especializada para a saúde dos olhos do seu pet.",
+    Nefrologia: "Acompanhamento voltado à saúde renal e qualidade de vida.",
+    Cardiologia: "Cuidado especializado para a saúde do coração.",
+    "Odontologia veterinária": "Prevenção e atenção para uma boca saudável e confortável.",
+    "Medicina felina": "Um olhar cuidadoso, respeitoso e próprio para os gatos.",
+    Endocrinologia: "Acompanhamento para o equilíbrio do organismo do seu pet.",
+    Ultrassonografia: "Imagem e informação para orientar cada decisão clínica.",
+    Nutrição: "Orientação alimentar feita para a rotina e as necessidades do seu pet.",
+    Fisiatria: "Apoio à mobilidade, conforto e recuperação funcional.",
+    Oncologia: "Acompanhamento técnico e acolhedor em cada etapa necessária.",
+    Acupuntura: "Cuidado complementar focado em conforto e bem-estar.",
   };
 
   const sections: Record<ClinicSiteSection, ReactNode> = {
@@ -532,7 +553,25 @@ export function ClinicSiteFull({
               >
                 {isVetericio ? (
                   <span className="mb-7 block text-4xl leading-none" aria-hidden="true">
-                    {["🩺", "🔬", "🧬", "🏠", "🐾", "💉"][index] || "🐶"}
+                    {[
+                      "🩺",
+                      "🔬",
+                      "🧬",
+                      "🏠",
+                      "🐾",
+                      "💉",
+                      "👁️",
+                      "💧",
+                      "❤️",
+                      "🦷",
+                      "🐱",
+                      "⚖️",
+                      "🖥️",
+                      "🥕",
+                      "🦿",
+                      "🎗️",
+                      "🪡",
+                    ][index] || "🐶"}
                   </span>
                 ) : (
                   <div
