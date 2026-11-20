@@ -119,6 +119,7 @@ type SolicitacaoClinica = {
 };
 
 const CAMPOS_CLINICA = "id,nome,slug,tipo_publico,status,plano,dominio,limite_usuarios,observacoes,logo_url,created_at,ultimo_pagamento_em,proximo_pagamento_em,acesso_ate,status_financeiro,excluido_em,expira_lixeira_em";
+const CAMPOS_DOMINIO = "id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em";
 const valorPlanoClinica = (p: Plano) => p.codigo?.endsWith("-2026") ? p.codigo : p.nome;
 
 type AppUser = { user_id: string; username: string; role: string; email?: string | null; created_at: string };
@@ -332,6 +333,7 @@ function Admin() {
   const [confirmarHostname, setConfirmarHostname] = useState("");
   const [confirmarInterrupcao, setConfirmarInterrupcao] = useState(false);
   const [excluindoDominio, setExcluindoDominio] = useState<string | null>(null);
+  const slugCadastrado = clinicas.find(c => c.id === selecionada?.id)?.slug || "";
 
   useEffect(() => {
     // Ao trocar de clínica, feche o editor anterior antes de abrir outro.
@@ -353,12 +355,12 @@ function Admin() {
           setStatusConteudoSite("erro");
           return;
         }
-        const slugEsperado = limparSlug(selecionada.slug || "");
+        const slugEsperado = limparSlug(slugCadastrado);
         setStatusConteudoSite(data?.status === "publicado" && data.slug === slugEsperado ? "publicado" : "rascunho");
       })
       .catch(() => { if (active) setStatusConteudoSite("erro"); });
     return () => { active = false; };
-  }, [abaClinica, selecionada?.id, selecionada?.slug, revisaoStatusSite]);
+  }, [abaClinica, selecionada?.id, slugCadastrado, revisaoStatusSite]);
 
   const clinicasFiltradas = useMemo(() => {
     const q = buscaClinica.trim().toLowerCase();
@@ -425,7 +427,7 @@ function Admin() {
       (supabase as any).from("oricse_config").select("valor").eq("chave", "site_publico").maybeSingle(),
       (supabase as any).from("drive_arquivos").select("id", { count: "exact", head: true }),
       (supabaseBanco as any).rpc("oricse_listar_grade_taxas_pagamento"),
-      (supabaseBanco as any).from("oricse_dominios_clinica").select("id,clinica_id,hostname,tipo,status,principal,publicar_site,dns_alvo,verificacao_tipo,verificacao_nome,verificacao_valor,cloudflare_hostname_id,ssl_status,ultimo_erro,criado_em,atualizado_em").order("principal", { ascending: false }).order("hostname"),
+      (supabaseBanco as any).from("oricse_dominios_clinica").select(CAMPOS_DOMINIO).order("principal", { ascending: false }).order("hostname"),
       (supabaseBanco as any).from("oricse_assinaturas").select("clinica_id,ciclo,inicio_em,proximo_vencimento_em,ultimo_pagamento_em,status,plano_codigo").order("created_at",{ascending:false}),
     ]);
     if (c.error) toast.error("Não foi possível carregar as clínicas.");
@@ -754,11 +756,17 @@ function Admin() {
           backgroundColor: visual.background,
           textColor: visual.text,
         };
-        const {error: erroSite} = await (supabaseBanco as any).from("clinic_sites").upsert({
-          clinica_id: destinoId, slug: item.slug_desejado, template: visual.template,
-          status:"rascunho",config,updated_at:new Date().toISOString(),
-        },{onConflict:"clinica_id"});
-        if (erroSite) toast.error("Clínica criada, mas a pré-configuração do site precisa ser revisada: " + erroSite.message);
+        const {data: cadastro, error: erroCadastro} = await (supabaseBanco as any)
+          .from("clinicas").select("slug").eq("id", destinoId).maybeSingle();
+        if (erroCadastro || !cadastro?.slug) {
+          toast.error("Clínica criada. Confira o endereço no cadastro para preparar o site.");
+        } else {
+          const {error: erroSite} = await (supabaseBanco as any).from("clinic_sites").upsert({
+            clinica_id: destinoId, slug: cadastro.slug, template: visual.template,
+            status:"rascunho",config,updated_at:new Date().toISOString(),
+          },{onConflict:"clinica_id",ignoreDuplicates:true});
+          if (erroSite) toast.error("Clínica criada, mas a pré-configuração do site precisa ser revisada: " + erroSite.message);
+        }
       }
       if (destinoId && identidade) {
         const tiposPublicos: Record<string,string> = {
@@ -1011,7 +1019,23 @@ function Admin() {
       setClinicas(lista => lista.map(item => item.id === atualizada.id ? atualizada : item)
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
       setSelecionada(atual => atual?.id === atualizada.id ? atualizada : atual);
-      toast.success("Clínica atualizada.");
+      const hostname = atualizada.slug ? `${atualizada.slug}.oricse.com.br` : "";
+      const enderecoAnterior = dominiosDaClinica.find(dominio => dominio.tipo === "oricse");
+      if (hostname && (atualizada.slug !== slugCadastrado || enderecoAnterior?.hostname !== hostname)) {
+        setRevisaoStatusSite(versao => versao + 1);
+        const { data: dominio, error: erroDominio } = await (supabaseBanco as any)
+          .from("oricse_dominios_clinica").select(CAMPOS_DOMINIO)
+          .eq("clinica_id", atualizada.id).eq("tipo", "oricse").maybeSingle();
+        if (!erroDominio) {
+          setDominiosClinica(lista => [
+            ...lista.filter(item => item.clinica_id !== atualizada.id || item.tipo !== "oricse"),
+            ...(dominio ? [dominio] : []),
+          ]);
+        }
+        toast.success(dominio?.hostname === hostname ? `Endereço ORICSE atualizado para ${hostname}.` : "Clínica atualizada.");
+      } else {
+        toast.success("Clínica atualizada.");
+      }
     } catch (e) { const erro = e as { code?: string; message?: string }; toast.error(erro.code === "23505" ? "Este nome já está em uso por outra clínica ou parceiro." : (erro.message || "Não foi possível salvar a clínica.")); }
     finally { setSalvandoCadastroClinica(null); }
   }
@@ -1351,7 +1375,7 @@ function Admin() {
     <fieldset disabled={cadastroSalvando} aria-busy={cadastroSalvando} className="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
     <label className="text-sm font-semibold">Nome<input value={selecionada.nome} onChange={(e) => setSelecionada({ ...selecionada, nome: e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <label className="text-sm font-semibold">Tipo de parceiro<select value={selecionada.tipo_publico || "vet"} onChange={(e) => setSelecionada({ ...selecionada, tipo_publico: e.target.value as Clinica["tipo_publico"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="vet">Veterinário / clínica veterinária</option><option value="pet">Pet shop</option></select></label>
-    <label className="text-sm font-semibold md:col-span-2">Nome do endereço ORICSE<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="whitespace-nowrap text-muted-foreground">https://</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none" placeholder="nomedaclinica"/><span className="whitespace-nowrap text-muted-foreground">.oricse.com.br</span></div><p className="mt-1 text-xs font-normal text-muted-foreground">Nome único, sem espaços. Salve e acesse “Site e domínios” para publicar o endereço ou conectar o domínio próprio.</p></label>
+    <label className="text-sm font-semibold md:col-span-2">Nome do endereço ORICSE<div className="mt-1 flex min-h-11 items-center rounded-xl border px-3 font-normal"><span className="whitespace-nowrap text-muted-foreground">https://</span><input value={selecionada.slug || ""} onChange={(e) => setSelecionada({ ...selecionada, slug: limparSlug(e.target.value) })} className="min-w-0 flex-1 bg-transparent outline-none" placeholder="nomedaclinica"/><span className="whitespace-nowrap text-muted-foreground">.oricse.com.br</span></div><p className="mt-1 text-xs font-normal text-muted-foreground">Ao salvar, o site passa a usar o novo endereço e o endereço anterior deixa de abrir a página.</p></label>
     <label className="text-sm font-semibold">Plano<select value={selecionada.plano} onChange={(e) => { const p = planos.find((x) => valorPlanoClinica(x) === e.target.value); setSelecionada({ ...selecionada, plano: e.target.value, limite_usuarios: p?.usuarios_inclusos || selecionada.limite_usuarios }); }} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{planos.map((p) => <option key={p.codigo} value={valorPlanoClinica(p)}>{p.nome}{p.codigo.endsWith("-2026") ? " · Atual" : " · Legado"}</option>)}</select></label>
     <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
@@ -1429,7 +1453,7 @@ function Admin() {
 
   async function sincronizarEnderecoOricse() {
     if (!selecionada) return;
-    const slug = limparSlug(selecionada.slug || "");
+    const slug = limparSlug(slugCadastrado);
     if (!slug || !/[a-z0-9]/.test(slug))
       return void toast.error("Defina e salve um nome válido para o endereço ORICSE primeiro.");
 
@@ -1543,12 +1567,12 @@ function Admin() {
       const { data, error } = await (supabaseBanco as any).from("oricse_dominios_clinica").update({
         publicar_site,
         atualizado_em: new Date().toISOString(),
-      }).eq("id", dominio.id).eq("clinica_id", selecionada.id)
+      }).eq("id", dominio.id).eq("clinica_id", selecionada.id).eq("hostname", dominio.hostname)
         .select("id,publicar_site").maybeSingle();
       if (error) throw new Error(error.message);
-      if (!data || data.publicar_site !== publicar_site) throw new Error("O banco não confirmou a alteração. Atualize os domínios e tente novamente.");
+      if (!data || data.publicar_site !== publicar_site) throw new Error("O endereço pode ter mudado. Atualize os domínios e tente novamente.");
       setDominiosClinica((lista) => lista.map((item) => item.id === dominio.id ? { ...item, publicar_site } : item));
-      if (!publicar_site) setVerificacoes((estado) => ({ ...estado, [dominio.id]: "nao_verificado" }));
+      if (!publicar_site) setVerificacoes((estado) => ({ ...estado, [dominio.hostname]: "nao_verificado" }));
       toast.success(publicar_site ? "Publicação liberada. Verificando o acesso HTTPS..." : "Publicação pausada e alteração confirmada.");
       if (publicar_site) void verificarDisponibilidadeDominio({ ...dominio, publicar_site });
     } catch (e) {
@@ -1561,7 +1585,7 @@ function Admin() {
   async function verificarDisponibilidadeDominio(dominio: DominioClinica): Promise<EstadoOnlineDominio | null> {
     if (!dominio.publicar_site || dominio.status !== "ativo") return null;
     if (!hostnameValido(dominio.hostname)) return null;
-    setVerificacoes(v => ({ ...v, [dominio.id]: "verificando" }));
+    setVerificacoes(v => ({ ...v, [dominio.hostname]: "verificando" }));
     return await new Promise((resolve) => {
       const imagem = new Image();
       let finalizada = false;
@@ -1572,7 +1596,7 @@ function Admin() {
         clearTimeout(timer);
         imagem.onload = null;
         imagem.onerror = null;
-        setVerificacoes(v => ({ ...v, [dominio.id]: resultado }));
+        setVerificacoes(v => ({ ...v, [dominio.hostname]: resultado }));
         resolve(resultado);
       };
       timer = setTimeout(() => finalizar("nao_verificado"), 8000);
@@ -1601,9 +1625,10 @@ function Admin() {
         .delete()
         .eq("id", dominio.id)
         .eq("clinica_id", selecionada.id)
+        .eq("hostname", dominio.hostname)
         .select("id")
         .maybeSingle();
-      if (error || !apagado) throw new Error(error?.message || "Não foi possível excluir. Verifique as permissões.");
+      if (error || !apagado) throw new Error(error?.message || "O endereço pode ter mudado. Atualize os domínios e confira antes de excluir.");
       if (dominio.tipo === "proprio" && normalizarDominio(selecionada.dominio || "") === normalizarDominio(dominio.hostname)) {
         const { error: erroClinica } = await (supabaseBanco as any)
           .from("clinicas")
@@ -1625,7 +1650,7 @@ function Admin() {
 
   function indicadorDominio(dominio?: DominioClinica) {
     if (!dominio) return <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">Aguardando ativação</span>;
-    const resultado = verificacoes[dominio.id];
+    const resultado = verificacoes[dominio.hostname];
     const rotulo = rotuloDisponibilidadeDominio(dominio, resultado);
     const ativo = rotulo === "Ativo";
     return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${ativo ? "bg-emerald-50 text-emerald-700" : rotulo === "Indisponível" || rotulo === "Precisa de atenção" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>
@@ -1637,26 +1662,25 @@ function Admin() {
 
   const renderSiteDominiosClinica = () => {
     if (!selecionada) return null;
-    const enderecoOricse = dominiosDaClinica.find((dominio) => dominio.tipo === "oricse");
+    const hostnameOricse = slugCadastrado ? `${slugCadastrado}.oricse.com.br` : "";
+    const enderecoOricse = dominiosDaClinica.find(dominio => dominio.tipo === "oricse" && dominio.hostname === hostnameOricse);
     const dominiosProprios = dominiosDaClinica.filter((dominio) => dominio.tipo === "proprio");
-    const enderecoSugerido = selecionada.slug ? limparSlug(selecionada.slug) + ".oricse.com.br" : "";
-    const hostnameOricse = enderecoOricse?.hostname || enderecoSugerido;
-    const subdominioPronto = Boolean(enderecoOricse && enderecoOricse.status === "ativo" && normalizarDominio(enderecoOricse.hostname) === normalizarDominio(enderecoSugerido));
+    const subdominioPronto = enderecoOricse?.status === "ativo";
     const conteudoSitePublicado = statusConteudoSite === "publicado";
     const publicacaoDoSubdominioAtiva = Boolean(enderecoOricse?.publicar_site);
-    const httpsDoSubdominioConfirmado = Boolean(enderecoOricse && verificacoes[enderecoOricse.id] === "ativo");
+    const httpsDoSubdominioConfirmado = Boolean(enderecoOricse && verificacoes[enderecoOricse.hostname] === "ativo");
     const bloqueado = salvandoDominio || ativandoSite || statusConteudoSite === "carregando";
-    const siteProtegido = selecionada.slug === "alvorada";
+    const siteProtegido = slugCadastrado === "alvorada";
     const etapasAtivacao = [
-      { numero: 1, titulo: "Endereço", descricao: "Criar e sincronizar o subdomínio", concluida: subdominioPronto, liberada: Boolean(selecionada.slug), busy: salvandoDominio, botao: "Preparar endereço", executar: () => void sincronizarEnderecoOricse() },
+      { numero: 1, titulo: "Endereço", descricao: "Criar e sincronizar o subdomínio", concluida: subdominioPronto, liberada: Boolean(slugCadastrado), busy: salvandoDominio, botao: "Preparar endereço", executar: () => void sincronizarEnderecoOricse() },
       { numero: 2, titulo: "Conteúdo", descricao: "Revisar modelo, textos e publicar", concluida: conteudoSitePublicado, liberada: subdominioPronto, busy: statusConteudoSite === "carregando", botao: "Abrir editor", executar: () => setEditorSiteAberto(true) },
       { numero: 3, titulo: "Liberação", descricao: "Autorizar o acesso público", concluida: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva, liberada: subdominioPronto && conteudoSitePublicado && Boolean(enderecoOricse), busy: salvandoDominio, botao: "Ativar site", executar: () => { if (enderecoOricse) void alterarPublicacaoDominio(enderecoOricse, true); } },
-      { numero: 4, titulo: "HTTPS", descricao: "Confirmar acesso ao endereço real", concluida: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva && httpsDoSubdominioConfirmado, liberada: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva && enderecoOricse?.status === "ativo", busy: Boolean(enderecoOricse && verificacoes[enderecoOricse.id] === "verificando"), botao: "Testar HTTPS", executar: () => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); } },
+      { numero: 4, titulo: "HTTPS", descricao: "Confirmar acesso ao endereço real", concluida: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva && httpsDoSubdominioConfirmado, liberada: subdominioPronto && conteudoSitePublicado && publicacaoDoSubdominioAtiva && enderecoOricse?.status === "ativo", busy: Boolean(enderecoOricse && verificacoes[enderecoOricse.hostname] === "verificando"), botao: "Testar HTTPS", executar: () => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); } },
     ];
     const passosConcluidos = etapasAtivacao.filter((etapa) => etapa.concluida).length;
     const proximaEtapa = etapasAtivacao.find((etapa) => !etapa.concluida);
     const publicacaoLiberada = passosConcluidos === 4;
-    const pendencias = dominiosDaClinica.filter((dominio) => dominio.status !== "ativo" || (dominio.publicar_site && verificacoes[dominio.id] === "nao_verificado")).length;
+    const pendencias = dominiosDaClinica.filter((dominio) => dominio.status !== "ativo" || (dominio.publicar_site && verificacoes[dominio.hostname] === "nao_verificado")).length;
 
     return <div className="space-y-3">
       <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -1667,7 +1691,7 @@ function Admin() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span role="status" className={"rounded-full px-3 py-1.5 text-xs font-bold " + (publicacaoLiberada ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900")}>{publicacaoLiberada ? "Site verificado" : passosConcluidos + " de 4 etapas"}</span>
-            {!publicacaoLiberada && !siteProtegido && <button type="button" disabled={ativandoSite || salvandoDominio || !selecionada.slug || selecionada.status !== "ativa"} onClick={() => void colocarSiteNoAr()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><Globe2 size={15}/>{ativandoSite ? "Publicando e verificando..." : "Colocar site no ar"}</button>}
+            {!publicacaoLiberada && !siteProtegido && <button type="button" disabled={ativandoSite || salvandoDominio || !slugCadastrado || selecionada.status !== "ativa"} onClick={() => void colocarSiteNoAr()} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><Globe2 size={15}/>{ativandoSite ? "Publicando e verificando..." : "Colocar site no ar"}</button>}
             <button type="button" onClick={() => { setRevisaoStatusSite((valor) => valor + 1); void carregarTudo(); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border bg-white px-3 text-xs font-bold hover:bg-slate-50"><RefreshCcw size={14}/> Atualizar</button>
             <button type="button" onClick={() => setEditorSiteAberto((valor) => !valor)} aria-expanded={editorSiteAberto} aria-controls="oricse-editor-visual-da-clinica" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground"><PanelsTopLeft size={15}/>{editorSiteAberto ? "Fechar editor" : "Editar site"}</button>
           </div>
@@ -1676,14 +1700,14 @@ function Admin() {
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Endereço principal ORICSE</p>
             <p className="mt-0.5 break-all text-base font-black sm:text-lg">{hostnameOricse ? "https://" + hostnameOricse : "Endereço ainda não definido"}</p>
-            {!selecionada.slug && <button type="button" onClick={() => setAbaClinica("cadastro")} className="mt-1 rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-bold text-primary">Definir endereço no cadastro</button>}
+            {!slugCadastrado && <button type="button" onClick={() => setAbaClinica("cadastro")} className="mt-1 rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-bold text-primary">Definir endereço no cadastro</button>}
             <div className="mt-1 flex flex-wrap items-center gap-2">{conteudoSitePublicado ? indicadorDominio(enderecoOricse) : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800">Aguardando publicação</span>}<span className="text-xs text-muted-foreground">{conteudoSitePublicado ? "Conteúdo publicado" : statusConteudoSite === "erro" ? "Não foi possível consultar o conteúdo" : statusConteudoSite === "carregando" ? "Consultando conteúdo" : "Conteúdo ainda não publicado"}</span></div>
           </div>
           <div className="flex flex-wrap gap-2">
             {hostnameOricse && <button type="button" onClick={() => void copiarEndereco("https://" + hostnameOricse, "Endereço")} className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold">Copiar link</button>}
             {hostnameOricse && <a href={"https://" + hostnameOricse} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1 rounded-lg border px-3 text-xs font-bold"><ExternalLink size={14}/> Abrir endereço</a>}
             {proximaEtapa && <button type="button" disabled={!proximaEtapa.liberada || proximaEtapa.busy || bloqueado && proximaEtapa.numero !== 2} onClick={proximaEtapa.executar} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{proximaEtapa.busy ? "Processando..." : proximaEtapa.botao}</button>}
-            {!proximaEtapa && <button type="button" disabled={!enderecoOricse || verificacoes[enderecoOricse.id] === "verificando"} onClick={() => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800"><RefreshCcw size={14}/> Testar novamente</button>}
+            {!proximaEtapa && <button type="button" disabled={!enderecoOricse || verificacoes[enderecoOricse.hostname] === "verificando"} onClick={() => { if (enderecoOricse) void verificarDisponibilidadeDominio(enderecoOricse); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800"><RefreshCcw size={14}/> Testar novamente</button>}
           </div>
         </div>
         <div className="h-1.5 bg-slate-100"><div className="h-full bg-emerald-600 transition-all" style={{ width: (passosConcluidos / 4 * 100) + "%" }}/></div>
@@ -1695,7 +1719,7 @@ function Admin() {
           </div>)}
         </div>
         {statusConteudoSite === "erro" && <p role="alert" className="mx-3 mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">Não foi possível consultar a publicação. Use Atualizar para tentar novamente.</p>}
-        {enderecoOricse && verificacoes[enderecoOricse.id] === "nao_verificado" && publicacaoDoSubdominioAtiva && <p className="mx-3 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">A verificação HTTPS não confirmou o endereço. Confira o DNS e o certificado e teste novamente; a publicação no banco não comprova que o site está acessível.</p>}
+        {enderecoOricse && verificacoes[enderecoOricse.hostname] === "nao_verificado" && publicacaoDoSubdominioAtiva && <p className="mx-3 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">A verificação HTTPS não confirmou o endereço. Confira o DNS e o certificado e teste novamente; a publicação no banco não comprova que o site está acessível.</p>}
       </section>
 
       {editorSiteAberto && <section id="oricse-editor-visual-da-clinica" className="min-w-0 overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -1730,7 +1754,7 @@ function Admin() {
                     <button type="button" onClick={() => void copiarEndereco(dominio.dns_alvo, "Destino DNS")} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold">Copiar DNS</button>
                   </>}
                   <button type="button" disabled={salvandoDominio || (!dominio.publicar_site && (!conteudoSitePublicado || dominio.status !== "ativo" || (dominio.tipo === "oricse" && !subdominioPronto)))} onClick={() => void alterarPublicacaoDominio(dominio, !dominio.publicar_site)} className={"min-h-8 rounded-lg px-2 text-[11px] font-bold disabled:opacity-40 " + (dominio.publicar_site ? "border bg-white" : "bg-primary text-primary-foreground")}>{dominio.publicar_site ? "Pausar" : "Publicar"}</button>
-                  <button type="button" disabled={!verificavel || verificacoes[dominio.id] === "verificando"} onClick={() => void verificarDisponibilidadeDominio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificacoes[dominio.id] === "verificando" ? "Testando..." : "Testar HTTPS"}</button>
+                  <button type="button" disabled={!verificavel || verificacoes[dominio.hostname] === "verificando"} onClick={() => void verificarDisponibilidadeDominio(dominio)} className="min-h-8 rounded-lg border px-2 text-[11px] font-bold disabled:opacity-40">{verificacoes[dominio.hostname] === "verificando" ? "Testando..." : "Testar HTTPS"}</button>
                   <button type="button" disabled={Boolean(excluindoDominio)} onClick={() => { setExclusaoDominio(dominio); setConfirmarHostname(""); setConfirmarInterrupcao(false); }} aria-label={"Excluir " + dominio.hostname} className="flex min-h-8 items-center gap-1 rounded-lg border border-red-200 px-2 text-[11px] font-bold text-red-700 disabled:opacity-40"><Trash2 size={12}/> Excluir</button>
                 </div>
                 {diagnosticoDns[dominio.id] && <p role="status" className={"rounded-lg px-3 py-2 text-xs lg:col-span-4 " + (diagnosticoDns[dominio.id].correto ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900")}>{diagnosticoDns[dominio.id].aviso}</p>}
