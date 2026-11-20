@@ -76,7 +76,7 @@ function PerfilClinica() {
                 <div className="mt-4"><ConfigTermos clinicaId={config.id} inicial={config.pdf} /></div>
                 <details className="mt-4 rounded-xl border bg-card p-4" onToggle={(e) => { if (e.currentTarget.open) setAbrirEditor(true); }}>
                   <summary className="cursor-pointer text-sm font-semibold">Editor de modelos clínicos</summary>
-                  {abrirEditor && <ConfiguracaoModelosDocumentos clinica={config.nome} podeGerenciar />}
+                  {abrirEditor && <ConfiguracaoModelosDocumentos clinica={config.nome} clinicaId={config.id} podeGerenciar />}
                 </details>
               </div>
             )}

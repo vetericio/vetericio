@@ -11,7 +11,7 @@ import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { registrarDocumentoClinicoAssinado, alterarPublicacaoDocumentoClinico } from "@/lib/documento-clinico.functions";
 
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { DOCUMENTOS, MODELOS_BASE_CLINICOS, formatarDataDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
+import { DOCUMENTOS, MODELOS_BASE_CLINICOS, extrairCorpoModeloClinico, formatarDataDocumento, formatarDataExtensoDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import { criarPdfComModelo, prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 
 type TipoClinico = "pedido" | "documento" | "termo";
@@ -28,7 +28,7 @@ function preencher(texto: string, dados: Contexto, identidade?: PadraoClinico["i
     especie: dados.animal?.especie || "",
     raca: dados.animal?.raca || "",
     tutor: dados.tutor?.nome || "",
-    data: new Date().toLocaleDateString("pt-BR"),
+    data: formatarDataExtensoDocumento(new Date().toLocaleDateString("pt-BR")),
     veterinario: "{{veterinario}}",
     crmv: "{{crmv}}",
   };
@@ -103,7 +103,7 @@ export function ModelosClinicosAtendimento() {
         accessToken: sessao.session.access_token, clinicaId: dados.clinicaId, tipo: m.categoria as TipoClinico,
       } }) : null;
       const base = m && MODELOS_BASE_CLINICOS.some(item => item.id === m.id);
-      const texto = m ? preencher(base && configuracao?.modelo.texto ? configuracao.modelo.texto : m.texto, dados, configuracao?.identidade) : "";
+      const texto = m ? preencher(extrairCorpoModeloClinico(base && configuracao?.modelo.texto ? configuracao.modelo.texto : m.texto), dados, configuracao?.identidade) : "";
       setSelecionado(id);
       setPadrao(configuracao);
       setTextoInicial(texto);

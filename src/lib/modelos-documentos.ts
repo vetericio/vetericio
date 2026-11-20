@@ -2,12 +2,32 @@ export const TIPOS_MODELO_DOCUMENTO = ["receita", "pedido", "documento", "termo"
 export type TipoModeloDocumento = (typeof TIPOS_MODELO_DOCUMENTO)[number];
 
 export const DOCUMENTOS = {
-  receita: { titulo: "Receita simples", exemplo: "Orientações adicionais ao responsável pelo animal." },
-  pedido: { titulo: "Pedido de exame", exemplo: "Exames solicitados:\n\nJustificativa clínica:" },
-  documento: { titulo: "Documento clínico", exemplo: "O animal {{paciente}}, sob responsabilidade de {{tutor}}, compareceu para atendimento veterinário em {{data}}." },
-  termo: { titulo: "Termo de consentimento", exemplo: "Procedimento proposto:\n\nRiscos, benefícios e alternativas explicados:\n\nDeclaro que recebi as orientações e autorizo o procedimento descrito.\n\nAssinatura do responsável: ______________________________" },
-  vacina: { titulo: "Atestado de vacinação", exemplo: "Orientações após a aplicação." },
-  vermifugo: { titulo: "Comprovante de vermifugação", exemplo: "Orientações após a administração." },
+  // Somente o corpo é personalizável. Clínica, paciente, tutor, título e
+  // assinatura são sempre compostos pelo gerador padronizado do PDF.
+  receita: {
+    titulo: "Receita simples",
+    exemplo: "Orientações ao responsável pelo animal {{paciente}}:\n\nCuidados recomendados:\n\nObservações adicionais:",
+  },
+  pedido: {
+    titulo: "Pedido de exame",
+    exemplo: "Solicito avaliação complementar para o animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nExames solicitados:\n\nJustificativa clínica:\n\nOrientações ao responsável:",
+  },
+  documento: {
+    titulo: "Documento clínico",
+    exemplo: "Confirmo que o animal {{paciente}}, sob responsabilidade de {{tutor}}, foi atendido em {{data}}.\n\nDescrição do atendimento:\n\nConduta e orientações:",
+  },
+  termo: {
+    titulo: "Termo e consentimento",
+    exemplo: "Eu, {{tutor}}, responsável pelo animal {{paciente}}, declaro ter recebido explicações sobre o atendimento ou procedimento abaixo.\n\nProcedimento proposto:\n\nOrientações, riscos e alternativas discutidos:\n\nObservações:\n\nEspaço para manifestação e assinatura do responsável:",
+  },
+  vacina: {
+    titulo: "Atestado de vacinação",
+    exemplo: "Registro de vacinação referente ao animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nOrientações após a aplicação:\n\nRecomendações para acompanhamento:",
+  },
+  vermifugo: {
+    titulo: "Comprovante de vermifugação",
+    exemplo: "Registro de vermifugação referente ao animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nOrientações após a administração:\n\nRecomendações para acompanhamento:",
+  },
 } satisfies Record<TipoModeloDocumento, { titulo: string; exemplo: string }>;
 
 export const FUNDOS_DOCUMENTOS = [
@@ -71,6 +91,34 @@ export function preencherTextoDocumento(texto: string, valores: Record<string, s
   return texto.replace(/\{\{([a-z_]+)\}\}/g, (original, campo: string) =>
     Object.hasOwn(valores, campo) && valores[campo] ? valores[campo] : original,
   );
+}
+
+/**
+ * Modelos antigos continham logo/cabeçalho e identificação dentro do texto.
+ * O gerador atual insere esses dados uma única vez, de forma padronizada.
+ * Só remove linhas reconhecíveis do cabeçalho legado, preservando o conteúdo
+ * clínico ou jurídico redigido pela clínica e nunca alterando registros salvos.
+ */
+export function extrairCorpoModeloClinico(texto: string): string {
+  const linhas = texto.replace(/\r\n/g, "\n").split("\n");
+  const prefixo = [
+    /^\s*\{\{clinica\}\}\s*$/,
+    /^\s*\{\{endereco_clinica\}\}\s*$/,
+    /^\s*(RECEITUÁRIO VETERINÁRIO|PEDIDO DE EXAME|DECLARAÇÃO|TERMO DE CONSENTIMENTO|TÍTULO DO DOCUMENTO)\s*$/i,
+    /^\s*Paciente:\s*\{\{paciente\}\}.*$/i,
+    /^\s*Animal:\s*\{\{paciente\}\}.*$/i,
+    /^\s*Tutor:\s*\{\{tutor\}\}.*$/i,
+  ];
+  const tinhaCabecalho = linhas.slice(0, 9).some(linha => prefixo.some(regra => regra.test(linha)));
+  if (!tinhaCabecalho) return texto;
+  while (linhas.length && (linhas[0].trim() === "" || prefixo.some(regra => regra.test(linhas[0])))) linhas.shift();
+  while (linhas.length && linhas[linhas.length - 1].trim() === "") linhas.pop();
+  // Retira exclusivamente o rodapé fixo dos modelos ORICSE antigos.
+  if (linhas.length && /^\s*\{\{veterinario\}\}\s*[-–]\s*CRMV\s*\{\{crmv\}\}\s*$/i.test(linhas[linhas.length - 1])) {
+    linhas.pop();
+    if (linhas.length && /^\s*(Data:\s*)?\{\{data\}\}\s*$/i.test(linhas[linhas.length - 1])) linhas.pop();
+  }
+  return linhas.join("\n").trim();
 }
 
 export function limparOrientacoesPadraoReceita(texto: string) {

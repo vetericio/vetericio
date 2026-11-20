@@ -5,19 +5,22 @@ import { Copy, Eye, FileDown, FilePlus2, History, Printer, Save, Trash2, Upload 
 import { toast } from "sonner";
 import { oricseStorage, descarregarOricseStorage } from "@/lib/oricse-storage";
 import { supabase } from "@/integrations/supabase/client";
-import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
+import { obterModelosDocumentoClinica } from "@/lib/configuracoes-clinica.functions";
+import { DOCUMENTOS, extrairCorpoModeloClinico, formatarDataExtensoDocumento } from "@/lib/modelos-documentos";
+import { PaginasPrevia } from "@/components/PadroesDocumentosClinica";
+import { type jsPDF } from "jspdf";
 
 type Categoria = "receita" | "pedido" | "documento" | "termo";
 type Versao = { numero: number; texto: string; data: string };
 type Modelo = { id: string; nome: string; categoria: Categoria; texto: string; versao: number; historico: Versao[]; atualizadoEm: string };
 const CHAVE = "oricse-modelos-documentos-v1";
 const categorias: Record<Categoria, string> = { receita: "Receituário", pedido: "Pedido de exame", documento: "Documento clínico", termo: "Termo e consentimento" };
-const campos = ["{{clinica}}", "{{endereco_clinica}}", "{{paciente}}", "{{especie}}", "{{raca}}", "{{tutor}}", "{{veterinario}}", "{{crmv}}", "{{data}}"];
+const campos = ["{{paciente}}", "{{tutor}}", "{{data}}", "{{especie}}", "{{raca}}", "{{veterinario}}"];
 const padroes: { nome: string; categoria: Categoria; texto: string }[] = [
-  { nome: "Receita simples", categoria: "receita", texto: "{{clinica}}\n{{endereco_clinica}}\n\nRECEITUÁRIO VETERINÁRIO\nPaciente: {{paciente}} | Espécie: {{especie}}\nTutor: {{tutor}}\n\nPrescrição:\n\n\n{{data}}\n{{veterinario}} - CRMV {{crmv}}" },
-  { nome: "Solicitação de exame", categoria: "pedido", texto: "{{clinica}}\n\nPEDIDO DE EXAME\nPaciente: {{paciente}}\nTutor: {{tutor}}\n\nExames solicitados:\n\nJustificativa clínica:\n\n{{data}}\n{{veterinario}} - CRMV {{crmv}}" },
-  { nome: "Declaração de atendimento", categoria: "documento", texto: "{{clinica}}\n\nDECLARAÇÃO\nDeclaramos que {{paciente}}, sob responsabilidade de {{tutor}}, compareceu para atendimento veterinário em {{data}}.\n\n{{veterinario}} - CRMV {{crmv}}" },
-  { nome: "Consentimento para procedimento", categoria: "termo", texto: "{{clinica}}\n\nTERMO DE CONSENTIMENTO\nTutor: {{tutor}}\nAnimal: {{paciente}}\n\nProcedimento proposto:\n\nRiscos, alternativas e orientações explicados:\n\nDeclaro que fui informado(a) e autorizo o procedimento descrito.\n\nData: {{data}}\nAssinatura do tutor: ____________________" },
+  { nome: "Receita simples", categoria: "receita", texto: DOCUMENTOS.receita.exemplo },
+  { nome: "Solicitação de exames", categoria: "pedido", texto: DOCUMENTOS.pedido.exemplo },
+  { nome: "Declaração de atendimento", categoria: "documento", texto: DOCUMENTOS.documento.exemplo },
+  { nome: "Termo inicial de ciência", categoria: "termo", texto: DOCUMENTOS.termo.exemplo },
 ];
 function ler(): Modelo[] {
   try {
@@ -27,18 +30,17 @@ function ler(): Modelo[] {
   } catch { return []; }
 }
 function novo(base?: typeof padroes[number]): Modelo {
-  return { id: crypto.randomUUID(), nome: base?.nome || "Novo modelo", categoria: base?.categoria || "documento", texto: base?.texto || "{{clinica}}\n\nTítulo do documento\n\nPaciente: {{paciente}}\nTutor: {{tutor}}\n\n{{data}}", versao: 0, historico: [], atualizadoEm: "" };
+  return { id: crypto.randomUUID(), nome: base?.nome || "Documento clínico", categoria: base?.categoria || "documento", texto: base?.texto || DOCUMENTOS.documento.exemplo, versao: 0, historico: [], atualizadoEm: "" };
 }
-function escapar(valor: string) {
-  return valor.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { podeGerenciar: boolean; clinica: string }) {
+export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaId }: { podeGerenciar: boolean; clinica: string; clinicaId: string }) {
   const demoAlvorada = useDemoAlvorada();
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [selecionado, setSelecionado] = useState<Modelo | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [categoria, setCategoria] = useState<Categoria | "todos">("todos");
-  const [contexto, setContexto] = useState<Record<string,string>>({});
+  const [identidade, setIdentidade] = useState<Awaited<ReturnType<typeof obterModelosDocumentoClinica>> | null>(null);
+  const [pdfPrevia, setPdfPrevia] = useState<jsPDF | null>(null);
+  const [erroPrevia, setErroPrevia] = useState("");
   const [preview, setPreview] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   useEffect(() => { setModelos(ler()); }, []);
@@ -47,28 +49,33 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
     void (async () => {
       try {
         const { data: sessao } = await supabase.auth.getSession();
-        if (!sessao.session?.access_token) return;
-        const dados = await obterDadosReceituario({data:{accessToken:sessao.session.access_token}});
-        if (ativo) setContexto({clinica:String(dados.clinicaNome||clinica),endereco_clinica:String(dados.clinicaEndereco||""),data:new Date().toLocaleDateString("pt-BR")});
-      } catch { /* A prévia continua com exemplos, sem dados pessoais. */ }
+        const accessToken = sessao.session?.access_token;
+        if (!accessToken) return;
+        const resultado = await obterModelosDocumentoClinica({ data: { accessToken, clinicaId } });
+        if (ativo) setIdentidade(resultado);
+      } catch {
+        // Dados da clínica não são inventados. Erros aparecem na prévia do PDF.
+      }
     })();
     return () => { ativo = false; };
-  }, [clinica]);
+  }, [clinicaId]);
   function preencher(texto: string) {
-    const campos: Record<string,string> = {
-      clinica, endereco_clinica:"[Endereço da clínica]",
-      paciente:"[Paciente]", especie:"[Espécie]", raca:"[Raça]",
-      tutor:"[Tutor]", veterinario:"[Veterinário]", crmv:"[CRMV]",
-      data:new Date().toLocaleDateString("pt-BR"), ...contexto,
+    const dados: Record<string,string> = {
+      clinica: identidade?.identidade.nome || clinica,
+      endereco_clinica: identidade?.identidade.endereco || "[Endereço da clínica]",
+      paciente:"Luna", especie:"Canina", raca:"SRD",
+      tutor:"Marina Exemplo", veterinario:"Dra. Ana Exemplo", crmv:"MG fictício",
+      data:formatarDataExtensoDocumento(new Date().toLocaleDateString("pt-BR")),
     };
-    return texto.replace(/\{\{([a-z_]+)\}\}/g, (original, chave:string) => campos[chave] || original);
+    return texto.replace(/\{\{([a-z_]+)\}\}/g, (original, chave:string) => dados[chave] || original);
   }
   const visiveis = useMemo(() => modelos.filter((m) => categoria === "todos" || m.categoria === categoria).sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR")), [modelos,categoria]);
   const alterado = selecionado && (modelos.find((m) => m.id === selecionado.id)?.texto !== selecionado.texto || modelos.find((m) => m.id === selecionado.id)?.nome !== selecionado.nome || modelos.find((m) => m.id === selecionado.id)?.categoria !== selecionado.categoria);
   function escolher(modelo: Modelo) {
     if (alterado && !window.confirm("Descartar as alterações deste modelo?")) return;
-    setSelecionado({ ...modelo, historico: [...(modelo.historico || [])] });
+    setSelecionado({ ...modelo, texto: extrairCorpoModeloClinico(modelo.texto), historico: [...(modelo.historico || [])] });
     setPreview(false);
+    setPdfPrevia(null);
   }
   async function persistir(proximos: Modelo[]) {
     oricseStorage.setItem(CHAVE, JSON.stringify(proximos));
@@ -85,7 +92,7 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
       const anterior = modelos.find((m) => m.id === selecionado.id);
       const atualizado: Modelo = { ...selecionado, nome, texto, versao: (anterior?.versao || 0) + 1, atualizadoEm: new Date().toISOString(), historico: anterior ? [...(anterior.historico || []), { numero: anterior.versao, texto: anterior.texto, data: anterior.atualizadoEm }].slice(-10) : [] };
       const lista = anterior ? modelos.map((m) => m.id === atualizado.id ? atualizado : m) : [...modelos, atualizado];
-      await persistir(lista); setSelecionado(atualizado); toast.success("Modelo salvo e confirmado no servidor.");
+      await persistir(lista); setSelecionado(atualizado); toast.success("Texto do modelo salvo e confirmado no servidor.");
     } catch (e) { toast.error(e instanceof Error ? e.message : "Não foi possível confirmar o salvamento."); }
     finally { setSalvando(false); }
   }
@@ -104,47 +111,85 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
     try {
       const texto = await file.text();
       if (texto.length > 25000) return toast.error("O texto deve ter até 25 mil caracteres.");
-      setSelecionado({ ...novo(), nome: file.name.replace(/\.(txt|md)$/i, ""), texto });
-      toast.info("Arquivo carregado. Confira e clique em Salvar modelo.");
+      const categoriaBase = categoria !== "todos" ? padroes.find(item => item.categoria === categoria) : undefined;
+      setSelecionado({ ...novo(categoriaBase), texto: extrairCorpoModeloClinico(texto) });
+      toast.info("Texto importado para o corpo. Confira e salve.");
     } catch { toast.error("Não foi possível ler o arquivo."); }
   }
-  function imprimir() {
+  async function gerarPdfModelo(modelo: Modelo): Promise<jsPDF> {
+    if (!identidade) throw new Error("Os dados da clínica ainda não foram carregados. Atualize esta tela.");
+    const { prepararPapelDocumento, criarPdfComModelo } = await import("@/lib/modelos-documentos-pdf");
+    const papel = await prepararPapelDocumento(identidade.identidade, identidade.modelos[modelo.categoria]);
+    const corpo = preencher(extrairCorpoModeloClinico(modelo.texto));
+    return criarPdfComModelo({
+      titulo: categorias[modelo.categoria],
+      conteudo: corpo,
+      papel,
+      demonstrativo: true,
+      identificacao: {
+        paciente: {
+          nome: "Luna", especie: "Canina", raca: "SRD", idade: "4 anos", peso: "11 kg",
+          sexo: "Feminino", pelagem: "Caramelo", castrado: "Sim",
+        },
+        tutor: {
+          nome: "Marina Exemplo", cpf: "CPF fictício", nascimento: "15/05/1992",
+          telefone: "Telefone fictício", endereco: "Endereço de exemplo",
+        },
+      },
+      assinatura: [
+        [identidade.identidade.municipio, new Date().toLocaleDateString("pt-BR")].filter(Boolean).join(", "),
+        "Dra. Ana Exemplo · CRMV-MG fictício",
+      ],
+    });
+  }
+  useEffect(() => {
+    if (!preview || !selecionado || !identidade) {
+      setPdfPrevia(null);
+      return;
+    }
+    let ativo = true;
+    setPdfPrevia(null);
+    setErroPrevia("");
+    const timer = window.setTimeout(() => {
+      void gerarPdfModelo(selecionado).then(pdf => { if (ativo) setPdfPrevia(pdf); })
+        .catch(e => { if (ativo) setErroPrevia(e instanceof Error ? e.message : "Falha na prévia."); });
+    }, 350);
+    return () => { ativo = false; window.clearTimeout(timer); };
+  }, [preview, selecionado, identidade]);
+  async function imprimir() {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!selecionado) return;
     const janela = window.open("", "_blank");
-    if (!janela) return toast.error("Habilite a abertura de janelas para imprimir.");
-    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapar(selecionado.nome)}</title><style>body{font:12pt Arial,sans-serif;max-width:760px;margin:35px auto;white-space:pre-wrap;line-height:1.55;padding:12px}@media print{body{margin:15mm}}</style></head><body>${escapar(preencher(selecionado.texto))}</body></html>`;
-    janela.document.write(html); janela.document.close(); janela.focus(); janela.print();
+    if (!janela) return void toast.error("Permita a abertura de janelas para imprimir.");
+    try {
+      const pdf = await gerarPdfModelo(selecionado);
+      pdf.autoPrint();
+      janela.location.href = URL.createObjectURL(pdf.output("blob"));
+    } catch (e) {
+      janela.close();
+      toast.error(e instanceof Error ? e.message : "Não foi possível abrir a impressão.");
+    }
   }
   async function baixarPdf() {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!selecionado) return;
     setGerandoPdf(true);
     try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ unit:"mm", format:"a4" });
-      doc.setFont("helvetica","normal"); doc.setFontSize(11);
-      const largura = doc.internal.pageSize.getWidth(), altura = doc.internal.pageSize.getHeight();
-      let y=22;
-      for (const linha of preencher(selecionado.texto).split("\n")) {
-        const partes = doc.splitTextToSize(linha || " ", largura-36) as string[];
-        for (const parte of partes) {
-          if (y>altura-22) { doc.addPage(); y=22; }
-          doc.text(parte || " ", 18, y); y+=6;
-        }
-      }
+      const pdf = await gerarPdfModelo(selecionado);
       const arquivo = selecionado.nome.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").slice(0,70)||"modelo";
-      doc.save(arquivo+".pdf");
-      toast.success("Prévia PDF criada. Confira antes de emitir.");
+      pdf.save("previa-"+arquivo+".pdf");
+      toast.success("Prévia com cabeçalho e identificação padronizados.");
     } catch(e) { toast.error(e instanceof Error ? e.message : "Erro ao gerar PDF."); }
     finally { setGerandoPdf(false); }
   }
   return <section className="mt-5 rounded-xl border bg-background p-4" aria-label="Biblioteca de modelos">
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div><h3 className="font-semibold">Biblioteca de modelos</h3><p className="mt-1 text-xs text-muted-foreground">Crie modelos da {clinica}, confira os dados conhecidos da clínica e exporte uma prévia. Os dados pessoais só serão preenchidos no fluxo clínico autorizado.</p></div>
+      <div><h3 className="font-semibold">Editor de modelos clínicos</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Edite somente o corpo do texto. O ORICSE monta automaticamente a logo, o cabeçalho, os dados do paciente e do tutor e o rodapé.</p>
+      </div>
       {podeGerenciar && <div className="flex flex-wrap gap-2">
         <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><Upload size={15}/> Importar texto<input type="file" accept=".txt,.md,text/plain,text/markdown" className="sr-only" onChange={(e) => { void importar(e.target.files?.[0]); e.target.value = ""; }}/></label>
-        <button type="button" onClick={() => escolher(novo())} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"><FilePlus2 size={15}/> Novo modelo</button>
+        <button type="button" onClick={() => escolher(novo(categoria === "todos" ? undefined : padroes.find(item => item.categoria === categoria)))} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"><FilePlus2 size={15}/> Novo texto</button>
       </div>}
     </div>
     <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
@@ -154,16 +199,21 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
           {visiveis.map((m)=><button type="button" key={m.id} onClick={()=>escolher(m)} className={`w-full rounded-lg border p-3 text-left text-xs ${selecionado?.id===m.id?"border-primary bg-primary/5":"hover:bg-muted"}`}><span className="block font-semibold">{m.nome}</span><span className="mt-1 block text-muted-foreground">{categorias[m.categoria]} · v{m.versao}</span></button>)}
           {!visiveis.length && <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">Nenhum modelo salvo nesta categoria.</p>}
         </div>
-        {podeGerenciar && <div className="border-t pt-2"><p className="mb-2 text-xs font-medium text-muted-foreground">Iniciar de um modelo ORICSE</p>{padroes.map((p)=><button key={p.nome} type="button" onClick={()=>escolher(novo(p))} className="block w-full rounded-lg px-2 py-2 text-left text-xs hover:bg-muted">{p.nome}</button>)}</div>}
+        {podeGerenciar && <div className="border-t pt-2"><p className="mb-2 text-xs font-medium text-muted-foreground">Textos-base do ORICSE</p>{padroes.map((p)=><button key={p.nome} type="button" onClick={()=>escolher(novo(p))} className="block w-full rounded-lg px-2 py-2 text-left text-xs hover:bg-muted">{p.nome}</button>)}</div>}
       </div>
       <div className="min-w-0 space-y-3">
-        {!selecionado ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Selecione um modelo salvo ou crie um novo.</div> : <>
-          <div className="grid gap-3 sm:grid-cols-[1fr_185px]">
-            <label className="text-xs font-semibold">Nome do modelo<input value={selecionado.nome} disabled={!podeGerenciar} maxLength={100} onChange={(e)=>setSelecionado({...selecionado,nome:e.target.value})} className="mt-1 min-h-10 w-full rounded-lg border bg-card px-3 text-sm"/></label>
-            <label className="text-xs font-semibold">Tipo<select value={selecionado.categoria} disabled={!podeGerenciar} onChange={(e)=>setSelecionado({...selecionado,categoria:e.target.value as Categoria})} className="mt-1 min-h-10 w-full rounded-lg border bg-card px-3 text-sm">{Object.entries(categorias).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
+        {!selecionado ? <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Escolha um texto-base do ORICSE ou um modelo salvo. Você editará somente o corpo do documento.</div> : <>
+          <div className="rounded-xl border bg-muted/30 px-4 py-3">
+            <p className="font-semibold">{selecionado.nome}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{categorias[selecionado.categoria]} · Cabeçalho, identidade, paciente, tutor e assinatura padronizados.</p>
           </div>
-          <label className="block text-xs font-semibold">Conteúdo do documento<textarea value={selecionado.texto} disabled={!podeGerenciar} maxLength={25000} rows={13} onChange={(e)=>setSelecionado({...selecionado,texto:e.target.value})} className="mt-1 w-full resize-y rounded-lg border bg-card p-3 font-mono text-sm leading-relaxed"/></label>
-          <div className="flex flex-wrap gap-1">{campos.map((campo)=><button type="button" key={campo} disabled={!podeGerenciar} onClick={()=>setSelecionado({...selecionado,texto:selecionado.texto+" "+campo})} className="rounded-md border px-2 py-1 text-[11px] hover:bg-muted disabled:opacity-50">{campo}</button>)}</div>
+          <label className="block text-sm font-semibold">Corpo do documento
+            <span className="mt-1 block text-xs font-normal text-muted-foreground">Somente este texto é editável. Os campos com chaves são preenchidos com os dados do atendimento.</span>
+            <textarea value={selecionado.texto} disabled={!podeGerenciar} maxLength={25000} rows={13} onChange={(e)=>setSelecionado({...selecionado,texto:e.target.value})}
+              className="mt-2 w-full resize-y rounded-xl border bg-card p-4 font-sans text-sm leading-7 focus-visible:outline-2 focus-visible:outline-primary"
+              placeholder={DOCUMENTOS[selecionado.categoria].exemplo}/>
+          </label>
+          <div className="flex flex-wrap gap-1">{campos.map((campo)=><button type="button" key={campo} disabled={!podeGerenciar} onClick={()=>setSelecionado({...selecionado,texto:selecionado.texto+(selecionado.texto.endsWith(" ")||!selecionado.texto?"":" ")+campo})} className="rounded-md border px-2 py-1 text-[11px] hover:bg-muted disabled:opacity-50">{campo}</button>)}</div>
           <div className="flex flex-wrap items-center gap-2 border-t pt-3">
             <button type="button" onClick={()=>setPreview(v=>!v)} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><Eye size={15}/> {preview?"Ocultar prévia":"Visualizar"}</button>
             <button type="button" onClick={imprimir} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold"><Printer size={15}/> Imprimir</button>
@@ -172,9 +222,15 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
               <button type="button" disabled={salvando} onClick={()=>void salvar()} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"><Save size={15}/>{salvando?"Salvando...":"Salvar modelo"}</button>
               {modelos.some((m)=>m.id===selecionado.id) && <button type="button" disabled={salvando} onClick={()=>void excluir()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs text-destructive"><Trash2 size={15}/> Excluir</button>}</>}
           </div>
-          {preview && <section className="rounded-lg border bg-card p-4"><p className="mb-3 text-xs font-semibold text-muted-foreground">Prévia demonstrativa — documento não emitido nem assinado</p><pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">{preencher(selecionado.texto)}</pre></section>}
+          {preview && <section className="rounded-xl border bg-card p-4">
+            <p className="mb-3 text-sm font-semibold">Documento completo, com dados fictícios</p>
+            <p className="mb-3 text-xs text-muted-foreground">A prévia mostra exatamente o cabeçalho e os quadros padronizados, com o tema escolhido nas configurações da clínica. Não é uma emissão nem uma assinatura.</p>
+            {erroPrevia && <p role="alert" className="text-sm text-destructive">{erroPrevia}</p>}
+            {!pdfPrevia && !erroPrevia && <p role="status" className="text-sm text-muted-foreground">Montando prévia do documento…</p>}
+            {pdfPrevia && <PaginasPrevia pdf={pdfPrevia} />}
+          </section>}
           {selecionado.historico?.length>0 && <details className="rounded-lg border p-3"><summary className="cursor-pointer text-xs font-semibold"><History size={14} className="mr-1 inline"/> Histórico de versões ({selecionado.historico.length})</summary><div className="mt-2 space-y-2">{selecionado.historico.map((v,i)=><div key={i} className="flex items-center justify-between gap-2 text-xs"><span>Versão {v.numero} · {v.data ? new Date(v.data).toLocaleString("pt-BR") : "Data indisponível"}</span>{podeGerenciar && <button type="button" onClick={()=>{if(window.confirm("Recuperar o texto desta versão? Salve para registrar a alteração."))setSelecionado({...selecionado,texto:v.texto});}} className="font-semibold text-primary">Recuperar texto</button>}</div>)}</div></details>}
-          <p className="text-xs text-muted-foreground">Prévia não equivale a emissão nem assinatura. Modelos de receitas controladas continuam sujeitos às exigências legais e ao fluxo próprio.</p>
+          <p className="text-xs text-muted-foreground">Prévia não equivale a emissão nem assinatura. O texto-base de termos é provisório e deve ser revisado pelo responsável técnico antes do uso. Receitas controladas seguem o fluxo próprio.</p>
         </>}
       </div>
     </div>
