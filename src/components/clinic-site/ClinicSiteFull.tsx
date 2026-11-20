@@ -138,25 +138,27 @@ export function ClinicSiteFull({
         secondaryColor: "#D7F1F3",
         backgroundColor: "#F7FBFB",
         textColor: "#003D4C",
-        heroImageUrl:
-          inputConfig.heroImageUrl ||
-          "https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?auto=format&fit=crop&w=1800&q=88",
+        heroImageUrl: "/clinic-site/vetericio/meow-cruella-hero.webp",
         services: [
-          "Consulta que enxerga o todo",
-          "Prevenção que dá segurança",
-          "Acompanhamento que aproxima",
-          "Decisões mais claras",
+          "Consultas",
+          "Exames",
+          "Cirurgias",
+          "Atendimento domiciliar",
+          "Pet sitter",
+          "Vacinas",
         ],
         aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
         aboutText:
           "A Veterício nasceu para tornar a medicina veterinária mais próxima: atendimento atento, comunicação clara e respeito absoluto ao vínculo de vocês. Aqui, a técnica orienta; o cuidado acolhe.",
-        galleryUrls:
-          inputConfig.galleryUrls.length > 0
-            ? inputConfig.galleryUrls
-            : [
-                "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=1200&q=85",
-                "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=1200&q=85",
-              ],
+        galleryUrls: [
+          "/clinic-site/vetericio/meow.webp",
+          "/clinic-site/vetericio/yzma.webp",
+          "/clinic-site/vetericio/cruella.webp",
+          "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1200&q=85",
+          "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=1200&q=85",
+          "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=1200&q=85",
+          "/clinic-site/vetericio/dr-fabricio.webp",
+        ],
         faqItems: [
           {
             question: "Como começo a cuidar com a Veterício?",
@@ -464,14 +466,13 @@ export function ClinicSiteFull({
   );
 
   const vetericioServiceDescriptions: Record<string, string> = {
-    "Consulta que enxerga o todo":
-      "Cada atendimento começa entendendo sinais, hábitos e o que mudou na rotina.",
-    "Prevenção que dá segurança":
-      "Orientações práticas para antecipar cuidados e preservar o bem-estar.",
-    "Acompanhamento que aproxima":
-      "Você não sai com dúvida: sai sabendo quais são os próximos passos.",
-    "Decisões mais claras":
-      "Conversa direta e informação para cuidar do seu jeito, com mais tranquilidade.",
+    Consultas:
+      "Avaliação clínica completa, com escuta, cuidado e orientação clara para sua família.",
+    Exames: "Apoio diagnóstico para entender melhor o que seu pet está precisando.",
+    Cirurgias: "Procedimentos planejados com atenção ao bem-estar e à segurança de cada paciente.",
+    "Atendimento domiciliar": "Cuidado veterinário onde seu pet se sente mais tranquilo: em casa.",
+    "Pet sitter": "Presença profissional, carinho e observação para sua rotina ficar mais leve.",
+    Vacinas: "Prevenção e atualização vacinal para cuidar hoje e proteger o amanhã.",
   };
 
   const sections: Record<ClinicSiteSection, ReactNode> = {
@@ -528,20 +529,26 @@ export function ClinicSiteFull({
                             : " bg-white/35")
                 }
               >
-                <div
-                  className={
-                    "mb-7 flex h-11 w-11 items-center justify-center bg-[var(--site-primary)] text-white " +
-                    (rounded ? "rounded-full" : "rounded-lg")
-                  }
-                >
-                  {index % 3 === 0 ? (
-                    <Heart size={21} />
-                  ) : index % 3 === 1 ? (
-                    <ShieldCheck size={21} />
-                  ) : (
-                    <PawPrint size={21} />
-                  )}
-                </div>
+                {isVetericio ? (
+                  <span className="mb-7 block text-4xl leading-none" aria-hidden="true">
+                    {["🩺", "🔬", "🧬", "🏠", "🐾", "💉"][index] || "🐶"}
+                  </span>
+                ) : (
+                  <div
+                    className={
+                      "mb-7 flex h-11 w-11 items-center justify-center bg-[var(--site-primary)] text-white " +
+                      (rounded ? "rounded-full" : "rounded-lg")
+                    }
+                  >
+                    {index % 3 === 0 ? (
+                      <Heart size={21} />
+                    ) : index % 3 === 1 ? (
+                      <ShieldCheck size={21} />
+                    ) : (
+                      <PawPrint size={21} />
+                    )}
+                  </div>
+                )}
                 <h3 className="text-xl font-extrabold">{service}</h3>
                 <p className="mt-3 text-sm leading-6 opacity-70">
                   {isVetericio
