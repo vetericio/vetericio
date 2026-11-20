@@ -39,8 +39,9 @@ export function RodapeInstitucional({
       aria-label="Informações institucionais do Oricse"
       data-clinic-section={marcaDaClinica ? "rodape" : undefined}
       className={
-        "relative z-10 w-full border-t border-[#ebe2db] bg-[#faf6f1] px-4 py-10 text-center text-[#896d78] sm:px-6 sm:py-12" +
-        (marcaDaClinica ? " pb-24 sm:pb-12" : "")
+        "relative z-10 w-full border-t border-[#ebe2db] bg-[#faf6f1] px-4 py-10 text-center " +
+        (marcaDaClinica ? "pb-24 text-[#36555B] sm:pb-12" : "text-[#896d78]") +
+        " sm:px-6 sm:py-12"
       }
     >
       {marcaDaClinica ? (
