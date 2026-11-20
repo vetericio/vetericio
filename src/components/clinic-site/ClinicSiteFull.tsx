@@ -157,10 +157,10 @@ export function ClinicSiteFull({
         slogan: "A clínica veterinária que vai até sua casa",
         description:
           "Nossa equipe atende seu pet em casa. Se ele precisar de estrutura hospitalar, nós o levamos ao hospital e realizamos todo o procedimento lá.",
-        primaryColor: "#F05A1A",
-        secondaryColor: "#D7F1F3",
-        backgroundColor: "#F7FBFB",
-        textColor: "#003D4C",
+        primaryColor: "#4A1826",
+        secondaryColor: "#EFE4DA",
+        backgroundColor: "#FBF7F1",
+        textColor: "#092F38",
         heroImageUrl:
           "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-cruella-hero.webp",
         services: [
@@ -651,7 +651,11 @@ export function ClinicSiteFull({
           key="galeria"
           id="galeria"
           data-clinic-section="galeria"
-          className={"px-5 sm:px-8 " + sectionPad}
+          className={
+            "px-5 sm:px-8 " +
+            sectionPad +
+            (isVetericio ? " bg-[#092F38] text-[#FFFCF8] [--site-primary:#F2B99E]" : "")
+          }
         >
           <div className="mx-auto max-w-7xl">
             {heading(
@@ -800,7 +804,7 @@ export function ClinicSiteFull({
         key="contato"
         id="contato"
         data-clinic-section="contato"
-        className={"px-5 sm:px-8 " + sectionPad}
+        className={"px-5 sm:px-8 " + sectionPad + (isVetericio ? " bg-[#EFE4DA]" : "")}
       >
         <div
           className={
@@ -839,7 +843,7 @@ export function ClinicSiteFull({
             className={
               "space-y-5 border border-current/15 p-7 " +
               panels +
-              (luxe ? " bg-white/5" : " bg-[var(--site-secondary)]")
+              (isVetericio ? " bg-[#FFFCF8]" : luxe ? " bg-white/5" : " bg-[var(--site-secondary)]")
             }
           >
             {location ? (
@@ -1397,7 +1401,10 @@ export function ClinicSiteFull({
         <a
           href={whatsAppHref}
           aria-label="Falar no WhatsApp"
-          className="fixed bottom-5 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl sm:bottom-7 sm:right-7"
+          className={
+            "fixed bottom-5 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl sm:bottom-7 sm:right-7 " +
+            (isVetericio ? "bg-[#146454]" : "bg-emerald-600")
+          }
         >
           <MessageCircle size={26} />
         </a>

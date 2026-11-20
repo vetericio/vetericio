@@ -22,8 +22,10 @@ export function RodapeInstitucional({
     >
       <p
         className={
-          "font-normal text-[#5e4753] " +
-          (marcaDaClinica ? "mb-1 text-[11px] sm:text-[12px]" : "mb-2 text-[14px] sm:text-[15px]")
+          "font-normal " +
+          (marcaDaClinica
+            ? "mb-1 text-[11px] text-[#4A1826] sm:text-[12px]"
+            : "mb-2 text-[14px] text-[#5e4753] sm:text-[15px]")
         }
       >
         {linkMarca ? (
@@ -51,10 +53,10 @@ export function RodapeInstitucional({
       aria-label="Informações institucionais do Oricse"
       data-clinic-section={marcaDaClinica ? "rodape" : undefined}
       className={
-        "relative z-10 w-full border-t border-[#ebe2db] bg-[#faf6f1] px-4 text-center " +
+        "relative z-10 w-full border-t px-4 text-center " +
         (marcaDaClinica
-          ? "pb-12 pt-3 text-[#36555B] max-[389px]:pb-16 sm:px-24 sm:py-4 md:px-6"
-          : "py-10 text-[#896d78] sm:px-6 sm:py-12")
+          ? "border-[#DCC8BD] bg-[#FBF7F1] pb-12 pt-3 text-[#092F38] max-[389px]:pb-16 sm:px-24 sm:py-4 md:px-6"
+          : "border-[#ebe2db] bg-[#faf6f1] py-10 text-[#896d78] sm:px-6 sm:py-12")
       }
     >
       {marcaDaClinica ? (

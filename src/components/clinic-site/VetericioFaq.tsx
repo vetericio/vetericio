@@ -102,10 +102,10 @@ export function VetericioFaq({ whatsAppHref }: { whatsAppHref?: string }) {
       id="faq"
       data-clinic-section="faq"
       aria-labelledby="vetericio-faq-title"
-      className="bg-[#E6F2F0] px-5 py-14 text-[#003D4C] sm:px-8 sm:py-20"
+      className="bg-[#F3E9E1] px-5 py-14 text-[#092F38] sm:px-8 sm:py-20"
     >
       <div className="mx-auto max-w-7xl">
-        <div className="border-b border-[#B9D5D2] pb-6 sm:flex sm:items-end sm:justify-between sm:gap-6">
+        <div className="border-b border-[#DCC8BD] pb-6 sm:flex sm:items-end sm:justify-between sm:gap-6">
           <h2
             id="vetericio-faq-title"
             className="text-balance font-serif text-4xl leading-[1.08] tracking-tight sm:text-6xl"
@@ -117,7 +117,7 @@ export function VetericioFaq({ whatsAppHref }: { whatsAppHref?: string }) {
               href={whatsAppHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-semibold text-[#8D3A22] underline underline-offset-4 hover:text-[#003D4C] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#003D4C] sm:mt-0"
+              className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-semibold text-[#703144] underline underline-offset-4 hover:text-[#092F38] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#092F38] sm:mt-0"
             >
               Falar com a equipe no WhatsApp
               <ArrowUpRight size={17} aria-hidden="true" />
@@ -127,25 +127,25 @@ export function VetericioFaq({ whatsAppHref }: { whatsAppHref?: string }) {
 
         <div className="mt-6 grid gap-5 sm:mt-8 lg:grid-cols-3">
           {faqTopics.map(({ title, icon: Icon, items }) => (
-            <article key={title} className="rounded-2xl border border-[#BDD6D3] bg-[#FFFCF8]">
-              <h3 className="flex items-center gap-3 rounded-t-2xl bg-[#F4EEE6] px-4 py-4 text-lg font-semibold sm:px-5">
-                <Icon size={22} className="shrink-0 text-[#8D3A22]" aria-hidden="true" />
+            <article key={title} className="rounded-2xl border border-[#DDC9BF] bg-[#FFFCF8]">
+              <h3 className="flex items-center gap-3 rounded-t-2xl bg-[#4A1826] px-4 py-4 text-lg font-semibold text-[#FFFCF8] sm:px-5">
+                <Icon size={22} className="shrink-0 text-[#F2B99E]" aria-hidden="true" />
                 {title}
               </h3>
-              <div className="divide-y divide-[#D9E5E2] px-4 sm:px-5">
+              <div className="divide-y divide-[#E5D6CB] px-4 sm:px-5">
                 {items.map(({ question, answer }, index) => (
                   <details key={question} className="group" open={index === 0 || undefined}>
-                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-sm py-3 text-sm font-semibold leading-snug hover:text-[#8D3A22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003D4C] sm:text-base min-[1440px]:justify-between [&::-webkit-details-marker]:hidden">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-sm py-3 text-sm font-semibold leading-snug hover:text-[#703144] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#092F38] sm:text-base min-[1440px]:justify-between [&::-webkit-details-marker]:hidden">
                       <span>{question}</span>
                       <span
                         aria-hidden="true"
-                        className="order-first grid size-7 shrink-0 place-items-center rounded-full bg-[#E6F2F0] text-[#003D4C] group-open:bg-[#003D4C] group-open:text-white min-[1440px]:order-none"
+                        className="order-first grid size-7 shrink-0 place-items-center rounded-full bg-[#F3E9E1] text-[#4A1826] group-open:bg-[#4A1826] group-open:text-white min-[1440px]:order-none"
                       >
                         <Plus size={15} className="group-open:hidden" />
                         <Minus size={15} className="hidden group-open:block" />
                       </span>
                     </summary>
-                    <p className="pb-4 pr-6 text-sm leading-relaxed text-[#36555B]">{answer}</p>
+                    <p className="pb-4 pr-6 text-sm leading-relaxed text-[#344C50]">{answer}</p>
                   </details>
                 ))}
               </div>

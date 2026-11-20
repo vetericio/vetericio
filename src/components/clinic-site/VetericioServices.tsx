@@ -33,7 +33,7 @@ export function VetericioServices({
       id="servicos"
       data-clinic-section="servicos"
       aria-labelledby="vetericio-services-title"
-      className="bg-white px-5 py-16 text-[#03394D] sm:px-9 sm:py-24"
+      className="bg-[#FBF7F1] px-5 py-16 text-[#03394D] sm:px-9 sm:py-24"
     >
       <div className="mx-auto max-w-7xl">
         <h2

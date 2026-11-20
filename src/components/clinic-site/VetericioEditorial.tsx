@@ -30,12 +30,12 @@ export function VetericioHeader({
   links: { href: string; label: string }[];
 }) {
   return (
-    <header id="inicio" className="border-b border-[#003D4C]/10 bg-[#FCFAF6] text-[#003D4C]">
+    <header id="inicio" className="border-b border-[#092F38]/10 bg-[#FBF7F1] text-[#092F38]">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-4 px-5 sm:px-9">
         <div className="flex min-h-[72px] min-w-0 items-center">{brand}</div>
         <nav
           aria-label="Navegação do site"
-          className="order-last flex w-full flex-wrap justify-between gap-x-1 whitespace-nowrap border-t border-[#003D4C]/10 text-[11px] font-semibold min-[380px]:text-xs sm:justify-center sm:gap-x-7 lg:order-none lg:w-auto lg:border-0 lg:text-sm"
+          className="order-last flex w-full flex-wrap justify-between gap-x-1 whitespace-nowrap border-t border-[#092F38]/10 text-[11px] font-semibold min-[380px]:text-xs sm:justify-center sm:gap-x-7 lg:order-none lg:w-auto lg:border-0 lg:text-sm"
         >
           {links.map(({ href, label }) => (
             <a key={href} href={href} className="py-3 underline-offset-4 hover:underline">
@@ -45,7 +45,7 @@ export function VetericioHeader({
         </nav>
         <a
           href={actionHref}
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#003D4C]/35 px-3 text-xs font-semibold hover:bg-[#003D4C] hover:text-white sm:px-5 sm:text-sm"
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#4A1826]/40 px-3 text-xs font-semibold text-[#4A1826] hover:bg-[#4A1826] hover:text-white sm:px-5 sm:text-sm"
         >
           <CalendarDays size={16} aria-hidden="true" /> Portal do Tutor
         </a>
@@ -123,11 +123,11 @@ export function VetericioHero({
       id="video"
       data-clinic-section="inicio"
       aria-labelledby="vetericio-video-title"
-      className="relative bg-[#FCFAF6]"
+      className="relative bg-[#092F38]"
     >
       <div
         ref={mediaRef}
-        className="relative aspect-[4/3] overflow-hidden bg-[#063742] sm:aspect-[16/9] lg:aspect-auto lg:h-[clamp(33rem,68svh,49rem)]"
+        className="relative aspect-[4/3] overflow-hidden bg-[#092F38] sm:aspect-[16/9] lg:aspect-auto lg:h-[clamp(33rem,68svh,49rem)]"
       >
         <img
           src={poster}
@@ -155,13 +155,13 @@ export function VetericioHero({
           onPause={() => setPlaying(false)}
           onError={() => setFailed(true)}
         />
-        <div className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,#063742_25%,rgba(6,55,66,.94)_33%,rgba(6,55,66,.72)_45%,rgba(6,55,66,.14)_68%,transparent_84%)] lg:block" />
+        <div className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,#092F38_25%,rgba(9,47,56,.94)_33%,rgba(9,47,56,.72)_45%,rgba(9,47,56,.14)_68%,transparent_84%)] lg:block" />
         {!failed && (
           <button
             type="button"
             onClick={() => togglePlayback.current()}
             aria-label={playing ? "Pausar vídeo" : "Reproduzir vídeo"}
-            className="absolute bottom-4 right-4 z-20 grid size-11 place-items-center rounded-full border border-white/65 bg-[#002C36]/85 text-white hover:bg-[#002C36] sm:bottom-6 sm:right-6"
+            className="absolute bottom-4 right-4 z-20 grid size-11 place-items-center rounded-full border border-white/65 bg-[#092F38]/85 text-white hover:bg-[#092F38] sm:bottom-6 sm:right-6"
           >
             {playing ? (
               <Pause size={17} aria-hidden="true" />
@@ -172,7 +172,7 @@ export function VetericioHero({
         )}
       </div>
       <div className="relative mx-auto max-w-[1440px] px-5 py-9 sm:px-9 sm:py-12 lg:pointer-events-none lg:absolute lg:inset-0 lg:z-10 lg:flex lg:items-center lg:px-16 xl:px-24">
-        <div className="max-w-xl text-[#003D4C] lg:pointer-events-auto lg:text-white">
+        <div className="max-w-xl text-[#FFFCF8] lg:pointer-events-auto">
           <h1
             id="vetericio-video-title"
             className="text-balance font-serif text-[clamp(2.5rem,6vw,4.75rem)] leading-[.99] tracking-[-.04em]"
@@ -185,7 +185,7 @@ export function VetericioHero({
           <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4">
             <a
               href={actionHref}
-              className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[#A33C17] px-5 text-sm font-semibold text-white hover:bg-[#852B10] sm:px-6"
+              className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[#9B422B] px-5 text-sm font-semibold text-white hover:bg-[#7C3524] sm:px-6"
             >
               Agendar visita <ArrowRight size={17} aria-hidden="true" />
             </a>
@@ -204,7 +204,7 @@ export function VetericioHero({
 
 export function VetericioAbout({ actionHref }: { actionHref: string }) {
   return (
-    <section id="sobre" data-clinic-section="sobre" className="bg-[#FCFAF6] text-[#003D4C]">
+    <section id="sobre" data-clinic-section="sobre" className="bg-[#FBF7F1] text-[#092F38]">
       <div className="mx-auto grid max-w-[1600px] items-center md:grid-cols-[.42fr_.58fr]">
         <div className="px-6 py-14 text-center sm:px-12 md:py-16 lg:px-16 xl:px-20">
           <h2 className="mx-auto max-w-[27rem] text-balance font-serif text-4xl leading-[1.05] tracking-tight lg:text-5xl">
@@ -217,7 +217,7 @@ export function VetericioAbout({ actionHref }: { actionHref: string }) {
           </p>
           <a
             href={actionHref}
-            className="mt-7 inline-flex min-h-11 items-center gap-2 border-b border-[#A33C17] text-sm font-semibold text-[#852B10] hover:text-[#003D4C]"
+            className="mt-7 inline-flex min-h-11 items-center gap-2 border-b border-[#4A1826] text-sm font-semibold text-[#4A1826] hover:text-[#092F38]"
           >
             Agendar uma visita <ArrowRight size={16} aria-hidden="true" />
           </a>
@@ -240,7 +240,7 @@ export function VetericioVisitSteps() {
   return (
     <section
       id="como-funciona"
-      className="bg-[#4A1826] px-5 py-14 text-white sm:px-9 sm:py-20"
+      className="bg-[#4A1826] px-5 py-14 text-[#FFFCF8] sm:px-9 sm:py-20"
       aria-labelledby="vetericio-visit-steps"
     >
       <div className="mx-auto max-w-6xl">
@@ -254,7 +254,7 @@ export function VetericioVisitSteps() {
           {steps.map(({ title, text }, index) => (
             <li key={title} className="border-t border-white/30 pt-5">
               <span
-                className="flex size-9 items-center justify-center rounded-full bg-white text-sm font-semibold text-[#4A1826]"
+                className="flex size-9 items-center justify-center rounded-full bg-[#FFFCF8] text-sm font-semibold text-[#4A1826]"
                 aria-hidden="true"
               >
                 {index + 1}
