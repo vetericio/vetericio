@@ -135,11 +135,11 @@ export function VetericioFaq({ whatsAppHref }: { whatsAppHref?: string }) {
               <div className="divide-y divide-[#D9E5E2] px-4 sm:px-5">
                 {items.map(({ question, answer }, index) => (
                   <details key={question} className="group" open={index === 0 || undefined}>
-                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-sm py-3 text-sm font-semibold leading-snug hover:text-[#8D3A22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003D4C] sm:text-base [&::-webkit-details-marker]:hidden">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-sm py-3 text-sm font-semibold leading-snug hover:text-[#8D3A22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003D4C] sm:text-base min-[1440px]:justify-between [&::-webkit-details-marker]:hidden">
                       <span>{question}</span>
                       <span
                         aria-hidden="true"
-                        className="grid size-7 shrink-0 place-items-center rounded-full bg-[#E6F2F0] text-[#003D4C] group-open:bg-[#003D4C] group-open:text-white"
+                        className="order-first grid size-7 shrink-0 place-items-center rounded-full bg-[#E6F2F0] text-[#003D4C] group-open:bg-[#003D4C] group-open:text-white min-[1440px]:order-none"
                       >
                         <Plus size={15} className="group-open:hidden" />
                         <Minus size={15} className="hidden group-open:block" />
