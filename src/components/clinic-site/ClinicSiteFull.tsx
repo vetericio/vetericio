@@ -1,4 +1,5 @@
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
+import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { VetericioCareComparison } from "./VetericioCareComparison";
 import {
   VetericioAbout,
@@ -32,7 +33,7 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
-const vetericioLogo = "/clinic-site/vetericio/logo-oficial.webp";
+const vetericioLogo = "/clinic-site/vetericio/marca-horizontal.webp";
 const vetericioGallery = [
   { file: "meow-editorial.webp", description: "Meow, gato cinza e branco, dentro de casa" },
   { file: "yzma-quintal.webp", description: "Yzma sentada na grama do quintal" },
@@ -1184,9 +1185,9 @@ export function ClinicSiteFull({
               <img
                 src={vetericioLogo}
                 alt=""
-                width={432}
-                height={432}
-                className="size-20 object-contain mix-blend-multiply sm:size-24"
+                width={1024}
+                height={255}
+                className="h-auto w-28 min-[360px]:w-40 sm:w-52 lg:w-56"
               />
             </a>
           }
@@ -1371,22 +1372,26 @@ export function ClinicSiteFull({
       )}
 
       {sectionOrder.map((section) => (visible(section) ? sections[section] : null))}
-      <footer
-        data-clinic-section="rodape"
-        className="border-t border-current/20 px-5 pb-24 pt-10 sm:px-8 sm:pb-12"
-      >
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-          {isVetericio ? (
+      {isVetericio ? (
+        <RodapeInstitucional
+          marcaDaClinica={
             <img
               src={vetericioLogo}
               alt={config.name}
-              width={432}
-              height={432}
+              width={1024}
+              height={255}
               loading="lazy"
               decoding="async"
-              className="size-24 object-contain mix-blend-multiply"
+              className="h-auto w-full max-w-[13rem]"
             />
-          ) : (
+          }
+        />
+      ) : (
+        <footer
+          data-clinic-section="rodape"
+          className="border-t border-current/20 px-5 pb-24 pt-10 sm:px-8 sm:pb-12"
+        >
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {safeHttps(config.logoUrl) ? (
                 <span className="flex h-8 w-24 shrink-0 items-center">
@@ -1405,12 +1410,12 @@ export function ClinicSiteFull({
               )}
               <span className="font-bold">{config.name}</span>
             </div>
-          )}
-          <p className="text-xs opacity-65">
-            © {new Date().getFullYear()} {config.name}. Todos os direitos reservados.
-          </p>
-        </div>
-      </footer>
+            <p className="text-xs opacity-65">
+              © {new Date().getFullYear()} {config.name}. Todos os direitos reservados.
+            </p>
+          </div>
+        </footer>
+      )}
       {hasWhatsApp && (
         <a
           href={whatsAppHref}
