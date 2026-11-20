@@ -18,18 +18,21 @@ export function VetericioPortalLogin({
   site,
   title,
   description,
+  extended,
   style,
   children,
 }: {
   site: string;
   title: string;
   description: string;
+  extended: boolean;
   style?: CSSProperties;
   children: ReactNode;
 }) {
   return (
     <main
       data-visual-id="portal-tutor-login"
+      data-portal-auth-mode={extended ? "extended" : "login"}
       className="portal-tutor-live vetericio-portal vetericio-portal-login"
       style={style}
     >
