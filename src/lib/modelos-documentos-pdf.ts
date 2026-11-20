@@ -10,7 +10,7 @@ export type PapelDocumento = {
   tema?: TemaDocumentoPremium | null;
 };
 
-export async function carregarLogoDocumento(url: string): Promise<string> {
+export async function carregarLogoDocumento(url: string, removerFundoBranco = false): Promise<string> {
   const caminho = url.replace(/^https:\/\/oricse\.com\.br(?=\/api\/public\/clinic-image\?)/i, "");
   const imagem = new Image();
   imagem.crossOrigin = "anonymous";
@@ -26,14 +26,94 @@ export async function carregarLogoDocumento(url: string): Promise<string> {
   const contexto = canvas.getContext("2d");
   if (!contexto) throw new Error("Não foi possível preparar a logo da clínica.");
   contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/png");
+  if (!removerFundoBranco) return canvas.toDataURL("image/png");
+
+  // Só nos temas premium. Remove o branco conectado às bordas do arquivo;
+  // brancos internos ao símbolo e áreas coloridas não são apagados.
+  // O arquivo original da clínica jamais é modificado.
+  try {
+    const { width: w, height: h } = canvas;
+    const pixels = contexto.getImageData(0, 0, w, h);
+    const d = pixels.data;
+    const total = w * h;
+    const branco = (indice: number) => {
+      const p = indice * 4;
+      const r = d[p], g = d[p + 1], b = d[p + 2];
+      return d[p + 3] >= 20 && r >= 236 && g >= 236 && b >= 236 &&
+        Math.max(r, g, b) - Math.min(r, g, b) <= 17;
+    };
+    let amostras = 0;
+    let brancas = 0;
+    for (let x = 0; x < w; x++) {
+      for (const indice of [x, (h - 1) * w + x]) {
+        if (d[indice * 4 + 3] < 20) continue;
+        amostras++;
+        if (branco(indice)) brancas++;
+      }
+    }
+    for (let y = 1; y < h - 1; y++) {
+      for (const indice of [y * w, y * w + w - 1]) {
+        if (d[indice * 4 + 3] < 20) continue;
+        amostras++;
+        if (branco(indice)) brancas++;
+      }
+    }
+    // Não interfere em logos de fundo colorido, com transparência real
+    // ou com bordas brancas apenas decorativas.
+    if (amostras > 0 && brancas / amostras >= 0.72) {
+      const vistos = new Uint8Array(total);
+      const fila = new Uint32Array(total);
+      let inicio = 0, fim = 0;
+      const colocar = (indice: number) => {
+        if (vistos[indice] || !branco(indice)) return;
+        vistos[indice] = 1;
+        fila[fim++] = indice;
+      };
+      for (let x = 0; x < w; x++) { colocar(x); colocar((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { colocar(y * w); colocar(y * w + w - 1); }
+      while (inicio < fim) {
+        const indice = fila[inicio++];
+        d[indice * 4 + 3] = 0;
+        const x = indice % w;
+        if (x > 0) colocar(indice - 1);
+        if (x < w - 1) colocar(indice + 1);
+        if (indice >= w) colocar(indice - w);
+        if (indice + w < total) colocar(indice + w);
+      }
+      contexto.putImageData(pixels, 0, 0);
+    }
+    // Corta apenas a borda vazia para a marca usar melhor o espaço
+    // disponível, sem distorcer nem alterar suas proporções.
+    const recorte = contexto.getImageData(0, 0, w, h).data;
+    let xMin = w, yMin = h, xMax = -1, yMax = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (recorte[(y * w + x) * 4 + 3] <= 12) continue;
+      xMin = Math.min(xMin, x); xMax = Math.max(xMax, x);
+      yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
+    }
+    if (xMax < 0) return canvas.toDataURL("image/png");
+    const margem = Math.max(2, Math.round(Math.min(w, h) * 0.01));
+    xMin = Math.max(0, xMin - margem);
+    yMin = Math.max(0, yMin - margem);
+    xMax = Math.min(w - 1, xMax + margem);
+    yMax = Math.min(h - 1, yMax + margem);
+    const cortado = document.createElement("canvas");
+    cortado.width = xMax - xMin + 1;
+    cortado.height = yMax - yMin + 1;
+    cortado.getContext("2d")?.drawImage(canvas, xMin, yMin, cortado.width, cortado.height,
+      0, 0, cortado.width, cortado.height);
+    return cortado.toDataURL("image/png");
+  } catch {
+    // Falha de leitura de pixels não deve impedir o receituário.
+    return canvas.toDataURL("image/png");
+  }
 }
 
-export async function prepararLogoDocumento(clinica: IdentidadeDocumento, usarLogo: boolean) {
+export async function prepararLogoDocumento(clinica: IdentidadeDocumento, usarLogo: boolean, removerFundoBranco = false) {
   if (!usarLogo) return "";
   for (const fonte of [clinica.logoUrl, clinica.logoAlternativa]) {
     if (!fonte) continue;
-    const logo = await carregarLogoDocumento(fonte).catch(() => "");
+    const logo = await carregarLogoDocumento(fonte, removerFundoBranco).catch(() => "");
     if (logo) return logo;
   }
   return "";
@@ -48,7 +128,7 @@ export async function prepararPapelDocumento(clinica: IdentidadeDocumento, model
       }
       return new Uint8Array(await resposta.arrayBuffer());
     }) : null,
-    prepararLogoDocumento(clinica, modelo.usarLogo),
+    prepararLogoDocumento(clinica, modelo.usarLogo, Boolean(obterTemaDocumentoPremium(modelo.fundo))),
   ]);
   return {
     clinica, fundo, logo, corQuadros: modelo.corQuadros,
