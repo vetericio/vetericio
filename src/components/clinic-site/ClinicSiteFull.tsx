@@ -1382,7 +1382,7 @@ export function ClinicSiteFull({
               height={255}
               loading="lazy"
               decoding="async"
-              className="h-auto w-full max-w-[13rem]"
+              className="h-auto w-full max-w-[7rem]"
             />
           }
         />
