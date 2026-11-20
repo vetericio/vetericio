@@ -49,10 +49,10 @@ const primaryServices = new Set([
   "Cirurgias",
   "Pet sitter",
 ]);
-const tones = [
-  "bg-[#DCECE9] text-[#174A50]",
-  "bg-[#F4E3D6] text-[#893A24]",
-  "bg-[#E4EDE1] text-[#2F5347]",
+const brandPanels = [
+  "bg-[radial-gradient(ellipse_at_90%_0%,#02758B,#03394D_74%)]",
+  "bg-[radial-gradient(ellipse_at_12%_0%,#0398AC,#05384D_82%)]",
+  "bg-[radial-gradient(ellipse_at_85%_100%,#017F96,#03394D_76%)]",
 ];
 
 export function VetericioServices({
@@ -74,7 +74,7 @@ export function VetericioServices({
       id="servicos"
       data-clinic-section="servicos"
       aria-labelledby="vetericio-services-title"
-      className="bg-white px-5 py-16 text-[#003D4C] sm:px-9 sm:py-24"
+      className="bg-white px-5 py-16 text-[#03394D] sm:px-9 sm:py-24"
     >
       <div className="mx-auto max-w-7xl">
         <h2
@@ -85,29 +85,30 @@ export function VetericioServices({
         </h2>
         {groups.map(({ title, items, columns }) => (
           <div key={title} className="mt-9 sm:mt-12">
-            <h3 className="mb-4 text-sm font-semibold text-[#36555B] sm:text-base">{title}</h3>
-            <ul className={`grid gap-4 sm:grid-cols-2 ${columns}`}>
+            <h3 className="mb-4 border-b border-[#03394D]/15 pb-3 text-sm font-semibold sm:text-base">
+              {title}
+            </h3>
+            <ul className={`grid gap-4 sm:grid-cols-2 sm:gap-5 ${columns}`}>
               {items.map((service, index) => {
                 const Icon = serviceIcons[service] || Stethoscope;
                 return (
                   <li
                     key={service}
-                    className="overflow-hidden rounded-xl border border-[#003D4C]/15 bg-[#FFFCF8]"
+                    className="overflow-hidden rounded-2xl border border-[#03394D]/15 bg-white shadow-[0_8px_24px_#03394D0D]"
                   >
                     <div
-                      className={`relative flex h-[100px] items-center overflow-hidden px-6 sm:h-[116px] ${tones[index % tones.length]}`}
+                      className={`grid h-28 place-items-center bg-[#03394D] text-white sm:h-32 ${brandPanels[index % brandPanels.length]}`}
                       aria-hidden="true"
                     >
-                      <Icon size={42} strokeWidth={1.45} />
-                      <Icon
-                        className="absolute -right-1.5 -top-4 opacity-[0.12]"
-                        size={152}
-                        strokeWidth={1.1}
-                      />
+                      <span className="grid size-[4.25rem] place-items-center rounded-full border border-white/45 sm:size-[4.75rem]">
+                        <Icon size={33} strokeWidth={1.4} />
+                      </span>
                     </div>
-                    <div className="p-5 sm:px-6">
-                      <h4 className="text-lg font-semibold leading-tight">{service}</h4>
-                      <p className="mt-2.5 text-sm leading-relaxed text-[#38575B]">
+                    <div className="relative p-5 before:absolute before:left-5 before:top-0 before:h-0.5 before:w-8 before:bg-[#FF6402] sm:px-6 sm:before:left-6">
+                      <h4 className="text-balance font-serif text-[1.4rem] leading-tight tracking-tight">
+                        {service}
+                      </h4>
+                      <p className="mt-2.5 text-sm leading-relaxed text-[#03394D]/90">
                         {descriptions[service]}
                       </p>
                     </div>
