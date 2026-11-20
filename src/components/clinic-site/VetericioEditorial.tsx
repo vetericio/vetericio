@@ -33,10 +33,16 @@ export function VetericioHeader({
   const mobileMenu = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
-    const update = () => setCompact(window.scrollY > 24);
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    // Compactar quando o conteúdo alcançar a base do cabeçalho menor.
+    const update = () => setCompact(window.scrollY >= (desktop.matches ? 36 : 58));
     update();
     window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    desktop.addEventListener("change", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      desktop.removeEventListener("change", update);
+    };
   }, []);
 
   return (
@@ -95,7 +101,16 @@ export function VetericioHeader({
               <CalendarDays size={16} aria-hidden="true" /> Portal do Tutor
             </a>
             {compact && (
-              <details ref={mobileMenu} className="shrink-0 lg:hidden">
+              <details
+                ref={mobileMenu}
+                className="shrink-0 lg:hidden"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && event.currentTarget.open) {
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+              >
                 <summary className="grid size-10 cursor-pointer list-none place-items-center rounded-full border border-[#092F38]/25 [&::-webkit-details-marker]:hidden">
                   <Menu size={19} aria-hidden="true" />
                   <span className="sr-only">Menu</span>
