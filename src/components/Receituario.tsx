@@ -1,7 +1,7 @@
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Download, FileDown, Plus, Save, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Download, FileDown, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
@@ -14,12 +14,15 @@ import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functio
 import { formatarDataDocumento, limparOrientacoesPadraoReceita, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import { hojeNoBrasil } from "@/lib/dados-preventivos";
 import type { Database } from "@/integrations/supabase/types";
-import { prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
+import { PreviaAssinaturaReceita } from "@/components/PreviaAssinaturaReceita";
+import { prepararLogoDocumento, prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 import {
   criarReceituario,
   FORMAS_MEDICAMENTO,
   INTERVALOS_RECEITUARIO,
-  montarPosologia,
+  frasePosologia,
+  idadePacienteReceituario,
+  type DadosReceituario,
   type TipoReceita,
   type ItemReceituario,
   type PosicaoSeloReceituario,
@@ -71,8 +74,13 @@ type ReceitaGerada = {
   nome: string;
 };
 
-type CampoItem =
-  "medicamento" | "apresentacao" | "quantidade" | "forma" | "intervalo" | "dias" | "observacao";
+type PerfilEmissor = Awaited<ReturnType<typeof obterPerfilPessoa>>;
+
+function identificarProfissional(perfil: PerfilEmissor | null, email?: string): DadosReceituario["profissional"] {
+  if (!perfil?.nome_completo || !perfil.crmv || !perfil.crmv_uf) return undefined;
+  return { nomeCompleto: perfil.nome_completo, crmv: perfil.crmv, crmvUf: perfil.crmv_uf,
+    mapa: perfil.mapa, telefone: perfil.telefone, endereco: perfil.endereco, email };
+}
 
 function especieDaAnamnese(valor: string): EspecieReceituario {
   if (valor === "Cachorro") return "Canina";
@@ -89,7 +97,6 @@ async function emitirReceitaControladaNoBanco(dados: Record<string, unknown>): P
 export function Receituario() {
   const demoAlvorada = useDemoAlvorada();
   const { anamneses } = useAnamneses();
-  const areaSelosRef = useRef<HTMLDivElement>(null);
   const racaAreaRef = useRef<HTMLDivElement>(null);
   const [paciente, setPaciente] = useState("");
   const [tutor, setTutor] = useState("");
@@ -109,6 +116,7 @@ export function Receituario() {
   const [itens, setItens] = useState<ItemReceituario[]>(() => [novoItem()]);
   const [observacoes, setObservacoes] = useState("");
   const [usarOrientacoesPadrao, setUsarOrientacoesPadrao] = useState(true);
+  const [perfilEmissor, setPerfilEmissor] = useState<PerfilEmissor | null>(null);
   const [padraoReceita, setPadraoReceita] = useState<Awaited<ReturnType<typeof obterModeloDocumentoEmissao>> | null>(null);
   const [pelagem, setPelagem] = useState("");
   const [microchip, setMicrochip] = useState("");
@@ -138,6 +146,7 @@ export function Receituario() {
         if (erroSessao || !sessao.session?.access_token)
           throw new Error("Sessão não encontrada. Entre novamente para preencher os dados.");
 
+        const consultaPerfil = obterPerfilPessoa({ data: { accessToken: sessao.session.access_token } }).catch(() => null);
         const dados = await obterDadosReceituario({
           data: {
             accessToken: sessao.session.access_token,
@@ -158,14 +167,7 @@ export function Receituario() {
           setPeso(animal.peso ? animal.peso.replace(".", ",") : "");
           setSexo(animal.sexo || "");
           setRaca(animal.raca || "");
-          let idadeAnimal = animal.idade || "";
-          if (!idadeAnimal && /^\d{4}-\d{2}-\d{2}$/.test(animal.nascimento || "")) {
-            const [ano, mes, dia] = animal.nascimento.split("-").map(Number);
-            const agora = new Date();
-            const anos = agora.getFullYear() - ano - (agora.getMonth() + 1 < mes || (agora.getMonth() + 1 === mes && agora.getDate() < dia) ? 1 : 0);
-            if (anos >= 0) idadeAnimal = anos < 1 ? "Menos de 1 ano" : anos === 1 ? "1 ano" : anos + " anos";
-          }
-          setIdade(idadeAnimal);
+          setIdade(idadePacienteReceituario(animal.nascimento || "", animal.idade || "", hojeNoBrasil()));
           const especieSalva = String(animal.especie || "").toLocaleLowerCase("pt-BR");
           if (especieSalva.includes("gat") || especieSalva.includes("fel")) {
             setEspecie("Felina");
@@ -201,6 +203,8 @@ export function Receituario() {
             if (padrao.identidade.endereco) setEndereco(padrao.identidade.endereco);
           }
         }
+        const perfil = await consultaPerfil;
+        if (ativo) setPerfilEmissor(perfil);
       } catch (error) {
         if (ativo) {
           setMensagemDados(error instanceof Error ? error.message : "Não foi possível preencher os dados do atendimento.");
@@ -262,8 +266,9 @@ export function Receituario() {
     setRacaAberta(false);
   };
 
-  const atualizarItem = (id: string, campoItem: CampoItem, valor: string) =>
-    setItens((atual) => atual.map((item) => (item.id === id ? { ...item, [campoItem]: valor } : item)));
+  const atualizarItem = <K extends Exclude<keyof ItemReceituario, "id">>(
+    id: string, campoItem: K, valor: ItemReceituario[K],
+  ) => setItens((atual) => atual.map((item) => (item.id === id ? { ...item, [campoItem]: valor } : item)));
 
   const adicionarSelo = (tipo: TipoSelo) => {
     if (!selos[tipo]) {
@@ -274,33 +279,15 @@ export function Receituario() {
     setPosicoesSelos((atual) => ({ ...atual, [tipo]: atual[tipo] ?? POSICOES_PADRAO[tipo] }));
   };
 
-  const iniciarGestoSelo = (evento: React.PointerEvent, tipo: TipoSelo, modo: "mover" | "tamanho") => {
-    evento.preventDefault();
-    evento.stopPropagation();
-    const area = areaSelosRef.current;
-    const inicial = posicoesSelos[tipo];
-    if (!area || !inicial) return;
-    const caixa = area.getBoundingClientRect();
-    const xInicial = evento.clientX;
-    const yInicial = evento.clientY;
-    const alvo = evento.currentTarget as HTMLElement;
-    alvo.setPointerCapture(evento.pointerId);
-    const mover = (movimento: PointerEvent) => {
-      const dx = (movimento.clientX - xInicial) / caixa.width;
-      const dy = (movimento.clientY - yInicial) / caixa.height;
-      setPosicoesSelos((atual) => {
-        const item = atual[tipo] ?? inicial;
-        if (modo === "tamanho") {
-          const largura = Math.min(0.7, Math.max(0.12, inicial.largura + dx));
-          return { ...atual, [tipo]: { ...item, largura, x: Math.min(item.x, 1 - largura) } };
-        }
-        return { ...atual, [tipo]: { ...item, x: Math.min(1 - item.largura, Math.max(0, inicial.x + dx)), y: Math.min(0.72, Math.max(0, inicial.y + dy)) } };
-      });
-    };
-    const soltar = () => { window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", soltar); };
-    window.addEventListener("pointermove", mover);
-    window.addEventListener("pointerup", soltar);
-  };
+  const rodapePrevia = useMemo(() => ({
+    tipo: tipoReceita,
+    data,
+    endereco,
+    profissional: identificarProfissional(perfilEmissor, padraoReceita?.identidade.email),
+    papel: tipoReceita === "normal" && padraoReceita
+      ? { clinica: padraoReceita.identidade, fundo: null, logo: "" }
+      : undefined,
+  }), [tipoReceita, data, endereco, perfilEmissor, padraoReceita]);
 
   async function registrarReceita({ registro, nome, documento }: ReceitaGerada, accessToken: string) {
     const anexo = await enviarAnexoPortal({ data: {
@@ -326,6 +313,9 @@ export function Receituario() {
     if (!endereco.trim()) return void toast.error("Confirme o endereço da clínica para o rodapé do receituário.");
     if (!telefoneTutor.trim()) return void toast.error("Informe o telefone do tutor.");
     if (!itens.some((item) => item.medicamento.trim())) return void toast.error("Informe ao menos um medicamento.");
+    if (itens.some((item) => item.medicamento.trim() && item.intervalo === "outro" && !item.intervaloOutro?.trim())) {
+      return void toast.error("Digite o intervalo dos medicamentos marcados como Outro.");
+    }
     if (!especie) return void toast.error("Selecione a espécie.");
     if (especie === "Outro" && !outraEspecie.trim()) return void toast.error("Informe a outra espécie.");
     if (tipoReceita === "especial" && (!tutor.trim() || !enderecoTutor.trim() || !cpfTutor.trim())) return void toast.error("Receita de controle especial exige tutor, CPF/CNPJ e endereço do tutor.");
@@ -353,24 +343,24 @@ export function Receituario() {
         const token = sessaoPerfil.session?.access_token;
         if (!token) throw new Error("Entre novamente para salvar a receita.");
         if (receita?.chave !== chave) {
-          const profissional = await obterPerfilPessoa({ data: { accessToken: token } });
-          if (!profissional?.nome_completo || !profissional.crmv || !profissional.crmv_uf) {
+          const perfil = perfilEmissor ?? await obterPerfilPessoa({ data: { accessToken: token } });
+          const profissional = identificarProfissional(perfil, padraoReceita?.identidade.email);
+          if (!profissional) {
             throw new Error("Cadastre nome completo, CRMV e UF no cadastro pessoal antes de emitir receitas.");
           }
+          if (!perfilEmissor) setPerfilEmissor(perfil);
           const especial = tipoReceita === "especial";
           const papel = !especial && padraoReceita
             ? await prepararPapelDocumento({ ...padraoReceita.identidade, endereco }, padraoReceita.modelo)
             : undefined;
+          const logoClinica = especial && padraoReceita
+            ? await prepararLogoDocumento(padraoReceita.identidade, padraoReceita.modelo.usarLogo)
+            : undefined;
           const numero = especial ? await emitirReceitaControladaNoBanco(dadosEmissao) : undefined;
           const dadosPdf = {
-            ...dadosEmissao, tipo: tipoReceita, numero,
-            especie: especie === "Outro" ? outraEspecie.trim() : especie, posicoesSelos, papel,
-            profissional: {
-              nomeCompleto: profissional.nome_completo,
-              crmv: profissional.crmv, crmvUf: profissional.crmv_uf,
-              mapa: profissional.mapa, telefone: profissional.telefone, endereco: profissional.endereco,
-              email: padraoReceita?.identidade.email,
-            },
+            ...dadosEmissao, tipo: tipoReceita, numero, profissional,
+            especie: especie === "Outro" ? outraEspecie.trim() : especie, posicoesSelos, selos, papel,
+            logoClinica, nomeClinica: padraoReceita?.identidade.nome,
           };
           const documento = await criarReceituario(dadosPdf);
           const pacienteArquivo = paciente.trim().replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 120).toLowerCase();
@@ -462,7 +452,7 @@ export function Receituario() {
             <fieldset><legend className={rotulo}>Sexo</legend><div className="mt-1 flex gap-2">{["Macho", "Fêmea"].map((opcao) => <label key={opcao} className={escolha}><input type="radio" name="sexo-receituario" checked={sexo === opcao} onChange={() => setSexo(opcao)} className="accent-primary" />{opcao}</label>)}</div></fieldset>
             <label><span className={rotulo}>Peso</span><input value={peso} onChange={(e) => setPeso(e.target.value.replace(".", ","))} inputMode="decimal" className={campo} placeholder="kg" /></label>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3"><label><span className={rotulo}>CPF/CNPJ do tutor</span><input value={cpfTutor} onChange={(e) => setCpfTutor(e.target.value)} className={campo} placeholder="Documento" /></label><label><span className={rotulo}>Idade do paciente</span><input value={idade} onChange={(e) => setIdade(e.target.value)} className={campo} placeholder="Ex.: 5 anos" /></label><label><span className={rotulo}>Endereço do tutor</span><input value={enderecoTutor} onChange={(e) => setEnderecoTutor(e.target.value)} className={campo} placeholder="Endereço completo" /></label></div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3"><label><span className={rotulo}>CPF/CNPJ do tutor</span><input value={cpfTutor} onChange={(e) => setCpfTutor(e.target.value)} className={campo} placeholder="Documento" /></label><label><span className={rotulo}>Idade do paciente</span><input value={idade} onChange={(e) => setIdade(e.target.value)} className={campo} placeholder="Ex.: 8 meses ou 5 anos" /></label><label><span className={rotulo}>Endereço do tutor</span><input value={enderecoTutor} onChange={(e) => setEnderecoTutor(e.target.value)} className={campo} placeholder="Endereço completo" /></label></div>
           {tipoReceita === "normal" && <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label><span className={rotulo}>Pelagem ou plumagem</span><input value={pelagem} onChange={e => setPelagem(e.target.value)} className={campo} maxLength={100} /></label>
             <label><span className={rotulo}>Microchip</span><input value={microchip} onChange={e => setMicrochip(e.target.value)} className={campo} maxLength={45} /></label>
@@ -470,8 +460,73 @@ export function Receituario() {
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3"><h2 className="font-display font-semibold text-foreground">Prescrição</h2><button type="button" onClick={() => setItens((atual) => [...atual, novoItem()])} className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"><Plus className="h-4 w-4" /> Medicamento</button></div>
-          <div className="mt-3 space-y-3">{itens.map((item, indice) => { const posologia = montarPosologia(item); return <article key={item.id} className="rounded-xl border border-border p-3"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-foreground">{indice + 1}. Medicamento</p>{itens.length > 1 && <button type="button" onClick={() => setItens((atual) => atual.filter((medicamento) => medicamento.id !== item.id))} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-destructive" aria-label={"Remover medicamento " + (indice + 1)}><Trash2 className="h-4 w-4" /></button>}</div><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_0.48fr]"><label><span className={rotulo}>Medicamento</span><input value={item.medicamento} onChange={(e) => atualizarItem(item.id, "medicamento", e.target.value)} className={campo} placeholder="Dipirona" /></label><label><span className={rotulo}>Apresentação</span><input value={item.apresentacao} onChange={(e) => atualizarItem(item.id, "apresentacao", e.target.value)} className={campo} placeholder="500 mg" /></label></div><p className={"mt-4 " + rotulo}>Posologia</p><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><label><span className="text-xs text-muted-foreground">Quantidade</span><input value={item.quantidade} onChange={(e) => atualizarItem(item.id, "quantidade", e.target.value)} inputMode="decimal" className={campo} placeholder="1" /></label><label><span className="text-xs text-muted-foreground">Forma</span><select value={item.forma} onChange={(e) => atualizarItem(item.id, "forma", e.target.value)} className={campo}>{FORMAS_MEDICAMENTO.map((opcao) => <option key={opcao.valor} value={opcao.valor}>{opcao.valor}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Intervalo</span><select value={item.intervalo} onChange={(e) => atualizarItem(item.id, "intervalo", e.target.value)} className={campo}>{INTERVALOS_RECEITUARIO.map((horas) => <option key={horas} value={horas}>{"a cada " + horas + "h"}</option>)}</select></label><label><span className="text-xs text-muted-foreground">Por quantos dias?</span><input value={item.dias} onChange={(e) => atualizarItem(item.id, "dias", e.target.value)} inputMode="numeric" className={campo} placeholder="7" /></label></div><div className="mt-3 rounded-xl bg-primary/10 px-3 py-2 text-sm leading-relaxed text-primary">{posologia || "A frase da posologia aparece aqui enquanto você preenche."}</div><label className="mt-3 block"><span className="text-xs text-muted-foreground">Observação desta medicação (opcional)</span><input value={item.observacao} onChange={(e) => atualizarItem(item.id, "observacao", e.target.value)} className={campo} placeholder="Ex.: administrar após alimentação" /></label></article>; })}</div>
+          <h2 className="font-display font-semibold text-foreground">Prescrição</h2>
+          <div className="mt-3 space-y-3">
+            {itens.map((item, indice) => (
+              <article key={item.id} className="rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">{indice + 1}. Medicamento</p>
+                  {itens.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setItens((atual) => atual.filter((medicamento) => medicamento.id !== item.id))}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-destructive"
+                      aria-label={"Remover medicamento " + (indice + 1)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_0.48fr]">
+                  <label><span className={rotulo}>Medicamento</span><input value={item.medicamento} onChange={(e) => atualizarItem(item.id, "medicamento", e.target.value)} className={campo} placeholder="Nome do medicamento" /></label>
+                  <label><span className={rotulo}>Apresentação</span><input value={item.apresentacao} onChange={(e) => atualizarItem(item.id, "apresentacao", e.target.value)} className={campo} placeholder="Ex.: 500 mg" /></label>
+                </div>
+                <p className={"mt-4 " + rotulo}>Posologia</p>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <label><span className="text-xs text-muted-foreground">Quantidade</span><input value={item.quantidade} onChange={(e) => atualizarItem(item.id, "quantidade", e.target.value)} inputMode="decimal" className={campo} placeholder="1" /></label>
+                  <label>
+                    <span className="text-xs text-muted-foreground">Forma</span>
+                    <select value={item.forma} onChange={(e) => atualizarItem(item.id, "forma", e.target.value)} className={campo}>
+                      {FORMAS_MEDICAMENTO.map((opcao) => <option key={opcao.valor} value={opcao.valor}>{opcao.valor}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="text-xs text-muted-foreground">Intervalo</span>
+                    <select value={item.intervalo} onChange={(e) => atualizarItem(item.id, "intervalo", e.target.value)} className={campo}>
+                      {INTERVALOS_RECEITUARIO.map((horas) => <option key={horas} value={horas}>{"a cada " + horas + "h"}</option>)}
+                      <option value="outro">Outro</option>
+                    </select>
+                  </label>
+                  <label><span className="text-xs text-muted-foreground">Por quantos dias?</span><input value={item.dias} onChange={(e) => atualizarItem(item.id, "dias", e.target.value)} inputMode="numeric" className={campo} placeholder="7" /></label>
+                  {item.intervalo === "outro" && (
+                    <label className="col-span-full">
+                      <span className="text-xs font-medium text-foreground">Digite o intervalo</span>
+                      <input value={item.intervaloOutro ?? ""} onChange={(e) => atualizarItem(item.id, "intervaloOutro", e.target.value)}
+                        className={campo} placeholder="Escreva o intervalo como deve aparecer na receita" />
+                    </label>
+                  )}
+                </div>
+                <div className="mt-3 rounded-xl bg-primary/5 p-3">
+                  <label className="block">
+                    <span className="text-xs font-medium text-foreground">Frase da posologia no PDF</span>
+                    <textarea value={item.posologiaEditada ?? frasePosologia(item)} onChange={(e) => atualizarItem(item.id, "posologiaEditada", e.target.value)}
+                      rows={2} className={campo} placeholder="Preencha os campos ou escreva a frase." />
+                  </label>
+                  {item.posologiaEditada !== undefined && (
+                    <button type="button" onClick={() => atualizarItem(item.id, "posologiaEditada", undefined)}
+                      className="mt-1 text-xs font-semibold text-primary underline underline-offset-2">
+                      Voltar ao texto automático
+                    </button>
+                  )}
+                </div>
+                <label className="mt-3 block"><span className="text-xs text-muted-foreground">Observação desta medicação (opcional)</span><input value={item.observacao} onChange={(e) => atualizarItem(item.id, "observacao", e.target.value)} className={campo} placeholder="Ex.: administrar após alimentação" /></label>
+              </article>
+            ))}
+          </div>
+          <button type="button" onClick={() => setItens((atual) => [...atual, novoItem()])}
+            className="mt-3 inline-flex min-h-10 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70">
+            <Plus className="h-4 w-4" /> Adicionar medicamento
+          </button>
           {orientacoesPadrao && <div className="mt-4 rounded-lg border p-3">
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={usarOrientacoesPadrao} onChange={e => setUsarOrientacoesPadrao(e.target.checked)} />
@@ -484,7 +539,9 @@ export function Receituario() {
 
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-display font-semibold text-foreground">Assinatura e carimbo</h2><p className="mt-1 text-sm text-muted-foreground">Adicione e arraste para definir onde cada um ficará no final da receita.</p>
-          <div ref={areaSelosRef} className="relative mt-3 aspect-[595/150] touch-none select-none overflow-hidden rounded-xl border border-dashed border-primary/50 bg-white"><p className="absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Área de assinatura e carimbo</p>{(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => { const posicao = posicoesSelos[tipo]; const selo = selos[tipo]; if (!posicao || !selo) return null; return <div key={tipo} onPointerDown={(e) => iniciarGestoSelo(e, tipo, "mover")} className="absolute cursor-move rounded border border-dashed border-primary bg-white/40 p-0.5 shadow-sm" style={{ left: String(posicao.x * 100) + "%", top: String(posicao.y * 100) + "%", width: String(posicao.largura * 100) + "%" }}><img src={selo} alt={tipo === "assinatura" ? "Assinatura" : "Carimbo"} className="pointer-events-none max-h-16 w-full object-contain" /><button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={() => setPosicoesSelos((atual) => { const proximo = { ...atual }; delete proximo[tipo]; return proximo; })} className="absolute -left-2 -top-2 rounded-full bg-destructive p-0.5 text-destructive-foreground" aria-label={"Remover " + tipo}><X className="h-3 w-3" /></button><span onPointerDown={(e) => iniciarGestoSelo(e, tipo, "tamanho")} className="absolute -bottom-2 -right-2 h-5 w-5 cursor-se-resize rounded-full border border-background bg-primary" aria-label={"Ajustar tamanho de " + tipo} /></div>; })}</div>
+          {carregandoDados ? <p className="mt-3 text-xs text-muted-foreground">Carregando os dados do rodapé.</p> : (
+            <PreviaAssinaturaReceita dados={rodapePrevia} selos={selos} posicoes={posicoesSelos} setPosicoes={setPosicoesSelos} />
+          )}
           <div className="mt-3 flex flex-wrap gap-2">{(["assinatura", "carimbo"] as TipoSelo[]).map((tipo) => <button key={tipo} type="button" onClick={() => adicionarSelo(tipo)} className="rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70">{tipo === "assinatura" ? "+ Assinatura" : "+ Carimbo"}</button>)}</div>
           {!selos.assinatura && !selos.carimbo && <p className="mt-2 text-xs text-muted-foreground">Cadastre a assinatura e o carimbo em Assinar um documento.</p>}
         </section>
