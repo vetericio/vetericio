@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
+import { createClinicLogoPreview } from "@/lib/clinic-logo-preview";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import {
   clinicSitePresets,
@@ -289,6 +290,7 @@ export function SiteDaClinica({
           fileName: file.name,
           mimeType: file.type,
           base64,
+          preview: target === "logo" ? await createClinicLogoPreview(base64) : undefined,
           categoria: target === "logo" ? "logo" : "site",
         },
       } as never);

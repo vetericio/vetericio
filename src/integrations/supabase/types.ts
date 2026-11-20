@@ -177,6 +177,7 @@ export type Database = {
           duracoes_atendimento_min: Json
           id: string
           limite_usuarios: number
+          logo_previa: Json | null
           logo_url: string | null
           nome: string
           observacoes: string | null
@@ -197,6 +198,7 @@ export type Database = {
           duracoes_atendimento_min?: Json
           id?: string
           limite_usuarios?: number
+          logo_previa?: Json | null
           logo_url?: string | null
           nome: string
           observacoes?: string | null
@@ -217,6 +219,7 @@ export type Database = {
           duracoes_atendimento_min?: Json
           id?: string
           limite_usuarios?: number
+          logo_previa?: Json | null
           logo_url?: string | null
           nome?: string
           observacoes?: string | null
