@@ -224,8 +224,9 @@ export function ClinicSiteFull({
   const whatsAppHref = `https://wa.me/${whatsAppRecipient}${
     isVetericio ? `?text=${encodeURIComponent("Oi, vim do site vetericio.")}` : ""
   }`;
-  // A agenda do Portal do Tutor identifica a clínica pelo slug público,
-  // inclusive em domínios personalizados.
+  // Todos os botões de agendamento levam diretamente ao Portal do Tutor da
+  // clínica, inclusive em domínios personalizados. O contexto autenticado não
+  // é necessário: a rota identifica a clínica pelo slug público.
   const { portal: tenantPortal } = useTenantContext();
   const publishedSlug = clinicSlug || tenantPortal?.clinica_slug || pathSlug || hostSlug;
   const portalHref = publishedSlug
@@ -408,12 +409,13 @@ export function ClinicSiteFull({
       )}
     </a>
   );
-  const action = (label: string, href = actionHref) => (
+  const action = (label: string, inverted = false) => (
     <a
-      href={href}
+      href={actionHref}
       className={
-        "inline-flex min-h-12 items-center justify-center gap-2 bg-[var(--site-primary)] px-6 py-3 text-sm font-bold text-white transition hover:opacity-85 " +
-        buttonShape
+        "inline-flex min-h-12 items-center justify-center gap-2 px-6 py-3 text-sm font-bold transition hover:opacity-85 " +
+        buttonShape +
+        (inverted ? " border border-current/30" : " bg-[var(--site-primary)] text-white")
       }
     >
       <CalendarDays size={18} /> {label} <ArrowRight size={16} />
@@ -823,10 +825,18 @@ export function ClinicSiteFull({
                 : "Entre em contato para consultar serviços, horários e informações de atendimento."}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {isVetericio && hasWhatsApp
-                ? action("Agendar pelo WhatsApp", whatsAppHref)
-                : action(actionLabel)}
-              {config.phone ? (
+              {action(isVetericio ? "Agendar" : actionLabel)}
+              {isVetericio && hasWhatsApp ? (
+                <a
+                  href={whatsAppHref}
+                  className={
+                    "inline-flex items-center gap-2 border border-current/25 px-5 py-3 text-sm font-bold " +
+                    buttonShape
+                  }
+                >
+                  <MessageCircle size={17} aria-hidden="true" /> Falar no WhatsApp
+                </a>
+              ) : config.phone ? (
                 <a
                   href={"tel:" + waNumber(config.phone)}
                   className={
