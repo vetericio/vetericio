@@ -155,17 +155,22 @@ function desenharTemaPremiumDocumento(pdf: jsPDF, tema: TemaDocumentoPremium) {
     pdf.setFillColor("#111111");
     pdf.rect(0, 0, largura, altura * 0.006, "F");
     pdf.rect(0, altura * 0.992, largura, altura * 0.008, "F");
-    linha(altura * 0.092, "#242424", 0.75);
+
   } else if (tema.id === "14") {
     pdf.setDrawColor("#bc984f");
     pdf.setLineWidth(0.65);
     pdf.rect(m, altura * 0.013, largura - m * 2, altura * 0.967, "S");
     pdf.setLineWidth(0.25);
     pdf.rect(m * 1.25, altura * 0.018, largura - m * 2.5, altura * 0.957, "S");
-    linha(altura * 0.088, "#c3a06a", 0.4);
+
   } else if (tema.id === "15") {
     pdf.setFillColor("#64243d");
-    pdf.rect(0, 0, largura, altura * 0.119, "F");
+    pdf.rect(0, 0, largura, altura * 0.052, "F");
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor("#ffffff");
+    pdf.text("CUIDADO E PRECISÃO", largura - m, altura * 0.033, { align: "right" });
+    pdf.setTextColor(tema.texto);
     pdf.setDrawColor("#d8abb9");
     pdf.setLineWidth(0.5);
     pdf.line(m, altura * 0.982, largura - m, altura * 0.982);
@@ -176,7 +181,7 @@ function desenharTemaPremiumDocumento(pdf: jsPDF, tema: TemaDocumentoPremium) {
   } else if (tema.id === "16") {
     pdf.setFillColor("#00899a");
     pdf.rect(0, 0, largura, altura * 0.009, "F");
-    linha(altura * 0.107, "#00899a", 0.6);
+
     pdf.setDrawColor("#d6eff0");
     pdf.setLineWidth(0.6);
     for (let n = 0; n < 3; n++) {
@@ -185,7 +190,7 @@ function desenharTemaPremiumDocumento(pdf: jsPDF, tema: TemaDocumentoPremium) {
   } else if (tema.id === "17") {
     pdf.setFillColor("#e9f0e7");
     pdf.roundedRect(m, altura * 0.022, largura - m * 2, altura * 0.084, m * 0.25, m * 0.25, "F");
-    linha(altura * 0.111, "#8aa68d", 0.4);
+
     pdf.setDrawColor("#90ac93");
     pdf.setLineWidth(0.55);
     const bx = largura * 0.90, by = altura * 0.91;
@@ -199,7 +204,7 @@ function desenharTemaPremiumDocumento(pdf: jsPDF, tema: TemaDocumentoPremium) {
     pdf.setFillColor("#c97654");
     pdf.rect(0, 0, largura, altura * 0.01, "F");
     pdf.rect(0, altura * 0.989, largura, altura * 0.011, "F");
-    linha(altura * 0.12, "#c97654", 0.5);
+
     pdf.setDrawColor("#edcdbf");
     pdf.setLineWidth(0.6);
     for (let n = 0; n < 3; n++) {
@@ -242,47 +247,66 @@ export function desenharIdentidadeDocumento(pdf: jsPDF, papel: PapelDocumento, m
   if (papel.tema) {
     const tema = papel.tema;
     const larguraPagina = pdf.internal.pageSize.getWidth();
+    const alturaPagina = pdf.internal.pageSize.getHeight();
     const centro = larguraPagina / 2;
     const atelier = tema.id === "14";
-    const vinho = tema.id === "15";
-    const topo = inicio - (atelier ? 15 : 12) * fator;
-    const maxLogoLargura = (atelier ? 16 : 24) * fator;
-    const maxLogoAltura = (atelier ? 14 : 19) * fator;
+    const topo = atelier ? inicio - 16 * fator
+      : tema.id === "15" ? Math.max(inicio - 11 * fator, alturaPagina * 0.062)
+      : inicio - 11 * fator;
+    const maxLogoLargura = (atelier ? 25 : 30) * fator;
+    const maxLogoAltura = (atelier ? 17 : 22) * fator;
     let larguraLogo = 0;
+    let alturaLogo = 0;
     if (logo) {
       const imagem = pdf.getImageProperties(logo);
       const escala = Math.min(maxLogoLargura / imagem.width, maxLogoAltura / imagem.height);
       larguraLogo = imagem.width * escala;
-      const xLogo = atelier ? centro - larguraLogo / 2 : margem;
-      if (vinho) {
-        pdf.setFillColor("#ffffff");
-        pdf.roundedRect(xLogo - 1 * fator, topo - 1 * fator, larguraLogo + 2 * fator, imagem.height * escala + 2 * fator, 1.4 * fator, 1.4 * fator, "F");
-      }
-      pdf.addImage(logo, "PNG", xLogo, topo, larguraLogo, imagem.height * escala, "logo-clinica");
+      alturaLogo = imagem.height * escala;
+      const logoX = atelier ? centro - larguraLogo / 2 : margem;
+      // Não desenhar caixas, cartões nem fundo branco atrás da logo.
+      // A versão PNG já vem com a transparência corrigida.
+      pdf.addImage(logo, "PNG", logoX, topo, larguraLogo, alturaLogo, "logo-clinica");
     }
-    const xTexto = atelier ? centro : margem + (logo ? maxLogoLargura + 3 * fator : 0);
-    const larguraTexto = atelier ? largura : larguraPagina - margem - xTexto;
     const alinhamento = atelier ? "center" : "left";
-    const corTexto = vinho ? "#ffffff" : tema.texto;
-    pdf.setTextColor(corTexto);
+    const xTexto = atelier ? centro : margem + (logo ? larguraLogo + 6 * fator : 0);
+    const larguraTexto = atelier ? largura : larguraPagina - margem - xTexto;
+    const nomeY = atelier ? topo + Math.max(alturaLogo, 17 * fator) + 5 * fator
+      : topo + 6 * fator;
+
+    pdf.setTextColor(tema.texto);
     pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(atelier ? 11 : 13);
-    const nome = pdf.splitTextToSize(clinica.nome, larguraTexto).slice(0, 2) as string[];
-    const nomeY = atelier ? inicio + 4 * fator : topo + 5 * fator;
-    nome.forEach((texto, indice) => pdf.text(texto, xTexto, nomeY + indice * 4.3 * fator, { align: alinhamento }));
+    pdf.setFontSize(atelier ? 11.8 : 13);
+    const nomeLinhas = pdf.splitTextToSize(clinica.nome || clinica.razaoSocial || "Clínica veterinária", larguraTexto) as string[];
+    const passoNome = (atelier ? 4.8 : 5.1) * fator;
+    nomeLinhas.forEach((texto, indice) =>
+      pdf.text(texto, xTexto, nomeY + indice * passoNome, { align: alinhamento }));
+
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(7.5);
+    pdf.setFontSize(8.3);
     const detalhes = [
-      clinica.razaoSocial !== clinica.nome ? clinica.razaoSocial : "",
+      clinica.razaoSocial && clinica.razaoSocial !== clinica.nome ? clinica.razaoSocial : "",
       [clinica.endereco, clinica.telefone].filter(Boolean).join(" · "),
       [clinica.cnpj && `CNPJ ${clinica.cnpj}`, clinica.crmv && `CRMV ${clinica.crmv}`].filter(Boolean).join(" · "),
       [clinica.email, clinica.site].filter(Boolean).join(" · "),
-    ].filter(Boolean).flatMap(valor => pdf.splitTextToSize(valor, larguraTexto) as string[]).slice(0, 5);
-    const detalhesY = nomeY + nome.length * 4.3 * fator + 1 * fator;
-    detalhes.forEach((texto, indice) => pdf.text(texto, xTexto, detalhesY + indice * 3.1 * fator, { align: alinhamento }));
+    ].filter(Boolean).flatMap(valor => pdf.splitTextToSize(valor, larguraTexto) as string[]);
+    const passoDetalhe = 3.85 * fator;
+    const detalhesY = nomeY + nomeLinhas.length * passoNome + 1 * fator;
+    detalhes.forEach((texto, indice) =>
+      pdf.text(texto, xTexto, detalhesY + indice * passoDetalhe, { align: alinhamento }));
+
+    const fimTextos = detalhes.length
+      ? detalhesY + (detalhes.length - 1) * passoDetalhe
+      : nomeY + (nomeLinhas.length - 1) * passoNome;
+    const fimMarca = topo + alturaLogo;
+    const divisorY = Math.max(fimTextos + 8 * fator, fimMarca + 6 * fator);
+    pdf.setDrawColor(tema.acento);
+    pdf.setLineWidth(atelier ? 0.35 * fator : 0.42 * fator);
+    const recuo = atelier ? 13 * fator : 0;
+    pdf.line(margem + recuo, divisorY, larguraPagina - margem - recuo, divisorY);
     pdf.setTextColor("#202020");
-    // O título do documento começa abaixo do cabeçalho, sem sobrepor a identidade.
-    return Math.max(inicio + (atelier ? 22 : 12) * fator, detalhesY + detalhes.length * 3.1 * fator + 4 * fator);
+    // A posição do título é calculada após o maior bloco do cabeçalho:
+    // nenhuma linha ou texto decorativo pode atravessá-lo.
+    return divisorY + 7 * fator;
   }
   const recuo = logo ? 35 * fator : 0;
   if (logo) {
@@ -344,10 +368,10 @@ export function desenharIdentificacaoDocumento(
       [["Telefone", tutor.telefone]], [["Endereço", tutor.endereco]],
     ] },
   ];
-  const passo = 4.4 * fator;
-  const margemInterna = (receita ? 4 : 3) * fator;
+  const passo = (receita ? 4.75 : 4.4) * fator;
+  const margemInterna = (receita ? 4.7 : 3) * fator;
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
+  pdf.setFontSize(receita ? 9.5 : 9);
   const conteudos = colunas.map(({ linhas }) => linhas.map(linha => {
     const campos = linha.filter(([, valor]) => valor?.trim());
     const coluna = (largura - margemInterna * 2) / (campos.length || 1);
@@ -355,7 +379,7 @@ export function desenharIdentificacaoDocumento(
       pdf.splitTextToSize(`${rotulo}: ${valor}`, coluna - (campos.length > 1 ? 2 * fator : 0)) as string[]);
     return { coluna, valores, altura: Math.max(0, ...valores.map(valor => valor.length)) * passo };
   }));
-  const altura = Math.max((receita ? 28 : 38) * fator, (receita ? 16 : 12) * fator +
+  const altura = Math.max((receita ? 31 : 38) * fator, (receita ? 18 : 12) * fator +
     Math.max(...conteudos.map(linhas => linhas.reduce((total, linha) => total + linha.altura, 0))));
   const [r, g, b] = [1, 3, 5].map(inicio => {
     const canal = parseInt(cor.slice(inicio, inicio + 2), 16) / 255;
@@ -368,11 +392,11 @@ export function desenharIdentificacaoDocumento(
     if (receita) {
       pdf.setFillColor(tema?.quadro || "#fcfcfa");
       pdf.setDrawColor(tema?.borda || "#d7ddda");
-      pdf.setLineWidth(0.2 * fator);
-      pdf.roundedRect(x, topo, largura, altura, 2.6 * fator, 2.6 * fator, "FD");
+      pdf.setLineWidth(0.17 * fator);
+      pdf.roundedRect(x, topo, largura, altura, 2.4 * fator, 2.4 * fator, "FD");
       pdf.setDrawColor(tema?.acento || cor);
-      pdf.setLineWidth(0.6 * fator);
-      pdf.line(x + margemInterna, topo + 8.2 * fator, x + largura - margemInterna, topo + 8.2 * fator);
+      pdf.setLineWidth(0.37 * fator);
+      pdf.line(x + margemInterna, topo + 8.7 * fator, x + largura - margemInterna, topo + 8.7 * fator);
       pdf.setTextColor(tema?.texto || "#203630");
     } else {
       pdf.setFillColor(cor);
@@ -380,10 +404,12 @@ export function desenharIdentificacaoDocumento(
       pdf.setTextColor(corTexto);
     }
     pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(receita ? 10.2 : 9);
     pdf.text(titulo, receita ? x + margemInterna : x + largura / 2, topo + (receita ? 6 : 5.3) * fator,
       { align: receita ? "left" : "center" });
     pdf.setFont("helvetica", "normal");
-    let y = topo + (receita ? 13.8 : 11) * fator;
+    pdf.setFontSize(receita ? 9.5 : 9);
+    let y = topo + (receita ? 14.5 : 11) * fator;
     for (const linha of conteudos[indice]) {
       linha.valores.forEach((valor, coluna) => valor.forEach((texto, n) =>
         pdf.text(texto, x + margemInterna + coluna * linha.coluna, y + n * passo)));
