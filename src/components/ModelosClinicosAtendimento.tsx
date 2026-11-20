@@ -103,7 +103,7 @@ export function ModelosClinicosAtendimento() {
         accessToken: sessao.session.access_token, clinicaId: dados.clinicaId, tipo: m.categoria as TipoClinico,
       } }) : null;
       const base = m && MODELOS_BASE_CLINICOS.some(item => item.id === m.id);
-      const texto = m ? preencher(base && configuracao?.modelo.texto ? configuracao.modelo.texto : m.texto, dados, configuracao?.identidade) : "";
+      const texto = m ? preencher(extrairCorpoModeloClinico(base && configuracao?.modelo.texto ? configuracao.modelo.texto : m.texto), dados, configuracao?.identidade) : "";
       setSelecionado(id);
       setPadrao(configuracao);
       setTextoInicial(texto);
