@@ -101,7 +101,7 @@ export function formatarDataExtensoDocumento(valor: string): string {
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
   ];
-  return valor.replace(/\\b(?:([0-9]{1,2})\\/([0-9]{1,2})\\/([0-9]{4})|([0-9]{4})-([0-9]{2})-([0-9]{2}))\\b/g,
+  return valor.replace(/\b(?:([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})|([0-9]{4})-([0-9]{2})-([0-9]{2}))\b/g,
     (original, diaBR: string | undefined, mesBR: string | undefined, anoBR: string | undefined,
       anoISO: string | undefined, mesISO: string | undefined, diaISO: string | undefined) => {
       const dia = Number(diaBR ?? diaISO), mes = Number(mesBR ?? mesISO), ano = Number(anoBR ?? anoISO);
