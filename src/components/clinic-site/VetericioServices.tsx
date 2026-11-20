@@ -8,6 +8,7 @@ import {
   Microscope,
   Monitor,
   PawPrint,
+  Plus,
   Ribbon,
   ScanLine,
   Scissors,
@@ -37,6 +38,7 @@ const serviceIcons: Record<string, LucideIcon> = {
   Fisiatria: Bone,
   Oncologia: Ribbon,
   Acupuntura: Target,
+  "E muito mais...": Plus,
 };
 
 const primaryServices = new Set([

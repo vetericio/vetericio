@@ -32,6 +32,8 @@ import {
   type ClinicSiteTemplate,
 } from "@/lib/clinic-site";
 
+const vetericioLogo = "/clinic-site/vetericio/logo-oficial.webp";
+
 type Props = {
   template: ClinicSiteTemplate;
   config: ClinicSiteConfig;
@@ -166,6 +168,7 @@ export function ClinicSiteFull({
           "Fisiatria",
           "Oncologia",
           "Acupuntura",
+          "E muito mais...",
         ],
         aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
         aboutText:
@@ -230,7 +233,15 @@ export function ClinicSiteFull({
         : bold
           ? "rounded-md"
           : "rounded-xl";
-  const hasWhatsApp = waNumber(config.whatsapp).length >= 10;
+  const whatsAppNumber = waNumber(config.whatsapp);
+  const hasWhatsApp = whatsAppNumber.length >= 10;
+  const whatsAppRecipient =
+    isVetericio && (whatsAppNumber.length === 10 || whatsAppNumber.length === 11)
+      ? `55${whatsAppNumber}`
+      : whatsAppNumber;
+  const whatsAppHref = `https://wa.me/${whatsAppRecipient}${
+    isVetericio ? `?text=${encodeURIComponent("Oi, vim do site vetericio.")}` : ""
+  }`;
   // Todos os botões de agendamento levam diretamente ao Portal do Tutor da
   // clínica, inclusive em domínios personalizados. O contexto autenticado não
   // é necessário: a rota identifica a clínica pelo slug público.
@@ -342,9 +353,12 @@ export function ClinicSiteFull({
       )
     ) : null;
   const social = realUrl(config.instagramUrl);
-  const mapLink = config.address
-    ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
-    : "";
+  const location = isVetericio ? "Belo Horizonte e região metropolitana" : config.address;
+  const hours = isVetericio ? "Agendado no seu melhor tempo" : config.hours;
+  const mapLink =
+    !isVetericio && config.address
+      ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(config.address)
+      : "";
   const sectionOrder: ClinicSiteSection[] = isVetericio
     ? ["servicos", "galeria", "equipe", "faq", "contato"]
     : config.sectionOrder.length
@@ -511,6 +525,7 @@ export function ClinicSiteFull({
     Fisiatria: "Apoio à mobilidade, conforto e recuperação funcional.",
     Oncologia: "Acompanhamento técnico e acolhedor em cada etapa necessária.",
     Acupuntura: "Cuidado complementar focado em conforto e bem-estar.",
+    "E muito mais...": "Fale com a nossa equipe sobre o que seu pet precisa.",
   };
 
   const sections: Record<ClinicSiteSection, ReactNode> = {
@@ -837,30 +852,34 @@ export function ClinicSiteFull({
               (luxe ? " bg-white/5" : " bg-[var(--site-secondary)]")
             }
           >
-            {config.address ? (
+            {location ? (
               <div className="flex items-start gap-4">
                 <MapPin className="mt-1 shrink-0 text-[var(--site-primary)]" />
                 <div>
-                  <strong className="block">Endereço</strong>
-                  <p className="mt-1 text-sm leading-6">{config.address}</p>
-                  <a
-                    href={mapLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-block text-sm font-semibold underline"
-                  >
-                    Abrir no mapa
-                  </a>
+                  <strong className="block">
+                    {isVetericio ? "Local de atendimento" : "Endereço"}
+                  </strong>
+                  <p className="mt-1 text-sm leading-6">{location}</p>
+                  {mapLink && (
+                    <a
+                      href={mapLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-sm font-semibold underline"
+                    >
+                      Abrir no mapa
+                    </a>
+                  )}
                 </div>
               </div>
             ) : null}
-            {config.hours ? (
+            {hours ? (
               <div className="flex items-start gap-4">
                 <Clock3 className="mt-1 shrink-0 text-[var(--site-primary)]" />
                 <div>
-                  <strong className="block">Funcionamento</strong>
-                  <p className="mt-1 text-sm leading-6">{config.hours}</p>
-                  {config.emergency24h && (
+                  <strong className="block">{isVetericio ? "Horário" : "Funcionamento"}</strong>
+                  <p className="mt-1 text-sm leading-6">{hours}</p>
+                  {!isVetericio && config.emergency24h && (
                     <p className="mt-1 text-xs font-bold">Atendimento de emergência 24h</p>
                   )}
                 </div>
@@ -882,10 +901,7 @@ export function ClinicSiteFull({
                 <MessageCircle className="mt-1 shrink-0 text-[var(--site-primary)]" />
                 <div>
                   <strong className="block">WhatsApp</strong>
-                  <a
-                    href={"https://wa.me/" + waNumber(config.whatsapp)}
-                    className="mt-1 block text-sm underline"
-                  >
+                  <a href={whatsAppHref} className="mt-1 block text-sm underline">
                     Conversar agora
                   </a>
                 </div>
@@ -1152,21 +1168,14 @@ export function ClinicSiteFull({
         <VetericioHeader
           actionHref={actionHref}
           brand={
-            <a
-              href="#inicio"
-              className="flex items-center gap-2.5"
-              aria-label="Início da Veterício"
-            >
+            <a href="#inicio" className="flex items-center py-1" aria-label="Início da Veterício">
               <img
-                src="/vetericio-logo-oficial.png"
+                src={vetericioLogo}
                 alt=""
-                width={40}
-                height={44}
-                className="h-11 w-10 object-contain"
+                width={432}
+                height={432}
+                className="size-20 object-contain mix-blend-multiply sm:size-24"
               />
-              <span className="font-serif text-[1.7rem] leading-none tracking-tight sm:text-3xl">
-                Veterício
-              </span>
             </a>
           }
           links={[
@@ -1355,24 +1364,36 @@ export function ClinicSiteFull({
         className="border-t border-current/20 px-5 pb-24 pt-10 sm:px-8 sm:pb-12"
       >
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {safeHttps(config.logoUrl) ? (
-              <span className="flex h-8 w-24 shrink-0 items-center">
-                <img
-                  src={config.logoUrl}
-                  alt=""
-                  className="h-full w-full object-contain object-left"
-                  width={96}
-                  height={32}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </span>
-            ) : (
-              <PawPrint size={25} />
-            )}
-            <span className="font-bold">{config.name}</span>
-          </div>
+          {isVetericio ? (
+            <img
+              src={vetericioLogo}
+              alt={config.name}
+              width={432}
+              height={432}
+              loading="lazy"
+              decoding="async"
+              className="size-24 object-contain mix-blend-multiply"
+            />
+          ) : (
+            <div className="flex items-center gap-3">
+              {safeHttps(config.logoUrl) ? (
+                <span className="flex h-8 w-24 shrink-0 items-center">
+                  <img
+                    src={config.logoUrl}
+                    alt=""
+                    className="h-full w-full object-contain object-left"
+                    width={96}
+                    height={32}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </span>
+              ) : (
+                <PawPrint size={25} />
+              )}
+              <span className="font-bold">{config.name}</span>
+            </div>
+          )}
           <p className="text-xs opacity-65">
             © {new Date().getFullYear()} {config.name}. Todos os direitos reservados.
           </p>
@@ -1380,7 +1401,7 @@ export function ClinicSiteFull({
       </footer>
       {hasWhatsApp && (
         <a
-          href={"https://wa.me/" + waNumber(config.whatsapp)}
+          href={whatsAppHref}
           aria-label="Falar no WhatsApp"
           className="fixed bottom-5 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl sm:bottom-7 sm:right-7"
         >
