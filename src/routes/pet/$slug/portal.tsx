@@ -1,3 +1,5 @@
+import { VetericioPortalLogin, VetericioPortalLogo } from "@/components/VetericioPortalLogin";
+import { vetericioBrand } from "@/lib/vetericio-brand";
 import { destinoPortalLegado, urlSiteDaClinica } from "@/lib/portal-tutor-url";
 import { orientacaoSenhaPortal, senhaPortalValida } from "../../../../supabase/functions/_shared/portal-password";
 import { FunctionsHttpError } from "@supabase/supabase-js";
@@ -7,6 +9,7 @@ import { PortalClinicContact, type CanaisClinica } from "@/components/PortalClin
 import { PortalTutorOtherServices } from "@/components/PortalTutorOtherServices";
 import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import "./portal-tutor-area.css";
+import "./vetericio-portal.css";
 import { dataDoRotulo, dataPreventivaBR } from "@/lib/dados-preventivos";
 import { pendenciasDosPets, type FonteCuidados } from "@/lib/portal-pet-care";
 import { prepararFotoDoPet } from "@/lib/portal-pet-photo";
@@ -142,6 +145,7 @@ function estado(v:string){return v==="confirmado"?"Confirmado":v==="solicitado"?
 
 export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const slug=slugDaClinica;
+  const isVetericio = slug === vetericioBrand.slug;
   const router = useRouter();
   const tituloSecao = useRef<HTMLHeadingElement>(null);
   const [enviandoFoto, setEnviandoFoto] = useState<string | null>(null);
@@ -192,7 +196,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   const modelo = modeloSolicitado ?? resolveClinicSiteTemplate(sitePublicado?.template);
   const temaPortal: TemaPortal = {
     modelo,
-    cores: slug === "alvorada" || !sitePublicado
+    cores: isVetericio ? vetericioBrand.colors : slug === "alvorada" || !sitePublicado
       ? clinicSitePresets[modelo]
       : normalizeClinicSiteConfig(sitePublicado.config),
   };
@@ -437,6 +441,12 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
     (id !== "pet" || animais.length > 0) &&
     (id !== "agenda" || portalConfig.exibir_agendamento !== false) &&
     (id !== "documentos" || portalConfig.exibir_documentos !== false));
+  const nomeSecao = (id: Secao, nome: string) => {
+    if (!isVetericio) return nome;
+    if (id === "resumo") return "Visão geral";
+    if (id === "contato") return "Fale com a Veterício";
+    return nome;
+  };
   const secaoAtual = navegacao.find(({ id }) => id === secao) ?? navegacao[0];
 
   function navegar(destino: Secao, novoAnimalId = destino === "resumo" ? "" : animal?.id || "") {
@@ -629,8 +639,8 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
     }
   }
 
-  if(carregandoClinica)return <TelaCarregando/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
-  if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} erroLogin={erroLogin} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando/>;
+  if(carregandoClinica)return <TelaCarregando tema={isVetericio ? temaPortal : undefined}/>;if(!clinica)return <main className="mx-auto max-w-lg p-10 text-center"><h1 className="text-2xl font-bold">Portal indisponível</h1><p className="mt-2 text-muted-foreground">Clínica não encontrada.</p><Link to="/" className="mt-4 inline-block underline">Voltar</Link></main>;
+  if(!contexto)return <Login tema={temaPortal} clinica={clinica} extras={extrasPublicos} portalConfig={portalConfig} modoAtivar={modoAtivar} setModoAtivar={setModoAtivar} modoRecuperar={modoRecuperar} setModoRecuperar={setModoRecuperar} usuario={usuario} setUsuario={setUsuario} senha={senha} setSenha={setSenha} token={token} setToken={setToken} novaSenha={novaSenha} setNovaSenha={setNovaSenha} repeteSenha={repeteSenha} setRepeteSenha={setRepeteSenha} cpfRecuperacao={cpfRecuperacao} setCpfRecuperacao={setCpfRecuperacao} nascimentoRecuperacao={nascimentoRecuperacao} setNascimentoRecuperacao={setNascimentoRecuperacao} desafioRecuperacao={desafioRecuperacao} animalResposta={animalResposta} setAnimalResposta={setAnimalResposta} senhaRecuperacao={senhaRecuperacao} setSenhaRecuperacao={setSenhaRecuperacao} repeteSenhaRecuperacao={repeteSenhaRecuperacao} setRepeteSenhaRecuperacao={setRepeteSenhaRecuperacao} entrar={entrar} ativar={ativar} iniciarRecuperacao={iniciarRecuperacao} concluirRecuperacao={concluirRecuperacao} voltarRecuperacao={voltarRecuperacao} erroLogin={erroLogin} login={login} ativando={ativando} recuperando={recuperando}/>;if(carregando)return <TelaCarregando tema={isVetericio ? temaPortal : undefined}/>;
 
   const naVisaoGeral = secaoAtual.id === "resumo";
   const petsPorId = new Map(animais.map(pet => [pet.id, pet]));
@@ -664,20 +674,30 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
   );
 
   return (
-    <main className="portal-tutor-live portal-area" data-site-template={temaPortal?.modelo} style={estiloTemaPortal(temaPortal)}>
+    <main
+      className={isVetericio ? "portal-tutor-live portal-area vetericio-portal" : "portal-tutor-live portal-area"}
+      data-site-template={isVetericio ? undefined : temaPortal.modelo}
+      style={estiloTemaPortal(temaPortal)}
+    >
       <header className="portal-area-header">
         <div className="portal-area-container portal-area-header-inner">
           <div className="portal-area-brand">
-            <span className="portal-area-clinic-mark">
-              {logoClinica ? <img src={logoClinica} alt="" /> : <PawPrint size={22} aria-hidden="true" />}
-            </span>
+            {isVetericio ? (
+              <a href={siteClinica} aria-label="Site da Veterício">
+                <VetericioPortalLogo className="vetericio-portal-logo" />
+              </a>
+            ) : (
+              <span className="portal-area-clinic-mark">
+                {logoClinica ? <img src={logoClinica} alt="" /> : <PawPrint size={22} aria-hidden="true" />}
+              </span>
+            )}
             <div className="min-w-0">
               <p className="portal-area-brand-title">Portal do Tutor</p>
-              <p className="portal-area-muted text-sm break-words">{nomeClinica}</p>
+              {!isVetericio && <p className="portal-area-muted text-sm break-words">{nomeClinica}</p>}
             </div>
           </div>
           <div className="portal-area-header-actions">
-            <a href={siteClinica} className="portal-area-header-action"><ArrowLeft size={17} aria-hidden="true" /> <span>Site da clínica</span></a>
+            <a href={siteClinica} className="portal-area-header-action"><ArrowLeft size={17} aria-hidden="true" /> <span>{isVetericio ? "Voltar ao site" : "Site da clínica"}</span></a>
             <button type="button" className="portal-area-header-action" onClick={sair}><LogOut size={17} aria-hidden="true" /> <span>Sair</span></button>
           </div>
         </div>
@@ -686,20 +706,20 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
         <nav className="portal-area-nav" aria-label="Seções do Portal do Tutor">
           {navegacao.map(({ id, nome, emoji }) => (
             <button key={id} type="button" aria-current={secaoAtual.id === id ? "page" : undefined} onClick={() => navegar(id)}>
-              <span className="portal-area-emoji" aria-hidden="true">{emoji}</span><span>{nome}</span>
+              <span className="portal-area-emoji" aria-hidden="true">{emoji}</span><span>{nomeSecao(id, nome)}</span>
             </button>
           ))}
         </nav>
         <label className="portal-area-mobile-nav">
           <span>Seções</span>
           <select value={secaoAtual.id} onChange={e => navegar(e.target.value as Secao)}>
-            {navegacao.map(({ id, nome, emoji }) => <option key={id} value={id}>{emoji} {nome}</option>)}
+            {navegacao.map(({ id, nome, emoji }) => <option key={id} value={id}>{emoji} {nomeSecao(id, nome)}</option>)}
           </select>
         </label>
         <div className="portal-area-content">
           {modoDemoAlvorada && <p className="portal-area-demo">Demonstração · Dados fictícios</p>}
           <div className="portal-area-section-heading">
-            <h1 ref={tituloSecao} tabIndex={-1}>{secaoAtual.id === "pet" ? animal?.nome : secaoAtual.nome}</h1>
+            <h1 ref={tituloSecao} tabIndex={-1}>{secaoAtual.id === "pet" ? animal?.nome : nomeSecao(secaoAtual.id, secaoAtual.nome)}</h1>
             {animal && !naVisaoGeral && secaoAtual.id !== "contato" && secaoAtual.id !== "perfil" && (
               <label className="portal-area-pet-select">
                 <span>Pet selecionado</span>
@@ -709,26 +729,43 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
               </label>
             )}
           </div>
+          {isVetericio && naVisaoGeral && (
+            <p className="portal-area-intro">Aqui você acompanha as visitas, os avisos e os cuidados do seu pet.</p>
+          )}
           {secaoAtual.id === "contato" ? (
             <div className="space-y-4">
-              <PortalClinicContact canais={portalConfig.canais_contato || {}} />
-              <div className="portal-area-clinic-info">{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{(portalConfig.telefone_publico || portalConfig.whatsapp_publico) && <p className="text-sm">Contato {extrasPublicos.opcoes?.mostrar_contato !== false ? portalConfig.telefone_publico : ""}{extrasPublicos.opcoes?.mostrar_whatsapp !== false && portalConfig.whatsapp_publico && " · WhatsApp " + portalConfig.whatsapp_publico}</p>}</div>
+              <PortalClinicContact
+                vetericio={isVetericio}
+                canais={isVetericio ? {
+                  ...portalConfig.canais_contato,
+                  site: siteClinica,
+                  instagram: portalConfig.canais_contato?.instagram || (extrasPublicos.opcoes.mostrar_instagram !== false ? String(extrasPublicos.opcoes.instagram || "") : undefined),
+                  facebook: portalConfig.canais_contato?.facebook || String(extrasPublicos.opcoes.facebook || ""),
+                  whatsapp: portalConfig.canais_contato?.whatsapp || (extrasPublicos.opcoes.mostrar_whatsapp !== false
+                    ? sitePublicado?.config.whatsapp || portalConfig.whatsapp_publico
+                    : undefined),
+                  telefone: portalConfig.canais_contato?.telefone || (extrasPublicos.opcoes.mostrar_contato !== false
+                    ? sitePublicado?.config.phone || portalConfig.telefone_publico
+                    : undefined),
+                } : portalConfig.canais_contato || {}}
+              />
+              {!isVetericio && <div className="portal-area-clinic-info">{extrasPublicos.opcoes?.mostrar_horarios!==false&&Boolean(extrasPublicos.opcoes?.horario_atendimento)&&<p className="mb-3 text-sm text-slate-600">Horário de atendimento: {String(extrasPublicos.opcoes.horario_atendimento)}</p>}{Boolean(extrasPublicos.opcoes?.endereco_publico)&&<p className="mb-3 text-sm text-slate-600">Endereço: {String(extrasPublicos.opcoes.endereco_publico)}</p>}{extrasPublicos.opcoes?.mostrar_instagram!==false&&Boolean(extrasPublicos.opcoes?.instagram)&&<p className="mb-3 text-sm text-slate-600">Instagram: {String(extrasPublicos.opcoes.instagram)}</p>}{Boolean(extrasPublicos.opcoes?.facebook)&&<p className="mb-3 text-sm text-slate-600">Facebook: {String(extrasPublicos.opcoes.facebook)}</p>}{(portalConfig.telefone_publico || portalConfig.whatsapp_publico) && <p className="text-sm">Contato {extrasPublicos.opcoes?.mostrar_contato !== false ? portalConfig.telefone_publico : ""}{extrasPublicos.opcoes?.mostrar_whatsapp !== false && portalConfig.whatsapp_publico && " · WhatsApp " + portalConfig.whatsapp_publico}</p>}</div>}
             </div>
           ) : secaoAtual.id === "perfil" ? (
             <section className="rounded-2xl border bg-white p-5 sm:p-6"><p className="text-sm portal-area-muted">{contexto.tutor_nome} · {contexto.usuario}</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><Campo rotulo="Telefone" valor={telefone} onChange={setTelefone}/><Campo rotulo="E-mail" valor={email} onChange={setEmail} type="email"/></div><div className="mt-5 flex flex-wrap gap-2"><button disabled={salvandoPerfil} onClick={salvarPerfil} className="min-h-11 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-50">{salvandoPerfil?"Salvando...":"Salvar"}</button></div></section>
           ) : !animal && !naVisaoGeral && secaoAtual.id !== "agenda" ? (
             <section className="portal-area-empty">
               <PawPrint size={25} aria-hidden="true" />
-              <h2>Nenhum pet vinculado</h2>
-              <button type="button" className="portal-area-text-action" onClick={() => navegar("contato")}>Fale com a clínica</button>
+              <h2>{isVetericio ? "Seus pets ainda não aparecem por aqui" : "Nenhum pet vinculado"}</h2>
+              <button type="button" className="portal-area-text-action" onClick={() => navegar("contato")}>{isVetericio ? "Fale com a Veterício" : "Fale com a clínica"}</button>
             </section>
           ) : (
             <div className="space-y-4">
               {naVisaoGeral && (
                 <>
                   {portalConfig.exibir_agendamento !== false && (
-                    <Lista titulo="Agendas e agendamentos" vazio="">
-                      <h3 className="text-sm font-semibold">Agendas disponíveis</h3>
+                    <Lista titulo={isVetericio ? "Suas visitas" : "Agendas e agendamentos"} vazio="">
+                      <h3 className="text-sm font-semibold">{isVetericio ? "Veja os horários disponíveis" : "Agendas disponíveis"}</h3>
                       {agendas.length ? (
                         <div className="portal-area-shortcuts">
                           {agendas.map(item => (
@@ -747,7 +784,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                         {estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro"
                           ? "Não foi possível carregar as agendas." : "Nenhuma agenda publicada pela clínica."}
                       </p>}
-                      <h3 className="pt-2 text-sm font-semibold">Agendamentos dos pets</h3>
+                      <h3 className="pt-2 text-sm font-semibold">{isVetericio ? "Visitas agendadas" : "Agendamentos dos pets"}</h3>
                       <ListaMarcacoes itens={marcacoes} estado={estadoMarcacoes} agendas={agendas}
                         nomeDoPet={id => petsPorId.get(id)?.nome}
                         onAbrir={id => navegar("agenda", id)} />
@@ -825,7 +862,7 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                   </section>
               )}
               {naVisaoGeral && (
-                <Lista titulo="Meus animais" vazio="Nenhum pet vinculado.">
+                <Lista titulo={isVetericio ? "Meus pets" : "Meus animais"} vazio={isVetericio ? "Fale com a Veterício para vincular seu pet ao portal." : "Nenhum pet vinculado."}>
                   {animais.length > 0 && <div className="portal-area-shortcuts">
                     {animais.map(pet => (
                       <Resumo key={pet.id} titulo={pet.nome} valor={pet.especie || "Abrir ficha"} emoji={emojiDoPet(pet.especie)}
@@ -869,10 +906,10 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
                   )}
                 </>
               )}
-  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">Novo agendamento</h2>{!animal && <p className="portal-area-muted mt-2 text-sm">Para agendar, peça à clínica para vincular seu pet.</p>}{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>{setHorario("");setHorarios([]);setAgendaId(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>{setHorario("");setHorarios([]);setDataAgenda(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<span role="status" className="p-2 text-sm">Carregando horários…</span>:erroHorarios?<span role="alert" className="p-2 text-sm">Não foi possível consultar os horários. Selecione outra data ou tente novamente.</span>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Nenhum horário disponível nesta data. Selecione outro dia.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">{estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro" ? "Não foi possível carregar as agendas. Atualize a página para tentar novamente." : "A clínica ainda não publicou agendas para atendimento online."}</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={slug==="alvorada"||!animal||!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!animal||!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><Lista titulo="Meus agendamentos" vazio=""><ListaMarcacoes itens={marcacoesAnimal} estado={estadoMarcacoes} agendas={agendas} /></Lista></div>}
-  {secaoAtual.id==="documentos"&&portalConfig.exibir_documentos!==false&&<Lista titulo="Documentos, laudos e atestados" vazio="Nenhum documento liberado.">{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista>}
-  {secaoAtual.id==="exames"&&<Lista titulo="Exames" vazio="Nenhum exame liberado.">{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
-  {secaoAtual.id==="receitas"&&<Lista titulo="Receitas" vazio="Nenhuma receita disponível.">{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {r.emitida_em.length === 10 ? dataBr(r.emitida_em) : dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
+  {secaoAtual.id==="agenda"&&portalConfig.exibir_agendamento!==false&&<div className="space-y-4"><div className="rounded-2xl border bg-white p-5"><h2 className="text-lg font-semibold">{isVetericio ? "Agendar uma visita" : "Novo agendamento"}</h2>{!animal && <p className="portal-area-muted mt-2 text-sm">Para agendar, peça à clínica para vincular seu pet.</p>}{portalConfig.instrucoes_agendamento && <p className="mt-2 text-sm portal-area-muted">{portalConfig.instrucoes_agendamento}</p>}{Boolean(extrasPublicos.opcoes.politica_cancelamento) && <details className="portal-area-details mt-3"><summary>Política de cancelamento</summary><p className="mt-2 text-sm">{String(extrasPublicos.opcoes.politica_cancelamento)}</p></details>}{agendas.length?<div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold">Agenda<select value={agendaId} onChange={e=>{setHorario("");setHorarios([]);setAgendaId(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal">{agendas.map(a=><option key={a.id} value={a.id}>{a.nome}{a.responsavel?` · ${a.responsavel}`:""}</option>)}</select></label><label className="text-sm font-bold">Data<input type="date" min={dataIso()} value={dataAgenda} onChange={e=>{setHorario("");setHorarios([]);setDataAgenda(e.target.value);}} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label><div className="sm:col-span-2"><p className="text-sm font-bold">Horários livres</p><div className="mt-2 flex flex-wrap gap-2 rounded-xl border bg-slate-50 p-2">{carregandoHorarios?<span role="status" className="p-2 text-sm">Carregando horários…</span>:erroHorarios?<span role="alert" className="p-2 text-sm">Não foi possível consultar os horários. Selecione outra data ou tente novamente.</span>:horarios.length?horarios.map(h=><button key={h.inicio} onClick={()=>setHorario(h.inicio)} className={`rounded-lg px-3 py-2 text-sm font-bold ${horario===h.inicio?"bg-[#702a43] text-white":"border bg-white"}`}>{h.rotulo}</button>):<span className="p-2 text-sm text-slate-500">Nenhum horário disponível nesta data. Selecione outro dia.</span>}</div></div><label className="sm:col-span-2 text-sm font-bold">Observação<textarea value={obs} onChange={e=>setObs(e.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-xl border p-3 font-normal"/></label></div>:<p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">{estadoAgendas === "carregando" ? "Carregando agendas…" : estadoAgendas === "erro" ? "Não foi possível carregar as agendas. Atualize a página para tentar novamente." : "A clínica ainda não publicou agendas para atendimento online."}</p>}{agenda?.modalidade==="pagamento"?<div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong className="block">Pagamento online seguro</strong><p className="mt-2 font-semibold">Ao iniciar o pagamento, o horário fica reservado para você por 15 minutos. Se o pagamento não for confirmado nesse prazo, a reserva expira e o horário volta a ficar disponível.</p><p className="mt-1">{agenda.pagamento_descricao||"Confirme o horário após o pagamento."} {agenda.pagamento_valor?"Valor: "+dinheiro(Number(agenda.pagamento_valor))+".":""}</p><button disabled={slug==="alvorada"||!animal||!horario||pagando==="agenda"} onClick={pagarAgenda} className="mt-3 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{pagando==="agenda"?"Abrindo pagamento...":"Pagar e confirmar horário"}</button></div>:agendas.length>0&&<button disabled={!animal||!horario||agendando} onClick={agendar} className="mt-4 flex items-center gap-2 rounded-xl bg-[#702a43] px-5 py-3 font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/>{agendando?"Agendando...":agenda?.modalidade==="livre"?"Confirmar":"Enviar solicitação"}</button>}</div><Lista titulo="Meus agendamentos" vazio=""><ListaMarcacoes itens={marcacoesAnimal} estado={estadoMarcacoes} agendas={agendas} /></Lista></div>}
+  {secaoAtual.id==="documentos"&&portalConfig.exibir_documentos!==false&&<Lista titulo="Documentos, laudos e atestados" vazio={isVetericio ? "Os documentos que a equipe compartilhar com você vão aparecer aqui." : "Nenhum documento liberado."}>{docsAnimal.map(d=><div key={d.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{d.titulo}</strong><p className="text-xs text-slate-500">{d.tipo} · {dataBr(d.data_documento)}</p>{d.observacoes&&<p className="mt-2 text-sm">{d.observacoes}</p>}</div>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo}/>}</div></div>)}</Lista>}
+  {secaoAtual.id==="exames"&&<Lista titulo="Exames" vazio={isVetericio ? "Os exames compartilhados pela equipe vão aparecer aqui." : "Nenhum exame liberado."}>{examesAnimal.map(e=><div key={e.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{e.titulo}</strong><p className="text-xs text-slate-500">{e.tipo} · {dataBr(e.realizado_em)}</p>{e.resultado_resumo&&<p className="mt-2 whitespace-pre-wrap text-sm">{e.resultado_resumo}</p>}</div>{e.drive_arquivo_id&&<BotaoArquivo id={e.id} tipo="exame" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
+  {secaoAtual.id==="receitas"&&<Lista titulo="Receitas" vazio={isVetericio ? "As receitas compartilhadas pela equipe vão aparecer aqui." : "Nenhuma receita disponível."}>{receitasAnimal.map(r=><div key={r.id} className="rounded-xl border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong>{r.titulo}</strong><p className="text-xs text-slate-500">{r.tipo==="especial"?"Controle especial":"Receita normal"} · {r.emitida_em.length === 10 ? dataBr(r.emitida_em) : dataHora(r.emitida_em)}{r.numero?` · Nº ${r.numero}`:""}</p></div>{r.drive_arquivo_id&&<BotaoArquivo id={r.id} tipo="receita" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div></div>)}</Lista>}
   {secaoAtual.id==="vacinas"&&<><Lista titulo="Documentos de vacinação em PDF" vazio="Nenhum documento de vacinação em PDF liberado.">{docsAnimal.filter(d=>["Atestado de vacinação", "Cartão de vacinação", "Carteira de vacinação", "Carteira de saúde"].includes(d.tipo)).map(d=><div key={d.id} className="flex justify-between rounded-xl border p-4"><strong>{d.titulo}</strong>{d.drive_arquivo_id&&<BotaoArquivo id={d.id} tipo="documento" baixando={baixando} onAbrir={abrirArquivo} rotulo="Abrir PDF"/>}</div>)}</Lista><Lista titulo="Cartão de vacinas e reforços" vazio="Nenhuma vacina ou cartão liberado.">{vacinasAnimal.map(v=><div key={v.id} className="rounded-xl border p-4"><div className="flex justify-between gap-2"><strong>{v.nome}</strong>{v.reforco_em&&<span className="rounded-full bg-[#702a43]/10 px-2 py-1 text-xs font-bold text-[#702a43]">Reforço {dataBr(v.reforco_em)}</span>}</div><p className="text-xs text-slate-500">Aplicada {dataBr(v.aplicada_em)}{v.lote?` · Lote ${v.lote}`:""}</p><DadosDoAto dados={v} />{v.observacoes&&<p className="mt-2 text-sm">{v.observacoes}</p>}</div>)}</Lista></>}
   {secaoAtual.id==="vermifugos"&&<><Lista titulo="Comprovantes em PDF" vazio="Nenhum comprovante em PDF liberado.">
     {docsAnimal.filter(d => d.tipo === "Comprovante de vermifugação" && d.drive_arquivo_id).map(d => (
@@ -886,12 +923,20 @@ export function PortalTutorClinica({slugDaClinica}:{slugDaClinica:string}){
           )}
         </div>
       </div>
-      <RodapeInstitucional linkMarca />
+      <RodapeInstitucional linkMarca marcaDaClinica={isVetericio ? <VetericioPortalLogo className="h-auto w-full max-w-[7rem]" /> : undefined} />
     </main>
   );
 }
 
-function TelaCarregando(){return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4]"><Loader2 className="animate-spin"/></main>}
+function TelaCarregando({ tema }: { tema?: TemaPortal } = {}) {
+  if (tema) return (
+    <main className="portal-tutor-live vetericio-portal grid place-content-center justify-items-center gap-4" style={estiloTemaPortal(tema)}>
+      <VetericioPortalLogo className="vetericio-portal-logo" />
+      <p className="flex items-center gap-2 text-sm" role="status"><Loader2 size={16} className="animate-spin" aria-hidden="true" /> Abrindo o Portal do Tutor…</p>
+    </main>
+  );
+  return <main className="flex min-h-screen items-center justify-center bg-[#faf7f4]"><Loader2 className="animate-spin"/></main>;
+}
 function Campo({ rotulo, valor, onChange, type = "text", ...input }: {
   rotulo: string;
   valor: string;
@@ -987,6 +1032,51 @@ function Login(props:{
   const clinicLogo=p.portalConfig.logo_clinica_url||p.clinica.logo_url||p.portalConfig.logo_cabecalho_url;
   const clinicSite = urlSiteDaClinica(p.clinica.slug, p.tema?.modelo);
   const acessoEstendido=p.modoAtivar||p.modoRecuperar;
+  const isVetericio = p.clinica.slug === vetericioBrand.slug;
+  const formulario = (
+    <div className="portal-one-screen-form">
+        {p.modoRecuperar ? (
+          <><p className="text-sm text-slate-500">{isVetericio ? "Informe seus dados. Em seguida, escolha o nome do seu pet para criar uma nova senha." : "Confirme seus dados e reconheça um pet vinculado a esta clínica."}</p>
+          {!p.desafioRecuperacao ? (
+            <form onSubmit={p.iniciarRecuperacao} className="mt-5 space-y-4">
+              <Campo rotulo="Usuário do portal (@)" valor={p.usuario} onChange={p.setUsuario} placeholder="@tut.seunome"/>
+              <Campo rotulo="CPF" valor={p.cpfRecuperacao} onChange={p.setCpfRecuperacao} inputMode="numeric" placeholder="Somente números"/>
+              <Campo rotulo="Data de nascimento" valor={p.nascimentoRecuperacao} onChange={p.setNascimentoRecuperacao} type="date"/>
+              <button disabled={p.recuperando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.recuperando?"Validando...":"Continuar"}</button>
+            </form>
+          ) : (
+            <form onSubmit={p.concluirRecuperacao} className="mt-5 space-y-4">
+              <fieldset><legend className="text-sm font-bold">{p.desafioRecuperacao.pergunta}</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{p.desafioRecuperacao.alternativas.map((alternativa)=><button key={alternativa.id} type="button" onClick={()=>p.setAnimalResposta(alternativa.id)} className={"rounded-xl border px-4 py-3 text-left font-bold transition "+(p.animalResposta===alternativa.id?"border-[#702a43] bg-slate-100 ring-2 ring-[#303842]/20":"bg-white hover:border-slate-400")}>{alternativa.nome}</button>)}</div></fieldset>
+              <Campo rotulo="Nova senha" valor={p.senhaRecuperacao} onChange={p.setSenhaRecuperacao} type="password"/>
+              <p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p>
+              <Campo rotulo="Repita a nova senha" valor={p.repeteSenhaRecuperacao} onChange={p.setRepeteSenhaRecuperacao} type="password"/>
+              <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">Por segurança, nenhuma senha antiga é exibida ou recuperada.</p>
+              <button disabled={p.recuperando||!p.animalResposta} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.recuperando?"Redefinindo...":"Salvar nova senha"}</button>
+            </form>
+          )}
+          <button onClick={p.voltarRecuperacao} className="mt-4 w-full text-sm font-bold text-[#702a43]">Voltar para o acesso</button></>
+        ) : p.modoAtivar ? (
+          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken} placeholder="Ex.: SD45"/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
+        ) : (
+          <><form onSubmit={p.entrar} className="mt-5 space-y-4" aria-busy={p.login}>
+            <Campo rotulo="Usuário" name="usuario" autoComplete="username" valor={p.usuario} onChange={p.setUsuario} aria-describedby={p.erroLogin ? "portal-login-erro" : undefined}/>
+            <Campo rotulo="Senha" name="senha" autoComplete="current-password" valor={p.senha} onChange={p.setSenha} type="password" aria-describedby={p.erroLogin ? "portal-login-erro" : undefined}/>
+            {p.erroLogin && <p id="portal-login-erro" role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm font-semibold text-red-900">{p.erroLogin}</p>}
+            <button type="submit" data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button>
+          </form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
+        )}
+        </div>
+  );
+  if (isVetericio) return (
+    <VetericioPortalLogin
+      site={clinicSite}
+      style={estiloTemaPortal(p.tema)}
+      title={p.modoRecuperar ? "Recupere seu acesso" : p.modoAtivar ? "Ative seu primeiro acesso" : "Entre no seu portal"}
+      description={p.modoRecuperar ? "Vamos ajudar você a voltar ao portal do seu pet." : p.modoAtivar ? "Use o código que a equipe enviou e escolha sua senha." : "Use seu usuário e sua senha para continuar."}
+    >
+      {formulario}
+    </VetericioPortalLogin>
+  );
   return <main data-visual-id="portal-tutor-login" className="portal-tutor-live portal-tutor-login-screen" data-clinic-slug={p.clinica.slug} data-site-template={p.tema?.modelo}
     data-portal-auth-mode={acessoEstendido?"extended":"login"} style={estiloTemaPortal(p.tema)}>
     <div className="portal-login-topbar">
@@ -1036,38 +1126,7 @@ function Login(props:{
           </div>
         </div>
         <p data-visual-id="portal-tutor-login-description" className="portal-one-screen-login-lead">Suas informações e os cuidados com seu pet, em segurança.</p>
-        <div className="portal-one-screen-form">
-        {p.modoRecuperar ? (
-          <><p className="text-sm text-slate-500">Confirme seus dados e reconheça um pet vinculado a esta clínica.</p>
-          {!p.desafioRecuperacao ? (
-            <form onSubmit={p.iniciarRecuperacao} className="mt-5 space-y-4">
-              <Campo rotulo="Usuário do portal (@)" valor={p.usuario} onChange={p.setUsuario} placeholder="@tut.seunome"/>
-              <Campo rotulo="CPF" valor={p.cpfRecuperacao} onChange={p.setCpfRecuperacao} inputMode="numeric" placeholder="Somente números"/>
-              <Campo rotulo="Data de nascimento" valor={p.nascimentoRecuperacao} onChange={p.setNascimentoRecuperacao} type="date"/>
-              <button disabled={p.recuperando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.recuperando?"Validando...":"Continuar"}</button>
-            </form>
-          ) : (
-            <form onSubmit={p.concluirRecuperacao} className="mt-5 space-y-4">
-              <fieldset><legend className="text-sm font-bold">{p.desafioRecuperacao.pergunta}</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{p.desafioRecuperacao.alternativas.map((alternativa)=><button key={alternativa.id} type="button" onClick={()=>p.setAnimalResposta(alternativa.id)} className={"rounded-xl border px-4 py-3 text-left font-bold transition "+(p.animalResposta===alternativa.id?"border-[#702a43] bg-slate-100 ring-2 ring-[#303842]/20":"bg-white hover:border-slate-400")}>{alternativa.nome}</button>)}</div></fieldset>
-              <Campo rotulo="Nova senha" valor={p.senhaRecuperacao} onChange={p.setSenhaRecuperacao} type="password"/>
-              <p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p>
-              <Campo rotulo="Repita a nova senha" valor={p.repeteSenhaRecuperacao} onChange={p.setRepeteSenhaRecuperacao} type="password"/>
-              <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">Por segurança, nenhuma senha antiga é exibida ou recuperada.</p>
-              <button disabled={p.recuperando||!p.animalResposta} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.recuperando?"Redefinindo...":"Salvar nova senha"}</button>
-            </form>
-          )}
-          <button onClick={p.voltarRecuperacao} className="mt-4 w-full text-sm font-bold text-[#702a43]">Voltar para o acesso</button></>
-        ) : p.modoAtivar ? (
-          <><form onSubmit={p.ativar} className="mt-5 space-y-4"><Campo rotulo="Usuário" valor={p.usuario} onChange={p.setUsuario}/><Campo rotulo="Código de ativação" valor={p.token} onChange={p.setToken} placeholder="Ex.: SD45"/><Campo rotulo="Crie sua senha" valor={p.novaSenha} onChange={p.setNovaSenha} type="password"/><p className="text-xs text-muted-foreground">{orientacaoSenhaPortal}</p><Campo rotulo="Repita a senha" valor={p.repeteSenha} onChange={p.setRepeteSenha} type="password"/><button disabled={p.ativando} className="w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.ativando?"Ativando...":"Ativar acesso"}</button></form><button onClick={()=>p.setModoAtivar(false)} className="mt-4 w-full text-sm font-bold text-[#702a43]">Já tenho acesso</button></>
-        ) : (
-          <><form onSubmit={p.entrar} className="mt-5 space-y-4" aria-busy={p.login}>
-            <Campo rotulo="Usuário" name="usuario" autoComplete="username" valor={p.usuario} onChange={p.setUsuario} aria-describedby={p.erroLogin ? "portal-login-erro" : undefined}/>
-            <Campo rotulo="Senha" name="senha" autoComplete="current-password" valor={p.senha} onChange={p.setSenha} type="password" aria-describedby={p.erroLogin ? "portal-login-erro" : undefined}/>
-            {p.erroLogin && <p id="portal-login-erro" role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm font-semibold text-red-900">{p.erroLogin}</p>}
-            <button type="submit" data-visual-id="portal-tutor-login-submit" disabled={p.login} className="portal-one-screen-submit mt-[11px] w-full rounded-xl bg-[#702a43] py-3 font-bold text-white disabled:opacity-50">{p.login?"Entrando...":"Entrar"}</button>
-          </form><div className="mt-4 grid gap-2 sm:grid-cols-2"><button onClick={()=>p.setModoAtivar(true)} className="text-sm font-bold text-[#702a43]">Ativar primeiro acesso</button><button onClick={()=>p.setModoRecuperar(true)} className="text-sm font-bold text-[#702a43]">Esqueci minha senha</button></div></>
-        )}
-        </div>
+        {formulario}
         <p data-visual-id="portal-tutor-login-safety" className="portal-one-screen-safety"><ShieldCheck size={15}/> Acesso individual e informações protegidas.</p>
       </section>
     </div>
