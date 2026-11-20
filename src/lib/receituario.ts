@@ -4,6 +4,7 @@ import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { lerPreferenciaReceitaPortal, motivoFinalReceitaPortal } from "@/lib/receita-portal-state";
 import { lerSelos, type TipoSelo } from "./assinatura";
 import { desenharIdentidadeDocumento, desenharIdentificacaoDocumento, desenharPapelDocumento, type PapelDocumento } from "@/lib/modelos-documentos-pdf";
+import { formatarDataExtensoDocumento } from "@/lib/modelos-documentos";
 
 export const ENDERECO_RECEITUARIO =
   "Rua Tenente Marino Freire, 444 - Paraúna / Belo Horizonte - MG\n31680-120";
@@ -239,7 +240,7 @@ function layoutRodapeReceituario(doc: DocumentoPDF, dados: DadosRodape) {
   const areaSelos = { x: 0, y: topo, largura: larguraPagina, altura: fim - topo };
   const centro = larguraPagina / 2;
   const municipio = dados.papel ? dados.papel.clinica.municipio : "Belo Horizonte";
-  const data = dados.data.trim() || new Date().toLocaleDateString("pt-BR");
+  const data = formatarDataExtensoDocumento(dados.data.trim() || new Date().toLocaleDateString("pt-BR")).replace(/\.$/, "");
   const alinhamento = personalizado ? "center" : "right";
   const textos = [
     { valor: `${municipio ? municipio + ", " : ""}${data}.`, x: personalizado ? centro : margem + largura,
