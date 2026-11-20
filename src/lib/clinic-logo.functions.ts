@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
+import { normalizeClinicMediaUrl } from "@/lib/clinic-site";
 
 import { excluirArquivoDrive, enviarArquivoDrive } from "@/lib/drive.functions";
 const inputSchema = z.object({
@@ -58,7 +59,7 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
         metadata: { categoria: data.categoria },
       },
     });
-    const logoUrl = upload.arquivo.publicUrl;
+    const logoUrl = normalizeClinicMediaUrl(upload.arquivo.publicUrl);
     if (!logoUrl) throw new Error("Não foi possível gerar o endereço público da logo.");
     if (data.categoria === "logo") {
       const { data: clinicaAtualizada, error: erroClinica } = await supabaseAdmin

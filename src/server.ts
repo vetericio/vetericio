@@ -27,9 +27,9 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 function securityHeaders(response: Response, pathname?: string): Response {
   const headers = new Headers(response.headers);
   headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
-  headers.set(
+  if (pathname !== "/api/public/clinic-image" || !headers.has("content-security-policy")) headers.set(
     "content-security-policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://drive.google.com https://drive.usercontent.google.com https://lh3.googleusercontent.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://oricse.com.br/api/public/clinic-image https://*.supabase.co https://drive.google.com https://drive.usercontent.google.com https://lh3.googleusercontent.com; connect-src 'self' https://*.supabase.co https://fonts.googleapis.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
   );
   // Prévias do editor são sempre no mesmo domínio; sites externos continuam bloqueados.
   headers.set("x-frame-options", "SAMEORIGIN");
@@ -180,6 +180,14 @@ export default {
       if (url.pathname.startsWith("/api/cep/")) {
         if (request.method !== "GET") return securityHeaders(new Response(null, { status: 405 }), url.pathname);
         return securityHeaders(await consultarCepNoServidor(url.pathname.slice("/api/cep/".length)), url.pathname);
+      }
+      if (url.pathname === "/api/public/clinic-image") {
+        if (request.method !== "GET" && request.method !== "HEAD") {
+          return securityHeaders(new Response(null, { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
+        }
+        const { getPublicDriveImage } = await import("./lib/drive-public-image.server");
+        const image = await getPublicDriveImage(url.searchParams.get("file") || "", request.method === "HEAD");
+        return securityHeaders(image, url.pathname);
       }
       if (url.pathname === "/sitemap.xml") return securityHeaders(sitemap(url.origin), url.pathname);
       if (url.pathname === "/favicon.ico")

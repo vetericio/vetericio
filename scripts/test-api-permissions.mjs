@@ -64,3 +64,42 @@ for (const status of [null, "inativa", "cancelada"]) {
   await assert.rejects(verificarClinica({ status, permitirBloqueadaParaAdmin: true }), /Clínica indisponível/);
 }
 console.log("Guardas das APIs verificadas. Em clínica bloqueada, somente o administrador pode enviar a logo.");
+
+const imagemPublica = fs.readFileSync("src/lib/drive-public-image.server.ts", "utf8").replace(
+  'import { driveAccessToken } from "./drive-kv.server";',
+  'const driveAccessToken = async () => "token-ficticio";',
+);
+const { outputText: imageModule } = ts.transpileModule(imagemPublica, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+});
+const { getPublicDriveImage } = await import(`data:text/javascript;base64,${Buffer.from(imageModule).toString("base64")}`);
+const fetchOriginal = globalThis.fetch;
+let pastaPrivada = false;
+let downloads = 0;
+try {
+  globalThis.fetch = async (url, options) => {
+    assert.equal(new URL(url).hostname, "www.googleapis.com");
+    assert.equal(options.redirect, "error");
+    if (new URL(url).searchParams.get("alt") === "media") {
+      downloads++;
+      return new Response(new Uint8Array([137, 80, 78, 71]));
+    }
+    return Response.json({
+      mimeType: "image/png", size: "4", trashed: false,
+      appProperties: { visibilidade: pastaPrivada ? "interno" : "publico" },
+      permissions: [{ type: "anyone", role: "reader" }],
+    });
+  };
+  const imagem = await getPublicDriveImage("arquivo-publico-ficticio");
+  assert.equal(imagem.status, 200);
+  assert.equal(imagem.headers.get("content-type"), "image/png");
+  assert.match(imagem.headers.get("content-security-policy"), /\bsandbox\b/);
+  assert.deepEqual([...new Uint8Array(await imagem.arrayBuffer())], [137, 80, 78, 71]);
+
+  pastaPrivada = true;
+  assert.equal((await getPublicDriveImage("arquivo-privado-ficticio")).status, 404);
+  assert.equal(downloads, 1, "Arquivos internos não devem ser baixados pelo endpoint público");
+} finally {
+  globalThis.fetch = fetchOriginal;
+}
+console.log("Prévia pública entrega a imagem sem disponibilizar arquivos internos.");
