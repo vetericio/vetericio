@@ -146,11 +146,6 @@ function desenharTemaPremiumDocumento(pdf: jsPDF, tema: TemaDocumentoPremium) {
   const m = largura * 0.036;
   pdf.setFillColor(tema.papel);
   pdf.rect(0, 0, largura, altura, "F");
-  const linha = (y: number, cor: string = tema.acento, espessura = 0.6) => {
-    pdf.setDrawColor(cor);
-    pdf.setLineWidth(espessura);
-    pdf.line(m, y, largura - m, y);
-  };
   if (tema.id === "13") {
     pdf.setFillColor("#111111");
     pdf.rect(0, 0, largura, altura * 0.006, "F");
