@@ -1203,7 +1203,10 @@ export function ClinicSiteFull({
           >
             <div className={editorial ? "md:order-2" : ""}>
               <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.22em] text-[var(--site-primary)]">
-                <Sparkles size={15} /> {isVetericio ? "Veterício • medicina veterinária com presença" : "Cuidado e confiança"}
+                <Sparkles size={15} />{" "}
+                {isVetericio
+                  ? "Veterício • medicina veterinária com presença"
+                  : "Cuidado e confiança"}
               </div>
               <h1
                 className={
@@ -1231,16 +1234,19 @@ export function ClinicSiteFull({
                       buttonShape
                     }
                   >
-                    {isVetericio ? "Conheça nosso jeito de cuidar" : "Conhecer serviços"} <ArrowRight size={16} />
+                    {isVetericio ? "Conheça nosso jeito de cuidar" : "Conhecer serviços"}{" "}
+                    <ArrowRight size={16} />
                   </a>
                 ) : null}
               </div>
               <div className="mt-10 flex flex-wrap gap-5 border-t border-current/15 pt-5 text-xs font-semibold opacity-75">
                 <span className="inline-flex items-center gap-2">
-                  <Heart size={17} className="text-[var(--site-primary)]" /> {isVetericio ? "Escuta que tranquiliza" : "Atendimento atencioso"}
+                  <Heart size={17} className="text-[var(--site-primary)]" />{" "}
+                  {isVetericio ? "Escuta que tranquiliza" : "Atendimento atencioso"}
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <ShieldCheck size={17} className="text-[var(--site-primary)]" /> {isVetericio ? "Orientação sem enrolação" : "Orientação profissional"}
+                  <ShieldCheck size={17} className="text-[var(--site-primary)]" />{" "}
+                  {isVetericio ? "Orientação sem enrolação" : "Orientação profissional"}
                 </span>
                 {signatura ? (
                   <span className="inline-flex items-center gap-2">
