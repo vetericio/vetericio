@@ -302,11 +302,11 @@ export async function criarReceituario(dados: DadosReceituario) {
         doc.text(legenda, centralizado ? centro : margem, y + 29, { align: centralizado ? "center" : "left" });
         y += 44;
         if (dados.demonstrativo) {
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor("#6a5e62");
-          doc.setFontSize(8.5);
-          doc.text("PRÉVIA DEMONSTRATIVA · SEM VALIDADE", centro, y, { align: "center" });
-          y += 16;
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor("#77716e");
+          doc.setFontSize(7.2);
+          doc.text("PRÉVIA DEMONSTRATIVA · SEM VALIDADE", margem + largura, y + 1, { align: "right" });
+          y += 14;
         }
         y = desenharIdentificacaoDocumento(doc, {
           paciente: { nome: dados.paciente, especie: dados.especie, raca: dados.raca, sexo: sexoPacienteNoDocumento(dados.sexo),
