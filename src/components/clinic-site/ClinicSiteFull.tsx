@@ -1,5 +1,4 @@
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
-import { LOGO_PDF_DATA_URL } from "@/lib/logo";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -132,42 +131,42 @@ export function ClinicSiteFull({
     ? {
         ...inputConfig,
         name: "Veterício Serviços Veterinários",
-        slogan: "Cuidado veterinário que acolhe toda a família.",
+        slogan: "Seu pet não é só um paciente. É parte da sua história.",
         description:
-          "Na Veterício, cada consulta começa com escuta, atenção e orientações claras para o bem-estar do seu pet.",
+          "Na Veterício, você encontra um cuidado que escuta, orienta e acompanha — para que cada decisão pela saúde do seu pet seja mais leve, segura e humana.",
         primaryColor: "#F05A1A",
         secondaryColor: "#D7F1F3",
         backgroundColor: "#F7FBFB",
         textColor: "#003D4C",
         heroImageUrl:
           inputConfig.heroImageUrl ||
-          "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1800&q=88",
+          "https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?auto=format&fit=crop&w=1800&q=88",
         services: [
-          "Consulta e avaliação clínica",
-          "Prevenção e acompanhamento",
-          "Orientação para a família",
-          "Cuidado personalizado",
+          "Consulta que enxerga o todo",
+          "Prevenção que dá segurança",
+          "Acompanhamento que aproxima",
+          "Decisões mais claras",
         ],
-        aboutTitle: "Cuidar bem é olhar o pet por inteiro.",
+        aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
         aboutText:
-          "A Veterício une conhecimento técnico, escuta e respeito à individualidade de cada animal. Nosso compromisso é orientar sua família com clareza e construir, junto com você, escolhas mais seguras para cada etapa da vida do seu pet.",
+          "A Veterício nasceu para tornar a medicina veterinária mais próxima: atendimento atento, comunicação clara e respeito absoluto ao vínculo de vocês. Aqui, a técnica orienta; o cuidado acolhe.",
         galleryUrls:
           inputConfig.galleryUrls.length > 0
             ? inputConfig.galleryUrls
             : [
                 "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=1200&q=85",
-                "https://images.unsplash.com/photo-1583511655826-05700d52f4d9?auto=format&fit=crop&w=1200&q=85",
+                "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=1200&q=85",
               ],
         faqItems: [
           {
-            question: "Como agendo um atendimento?",
+            question: "Como começo a cuidar com a Veterício?",
             answer:
               "Você pode iniciar pelo Portal do Tutor ou falar com a nossa equipe pelo WhatsApp para consultar os horários disponíveis.",
           },
           {
-            question: "Quais cuidados a Veterício oferece?",
+            question: "É só para quando há um problema?",
             answer:
-              "Conte para a equipe o que seu pet precisa. Assim, orientamos o caminho mais adequado para o atendimento.",
+              "Não. A prevenção e o acompanhamento ajudam você a perceber mudanças na rotina e cuidar com mais tranquilidade.",
           },
           {
             question: "O que levo na primeira consulta?",
@@ -180,10 +179,10 @@ export function ClinicSiteFull({
               "Sim. Use o WhatsApp para falar com a equipe e receber as orientações iniciais.",
           },
         ],
-        ctaLabel: "Agendar atendimento",
+        ctaLabel: "Quero agendar um cuidado",
       }
     : inputConfig;
-  const logoSrc = isVetericio ? LOGO_PDF_DATA_URL : safeImage(config.logoUrl);
+  const logoSrc = isVetericio ? "" : safeImage(config.logoUrl);
   const [logoFailed, setLogoFailed] = useState(false);
   useEffect(() => setLogoFailed(false), [logoSrc]);
   const rounded = !luxe && !bold && !minimal && !prime;
@@ -464,6 +463,17 @@ export function ClinicSiteFull({
     </div>
   );
 
+  const vetericioServiceDescriptions: Record<string, string> = {
+    "Consulta que enxerga o todo":
+      "Cada atendimento começa entendendo sinais, hábitos e o que mudou na rotina.",
+    "Prevenção que dá segurança":
+      "Orientações práticas para antecipar cuidados e preservar o bem-estar.",
+    "Acompanhamento que aproxima":
+      "Você não sai com dúvida: sai sabendo quais são os próximos passos.",
+    "Decisões mais claras":
+      "Conversa direta e informação para cuidar do seu jeito, com mais tranquilidade.",
+  };
+
   const sections: Record<ClinicSiteSection, ReactNode> = {
     servicos: config.services.length ? (
       <section
@@ -474,10 +484,16 @@ export function ClinicSiteFull({
       >
         <div className="mx-auto max-w-7xl">
           {heading(
-            king ? "Cuidado, em capítulos" : "O que fazemos",
+            king
+              ? "Cuidado, em capítulos"
+              : isVetericio
+                ? "Cuidado que vira confiança"
+                : "O que fazemos",
             king
               ? "Cada encontro muda a próxima página da história."
-              : "Cuidado para cada fase da vida.",
+              : isVetericio
+                ? "O que seu pet precisa. O que você precisa ouvir. Em cada etapa."
+                : "Cuidado para cada fase da vida.",
           )}
           <div
             className={
@@ -528,7 +544,10 @@ export function ClinicSiteFull({
                 </div>
                 <h3 className="text-xl font-extrabold">{service}</h3>
                 <p className="mt-3 text-sm leading-6 opacity-70">
-                  Orientação profissional e acompanhamento cuidadoso.
+                  {isVetericio
+                    ? vetericioServiceDescriptions[service] ||
+                      "Atenção, clareza e cuidado em cada passo."
+                    : "Orientação profissional e acompanhamento cuidadoso."}
                 </p>
               </article>
             ))}
@@ -602,7 +621,12 @@ export function ClinicSiteFull({
           className={"px-5 sm:px-8 " + sectionPad}
         >
           <div className="mx-auto max-w-7xl">
-            {heading("Por dentro", "Conheça nosso espaço.")}
+            {heading(
+              isVetericio ? "Um cuidado que se sente em cada detalhe." : "Por dentro",
+              isVetericio
+                ? "Mais do que uma consulta: um espaço para você e seu pet se sentirem acolhidos."
+                : "Conheça nosso espaço.",
+            )}
             <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {gallerySlots.map((src, i) => (
                 <figure
@@ -746,9 +770,16 @@ export function ClinicSiteFull({
           }
         >
           <div>
-            {heading("Vamos conversar?", "Estamos aqui por você e seu pet.")}
+            {heading(
+              isVetericio ? "Vamos cuidar disso juntos?" : "Vamos conversar?",
+              isVetericio
+                ? "O primeiro passo pode ser simples."
+                : "Estamos aqui por você e seu pet.",
+            )}
             <p className="mt-5 text-base leading-8 opacity-75">
-              Entre em contato para consultar serviços, horários e informações de atendimento.
+              {isVetericio
+                ? "Se algo mudou na rotina do seu pet — ou se você só quer se antecipar — fale com a Veterício. Vamos orientar seu próximo passo."
+                : "Entre em contato para consultar serviços, horários e informações de atendimento."}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               {action(actionLabel)}
@@ -1172,7 +1203,7 @@ export function ClinicSiteFull({
           >
             <div className={editorial ? "md:order-2" : ""}>
               <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.22em] text-[var(--site-primary)]">
-                <Sparkles size={15} /> Cuidado e confiança
+                <Sparkles size={15} /> {isVetericio ? "Veterício • medicina veterinária com presença" : "Cuidado e confiança"}
               </div>
               <h1
                 className={
@@ -1200,17 +1231,16 @@ export function ClinicSiteFull({
                       buttonShape
                     }
                   >
-                    Conhecer serviços <ArrowRight size={16} />
+                    {isVetericio ? "Conheça nosso jeito de cuidar" : "Conhecer serviços"} <ArrowRight size={16} />
                   </a>
                 ) : null}
               </div>
               <div className="mt-10 flex flex-wrap gap-5 border-t border-current/15 pt-5 text-xs font-semibold opacity-75">
                 <span className="inline-flex items-center gap-2">
-                  <Heart size={17} className="text-[var(--site-primary)]" /> Atendimento atencioso
+                  <Heart size={17} className="text-[var(--site-primary)]" /> {isVetericio ? "Escuta que tranquiliza" : "Atendimento atencioso"}
                 </span>
                 <span className="inline-flex items-center gap-2">
-                  <ShieldCheck size={17} className="text-[var(--site-primary)]" /> Orientação
-                  profissional
+                  <ShieldCheck size={17} className="text-[var(--site-primary)]" /> {isVetericio ? "Orientação sem enrolação" : "Orientação profissional"}
                 </span>
                 {signatura ? (
                   <span className="inline-flex items-center gap-2">
