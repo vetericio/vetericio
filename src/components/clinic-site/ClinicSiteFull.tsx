@@ -138,7 +138,8 @@ export function ClinicSiteFull({
         secondaryColor: "#D7F1F3",
         backgroundColor: "#F7FBFB",
         textColor: "#003D4C",
-        heroImageUrl: "/clinic-site/vetericio/meow-cruella-hero.webp",
+        heroImageUrl:
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-cruella-hero.webp",
         services: [
           "Consultas",
           "Exames",
@@ -151,13 +152,13 @@ export function ClinicSiteFull({
         aboutText:
           "A Veterício nasceu para tornar a medicina veterinária mais próxima: atendimento atento, comunicação clara e respeito absoluto ao vínculo de vocês. Aqui, a técnica orienta; o cuidado acolhe.",
         galleryUrls: [
-          "/clinic-site/vetericio/meow.webp",
-          "/clinic-site/vetericio/yzma.webp",
-          "/clinic-site/vetericio/cruella.webp",
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/meow.webp",
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/yzma.webp",
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/cruella.webp",
           "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1200&q=85",
           "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=1200&q=85",
           "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=1200&q=85",
-          "/clinic-site/vetericio/dr-fabricio.webp",
+          "https://vetericio.oricse.com.br/clinic-site/vetericio/dr-fabricio.webp",
         ],
         faqItems: [
           {
