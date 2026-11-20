@@ -1,7 +1,7 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, PawPrint, Search, Send, UserPlus, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { codigoPublicoTutor, gerarCodigoTutor, lerNomeClinicaLocal, migrarCodigosPublicosTutores } from "@/lib/codigo-tutor";
@@ -154,6 +154,10 @@ function Tutores() {
   const [busca, setBusca] = useState("");
   const [letra, setLetra] = useState("TODOS");
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const [erroCep, setErroCep] = useState("");
+  const consultaCep = useRef<AbortController | null>(null);
+
+  useEffect(() => () => consultaCep.current?.abort(), []);
 
   async function atualizarBanco(id: string) {
     const [{ data, error }, portais] = await Promise.all([
@@ -197,10 +201,19 @@ function Tutores() {
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     if (k === "cpfCnpj" || k === "tipoPessoa") setErroCpf("");
+    if (k === "cep") limparConsultaCep();
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  function limparConsultaCep() {
+    consultaCep.current?.abort();
+    consultaCep.current = null;
+    setBuscandoCep(false);
+    setErroCep("");
+  }
+
   function abrirNovo() {
+    limparConsultaCep();
     setErroCpf("");
     setEditandoId(null);
     setForm(vazio);
@@ -208,6 +221,7 @@ function Tutores() {
   }
 
   function abrirEdicao(tutor: Tutor) {
+    limparConsultaCep();
     setErroCpf("");
     const { id, criadoEm, ...dados } = tutor;
     setEditandoId(id);
@@ -217,6 +231,7 @@ function Tutores() {
   }
 
   function cancelarEdicao() {
+    limparConsultaCep();
     setEditandoId(null);
     setForm(vazio);
     setModo("procurar");
@@ -224,17 +239,37 @@ function Tutores() {
 
   async function buscarCep() {
     const cep = soDigitos(form.cep || "");
-    if (cep.length !== 8) return;
+    if (cep.length !== 8 || consultaCep.current) return;
+    const controle = new AbortController();
+    consultaCep.current = controle;
+    setErroCep("");
     setBuscandoCep(true);
     try {
-      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const d = await r.json();
-      if (d?.erro) return void toast.error("CEP não encontrado.");
-      setForm((f) => ({ ...f, estado: d.uf || f.estado, cidade: d.localidade || f.cidade, bairro: d.bairro || f.bairro, endereco: d.logradouro || f.endereco }));
+      const resposta = await fetch(`/api/cep/${cep}`, { signal: controle.signal });
+      if (!resposta.ok) throw new Error("Falha na consulta do CEP");
+      const endereco: { uf: string; localidade: string; bairro?: string; logradouro?: string } =
+        await resposta.json();
+      if (!endereco?.uf || !endereco.localidade) throw new Error("Resposta sem cidade ou estado");
+      if (controle.signal.aborted) return;
+      setForm((atual) => ({
+        ...atual,
+        estado: atual.estado === form.estado ? endereco.uf : atual.estado,
+        cidade: atual.cidade === form.cidade ? endereco.localidade : atual.cidade,
+        bairro: atual.bairro === form.bairro ? endereco.bairro || atual.bairro : atual.bairro,
+        endereco:
+          atual.endereco === form.endereco ? endereco.logradouro || atual.endereco : atual.endereco,
+      }));
     } catch {
-      toast.error("Não foi possível consultar o CEP agora.");
+      if (!controle.signal.aborted) {
+        setErroCep(
+          "Não conseguimos consultar esse CEP. Confira os dígitos ou preencha o endereço manualmente.",
+        );
+      }
     } finally {
-      setBuscandoCep(false);
+      if (consultaCep.current === controle && !controle.signal.aborted) {
+        consultaCep.current = null;
+        setBuscandoCep(false);
+      }
     }
   }
 
@@ -255,7 +290,8 @@ function Tutores() {
     if(error)return toast.error(error.message);
     await atualizarBanco(clinicaId);
     toast.success(editandoId?"Tutor atualizado no Supabase.":"Tutor cadastrado no Supabase.");
-    setEditandoId(null);setForm(vazio);setModo("procurar");setLetra("TODOS");
+    cancelarEdicao();
+    setLetra("TODOS");
   }
 
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
@@ -322,7 +358,28 @@ function Tutores() {
           </Bloco>
 
           <Bloco titulo="Endereço">
-            <label className="text-sm font-semibold">CEP<input value={form.cep} onChange={(e) => set("cep", mascaraCep(e.target.value))} onBlur={buscarCep} className={campo}/><span className="text-[11px] text-muted-foreground">{buscandoCep ? "Consultando CEP..." : "Preenchimento automático ao sair do campo."}</span></label>
+            <label className="text-sm font-semibold">
+              CEP
+              <input
+                inputMode="numeric"
+                autoComplete="postal-code"
+                value={form.cep}
+                onChange={(e) => set("cep", mascaraCep(e.target.value))}
+                onBlur={buscarCep}
+                aria-describedby="tutor-cep-status"
+                className={campo}
+              />
+              <span
+                id="tutor-cep-status"
+                role="status"
+                className={`text-[11px] ${erroCep ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {erroCep ||
+                  (buscandoCep
+                    ? "Consultando CEP..."
+                    : "Preenchimento automático ao sair do campo.")}
+              </span>
+            </label>
             <label className="text-sm font-semibold">Estado<input value={form.estado} onChange={(e) => set("estado", e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Cidade<input value={form.cidade} onChange={(e) => set("cidade", e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Bairro<input value={form.bairro} onChange={(e) => set("bairro", e.target.value)} className={campo}/></label>
