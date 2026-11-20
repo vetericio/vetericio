@@ -131,9 +131,9 @@ export function ClinicSiteFull({
     ? {
         ...inputConfig,
         name: "Veterício Serviços Veterinários",
-        slogan: "Seu pet não é só um paciente. É parte da sua história.",
+        slogan: "A clínica veterinária que vai até sua casa",
         description:
-          "Na Veterício, você encontra um cuidado que escuta, orienta e acompanha — para que cada decisão pela saúde do seu pet seja mais leve, segura e humana.",
+          "Nossa equipe atende seu pet em casa. Se ele precisar de estrutura hospitalar, nós o levamos ao hospital e realizamos todo o procedimento lá.",
         primaryColor: "#F05A1A",
         secondaryColor: "#D7F1F3",
         backgroundColor: "#F7FBFB",
@@ -161,7 +161,7 @@ export function ClinicSiteFull({
         ],
         aboutTitle: "Cuidar de um pet é cuidar de uma parte da família.",
         aboutText:
-          "A Veterício nasceu para tornar a medicina veterinária mais próxima: atendimento atento, comunicação clara e respeito absoluto ao vínculo de vocês. Aqui, a técnica orienta; o cuidado acolhe.",
+          "A Veterício nasceu para tornar a medicina veterinária mais próxima. Vamos até sua casa, avaliamos seu pet e explicamos cada etapa do cuidado. Quando o atendimento precisa continuar no hospital, nossa equipe cuida do transporte e do procedimento.",
         galleryUrls: [
           "https://vetericio.oricse.com.br/clinic-site/vetericio/meow-editorial.webp",
           "https://vetericio.oricse.com.br/clinic-site/vetericio/yzma.webp",
@@ -177,17 +177,21 @@ export function ClinicSiteFull({
               "Você pode iniciar pelo Portal do Tutor ou falar com a nossa equipe pelo WhatsApp para consultar os horários disponíveis.",
           },
           {
-            question: "É só para quando há um problema?",
+            question: "E se meu pet precisar de atendimento no hospital?",
             answer:
-              "Não. A prevenção e o acompanhamento ajudam você a perceber mudanças na rotina e cuidar com mais tranquilidade.",
+              "Nossa equipe leva seu pet ao hospital e realiza o procedimento do início ao fim. A Veterício coordena todas as etapas, da visita em casa ao atendimento hospitalar.",
           },
           {
-            question: "O que levo na primeira consulta?",
-            answer:
-              "Se tiver, leve a carteirinha de vacinação, exames anteriores e informações sobre a rotina do seu pet.",
+            question: "Posso agendar uma consulta de rotina em casa?",
+            answer: "Sim. Também fazemos consultas de rotina e acompanhamento em casa.",
           },
           {
-            question: "Posso tirar dúvidas antes de ir?",
+            question: "O que devo separar para a primeira visita?",
+            answer:
+              "Se tiver, deixe à mão a carteirinha de vacinação e os exames anteriores. Na visita, vamos conversar sobre a rotina do seu pet.",
+          },
+          {
+            question: "Posso tirar dúvidas antes de agendar?",
             answer:
               "Sim. Use o WhatsApp para falar com a equipe e receber as orientações iniciais.",
           },
@@ -480,8 +484,8 @@ export function ClinicSiteFull({
     Consultas:
       "Avaliação clínica completa, com escuta, cuidado e orientação clara para sua família.",
     Exames: "Apoio diagnóstico para entender melhor o que seu pet está precisando.",
-    Cirurgias: "Procedimentos planejados com atenção ao bem-estar e à segurança de cada paciente.",
-    "Atendimento domiciliar": "Cuidado veterinário onde seu pet se sente mais tranquilo: em casa.",
+    Cirurgias: "Nossa equipe realiza a cirurgia no hospital e acompanha todo o procedimento.",
+    "Atendimento domiciliar": "A equipe veterinária vai até sua casa para atender seu pet.",
     "Pet sitter": "Presença profissional, carinho e observação para sua rotina ficar mais leve.",
     Vacinas: "Prevenção e atualização vacinal para cuidar hoje e proteger o amanhã.",
     Oftalmologia: "Atenção especializada para a saúde dos olhos do seu pet.",
@@ -670,9 +674,7 @@ export function ClinicSiteFull({
           <div className="mx-auto max-w-7xl">
             {heading(
               isVetericio ? "Um cuidado que se sente em cada detalhe." : "Por dentro",
-              isVetericio
-                ? "Mais do que uma consulta: um espaço para você e seu pet se sentirem acolhidos."
-                : "Conheça nosso espaço.",
+              isVetericio ? "Cães e gatos, cada um com seu jeito." : "Conheça nosso espaço.",
             )}
             <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {gallerySlots.map((src, i) => (
@@ -825,7 +827,7 @@ export function ClinicSiteFull({
             )}
             <p className="mt-5 text-base leading-8 opacity-75">
               {isVetericio
-                ? "Se algo mudou na rotina do seu pet — ou se você só quer se antecipar — fale com a Veterício. Vamos orientar seu próximo passo."
+                ? "Fale com a Veterício para tirar dúvidas e agendar uma visita em casa."
                 : "Entre em contato para consultar serviços, horários e informações de atendimento."}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
