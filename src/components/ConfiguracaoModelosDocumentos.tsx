@@ -5,7 +5,10 @@ import { Copy, Eye, FileDown, FilePlus2, History, Printer, Save, Trash2, Upload 
 import { toast } from "sonner";
 import { oricseStorage, descarregarOricseStorage } from "@/lib/oricse-storage";
 import { supabase } from "@/integrations/supabase/client";
-import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
+import { obterModelosDocumentoClinica } from "@/lib/configuracoes-clinica.functions";
+import { DOCUMENTOS, extrairCorpoModeloClinico, formatarDataExtensoDocumento } from "@/lib/modelos-documentos";
+import { PaginasPrevia } from "@/components/PadroesDocumentosClinica";
+import { type jsPDF } from "jspdf";
 
 type Categoria = "receita" | "pedido" | "documento" | "termo";
 type Versao = { numero: number; texto: string; data: string };
@@ -14,10 +17,10 @@ const CHAVE = "oricse-modelos-documentos-v1";
 const categorias: Record<Categoria, string> = { receita: "Receituário", pedido: "Pedido de exame", documento: "Documento clínico", termo: "Termo e consentimento" };
 const campos = ["{{clinica}}", "{{endereco_clinica}}", "{{paciente}}", "{{especie}}", "{{raca}}", "{{tutor}}", "{{veterinario}}", "{{crmv}}", "{{data}}"];
 const padroes: { nome: string; categoria: Categoria; texto: string }[] = [
-  { nome: "Receita simples", categoria: "receita", texto: "{{clinica}}\n{{endereco_clinica}}\n\nRECEITUÁRIO VETERINÁRIO\nPaciente: {{paciente}} | Espécie: {{especie}}\nTutor: {{tutor}}\n\nPrescrição:\n\n\n{{data}}\n{{veterinario}} - CRMV {{crmv}}" },
-  { nome: "Solicitação de exame", categoria: "pedido", texto: "{{clinica}}\n\nPEDIDO DE EXAME\nPaciente: {{paciente}}\nTutor: {{tutor}}\n\nExames solicitados:\n\nJustificativa clínica:\n\n{{data}}\n{{veterinario}} - CRMV {{crmv}}" },
-  { nome: "Declaração de atendimento", categoria: "documento", texto: "{{clinica}}\n\nDECLARAÇÃO\nDeclaramos que {{paciente}}, sob responsabilidade de {{tutor}}, compareceu para atendimento veterinário em {{data}}.\n\n{{veterinario}} - CRMV {{crmv}}" },
-  { nome: "Consentimento para procedimento", categoria: "termo", texto: "{{clinica}}\n\nTERMO DE CONSENTIMENTO\nTutor: {{tutor}}\nAnimal: {{paciente}}\n\nProcedimento proposto:\n\nRiscos, alternativas e orientações explicados:\n\nDeclaro que fui informado(a) e autorizo o procedimento descrito.\n\nData: {{data}}\nAssinatura do tutor: ____________________" },
+  { nome: "Receita simples", categoria: "receita", texto: DOCUMENTOS.receita.exemplo },
+  { nome: "Solicitação de exames", categoria: "pedido", texto: DOCUMENTOS.pedido.exemplo },
+  { nome: "Declaração de atendimento", categoria: "documento", texto: DOCUMENTOS.documento.exemplo },
+  { nome: "Termo inicial de ciência", categoria: "termo", texto: DOCUMENTOS.termo.exemplo },
 ];
 function ler(): Modelo[] {
   try {
@@ -27,18 +30,20 @@ function ler(): Modelo[] {
   } catch { return []; }
 }
 function novo(base?: typeof padroes[number]): Modelo {
-  return { id: crypto.randomUUID(), nome: base?.nome || "Novo modelo", categoria: base?.categoria || "documento", texto: base?.texto || "{{clinica}}\n\nTítulo do documento\n\nPaciente: {{paciente}}\nTutor: {{tutor}}\n\n{{data}}", versao: 0, historico: [], atualizadoEm: "" };
+  return { id: crypto.randomUUID(), nome: base?.nome || "Documento clínico", categoria: base?.categoria || "documento", texto: base?.texto || DOCUMENTOS.documento.exemplo, versao: 0, historico: [], atualizadoEm: "" };
 }
 function escapar(valor: string) {
   return valor.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
-export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { podeGerenciar: boolean; clinica: string }) {
+export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica, clinicaId }: { podeGerenciar: boolean; clinica: string; clinicaId: string }) {
   const demoAlvorada = useDemoAlvorada();
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [selecionado, setSelecionado] = useState<Modelo | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [categoria, setCategoria] = useState<Categoria | "todos">("todos");
-  const [contexto, setContexto] = useState<Record<string,string>>({});
+  const [identidade, setIdentidade] = useState<Awaited<ReturnType<typeof obterModelosDocumentoClinica>> | null>(null);
+  const [pdfPrevia, setPdfPrevia] = useState<jsPDF | null>(null);
+  const [erroPrevia, setErroPrevia] = useState("");
   const [preview, setPreview] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   useEffect(() => { setModelos(ler()); }, []);
@@ -47,28 +52,33 @@ export function ConfiguracaoModelosDocumentos({ podeGerenciar, clinica }: { pode
     void (async () => {
       try {
         const { data: sessao } = await supabase.auth.getSession();
-        if (!sessao.session?.access_token) return;
-        const dados = await obterDadosReceituario({data:{accessToken:sessao.session.access_token}});
-        if (ativo) setContexto({clinica:String(dados.clinicaNome||clinica),endereco_clinica:String(dados.clinicaEndereco||""),data:new Date().toLocaleDateString("pt-BR")});
-      } catch { /* A prévia continua com exemplos, sem dados pessoais. */ }
+        const accessToken = sessao.session?.access_token;
+        if (!accessToken) return;
+        const resultado = await obterModelosDocumentoClinica({ data: { accessToken, clinicaId } });
+        if (ativo) setIdentidade(resultado);
+      } catch {
+        // Dados da clínica não são inventados. Erros aparecem na prévia do PDF.
+      }
     })();
     return () => { ativo = false; };
-  }, [clinica]);
+  }, [clinicaId]);
   function preencher(texto: string) {
-    const campos: Record<string,string> = {
-      clinica, endereco_clinica:"[Endereço da clínica]",
-      paciente:"[Paciente]", especie:"[Espécie]", raca:"[Raça]",
-      tutor:"[Tutor]", veterinario:"[Veterinário]", crmv:"[CRMV]",
-      data:new Date().toLocaleDateString("pt-BR"), ...contexto,
+    const dados: Record<string,string> = {
+      clinica: identidade?.identidade.nome || clinica,
+      endereco_clinica: identidade?.identidade.endereco || "[Endereço da clínica]",
+      paciente:"Luna", especie:"Canina", raca:"SRD",
+      tutor:"Marina Exemplo", veterinario:"Dra. Ana Exemplo", crmv:"MG fictício",
+      data:formatarDataExtensoDocumento(new Date().toLocaleDateString("pt-BR")),
     };
-    return texto.replace(/\{\{([a-z_]+)\}\}/g, (original, chave:string) => campos[chave] || original);
+    return texto.replace(/\{\{([a-z_]+)\}\}/g, (original, chave:string) => dados[chave] || original);
   }
   const visiveis = useMemo(() => modelos.filter((m) => categoria === "todos" || m.categoria === categoria).sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR")), [modelos,categoria]);
   const alterado = selecionado && (modelos.find((m) => m.id === selecionado.id)?.texto !== selecionado.texto || modelos.find((m) => m.id === selecionado.id)?.nome !== selecionado.nome || modelos.find((m) => m.id === selecionado.id)?.categoria !== selecionado.categoria);
   function escolher(modelo: Modelo) {
     if (alterado && !window.confirm("Descartar as alterações deste modelo?")) return;
-    setSelecionado({ ...modelo, historico: [...(modelo.historico || [])] });
+    setSelecionado({ ...modelo, texto: extrairCorpoModeloClinico(modelo.texto), historico: [...(modelo.historico || [])] });
     setPreview(false);
+    setPdfPrevia(null);
   }
   async function persistir(proximos: Modelo[]) {
     oricseStorage.setItem(CHAVE, JSON.stringify(proximos));
