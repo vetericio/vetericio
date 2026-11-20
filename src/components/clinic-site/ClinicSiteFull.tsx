@@ -1,6 +1,7 @@
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { VetericioCareComparison } from "./VetericioCareComparison";
+import { VetericioFaq } from "./VetericioFaq";
 import {
   VetericioAbout,
   VetericioHeader,
@@ -188,32 +189,6 @@ export function ClinicSiteFull({
         galleryUrls: vetericioGallery.map(
           ({ file }) => `https://vetericio.oricse.com.br/clinic-site/vetericio/${file}`,
         ),
-        faqItems: [
-          {
-            question: "Como começo a cuidar com a Veterício?",
-            answer:
-              "Você pode iniciar pelo Portal do Tutor ou falar com a nossa equipe pelo WhatsApp para consultar os horários disponíveis.",
-          },
-          {
-            question: "E se meu pet precisar de atendimento no hospital?",
-            answer:
-              "Nossa equipe leva seu pet ao hospital e realiza o procedimento do início ao fim. A Veterício coordena todas as etapas, da visita em casa ao atendimento hospitalar.",
-          },
-          {
-            question: "Posso agendar uma consulta de rotina em casa?",
-            answer: "Sim. Também fazemos consultas de rotina e acompanhamento em casa.",
-          },
-          {
-            question: "O que devo separar para a primeira visita?",
-            answer:
-              "Se tiver, deixe à mão a carteirinha de vacinação e os exames anteriores. Na visita, vamos conversar sobre a rotina do seu pet.",
-          },
-          {
-            question: "Posso tirar dúvidas antes de agendar?",
-            answer:
-              "Sim. Use o WhatsApp para falar com a equipe e receber as orientações iniciais.",
-          },
-        ],
         ctaLabel: "Quero agendar um cuidado",
       }
     : inputConfig;
@@ -794,7 +769,9 @@ export function ClinicSiteFull({
         </div>
       </section>
     ) : null,
-    faq: config.faqItems.length ? (
+    faq: isVetericio ? (
+      <VetericioFaq key="faq" whatsAppHref={hasWhatsApp ? whatsAppHref : undefined} />
+    ) : config.faqItems.length ? (
       <section
         key="faq"
         id="faq"
