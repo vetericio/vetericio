@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 import { normalizeClinicMediaUrl } from "@/lib/clinic-site";
+import { isClinicLogoPreview, MAX_CLINIC_LOGO_PREVIEW_LENGTH, storedClinicLogoPreview } from "@/lib/clinic-logo-preview";
 
 import { excluirArquivoDrive, enviarArquivoDrive } from "@/lib/drive.functions";
 const inputSchema = z.object({
@@ -10,6 +11,7 @@ const inputSchema = z.object({
   fileName: z.string().min(1).max(180),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]),
   base64: z.string().min(20),
+  preview: z.string().max(MAX_CLINIC_LOGO_PREVIEW_LENGTH).optional(),
   categoria: z.enum(["logo", "site"]).default("logo"),
 });
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -43,6 +45,9 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     const bytes = Buffer.from(data.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
     if (!bytes.length || bytes.length > MAX_BYTES)
       throw new Error("A imagem deve ter no máximo 5 MB.");
+    const preview = isClinicLogoPreview(data.preview) ? data.preview : null;
+    if (data.categoria === "logo" && !preview)
+      throw new Error("Não foi possível validar a prévia da logo. Atualize a página e envie a imagem novamente.");
 
     const caminho = `${Date.now()}-${nomeSeguro(data.fileName, data.mimeType)}`;
     const upload = await enviarArquivoDrive({
@@ -64,10 +69,10 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
     if (data.categoria === "logo") {
       const { data: clinicaAtualizada, error: erroClinica } = await supabaseAdmin
         .from("clinicas")
-        .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+        .update({ logo_url: logoUrl, logo_previa: { origem: logoUrl, imagem: preview }, updated_at: new Date().toISOString() })
         .eq("id", data.clinicaId)
         .is("excluido_em", null)
-        .select("id")
+        .select("id,logo_previa")
         .maybeSingle();
       if (erroClinica || !clinicaAtualizada) {
         try {
@@ -83,7 +88,10 @@ export const enviarLogoClinica = createServerFn({ method: "POST" })
         }
         throw new Error("Não foi possível vincular a logo à clínica.");
       }
+      if (storedClinicLogoPreview(clinicaAtualizada.logo_previa, logoUrl) !== preview) {
+        throw new Error("A logo foi vinculada, mas a prévia não pôde ser confirmada.");
+      }
     }
 
-    return { ok: true, logoUrl, caminho: upload.registroId };
+    return { ok: true, logoUrl, preview, caminho: upload.registroId };
   });

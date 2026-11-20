@@ -36,6 +36,7 @@ import { garantirPastaOricse } from "@/lib/drive-default.functions";
 import { semClinicasNaLixeira } from "@/lib/clinicas-visiveis";
 import { useQuantidadeClinicasAtivas } from "@/lib/clinicas-ativas-context";
 import { enviarLogoClinica } from "@/lib/clinic-logo.functions";
+import { createClinicLogoPreview, storedClinicLogoPreview } from "@/lib/clinic-logo-preview";
 import { diagnosticarDnsDominio, prepararEnderecoOricse } from "@/lib/clinic-domain.functions";
 import { ativarSiteOricse } from "@/lib/clinic-site-publish.functions";
 import { dominiosUnicosPorClinica, normalizarDominio, rotuloDisponibilidadeDominio, type EstadoOnlineDominio } from "@/lib/clinic-domain-status";
@@ -315,6 +316,7 @@ function Admin() {
   const [salvandoLogo, setSalvandoLogo] = useState(false);
   const [enviandoLogoClinica, setEnviandoLogoClinica] = useState(false);
   const [logoClinicaComErro, setLogoClinicaComErro] = useState<string | null>(null);
+  const [previaLogoClinica, setPreviaLogoClinica] = useState<{ clinicaId: string; origem: string; imagem: string | null } | null>(null);
   const [gradeTaxas, setGradeTaxas] = useState<{ modalidades: TaxaModalidade[]; segmentos: TaxaSegmento[]; comissoes: TaxaComissao[] }>({ modalidades: [], segmentos: [], comissoes: [] });
   const [salvandoTaxas, setSalvandoTaxas] = useState(false);
   const [erroTaxas, setErroTaxas] = useState<string | null>(null);
@@ -335,7 +337,26 @@ function Admin() {
   const [confirmarInterrupcao, setConfirmarInterrupcao] = useState(false);
   const [excluindoDominio, setExcluindoDominio] = useState<string | null>(null);
   const slugCadastrado = clinicas.find(c => c.id === selecionada?.id)?.slug || "";
-  const logoClinicaUrl = normalizeClinicMediaUrl(selecionada?.logo_url) || selecionada?.logo_url;
+  const clinicaSelecionadaId = selecionada?.id;
+  const origemLogoClinica = selecionada?.logo_url;
+  const previaAtual = previaLogoClinica?.clinicaId === clinicaSelecionadaId &&
+    previaLogoClinica?.origem === origemLogoClinica ? previaLogoClinica : null;
+  const carregandoLogoClinica = Boolean(origemLogoClinica && !previaAtual);
+  const logoClinicaUrl = carregandoLogoClinica ? null :
+    previaAtual?.imagem || normalizeClinicMediaUrl(origemLogoClinica) || origemLogoClinica;
+
+  useEffect(() => {
+    if (!clinicaSelecionadaId || !origemLogoClinica || !carregandoLogoClinica) return;
+    let ativo = true;
+    const exibir = (imagem: string | null) => {
+      if (ativo) setPreviaLogoClinica({ clinicaId: clinicaSelecionadaId, origem: origemLogoClinica, imagem });
+    };
+    void Promise.resolve(supabaseBanco.from("clinicas").select("logo_previa")
+      .eq("id", clinicaSelecionadaId).eq("logo_url", origemLogoClinica).maybeSingle())
+      .then(({ data }) => exibir(storedClinicLogoPreview(data?.logo_previa, origemLogoClinica)))
+      .catch(() => exibir(null));
+    return () => { ativo = false; };
+  }, [clinicaSelecionadaId, origemLogoClinica, carregandoLogoClinica]);
 
   useEffect(() => {
     // Ao trocar de clínica, feche o editor anterior antes de abrir outro.
@@ -708,6 +729,7 @@ function Admin() {
             fileName:String(identidade?.logo_nome || "logo-clinica.webp").slice(0,120),
             mimeType:tipo as "image/png"|"image/jpeg"|"image/webp",
             base64:imagem,
+            preview:await createClinicLogoPreview(imagem),
           }} as never);
           logoUrl = String(resultadoLogo?.logoUrl || "");
         } catch (erroLogo) {
@@ -1077,17 +1099,22 @@ function Admin() {
     if (file.size > 5 * 1024 * 1024) return toast.error("A logo deve ter no máximo 5 MB.");
     setEnviandoLogoClinica(true);
     try {
+      const base64 = await arquivoEmBase64(file);
+      const preview = await createClinicLogoPreview(`data:${file.type};base64,${base64}`);
       const resultado = await enviarLogoClinica({
         data: {
           accessToken: await tokenAtual(), clinicaId: selecionada.id, fileName: file.name,
           mimeType: file.type as "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml",
-          base64: await arquivoEmBase64(file),
+          base64,
+          preview,
         },
       });
+      if (resultado.preview !== preview) throw new Error("Não foi possível confirmar a prévia salva.");
+      setPreviaLogoClinica({ clinicaId: selecionada.id, origem: resultado.logoUrl, imagem: resultado.preview });
       setSelecionada(atual => atual?.id === selecionada.id ? { ...atual, logo_url: resultado.logoUrl } : atual);
       setClinicas(lista => lista.map(item => item.id === selecionada.id ? { ...item, logo_url: resultado.logoUrl } : item));
       setLogoClinicaComErro(null);
-      toast.success("Logo salva no Drive da clínica.");
+      toast.success("Logo salva e prévia confirmada.");
     } catch (e) { toast.error((e as Error).message || "Não foi possível enviar a logo."); }
     finally { setEnviandoLogoClinica(false); }
   }
@@ -1383,7 +1410,7 @@ function Admin() {
     <label className="text-sm font-semibold">Status<select value={selecionada.status} onChange={(e) => setSelecionada({ ...selecionada, status: e.target.value as Clinica["status"] })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option><option value="inativa">Inativa</option><option value="cancelada">Cancelada</option></select></label>
     <label className="text-sm font-semibold">Limite de usuários<input type="number" min={1} value={selecionada.limite_usuarios} onChange={(e) => setSelecionada({ ...selecionada, limite_usuarios: Number(e.target.value) })} className="mt-1 min-h-11 w-full rounded-xl border px-3 font-normal"/></label>
     <div className="rounded-xl border bg-slate-50 p-3 text-sm md:self-end"><p className="font-semibold">Domínios e site público</p><p className="mt-1 text-xs text-muted-foreground">Gerenciados exclusivamente por você em “Site e domínios”.</p></div>
-    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{logoClinicaUrl && logoClinicaComErro !== logoClinicaUrl ? <img key={logoClinicaUrl} src={logoClinicaUrl} alt="Logo da clínica" onError={() => setLogoClinicaComErro(logoClinicaUrl)} className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 p-3 text-center text-xs text-muted-foreground">{logoClinicaUrl ? "Não foi possível carregar a logo." : "Sem logo"}</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={cadastroOcupado} onChange={(e) => { const arquivo = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(arquivo); }}/></label></div></div>
+    <div className="md:col-span-2"><p className="text-sm font-semibold">Logo da clínica</p><div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border p-4">{logoClinicaUrl && logoClinicaComErro !== logoClinicaUrl ? <img key={logoClinicaUrl} src={logoClinicaUrl} alt="Logo da clínica" onError={() => setLogoClinicaComErro(logoClinicaUrl)} className="h-24 w-40 object-contain"/> : <div className="flex h-24 w-40 items-center justify-center rounded-lg bg-slate-50 p-3 text-center text-xs text-muted-foreground">{carregandoLogoClinica ? "Carregando logo…" : logoClinicaUrl ? "Não foi possível carregar a logo." : "Sem logo"}</div>}<label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 font-semibold"><ImageUp size={17}/>{enviandoLogoClinica ? "Enviando..." : "Enviar logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={cadastroOcupado} onChange={(e) => { const arquivo = e.currentTarget.files?.[0]; e.currentTarget.value = ""; void enviarLogoDaClinica(arquivo); }}/></label></div></div>
     <label className="text-sm font-semibold md:col-span-2">Observações internas<textarea value={selecionada.observacoes || ""} onChange={(e) => setSelecionada({ ...selecionada, observacoes: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border px-3 py-2 font-normal"/></label>
     </fieldset>
      <div className="mt-8 rounded-xl border border-red-300 bg-red-50 p-4"><h3 className="font-bold text-red-700">Zona de perigo</h3><p className="mt-1 text-sm text-red-700">Excluir esta clínica remove definitivamente seus dados e acessos.</p><button type="button" disabled={cadastroOcupado} onClick={() => { setConfirmacaoExclusao(""); setExcluindoClinica(true); }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white"><Trash2 size={17}/> Excluir clínica</button></div>

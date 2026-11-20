@@ -103,3 +103,16 @@ try {
   globalThis.fetch = fetchOriginal;
 }
 console.log("Prévia pública entrega a imagem sem disponibilizar arquivos internos.");
+
+const { outputText: previewModule } = ts.transpileModule(fs.readFileSync("src/lib/clinic-logo-preview.ts", "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+});
+const { isClinicLogoPreview, storedClinicLogoPreview } = await import(`data:text/javascript;base64,${Buffer.from(previewModule).toString("base64")}`);
+const preview = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg==";
+const imagemAtual = { origem: "https://logo.example/atual.png", imagem: preview };
+assert.equal(isClinicLogoPreview(preview), true);
+assert.equal(isClinicLogoPreview(preview.slice(0, -16)), false);
+assert.equal(isClinicLogoPreview(preview.replace("image/png", "image/svg+xml")), false);
+assert.equal(storedClinicLogoPreview(imagemAtual, imagemAtual.origem), preview);
+assert.equal(storedClinicLogoPreview(imagemAtual, "https://logo.example/novo.png"), null);
+console.log("A prévia salva é um PNG e só aparece para a referência de logo correspondente.");
