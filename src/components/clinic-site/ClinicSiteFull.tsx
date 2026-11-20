@@ -54,10 +54,7 @@ const safeImage = (input?: string) => {
 const directDriveFallback = (input?: string) => {
   try {
     const url = new URL((input || "").trim());
-    if (
-      url.hostname === "oricse.com.br" &&
-      url.pathname === "/api/public/clinic-image"
-    ) {
+    if (url.hostname === "oricse.com.br" && url.pathname === "/api/public/clinic-image") {
       const file = url.searchParams.get("file") || "";
       return /^[A-Za-z0-9_-]{12,160}$/.test(file)
         ? `https://lh3.googleusercontent.com/d/${encodeURIComponent(file)}=w1440`
