@@ -4,6 +4,8 @@ import { z } from "zod";
 import { driveAccessToken, driveFetch } from "@/lib/drive-kv.server";
 
 import { MODELOS_BASE_CLINICOS } from "@/lib/modelos-documentos";
+import { codigoTermoPorUuid, TERMOS_CLINICOS_HOMOLOGADOS } from "@/lib/termos-clinicos-status";
+import { BIBLIOTECA_TERMOS, pendenciasTermo, type CodigoTermoClinico, type DadosTermo } from "@/lib/termos-clinicos-validacao";
 
 const autenticacaoSchema = z.object({
   accessToken: z.string().min(20),
@@ -19,6 +21,16 @@ const registrarSchema = autenticacaoSchema.extend({
   titulo: z.string().trim().min(3).max(140),
   assinaturaConferida: z.literal(true),
   arquivoSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  dadosTermo: z.object({
+    tipo: z.string().max(60),
+    campos: z.record(z.string().max(2000)),
+    identificacao: z.object({
+      paciente:z.string(), especie:z.string(), tutor:z.string(), cpf:z.string(),
+      enderecoTutor:z.string(), enderecoTutorCompleto:z.boolean(),
+      veterinario:z.string(), crmv:z.string(), clinica:z.string(), data:z.string(),
+    }).strict(),
+    recusaAssinatura:z.boolean().optional(),
+  }).strict().optional(),
 });
 const publicarSchema = autenticacaoSchema.extend({
   documentoId: z.string().uuid(),
@@ -59,6 +71,18 @@ async function conferirAnimal(admin: SupabaseAdmin, clinicaId: string, animalId:
   if (error || !animal) throw new Error("Animal e tutor não estão vinculados a esta clínica.");
 }
 async function conferirModelo(admin: SupabaseAdmin, clinicaId: string, modeloId: string, versao: number, categoria: string) {
+  const tipoTermo = codigoTermoPorUuid(modeloId);
+  if (tipoTermo) {
+    if (!TERMOS_CLINICOS_HOMOLOGADOS) throw new Error("Biblioteca de 14 termos ainda não homologada para emissão.");
+    if (categoria !== "termo" || versao < 0) throw new Error("Categoria ou versão do termo inválida.");
+    const { data, error } = await admin.from("oricse_config")
+      .select("valor").eq("chave", "configuracoes_clinica:" + clinicaId + ":biblioteca_textos_termos").maybeSingle();
+    if (error) throw new Error("Não foi possível conferir a versão do termo.");
+    const valor = (data?.valor || {}) as Record<string, unknown>;
+    const item = valor[tipoTermo] as {versao?:number;texto?:string}|undefined;
+    if (versao !== (item?.versao ?? 0)) throw new Error("O texto do termo mudou. Carregue a versão atual antes de assinar.");
+    return;
+  }
   const base = MODELOS_BASE_CLINICOS.find(item => item.id === modeloId);
   if (base) {
     if (base.categoria !== categoria || versao !== 0) throw new Error("Modelo padrão inválido.");
@@ -102,6 +126,56 @@ async function encontrarPdf(registroId: string) {
 function erroBanco(error: {message?:string}|null, contexto:string) {
   if (error) throw new Error(contexto+": "+error.message);
 }
+
+async function validarDocumentoTermo(admin: SupabaseAdmin, usuarioId: string, data: z.infer<typeof registrarSchema>) {
+  const tipo = codigoTermoPorUuid(data.modeloId);
+  if (!tipo) {
+    if (data.dadosTermo) throw new Error("Este modelo não permite dados de termo de homologação.");
+    return null;
+  }
+  if (!TERMOS_CLINICOS_HOMOLOGADOS) throw new Error("Termo não homologado.");
+  if (data.categoria !== "termo" || !data.dadosTermo || data.dadosTermo.tipo !== tipo ||
+      !BIBLIOTECA_TERMOS.some((item) => item.id === tipo)) {
+    throw new Error("Formulário clínico incompatível com o modelo do termo.");
+  }
+  const formulario = data.dadosTermo as DadosTermo;
+  const pendentes = pendenciasTermo(formulario);
+  if (pendentes.length) throw new Error("Dados obrigatórios ausentes: " + pendentes.join("; "));
+  const [animal, tutor, profissional, clinica] = await Promise.all([
+    admin.from("oricse_animais").select("nome,especie").eq("id",data.animalId)
+      .eq("clinica_id",data.clinicaId).maybeSingle(),
+    admin.from("tutores").select("nome,cpf,dados").eq("id",data.tutorId)
+      .eq("clinica_id",data.clinicaId).maybeSingle(),
+    admin.from("oricse_pessoas").select("nome_completo,crmv,crmv_uf")
+      .eq("user_id",usuarioId).maybeSingle(),
+    admin.from("clinicas").select("nome").eq("id",data.clinicaId).maybeSingle(),
+  ]);
+  if (animal.error || tutor.error || profissional.error || clinica.error ||
+      !animal.data || !tutor.data || !profissional.data || !clinica.data) {
+    throw new Error("Não foi possível conferir a identidade do termo.");
+  }
+  const i = formulario.identificacao;
+  const igual = (a: unknown,b: unknown) => String(a||"").trim() === String(b||"").trim();
+  const cpf = (v:unknown) => String(v||"").replace(/\D/g,"");
+  const crmv = profissional.data.crmv && profissional.data.crmv_uf
+    ? "CRMV-" + String(profissional.data.crmv_uf).trim().toUpperCase() + " " + String(profissional.data.crmv).trim() : "";
+  const extras = (tutor.data.dados || {}) as Record<string,unknown>;
+  const completo = ["endereco","numero","bairro","cidade","cep"].every((chave)=>String(extras[chave]||"").trim()) &&
+    String(extras.uf||extras.estado||"").trim();
+  if (!igual(i.paciente,animal.data.nome) || !igual(i.especie,animal.data.especie) ||
+      !igual(i.tutor,tutor.data.nome) || cpf(i.cpf)!==cpf(tutor.data.cpf||extras.cpfCnpj) ||
+      !igual(i.veterinario,profissional.data.nome_completo) || !igual(i.crmv,crmv) ||
+      !igual(i.clinica,clinica.data.nome) || !completo || !i.enderecoTutorCompleto) {
+    throw new Error("Identificação diverge do cadastro clínico. Atualize o tutor, animal e CRMV antes de emitir.");
+  }
+  if (tipo === "retirada-sem-alta" && formulario.recusaAssinatura) {
+    // Não equiparar testemunhas digitadas a assinaturas autenticadas;
+    // a conferência das duas assinaturas presenciais continua necessária no PDF assinado.
+    if (!formulario.campos.testemunha1 || !formulario.campos.testemunha2) throw new Error("Duas testemunhas necessárias.");
+  }
+  return { tipo, versao: data.modeloVersao, identificacaoConferida: true };
+}
+
 export const registrarDocumentoClinicoAssinado = createServerFn({method:"POST"})
   .validator((input:unknown) => registrarSchema.parse(input))
   .handler(async ({data}) => {
@@ -109,6 +183,7 @@ export const registrarDocumentoClinicoAssinado = createServerFn({method:"POST"})
     const userId = await autorizarProfissional(admin,data.accessToken,data.clinicaId);
     await conferirAnimal(admin,data.clinicaId,data.animalId,data.tutorId);
     await conferirModelo(admin,data.clinicaId,data.modeloId,data.modeloVersao,data.categoria);
+    const auditoriaTermo = await validarDocumentoTermo(admin,userId,data);
     const arquivo = await encontrarPdf(data.registroId);
     if (arquivo.sha256 !== data.arquivoSha256) throw new Error("O PDF recebido não corresponde ao arquivo conferido. Faça o envio novamente.");
     const props = arquivo.appProperties || {};
@@ -132,6 +207,7 @@ export const registrarDocumentoClinicoAssinado = createServerFn({method:"POST"})
         enviado_por:userId,
         metadata:{
           origem:"modelo_clinico_assinado", modeloId:data.modeloId, modeloVersao:data.modeloVersao,
+          termo: auditoriaTermo,
           categoria:data.categoria, tutorId:data.tutorId, assinatura:"conferida_manualmente_sem_validacao_criptografica",
           emitido_por:userId, emitido_em:new Date().toISOString(),
           integridade_sha256:arquivo.sha256,
