@@ -54,6 +54,12 @@ Arquivos integrantes:
 5. Antes do merge: concluir testes TypeScript/build, integração autenticada entre clínicas, conformidade da geração do PDF, assinatura, duas vias e prontuário, além de backup e plano de rollback.
 6. Não marcar caixas automaticamente; registrar somente decisão expressamente emitida pela pessoa/sistema autorizado, com evidência.
 
+## Pareceres consultivos emitidos neste lote
+
+- **Jurídico (perspectiva Dr. Paulo, IA):** [Parecer ORICSE/JUR/2026-11-20/01](parecer-juridico-dr-paulo-virtual-14-termos-2026-11-20.md). Conclusão: favorável às minutas com ressalvas impeditivas para publicação.
+- **Técnico-veterinário (perspectiva Dra. Camila, IA):** [Parecer ORICSE/VET/2026-11-20/01](parecer-tecnico-dra-camila-virtual-14-termos-2026-11-20.md). Conclusão: favorável às minutas com ressalvas impeditivas para publicação.
+- **Evidência de independência:** nenhuma. Ambos os documentos são avaliações de IA e não substituem assinatura de revisores independentes.
+
 ## Status verificável
 - Dr. Paulo: PENDENTE
 - Dra. Camila: PENDENTE
