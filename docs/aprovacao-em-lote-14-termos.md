@@ -56,13 +56,21 @@ Arquivos integrantes:
 
 ## Pareceres consultivos emitidos neste lote
 
-- **Jurídico (perspectiva Dr. Paulo, IA):** [Parecer ORICSE/JUR/2026-11-20/01](parecer-juridico-dr-paulo-virtual-14-termos-2026-11-20.md). Conclusão: favorável às minutas com ressalvas impeditivas para publicação.
-- **Técnico-veterinário (perspectiva Dra. Camila, IA):** [Parecer ORICSE/VET/2026-11-20/01](parecer-tecnico-dra-camila-virtual-14-termos-2026-11-20.md). Conclusão: favorável às minutas com ressalvas impeditivas para publicação.
-- **Evidência de independência:** nenhuma. Ambos os documentos são avaliações de IA e não substituem assinatura de revisores independentes.
+**Emissão informativa por IA em 20/11/2026. Não constitui assinatura, registro profissional nem aprovação independente.**
+
+Pareceres atuais do lote completo, emitidos e registrados na PR:
+- **Jurídico (perspectiva Dr. Paulo, IA):** [ORICSE-JUR-014-2026](parecer-dr-paulo-juridico-14-termos-2026-11-20.md). **Apto como minuta interna, NÃO APTO para publicação sem sanar ressalvas.**
+- **Técnico-veterinário (perspectiva Dra. Camila, IA):** [ORICSE-CLIN-014-2026](parecer-dra-camila-clinico-14-termos-2026-11-20.md). **Apto como minuta clínica em revisão, NÃO APTO para uso clínico na forma atual.**
+
+Análises preliminares anteriores preservadas como histórico:
+- [Jurídica virtual inicial](parecer-juridico-dr-paulo-virtual-14-termos-2026-11-20.md)
+- [Técnico-veterinária virtual inicial](parecer-tecnico-dra-camila-virtual-14-termos-2026-11-20.md)
+
+A revisão adicional confirma as ressalvas, não gera aprovação externa. Não marcar as caixas de aprovação acima.
 
 ## Status verificável
-- Dr. Paulo: PENDENTE
-- Dra. Camila: PENDENTE
-- QA: PENDENTE
-- Merge: BLOQUEADO
-- Deploy Cloudflare: BLOQUEADO
+- Dr. Paulo: **parecer virtual com ressalvas emitido; aprovação independente PENDENTE**
+- Dra. Camila: **parecer virtual com ressalvas emitido; aprovação independente PENDENTE**
+- QA do fluxo de consentimento: **PENDENTE**
+- Merge: **BLOQUEADO**
+- Deploy Cloudflare: **BLOQUEADO**
