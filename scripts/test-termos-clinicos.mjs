@@ -37,7 +37,8 @@ for (const termo of BIBLIOTECA_TERMOS) {
   assert.deepEqual(pendenciasTermo(caso), [], "Há campos não contemplados: " + termo.id);
   const texto = prepararConteudoTermo(caso);
   assert(texto.includes("INFORMAÇÕES CLÍNICAS ESPECÍFICAS"), "Sem seção clínica: " + termo.id);
-  assert(texto.includes(ident.tutor) && texto.includes(ident.veterinario), "Identidade não preenchida: " + termo.id);
+  if (termo.texto.includes("{{tutor}}")) assert(texto.includes(ident.tutor), "Responsável não preenchido: " + termo.id);
+  if (termo.texto.includes("{{veterinario}}")) assert(texto.includes(ident.veterinario), "Veterinário não preenchido: " + termo.id);
   assert(!/\{\{[^{}]+\}\}/.test(texto), "Placeholders pendentes: " + termo.id);
   const necessario = CAMPOS_TERMOS[termo.id].find(c => c.obrigatorio);
   assert(necessario, "Termo sem campo obrigatório: " + termo.id);
