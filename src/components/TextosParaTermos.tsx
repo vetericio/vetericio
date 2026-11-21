@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileText, History, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { Eye, FileDown, FileText, History, RotateCcw, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
-import { obterTextosTermosClinica, salvarTextoTermoClinica } from "@/lib/configuracoes-clinica.functions";
+import { obterModeloDocumentoEmissao, obterTextosTermosClinica, salvarTextoTermoClinica } from "@/lib/configuracoes-clinica.functions";
+import { CAMPOS_TERMOS, prepararConteudoTermo, type CodigoTermoClinico } from "@/lib/termos-clinicos-validacao";
 import { TEXTOS_TERMOS_PADRAO } from "@/lib/textos-termos";
 import { TEXTOS_TERMOS_ADICIONAIS } from "@/lib/textos-termos-adicionais";
 
@@ -19,6 +20,7 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
   const [corpo, setCorpo] = useState<string>(base[0].texto);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [gerandoPrevia, setGerandoPrevia] = useState(false);
   const [erro, setErro] = useState("");
   const [visualizando, setVisualizando] = useState(false);
   const atual = useMemo(() => base.find((t) => t.id === selecionado) || base[0], [selecionado]);
@@ -72,6 +74,52 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
     }
   }
 
+  async function baixarPreviaPdf() {
+    if (gerandoPrevia) return;
+    setGerandoPrevia(true);
+    try {
+      const accessToken = await tokenConfiguracoesClinica();
+      const papelClinica = await obterModeloDocumentoEmissao({
+        data: { accessToken, clinicaId, tipo: "termo" },
+      });
+      const campos = Object.fromEntries(CAMPOS_TERMOS[atual.id as CodigoTermoClinico]
+        .map((campo) => [campo.id, "Informação fictícia para demonstração"]));
+      if (atual.id === "rcp") campos.decisao = "reanimar";
+      if (atual.id === "domiciliar") campos.procedimentos = "Consulta e exame físico";
+      const exemplo = {
+        tipo: atual.id as CodigoTermoClinico, campos,
+        identificacao: {
+          paciente: "Luna", especie: "Canina",
+          tutor: "Marina Exemplo", cpf: "529.982.247-25",
+          enderecoTutor: "Rua Exemplo, 24, Centro, Belo Horizonte/MG, CEP 30000-000",
+          enderecoTutorCompleto: true,
+          veterinario: "Dra. Ana Exemplo", crmv: "CRMV-MG 12345",
+          clinica: papelClinica.identidade.nome, data: new Date().toLocaleDateString("pt-BR"),
+        },
+      };
+      const texto = prepararConteudoTermo(exemplo, corpo);
+      const { criarPdfComModelo, prepararPapelDocumento } = await import("@/lib/modelos-documentos-pdf");
+      const papel = await prepararPapelDocumento(papelClinica.identidade, papelClinica.modelo);
+      const pdf = await criarPdfComModelo({
+        titulo: atual.titulo, conteudo: texto, papel, demonstrativo: true, vias: 2,
+        assinaturaResponsavel: "Marina Exemplo",
+        identificacao: {
+          paciente: {nome:"Luna",especie:"Canina",raca:"SRD",sexo:"Fêmea",peso:"8,2 kg"},
+          tutor: {nome:"Marina Exemplo",cpf:"529.982.247-25",
+            endereco:"Rua Exemplo, 24, Centro, Belo Horizonte/MG, CEP 30000-000"},
+        },
+        assinatura: [
+          [papelClinica.identidade.municipio,new Date().toLocaleDateString("pt-BR")].filter(Boolean).join(", "),
+          "Dra. Ana Exemplo · CRMV-MG 12345",
+        ],
+      });
+      pdf.save("PREVIA-SEM-VALIDADE-" + atual.id + ".pdf");
+      toast.success("Prévia demonstrativa de duas vias gerada. Sem validade para atendimento.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar a prévia em PDF.");
+    } finally { setGerandoPrevia(false); }
+  }
+
   const demonstrativo = corpo.replace(/\{\{([a-z_]+)\}\}/g, (_, campo: string) => ({
     tutor: "Marina Exemplo", paciente: "Luna", veterinario: "Dra. Ana Exemplo", crmv: "CRMV-MG FICTÍCIO",
   } as Record<string,string>)[campo] || "{{" + campo + "}}");
@@ -91,7 +139,8 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
       <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-50/60 p-3 text-sm text-amber-950 dark:bg-amber-900/20 dark:text-amber-100">
         <ShieldAlert size={18} className="shrink-0" />
         <span><strong>Minutas em revisão.</strong> Dr. Paulo e Dra. Camila ainda não têm aprovações
-          independentes registradas. Estes modelos não são emitidos nem publicados automaticamente.</span>
+          independentes registradas. Estes modelos não são emitidos nem publicados automaticamente.
+          Personalizações da clínica também precisam de revisão antes de substituir o texto-base.</span>
       </div>
       {carregando ? <p role="status" className="p-4 text-sm">Carregando biblioteca…</p> :
        erro ? <p role="alert" className="p-4 text-sm text-destructive">{erro}</p> :
@@ -125,6 +174,10 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
             <button type="button" disabled={!alterado || salvando} onClick={() => void salvar()}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
               <Save size={16} /> {salvando ? "Salvando rascunho…" : "Salvar rascunho"}
+            </button>
+            <button type="button" disabled={gerandoPrevia || carregando} onClick={() => void baixarPreviaPdf()}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50">
+              <FileDown size={16}/> {gerandoPrevia ? "Preparando prévia…" : "Prévia em PDF (2 vias)"}
             </button>
             <button type="button" onClick={() => setVisualizando((v) => !v)}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold">
