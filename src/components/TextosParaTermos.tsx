@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Eye, FileText, History, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { Eye, FileText, History, RotateCcw, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import { obterTextosTermosClinica, salvarTextoTermoClinica } from "@/lib/configuracoes-clinica.functions";
