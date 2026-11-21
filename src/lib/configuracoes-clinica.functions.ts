@@ -474,3 +474,34 @@ export const salvarTextoTermoClinica = createServerFn({ method: "POST" })
     await gravar(ctx, CHAVE_TEXTOS_TERMOS, { ...registros, [data.id]: atualizado });
     return { modelo: atualizado, situacao: "rascunho_sem_aprovacoes" as const };
   });
+
+
+/**
+ * Disponibiliza a biblioteca para emissão SOMENTE após homologação real.
+ * A configuração do cliente não pode se declarar aprovada.
+ */
+export const obterTermosClinicosParaEmissao = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    confirmarClinica(ctx, data.clinicaId);
+    await autorizarTermos(ctx);
+    const { TERMOS_CLINICOS_HOMOLOGADOS, UUID_MODELOS_TERMO } = await import("@/lib/termos-clinicos-status");
+    if (!TERMOS_CLINICOS_HOMOLOGADOS) {
+      return { situacao: "aguardando_homologacao" as const, modelos: [] as Array<{
+        id: string; tipoTermo: string; nome: string; categoria: "termo"; texto: string; versao: number;
+      }> };
+    }
+    const { BIBLIOTECA_TERMOS } = await import("@/lib/termos-clinicos-validacao");
+    const dados = await ler(ctx, CHAVE_TEXTOS_TERMOS);
+    const modelosSalvos = dados === null ? {} : bibliotecaTermosSchema.parse(dados);
+    return {
+      situacao: "habilitado" as const,
+      modelos: BIBLIOTECA_TERMOS.map((modelo) => ({
+        id: UUID_MODELOS_TERMO[modelo.id], tipoTermo: modelo.id,
+        nome: modelo.nome, categoria: "termo" as const,
+        texto: modelosSalvos[modelo.id]?.texto ?? modelo.texto,
+        versao: modelosSalvos[modelo.id]?.versao ?? 0,
+      })),
+    };
+  });
