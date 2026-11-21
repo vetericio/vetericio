@@ -74,13 +74,9 @@ async function conferirModelo(admin: SupabaseAdmin, clinicaId: string, modeloId:
   const tipoTermo = codigoTermoPorUuid(modeloId);
   if (tipoTermo) {
     if (!TERMOS_CLINICOS_HOMOLOGADOS) throw new Error("Biblioteca de 14 termos ainda não homologada para emissão.");
-    if (categoria !== "termo" || versao < 0) throw new Error("Categoria ou versão do termo inválida.");
-    const { data, error } = await admin.from("oricse_config")
-      .select("valor").eq("chave", "configuracoes_clinica:" + clinicaId + ":biblioteca_textos_termos").maybeSingle();
-    if (error) throw new Error("Não foi possível conferir a versão do termo.");
-    const valor = (data?.valor || {}) as Record<string, unknown>;
-    const item = valor[tipoTermo] as {versao?:number;texto?:string}|undefined;
-    if (versao !== (item?.versao ?? 0)) throw new Error("O texto do termo mudou. Carregue a versão atual antes de assinar.");
+    // A aprovação do pacote vale para os textos-base v0. Rascunhos clínicos
+    // personalizados não podem ser usados sem aprovação independente própria.
+    if (categoria !== "termo" || versao !== 0) throw new Error("Somente a versão-base homologada pode ser emitida.");
     return;
   }
   const base = MODELOS_BASE_CLINICOS.find(item => item.id === modeloId);
