@@ -113,6 +113,7 @@ export const CAMPOS_TERMOS: Record<CodigoTermoClinico, readonly CampoClinico[]> 
 
 export type DadosIdentificacaoTermo = {
   paciente: string; especie: string; tutor: string; cpf: string; enderecoTutor: string;
+  enderecoTutorCompleto: boolean;
   veterinario: string; crmv: string; clinica: string; data: string;
 };
 export type DadosTermo = {
@@ -142,6 +143,7 @@ export function pendenciasTermo(dados: DadosTermo): string[] {
     [i.veterinario, "Médico-veterinário"], [i.crmv, "CRMV"],
     [i.clinica, "Clínica"], [i.data, "Data de emissão"],
   ]) if (!campo?.trim()) pendencias.push(rotulo);
+  if (!i.enderecoTutorCompleto) pendencias.push("Endereço completo do responsável (rua, número, bairro, cidade/UF e CEP)");
   if (!cpfValidoTermo(i.cpf)) pendencias.push("CPF válido do responsável");
   for (const campo of CAMPOS_TERMOS[tipo]) {
     if (campo.obrigatorio && !campos[campo.id]?.trim()) pendencias.push(campo.rotulo.replace(/ \((obrigatório|preenchimento obrigatório)\)/, ""));
