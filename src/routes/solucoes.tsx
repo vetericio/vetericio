@@ -7,9 +7,9 @@ import {
 
 export const Route = createFileRoute("/solucoes")({
   head: () => ({ meta: [
-    { title: "Soluções Oricse — conheça cada recurso" },
-    { name: "description", content: "Entenda em detalhes como cada solução da Oricse ajuda a sua rotina pet." },
-  ]}),
+    { title: "Sistema veterinário, pet shop e banho e tosa | ORICSE" },
+    { name: "description", content: "Conheça o ORICSE: software veterinário com agenda, prontuário, internação, caixa, estoque, banho e tosa, hotelzinho e Portal do Tutor." },
+  ], links: [{ rel: "canonical", href: "https://oricse.com.br/solucoes" }] }),
   component: Solucoes,
 });
 
