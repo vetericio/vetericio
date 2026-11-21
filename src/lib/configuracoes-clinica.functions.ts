@@ -493,15 +493,15 @@ export const obterTermosClinicosParaEmissao = createServerFn({ method: "POST" })
       }> };
     }
     const { BIBLIOTECA_TERMOS } = await import("@/lib/termos-clinicos-validacao");
-    const dados = await ler(ctx, CHAVE_TEXTOS_TERMOS);
-    const modelosSalvos = dados === null ? {} : bibliotecaTermosSchema.parse(dados);
+    // A aprovação do pacote cobre SOMENTE os textos-base revisados.
+    // Personalizações da clínica são rascunhos e NÃO substituem a versão homologada.
     return {
       situacao: "habilitado" as const,
       modelos: BIBLIOTECA_TERMOS.map((modelo) => ({
         id: UUID_MODELOS_TERMO[modelo.id], tipoTermo: modelo.id,
         nome: modelo.nome, categoria: "termo" as const,
-        texto: modelosSalvos[modelo.id]?.texto ?? modelo.texto,
-        versao: modelosSalvos[modelo.id]?.versao ?? 0,
+        texto: modelo.texto,
+        versao: 0,
       })),
     };
   });
