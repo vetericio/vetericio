@@ -1,5 +1,5 @@
 /**
- * Biblioteca oficial de textos-base do ORICSE.
+ * Biblioteca de minutas de textos-base do ORICSE. Ainda NÃO homologada.
  * Referências: CFMV 1321/2020 (Anexos VI, VIII, IX e X), com alterações
  * da Resolução 1653/2025; e CFMV 1000/2012 para eutanásia.
  * O cabeçalho, identificação e assinaturas são montados pelo gerador,
