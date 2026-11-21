@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileDown, FileText, History, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { Eye, FileDown, FileText, History, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import { obterModeloDocumentoEmissao, obterTextosTermosClinica, salvarTextoTermoClinica } from "@/lib/configuracoes-clinica.functions";
@@ -68,7 +68,7 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
       setCorpo(resultado.modelo.texto);
       toast.success("Rascunho salvo com versão. Continua bloqueado para uso.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível salvar. Nenhuma aprovação registrada.");
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar o modelo.");
     } finally {
       setSalvando(false);
     }
@@ -136,12 +136,9 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
           </p>
         </div>
       </div>
-      <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300/50 bg-amber-50/60 p-3 text-sm text-amber-950 dark:bg-amber-900/20 dark:text-amber-100">
-        <ShieldAlert size={18} className="shrink-0" />
-        <span><strong>Minutas em revisão.</strong> Dr. Paulo e Dra. Camila ainda não têm aprovações
-          independentes registradas. Estes modelos não são emitidos nem publicados automaticamente.
-          Personalizações da clínica também precisam de revisão antes de substituir o texto-base.</span>
-      </div>
+      <p className="mb-4 rounded-lg border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+        Personalize os modelos e confira o resultado na prévia. A emissão clínica destes termos ainda não está disponível.
+      </p>
       {carregando ? <p role="status" className="p-4 text-sm">Carregando biblioteca…</p> :
        erro ? <p role="alert" className="p-4 text-sm text-destructive">{erro}</p> :
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -195,7 +192,7 @@ export function TextosParaTermos({ clinicaId }: { clinicaId: string }) {
             <p className="mb-3 text-xs font-bold uppercase text-muted-foreground">Demonstração sem validade jurídica</p>
             <p className="text-center font-bold">{atual.titulo}</p>
             <div className="mt-4 whitespace-pre-wrap text-sm leading-7">{demonstrativo}</div>
-            <p className="mt-5 text-center text-xs text-muted-foreground">Assinaturas e identificação ficam no documento final após homologação.</p>
+            <p className="mt-5 text-center text-xs text-muted-foreground">A identificação e os campos de assinatura são incluídos no documento final.</p>
           </div>}
           {dados?.historico?.length ? <details className="rounded-lg border p-3">
             <summary className="cursor-pointer text-sm font-semibold"><History size={15} className="mr-2 inline"/> Histórico ({dados.historico.length})</summary>
