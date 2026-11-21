@@ -8,13 +8,14 @@ import { FundoDeserto } from "@/components/demonstracao/FundoDeserto";
 export const Route = createFileRoute("/demonstracao")({
   head: () => ({
     meta: [
-      { title: "Solicitar demonstração — Oricse" },
-      { name: "description", content: "Conheça o Oricse na prática com uma demonstração personalizada para sua clínica, banho e tosa, hotelzinho ou centro veterinário." },
+      { title: "Demonstração de sistema veterinário e pet shop | ORICSE" },
+      { name: "description", content: "Solicite uma demonstração do ORICSE, sistema de gestão veterinária para clínicas, hospitais, pet shops, banho e tosa e hotelzinho." },
       { property: "og:title", content: "Solicite uma demonstração do Oricse" },
       { property: "og:description", content: "Demonstração personalizada e sem compromisso do sistema Oricse para o mercado pet." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
+    links: [{ rel: "canonical", href: "https://oricse.com.br/demonstracao" }],
   }),
   component: Demonstracao,
 });

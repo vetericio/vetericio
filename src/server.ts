@@ -82,7 +82,7 @@ async function consultarCepNoServidor(cep: string): Promise<Response> {
 }
 
 function sitemap(origin: string): Response {
-  const urls = ["/", "/planos", "/login"]
+  const urls = ["/", "/solucoes", "/planos", "/demonstracao", "/termos-de-uso", "/politica-de-privacidade"]
     .map((path) => `  <url><loc>${origin}${path}</loc></url>`)
     .join("\n");
   return new Response(

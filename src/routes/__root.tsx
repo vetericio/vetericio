@@ -204,7 +204,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
       },
       { rel: "manifest", href: "/oricse-manifest-v16.webmanifest" },
-      { rel: "canonical", href: "https://oricse.com.br/" },
+      // Canonical é definido por rota pública, evitando apontar todo o sistema para a homepage.
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/oricse-favicon-32.png?v=16" },
       { rel: "shortcut icon", type: "image/png", href: "/oricse-favicon-32.png?v=16" },
       { rel: "apple-touch-icon", type: "image/png", sizes: "180x180", href: "/oricse-favicon-180.png?v=16" },
