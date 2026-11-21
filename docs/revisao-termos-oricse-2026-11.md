@@ -38,3 +38,30 @@
 - Conferir também normas locais, disposições éticas e exigências sanitárias aplicáveis à clínica.
 
 **Critério final:** não publicar por simples autorrevisão. Publicar somente após validação de ambas as revisões e QA de implementação.
+
+
+## Revisão preliminar assistida por IA em 20/11/2026 (não equivale à aprovação independente)
+Critérios jurídicos segundo o protocolo do Dr. Paulo virtual e checagem médico-veterinária crítica de conteúdo. **Nenhum parecer foi emitido ou assinado por pessoa independente.**
+
+| Minuta | Checklist jurídico | Checklist técnico-veterinário | Estado |
+| --- | --- | --- | --- |
+| Eutanásia | Indicação e método registrados; consentimento específico | Verificar prognóstico, indicação ética, analgesia/sedação conforme método | Revisão independente pendente |
+| Cirurgia | Procedimento individualizado; anestesia apartada | Verificar riscos, exames, complicações e cuidado pós-operatório | Revisão independente pendente |
+| Anestesia | Consentimento específico | Avaliar risco anestésico, monitorização e intercorrências | Revisão independente pendente |
+| Retirada sem alta | Art. 11: recusa de assinatura demanda 2 testemunhas presenciais | Registrar estado e recomendação real; orientar avaliação se piora | Revisão independente pendente |
+| Internação | Não usar como autorização genérica irrestrita | Plano assistencial, monitorização e limites | Revisão independente pendente |
+| Terapêutico de risco | Procedimento/alternativas/risco concretos | Registrar indicação, alternativas e medidas de segurança | Revisão independente pendente |
+| Diagnóstico | Discriminar exames e autorizações específicas | Respeitar sedação/anestesia separadamente | Revisão independente pendente |
+| Recusa de exames/tratamento | Não isenta automaticamente responsabilidade profissional | Registrar condição, prognóstico, alternativas e recusa | Revisão independente pendente |
+| Transferência | Destino, condições e cadeia de responsabilidade explícitos | Transporte compatível com estabilidade, equipe e recursos | Revisão independente pendente |
+| Transfusão | Consentimento específico e rastreabilidade | Tipo de hemocomponente, testes indicados, reação e monitorização; jamais domiciliar | Revisão independente pendente |
+| Retirada do corpo | Atestado de óbito distinto; responsabilidade não se transfere retroativamente | Restrição sanitária, destinação segura e documentação da entrega | Revisão independente pendente |
+| Doação de corpo | **Referência correta: Anexo XII** (não Anexo XI); instituição identificada | Observar utilização de cadáver e destinação em instituição apropriada | Revisão independente pendente |
+| Reanimação cardiopulmonar | Registro não substitui critério profissional para decisão de não reanimar | Rever prognóstico, decisão com equipe e reavaliar no decorrer da internação | Revisão independente pendente |
+| Atendimento domiciliar | Resolução CFMV 1690/2026 | Limitar a procedimentos permitidos e garantir encaminhamento quando indicado | Revisão independente pendente |
+
+### Achado técnico
+Código da nova aba **Textos para Termos** preparado na branch do PR, com gravação por clínica, texto-base, histórico e estado explícito de rascunho. A aba **não está na branch principal** e não foi publicada no Cloudflare. O editor **não contém botão de aprovação ou emissão**, para impedir liberação prematura.
+
+### Ação necessária para liberar
+Obter e registrar revisão jurídica independente e revisão clínica veterinária independente, ambas para a versão final e com identificação e data. Em seguida: incorporar correções, executar QA de implementação incluindo emissão em duas vias e assinaturas, testar os fluxos autenticados entre clínicas, efetuar backup e somente então publicar. Este documento não constitui aceite de Dr. Paulo ou Dra. Camila.
