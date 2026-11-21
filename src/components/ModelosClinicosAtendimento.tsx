@@ -307,10 +307,43 @@ export function ModelosClinicosAtendimento() {
         {perfilCompleto ? `Médico-veterinário: ${profissional?.nome} · ${profissional?.crmv}`
           : "Complete nome, CRMV e UF no cadastro profissional do seu perfil."}
       </p>
+      {modelo.tipoTermo ? <>
+        <p className="rounded-lg border bg-muted/30 p-3 text-sm">
+          Termo clínico padronizado. Preencha apenas os dados do atendimento.
+          Cabeçalho, identificação, texto-base e assinaturas seguem o padrão do ORICSE.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {CAMPOS_TERMOS[modelo.tipoTermo].map(campo => (
+            <label key={campo.id} className="block text-sm font-medium">
+              {campo.rotulo.replace(/ \((obrigatório|preenchimento obrigatório)\)/, "")}{campo.obrigatorio ? " *" : ""}
+              {modelo.tipoTermo === "rcp" && campo.id === "decisao" ?
+                <select value={camposTermo.decisao || ""} className="mt-1 min-h-11 w-full rounded-lg border bg-background p-2"
+                  onChange={(e)=>{setCamposTermo((v)=>({...v,decisao:e.target.value}));invalidarDocumentoAssinado();}}>
+                  <option value="">Selecione a decisão</option>
+                  <option value="reanimar">Reanimar em caso de parada</option>
+                  <option value="nao_reanimar">Não reanimar, após discussão clínica</option>
+                </select> :
+                <textarea rows={campo.obrigatorio ? 3 : 2} maxLength={2000}
+                  className="mt-1 w-full rounded-lg border bg-background p-3"
+                  value={camposTermo[campo.id] || ""}
+                  onChange={(e)=>{setCamposTermo((v)=>({...v,[campo.id]:e.target.value}));invalidarDocumentoAssinado();}} />}
+            </label>
+          ))}
+        </div>
+        {modelo.tipoTermo === "retirada-sem-alta" && <label className="flex items-start gap-2 rounded-lg border p-3 text-sm">
+          <input type="checkbox" className="mt-1" checked={recusaAssinaturaTermo}
+            onChange={(e)=>{setRecusaAssinaturaTermo(e.target.checked);invalidarDocumentoAssinado();}} />
+          O responsável recusou assinar: registrar duas testemunhas que presenciaram a recusa.
+        </label>}
+        <details className="rounded-lg border p-3">
+          <summary className="cursor-pointer text-sm font-semibold">Conferir texto-base (somente leitura)</summary>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-7">{modelo.texto}</p>
+        </details>
+      </> :
       <label className="block text-sm font-medium">Revisar e completar documento
-        <textarea rows={15} maxLength={25000} value={conteudo} onChange={(e)=>{setConteudo(e.target.value);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);setRegistro(null);}}
+        <textarea rows={15} maxLength={25000} value={conteudo} onChange={(e)=>{setConteudo(e.target.value);invalidarDocumentoAssinado();}}
           className="mt-1 w-full rounded-lg border bg-background p-3 font-mono text-sm leading-relaxed"/>
-      </label>
+      </label>}
       {pendencias.length > 0 && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Campos a preencher: {[...new Set(pendencias)].join(", ")}</p>}
       {!demoAlvorada && <>
       <p className="text-xs text-muted-foreground">O rascunho permanece privado. Para registrar uma emissão, assine o PDF pelo procedimento adequado, importe o arquivo assinado e confirme. Assinatura gráfica não equivale à certificação digital.</p>
