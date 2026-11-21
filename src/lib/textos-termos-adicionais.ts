@@ -1,8 +1,7 @@
 /**
- * Textos adicionais do ORICSE em REVISÃO.
- * NÃO IMPORTAR EM PRODUÇÃO até duas revisões registradas:
- * Dr. Paulo (jurídica) e Dra. Camila (clínico-veterinária).
- * Os documentos serão assinados pelo responsável e profissional habilitado.
+ * Biblioteca de textos-base em revisão técnica.
+ * Somente os modelos formalmente homologados podem ser emitidos.
+ * O controle de emissão fica no servidor, nunca neste arquivo.
  */
 export const TEXTOS_TERMOS_ADICIONAIS = [
   {
