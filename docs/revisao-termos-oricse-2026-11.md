@@ -8,8 +8,8 @@
 - **Importante:** arquivos são apenas dados de revisão, sem importação pela interface do ORICSE, sem migração de banco e sem ativação na produção.
 
 ## Condições obrigatórias antes de publicar
-- [ ] Dr. Paulo: parecer jurídico com identificação da versão, data, bases legais vigentes, riscos e ajustes aprovados. O agente virtual auxilia, mas não substitui advogado habilitado em matéria privativa.
-- [ ] Dra. Camila: parecer técnico-veterinário sobre indicação, terminologia, segurança clínica, informações essenciais, compatibilidade com o Código de Ética e regras do CFMV.
+- [ ] revisor jurídico: parecer jurídico com identificação da versão, data, bases legais vigentes, riscos e ajustes aprovados. O agente virtual auxilia, mas não substitui advogado habilitado em matéria privativa.
+- [ ] revisora técnico-veterinária: parecer técnico-veterinário sobre indicação, terminologia, segurança clínica, informações essenciais, compatibilidade com o Código de Ética e regras do CFMV.
 - [ ] Registrar efetivamente ambas as aprovações sobre a **mesma versão** de todos os 14 textos. Não assumir aprovação por inferência, pela ausência de objeções ou por simulação.
 - [ ] Após qualquer alteração, devolver o item alterado para as duas revisões.
 - [ ] Implementar identificação clínica padrão, profissional/CRMV, responsável pelo animal, data por extenso, assinaturas e controle de versão; só o corpo deve ser editável.
@@ -28,8 +28,8 @@
 ## Pareceres
 | Revisor | Escopo | Estado | Evidência |
 | --- | --- | --- | --- |
-| Dr. Paulo | Jurídico | **Pendente** | Nenhum aceite independente registrado |
-| Dra. Camila | Técnico-veterinário | **Pendente** | Nenhum aceite independente registrado |
+| revisor jurídico | Jurídico | **Pendente** | Nenhum aceite independente registrado |
+| revisora técnico-veterinária | Técnico-veterinário | **Pendente** | Nenhum aceite independente registrado |
 
 ## Fontes de referência a verificar na homologação
 - CFMV Resolução 1321/2020: https://manual.cfmv.gov.br/arquivos/resolucao/1321.pdf
@@ -41,7 +41,7 @@
 
 
 ## Revisão preliminar assistida por IA em 20/11/2026 (não equivale à aprovação independente)
-Critérios jurídicos segundo o protocolo do Dr. Paulo virtual e checagem médico-veterinária crítica de conteúdo. **Nenhum parecer foi emitido ou assinado por pessoa independente.**
+Critérios jurídicos segundo o protocolo de revisão jurídica automatizada e checagem médico-veterinária crítica de conteúdo. **Nenhum parecer foi emitido ou assinado por pessoa independente.**
 
 | Minuta | Checklist jurídico | Checklist técnico-veterinário | Estado |
 | --- | --- | --- | --- |
@@ -64,7 +64,7 @@ Critérios jurídicos segundo o protocolo do Dr. Paulo virtual e checagem médic
 Código da nova aba **Textos para Termos** preparado na branch do PR, com gravação por clínica, texto-base, histórico e estado explícito de rascunho. A aba **não está na branch principal** e não foi publicada no Cloudflare. O editor **não contém botão de aprovação ou emissão**, para impedir liberação prematura.
 
 ### Ação necessária para liberar
-Obter e registrar revisão jurídica independente e revisão clínica veterinária independente, ambas para a versão final e com identificação e data. Em seguida: incorporar correções, executar QA de implementação incluindo emissão em duas vias e assinaturas, testar os fluxos autenticados entre clínicas, efetuar backup e somente então publicar. Este documento não constitui aceite de Dr. Paulo ou Dra. Camila.
+Obter e registrar revisão jurídica independente e revisão clínica veterinária independente, ambas para a versão final e com identificação e data. Em seguida: incorporar correções, executar QA de implementação incluindo emissão em duas vias e assinaturas, testar os fluxos autenticados entre clínicas, efetuar backup e somente então publicar. Este documento não constitui aprovação profissional independente.
 
 
 ## Implementação técnica da correção (branch do PR #318)
