@@ -65,3 +65,27 @@ Código da nova aba **Textos para Termos** preparado na branch do PR, com grava�
 
 ### Ação necessária para liberar
 Obter e registrar revisão jurídica independente e revisão clínica veterinária independente, ambas para a versão final e com identificação e data. Em seguida: incorporar correções, executar QA de implementação incluindo emissão em duas vias e assinaturas, testar os fluxos autenticados entre clínicas, efetuar backup e somente então publicar. Este documento não constitui aceite de Dr. Paulo ou Dra. Camila.
+
+
+## Implementação técnica da correção (branch do PR #318)
+**Estado:** código preparado na branch de revisão, NÃO publicado nem homologado em produção.
+
+| Item | Implementação | Validação ainda necessária |
+| --- | --- | --- |
+| 14 termos e campos | src/lib/termos-clinicos-validacao.ts, campos obrigatórios de cada ato, CPF, endereço completo, CRMV, RCP, duas testemunhas, limitações domiciliares | Casos clínicos reais simulados e revisão independente |
+| Autorização e versões | src/lib/termos-clinicos-status.ts com gate SERVIDOR desligado; UUIDs exclusivos; src/lib/configuracoes-clinica.functions.ts | Pareceres independentes do lote e revisão da versão exata |
+| Emissão clínica | ModelosClinicosAtendimento.tsx recebe 14 termos somente após gate habilitado; texto padronizado e campos clínicos separados | Fluxo autenticado de usuário veterinário, perfis e segregação entre clínicas |
+| PDF | modelos-documentos-pdf.ts: duas vias, responsável e médico-veterinário, data por extenso, identidade fixa | Inspeção visual A4, multi-páginas, impressão e assinatura em ambas as vias |
+| Registro no prontuário | documento-clinico.functions.ts valida CPF, CRMV, vínculo paciente/tutor e campos do caso no servidor; reaproveita arquivo no Google Drive, SHA-256 e registro privado no Portal | Upload assinado, prova de entrega da segunda via, leitura no prontuário, inalterabilidade e versão |
+| Prévias | TextosParaTermos.tsx gera PDF apenas demonstrativo em duas vias | Inspeção visual e UX para clínica |
+| CI | scripts/test-termos-clinicos.mjs inserido no workflow Validate | Esperar validação do commit final e testes integrados |
+
+**Regras importantes:**
+- A ativação global dos novos termos está fixada como \`TERMOS_CLINICOS_HOMOLOGADOS = false\`. Não remover até aprovação independente + QA + backup.
+- Editar texto em Configurações salva somente **rascunho**: NUNCA o torna apto ao uso. Mesmo quando a base for homologada, o servidor só permitirá a versão 0 aprovada; personalizações exigem novo fluxo de aprovação por versão.
+- O fluxo de PDFs assinados contém confirmação manual do profissional e SHA-256 do arquivo enviado; **não verifica criptograficamente se a assinatura é autêntica, nem se apenas a assinatura foi inserida**. Não apresentar isso como certificação digital.
+- O PDF reúne duas vias, mas o envio da segunda via ao responsável precisa de verificação operacional; o próprio PDF não prova entrega.
+- O consentimento não dispensa avaliação, conduta ética e registros de prontuário; RCP não gera ordem automática clínica, nem substitui protocolo assistencial.
+- A Resolução CFMV 1.690/2026 veda no domicílio transfusão, anestesia geral (exceto eutanásia), quimioterapia injetável, cirurgias fora das exceções legais e procedimentos invasivos específicos; fluidoterapia exige presença profissional.
+
+**Rollback:** a PR está em branch separada. Antes do merge, guardar backup de arquivos e banco; se o recurso for homologado e ocorrer problema, reverter o commit de ativação e restabelecer o gate \`false\`, sem apagar dados/arquivos emitidos. Essa instrução não substitui um plano operacional de restauração, que precisa ser testado.
