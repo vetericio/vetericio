@@ -12,11 +12,12 @@ export const Route = createFileRoute("/planos")({
   }),
   head: () => ({
     meta: [
-      { title: "Planos e preços — ORICSE" },
-      { name: "description", content: "Compare os 98 benefícios do ORICSE nos planos Solo, Essencial, Profissional e Master." },
+      { title: "Planos de sistema veterinário e pet shop | ORICSE" },
+      { name: "description", content: "Compare os planos ORICSE para veterinários, clínicas, hospitais, pet shops, banho e tosa e hotelzinho. Encontre a gestão ideal para sua operação." },
       { property: "og:title", content: "Planos ORICSE — compare todas as funcionalidades" },
       { property: "og:url", content: "https://oricse.com.br/planos" },
     ],
+    links: [{ rel: "canonical", href: "https://oricse.com.br/planos" }],
   }),
   component: Planos,
 });
