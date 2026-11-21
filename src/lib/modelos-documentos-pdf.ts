@@ -416,10 +416,16 @@ export function desenharIdentificacaoDocumento(
 }
 
 export async function criarPdfComModelo({
-  titulo, conteudo, papel, demonstrativo = false, identificacao, assinatura = [], fundoSemIdentidade = null,
+  titulo, conteudo, papel, demonstrativo = false, identificacao, assinatura = [],
+  assinaturaResponsavel = "", vias = 1, fundoSemIdentidade = null,
 }: {
-  titulo: string; conteudo: string; papel: PapelDocumento | null; demonstrativo?: boolean; fundoSemIdentidade?: PapelDocumento | null;
+  titulo: string; conteudo: string; papel: PapelDocumento | null; demonstrativo?: boolean;
+  fundoSemIdentidade?: PapelDocumento | null;
   identificacao?: IdentificacaoDocumento; assinatura?: string[];
+  /** Para termos: desenha a linha do responsável e a do veterinário em cada via. */
+  assinaturaResponsavel?: string;
+  /** Para consentimentos, gera via do prontuário e via do responsável no mesmo PDF. */
+  vias?: 1 | 2;
 }) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
@@ -428,10 +434,19 @@ export async function criarPdfComModelo({
   const largura = pdf.internal.pageSize.getWidth() - margem * 2;
   const centro = margem + largura / 2;
   let y = 22;
+  let viaAtual = 1;
   function iniciarPagina() {
     const fundo = papel || fundoSemIdentidade;
     if (fundo) desenharPapelDocumento(pdf, fundo);
     y = papel ? desenharIdentidadeDocumento(pdf, papel, margem, 23) : 23;
+    if (vias === 2) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(0);
+      pdf.text(viaAtual === 1 ? "1ª VIA · PRONTUÁRIO" : "2ª VIA · RESPONSÁVEL PELO ANIMAL",
+        centro, y, { align: "center" });
+      y += 6;
+    }
     if (demonstrativo) {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8.5);
@@ -455,31 +470,49 @@ export async function criarPdfComModelo({
       y += tamanho > 14 ? 9 : 5;
     }
   }
-  iniciarPagina();
-  escrever(titulo, true, 19);
-  y += 5;
-  if (identificacao) y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1, (papel ?? fundoSemIdentidade)?.corQuadros, "receita", papel?.tema);
-  y += 2;
-  for (const linha of conteudo.split("\n")) escrever(linha);
-  if (assinatura.length) {
-    definirFonte(false, 10);
-    const [data, ...profissional] = assinatura;
-    const linhas = profissional.filter(Boolean).flatMap(texto => pdf.splitTextToSize(texto, largura) as string[]);
-    if (y + 24 + linhas.length * 5 > 273) { pdf.addPage(); iniciarPagina(); }
-    y += 7;
-    definirFonte(false, 10);
-    if (data) {
-      const dataExtenso = formatarDataExtensoDocumento(data.trim()).replace(/\.$/, "");
-      pdf.text(`${dataExtenso}.`, centro, y, { align: "center" });
-    }
-    y += 12;
-    pdf.setDrawColor(90);
-    pdf.line(centro - 30, y, centro + 30, y);
+  for (viaAtual = 1; viaAtual <= vias; viaAtual++) {
+    if (viaAtual > 1) pdf.addPage();
+    iniciarPagina();
+    escrever(titulo, true, 19);
     y += 5;
-    pdf.text("Assinatura do médico-veterinário", centro, y, { align: "center" });
-    for (const linha of linhas) {
-      y += 5;
-      pdf.text(linha, centro, y, { align: "center" });
+    if (identificacao) {
+      y = desenharIdentificacaoDocumento(pdf, identificacao, margem, y, 1,
+        (papel ?? fundoSemIdentidade)?.corQuadros, "receita", papel?.tema);
+    }
+    y += 2;
+    for (const linha of conteudo.split("\n")) escrever(linha);
+    if (assinatura.length || assinaturaResponsavel) {
+      definirFonte(false, 10);
+      const [data, ...profissional] = assinatura;
+      const linhas = profissional.filter(Boolean).flatMap(texto => pdf.splitTextToSize(texto, largura) as string[]);
+      const alturaAssinaturas = (assinaturaResponsavel ? 23 : 0) + (assinatura.length ? 28 + linhas.length * 5 : 0);
+      if (y + alturaAssinaturas > 273) { pdf.addPage(); iniciarPagina(); }
+      y += 7;
+      definirFonte(false, 10);
+      if (data) {
+        const dataExtenso = formatarDataExtensoDocumento(data.trim()).replace(/\.$/, "");
+        pdf.text(dataExtenso + ".", centro, y, { align: "center" });
+      }
+      if (assinaturaResponsavel) {
+        y += 13;
+        pdf.setDrawColor(90);
+        pdf.line(centro - 48, y, centro + 48, y);
+        y += 5;
+        pdf.text("Assinatura do responsável pelo animal", centro, y, { align: "center" });
+        y += 5;
+        pdf.text(assinaturaResponsavel, centro, y, { align: "center" });
+      }
+      if (assinatura.length) {
+        y += 12;
+        pdf.setDrawColor(90);
+        pdf.line(centro - 35, y, centro + 35, y);
+        y += 5;
+        pdf.text("Assinatura do médico-veterinário", centro, y, { align: "center" });
+        for (const linha of linhas) {
+          y += 5;
+          pdf.text(linha, centro, y, { align: "center" });
+        }
+      }
     }
   }
   return pdf;

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { PadroesDocumentosClinica } from "@/components/PadroesDocumentosClinica";
 import { ConfiguracaoModelosDocumentos } from "@/components/ConfiguracaoModelosDocumentos";
+import { TextosParaTermos } from "@/components/TextosParaTermos";
 import { LIMITE_PDF_TERMO, TIPOS_ATENDIMENTO } from "@/lib/configuracoes-clinica";
 import { salvarCopiaPdfPadrao, tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
@@ -21,6 +22,7 @@ const categorias = [
   { id: "agenda", titulo: "Agenda", icone: CalendarDays },
   { id: "protecao", titulo: "Assinatura e receituário", icone: LockKeyhole },
   { id: "documentos", titulo: "Termos e documentos", icone: FileText },
+  { id: "textos-termos", titulo: "Textos para Termos", icone: FileText },
 ] as const;
 const campo = "mt-1 min-h-11 w-full rounded-lg border bg-background px-3 font-normal disabled:opacity-70";
 const botao = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-50";
@@ -54,7 +56,7 @@ function PerfilClinica() {
         </p>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[250px_minmax(0,1fr)]">
-          <nav aria-label="Categorias de configurações" className="grid gap-1 rounded-xl border bg-card p-2 sm:grid-cols-3 lg:sticky lg:top-4 lg:grid-cols-1">
+          <nav aria-label="Categorias de configurações" className="grid gap-1 rounded-xl border bg-card p-2 sm:grid-cols-2 lg:sticky lg:top-4 lg:grid-cols-1">
             {visiveis.map(({ id, titulo, icone: Icone }) => (
               <button key={id} type="button" aria-current={categoria === id ? "true" : undefined}
                 onClick={() => setCategoria(id)}
@@ -69,6 +71,11 @@ function PerfilClinica() {
             <div hidden={categoria !== "agenda"}><ConfigAgenda config={config} /></div>
             {config.protecao && (
               <div hidden={categoria !== "protecao"}><ConfigProtecao clinicaId={config.id} inicial={config.protecao} /></div>
+            )}
+            {config.podeEditarDocumentos && (
+              <div hidden={categoria !== "textos-termos"}>
+                {categoria === "textos-termos" && <TextosParaTermos clinicaId={config.id} />}
+              </div>
             )}
             {config.podeEditarDocumentos && (
               <div hidden={categoria !== "documentos"}>

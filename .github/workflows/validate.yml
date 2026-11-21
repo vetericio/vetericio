@@ -48,6 +48,8 @@ jobs:
         run: node scripts/test-drive-state-cas.mjs
       - name: Complete ORICSE plan catalog regression
         run: node scripts/test-planos-2026.mjs
+      - name: Clinical consent validation regression
+        run: node scripts/test-termos-clinicos.mjs
       - name: Animal quota regression
         run: node scripts/test-cotas-animais.mjs
       - name: Plan and role policy regression
