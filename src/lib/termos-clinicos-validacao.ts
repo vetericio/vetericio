@@ -154,8 +154,12 @@ export function pendenciasTermo(dados: DadosTermo): string[] {
   if (tipo === "rcp" && !["reanimar", "nao_reanimar"].includes(campos.decisao || "")) {
     pendencias.push("Decisão inequívoca de RCP, discutida com o profissional");
   }
-  if (tipo === "domiciliar" && /transfus[aã]o|anestesia geral|cirurgi[ac]/i.test(campos.procedimentos || "")) {
+  if (tipo === "domiciliar" && /transfus[aã]o|anestesia geral|cirurgi[ac]|quimioterap|antineopl[aá]sic[oa] injet[aá]vel|pun[cç][aã]o liqu[oó]rica|toracocentese|pericardiocentese|pleurocentese|cateterismo profundo/i.test(campos.procedimentos || "")) {
     pendencias.push("Procedimento potencialmente vedado no domicílio: encaminhar à unidade habilitada");
+  }
+  if (tipo === "domiciliar" && /fluidoterapia/i.test(campos.procedimentos || "") &&
+      /sem (acompanhamento|presen[cç]a|monitoramento)|ap[oó]s (minha |a )?sa[ií]da|desassistida/i.test(campos.procedimentos || "")) {
+    pendencias.push("Fluidoterapia exige a presença do médico-veterinário durante todo o procedimento");
   }
   return [...new Set(pendencias)];
 }
