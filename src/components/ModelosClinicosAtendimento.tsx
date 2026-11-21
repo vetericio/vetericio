@@ -10,13 +10,14 @@ import { listarModelosClinicos } from "@/lib/oricse-storage.functions";
 import { enviarArquivoDrive } from "@/lib/drive.functions";
 import { registrarDocumentoClinicoAssinado, alterarPublicacaoDocumentoClinico } from "@/lib/documento-clinico.functions";
 
-import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
+import { obterModeloDocumentoEmissao, obterTermosClinicosParaEmissao } from "@/lib/configuracoes-clinica.functions";
+import { CAMPOS_TERMOS, pendenciasTermo, prepararConteudoTermo, type CodigoTermoClinico, type DadosTermo } from "@/lib/termos-clinicos-validacao";
 import { DOCUMENTOS, MODELOS_BASE_CLINICOS, extrairCorpoModeloClinico, formatarDataDocumento, formatarDataExtensoDocumento, preencherTextoDocumento, valoresModeloDocumento } from "@/lib/modelos-documentos";
 import { criarPdfComModelo, prepararPapelDocumento } from "@/lib/modelos-documentos-pdf";
 
 type TipoClinico = "pedido" | "documento" | "termo";
 type PadraoClinico = Awaited<ReturnType<typeof obterModeloDocumentoEmissao>>;
-type Modelo = { id: string; nome: string; categoria: string; texto: string; versao: number };
+type Modelo = { id: string; nome: string; categoria: string; texto: string; versao: number; tipoTermo?: CodigoTermoClinico };
 type Contexto = Awaited<ReturnType<typeof obterDadosReceituario>>;
 
 function preencher(texto: string, dados: Contexto, identidade?: PadraoClinico["identidade"]) {
@@ -53,6 +54,8 @@ export function ModelosClinicosAtendimento() {
   const [registro,setRegistro] = useState<{id:string;visivel:boolean}|null>(null);
   const [publicando,setPublicando] = useState(false);
   const [uploadPendente,setUploadPendente] = useState<string|null>(null);
+  const [camposTermo,setCamposTermo] = useState<Record<string,string>>({});
+  const [recusaAssinaturaTermo,setRecusaAssinaturaTermo] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -69,11 +72,14 @@ export function ModelosClinicosAtendimento() {
           animalId, ...(tutorId ? { tutorId } : {}),
         }});
         if (!contexto.animal?.id || !contexto.clinicaId) throw new Error("Animal e clínica não identificados.");
-        const [lista, autor] = await Promise.all([
+        const [lista, autor, termos] = await Promise.all([
           listarModelosClinicos({data:{
             accessToken:sessao.session.access_token, clinicaId:contexto.clinicaId,
           }}),
           obterAutorClinico(),
+          obterTermosClinicosParaEmissao({data:{
+            accessToken:sessao.session.access_token, clinicaId:contexto.clinicaId,
+          }}).catch(() => ({situacao:"aguardando_homologacao" as const, modelos: []})),
         ]);
         if (!ativo) return;
         setDados(contexto);
@@ -82,6 +88,7 @@ export function ModelosClinicosAtendimento() {
         setModelos([
           ...MODELOS_BASE_CLINICOS.map(base => ({ ...base, nome: DOCUMENTOS[base.categoria].titulo, texto: DOCUMENTOS[base.categoria].exemplo, versao: 0 })),
           ...lista.filter((item) => item.categoria !== "receita" && !MODELOS_BASE_CLINICOS.some(base => base.id === item.id)),
+          ...termos.modelos.map((item) => ({...item,tipoTermo:item.tipoTermo as CodigoTermoClinico})),
         ]);
       } catch(e) {
         if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível carregar os modelos.");
@@ -110,13 +117,29 @@ export function ModelosClinicosAtendimento() {
       setConteudo(texto);
       setReferencia(m ? { id:m.id,versao:m.versao } : null);
       setRegistro(null);setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);
+      setCamposTermo({});setRecusaAssinaturaTermo(false);
     } catch (erro) {
       toast.error(erro instanceof Error ? erro.message : "Não foi possível carregar o modelo.");
     } finally { setAbrindoModelo(false); }
   }
-  const pendencias = useMemo(() => [...conteudo.matchAll(/\{\{[^{}]+\}\}/g)].map((m) => m[0])
-    .filter(campo => campo !== "{{veterinario}}" && campo !== "{{crmv}}"), [conteudo]);
+  const termoDados: DadosTermo | null = modelo?.tipoTermo && dados?.animal && dados.tutor && profissional ? {
+    tipo: modelo.tipoTermo, campos: camposTermo, recusaAssinatura: recusaAssinaturaTermo,
+    identificacao: {
+      paciente: dados.animal.nome, especie: dados.animal.especie,
+      tutor: dados.tutor.nome, cpf: dados.tutor.cpf,
+      enderecoTutor: dados.tutor.endereco, enderecoTutorCompleto: dados.tutor.enderecoCompleto,
+      veterinario: profissional.nome, crmv: profissional.crmv,
+      clinica: dados.clinicaNome, data: new Date().toLocaleDateString("pt-BR"),
+    },
+  } : null;
+  const pendencias = modelo?.tipoTermo
+    ? (termoDados ? pendenciasTermo(termoDados) : ["Identificação do responsável e paciente"])
+    : [...conteudo.matchAll(/\{\{[^{}]+\}\}/g)].map((m) => m[0])
+      .filter(campo => campo !== "{{veterinario}}" && campo !== "{{crmv}}");
   const perfilCompleto = Boolean(profissional?.nome && profissional.crmv);
+  function invalidarDocumentoAssinado() {
+    setArquivoAssinado(null);setAssinaturaConferida(false);setUploadPendente(null);setRegistro(null);
+  }
   async function exportar(arquivar: boolean) {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (!modelo || !padrao || !dados?.animal?.id || !dados.clinicaId) return;
@@ -128,11 +151,17 @@ export function ModelosClinicosAtendimento() {
     try {
       const autor = await obterAutorClinico();
       if (!autor.nome || !autor.crmv) throw new Error("Complete nome, CRMV e UF no cadastro profissional do seu perfil.");
-      const texto = conteudo.replace(/\{\{(veterinario|crmv)\}\}/g,
-        (_original, campo) => campo === "veterinario" ? autor.nome : autor.crmv);
+      const texto = modelo.tipoTermo
+        ? prepararConteudoTermo({
+          ...termoDados!, identificacao: {...termoDados!.identificacao, veterinario: autor.nome, crmv: autor.crmv},
+        }, modelo.texto)
+        : conteudo.replace(/\{\{(veterinario|crmv)\}\}/g,
+          (_original, campo) => campo === "veterinario" ? autor.nome : autor.crmv);
       const papel = await prepararPapelDocumento(padrao.identidade, padrao.modelo);
       const pdf = await criarPdfComModelo({
         titulo: modelo.nome, conteudo: texto, papel,
+        vias: modelo.tipoTermo ? 2 : 1,
+        assinaturaResponsavel: modelo.tipoTermo ? dados.tutor?.nome || "" : "",
         identificacao: {
           paciente: {
             ...dados.animal, idade: dados.animal.idade || formatarDataDocumento(dados.animal.nascimento),
@@ -167,7 +196,7 @@ export function ModelosClinicosAtendimento() {
         entidadeTipo:"animal",
         entidadeId:dados.animal.id,
         metadata:{
-          origem:"modelo_clinico", modeloId:referencia?.id || modelo.id,
+          origem:"modelo_clinico", modeloId:referencia?.id || modelo.id, tipoTermo:modelo.tipoTermo || null,
           versaoModelo:referencia?.versao ?? modelo.versao,
           status:"rascunho_sem_assinatura",
           animalId:dados.animal.id, tutorId:dados.tutorId,
@@ -214,7 +243,7 @@ export function ModelosClinicosAtendimento() {
           nome:arquivoAssinado.name.slice(0,150), mimeType:"application/pdf",
           base64, visibilidade:"interno",entidadeTipo:"animal",entidadeId:dados.animal.id,
           metadata:{origem:"modelo_clinico_assinado",modeloId:modelo.id,modeloVersao:modelo.versao,
-            animalId:dados.animal.id,tutorId:dados.tutorId,status:"assinatura_declarada"},
+            animalId:dados.animal.id,tutorId:dados.tutorId,tipoTermo:modelo.tipoTermo || null,status:"assinatura_declarada"},
         }});
         if (!uploaded?.ok || !uploaded.registroId) throw new Error("O Google Drive não confirmou o arquivo.");
         registroId=uploaded.registroId;
@@ -226,6 +255,7 @@ export function ModelosClinicosAtendimento() {
         arquivoSha256:Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",await arquivoAssinado.arrayBuffer()))).map((b)=>b.toString(16).padStart(2,"0")).join(""),
         categoria:modelo.categoria as "pedido"|"documento"|"termo",
         titulo:modelo.nome,assinaturaConferida:true,
+        ...(termoDados ? { dadosTermo: termoDados } : {}),
       }});
       if (!resultado.registrado) throw new Error("A emissão não foi confirmada.");
       setRegistro({id:resultado.documentoId,visivel:resultado.visivelTutor});
