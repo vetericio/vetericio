@@ -47,6 +47,8 @@ for (const termo of BIBLIOTECA_TERMOS) {
 }
 const recusa = dados("retirada-sem-alta");
 recusa.recusaAssinatura = true;
+delete recusa.campos.testemunha1;
+delete recusa.campos.testemunha2;
 assert(pendenciasTermo(recusa).some(e => e.includes("testemunhas")));
 recusa.campos.testemunha1 = "Testemunha 1, CPF fictício, assinatura presencial";
 recusa.campos.testemunha2 = "Testemunha 2, CPF fictício, assinatura presencial";
