@@ -164,7 +164,7 @@ export const TEXTOS_TERMOS_ADICIONAIS = [
       "Data da entrega:",
       "Observações:"
     ].join("\n\n"),
-    referencia: "CFMV 1321/2020, Anexo XI"
+    referencia: "CFMV 1321/2020, Anexo XII"
   },
   {
     id: "rcp",
