@@ -158,10 +158,17 @@ async function validarDocumentoTermo(admin: SupabaseAdmin, usuarioId: string, da
   const extras = (tutor.data.dados || {}) as Record<string,unknown>;
   const completo = ["endereco","numero","bairro","cidade","cep"].every((chave)=>String(extras[chave]||"").trim()) &&
     String(extras.uf||extras.estado||"").trim();
+  const linhaEndereco = [extras.endereco,extras.numero].filter(Boolean).join(", ");
+  const cidadeUf = [extras.cidade,extras.uf||extras.estado].filter(Boolean).join("/");
+  const enderecoReal = [
+    linhaEndereco,extras.complemento,extras.bairro,cidadeUf,
+    extras.cep ? "CEP " + String(extras.cep) : "",
+  ].map((parte)=>String(parte||"").trim()).filter(Boolean).join(" · ");
   if (!igual(i.paciente,animal.data.nome) || !igual(i.especie,animal.data.especie) ||
       !igual(i.tutor,tutor.data.nome) || cpf(i.cpf)!==cpf(tutor.data.cpf||extras.cpfCnpj) ||
       !igual(i.veterinario,profissional.data.nome_completo) || !igual(i.crmv,crmv) ||
-      !igual(i.clinica,clinica.data.nome) || !completo || !i.enderecoTutorCompleto) {
+      !igual(i.clinica,clinica.data.nome) || !completo || !i.enderecoTutorCompleto ||
+      !igual(i.enderecoTutor,enderecoReal)) {
     throw new Error("Identificação diverge do cadastro clínico. Atualize o tutor, animal e CRMV antes de emitir.");
   }
   if (tipo === "retirada-sem-alta" && formulario.recusaAssinatura) {
