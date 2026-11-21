@@ -406,3 +406,71 @@ export const salvarLogoDocumentoClinica = createServerFn({ method: "POST" })
     }
     return identidadeDocumentos(ctx);
   });
+
+
+/**
+ * Biblioteca de termos em modo RASCUNHO para revisão dupla.
+ * Configurações e versões são segregadas por clínica e não habilitam
+ * a emissão de um novo termo nem registram aprovação.
+ */
+const CHAVE_TEXTOS_TERMOS = "biblioteca_textos_termos";
+const registroTextoTermo = z.object({
+  texto: z.string().max(25000),
+  versao: z.number().int().min(1),
+  atualizadoEm: z.string().min(1).max(80),
+  historico: z.array(z.object({
+    versao: z.number().int().min(1),
+    texto: z.string().max(25000),
+    atualizadoEm: z.string().max(80),
+  })).max(12).default([]),
+}).strict();
+const bibliotecaTermosSchema = z.record(registroTextoTermo);
+const tipoTextoTermoSchema = z.string().refine(
+  (id) => [
+    "eutanasia", "cirurgia", "anestesia", "retirada-sem-alta",
+    "internacao", "terapeutico-risco", "diagnostico", "recusa",
+    "transferencia", "transfusao", "corpo", "doacao-corpo", "rcp", "domiciliar",
+  ].includes(id),
+  "Termo não reconhecido.",
+);
+
+export const obterTextosTermosClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    exigirGestor(ctx, data.clinicaId);
+    const registro = await ler(ctx, CHAVE_TEXTOS_TERMOS);
+    return {
+      modelos: registro === null ? {} : bibliotecaTermosSchema.parse(registro),
+      situacao: "rascunho_sem_aprovacoes" as const,
+    };
+  });
+
+export const salvarTextoTermoClinica = createServerFn({ method: "POST" })
+  .validator((input: unknown) => clinicaSchema.extend({
+    id: tipoTextoTermoSchema,
+    texto: z.string().trim().min(30).max(25000),
+    versaoEsperada: z.number().int().min(0),
+  }).parse(input))
+  .handler(async ({ data }) => {
+    const ctx = await contexto(data.accessToken);
+    exigirGestor(ctx, data.clinicaId);
+    const armazenado = await ler(ctx, CHAVE_TEXTOS_TERMOS);
+    const registros = armazenado === null ? {} : bibliotecaTermosSchema.parse(armazenado);
+    const anterior = registros[data.id];
+    if ((anterior?.versao ?? 0) !== data.versaoEsperada) {
+      throw new Error("Este termo foi modificado em outra sessão. Atualize antes de salvar.");
+    }
+    const atualizado = {
+      texto: data.texto,
+      versao: (anterior?.versao ?? 0) + 1,
+      atualizadoEm: new Date().toISOString(),
+      historico: anterior ? [
+        ...anterior.historico,
+        { versao: anterior.versao, texto: anterior.texto, atualizadoEm: anterior.atualizadoEm },
+      ].slice(-12) : [],
+    };
+    // Grava somente o texto de rascunho; não pode publicar ou se autodeclarar aprovado.
+    await gravar(ctx, CHAVE_TEXTOS_TERMOS, { ...registros, [data.id]: atualizado });
+    return { modelo: atualizado, situacao: "rascunho_sem_aprovacoes" as const };
+  });
