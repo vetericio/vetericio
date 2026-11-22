@@ -262,7 +262,7 @@ function RegistroClinico(){
     });
     setPrecoPorPesoPendente(null);
     setItemCatalogoId("");
-    toast.success("Preço por peso aprovado e incluído na comanda.");
+    toast.success("Preço configurado aprovado e incluído na comanda.");
   }
   function atualizarItemComanda(id:string,campo:"quantidade"|"valorUnitario",valor:string){
     setItensComanda(atuais=>atuais.map(item=>item.id===id?
@@ -508,7 +508,7 @@ function RegistroClinico(){
             </section>}
             {etapa===8&&<div className="space-y-5">
               <section className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShoppingCart size={22}/></div><div><h3 className="text-lg font-black">Comanda desta consulta</h3><p className="text-sm text-muted-foreground">A consulta e os exames solicitados entram automaticamente. Confira os valores e acrescente o que mais será cobrado.</p></div></div><div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select value={itemCatalogoId} onChange={e=>setItemCatalogoId(e.target.value)} disabled={catalogoCarregando} className="min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-primary"><option value="">{catalogoCarregando?"Carregando serviços e produtos...":"Adicionar serviço ou produto"}</option>{catalogo.map(item=><option key={item.id} value={item.id}>
-        {item.nome} · {faixasValidas(item.faixas_peso).length ? "Preço por peso: aprovar" : moeda(Number(item.preco)||0)}
+        {item.nome} · {faixasValidas(item.faixas_peso).length ? "Preço configurado: aprovar" : moeda(Number(item.preco)||0)}
       </option>)}</select><button type="button" onClick={adicionarItemCatalogo} disabled={!itemCatalogoId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar</button></div>{precoPorPesoPendente && <div className="mt-3">
         <AprovarPrecoPorPeso
           item={precoPorPesoPendente.item}
