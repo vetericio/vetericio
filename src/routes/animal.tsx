@@ -2091,7 +2091,7 @@ function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: strin
         </p>
       </div>
       <div className="p-4 sm:p-5">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <RegistroCard
             icon={Stethoscope}
             titulo="Consulta"
