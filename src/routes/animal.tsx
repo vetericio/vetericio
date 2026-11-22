@@ -2077,7 +2077,7 @@ function RegistrosClinicos({ animalId, registros }: { animalId: string; registro
         </p>
       </div>
       <div className="p-4 sm:p-5">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <RegistroCard
             icon={Stethoscope}
             titulo="Consulta"
@@ -2092,6 +2092,21 @@ function RegistrosClinicos({ animalId, registros }: { animalId: string; registro
             animalId={animalId}
             tipo="procedimento"
           />
+          <Link
+            to="/crm"
+            search={{ animalId } as never}
+            className="group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <CalendarDays size={24} />
+            </div>
+            <h3 className="mt-4 text-lg font-bold">Enviar para o CRM</h3>
+            <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">Crie um retorno a marcar para este paciente.</p>
+            <div className="mt-5 flex items-center justify-between border-t pt-3 text-sm font-semibold text-primary">
+              <span>Retorno a marcar</span>
+              <ArrowRight size={18} />
+            </div>
+          </Link>
         </div>
         {registros.length > 0 && (
           <div className="mt-6">

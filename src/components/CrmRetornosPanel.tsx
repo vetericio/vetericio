@@ -41,7 +41,7 @@ function urlWhatsApp(r: RetornoClinico) {
   return "https://wa.me/" + completo + "?text=" + encodeURIComponent(mensagem);
 }
 
-export function CrmRetornosPanel({ clinicaId, podeOperar }: { clinicaId: string; podeOperar: boolean }) {
+export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId }: { clinicaId: string; podeOperar: boolean; animalPreselecionadoId?: string }) {
   const [retornos, setRetornos] = useState<RetornoClinico[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [tutores, setTutores] = useState<Responsavel[]>([]);
@@ -87,6 +87,13 @@ export function CrmRetornosPanel({ clinicaId, podeOperar }: { clinicaId: string;
   }, [clinicaId]);
 
   useEffect(() => { void recarregar(); }, [recarregar]);
+
+  useEffect(() => {
+    if (!animalPreselecionadoId || !pacientes.some((paciente) => paciente.id === animalPreselecionadoId)) return;
+    setAnimalId(animalPreselecionadoId);
+    setTipoNovo("Retorno a marcar");
+    setNovoAberto(true);
+  }, [animalPreselecionadoId, pacientes]);
 
   const hoje = hojeLocal();
   const ativos = retornos.filter(r => r.status !== "realizado" && r.status !== "cancelado");
