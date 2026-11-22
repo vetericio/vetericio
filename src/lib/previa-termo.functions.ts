@@ -89,9 +89,14 @@ export const salvarPreviaTermoNoProntuario = createServerFn({ method: "POST" })
       .eq("id", data.registroId).eq("clinica_id", data.clinicaId);
     if (erroMetadados) throw new Error("Não foi possível identificar a origem da prévia. Nenhum documento foi registrado.");
 
-    const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const partes = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const datas = Object.fromEntries(partes.map(parte => [parte.type, parte.value]));
+    const hoje = [datas.year, datas.month, datas.day].join("-");
     const { data: documento, error: erroDocumento } = await supabaseAdmin.from("oricse_portal_documentos")
       .insert({
+        id: data.registroId,
         clinica_id: data.clinicaId,
         animal_id: data.animalId,
         drive_arquivo_id: data.registroId,
