@@ -177,7 +177,12 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
     const { data: criado, error } = await admin.from("oricse_crm_retornos")
       .insert(payload).select("id").single();
     if (error || !criado) {
-      if (error?.code === "23505" && data.origemId) return { id: data.origemId, criado: false };
+      if (error?.code === "23505" && data.origemId) {
+        const { data: existente } = await admin.from("oricse_crm_retornos").select("id")
+          .eq("clinica_id",data.clinicaId).eq("origem","consulta")
+          .eq("origem_id",data.origemId).maybeSingle();
+        if (existente?.id) return { id: existente.id as string, criado: false };
+      }
       throw new Error("Consulta salva, mas o retorno não foi cadastrado. Registre-o na Gestão de Clientes.");
     }
     return { id: criado.id as string, criado: true };
