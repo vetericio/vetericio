@@ -15,6 +15,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/minha-atividade": ["atividade.ponto"],
   "/banco-horas": ["atividade.ponto"],
   "/recepcao": ["recepcao.agenda"],
+  "/busca-inteligente": ["recepcao.cadastros.visualizar", "consultorio.atendimentos"],
   "/todas-agendas": ["recepcao.agenda"],
   "/hotelzinho": ["hotelzinho.visualizar"],
   "/agenda-hotel": ["hotelzinho.visualizar"],
