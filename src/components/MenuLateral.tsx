@@ -375,7 +375,8 @@ export function MenuLateral({
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) => (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
+          (item) => (item.to === "/crm" && (adminGlobal || pode("crm.visualizar") || pode("crm.enviar") || pode("crm.gerenciar"))) ||
+            (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
             (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
