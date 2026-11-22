@@ -61,17 +61,17 @@ export function AprovarPrecoPorPeso({
     });
   }
 
-  return <section aria-label={"Aprovar preço por peso: " + item.nome}
+  return <section aria-label={"Aprovar preço configurado: " + item.nome}
     className="rounded-2xl border-2 border-primary/30 bg-card p-4 shadow-sm">
     <div className="flex items-center gap-2">
       <Scale size={21} className="text-primary" />
       <div>
-        <h3 className="text-sm font-black">{item.nome}: preço por peso</h3>
+        <h3 className="text-sm font-black">{item.nome}: preço configurado</h3>
         <p className="text-xs text-muted-foreground">{[especie, sexo].filter(Boolean).join(" · ") || "Paciente sem espécie ou sexo informado"}. Confira e aprove antes de incluir na comanda.</p>
       </div>
     </div>
     {!faixas.length && <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Não há preço cadastrado para a espécie e o sexo deste animal.</p>}
-    <label className="mt-3 block text-xs font-semibold">Peso do animal (kg)
+    <label className="mt-3 block text-xs font-semibold">Peso do animal (kg, opcional)
       <input inputMode="decimal" type="text" value={pesoTexto}
         onChange={e => { setPesoTexto(e.target.value); setEscolha("sugerida"); }}
         placeholder="Peso não registrado; escolha uma faixa manualmente"
