@@ -47,6 +47,7 @@ import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { enviarAnexoPortal } from "@/lib/drive.functions";
 import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
+import { registrarRetornoClinico } from "@/lib/crm-retornos.functions";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -1267,6 +1268,7 @@ function AnimalFicha() {
           ) : aba === "Registros clínicos" ? (
             <RegistrosClinicos
               animalId={animal.id}
+              clinicaId={clinicaId}
               registros={registrosAnimal.filter((r) => r.tipo === "Registros clínicos")}
             />
           ) : aba === "Agendamentos" ? (
@@ -2064,20 +2066,32 @@ function SecaoCompleta({
     </section>
   );
 }
-function RegistrosClinicos({ animalId, registros }: { animalId: string; registros: Registro[] }) {
+function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: string; clinicaId: string; registros: Registro[] }) {
+  const [enviandoAoCrm, setEnviandoAoCrm] = useState(false);
+  async function enviarAoCrm() {
+    if (!clinicaId || enviandoAoCrm) return;
+    setEnviandoAoCrm(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada.");
+      const resultado = await registrarRetornoClinico({ data: { accessToken: token, clinicaId, animalId, origem: "manual", origemId: animalId, titulo: "Retorno a marcar", orientacoes: "" }});
+      toast.success(resultado.criado ? "Retorno enviado ao CRM como pendente." : "Este paciente já possui um retorno pendente no CRM.");
+    } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível enviar o retorno ao CRM."); }
+    finally { setEnviandoAoCrm(false); }
+  }
   return (
     <section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="border-b bg-muted/20 px-4 py-4">
-        <div className="flex items-center gap-2">
-          <ClipboardList size={20} className="text-primary" />
-          <h2 className="text-xl font-black">Registros clínicos</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2"><ClipboardList size={20} className="text-primary" /><h2 className="text-xl font-black">Registros clínicos</h2></div>
+          <button type="button" disabled={!clinicaId || enviandoAoCrm} onClick={() => void enviarAoCrm()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/40 bg-white px-3 text-sm font-bold text-primary disabled:opacity-50"><CalendarDays size={16} /> {enviandoAoCrm ? "Enviando..." : "Enviar para o CRM"}</button>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Registre uma consulta, cirurgia ou procedimento no prontuário do animal.
         </p>
       </div>
       <div className="p-4 sm:p-5">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <RegistroCard
             icon={Stethoscope}
             titulo="Consulta"
@@ -2092,21 +2106,6 @@ function RegistrosClinicos({ animalId, registros }: { animalId: string; registro
             animalId={animalId}
             tipo="procedimento"
           />
-          <Link
-            to="/crm"
-            search={{ animalId } as never}
-            className="group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <CalendarDays size={24} />
-            </div>
-            <h3 className="mt-4 text-lg font-bold">Enviar para o CRM</h3>
-            <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">Crie um retorno a marcar para este paciente.</p>
-            <div className="mt-5 flex items-center justify-between border-t pt-3 text-sm font-semibold text-primary">
-              <span>Retorno a marcar</span>
-              <ArrowRight size={18} />
-            </div>
-          </Link>
         </div>
         {registros.length > 0 && (
           <div className="mt-6">
