@@ -85,3 +85,5 @@ assert.match(banco,/where clinica_id=p_clinica and tipo='servico' and ativo=true
 assert.match(banco,/update public\.oricse_catalogo_itens set ativo=false/);
 assert.doesNotMatch(banco,/delete from public\.oricse_catalogo_itens/i);
 console.log("OK: limites inclusivos, preço sugerido, aprovação, auditoria e conversão sem apagar serviços antigos.");
+
+// Release: preços conforme o perfil do animal.
