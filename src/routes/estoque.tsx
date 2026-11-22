@@ -15,6 +15,7 @@ import {
 } from "@/lib/comissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { faixasValidas, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
@@ -29,6 +30,8 @@ type ItemForm = {
   estoque_minimo: string;
   codigo_barras: string;
   venda_por_peso: boolean;
+  preco_por_peso: boolean;
+  faixas_peso: { ateKg: string; valor: string }[];
 };
 
 const CATEGORIAS_SERVICOS = ["Consultas", "Vacinação", "Vermifugação", "Exames laboratoriais", "Diagnóstico por imagem", "Cirurgias", "Internação", "Procedimentos", "Odontologia", "Banho e tosa", "Atendimento domiciliar", "Outros"];
@@ -50,6 +53,8 @@ const FORM_VAZIO: ItemForm = {
   estoque_minimo: "",
   codigo_barras: "",
   venda_por_peso: false,
+  preco_por_peso: false,
+  faixas_peso: [],
 };
 
 function dinheiro(valor: number) {
@@ -277,7 +282,21 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     if (!podeGerenciarCatalogo) return void toast.error("Seu usuário não pode gerenciar o catálogo.");
     if (!modal || !clinicaId) return;
     const nome = modal.nome.trim();
-    const valor = Number(modal.valor.replace(/[^\d,]/g, "").replace(",", "."));
+    const convertido = modal.faixas_peso.map((faixa, indice): FaixaPrecoPeso => ({
+      ateKg: indice === modal.faixas_peso.length - 1 ? null : Number(faixa.ateKg.replace(",", ".")),
+      valor: Number(faixa.valor.replace(/[^\d,]/g, "").replace(",", ".")),
+    }));
+    if (modal.tipo === "servico" && modal.preco_por_peso) {
+      if (modal.faixas_peso.some(faixa => !faixa.valor.trim()) ||
+        modal.faixas_peso.slice(0,-1).some(faixa => !faixa.ateKg.trim())) {
+        return void toast.error("Preencha os limites e preços de todas as faixas.");
+      }
+      const erroFaixas = validarFaixasPeso(convertido);
+      if (erroFaixas) return void toast.error(erroFaixas);
+    }
+    const valor = modal.tipo === "servico" && modal.preco_por_peso
+      ? convertido[0].valor
+      : Number(modal.valor.replace(/[^\d,]/g, "").replace(",", "."));
     const estoqueAtual = modal.tipo === "produto" && modal.estoque_atual !== "" ? Number(modal.estoque_atual.replace(",", ".")) : null;
     const estoqueMinimo = modal.tipo === "produto" && modal.estoque_minimo !== "" ? Number(modal.estoque_minimo.replace(",", ".")) : null;
     if (!nome) return void toast.error("Informe o nome.");
@@ -295,6 +314,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       estoque_minimo: estoqueMinimo,
       codigo_barras: modal.tipo === "produto" ? modal.codigo_barras.trim() || null : null,
       venda_por_peso: modal.tipo === "produto" && modal.venda_por_peso,
+      faixas_peso: modal.tipo === "servico" && modal.preco_por_peso ? convertido : [],
       updated_at: new Date().toISOString(),
       ...(modal.id ? {} : { criado_por: usuarioId }),
     };
@@ -523,8 +543,18 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
 
       {aba === "catalogo" && podeVerCatalogo && (
         <div className="grid gap-4 md:grid-cols-2">
-          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
-          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({
+            id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria,
+            valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "",
+            codigo_barras: "", venda_por_peso: false,
+            preco_por_peso: faixasValidas(item.faixas_peso).length > 0,
+            faixas_peso: faixasValidas(item.faixas_peso).map(f => ({
+              ateKg: f.ateKg === null ? "" : String(f.ateKg),
+              valor: formatarValorExistente(f.valor),
+            })),
+          })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso),
+            preco_por_peso: false, faixas_peso: [] })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
         </div>
       )}
@@ -678,9 +708,62 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                   {[...new Set([...(modal.tipo === "servico" ? CATEGORIAS_SERVICOS : CATEGORIAS_PRODUTOS), ...(modal.categoria ? [modal.categoria] : [])])].map(categoria => <option key={categoria} value={categoria}>{categoria}</option>)}
                 </select>
               </label>
-              <label className="text-xs font-semibold">Preço
+              {!modal.preco_por_peso && <label className="text-xs font-semibold">Preço
                 <input required type="text" inputMode="numeric" value={modal.valor} onChange={(event) => setModal({ ...modal, valor: formatarCentavos(event.target.value) })} onFocus={(event) => event.currentTarget.select()} placeholder="R$ 0,00" aria-label="Preço em reais, digitado em centavos" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal tabular-nums" />
-              </label>
+              </label>}
+              {modal.tipo === "servico" && <div className="sm:col-span-2 rounded-xl border bg-secondary/10 p-3">
+                <label className="flex min-h-11 items-center gap-3 text-sm font-bold">
+                  <input type="checkbox" checked={modal.preco_por_peso}
+                    onChange={e => setModal({
+                      ...modal,
+                      preco_por_peso: e.target.checked,
+                      faixas_peso: e.target.checked
+                        ? modal.faixas_peso.length ? modal.faixas_peso :
+                          [{ ateKg:"10", valor:"" },{ ateKg:"", valor:"" }]
+                        : [],
+                    })}
+                    className="size-5 accent-primary"/>
+                  Definir preço por faixa de peso do animal
+                </label>
+                {modal.preco_por_peso && <div className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Um único serviço com vários preços. O ORICSE sugere a faixa pelo peso,
+                    mas só cobra depois da aprovação na comanda.
+                  </p>
+                  {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2 rounded-xl border bg-card p-2">
+                    {indice === modal.faixas_peso.length - 1
+                      ? <div className="pb-3 text-xs font-bold">Acima da faixa anterior</div>
+                      : <label className="text-xs font-semibold">
+                        Até (kg)
+                        <input inputMode="decimal" value={faixa.ateKg}
+                          onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,ateKg:e.target.value}:v)})}
+                          placeholder="Ex.: 20" className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal"/>
+                      </label>}
+                    <label className="text-xs font-semibold">
+                      Preço (R$)
+                      <input inputMode="numeric" value={faixa.valor}
+                        onFocus={e=>e.currentTarget.select()}
+                        onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,valor:formatarCentavos(e.target.value)}:v)})}
+                        placeholder="R$ 0,00" className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal"/>
+                    </label>
+                    <button type="button" title="Retirar faixa" aria-label={"Retirar faixa " + (indice+1)}
+                      disabled={modal.faixas_peso.length<=2 || indice===modal.faixas_peso.length-1}
+                      onClick={()=>setModal({...modal,faixas_peso:modal.faixas_peso.filter((_,i)=>i!==indice)})}
+                      className="min-h-10 rounded-lg border px-2 disabled:opacity-30"><Trash2 size={15}/></button>
+                  </div>)}
+                  <button type="button" disabled={modal.faixas_peso.length>=20}
+                    onClick={()=>setModal({...modal,faixas_peso:[
+                      ...modal.faixas_peso.slice(0,-1),{ateKg:"",valor:""},
+                      modal.faixas_peso[modal.faixas_peso.length-1],
+                    ]})}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold">
+                    <Plus size={15}/> Adicionar faixa
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Os valores ficam em um único cadastro. Nenhuma cobrança é gerada nesta tela.
+                  </p>
+                </div>}
+              </div>}
               {modal.tipo === "produto" && (
                 <>
                   <label className="flex items-center gap-3 rounded-lg border bg-secondary/30 p-3 text-xs font-semibold sm:col-span-2">
@@ -746,7 +829,9 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
           <article key={item.id} className="flex min-h-[58px] items-center gap-2 rounded-lg border px-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{item.nome}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}
+                {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
+                  <span className="ml-1 text-primary"> · Preço por peso: {faixasValidas(item.faixas_peso).length} faixas</span>}</p>
             </div>
             <strong className="whitespace-nowrap text-sm text-primary">{dinheiro(item.valor)}</strong>
             {podeEditar && <div className="flex">
