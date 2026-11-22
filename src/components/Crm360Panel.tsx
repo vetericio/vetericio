@@ -25,7 +25,7 @@ type Tarefa = { id: string; titulo: string; descricao?: string | null; status: s
 type Base = { tutores: Tutor[]; animais: Animal[]; agenda: Agenda[]; hotel: Estadia[]; banho_tosa: BanhoTosa[]; cobrancas: Cobranca[] };
 
 const filtros: Array<{ id: Filtro; nome: string; detalhe: string }> = [
-  { id: "todos", nome: "Todos os tutores", detalhe: "Base completa da clínica" },
+  { id: "todos", nome: "Todos que autorizaram", detalhe: "Somente tutores com consentimento de marketing" },
   { id: "marketing", nome: "Consentimento de marketing", detalhe: "Somente quem autorizou campanhas" },
   { id: "whatsapp", nome: "Com WhatsApp", detalhe: "Contato direto disponível" },
   { id: "email", nome: "Com e-mail", detalhe: "E-mail cadastrado" },
@@ -83,7 +83,8 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   const [base, setBase] = useState<Base>({ tutores: [], animais: [], agenda: [], hotel: [], banho_tosa: [], cobrancas: [] });
   const [campanhas, setCampanhas] = useState<Campanha[]>([]);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
-  const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [filtro, setFiltro] = useState<Filtro>("marketing");
+  const [revisandoCampanha, setRevisandoCampanha] = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [nome, setNome] = useState("");
   const [assunto, setAssunto] = useState("");
@@ -130,7 +131,9 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
       if (data < hoje) ultimoAgendamento.set(item.tutor_id as string, Math.max(ultimoAgendamento.get(item.tutor_id as string) || 0, data));
     });
     return base.tutores.filter((tutor) => {
-      if (filtro === "marketing") return tutor.autoriza_marketing === true;
+      // Consentimento explícito obrigatório independentemente do filtro.
+      if (tutor.autoriza_marketing !== true) return false;
+      if (filtro === "marketing") return true;
       if (filtro === "whatsapp") return Boolean(tutor.telefone || tutor.outro_telefone);
       if (filtro === "email") return Boolean(tutor.email);
       if (filtro === "hotel") return usadosHotel.has(tutor.id);
@@ -143,7 +146,10 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     });
   }, [base, filtro]);
 
-  useEffect(() => { setSelecionados(alvo.map((tutor) => tutor.id)); }, [filtro, base.tutores.length]);
+  useEffect(() => {
+    // Se a autorização for revogada, retirar imediatamente do público.
+    setSelecionados(alvo.map((tutor) => tutor.id));
+  }, [alvo]);
 
   const receitaEmAberto = useMemo(() => base.cobrancas.filter((item) => !["pago", "cancelado"].includes(String(item.status).toLowerCase())).reduce((soma, item) => soma + Number(item.valor || 0), 0), [base.cobrancas]);
   const metricasPorCampanha = useMemo(() => {
@@ -171,12 +177,13 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   async function publicarCampanha() {
     if (!podeCampanhas) return;
     if (!nome.trim() || !assunto.trim() || !mensagem.trim()) return void toast.error("Dê um nome, assunto e mensagem para a campanha.");
-    if (!selecionados.length) return void toast.error("Selecione ao menos um tutor.");
+    const elegiveis = selecionados.filter(id => porTutor.get(id)?.autoriza_marketing === true);
+    if (!elegiveis.length) return void toast.error("Selecione ao menos um tutor que autorizou campanhas.");
     const programacao = agendadaPara ? new Date(agendadaPara) : null;
     if (programacao && Number.isNaN(programacao.getTime())) return void toast.error("Informe uma data e hora válidas para a campanha.");
     const programadaNoFuturo = Boolean(programacao && programacao.getTime() > Date.now());
     setPublicando(true);
-    const destinatarios = selecionados.map((id) => {
+    const destinatarios = elegiveis.map((id) => {
       const tutor = porTutor.get(id);
       return {
         tutor_id: id,
@@ -198,6 +205,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     const { error } = await (supabaseBanco as any).rpc("oricse_crm_campanha_publicar", { p_campanha_id: criada.id, p_destinatarios: destinatarios });
     setPublicando(false);
     if (error) return void toast.error(error.message);
+    setRevisandoCampanha(false);
     toast.success(programadaNoFuturo ? "Campanha programada para " + dataHoraCompleta(programacao?.toISOString()) + "." : "Campanha ativada para " + destinatarios.length + " tutor(es). Os envios estão na fila CRM.");
     setNome(""); setAssunto(""); setObjetivo("relacionamento"); setAgendadaPara(""); setMensagem("Olá, {{tutor}}! Temos uma novidade especial para você e seu pet. Fale com a nossa equipe para aproveitar.");
     await carregar();
@@ -270,6 +278,23 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     <div className="grid gap-5 xl:grid-cols-[1.45fr_.85fr]">
       <section className="rounded-3xl border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-2"><Megaphone className="text-primary" size={20}/><div><h3 className="font-black">Nova campanha segmentada</h3><p className="text-xs text-muted-foreground">Crie a mensagem, escolha o público e envie para a fila com um clique.</p></div></div>
+        <div className="mt-4 rounded-xl border bg-muted/10 p-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">1. Escolha uma campanha pronta</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {([
+              ["Vacinação", "Vamos cuidar da vacinação?", "Olá, {{tutor}}! Quer conversar com a equipe sobre o acompanhamento vacinal do seu pet?", "relacionamento"],
+              ["Check-up", "Saúde em dia", "Olá, {{tutor}}! Que tal conversar sobre uma avaliação preventiva para seu pet? Nossa equipe está à disposição.", "retencao"],
+              ["Saúde bucal", "Cuidados com a saúde bucal", "Olá, {{tutor}}! A saúde bucal faz parte do bem-estar dos pets. Podemos orientar sobre avaliação odontológica.", "relacionamento"],
+              ["Novidades", "Novidades da clínica", "Olá, {{tutor}}! Temos novidades na clínica e gostaríamos de compartilhar com você. Entre em contato quando quiser!", "relacionamento"],
+            ] as Array<[string,string,string,Objetivo]>).map(([rotulo,chamada,texto,objetivoModelo]) =>
+              <button key={rotulo} type="button" onClick={()=>{
+                setNome(rotulo); setAssunto(chamada); setMensagem(texto); setObjetivo(objetivoModelo);
+              }} className="min-h-10 rounded-xl border bg-card px-3 text-xs font-bold hover:border-primary">
+                {rotulo}
+              </button>)}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Escolha um exemplo e edite como quiser. Nenhuma campanha é publicada sem confirmação.</p>
+        </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Input label="Nome interno" value={nome} onChange={setNome} placeholder="Ex.: Semana da saúde bucal" />
           <Input label="Assunto / chamada" value={assunto} onChange={setAssunto} placeholder="Condição especial para seu pet" />
@@ -282,7 +307,12 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
         <label className="mt-3 block text-xs font-bold">Mensagem<textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} className="mt-1 w-full rounded-xl border bg-background p-3 text-sm font-normal"/></label>
         <p className="mt-1 text-[11px] text-muted-foreground">Use {"{{tutor}}"} para personalizar a mensagem. O contato é aberto somente pela equipe, na fila do CRM.</p>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="mt-5 text-xs font-bold uppercase tracking-wider text-primary">2. Escolha o público</div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Somente tutores com autorização de marketing podem entrar na campanha.
+          As preferências de WhatsApp e e-mail serão conferidas novamente pelo servidor.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {filtros.map((item) => <button key={item.id} type="button" onClick={() => setFiltro(item.id)} className={`rounded-xl border p-3 text-left transition ${filtro === item.id ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.detalhe}</p></button>)}
         </div>
 
@@ -293,7 +323,37 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
             {!alvo.length && <p className="py-4 text-center text-sm text-muted-foreground">Nenhum tutor atende a este filtro.</p>}
           </div>
         </div>
-        <button type="button" disabled={!podeCampanhas || publicando || carregando} onClick={() => void publicarCampanha()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><Send size={17}/>{publicando ? "Criando campanha..." : agendadaPara ? "Programar campanha" : "Ativar para " + selecionados.length + " tutor(es)"}</button>
+        <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">3. Confira antes de criar a fila</p>
+        <button type="button" disabled={!podeCampanhas || publicando || carregando || selecionados.length === 0}
+          onClick={() => {
+            if (!nome.trim() || !assunto.trim() || !mensagem.trim())
+              return void toast.error("Preencha o nome, o assunto e a mensagem.");
+            setRevisandoCampanha(true);
+          }}
+          className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50">
+          <Send size={17}/> Revisar campanha ({selecionados.length} tutor(es))
+        </button>
+        {revisandoCampanha && <div role="dialog" aria-modal="true" aria-label="Revisar campanha"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border bg-card p-5 shadow-2xl">
+            <h4 className="text-xl font-black">Confirmar campanha</h4>
+            <p className="mt-2 text-sm">Campanha: <strong>{nome}</strong></p>
+            <p className="mt-1 text-sm">Destinatários com autorização: <strong>{selecionados.filter(id=>porTutor.get(id)?.autoriza_marketing === true).length}</strong></p>
+            <p className="mt-2 text-xs text-muted-foreground">Esta ação cria contatos na fila da equipe. Não envia WhatsApp ou e-mail automaticamente.</p>
+            <div className="mt-3 rounded-xl border bg-muted/20 p-3">
+              <p className="text-xs font-semibold">Prévia da mensagem</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{mensagem.replaceAll("{{tutor}}",porTutor.get(selecionados[0])?.nome || "Tutor")}</p>
+            </div>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button type="button" disabled={publicando} onClick={()=>setRevisandoCampanha(false)}
+                className="min-h-11 rounded-xl border px-4 text-sm font-bold">Voltar e editar</button>
+              <button type="button" disabled={publicando} onClick={() => void publicarCampanha()}
+                className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40">
+                {publicando ? "Criando..." : "Confirmar e criar fila"}
+              </button>
+            </div>
+          </div>
+        </div>}
         {!podeCampanhas && <p className="mt-2 text-xs text-amber-700">Seu perfil pode visualizar o CRM, mas não possui permissão para publicar campanhas.</p>}
       </section>
 

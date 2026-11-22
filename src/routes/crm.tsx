@@ -8,6 +8,7 @@ import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Crm360Panel } from "@/components/Crm360Panel";
+import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
 import { CrmModelosDaCentral } from "@/components/CrmModelosDaCentral";
 
 export const Route = createFileRoute("/crm")({
@@ -286,6 +287,7 @@ async function comTempoLimite<T>(promessa: Promise<T>, milissegundos = 20000): P
 function Crm() {
   const { carregando: carregandoPermissoes, clinicaId, pode, adminGlobal } = usePermissoes();
   const [aba, setAba] = useState<Aba>("fila");
+  const [visao, setVisao] = useState<"retornos" | "campanhas" | "fila">("retornos");
   const [config, setConfig] = useState<CrmConfig | null>(null);
   const [modelos, setModelos] = useState<ModeloCrm[]>([]);
   const [eventos, setEventos] = useState<EventoCrm[]>([]);
@@ -605,19 +607,38 @@ function Crm() {
     <header className="mt-4 flex flex-wrap items-end justify-between gap-4">
       <div>
         <div className="flex items-center gap-2 text-primary"><Sparkles size={20}/><span className="text-xs font-black uppercase tracking-[0.16em]">CRM inteligente</span></div>
-        <h1 className="mt-1 text-3xl font-black tracking-tight">Relacionamento que move a clínica</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Campanhas segmentadas, jornada do tutor, Portal do Tutor e tarefas comerciais em uma única operação.</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">Gestão de Clientes</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Organize retornos, confirme com o tutor, acompanhe cuidados preventivos e crie campanhas de forma simples.</p>
       </div>
       {podeOperar && <button type="button" disabled={sincronizando} onClick={() => void sincronizarComDados()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><RefreshCw size={17} className={sincronizando ? "animate-spin" : ""}/>{sincronizando ? "Sincronizando..." : "Sincronizar agora"}</button>}
     </header>
 
-    <Crm360Panel
+    <nav aria-label="Seções da gestão de clientes" className="mt-6 flex flex-wrap gap-2 rounded-2xl border bg-card p-2">
+      {([
+        ["retornos","Retornos e cuidados"],
+        ["campanhas","Campanhas"],
+        ["fila","Fila e mensagens"],
+      ] as const).map(([id,nome]) => <button key={id} type="button"
+        aria-pressed={visao === id} onClick={()=>setVisao(id)}
+        className={"min-h-11 flex-1 rounded-xl px-4 text-sm font-bold transition-colors " +
+          (visao===id?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted")}>
+        {nome}
+      </button>)}
+    </nav>
+
+    {visao === "retornos" && <div className="mt-5">
+      <CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} />
+    </div>}
+    {visao === "campanhas" && <Crm360Panel
       clinicaId={clinicaId}
       podeCampanhas={adminGlobal || pode("crm.campanhas") || pode("crm.gerenciar")}
       podeOperar={podeOperar}
-      onAbrirFila={() => { setAba("fila"); window.setTimeout(() => document.getElementById("crm-fila")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); }}
-    />
+      onAbrirFila={() => { setVisao("fila"); setAba("fila");
+        window.setTimeout(() => document.getElementById("crm-fila")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+      }}
+    />}
 
+    {visao === "fila" && <>
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
       <Resumo titulo="Pendentes" valor={pendentes.length} detalhe="contatos na fila" />
       <Resumo titulo="Para hoje" valor={hoje.length} detalhe="ações previstas hoje" />
@@ -671,6 +692,7 @@ function Crm() {
       </div>
       <button type="button" disabled={salvando === "config"} onClick={() => void salvarConfig()} className="mt-5 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50">Salvar configurações</button>
     </section>}
+    </>}
   </main>;
 }
 

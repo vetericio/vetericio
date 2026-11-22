@@ -383,6 +383,7 @@ function AnimalFicha() {
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [visivelTutor, setVisivelTutor] = useState(false);
   const [reforcoEm, setReforcoEm] = useState("");
+  const [retornoExameEm, setRetornoExameEm] = useState("");
   const [lote, setLote] = useState("");
   const [tipoDetalhe, setTipoDetalhe] = useState("");
   const [salvandoPortal, setSalvandoPortal] = useState(false);
@@ -683,6 +684,7 @@ function AnimalFicha() {
     setData(hojeNoBrasil());
     setVisivelTutor(false);
     setReforcoEm("");
+    setRetornoExameEm("");
     setLote("");
     setArquivoPdf(null);
     anexoEmEdicao.current = null;
@@ -881,8 +883,9 @@ function AnimalFicha() {
             visivel_tutor: visivelTutor && !demoAlvorada,
           };
           const { error } = exame
-            ? await supabaseBanco.from("oricse_portal_exames").upsert({
+            ? await (supabaseBanco as any).from("oricse_portal_exames").upsert({
                 ...registro, realizado_em: data || null, resultado_resumo: detalhe.trim() || null,
+                retorno_em: retornoExameEm || null, orientacoes_retorno: retornoExameEm ? "Confirmar reavaliação ou resultado com o tutor." : null,
               }, { onConflict: "id", ignoreDuplicates: true })
             : await supabaseBanco.from("oricse_portal_documentos").upsert({
                 ...registro, data_documento: data || null, observacoes: detalhe.trim() || null,
@@ -1464,6 +1467,16 @@ function AnimalFicha() {
                       className="mt-1 min-h-11 w-full rounded-xl border px-3"
                     />
                   </label>
+                  {modalTipo === "Exames" && (
+                    <label className="block rounded-xl border border-primary/20 bg-primary/[0.04] p-3 text-sm font-semibold">
+                      Retorno ou revisão do exame (opcional)
+                      <input type="date" value={retornoExameEm} onChange={(e) => setRetornoExameEm(e.target.value)}
+                        className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+                      <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                        Se preencher, a Gestão de Clientes lembrará a equipe de confirmar a data com o tutor.
+                      </span>
+                    </label>
+                  )}
                   {tipoPreventivo && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block text-sm font-bold">

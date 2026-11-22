@@ -14,6 +14,7 @@ import { Medicacoes } from "@/components/Medicacoes";
 import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 import type { Medicacao } from "@/lib/ficha";
 import { categoriaExame, EXAMES_PADRAO, type CategoriaExame } from "@/lib/exames-catalogo";
+import { registrarRetornoClinico } from "@/lib/crm-retornos.functions";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
@@ -27,7 +28,7 @@ type ConsultaForm = {
   acessoRua: SimNao; contatoAnimais: SimNao; ambiente: string; moradia: string; ventilacao: string; apetite: string; exposicoes: string[]; vacinacao: string; vermifugacao: string; dieta: string; doencasPrevias: string; medicamentosRecentes: string; alergias: string; queixa: string;
   sistemas: Record<string, { sinais: string[]; observacoes: string }>;
   oftalmo: OftalmoForm;
-  peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; medicacoesDetalhadas: Medicacao[]; conduta: string; retorno: string;
+  peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; medicacoesDetalhadas: Medicacao[]; conduta: string; retorno: string; retornoEm: string;
 };
 type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anestesia: string; achados: string; materiais: string; intercorrencias: string; posOperatorio: string; observacoes: string };
 type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null };
@@ -110,7 +111,7 @@ function resumoMedicacoes(lista: Medicacao[]) {
     item.duracao ? `a cada ${item.duracao}` : "", item.observacao].filter(Boolean).join(" · ")).join("\n");
 }
 
-function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", medicacoesDetalhadas:[], conduta:"", retorno:"" }; }
+function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", medicacoesDetalhadas:[], conduta:"", retorno:"", retornoEm:"" }; }
 
 function RegistroClinico(){
   const navigate=useNavigate();
@@ -255,6 +256,7 @@ function RegistroClinico(){
       consulta.suspeitas&&`Hipóteses / suspeitas: ${consulta.suspeitas}`,
       consulta.conduta&&`Conduta / orientações: ${consulta.conduta}`,
       consulta.retorno&&`Retorno: ${consulta.retorno}`,
+      consulta.retornoEm&&`Data indicada para retorno: ${consulta.retornoEm.split("-").reverse().join("/")}`,
       consulta.medicacoes&&`Medicações / receita: ${consulta.medicacoes}`,
       consulta.examesSolicitados&&`Exames solicitados: ${consulta.examesSolicitados}`,
     ].filter(Boolean).join("\n");
@@ -284,8 +286,28 @@ function RegistroClinico(){
         p_peso:pesoConsulta?Number(pesoConsulta):null,p_itens:itensPersistidos as never,
       });
       if(error||!resultado)throw new Error(error?.message||"Não foi possível confirmar o atendimento.");
+      let retornoRegistrado = false;
+      if (consulta.retornoEm) {
+        try {
+          const token = (await supabase.auth.getSession()).data.session?.access_token;
+          if (!token) throw new Error("Sessão expirada.");
+          await registrarRetornoClinico({ data: {
+            accessToken: token, clinicaId: clinicaAnimalId, animalId: animal.id,
+            origem: "consulta", origemId: registroId.current,
+            titulo: "Reavaliação após consulta",
+            orientacoes: consulta.retorno.trim(),
+            dataPrevista: consulta.retornoEm,
+          }});
+          retornoRegistrado = true;
+        } catch (erroRetorno) {
+          console.error("Consulta salva, mas retorno não foi incluído na Gestão:", erroRetorno);
+          toast.warning("Consulta salva, mas a Gestão de Clientes não confirmou o retorno. Registre-o manualmente na aba Retornos.");
+        }
+      }
       oricseStorage.removeItem(chaveRascunho);
-      toast.success("Consulta salva e comanda registrada.");
+      toast.success(retornoRegistrado
+        ? "Consulta e comanda salvas. Retorno enviado à Gestão de Clientes."
+        : "Consulta salva e comanda registrada.");
       navigate({to:"/animal",search:{animalId:animal.id,comandaId:resultado.comandaId} as never});
     } catch(error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar o atendimento.");
@@ -379,7 +401,17 @@ function RegistroClinico(){
               <p className="mt-3 text-xs font-medium text-muted-foreground">Referência normal para {animal?.especie || "cão"}: temperatura {normaisPara(animal?.especie).temperatura} · FC {normaisPara(animal?.especie).fc} · FR {normaisPara(animal?.especie).fr} · PAS {normaisPara(animal?.especie).pas} · glicemia {normaisPara(animal?.especie).glicemia}</p>
               <div className="mt-3"><Textarea label="Exame físico / avaliação geral" value={consulta.exameGeral} onChange={v=>setConsulta({...consulta,exameGeral:v})}/></div>
             </>}
-            {etapa===5&&<><div className="grid gap-4 md:grid-cols-2"><Textarea grande label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={v=>setConsulta({...consulta,suspeitas:v})}/><Textarea grande label="Conduta / orientações" value={consulta.conduta} onChange={v=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-4 max-w-lg"><Input label="Retorno" value={consulta.retorno} onChange={v=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: 7 dias ou antes se piorar"/></div><section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/[0.04] p-4"><div><h3 className="font-black">Precisa de internação?</h3><p className="mt-1 text-sm text-muted-foreground">Abra a anamnese de internação com os dados desta consulta já preenchidos.</p></div><button type="button" onClick={encaminharParaInternacao} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground"><BedDouble size={18}/> Encaminhar para internação</button></section></>}
+            {etapa===5&&<><div className="grid gap-4 md:grid-cols-2"><Textarea grande label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={v=>setConsulta({...consulta,suspeitas:v})}/><Textarea grande label="Conduta / orientações" value={consulta.conduta} onChange={v=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">Data do retorno (Gestão de Clientes)
+                <input type="date" value={consulta.retornoEm} onChange={e=>setConsulta({...consulta,retornoEm:e.target.value})}
+                  className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal"/>
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  Ao salvar a consulta, a equipe receberá um retorno para confirmar com o tutor. Deixe vazio se não for necessário.
+                </span>
+              </label>
+              <Input label="Orientações para o retorno" value={consulta.retorno}
+                onChange={v=>setConsulta({...consulta,retorno:v})} placeholder="Ex.: reavaliar em 7 dias ou antes se piorar"/>
+            </div><section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/[0.04] p-4"><div><h3 className="font-black">Precisa de internação?</h3><p className="mt-1 text-sm text-muted-foreground">Abra a anamnese de internação com os dados desta consulta já preenchidos.</p></div><button type="button" onClick={encaminharParaInternacao} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground"><BedDouble size={18}/> Encaminhar para internação</button></section></>}
             {etapa===6&&<section className="rounded-2xl border bg-sky-50/40 p-4 sm:p-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><FlaskConical size={22}/></div>

@@ -52,6 +52,8 @@ jobs:
         run: node scripts/test-termos-clinicos.mjs
       - name: RT-only document exclusion regression
         run: node scripts/test-rt-exclusao-documentos.mjs
+      - name: CRM clinical recalls and consent regression
+        run: node scripts/test-crm-retornos.mjs
       - name: Animal quota regression
         run: node scripts/test-cotas-animais.mjs
       - name: Plan and role policy regression
