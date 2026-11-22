@@ -2091,7 +2091,7 @@ function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: strin
         </p>
       </div>
       <div className="p-4 sm:p-5">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid w-full min-w-0 auto-rows-fr grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
           <RegistroCard
             icon={Stethoscope}
             titulo="Consulta"
@@ -2156,7 +2156,7 @@ function RegistroCard({
     <Link
       to="/registro-clinico"
       search={{ animalId, tipo } as never}
-      className="group flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      className="group flex h-full w-full min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <Icon size={24} />
