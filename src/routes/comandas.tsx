@@ -173,7 +173,7 @@ export function Comandas() {
           return;
         }
         const [itensResult, regrasResult] = await Promise.all([
-          supabase
+          (supabase as any)
             .from("oricse_catalogo_itens")
             .select("id,clinica_id,tipo,nome,categoria,valor,estoque_atual,estoque_minimo,ativo,faixas_peso")
             .eq("clinica_id", vinculo.clinica_id)
