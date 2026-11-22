@@ -16,7 +16,7 @@ import {
 } from "@/lib/comissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
-import { faixasValidas, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
+import { faixasValidas, rotuloCondicao, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
@@ -32,7 +32,7 @@ type ItemForm = {
   codigo_barras: string;
   venda_por_peso: boolean;
   preco_por_peso: boolean;
-  faixas_peso: { ateKg: string; valor: string }[];
+  faixas_peso: { ateKg: string; valor: string; especie: "" | "Cão" | "Gato"; sexo: "" | "Macho" | "Fêmea" }[];
 };
 
 const CATEGORIAS_SERVICOS = ["Consultas", "Vacinação", "Vermifugação", "Exames laboratoriais", "Diagnóstico por imagem", "Cirurgias", "Internação", "Procedimentos", "Odontologia", "Banho e tosa", "Atendimento domiciliar", "Outros"];
@@ -298,13 +298,15 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     if (!modal || !clinicaId) return;
     const nome = modal.nome.trim();
     const convertido = modal.faixas_peso.map((faixa, indice): FaixaPrecoPeso => ({
-      ateKg: indice === modal.faixas_peso.length - 1 ? null : Number(faixa.ateKg.replace(",", ".")),
+      ateKg: faixa.ateKg.trim() ? Number(faixa.ateKg.replace(",", ".")) : null,
       valor: interpretarPrecoEditavel(faixa.valor),
+      especie: faixa.especie || null,
+      sexo: faixa.sexo || null,
     }));
     if (modal.tipo === "servico" && modal.preco_por_peso) {
       if (modal.faixas_peso.some(faixa => !faixa.valor.trim()) ||
-        modal.faixas_peso.slice(0,-1).some(faixa => !faixa.ateKg.trim())) {
-        return void toast.error("Preencha os limites e preços de todas as faixas.");
+        modal.faixas_peso.some(faixa => faixa.ateKg.trim() && Number(faixa.ateKg.replace(",", ".")) <= 0)) {
+        return void toast.error("Informe um preço válido e, quando usar peso, um limite maior que zero.");
       }
       const erroFaixas = validarFaixasPeso(convertido);
       if (erroFaixas) return void toast.error(erroFaixas);
@@ -386,13 +388,14 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     }
   }
 
-  async function arquivarItem(item: ItemCatalogo) {
-    if (!podeGerenciarCatalogo) return void toast.error("Seu usuário não pode gerenciar o catálogo.");
-    if (!clinicaId || !window.confirm(`Remover "${item.nome}" do catálogo?`)) return;
+  async function arquivarItem(item: ItemCatalogo): Promise<boolean> {
+    if (!podeGerenciarCatalogo) { toast.error("Seu usuário não pode gerenciar o catálogo."); return false; }
+    if (!clinicaId || !window.confirm(`Remover "${item.nome}" do catálogo?`)) return false;
     const { error } = await supabaseBanco.from("oricse_catalogo_itens").update({ ativo: false, updated_at: new Date().toISOString() }).eq("id", item.id).eq("clinica_id", clinicaId);
-    if (error) return void toast.error(`Não foi possível remover o item: ${error.message}`);
+    if (error) { toast.error(`Não foi possível remover o item: ${error.message}`); return false; }
     await carregarDados(clinicaId);
     toast.success("Item removido do catálogo.");
+    return true;
   }
 
   async function salvarRegra(event: FormEvent) {
@@ -606,6 +609,8 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
             faixas_peso: faixasValidas(item.faixas_peso).map(f => ({
               ateKg: f.ateKg === null ? "" : String(f.ateKg),
               valor: formatarValorExistente(f.valor),
+              especie: f.especie || "",
+              sexo: f.sexo || "",
             })),
           })} aoRemover={arquivarItem} />
           <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso),
@@ -833,13 +838,13 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       </div>}
 
       {modal && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-2 sm:p-4"
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-black/60 p-2 sm:p-4"
           onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
           <form role="dialog" aria-modal="true" aria-label={(modal.id ? "Editar" : "Novo") + (modal.tipo === "servico" ? " serviço" : " produto")}
             onSubmit={salvarItem} onKeyDown={(event) => {
               if (event.key === "Escape") { event.stopPropagation(); setModal(null); }
             }}
-            className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+            className="flex h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl sm:h-[calc(100dvh-2rem)]">
             <div className="flex shrink-0 items-center justify-between gap-3 border-b bg-background px-4 py-4 sm:px-6">
               <div>
                 <h2 className="text-lg font-black">{modal.id ? "Editar" : "Novo"} {modal.tipo === "servico" ? "serviço" : "produto"}</h2>
@@ -869,7 +874,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                       preco_por_peso: e.target.checked,
                       faixas_peso: e.target.checked
                         ? modal.faixas_peso.length ? modal.faixas_peso :
-                          [{ ateKg:"10", valor:"" },{ ateKg:"", valor:"" }]
+                          [{ ateKg:"", valor:"", especie:"", sexo:"" }]
                         : [],
                     })}
                     className="size-5 accent-primary"/>
@@ -877,18 +882,24 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                 </label>
                 {modal.preco_por_peso && <div className="mt-3 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Um único serviço com vários preços. O ORICSE sugere a faixa pelo peso,
-                    mas só cobra depois da aprovação na comanda.
+                    Cadastre preços para cão, gato, macho ou fêmea. O peso é opcional e só é usado
+                    quando você preencher o limite em kg. A cobrança sempre exige aprovação na comanda.
                   </p>
-                  {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                    {indice === modal.faixas_peso.length - 1
-                      ? <div className="pb-3 text-xs font-bold">Acima da faixa anterior</div>
-                      : <label className="text-xs font-semibold">
-                        Até (kg)
+                  {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+                    <label className="text-xs font-semibold">Espécie
+                      <select value={faixa.especie} onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,especie:e.target.value as typeof v.especie}:v)})}
+                        className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal"><option value="">Todos</option><option>Cão</option><option>Gato</option></select>
+                    </label>
+                    <label className="text-xs font-semibold">Sexo
+                      <select value={faixa.sexo} onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,sexo:e.target.value as typeof v.sexo}:v)})}
+                        className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal"><option value="">Todos</option><option>Macho</option><option>Fêmea</option></select>
+                    </label>
+                    <label className="text-xs font-semibold">
+                        Até (kg, opcional)
                         <input type="text" inputMode="decimal" value={faixa.ateKg}
                           onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,ateKg:e.target.value}:v)})}
-                          placeholder="Ex.: 20" className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal"/>
-                      </label>}
+                          placeholder="Sem limite" className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal"/>
+                      </label>
                     <label className="text-xs font-semibold">
                       Preço (R$)
                       <input type="text" inputMode="decimal" value={faixa.valor}
@@ -903,15 +914,12 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                         placeholder="Ex.: 280,00" className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal tabular-nums"/>
                     </label>
                     <button type="button" title="Retirar faixa" aria-label={"Retirar faixa " + (indice+1)}
-                      disabled={modal.faixas_peso.length<=2 || indice===modal.faixas_peso.length-1}
+                      disabled={modal.faixas_peso.length<=1}
                       onClick={()=>setModal({...modal,faixas_peso:modal.faixas_peso.filter((_,i)=>i!==indice)})}
                       className="min-h-10 rounded-lg border px-2 disabled:opacity-30"><Trash2 size={15}/></button>
                   </div>)}
                   <button type="button" disabled={modal.faixas_peso.length>=20}
-                    onClick={()=>setModal({...modal,faixas_peso:[
-                      ...modal.faixas_peso.slice(0,-1),{ateKg:"",valor:""},
-                      modal.faixas_peso[modal.faixas_peso.length-1],
-                    ]})}
+                    onClick={()=>setModal({...modal,faixas_peso:[...modal.faixas_peso,{ateKg:"",valor:"",especie:"",sexo:""}]})}
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold">
                     <Plus size={15}/> Adicionar faixa
                   </button>
@@ -948,13 +956,22 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
               </div>
             </div>
             <div className="shrink-0 border-t bg-background px-4 py-3 sm:px-6">
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {modal.id && <button type="button" onClick={() => {
+                  const item = itens.find((cadastrado) => cadastrado.id === modal.id);
+                  if (item) void arquivarItem(item).then((removido) => { if (removido) setModal(null); });
+                }} disabled={!podeGerenciarCatalogo}
+                  className="min-h-11 rounded-xl border border-destructive/40 px-4 text-sm font-bold text-destructive disabled:opacity-50">
+                  Excluir {modal.tipo === "servico" ? "serviço" : "produto"}
+                </button>}
+                <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => setModal(null)}
                   className="min-h-11 rounded-xl border px-4 text-sm font-semibold">Cancelar</button>
                 <button type="submit" disabled={!podeGerenciarCatalogo}
                   className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">
                   Salvar {modal.tipo === "servico" ? "serviço" : "produto"}
                 </button>
+                </div>
               </div>
             </div>
           </form>
@@ -1005,7 +1022,7 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
                   <div className="mt-2 space-y-1 rounded-xl bg-muted/30 p-2">
                     {faixasValidas(item.faixas_peso).map((faixa,i,lista)=>
                       <div key={i} className="flex justify-between gap-2 border-b py-1 last:border-b-0">
-                        <span>{tituloFaixa(lista,i)}</span><strong>{dinheiro(faixa.valor)}</strong>
+                        <span>{rotuloCondicao(faixa)}{faixa.ateKg !== null ? ` · ${tituloFaixa(lista.filter(x=>x.especie===faixa.especie&&x.sexo===faixa.sexo), 0)}` : ""}</span><strong>{dinheiro(faixa.valor)}</strong>
                       </div>)}
                   </div>
                 </details>}

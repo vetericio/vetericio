@@ -513,6 +513,8 @@ function RegistroClinico(){
         <AprovarPrecoPorPeso
           item={precoPorPesoPendente.item}
           pesoInicial={Number(String(consulta.peso || animal.peso || 0).replace(",", ".")) || null}
+          especie={animal.especie}
+          sexo={animal.sexo}
           aprovadoPor={responsavel.nome}
           onAprovar={confirmarPrecoPorPeso}
           onCancelar={()=>setPrecoPorPesoPendente(null)}
