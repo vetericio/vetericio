@@ -323,8 +323,8 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       ...(modal.id ? {} : { criado_por: usuarioId }),
     };
     const { error } = modal.id
-      ? await supabaseBanco.from("oricse_catalogo_itens").update(payload).eq("id", modal.id).eq("clinica_id", clinicaId)
-      : await supabaseBanco.from("oricse_catalogo_itens").insert(payload);
+      ? await (supabaseBanco as any).from("oricse_catalogo_itens").update(payload).eq("id", modal.id).eq("clinica_id", clinicaId)
+      : await (supabaseBanco as any).from("oricse_catalogo_itens").insert(payload);
     if (error) return void toast.error(`Não foi possível salvar: ${error.message}`);
     setModal(null);
     try {
