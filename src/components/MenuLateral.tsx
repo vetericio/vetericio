@@ -579,8 +579,7 @@ export function MenuLateral({
     <>
       <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
         {areasPrincipais.map(renderArea)}
-        {areasOpcionais.some((area) => itensVisiveis(area).length > 0) && (
-          <div className="overflow-hidden rounded-xl border border-border/70">
+        <div className="overflow-hidden rounded-xl border border-border/70">
             <button
               type="button"
               aria-expanded={maisOpcoesAberto}
@@ -595,19 +594,18 @@ export function MenuLateral({
             {maisOpcoesAberto && (
               <div id="oricse-menu-mais-opcoes" className="oricse-menu-panel ml-5 space-y-2 border-l-[3px] border-border py-3 pl-3 pr-2">
                 {areasOpcionais.map(renderArea)}
+                <button
+                  type="button"
+                  disabled={saindo}
+                  onClick={sair}
+                  className="oricse-menu-item mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold text-destructive disabled:cursor-not-allowed"
+                >
+                  <LogOut className="h-5 w-5 shrink-0" />
+                  {saindo ? "Saindo..." : "Sair da conta"}
+                </button>
               </div>
             )}
           </div>
-        )}
-        <button
-          type="button"
-          disabled={saindo}
-          onClick={sair}
-          className="oricse-menu-item flex min-h-12 w-full items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold text-destructive disabled:cursor-not-allowed"
-        >
-          <LogOut className="h-5 w-5" />
-          {saindo ? "Saindo..." : "Sair da conta"}
-        </button>
       </nav>
       <button
         type="button"
@@ -668,8 +666,7 @@ export function MenuLateral({
                 </button>
               );
             })}
-            {areasOpcionais.some((area) => itensVisiveis(area).length > 0) && (
-              <button
+            <button
                 type="button"
                 aria-label="Abrir Mais opções"
                 title="Mais opções"
@@ -678,7 +675,6 @@ export function MenuLateral({
               >
                 <Settings className="h-5 w-5" />
               </button>
-            )}
             <button
               type="button"
               aria-label="Usar menu por três riscos"
