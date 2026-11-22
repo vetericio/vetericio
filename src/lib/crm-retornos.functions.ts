@@ -168,11 +168,33 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
     };
     if (data.origemId) {
       const { data: registroExistente, error: erroConsulta } = await admin
-        .from("oricse_crm_retornos").select("id")
+        .from("oricse_crm_retornos").select("id,status,animal_id")
         .eq("clinica_id", data.clinicaId).eq("origem", data.origem)
         .eq("origem_id", data.origemId).maybeSingle();
       if (erroConsulta) throw new Error("Não foi possível verificar o retorno.");
-      if (registroExistente) return { id: registroExistente.id, criado: false };
+      if (registroExistente) {
+        if (registroExistente.animal_id !== data.animalId) throw new Error("O retorno está associado a outro paciente.");
+        if (data.origem === "manual" && data.dataPrevista) {
+          if (registroExistente.status === "realizado" || registroExistente.status === "cancelado") {
+            // Preserva o histórico: um novo envio não reabre um retorno encerrado.
+            payload.origem_id = null;
+          } else {
+            const { data: atualizado, error: erroAtualizacao } = await admin.from("oricse_crm_retornos")
+              .update({
+                data_prevista: data.dataPrevista,
+                titulo: data.titulo, status: "a_confirmar",
+                contato_em: null, confirmado_em: null,
+                atualizado_por: userId, updated_at: new Date().toISOString(),
+              })
+              .eq("clinica_id", data.clinicaId).eq("animal_id", data.animalId)
+              .eq("id", registroExistente.id).select("id").maybeSingle();
+            if (erroAtualizacao || !atualizado) throw new Error("Não foi possível atualizar a data do retorno.");
+            return { id: atualizado.id as string, criado: false };
+          }
+        } else {
+          return { id: registroExistente.id as string, criado: false };
+        }
+      }
     }
     const { data: criado, error } = await admin.from("oricse_crm_retornos")
       .insert(payload).select("id").single();
