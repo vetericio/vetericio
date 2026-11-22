@@ -27,7 +27,7 @@ type Base = { tutores: Tutor[]; animais: Animal[]; agenda: Agenda[]; hotel: Esta
 const filtros: Array<{ id: Filtro; nome: string; detalhe: string }> = [
   { id: "todos", nome: "Todos que autorizaram", detalhe: "Somente tutores com consentimento de marketing" },
   { id: "marketing", nome: "Consentimento de marketing", detalhe: "Somente quem autorizou campanhas" },
-  { id: "whatsapp", nome: "Com WhatsApp", detalhe: "Contato direto disponível" },
+  { id: "whatsapp", nome: "WhatsApp para campanhas", detalhe: "Número cadastrado e autorização de marketing" },
   { id: "email", nome: "Com e-mail", detalhe: "E-mail cadastrado" },
   { id: "inativos", nome: "Inativos há 90 dias", detalhe: "Oportunidade de reativação" },
   { id: "hotel", nome: "Hotelzinho", detalhe: "Já usaram ou têm estadia" },
@@ -121,6 +121,15 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   useEffect(() => { void carregar(); }, [carregar]);
 
   const porTutor = useMemo(() => new Map(base.tutores.map((tutor) => [tutor.id, tutor])), [base.tutores]);
+  // Número disponível e autorização para campanha são informações distintas.
+  // Não supor consentimento de marketing a partir do telefone ou de lembretes clínicos.
+  const totaisWhatsApp = useMemo(() => {
+    const comNumero = base.tutores.filter(tutor => Boolean(String(tutor.telefone || tutor.outro_telefone || "").replace(/\D/g, "")));
+    return {
+      cadastrados: comNumero.length,
+      autorizadosCampanhas: comNumero.filter(tutor => tutor.autoriza_marketing === true).length,
+    };
+  }, [base.tutores]);
   const alvo = useMemo(() => {
     const hoje = Date.now();
     const usadosHotel = new Set(base.hotel.filter((item) => item.status !== "cancelado").map((item) => item.tutor_id).filter(Boolean));
@@ -309,9 +318,14 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
 
         <div className="mt-5 text-xs font-bold uppercase tracking-wider text-primary">2. Escolha o público</div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Somente tutores com autorização de marketing podem entrar na campanha.
-          As preferências de WhatsApp e e-mail serão conferidas novamente pelo servidor.
+          WhatsApp cadastrado não significa autorização para campanhas.
+          Lembretes clínicos autorizados continuam disponíveis em Retornos e cuidados.
+          Campanhas promocionais exigem consentimento específico de marketing, conferido novamente pelo servidor.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs" role="status" aria-live="polite">
+          <span className="rounded-lg border bg-background px-3 py-2 font-semibold">WhatsApp cadastrado: {totaisWhatsApp.cadastrados}</span>
+          <span className="rounded-lg border bg-background px-3 py-2 font-semibold">WhatsApp autorizado para campanhas: {totaisWhatsApp.autorizadosCampanhas}</span>
+        </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {filtros.map((item) => <button key={item.id} type="button" onClick={() => setFiltro(item.id)} className={`rounded-xl border p-3 text-left transition ${filtro === item.id ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.detalhe}</p></button>)}
         </div>
@@ -320,7 +334,11 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
           <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black">{selecionados.length} de {alvo.length} tutor(es) selecionado(s)</p><p className="text-xs text-muted-foreground">Apenas estes contatos receberão esta campanha.</p></div><button type="button" onClick={() => setSelecionados(selecionados.length === alvo.length ? [] : alvo.map((tutor) => tutor.id))} className="text-xs font-bold text-primary">{selecionados.length === alvo.length ? "Limpar" : "Selecionar todos"}</button></div>
           <div className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1">
             {alvo.slice(0, 100).map((tutor) => <label key={tutor.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-background"><span className="min-w-0"><span className="block truncate font-semibold">{tutor.nome}</span><span className="block truncate text-xs text-muted-foreground">{tutor.telefone || tutor.outro_telefone || tutor.email || "Sem contato digital"}</span></span><input type="checkbox" checked={selecionados.includes(tutor.id)} onChange={() => alternarTutor(tutor.id)} /></label>)}
-            {!alvo.length && <p className="py-4 text-center text-sm text-muted-foreground">Nenhum tutor atende a este filtro.</p>}
+            {!alvo.length && <p className="py-4 text-center text-sm text-muted-foreground">
+              {filtro === "whatsapp" && totaisWhatsApp.cadastrados > 0
+                ? `Há ${totaisWhatsApp.cadastrados} tutor(es) com WhatsApp cadastrado, mas nenhum com autorização de marketing para campanhas. Para acompanhamento clínico, use Retornos e cuidados.`
+                : "Nenhum tutor atende a este filtro de campanha. Verifique a autorização de marketing no cadastro do tutor."}
+            </p>}
           </div>
         </div>
         <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">3. Confira antes de criar a fila</p>
