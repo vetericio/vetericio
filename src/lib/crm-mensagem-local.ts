@@ -42,7 +42,7 @@ function resumoCurto(queixa: string) {
     const padraoGlobal = new RegExp(padrao.source, "gi");
     return [...texto.matchAll(padraoGlobal)].some(encontro => {
       const anterior = texto.slice(Math.max(0, (encontro.index || 0) - 35), encontro.index).toLowerCase();
-      return !/(?:\\bsem\\b|\\bnega\\b|\\bnegou\\b|\\bnegativo para\\b|\\bnão apresenta\\b|\\bnao apresenta\\b|\\bausência de\\b|\\bausencia de\\b)\\s+(?:[\\p{L}-]+\\s+){0,2}$/iu.test(anterior);
+      return !/(?:\bsem\b|\bnega\b|\bnegou\b|\bnegativo para\b|\bnão apresenta\b|\bnao apresenta\b|\bausência de\b|\bausencia de\b)\s+(?:[\p{L}-]+\s+){0,2}$/iu.test(anterior);
     });
   }).slice(0, 3).map(([, nome]) => nome);
   if (!sinais.length) return "";
