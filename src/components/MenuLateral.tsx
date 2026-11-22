@@ -15,6 +15,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Scissors,
+  Search,
   Settings,
   ShoppingCart,
   Stethoscope,
@@ -32,6 +33,7 @@ import { obterAutorClinico } from "@/lib/perfil-clinico";
 
 type MenuRoute =
   | "/recepcao"
+  | "/busca-inteligente"
   | "/todas-agendas"
   | "/hotelzinho"
   | "/agenda-hotel"
@@ -96,6 +98,13 @@ const areas: AreaMenu[] = [
     itens: [
       { to: "/recepcao", rotulo: "Painel da recepção", permissao: "recepcao.agenda" },
       { to: "/todas-agendas", rotulo: "Todas as agendas", permissao: "recepcao.agenda" },
+    ],
+  },
+  {
+    titulo: "Busca Inteligente",
+    icone: Search,
+    itens: [
+      { to: "/busca-inteligente", rotulo: "Buscar tutor ou animal", permissao: "recepcao.cadastros.visualizar" },
     ],
   },
   {
@@ -276,7 +285,7 @@ const areas: AreaMenu[] = [
 
 // As quatro áreas principais ficam visíveis. As demais mantêm todos os
 // mesmos links e permissões, mas são agrupadas em "Mais opções".
-const ordemPrincipal = ["Recepção", "Clínica veterinária", "Banho e tosa", "Hotelzinho", "Venda Expressa", "Meu OricStúdio"];
+const ordemPrincipal = ["Recepção", "Busca Inteligente", "Clínica veterinária", "Banho e tosa", "Hotelzinho", "Venda Expressa", "Meu OricStúdio"];
 const titulosPrincipais = new Set(ordemPrincipal);
 const areasPrincipais = ordemPrincipal.map((titulo) => areas.find((area) => area.titulo === titulo)!)
   .filter(Boolean);
@@ -367,7 +376,8 @@ export function MenuLateral({
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) => (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
+          (item) => (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
+            (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
     // Mostrar títulos de bloco somente quando o usuário pode acessar ao menos um item.
@@ -391,6 +401,15 @@ export function MenuLateral({
           const itens = itensVisiveis(area);
           if (itens.length === 0) return null;
           const Icone = area.icone;
+          if (area.titulo === "Busca Inteligente") return (
+            <Link key={area.titulo} to="/busca-inteligente" onClick={() => setAberto(false)}
+              data-current={location.pathname === "/busca-inteligente" || undefined}
+              className="oricse-menu-trigger flex min-h-12 items-center gap-3 rounded-xl border border-border/70 px-3 text-left text-sm font-semibold transition-colors">
+              <Search className="h-5 w-5 shrink-0" />
+              <span className="flex-1">Busca Inteligente</span>
+              <ChevronDown className="-rotate-90 h-4 w-4" />
+            </Link>
+          );
           if (area.emPreparacao) return (
             <div key={area.titulo} className="flex min-h-12 items-center gap-3 rounded-xl border border-dashed border-border px-3 py-2.5">
               <Icone className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -641,7 +660,7 @@ export function MenuLateral({
                   type="button"
                   aria-label={area.emPreparacao ? `${area.titulo} · Em breve` : `Abrir ${area.titulo}`}
                   title={area.emPreparacao ? `${area.titulo} · Em breve` : area.titulo}
-                  onClick={() => abrirAreaCompacta(area.titulo)}
+                  onClick={() => area.titulo === "Busca Inteligente" ? void navigate({ to: "/busca-inteligente" }) : abrirAreaCompacta(area.titulo)}
                   data-current={(ativo && !area.emPreparacao) || undefined}
                   className="oricse-menu-item flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 transition-colors"
                 >
