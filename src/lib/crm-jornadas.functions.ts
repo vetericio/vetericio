@@ -9,7 +9,7 @@ type Registro = { id?: string; clinicaId?: string; animalId?: string; tutorId?: 
 type Tutor = { id: string; nome: string; telefone?: string | null; outro_telefone?: string | null; email?: string | null; dados?: Record<string, unknown> | null; created_at?: string | null };
 type Animal = { id: string; tutor_id: string; nome: string; dados?: Record<string, unknown> | null };
 type Agendamento = { tutor_id?: string | null; inicio?: string | null; estado?: string | null };
-type Evento = { id: string; tipo: string; tutor_id?: string | null; titulo: string; destinatario_nome: string; animal_nome: string; mensagem: string; status: string; canal: string; agendado_para: string; metadados?: Record<string, unknown> | null; chave_dedupe?: string | null };
+type Evento = { id: string; tipo: string; tutor_id?: string | null; titulo: string; destinatario_nome: string; animal_nome: string; mensagem: string; status: string; canal: string; agendado_para: string; metadados?: Record<string, string | number | boolean | null> | null; chave_dedupe?: string | null };
 type Candidato = { id: string; tutorId: string; tutorNome: string; animalNome: string; dataOrigem: string; dias: number; resumo: string; origem: "registro" | "tutor" };
 
 const EXCLUIR = /eutan[aá]s|[oó]bito|falecid|luto|destina[cç][aã]o de corpo/i;
@@ -164,7 +164,7 @@ export const prepararOportunidadeRelacionamento = createServerFn({method:"POST"}
       .eq("clinica_id",data.clinicaId).eq("chave_dedupe",chave).maybeSingle();
     if(existente)return {criado:false};
     let texto="";
-    let extras:Record<string,unknown>={servico,data_origem:elegivel.dataOrigem,animal_nome:elegivel.animalNome,
+    let extras:Record<string,unknown>={servico:data.servico,data_origem:elegivel.dataOrigem,animal_nome:elegivel.animalNome,
       criado_pela_central:true,somente_envio_humano:true};
     if(data.servico==="ausentes"){
       texto="Olá, "+nomeTutor(tutor)+"! Tudo bem? Faz um tempo que não vemos "+elegivel.animalNome+
