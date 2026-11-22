@@ -1,32 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
-import { fonteClinicaElegivel, gerarTarefasPosCirurgicas, mensagemPosCirurgica, type RegistroPersistido } from "@/lib/crm-pos-cirurgico";
+import { fonteClinicaElegivel, gerarTarefasPosCirurgicas, mensagemPosCirurgica, type RegistroPersistido, type FontePosCirurgica } from "@/lib/crm-pos-cirurgico";
 
 const input = z.object({
   accessToken: z.string().min(20),
   clinicaId: z.string().uuid(),
 });
-
-export type FontePosCirurgica = {
-  id: string;
-  clinicaId: string;
-  animalId: string;
-  tutorId: string;
-  animalNome: string;
-  tutorNome: string;
-  dataProcedimento: string;
-  dataAlta: string | null;
-  autorNome: string;
-  acompanhamentoAprovado: true;
-  obitoRegistrado: boolean;
-  telefone: string;
-  outroTelefone: string;
-  email: string;
-  autorizaLembretes: boolean;
-  autorizaWhatsapp: boolean;
-  autorizaEmail: boolean;
-};
 
 function parseProntuario(estado: unknown): unknown[] {
   if (!estado || typeof estado !== "object" || Array.isArray(estado)) return [];
