@@ -11,6 +11,7 @@ export const LINKS_MENU = [
   { to: "/internacao", rotulo: "Plantão" },
   { to: "/consultorio", rotulo: "Consultório" },
   { to: "/recepcao", rotulo: "Recepção" },
+  { to: "/busca-inteligente", rotulo: "Busca Inteligente" },
   { to: "/financeiro", rotulo: "Financeiro" },
   { to: "/estoque", rotulo: "Serviços / Estoque" },
 ] as const;
