@@ -28,8 +28,7 @@ create table if not exists public.oricse_crm_retornos (
 );
 
 create unique index if not exists oricse_crm_retorno_origem_unica
- on public.oricse_crm_retornos (clinica_id,origem,origem_id)
- where origem_id is not null;
+ on public.oricse_crm_retornos (clinica_id,origem,origem_id);
 create index if not exists oricse_crm_retornos_clinica_data
  on public.oricse_crm_retornos (clinica_id,status,data_prevista);
 create index if not exists oricse_crm_retornos_animal
