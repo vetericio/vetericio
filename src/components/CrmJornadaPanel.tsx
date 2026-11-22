@@ -92,13 +92,16 @@ export function CrmJornadaPanel({ clinicaId, tipo, podeOperar }: {
       if(tipo==="pos-cirurgico"){
         setFontes(resp as Fonte[]);setCandidatos([]);
       }else{
-        const dados=resp as {candidatos:Candidato[];eventos:Evento[];destinatarios:DestinatarioPesquisa[]};
+        // Os dois serviços usam um resultado com candidatos e destinatários;
+        // a origem cirúrgica é uma lista, tratada em outro caminho.
+        const dados=Array.isArray(resp) ? null : resp;
+        if(!dados)throw new Error("Resposta inesperada da Central de Relacionamento.");
         setCandidatos(dados.candidatos);
         setDestinatarios(tipo==="satisfacao"?dados.destinatarios:[]);
         setFontes([]);
       }
       const eventosFonte=tipo==="pos-cirurgico" ? (lista.data||[]) as Evento[]
-        : (resp as {eventos:Evento[]}).eventos;
+        : Array.isArray(resp) ? [] : resp.eventos;
       setEventos(eventosFonte.filter(e=>
         tipo!=="pos-cirurgico" || String(e.chave_dedupe||"").startsWith("pos_cirurgico:registro:")
       ));
