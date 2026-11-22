@@ -54,7 +54,7 @@ type Tutor = {
   telefone?: string;
   outroTelefone?: string;
 };
-type Animal = { id: string; nome: string; tutorId: string; especie?: string; pesoKg: number | null };
+type Animal = { id: string; nome: string; tutorId: string; especie?: string; sexo?: string; pesoKg: number | null };
 type Responsavel = { id: string; nome: string };
 
 const ORIGENS: OrigemComanda[] = ["Recepção", "Consultório", "Internação"];
@@ -228,7 +228,7 @@ export function Comandas() {
       try {
         const [tutoresResp, animaisResp] = await Promise.all([
           (supabaseBanco as any).from("tutores").select("id,nome,codigo_publico,cpf,telefone,dados").eq("clinica_id", clinicaId).order("nome"),
-          (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,peso_kg,dados").eq("clinica_id", clinicaId).order("nome"),
+          (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,sexo,peso_kg,dados").eq("clinica_id", clinicaId).order("nome"),
         ]);
         if (tutoresResp.error) throw tutoresResp.error;
         if (animaisResp.error) throw animaisResp.error;
@@ -244,6 +244,7 @@ export function Comandas() {
           id: String(a.id), nome: String(a.nome || a.dados?.nome || "Animal"),
           tutorId: String(a.tutor_id || a.dados?.tutorId || ""),
           especie: String(a.especie || a.dados?.especie || ""),
+          sexo: String(a.sexo || a.dados?.sexo || ""),
           pesoKg: a.peso_kg == null ? null : Number(a.peso_kg),
         })));
         setErroCadastros("");
@@ -920,6 +921,8 @@ export function Comandas() {
                       <AprovarPrecoPorPeso
                         item={servicoComFaixas}
                         pesoInicial={animais.find(a => a.id === comandaSelecionada.animalId)?.pesoKg ?? null}
+                        especie={animais.find(a => a.id === comandaSelecionada.animalId)?.especie}
+                        sexo={animais.find(a => a.id === comandaSelecionada.animalId)?.sexo}
                         aprovadoPor={responsavel.nome}
                         onAprovar={aprovacao => {
                           setPrecoPesoAprovado(aprovacao);
