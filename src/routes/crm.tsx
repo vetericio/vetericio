@@ -656,21 +656,6 @@ function Crm() {
 
     </section>}
 
-    <nav aria-label="Abas da Central de Relacionamento" className="mt-6 flex gap-2 overflow-x-auto rounded-2xl border bg-card p-2">
-      <button type="button" onClick={() => abrirSecao()}
-        aria-current={visao==="inicio"?"page":undefined}
-        className={"min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold "+(visao==="inicio"?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted")}>
-        Início
-      </button>
-      {SECOES_CRM.filter(item => item.id!=="config" || podeGerenciar).map(item=>
-        <button key={item.id} type="button" onClick={() => abrirSecao(item.id)}
-          aria-current={visao===item.id?"page":undefined}
-          className={"min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold "+(visao===item.id?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted")}>
-          {item.nome}
-        </button>
-      )}
-    </nav>
-
     {visao !== "inicio" && <div className="mt-6 flex flex-wrap items-center gap-3">
       <button type="button" onClick={() => abrirSecao()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold hover:bg-muted">
         <ArrowLeft size={17} aria-hidden="true"/> Todas as opções
