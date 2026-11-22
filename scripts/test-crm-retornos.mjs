@@ -34,7 +34,7 @@ assert.match(crm,/CrmRetornosPanel/);
 assert.match(crm,/visao === "retornos"/);
 assert.match(crm,/visao === "campanhas"/);
 assert.match(navegacao,/CRM_EM_PREPARACAO = false/);
-assert.match(menu,/Retornos, lembretes e campanhas/);
+assert.match(menu,/Abrir Central/);
 assert.match(menu,/Central de Relacionamento/);
 const [tutoresTela, migracaoLiberacao, seed] = await Promise.all([
   readFile("src/routes/tutores.tsx","utf8"),
@@ -70,7 +70,25 @@ assert.match(schema,/v_tutor\.telefone/);
 assert.match(schema,/v_tutor\.email/);
 // Regressão de performance: Retornos não depende da fila e sincronização
 // de reforços não pode bloquear a primeira leitura.
-assert.match(crm,/if \(visao !== "fila"\)/);
+assert.match(crm,/if \(!carregaFila\)/);
+assert.match(crm,/validateSearch: /);
+assert.match(crm,/const visao = secao \?\? "inicio"/);
+assert.match(crm,/Escolha o que deseja fazer/);
+assert.match(crm,/Todas as opções/);
+assert.match(crm,/Retornos e cuidados/);
+assert.match(crm,/Fila de mensagens/);
+assert.match(crm,/Histórico de contatos/);
+assert.match(crm,/Modelos de mensagens/);
+assert.match(crm,/Configurações/);
+assert.match(crm,/Próximos serviços/);
+assert.match(crm,/Pós-cirúrgico inteligente/);
+assert.match(crm,/Orçamentos pendentes/);
+assert.match(crm,/Pesquisa de satisfação/);
+assert.match(crm,/onAbrirFila=\{\(\) => abrirSecao\("fila"\)\}/);
+assert.match(crm,/carregaFila && \(carregando \?/);
+assert.doesNotMatch(crm,/Seções da Central de Relacionamento/);
+assert.doesNotMatch(crm,/const \[visao, setVisao\]/);
+assert.doesNotMatch(crm,/const \[aba, setAba\]/);
 assert.match(crm,/lazy\(\(\) => import\("@\/components\/Crm360Panel"\)/);
 assert.match(panel,/const \[resposta, pets, pais\] = await Promise\.all/);
 assert.match(panel,/sincronizar: true/);

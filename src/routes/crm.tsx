@@ -1,6 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarClock, Check, Mail, MessageCircle, RefreshCw, Settings2, Sparkles } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, ClipboardList, FileText, HeartPulse, History, LayoutGrid, Mail, Megaphone, MessageCircle, RefreshCw, Settings2, Sparkles, Star, Users } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,10 +8,32 @@ import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
-import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
+const CrmRetornosPanel = lazy(() => import("@/components/CrmRetornosPanel").then(m => ({ default: m.CrmRetornosPanel })));
 const CrmModelosDaCentral = lazy(() => import("@/components/CrmModelosDaCentral").then(m => ({ default: m.CrmModelosDaCentral })));
 
+type SecaoCrm = "retornos" | "campanhas" | "fila" | "historico" | "modelos" | "config";
+const SECOES_CRM = [
+  { id: "retornos", nome: "Retornos e cuidados", resumo: "Consultas de retorno, vacinas, vermífugos e exames.", icone: CalendarClock, grupo: "rotina" },
+  { id: "campanhas", nome: "Campanhas", resumo: "Comunique novidades e organize ações de relacionamento.", icone: Megaphone, grupo: "rotina" },
+  { id: "fila", nome: "Fila de mensagens", resumo: "Acompanhe os contatos que precisam de atenção.", icone: MessageCircle, grupo: "rotina" },
+  { id: "historico", nome: "Histórico de contatos", resumo: "Consulte mensagens concluídas e ações anteriores.", icone: History, grupo: "gestao" },
+  { id: "modelos", nome: "Modelos de mensagens", resumo: "Personalize os textos utilizados pela equipe.", icone: FileText, grupo: "gestao" },
+  { id: "config", nome: "Configurações", resumo: "Defina lembretes, prazos e automações da clínica.", icone: Settings2, grupo: "gestao" },
+] as const;
+
+const PROXIMOS_SERVICOS = [
+  { nome: "Pós-cirúrgico inteligente", resumo: "Acompanhamento em etapas após a alta.", icone: HeartPulse, andamento: "Em testes" },
+  { nome: "Clientes ausentes", resumo: "Recuperação de tutores sem novos atendimentos.", icone: Users, andamento: "Em preparação" },
+  { nome: "Orçamentos pendentes", resumo: "Acompanhamento de propostas ainda não aprovadas.", icone: ClipboardList, andamento: "Em preparação" },
+  { nome: "Pesquisa de satisfação", resumo: "Avaliação do atendimento e oportunidades de melhoria.", icone: Star, andamento: "Em preparação" },
+] as const;
+
 export const Route = createFileRoute("/crm")({
+  validateSearch: ({ secao, oricse_build }: Record<string, unknown>): { secao?: SecaoCrm; oricse_build?: string } => ({
+    secao: typeof secao === "string" && SECOES_CRM.some(item => item.id === secao)
+      ? secao as SecaoCrm : undefined,
+    oricse_build: typeof oricse_build === "string" ? oricse_build : undefined,
+  }),
   component: CRM_EM_PREPARACAO ? CrmEmPreparacao : Crm,
 });
 
@@ -32,7 +54,6 @@ function CrmEmPreparacao() {
 type TipoCrm = "aniversario" | "vacina" | "lembrete_consulta" | "retorno" | "pos_cirurgico" | "inativo" | "campanha" | "resultado_exame" | "documento_portal" | "receita_portal" | "cobranca" | "hotelzinho" | "banho_tosa" | "pesquisa_satisfacao";
 type CanalCrm = "whatsapp" | "email" | "manual";
 type StatusCrm = "pendente" | "enviado" | "ignorado" | "cancelado";
-type Aba = "fila" | "historico" | "modelos" | "config";
 
 type CrmConfig = {
   clinica_id: string;
@@ -285,9 +306,14 @@ async function comTempoLimite<T>(promessa: Promise<T>, milissegundos = 20000): P
 }
 
 function Crm() {
+  const navigate = useNavigate();
+  const { secao } = Route.useSearch();
+  const visao = secao ?? "inicio";
   const { carregando: carregandoPermissoes, clinicaId, pode, adminGlobal } = usePermissoes();
-  const [aba, setAba] = useState<Aba>("fila");
-  const [visao, setVisao] = useState<"retornos" | "campanhas" | "fila">("retornos");
+  const carregaFila = visao === "fila" || visao === "historico" || visao === "modelos" || visao === "config";
+  function abrirSecao(destino?: SecaoCrm) {
+    void navigate({ to: "/crm", search: (antes) => ({ ...antes, secao: destino }) });
+  }
   const [config, setConfig] = useState<CrmConfig | null>(null);
   const [modelos, setModelos] = useState<ModeloCrm[]>([]);
   const [eventos, setEventos] = useState<EventoCrm[]>([]);
@@ -496,7 +522,7 @@ function Crm() {
     }
     // O painel inicial de Retornos e a área de Campanhas consultam seus próprios
     // dados. Não bloquear a rota com configurações e eventos da fila legada.
-    if (visao !== "fila") {
+    if (!carregaFila) {
       setErroCarregamento("");
       setCarregando(false);
       return;
@@ -534,7 +560,7 @@ function Crm() {
     }
     void carregar();
     return () => { ativo = false; };
-  }, [carregandoPermissoes, clinicaId, tentativa, visao]);
+  }, [carregandoPermissoes, clinicaId, tentativa, carregaFila]);
 
   const pendentes = useMemo(() => eventos.filter((evento) => evento.status === "pendente"), [eventos]);
   const vencidos = useMemo(() => pendentes.filter((evento) => new Date(evento.agendado_para).getTime() < Date.now()), [pendentes]);
@@ -590,7 +616,7 @@ function Crm() {
     toast.success("Modelo de mensagem salvo.");
   }
 
-  if (carregandoPermissoes || carregando) {
+  if (carregandoPermissoes) {
     return <main className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">Carregando CRM...</main>;
   }
 
@@ -620,53 +646,83 @@ function Crm() {
       {visao === "fila" && podeOperar && <button type="button" disabled={sincronizando || carregando} onClick={() => void sincronizarComDados()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><RefreshCw size={17} className={sincronizando ? "animate-spin" : ""}/>{sincronizando ? "Sincronizando..." : "Sincronizar agora"}</button>}
     </header>
 
-    <nav aria-label="Seções da Central de Relacionamento" className="mt-6 flex flex-wrap gap-2 rounded-2xl border bg-card p-2">
-      {([
-        ["retornos","Retornos e cuidados"],
-        ["campanhas","Campanhas"],
-        ["fila","Fila e mensagens"],
-      ] as const).map(([id,nome]) => <button key={id} type="button"
-        aria-pressed={visao === id} onClick={()=>setVisao(id)}
-        className={"min-h-11 flex-1 rounded-xl px-4 text-sm font-bold transition-colors " +
-          (visao===id?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted")}>
-        {nome}
-      </button>)}
-    </nav>
+    {visao === "inicio" && <section aria-labelledby="crm-opcoes-titulo" className="mt-7">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-primary"><LayoutGrid size={20}/><h2 id="crm-opcoes-titulo" className="text-xl font-black">Escolha o que deseja fazer</h2></div>
+          <p className="mt-1 text-sm text-muted-foreground">Cada serviço tem seu próprio espaço. Selecione uma opção para abrir.</p>
+        </div>
+      </div>
+      <div role="navigation" aria-label="Serviços disponíveis da Central" className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {SECOES_CRM.map(item => {
+          const Icone = item.icone;
+          const restrito = item.id === "config" && !podeGerenciar;
+          return <button key={item.id} type="button" disabled={restrito} onClick={() => abrirSecao(item.id)}
+            className="group flex min-h-40 flex-col items-start rounded-3xl border border-primary/15 bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Icone size={24} aria-hidden="true"/></span>
+            <span className="mt-4 flex w-full items-center justify-between gap-2">
+              <span className="text-lg font-black leading-snug">{item.nome}</span>
+              {!restrito && <ArrowRight size={18} className="shrink-0 text-primary transition-transform group-hover:translate-x-1" aria-hidden="true"/>}
+            </span>
+            <span className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.resumo}</span>
+            {restrito && <span className="mt-3 text-xs font-semibold text-muted-foreground">Acesso de gestor</span>}
+          </button>;
+        })}
+      </div>
+      <div className="mt-8 rounded-3xl border border-dashed border-primary/20 bg-card/60 p-5">
+        <h2 className="text-base font-black">Próximos serviços</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Funcionalidades aprovadas no planejamento, mas ainda não disponíveis para uso.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {PROXIMOS_SERVICOS.map(item => {
+            const Icone = item.icone;
+            return <div key={item.nome} className="flex items-start gap-3 rounded-2xl border bg-background/80 p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Icone size={20} aria-hidden="true"/></span>
+              <div>
+                <p className="font-bold">{item.nome}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.resumo}</p>
+                <p className="mt-2 text-xs font-semibold text-muted-foreground">{item.andamento}</p>
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>
+    </section>}
 
-    {visao === "retornos" && <div className="mt-5">
-      <CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} />
+    {visao !== "inicio" && <div className="mt-6 flex flex-wrap items-center gap-3">
+      <button type="button" onClick={() => abrirSecao()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold hover:bg-muted">
+        <ArrowLeft size={17} aria-hidden="true"/> Todas as opções
+      </button>
+      <span className="text-sm font-semibold text-muted-foreground">{SECOES_CRM.find(item => item.id === visao)?.nome}</span>
     </div>}
+
+    {visao === "retornos" && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Carregando retornos...</div>}>
+      <div className="mt-5"><CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} /></div>
+    </Suspense>}
     {visao === "campanhas" && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Preparando campanhas...</div>}>
       <Crm360Panel
         clinicaId={clinicaId}
         podeCampanhas={adminGlobal || pode("crm.campanhas") || pode("crm.gerenciar")}
         podeOperar={podeOperar}
-        onAbrirFila={() => { setVisao("fila"); setAba("fila");
-          window.setTimeout(() => document.getElementById("crm-fila")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-        }}
+        onAbrirFila={() => abrirSecao("fila")}
       />
     </Suspense>}
 
-    {visao === "fila" && <>
-    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+    {carregaFila && (carregando ? <div className="mt-5 rounded-2xl border bg-card p-6 text-sm text-muted-foreground" role="status">Carregando dados desta área...</div> : <>
+    {(visao === "fila" || visao === "historico") && <div className="mt-5 grid gap-3 sm:grid-cols-3">
       <Resumo titulo="Pendentes" valor={pendentes.length} detalhe="contatos na fila" />
       <Resumo titulo="Para hoje" valor={hoje.length} detalhe="ações previstas hoje" />
       <Resumo titulo="Atrasados" valor={vencidos.length} detalhe="precisam de atenção" destaque={vencidos.length > 0} />
-    </div>
+    </div>}
 
-    <nav className="mt-5 flex gap-1 overflow-x-auto rounded-xl border bg-card p-1">
-      {([['fila','Fila'],['historico','Histórico'],['modelos','Mensagens'],['config','Configurações']] as Array<[Aba,string]>).filter(([id]) => id !== 'config' || podeGerenciar).map(([id, rotulo]) => <button key={id} type="button" onClick={() => setAba(id)} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold ${aba === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{rotulo}</button>)}
-    </nav>
-
-    {aba === "fila" && <section id="crm-fila" className="mt-5 space-y-3">
+    {visao === "fila" && <section id="crm-fila" className="mt-5 space-y-3">
       {pendentes.length ? pendentes.map((evento) => <EventoCard key={evento.id} evento={evento} podeOperar={podeOperar} salvando={salvando === evento.id} onContato={abrirContato} onStatus={alterarStatus}/>) : <Vazio texto="Nenhum contato pendente. Use “Sincronizar agora” para verificar aniversários, reforços e agenda."/>}
     </section>}
 
-    {aba === "historico" && <section className="mt-5 space-y-3">
+    {visao === "historico" && <section className="mt-5 space-y-3">
       {historico.length ? historico.map((evento) => <EventoCard key={evento.id} evento={evento} podeOperar={false} salvando={false} onContato={abrirContato} onStatus={alterarStatus}/>) : <Vazio texto="Ainda não há contatos concluídos ou ignorados."/>}
     </section>}
 
-    {aba === "modelos" && <section className="mt-5 grid gap-4 lg:grid-cols-2">
+    {visao === "modelos" && <section className="mt-5 grid gap-4 lg:grid-cols-2">
       {clinicaId && <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">Carregando modelos...</p>}>
         <CrmModelosDaCentral clinicaId={clinicaId} modelos={modelos} podeGerenciar={podeGerenciar}
           onAtualizados={(alteracoes)=>setModelos(lista=>lista.map(m=>{
@@ -686,7 +742,7 @@ function Crm() {
       </article>)}
     </section>}
 
-    {aba === "config" && config && podeGerenciar && <section className="mt-5 rounded-2xl border bg-card p-5 shadow-sm">
+    {visao === "config" && config && podeGerenciar && <section className="mt-5 rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex items-center gap-2"><Settings2 size={20} className="text-primary"/><h2 className="text-xl font-black">Automações da clínica</h2></div>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <Toggle rotulo="Aniversários" checked={config.gerar_aniversarios} onChange={(v) => setConfig({ ...config, gerar_aniversarios: v })}/>
@@ -703,7 +759,7 @@ function Crm() {
       </div>
       <button type="button" disabled={salvando === "config"} onClick={() => void salvarConfig()} className="mt-5 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50">Salvar configurações</button>
     </section>}
-    </>}
+    </>)}
   </main>;
 }
 
