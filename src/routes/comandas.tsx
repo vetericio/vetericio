@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import { digitarCentavos } from "@/lib/moeda-centavos";
 import { supabase, supabaseBanco, supabaseConfigurado } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { AprovarPrecoPorPeso } from "@/components/AprovarPrecoPorPeso";
+import { faixasValidas, type AprovacaoPrecoPeso } from "@/lib/preco-por-peso";
 import { type ItemCatalogo, type RegraComissao, percentualComissaoNaData } from "@/lib/comissoes";
 import {
   type Comanda,
@@ -52,7 +54,7 @@ type Tutor = {
   telefone?: string;
   outroTelefone?: string;
 };
-type Animal = { id: string; nome: string; tutorId: string; especie?: string };
+type Animal = { id: string; nome: string; tutorId: string; especie?: string; pesoKg: number | null };
 type Responsavel = { id: string; nome: string };
 
 const ORIGENS: OrigemComanda[] = ["Recepção", "Consultório", "Internação"];
@@ -118,6 +120,7 @@ export function Comandas() {
   const [catalogoItemId, setCatalogoItemId] = useState("");
   const [quantidadeItem, setQuantidadeItem] = useState("1");
   const [valorItem, setValorItem] = useState("");
+  const [precoPesoAprovado, setPrecoPesoAprovado] = useState<AprovacaoPrecoPeso | null>(null);
   const [catalogo, setCatalogo] = useState<ItemCatalogo[]>([]);
   const [regrasComissao, setRegrasComissao] = useState<RegraComissao[]>([]);
   const [carregandoConfiguracaoComissao, setCarregandoConfiguracaoComissao] = useState(true);
@@ -170,9 +173,9 @@ export function Comandas() {
           return;
         }
         const [itensResult, regrasResult] = await Promise.all([
-          supabase
+          (supabase as any)
             .from("oricse_catalogo_itens")
-            .select("id,clinica_id,tipo,nome,categoria,valor,estoque_atual,estoque_minimo,ativo")
+            .select("id,clinica_id,tipo,nome,categoria,valor,estoque_atual,estoque_minimo,ativo,faixas_peso")
             .eq("clinica_id", vinculo.clinica_id)
             .eq("ativo", true)
             .order("nome"),
@@ -225,7 +228,7 @@ export function Comandas() {
       try {
         const [tutoresResp, animaisResp] = await Promise.all([
           (supabaseBanco as any).from("tutores").select("id,nome,codigo_publico,cpf,telefone,dados").eq("clinica_id", clinicaId).order("nome"),
-          (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,dados").eq("clinica_id", clinicaId).order("nome"),
+          (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,peso_kg,dados").eq("clinica_id", clinicaId).order("nome"),
         ]);
         if (tutoresResp.error) throw tutoresResp.error;
         if (animaisResp.error) throw animaisResp.error;
@@ -241,6 +244,7 @@ export function Comandas() {
           id: String(a.id), nome: String(a.nome || a.dados?.nome || "Animal"),
           tutorId: String(a.tutor_id || a.dados?.tutorId || ""),
           especie: String(a.especie || a.dados?.especie || ""),
+          pesoKg: a.peso_kg == null ? null : Number(a.peso_kg),
         })));
         setErroCadastros("");
       } catch (error) {
@@ -311,6 +315,9 @@ export function Comandas() {
   }, [busca, comandasVisiveis, mostrarHistorico]);
 
   const comandaSelecionada = comandasVisiveis.find((comanda) => comanda.id === comandaSelecionadaId);
+  const servicoComFaixas = catalogo.find(item =>
+    item.id === catalogoItemId && item.tipo === "servico" &&
+    faixasValidas(item.faixas_peso).length > 0);
 
   function salvarEstado(proximas: Comanda[]): boolean {
     try {
@@ -367,6 +374,11 @@ export function Comandas() {
       return void toast.error(
         "Não foi possível carregar as regras de comissão. Atualize a página antes de incluir itens.",
       );
+    if (servicoComFaixas && (!precoPesoAprovado ||
+      !Number.isFinite(precoPesoAprovado.valorAprovado) ||
+      Number(valorItem) !== precoPesoAprovado.valorAprovado)) {
+      return void toast.error("Confira o peso e aprove o valor antes de incluir o serviço.");
+    }
     const quantidade = Number(quantidadeItem);
     const valorInformado = parseValorMonetario(valorItem);
     const unitario = Math.round((valorInformado + Number.EPSILON) * 100) / 100;
@@ -388,6 +400,7 @@ export function Comandas() {
       criadoEm: criadoEm.toISOString(),
       criadoPor: responsavel.nome,
       ...(catalogoItemId ? { catalogoItemId } : {}),
+      ...(servicoComFaixas && precoPesoAprovado ? { precoPorPeso: precoPesoAprovado } : {}),
       tipo: catalogo.find((catalogoItem) => catalogoItem.id === catalogoItemId)?.tipo || "avulso",
       diaComissao,
       percentualComissao: percentual,
@@ -404,6 +417,7 @@ export function Comandas() {
       return;
     setDescricaoItem("");
     setCatalogoItemId("");
+    setPrecoPesoAprovado(null);
     setQuantidadeItem("1");
     setValorItem("");
     toast.success("Item incluído na comanda.");
@@ -839,9 +853,13 @@ export function Comandas() {
                         const id = evento.target.value;
                         const selecionado = catalogo.find((item) => item.id === id);
                         setCatalogoItemId(id);
+                        setPrecoPesoAprovado(null);
                         if (selecionado) {
                           setDescricaoItem(selecionado.nome);
-                          setValorItem(String(selecionado.valor));
+                          setValorItem(faixasValidas(selecionado.faixas_peso).length ? "" : String(selecionado.valor));
+                        } else {
+                          setDescricaoItem("");
+                          setValorItem("");
                         }
                       }}
                       aria-label="Selecionar serviço ou produto cadastrado"
@@ -851,7 +869,7 @@ export function Comandas() {
                       {catalogo.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.nome} · {item.tipo === "servico" ? "Serviço" : "Produto"} ·{" "}
-                          {dinheiro(item.valor)}
+                          {faixasValidas(item.faixas_peso).length ? "Aprovação por peso" : dinheiro(item.valor)}
                         </option>
                       ))}
                     </select>
@@ -860,6 +878,7 @@ export function Comandas() {
                         value={descricaoItem}
                         onChange={(evento) => {
                           setDescricaoItem(evento.target.value);
+                          setPrecoPesoAprovado(null);
                           if (
                             catalogoItemId &&
                             evento.target.value !==
@@ -884,6 +903,7 @@ export function Comandas() {
                       <input
                         value={valorItem}
                         onChange={(evento) => setValorItem(digitarCentavos(evento.target.value))}
+                        disabled={Boolean(servicoComFaixas)}
                         inputMode="decimal"
                         placeholder="Valor unitário"
                         aria-label="Valor unitário"
@@ -896,6 +916,27 @@ export function Comandas() {
                         <Plus size={16} /> Incluir
                       </button>
                     </div>
+                    {servicoComFaixas && <div className="mt-3">
+                      <AprovarPrecoPorPeso
+                        item={servicoComFaixas}
+                        pesoInicial={animais.find(a => a.id === comandaSelecionada.animalId)?.pesoKg ?? null}
+                        aprovadoPor={responsavel.nome}
+                        onAprovar={aprovacao => {
+                          setPrecoPesoAprovado(aprovacao);
+                          setValorItem(String(aprovacao.valorAprovado));
+                          toast.success("Preço aprovado. Clique em Incluir para lançar na comanda.");
+                        }}
+                        onCancelar={() => {
+                          setCatalogoItemId("");
+                          setPrecoPesoAprovado(null);
+                          setDescricaoItem("");
+                          setValorItem("");
+                        }}
+                      />
+                      {precoPesoAprovado && <p className="mt-2 text-xs font-bold text-primary">
+                        Valor aprovado por {precoPesoAprovado.aprovadoPor}: {precoPesoAprovado.faixaEscolhida}.
+                      </p>}
+                    </div>}
                     {erroConfiguracaoComissao ? (
                       <p className="mt-2 text-xs font-medium text-rose-700">
                         Não foi possível carregar as regras. Atualize a página para adicionar itens

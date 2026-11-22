@@ -10,6 +10,8 @@ import { type ItemComanda as ItemComandaPersistida, dataLocalISO, parseValorMone
 
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Receituario } from "@/components/Receituario";
+import { AprovarPrecoPorPeso } from "@/components/AprovarPrecoPorPeso";
+import { faixasValidas, type AprovacaoPrecoPeso } from "@/lib/preco-por-peso";
 import { Medicacoes } from "@/components/Medicacoes";
 import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 import type { Medicacao } from "@/lib/ficha";
@@ -31,8 +33,8 @@ type ConsultaForm = {
   peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; medicacoesDetalhadas: Medicacao[]; conduta: string; retorno: string; retornoEm: string;
 };
 type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anestesia: string; achados: string; materiais: string; intercorrencias: string; posOperatorio: string; observacoes: string };
-type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null };
-type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean };
+type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null; faixas_peso?: unknown };
+type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean; precoPorPeso?: AprovacaoPrecoPeso };
 
 const ANIMAIS_KEY = "oricse-animais-v1";
 const TUTORES_KEY = "oricse-tutores-v1";
@@ -138,6 +140,7 @@ function RegistroClinico(){
   const [catalogoCarregando,setCatalogoCarregando]=useState(true);
   const [catalogoAviso,setCatalogoAviso]=useState("");
   const [itemCatalogoId,setItemCatalogoId]=useState("");
+  const [precoPorPesoPendente,setPrecoPorPesoPendente]=useState<{item:ItemCatalogo;linhaId?:string}|null>(null);
   const [itensComanda,setItensComanda]=useState<ItemComanda[]>([]);
   const [responsavel,setResponsavel]=useState({id:"",nome:"Equipe clínica",crmv:""});
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}${agendamentoId ? "-" + agendamentoId : ""}`;
@@ -167,18 +170,46 @@ function RegistroClinico(){
   }, []);
   useEffect(()=>{ if(!animalId)return; try{const salvo=oricseStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}else if(animal?.peso)setConsulta(atual=>({...atual,peso:atual.peso||animal.peso||""}));}catch{} },[animalId,animal?.peso]);
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
-  useEffect(()=>{ let ativo=true; async function carregarCatalogo(){
-    if(!clinicaAnimalId)return;
-    try{
-      const {data:itens,error}=await (supabase as any).from("clinica_catalogo_itens").select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaAnimalId).eq("ativo",true).order("nome");
-      if(error)throw error;
-      if(ativo){setCatalogo(itens||[]);setCatalogoAviso("");}
-    }catch(error){if(ativo)setCatalogoAviso((error as Error).message||"Não foi possível carregar serviços e produtos.");}
-    finally{if(ativo)setCatalogoCarregando(false);}
-  }
-  void carregarCatalogo(); return()=>{ativo=false}; },[clinicaAnimalId]);
+  useEffect(() => {
+    let ativo = true;
+    async function carregarCatalogo() {
+      if (!clinicaAnimalId) return;
+      try {
+        const [legado,atual] = await Promise.all([
+          (supabase as any).from("clinica_catalogo_itens")
+            .select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaAnimalId).eq("ativo",true).order("nome"),
+          (supabaseBanco as any).from("oricse_catalogo_itens")
+            .select("id,tipo,nome,valor,categoria,faixas_peso").eq("clinica_id",clinicaAnimalId).eq("ativo",true).order("nome"),
+        ]);
+        if (legado.error && atual.error) throw legado.error;
+        const principais: ItemCatalogo[] = (atual.data || []).map((x:any) => ({
+          id: x.id, nome: x.nome, tipo: x.tipo, categoria: x.categoria,
+          preco: x.valor, faixas_peso: x.faixas_peso,
+        }));
+        const nomes = new Set(principais.map(x=>normalizar(x.nome)));
+        const demais: ItemCatalogo[] = (legado.data||[])
+          .filter((x:ItemCatalogo)=>!nomes.has(normalizar(x.nome)));
+        if (ativo) {
+          setCatalogo([...principais,...demais].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")));
+          setCatalogoAviso("");
+        }
+      } catch(error) {
+        if (ativo) setCatalogoAviso((error as Error).message || "Não foi possível carregar serviços e produtos.");
+      } finally {
+        if (ativo) setCatalogoCarregando(false);
+      }
+    }
+    void carregarCatalogo();
+    return () => { ativo=false; };
+  },[clinicaAnimalId]);
   useEffect(()=>{if(modo==="consulta"&&etapa===7)setReceituarioAtivado(true);},[modo,etapa]);
-  useEffect(()=>{ if(etapa!==8||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:Boolean(itemCatalogo)||Boolean(existente?.precoConfigurado) } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
+  const existingAprovado=(item?:ItemComanda)=>Boolean(item?.precoPorPeso &&
+    item.precoPorPeso.valorAprovado===numeroMoeda(item.valorUnitario));
+  useEffect(()=>{ if(etapa!==8||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario ||
+            (itemCatalogo && !faixasValidas(itemCatalogo.faixas_peso).length ? valorCampo(itemCatalogo.preco) : ""),
+          automatico:true,
+          precoConfigurado:existingAprovado(existente) || (Boolean(itemCatalogo) && !faixasValidas(itemCatalogo?.faixas_peso).length),
+          precoPorPeso:existente?.precoPorPeso } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
 
   if(carregandoAnimal)return <main className="mx-auto max-w-4xl px-4 py-8"><div className="mt-5 rounded-2xl border p-6">Carregando animal…</div></main>;
@@ -199,9 +230,45 @@ function RegistroClinico(){
     .map((categoria) => ({ categoria, itens: examesDisponiveis.filter((item) => item.categoria === categoria) }))
     .filter((grupo) => grupo.itens.length);
   const totalComanda=itensComanda.reduce((total,item)=>total+(numeroMoeda(item.valorUnitario)||0)*item.quantidade,0);
-  const itensSemPreco=itensComanda.filter(item=>numeroMoeda(item.valorUnitario)===null);
-  function adicionarItemCatalogo(){ const item=catalogo.find(cadastrado=>cadastrado.id===itemCatalogoId); if(!item)return; setItensComanda(atuais=>{ const existente=atuais.find(linha=>linha.catalogoId===item.id); return existente?atuais.map(linha=>linha.id===existente.id?{...linha,quantidade:linha.quantidade+1}:linha):[...atuais,{id:crypto.randomUUID(),catalogoId:item.id,nome:item.nome,tipo:item.tipo,quantidade:1,valorUnitario:valorCampo(item.preco),precoConfigurado:true}]; }); setItemCatalogoId(""); }
-  function atualizarItemComanda(id:string,campo:"quantidade"|"valorUnitario",valor:string){ setItensComanda(atuais=>atuais.map(item=>item.id===id?{...item,[campo]:campo==="quantidade"?Math.max(1,Math.floor(Number(valor)||1)):valor}:item)); }
+  const itensSemPreco=itensComanda.filter(item=>
+    numeroMoeda(item.valorUnitario)===null ||
+    (item.catalogoId && faixasValidas(catalogo.find(c=>c.id===item.catalogoId)?.faixas_peso).length>0 &&
+      (!item.precoPorPeso || item.precoPorPeso.valorAprovado !== numeroMoeda(item.valorUnitario))));
+  function adicionarItemCatalogo() {
+    const item=catalogo.find(cadastrado=>cadastrado.id===itemCatalogoId);
+    if(!item)return;
+    if(faixasValidas(item.faixas_peso).length) {
+      setPrecoPorPesoPendente({item});
+      return;
+    }
+    setItensComanda(atuais=>{
+      const existente=atuais.find(linha=>linha.catalogoId===item.id);
+      return existente?atuais.map(linha=>linha.id===existente.id?{...linha,quantidade:linha.quantidade+1}:linha):
+        [...atuais,{id:crypto.randomUUID(),catalogoId:item.id,nome:item.nome,tipo:item.tipo,
+        quantidade:1,valorUnitario:valorCampo(item.preco),precoConfigurado:true}];
+    });
+    setItemCatalogoId("");
+  }
+  function confirmarPrecoPorPeso(aprovacao:AprovacaoPrecoPeso) {
+    const atual=precoPorPesoPendente;
+    if(!atual)return;
+    const {item,linhaId}=atual;
+    setItensComanda(anteriores=>{
+      if(linhaId) return anteriores.map(linha=>linha.id===linhaId?
+        {...linha,valorUnitario:valorCampo(aprovacao.valorAprovado),precoConfigurado:true,precoPorPeso:aprovacao}:linha);
+      return [...anteriores,{id:crypto.randomUUID(),catalogoId:item.id,nome:item.nome,
+        tipo:item.tipo,quantidade:1,valorUnitario:valorCampo(aprovacao.valorAprovado),
+        precoConfigurado:true,precoPorPeso:aprovacao}];
+    });
+    setPrecoPorPesoPendente(null);
+    setItemCatalogoId("");
+    toast.success("Preço por peso aprovado e incluído na comanda.");
+  }
+  function atualizarItemComanda(id:string,campo:"quantidade"|"valorUnitario",valor:string){
+    setItensComanda(atuais=>atuais.map(item=>item.id===id?
+      {...item,[campo]:campo==="quantidade"?Math.max(1,Math.floor(Number(valor)||1)):valor,
+        ...(campo==="valorUnitario" && item.precoPorPeso?{precoPorPeso:undefined,precoConfigurado:false}:{})}:item));
+  }
   function removerItemComanda(id:string){ setItensComanda(atuais=>atuais.filter(item=>item.id!==id)); }
 
   function etapaPreenchida(n:number){
@@ -275,6 +342,8 @@ function RegistroClinico(){
       criadoEm: criadaEm,
       criadoPor: responsavel.nome,
       tipo: item.tipo === "exame" ? "avulso" : item.tipo,
+      ...(item.catalogoId ? { catalogoItemId: item.catalogoId } : {}),
+      ...(item.precoPorPeso ? { precoPorPeso: item.precoPorPeso } : {}),
     }));
     emEnvio.current=true;
     setSalvandoConsulta(true);
@@ -438,8 +507,28 @@ function RegistroClinico(){
               </ProtegidoPorSenha>
             </section>}
             {etapa===8&&<div className="space-y-5">
-              <section className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShoppingCart size={22}/></div><div><h3 className="text-lg font-black">Comanda desta consulta</h3><p className="text-sm text-muted-foreground">A consulta e os exames solicitados entram automaticamente. Confira os valores e acrescente o que mais será cobrado.</p></div></div><div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select value={itemCatalogoId} onChange={e=>setItemCatalogoId(e.target.value)} disabled={catalogoCarregando} className="min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-primary"><option value="">{catalogoCarregando?"Carregando serviços e produtos...":"Adicionar serviço ou produto"}</option>{catalogo.map(item=><option key={item.id} value={item.id}>{item.nome} · {moeda(Number(item.preco)||0)}</option>)}</select><button type="button" onClick={adicionarItemCatalogo} disabled={!itemCatalogoId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar</button></div>{catalogoAviso&&<p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{catalogoAviso} Você ainda pode preencher os valores manualmente.</p>}</section>
-              <section className="overflow-hidden rounded-2xl border"><div className="hidden grid-cols-[minmax(0,1fr)_90px_150px_130px_44px] gap-3 border-b bg-muted/40 px-4 py-3 text-xs font-black uppercase tracking-wide text-muted-foreground sm:grid"><span>Item</span><span>Qtd.</span><span>Valor unitário</span><span>Subtotal</span><span/></div>{itensComanda.length?itensComanda.map(item=>{const unitario=numeroMoeda(item.valorUnitario)||0;return <div key={item.id} className="grid gap-3 border-b p-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_90px_150px_130px_44px] sm:items-center"><div className="min-w-0"><div className="font-bold">{item.nome}</div><div className="mt-1 flex flex-wrap gap-1"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{item.tipo}</span>{item.automatico&&<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">automático</span>}{!item.precoConfigurado&&<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">preço não cadastrado</span>}</div></div><label className="text-xs font-bold text-muted-foreground sm:text-transparent">Quantidade<input aria-label={`Quantidade de ${item.nome}`} type="number" min="1" step="1" value={item.quantidade} onChange={e=>atualizarItemComanda(item.id,"quantidade",e.target.value)} className="mt-1 min-h-10 w-full rounded-xl border bg-white px-3 text-sm font-normal text-foreground outline-none focus:border-primary sm:mt-0"/></label><label className="text-xs font-bold text-muted-foreground sm:text-transparent">Valor unitário<input aria-label={`Valor de ${item.nome}`} inputMode="decimal" value={item.valorUnitario} onChange={e=>atualizarItemComanda(item.id,"valorUnitario",e.target.value)} placeholder="0,00" className={`mt-1 min-h-10 w-full rounded-xl border bg-white px-3 text-sm font-normal text-foreground outline-none focus:border-primary sm:mt-0 ${numeroMoeda(item.valorUnitario)===null?"border-amber-400":""}`}/></label><div><span className="text-xs font-bold text-muted-foreground sm:hidden">Subtotal</span><strong className="mt-1 block sm:mt-0">{moeda(unitario*item.quantidade)}</strong></div><button type="button" onClick={()=>removerItemComanda(item.id)} aria-label={`Remover ${item.nome}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-rose-50 hover:text-rose-600"><Trash2 size={17}/></button></div>}):<div className="p-8 text-center text-sm text-muted-foreground">Nenhum item na comanda.</div>}</section>
+              <section className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShoppingCart size={22}/></div><div><h3 className="text-lg font-black">Comanda desta consulta</h3><p className="text-sm text-muted-foreground">A consulta e os exames solicitados entram automaticamente. Confira os valores e acrescente o que mais será cobrado.</p></div></div><div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><select value={itemCatalogoId} onChange={e=>setItemCatalogoId(e.target.value)} disabled={catalogoCarregando} className="min-h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-primary"><option value="">{catalogoCarregando?"Carregando serviços e produtos...":"Adicionar serviço ou produto"}</option>{catalogo.map(item=><option key={item.id} value={item.id}>
+        {item.nome} · {faixasValidas(item.faixas_peso).length ? "Preço por peso: aprovar" : moeda(Number(item.preco)||0)}
+      </option>)}</select><button type="button" onClick={adicionarItemCatalogo} disabled={!itemCatalogoId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar</button></div>{precoPorPesoPendente && <div className="mt-3">
+        <AprovarPrecoPorPeso
+          item={precoPorPesoPendente.item}
+          pesoInicial={Number(String(consulta.peso || animal.peso || 0).replace(",", ".")) || null}
+          aprovadoPor={responsavel.nome}
+          onAprovar={confirmarPrecoPorPeso}
+          onCancelar={()=>setPrecoPorPesoPendente(null)}
+        />
+      </div>}
+      {catalogoAviso&&<p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{catalogoAviso} Você ainda pode preencher os valores manualmente.</p>}</section>
+              <section className="overflow-hidden rounded-2xl border"><div className="hidden grid-cols-[minmax(0,1fr)_90px_150px_130px_44px] gap-3 border-b bg-muted/40 px-4 py-3 text-xs font-black uppercase tracking-wide text-muted-foreground sm:grid"><span>Item</span><span>Qtd.</span><span>Valor unitário</span><span>Subtotal</span><span/></div>{itensComanda.length?itensComanda.map(item=>{const unitario=numeroMoeda(item.valorUnitario)||0;return <div key={item.id} className="grid gap-3 border-b p-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_90px_150px_130px_44px] sm:items-center"><div className="min-w-0"><div className="font-bold">{item.nome}</div><div className="mt-1 flex flex-wrap gap-1"><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">{item.tipo}</span>{item.automatico&&<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">automático</span>}{!item.precoConfigurado&&<span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">preço não aprovado</span>}
+      {item.precoPorPeso && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+        {item.precoPorPeso.faixaEscolhida} · Aprovado por {item.precoPorPeso.aprovadoPor}
+      </span>}
+      {item.catalogoId && faixasValidas(catalogo.find(c=>c.id===item.catalogoId)?.faixas_peso).length>0 &&
+        <button type="button" onClick={()=>{const encontrado=catalogo.find(c=>c.id===item.catalogoId);if(encontrado)setPrecoPorPesoPendente({item:encontrado,linhaId:item.id});}}
+          className="rounded-full border px-2 py-0.5 text-[10px] font-bold text-primary">
+          Reaprovar valor
+        </button>}</div></div><label className="text-xs font-bold text-muted-foreground sm:text-transparent">Quantidade<input aria-label={`Quantidade de ${item.nome}`} type="number" min="1" step="1" value={item.quantidade} onChange={e=>atualizarItemComanda(item.id,"quantidade",e.target.value)} className="mt-1 min-h-10 w-full rounded-xl border bg-white px-3 text-sm font-normal text-foreground outline-none focus:border-primary sm:mt-0"/></label><label className="text-xs font-bold text-muted-foreground sm:text-transparent">Valor unitário<input aria-label={`Valor de ${item.nome}`} inputMode="decimal" value={item.valorUnitario} disabled={Boolean(item.catalogoId && faixasValidas(catalogo.find(c=>c.id===item.catalogoId)?.faixas_peso).length)}
+      onChange={e=>atualizarItemComanda(item.id,"valorUnitario",e.target.value)} placeholder="0,00" className={`mt-1 min-h-10 w-full rounded-xl border bg-white px-3 text-sm font-normal text-foreground outline-none focus:border-primary sm:mt-0 ${numeroMoeda(item.valorUnitario)===null?"border-amber-400":""}`}/></label><div><span className="text-xs font-bold text-muted-foreground sm:hidden">Subtotal</span><strong className="mt-1 block sm:mt-0">{moeda(unitario*item.quantidade)}</strong></div><button type="button" onClick={()=>removerItemComanda(item.id)} aria-label={`Remover ${item.nome}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-rose-50 hover:text-rose-600"><Trash2 size={17}/></button></div>}):<div className="p-8 text-center text-sm text-muted-foreground">Nenhum item na comanda.</div>}</section>
               <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950 p-5 text-white"><div><p className="text-xs font-bold uppercase tracking-wide text-white/60">Total da comanda</p><p className="mt-1 text-3xl font-black">{moeda(totalComanda)}</p></div><div className="text-right text-sm text-white/70"><p>{tutor?.nome||"Tutor não informado"}</p><p>{animal.nome}</p></div></section>
             </div>}
           </div>

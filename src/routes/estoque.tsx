@@ -1,6 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LeitorCodigoBarrasCamera } from "@/components/LeitorCodigoBarrasCamera";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/comissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { faixasValidas, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
@@ -29,6 +30,8 @@ type ItemForm = {
   estoque_minimo: string;
   codigo_barras: string;
   venda_por_peso: boolean;
+  preco_por_peso: boolean;
+  faixas_peso: { ateKg: string; valor: string }[];
 };
 
 const CATEGORIAS_SERVICOS = ["Consultas", "Vacinação", "Vermifugação", "Exames laboratoriais", "Diagnóstico por imagem", "Cirurgias", "Internação", "Procedimentos", "Odontologia", "Banho e tosa", "Atendimento domiciliar", "Outros"];
@@ -50,6 +53,8 @@ const FORM_VAZIO: ItemForm = {
   estoque_minimo: "",
   codigo_barras: "",
   venda_por_peso: false,
+  preco_por_peso: false,
+  faixas_peso: [],
 };
 
 function dinheiro(valor: number) {
@@ -68,6 +73,10 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   const [remuneracoes, setRemuneracoes] = useState<RemuneracaoFuncionario[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modal, setModal] = useState<ItemForm | null>(null);
+  const [agruparAberto, setAgruparAberto] = useState(false);
+  const [nomeGrupo, setNomeGrupo] = useState("");
+  const [servicosParaAgrupar, setServicosParaAgrupar] = useState<{id:string;ateKg:string}[]>([]);
+  const [agrupando, setAgrupando] = useState(false);
   const [quantidadesEstoque, setQuantidadesEstoque] = useState<Record<string, string>>({});
   const [salvandoEstoque, setSalvandoEstoque] = useState<string | null>(null);
   const [historicoEstoque, setHistoricoEstoque] = useState<Array<{id:string;item_nome:string;tipo:string;quantidade:number;estoque_anterior:number;estoque_posterior:number;registrado_em:string}>>([]);
@@ -277,7 +286,21 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     if (!podeGerenciarCatalogo) return void toast.error("Seu usuário não pode gerenciar o catálogo.");
     if (!modal || !clinicaId) return;
     const nome = modal.nome.trim();
-    const valor = Number(modal.valor.replace(/[^\d,]/g, "").replace(",", "."));
+    const convertido = modal.faixas_peso.map((faixa, indice): FaixaPrecoPeso => ({
+      ateKg: indice === modal.faixas_peso.length - 1 ? null : Number(faixa.ateKg.replace(",", ".")),
+      valor: Number(faixa.valor.replace(/[^\d,]/g, "").replace(",", ".")),
+    }));
+    if (modal.tipo === "servico" && modal.preco_por_peso) {
+      if (modal.faixas_peso.some(faixa => !faixa.valor.trim()) ||
+        modal.faixas_peso.slice(0,-1).some(faixa => !faixa.ateKg.trim())) {
+        return void toast.error("Preencha os limites e preços de todas as faixas.");
+      }
+      const erroFaixas = validarFaixasPeso(convertido);
+      if (erroFaixas) return void toast.error(erroFaixas);
+    }
+    const valor = modal.tipo === "servico" && modal.preco_por_peso
+      ? convertido[0].valor
+      : Number(modal.valor.replace(/[^\d,]/g, "").replace(",", "."));
     const estoqueAtual = modal.tipo === "produto" && modal.estoque_atual !== "" ? Number(modal.estoque_atual.replace(",", ".")) : null;
     const estoqueMinimo = modal.tipo === "produto" && modal.estoque_minimo !== "" ? Number(modal.estoque_minimo.replace(",", ".")) : null;
     if (!nome) return void toast.error("Informe o nome.");
@@ -295,12 +318,13 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       estoque_minimo: estoqueMinimo,
       codigo_barras: modal.tipo === "produto" ? modal.codigo_barras.trim() || null : null,
       venda_por_peso: modal.tipo === "produto" && modal.venda_por_peso,
+      faixas_peso: modal.tipo === "servico" && modal.preco_por_peso ? convertido : [],
       updated_at: new Date().toISOString(),
       ...(modal.id ? {} : { criado_por: usuarioId }),
     };
     const { error } = modal.id
-      ? await supabaseBanco.from("oricse_catalogo_itens").update(payload).eq("id", modal.id).eq("clinica_id", clinicaId)
-      : await supabaseBanco.from("oricse_catalogo_itens").insert(payload);
+      ? await (supabaseBanco as any).from("oricse_catalogo_itens").update(payload).eq("id", modal.id).eq("clinica_id", clinicaId)
+      : await (supabaseBanco as any).from("oricse_catalogo_itens").insert(payload);
     if (error) return void toast.error(`Não foi possível salvar: ${error.message}`);
     setModal(null);
     try {
@@ -310,6 +334,45 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       return;
     }
     toast.success(modal.id ? "Item atualizado." : "Item cadastrado.");
+  }
+
+  async function agruparServicosExistentes() {
+    if (!podeGerenciarCatalogo || !clinicaId || agrupando) return;
+    if (nomeGrupo.trim().length < 3) return void toast.error("Dê um nome ao serviço agrupado.");
+    const escolhidos = servicosParaAgrupar.map((selecionado,indice) => {
+      const original = servicos.find(item=>item.id===selecionado.id);
+      return {
+        id:selecionado.id,
+        ateKg:indice === servicosParaAgrupar.length-1 ? null : Number(selecionado.ateKg.replace(",",".")),
+        valor:Number(original?.valor),
+      };
+    });
+    const faixas = escolhidos.map(({ateKg,valor})=>({ateKg,valor}));
+    if (servicosParaAgrupar.slice(0,-1).some(f=>!f.ateKg.trim()))
+      return void toast.error("Informe o limite de peso de cada faixa.");
+    const erro=validarFaixasPeso(faixas);
+    if (erro) return void toast.error(erro);
+    if (!window.confirm(
+      "Criar o serviço \"" + nomeGrupo.trim() + "\" com " + faixas.length +
+      " faixas? Os cadastros antigos ficarão arquivados, preservando o histórico. Confirme para prosseguir."
+    )) return;
+    setAgrupando(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_agrupar_servicos_peso", {
+        p_clinica:clinicaId, p_originais:escolhidos.map(x=>x.id),
+        p_nome:nomeGrupo.trim(),p_faixas:faixas,
+      });
+      if (error || !data) throw new Error(error?.message || "Não foi possível agrupar os serviços.");
+      await carregarDados(clinicaId);
+      setAgruparAberto(false);
+      setServicosParaAgrupar([]);
+      setNomeGrupo("");
+      toast.success("Serviço agrupado: preços antigos preservados e opções organizadas por peso.");
+    } catch(e) {
+      toast.error(e instanceof Error ? e.message : "Falha na conversão dos serviços.");
+    } finally {
+      setAgrupando(false);
+    }
   }
 
   async function arquivarItem(item: ItemCatalogo) {
@@ -522,10 +585,31 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       )}
 
       {aba === "catalogo" && podeVerCatalogo && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "", codigo_barras: "", venda_por_peso: false })} aoRemover={arquivarItem} />
-          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso) })} aoRemover={arquivarItem} />
+        <div className="space-y-3">
+          {podeGerenciarCatalogo && servicos.length >= 2 && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+            <p className="text-xs text-muted-foreground">
+              Serviços antigos separados por peso? Organize em um único cadastro sem perder o histórico.
+            </p>
+            <button type="button" onClick={()=>setAgruparAberto(true)}
+              className="min-h-11 rounded-xl border px-4 text-sm font-bold text-primary">
+              Agrupar serviços por peso
+            </button>
+          </div>}
+          <div className="grid gap-4 md:grid-cols-2">
+          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({
+            id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria,
+            valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "",
+            codigo_barras: "", venda_por_peso: false,
+            preco_por_peso: faixasValidas(item.faixas_peso).length > 0,
+            faixas_peso: faixasValidas(item.faixas_peso).map(f => ({
+              ateKg: f.ateKg === null ? "" : String(f.ateKg),
+              valor: formatarValorExistente(f.valor),
+            })),
+          })} aoRemover={arquivarItem} />
+          <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso),
+            preco_por_peso: false, faixas_peso: [] })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
+          </div>
         </div>
       )}
 
@@ -661,6 +745,91 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
         </section>
       )}
 
+      {agruparAberto && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3"
+        onMouseDown={e=>{if(e.target===e.currentTarget && !agrupando)setAgruparAberto(false);}}>
+        <section role="dialog" aria-modal="true" aria-label="Agrupar serviços existentes por peso"
+          className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-card p-5 shadow-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black">Agrupar serviços existentes</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Escolha os serviços na ordem das faixas, informe os limites e confirme.
+                O histórico de valores e comissões anteriores será preservado.
+              </p>
+            </div>
+            <button type="button" disabled={agrupando} onClick={()=>setAgruparAberto(false)}
+              aria-label="Fechar agrupamento" className="rounded-lg border p-2"><X size={18}/></button>
+          </div>
+          <label className="mt-4 block text-sm font-semibold">Nome do novo serviço
+            <input value={nomeGrupo} onChange={e=>setNomeGrupo(e.target.value)} maxLength={120}
+              placeholder="Ex.: Eutanásia" className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+          </label>
+          <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">
+            1. Selecione os serviços antigos
+          </p>
+          <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border p-2">
+            {servicos.filter(item=>faixasValidas(item.faixas_peso).length===0).map(item=><label key={item.id}
+              className="flex min-h-10 cursor-pointer items-center justify-between gap-2 border-b p-2 text-sm last:border-0">
+              <span className="flex items-center gap-2">
+                <input type="checkbox" checked={servicosParaAgrupar.some(v=>v.id===item.id)}
+                  onChange={e=>{
+                    setServicosParaAgrupar(atuais=>e.target.checked
+                      ? [...atuais,{id:item.id,ateKg:""}]
+                      : atuais.filter(v=>v.id!==item.id));
+                    if(e.target.checked && !nomeGrupo.trim()){
+                      setNomeGrupo(item.nome.replace(/\s*(?:[-–]|at[eé]|acima|de\s+[0-9])[\s\S]*$/i,"").trim() || item.nome);
+                    }
+                  }} />
+                {item.nome}
+              </span>
+              <strong className="whitespace-nowrap">{dinheiro(item.valor)}</strong>
+            </label>)}
+          </div>
+          <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">
+            2. Confira a ordem e indique os pesos
+          </p>
+          <div className="mt-2 space-y-2">
+            {servicosParaAgrupar.map((entrada,indice)=>{
+              const original=servicos.find(x=>x.id===entrada.id);
+              return <div key={entrada.id} className="grid grid-cols-[minmax(0,1fr)_105px_auto] items-center gap-2 rounded-xl border p-2">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold">{original?.nome}</p>
+                  <p className="text-xs text-primary">{dinheiro(Number(original?.valor||0))}</p>
+                </div>
+                {indice===servicosParaAgrupar.length-1
+                  ? <span className="text-xs font-semibold">Sem limite superior</span>
+                  : <label className="text-xs font-semibold">Até (kg)
+                    <input inputMode="decimal" placeholder="Ex.: 10" value={entrada.ateKg}
+                      onChange={e=>setServicosParaAgrupar(rows=>rows.map((v,i)=>i===indice?{...v,ateKg:e.target.value}:v))}
+                      className="mt-1 min-h-9 w-full rounded-lg border bg-background px-2 font-normal"/>
+                  </label>}
+                <div className="flex flex-col gap-1">
+                  <button type="button" disabled={indice===0} title="Mover para cima"
+                    onClick={()=>setServicosParaAgrupar(rows=>{const nova=[...rows];[nova[indice-1],nova[indice]]=[nova[indice],nova[indice-1]];return nova;})}
+                    className="rounded-md border p-1 disabled:opacity-30"><ArrowUp size={15}/></button>
+                  <button type="button" disabled={indice===servicosParaAgrupar.length-1} title="Mover para baixo"
+                    onClick={()=>setServicosParaAgrupar(rows=>{const nova=[...rows];[nova[indice],nova[indice+1]]=[nova[indice+1],nova[indice]];return nova;})}
+                    className="rounded-md border p-1 disabled:opacity-30"><ArrowDown size={15}/></button>
+                </div>
+              </div>;
+            })}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            A última linha valerá para pesos acima do limite anterior. Confira se o preço faz sentido nessa faixa.
+            Só os serviços selecionados serão arquivados, sem apagar as cobranças existentes.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" disabled={agrupando} onClick={()=>setAgruparAberto(false)}
+              className="min-h-11 rounded-xl border px-4 font-semibold">Cancelar</button>
+            <button type="button" disabled={agrupando || servicosParaAgrupar.length<2}
+              onClick={()=>void agruparServicosExistentes()}
+              className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40">
+              {agrupando?"Agrupando...":"Revisar e criar agrupamento"}
+            </button>
+          </div>
+        </section>
+      </div>}
+
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
           <form onSubmit={salvarItem} className="w-full max-w-md rounded-2xl bg-background p-5 shadow-xl">
@@ -678,9 +847,62 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                   {[...new Set([...(modal.tipo === "servico" ? CATEGORIAS_SERVICOS : CATEGORIAS_PRODUTOS), ...(modal.categoria ? [modal.categoria] : [])])].map(categoria => <option key={categoria} value={categoria}>{categoria}</option>)}
                 </select>
               </label>
-              <label className="text-xs font-semibold">Preço
+              {!modal.preco_por_peso && <label className="text-xs font-semibold">Preço
                 <input required type="text" inputMode="numeric" value={modal.valor} onChange={(event) => setModal({ ...modal, valor: formatarCentavos(event.target.value) })} onFocus={(event) => event.currentTarget.select()} placeholder="R$ 0,00" aria-label="Preço em reais, digitado em centavos" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal tabular-nums" />
-              </label>
+              </label>}
+              {modal.tipo === "servico" && <div className="sm:col-span-2 rounded-xl border bg-secondary/10 p-3">
+                <label className="flex min-h-11 items-center gap-3 text-sm font-bold">
+                  <input type="checkbox" checked={modal.preco_por_peso}
+                    onChange={e => setModal({
+                      ...modal,
+                      preco_por_peso: e.target.checked,
+                      faixas_peso: e.target.checked
+                        ? modal.faixas_peso.length ? modal.faixas_peso :
+                          [{ ateKg:"10", valor:"" },{ ateKg:"", valor:"" }]
+                        : [],
+                    })}
+                    className="size-5 accent-primary"/>
+                  Definir preço por faixa de peso do animal
+                </label>
+                {modal.preco_por_peso && <div className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Um único serviço com vários preços. O ORICSE sugere a faixa pelo peso,
+                    mas só cobra depois da aprovação na comanda.
+                  </p>
+                  {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2 rounded-xl border bg-card p-2">
+                    {indice === modal.faixas_peso.length - 1
+                      ? <div className="pb-3 text-xs font-bold">Acima da faixa anterior</div>
+                      : <label className="text-xs font-semibold">
+                        Até (kg)
+                        <input inputMode="decimal" value={faixa.ateKg}
+                          onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,ateKg:e.target.value}:v)})}
+                          placeholder="Ex.: 20" className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal"/>
+                      </label>}
+                    <label className="text-xs font-semibold">
+                      Preço (R$)
+                      <input inputMode="numeric" value={faixa.valor}
+                        onFocus={e=>e.currentTarget.select()}
+                        onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,valor:formatarCentavos(e.target.value)}:v)})}
+                        placeholder="R$ 0,00" className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal"/>
+                    </label>
+                    <button type="button" title="Retirar faixa" aria-label={"Retirar faixa " + (indice+1)}
+                      disabled={modal.faixas_peso.length<=2 || indice===modal.faixas_peso.length-1}
+                      onClick={()=>setModal({...modal,faixas_peso:modal.faixas_peso.filter((_,i)=>i!==indice)})}
+                      className="min-h-10 rounded-lg border px-2 disabled:opacity-30"><Trash2 size={15}/></button>
+                  </div>)}
+                  <button type="button" disabled={modal.faixas_peso.length>=20}
+                    onClick={()=>setModal({...modal,faixas_peso:[
+                      ...modal.faixas_peso.slice(0,-1),{ateKg:"",valor:""},
+                      modal.faixas_peso[modal.faixas_peso.length-1],
+                    ]})}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold">
+                    <Plus size={15}/> Adicionar faixa
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Os valores ficam em um único cadastro. Nenhuma cobrança é gerada nesta tela.
+                  </p>
+                </div>}
+              </div>}
               {modal.tipo === "produto" && (
                 <>
                   <label className="flex items-center gap-3 rounded-lg border bg-secondary/30 p-3 text-xs font-semibold sm:col-span-2">
@@ -746,9 +968,25 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
           <article key={item.id} className="flex min-h-[58px] items-center gap-2 rounded-lg border px-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{item.nome}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}
+                {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
+                  <span className="ml-1 text-primary"> · Preço por peso: {faixasValidas(item.faixas_peso).length} faixas</span>}</p>
+              {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
+                <details className="mt-2 text-xs">
+                  <summary className="cursor-pointer font-bold text-primary">Ver valores por peso</summary>
+                  <div className="mt-2 space-y-1 rounded-xl bg-muted/30 p-2">
+                    {faixasValidas(item.faixas_peso).map((faixa,i,lista)=>
+                      <div key={i} className="flex justify-between gap-2 border-b py-1 last:border-b-0">
+                        <span>{tituloFaixa(lista,i)}</span><strong>{dinheiro(faixa.valor)}</strong>
+                      </div>)}
+                  </div>
+                </details>}
             </div>
-            <strong className="whitespace-nowrap text-sm text-primary">{dinheiro(item.valor)}</strong>
+            <strong className="whitespace-nowrap text-sm text-primary">
+              {faixasValidas(item.faixas_peso).length ? "A partir de " : ""}{dinheiro(
+                faixasValidas(item.faixas_peso).length
+                  ? Math.min(...faixasValidas(item.faixas_peso).map(f=>f.valor)) : item.valor)}
+            </strong>
             {podeEditar && <div className="flex">
               <button type="button" onClick={() => aoEditar(item)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Editar ${item.nome}`}><Pencil size={14} /></button>
               <button type="button" onClick={() => aoRemover(item)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Remover ${item.nome}`}><Trash2 size={14} /></button>
