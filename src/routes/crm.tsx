@@ -8,6 +8,7 @@ import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { gerarTarefasPosCirurgicas, mensagemPosCirurgica } from "@/lib/crm-pos-cirurgico";
+import { listarFontesPosCirurgicas } from "@/lib/crm-pos-cirurgico.functions";
 const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
 import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
 const CrmModelosDaCentral = lazy(() => import("@/components/CrmModelosDaCentral").then(m => ({ default: m.CrmModelosDaCentral })));
@@ -371,9 +372,22 @@ function Crm() {
       const tutores = lerLista<TutorLocal>("oricse-tutores-v1");
       const animais = lerLista<AnimalLocal>("oricse-animais-v1");
       const registros = lerLista<RegistroLocal>("oricse-prontuario-animal-v1");
-      const [agendasResp, agendamentosResp] = await Promise.all([
+      // Os registros cirúrgicos são lidos do prontuário canônico no servidor.
+      // Agendas e acompanhamentos são consultados em paralelo; esta sincronização
+      // não faz parte da abertura inicial da tela de Retornos.
+      const fontesCirurgicasPromessa = cfg.gerar_pos_cirurgico
+        ? (async () => {
+            const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
+            if (erroSessao || !sessao.session?.access_token) throw new Error("Sessão expirada.");
+            return listarFontesPosCirurgicas({
+              data: { accessToken: sessao.session.access_token, clinicaId: cfg.clinica_id },
+            });
+          })()
+        : Promise.resolve([]);
+      const [agendasResp, agendamentosResp, fontesCirurgicas] = await Promise.all([
         (supabase as any).from("oricse_agendas_online").select("id,timezone").eq("clinica_id", cfg.clinica_id),
         (supabase as any).from("oricse_agendamentos_online").select("id,agenda_id,tutor_id,animal_id,animal_referencia,inicio,estado,tipo,dados").eq("clinica_id", cfg.clinica_id).neq("estado", "cancelado"),
+        fontesCirurgicasPromessa,
       ]);
       if (agendasResp.error) throw agendasResp.error;
       if (agendamentosResp.error) throw agendamentosResp.error;
@@ -456,52 +470,49 @@ function Crm() {
       }
 
       if (cfg.gerar_pos_cirurgico) {
-        // Apenas registros clínicos concluídos, explicitamente selecionados
-        // para acompanhamento. Requer o mesmo animal, tutor e clínica.
-        for (const registro of registros) {
-          if (
-            registro.clinicaId !== cfg.clinica_id ||
-            registro.subtipo !== "Cirurgia / Procedimentos" ||
-            registro.status !== "concluido" ||
-            registro.dados?.acompanhamentoCrm !== true ||
-            !registro.data
-          ) continue;
-          const animal = animalPorId.get(String(registro.animalId));
-          const tutor = animal ? tutorPorId.get(String(animal.tutorId)) : undefined;
-          if (!animal || !tutor || (registro.tutorId && String(registro.tutorId) !== String(tutor.id))) continue;
-
+        // Fonte validada no servidor: procedimento concluído da mesma clínica,
+        // tutor e paciente conferidos no banco, nunca cirurgia apenas agendada.
+        for (const fonte of fontesCirurgicas) {
           const etapas = gerarTarefasPosCirurgicas({
-            id: registro.id, clinicaId: cfg.clinica_id, animalId: registro.animalId, tutorId: tutor.id,
-            dataProcedimento: registro.data,
-            dataAlta: typeof registro.dados.dataAlta === "string" ? registro.dados.dataAlta : null,
-            status: "concluido", acompanhamentoAprovado: true,
-            obitoRegistrado: Boolean(registro.dados.obitoRegistrado),
-          }, [Math.max(0, cfg.dias_pos_cirurgico), 3, 7, 10]);
+            id: fonte.id, clinicaId: cfg.clinica_id, animalId: fonte.animalId, tutorId: fonte.tutorId,
+            dataProcedimento: fonte.dataProcedimento,
+            dataAlta: fonte.dataAlta,
+            status: "concluido", acompanhamentoAprovado: fonte.acompanhamentoAprovado,
+            obitoRegistrado: fonte.obitoRegistrado,
+          });
+
+          const tutorFonte: TutorLocal = {
+            id: fonte.tutorId, nome: fonte.tutorNome,
+            telefone: fonte.telefone, outroTelefone: fonte.outroTelefone,
+            email: fonte.email, autorizaLembretes: fonte.autorizaLembretes,
+            autorizaWhatsapp: fonte.autorizaWhatsapp,
+            autorizaEmail: fonte.autorizaEmail,
+          };
+          const canal: CanalCrm = fonte.autorizaLembretes
+            ? canalTutor(tutorFonte, cfg.canal_padrao) : "manual";
 
           for (const etapa of etapas) {
             if (diasEntre(etapa.dataPrevista) < -14 || diasEntre(etapa.dataPrevista) > 60) continue;
-            const canal: CanalCrm = tutor.autorizaLembretes === true
-              ? canalTutor(tutor, cfg.canal_padrao) : "manual";
-            const texto = mensagemPosCirurgica({
-              tutorNome: tutor.nome, animalNome: animal.nome, veterinarioNome: registro.autorNome,
-            }, etapa);
             candidatos.push({
               clinica_id: cfg.clinica_id,
-              tutor_ref_local: tutor.id,
-              destinatario_nome: tutor.nome,
-              telefone: telefone(tutor),
-              email: tutor.email || "",
-              animal_nome: animal.nome,
+              tutor_ref_local: fonte.tutorId,
+              destinatario_nome: fonte.tutorNome,
+              telefone: canal === "whatsapp" ? telefone(tutorFonte) : "",
+              email: canal === "email" ? tutorFonte.email || "" : "",
+              animal_nome: fonte.animalNome,
               tipo: "pos_cirurgico",
               titulo: etapa.titulo,
-              mensagem: texto,
+              mensagem: mensagemPosCirurgica({
+                tutorNome: fonte.tutorNome, animalNome: fonte.animalNome,
+                veterinarioNome: fonte.autorNome,
+              }, etapa),
               canal,
               agendado_para: isoLocal(etapa.dataPrevista, "09:00"),
               chave_dedupe: etapa.chaveDedupe,
               status: "pendente",
               origem: "automatico",
               metadados: {
-                registro_id: registro.id, animal_id: animal.id, dia_etapa: etapa.dia,
+                registro_id: fonte.id, animal_id: fonte.animalId, dia_etapa: etapa.dia,
                 data_prevista: etapa.dataPrevista, somente_contato_humano: true,
               },
             });
