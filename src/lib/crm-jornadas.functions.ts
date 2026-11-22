@@ -100,8 +100,20 @@ function listarCandidatos(baseDados: Awaited<ReturnType<typeof carregarBase>>, s
     }
   }
   if(servico==="satisfacao"){
-    const jaPreparadas=new Set(baseDados.eventos.filter(e=>e.tipo==="pesquisa_satisfacao").map(e=>e.chave_dedupe));
-    return pesquisas.filter(c=>!jaPreparadas.has("pesquisa_satisfacao:registro:"+c.id)).slice(0,150);
+    const anteriores=baseDados.eventos.filter(e=>e.tipo==="pesquisa_satisfacao");
+    const jaPreparadas=new Set(anteriores.map(e=>e.chave_dedupe));
+    const recentes=new Set(anteriores.filter(e=>
+      e.tutor_id && dataValida(String(e.agendado_para||"").slice(0,10)) &&
+      diasDesde(String(e.agendado_para).slice(0,10))<30
+    ).map(e=>e.tutor_id));
+    // No máximo uma pesquisa por tutor a cada 30 dias, mesmo que tenha
+    // realizado mais de uma consulta. Preferir a consulta mais recente.
+    const porTutor=new Map<string,Candidato>();
+    for(const c of pesquisas.sort((a,b)=>b.dataOrigem.localeCompare(a.dataOrigem))){
+      if(!jaPreparadas.has("pesquisa_satisfacao:registro:"+c.id) &&
+         !recentes.has(c.tutorId) && !porTutor.has(c.tutorId)) porTutor.set(c.tutorId,c);
+    }
+    return [...porTutor.values()].slice(0,150);
   }
   // Apenas atendimentos realmente concluídos. Um agendamento solicitado/confirmado
   // nunca conta como atendimento realizado.
