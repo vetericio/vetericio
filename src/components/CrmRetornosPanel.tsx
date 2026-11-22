@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   CalendarCheck2, CalendarClock, MessageCircle,
-  Plus, RefreshCw, Search, Stethoscope,
+  Plus, RefreshCw, Search, Sparkles, Stethoscope,
 } from "lucide-react";
 import { toast } from "sonner";
 import { calcularDataRetorno, formatarDataRetorno, hojeRetornoBrasil, OPCOES_DIAS_RETORNO, situacaoPrazoRetorno, type SituacaoPrazoRetorno } from "@/lib/crm-prazos-retorno";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import {
-  atualizarRetornoClinico, listarRetornosClinica, registrarRetornoClinico,
+  atualizarRetornoClinico, listarRetornosClinica, prepararMensagemAcompanhamento, registrarRetornoClinico,
   type RetornoClinico, type StatusRetorno,
 } from "@/lib/crm-retornos.functions";
 
@@ -41,14 +41,8 @@ function mostrarData(data: string | null) {
   if (!data) return "A marcar";
   return formatarDataRetorno(data);
 }
-function urlWhatsApp(r: RetornoClinico) {
-  const telefone = r.telefone.replace(/\D/g,"");
-  const completo = telefone.length >= 10 && telefone.length <= 11 ? "55" + telefone : telefone;
-  const mensagem = "Olá, " + r.tutor_nome + "! Aqui é da clínica veterinária. " +
-    "Gostaríamos de confirmar o retorno de " + r.animal_nome +
-    (r.data_prevista ? " previsto para " + mostrarData(r.data_prevista) : " com data a combinar") +
-    ". Podemos confirmar essa data?";
-  return "https://wa.me/" + completo + "?text=" + encodeURIComponent(mensagem);
+function urlWhatsApp(telefone: string, mensagem: string) {
+  return "https://wa.me/" + telefone + "?text=" + encodeURIComponent(mensagem);
 }
 
 export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId }: { clinicaId: string; podeOperar: boolean; animalPreselecionadoId?: string }) {
@@ -68,6 +62,8 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
   const [reagendarId, setReagendarId] = useState<string | null>(null);
   const [novaData, setNovaData] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [preparandoMensagem, setPreparandoMensagem] = useState<string | null>(null);
+  const [editorMensagem, setEditorMensagem] = useState<{ retornoId: string; telefone: string; mensagem: string; comResumoClinico: boolean } | null>(null);
 
   const recarregar = useCallback(async () => {
     if (!clinicaId) return;
@@ -171,6 +167,29 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
       toast.error(e instanceof Error ? e.message : "Não foi possível atualizar o retorno.");
     } finally {
       setSalvando(null);
+    }
+  }
+
+  async function abrirEditorMensagem(item: RetornoClinico) {
+    if (!podeOperar || preparandoMensagem || !item.permite_whatsapp || !item.telefone) return;
+    if (editorMensagem?.retornoId === item.id) {
+      setEditorMensagem(null);
+      return;
+    }
+    setEditorMensagem(null);
+    setPreparandoMensagem(item.id);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada.");
+      const resultado = await prepararMensagemAcompanhamento({
+        data: { accessToken: token, clinicaId, retornoId: item.id },
+      });
+      setEditorMensagem({ retornoId: item.id, ...resultado });
+      if (!resultado.comResumoClinico) toast.info("Sem queixa clínica identificada. Revise o texto genérico antes de enviar.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível preparar a mensagem.");
+    } finally {
+      setPreparandoMensagem(null);
     }
   }
 
@@ -301,11 +320,13 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
               className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 py-2 text-xs font-semibold">
               <Stethoscope size={15}/> Ficha do animal
             </Link>
-            {item.permite_whatsapp && item.telefone &&
-              <a href={urlWhatsApp(item)} target="_blank" rel="noopener noreferrer"
-                className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3 py-2 text-xs font-semibold text-primary">
-                <MessageCircle size={15}/> Abrir WhatsApp
-              </a>}
+            {podeOperar && item.permite_whatsapp && item.telefone &&
+              <button type="button" disabled={Boolean(preparandoMensagem)} onClick={() => void abrirEditorMensagem(item)}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-primary disabled:opacity-50">
+                <Sparkles size={15}/> {preparandoMensagem === item.id ? "Preparando..." : editorMensagem?.retornoId === item.id ? "Fechar mensagem" : "Enviar mensagem"}
+              </button>}
+            {podeOperar && !item.permite_whatsapp &&
+              <span className="inline-flex min-h-10 items-center rounded-lg border px-3 text-xs text-muted-foreground">WhatsApp não autorizado</span>}
             {podeOperar && !["realizado","cancelado"].includes(item.status) && <>
               <button type="button" disabled={Boolean(salvando)} onClick={() => void atualizar(item,"contatado")}
                 className="min-h-10 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-40">Contatei o tutor</button>
@@ -318,6 +339,32 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
                 className="min-h-10 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-40">Reagendar</button>
             </>}
           </div>
+          {editorMensagem?.retornoId === item.id && <div className="mt-3 rounded-xl border border-primary/25 bg-muted/15 p-4">
+            <label htmlFor={"crm-mensagem-" + item.id} className="block text-sm font-bold">Mensagem personalizada para {item.tutor_nome}</label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Sugestão baseada no prontuário da clínica. Confira as informações e edite livremente antes de continuar.
+            </p>
+            <textarea id={"crm-mensagem-" + item.id} rows={7} maxLength={3000}
+              value={editorMensagem.mensagem}
+              onChange={e => setEditorMensagem(anterior => anterior?.retornoId === item.id ? { ...anterior, mensagem: e.target.value } : anterior)}
+              className="mt-3 w-full resize-y rounded-lg border bg-background p-3 text-sm leading-relaxed outline-none focus:border-primary"
+              aria-label={"Editar mensagem para " + item.tutor_nome}/>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href={urlWhatsApp(editorMensagem.telefone, editorMensagem.mensagem)} target="_blank" rel="noopener noreferrer"
+                aria-disabled={!editorMensagem.mensagem.trim()}
+                onClick={e => { if (!editorMensagem.mensagem.trim()) e.preventDefault(); }}
+                className={"inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white " +
+                  (!editorMensagem.mensagem.trim() ? "pointer-events-none opacity-40" : "hover:bg-emerald-800")}>
+                <MessageCircle size={17}/> Enviar WhatsApp
+              </a>
+              <button type="button" onClick={() => setEditorMensagem(null)}
+                className="min-h-11 rounded-lg border px-4 text-sm font-semibold">Cancelar</button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Abre o WhatsApp com o texto preenchido. A mensagem só é enviada quando você confirmar no WhatsApp.
+              O CRM não marca o contato como realizado automaticamente.
+            </p>
+          </div>}
           {reagendarId === item.id && <div className="mt-3 space-y-3 rounded-xl border bg-muted/20 p-3">
             <label className="block text-xs font-semibold">Nova data
               <input type="date" value={novaData} onChange={e=>setNovaData(e.target.value)} className="mt-1 min-h-11 w-full rounded-lg border bg-background px-3"/>
