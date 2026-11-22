@@ -65,6 +65,21 @@ const resolverPaginaInicial = createServerFn({ method: "GET" }).handler(async ()
 
 export const Route = createFileRoute("/")({
   loader: () => resolverPaginaInicial(),
+  head: ({ loaderData }) => ({
+    meta: loaderData?.tipo === "plataforma" ? [
+      { title: "ORICSE | Sistema veterinário e gestão para o mercado pet" },
+      {
+        name: "description",
+        content: "Software de gestão veterinária para clínicas, hospitais, pet shops, banho e tosa e hotelzinho. Conheça o sistema ORICSE, da agenda ao prontuário e caixa.",
+      },
+      { property: "og:title", content: "ORICSE | Sistema veterinário e gestão para o mercado pet" },
+      { property: "og:description", content: "Gestão integrada para clínicas veterinárias, hospitais, pet shops, banho e tosa e hotelzinho." },
+      { property: "og:url", content: "https://oricse.com.br/" },
+    ] : [],
+    links: loaderData?.tipo === "plataforma"
+      ? [{ rel: "canonical", href: "https://oricse.com.br/" }]
+      : [],
+  }),
   component: PaginaInicial,
 });
 
