@@ -169,7 +169,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
       setAnimalId("");
       setDataPrevista("");
       setOrientacoes("");
-      toast.success("Retorno incluído na Gestão de Clientes.");
+      toast.success("Retorno incluído na Central de Relacionamento.");
       await recarregar();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar o retorno.");
