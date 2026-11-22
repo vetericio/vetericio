@@ -1,62 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
+import { fonteClinicaElegivel, type RegistroPersistido } from "@/lib/crm-pos-cirurgico";
 
 const input = z.object({
   accessToken: z.string().min(20),
   clinicaId: z.string().uuid(),
 });
-
-type RegistroPersistido = {
-  id?: unknown;
-  clinicaId?: unknown;
-  animalId?: unknown;
-  tutorId?: unknown;
-  subtipo?: unknown;
-  status?: unknown;
-  data?: unknown;
-  autorNome?: unknown;
-  titulo?: unknown;
-  dados?: unknown;
-};
-
-export type FontePosCirurgica = {
-  id: string;
-  clinicaId: string;
-  animalId: string;
-  tutorId: string;
-  animalNome: string;
-  tutorNome: string;
-  dataProcedimento: string;
-  dataAlta: string | null;
-  autorNome: string;
-  acompanhamentoAprovado: true;
-  obitoRegistrado: boolean;
-  telefone: string;
-  outroTelefone: string;
-  email: string;
-  autorizaLembretes: boolean;
-  autorizaWhatsapp: boolean;
-  autorizaEmail: boolean;
-};
-
-/** Limita a campos declarados e só aceita cirurgia concluída da clínica ativa. */
-export function fonteClinicaElegivel(registro: RegistroPersistido, clinicaId: string): boolean {
-  const dados = registro.dados;
-  return Boolean(
-    registro &&
-    registro.clinicaId === clinicaId &&
-    registro.subtipo === "Cirurgia / Procedimentos" &&
-    registro.status === "concluido" &&
-    typeof registro.id === "string" &&
-    typeof registro.animalId === "string" &&
-    typeof registro.tutorId === "string" &&
-    typeof registro.data === "string" &&
-    dados && typeof dados === "object" && !Array.isArray(dados) &&
-    (dados as Record<string, unknown>).acompanhamentoCrm === true &&
-    (dados as Record<string, unknown>).obitoRegistrado !== true
-  );
-}
 
 function parseProntuario(estado: unknown): unknown[] {
   if (!estado || typeof estado !== "object" || Array.isArray(estado)) return [];
