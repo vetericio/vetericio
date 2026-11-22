@@ -9,6 +9,8 @@ type Registro = { id?: string; clinicaId?: string; animalId?: string; tutorId?: 
 type Tutor = { id: string; nome: string; telefone?: string | null; outro_telefone?: string | null; email?: string | null; dados?: Record<string, unknown> | null; created_at?: string | null };
 type Animal = { id: string; tutor_id: string; nome: string; dados?: Record<string, unknown> | null };
 type Agendamento = { tutor_id?: string | null; inicio?: string | null; estado?: string | null };
+type ConsultaPersistida = { id: string; animal_id: string; data: string; tipo: string; titulo: string };
+type DestinatarioPesquisa = { tutorId: string; tutorNome: string; disponivel: boolean; motivo?: string; animais: { id: string; nome: string }[] };
 type Evento = { id: string; tipo: string; tutor_id?: string | null; titulo: string; destinatario_nome: string; animal_nome: string; mensagem: string; status: string; canal: string; agendado_para: string; metadados?: Record<string, string | number | boolean | null> | null; chave_dedupe?: string | null };
 type Candidato = { id: string; tutorId: string; tutorNome: string; animalNome: string; dataOrigem: string; dias: number; resumo: string; origem: "registro" | "tutor" };
 
@@ -61,21 +63,29 @@ async function validarAcesso(d: z.infer<typeof base>, operacao = false) {
 }
 async function carregarBase(d: z.infer<typeof base>) {
   const { admin } = await validarAcesso(d);
-  const [rt,ra,rr,rag,rev] = await Promise.all([
+  const [rt,ra,rr,rag,rev,rc] = await Promise.all([
     admin.from("tutores").select("id,nome,telefone,outro_telefone,email,dados,created_at").eq("clinica_id",d.clinicaId).limit(MAX_ROWS),
     admin.from("oricse_animais").select("id,tutor_id,nome,dados").eq("clinica_id",d.clinicaId).limit(MAX_ROWS),
     admin.from("oricse_dados_modulos").select("dados").eq("clinica_id",d.clinicaId).eq("chave","estado_sistema").maybeSingle(),
     admin.from("oricse_agendamentos_online").select("tutor_id,inicio,estado").eq("clinica_id",d.clinicaId).limit(MAX_ROWS),
     admin.from("oricse_crm_eventos").select("id,tipo,tutor_id,titulo,destinatario_nome,animal_nome,mensagem,status,canal,agendado_para,metadados,chave_dedupe")
       .eq("clinica_id",d.clinicaId).in("tipo",["inativo","pesquisa_satisfacao"]).order("agendado_para",{ascending:false}).limit(MAX_ROWS),
+    // Fonte canônica das consultas finalizadas. O prontuário legado em
+    // oricse_dados_modulos não contém os atendimentos atuais de várias clínicas.
+    admin.from("oricse_animal_registros_extra")
+      .select("id,animal_id,data,tipo,titulo")
+      .eq("clinica_id",d.clinicaId)
+      .eq("titulo","Consulta")
+      .order("data",{ascending:false}).limit(MAX_ROWS),
   ]);
-  if (rt.error || ra.error || rr.error || rag.error || rev.error) throw new Error("Não foi possível consultar os dados da Central de Relacionamento.");
-  if ([rt.data?.length,ra.data?.length,rag.data?.length,rev.data?.length].some(n=>n===MAX_ROWS))
+  if (rt.error || ra.error || rr.error || rag.error || rev.error || rc.error) throw new Error("Não foi possível consultar os dados da Central de Relacionamento.");
+  if ([rt.data?.length,ra.data?.length,rag.data?.length,rev.data?.length,rc.data?.length].some(n=>n===MAX_ROWS))
     throw new Error("A clínica possui registros demais para esta consulta. É necessária paginação para evitar uma lista incompleta.");
   return {
     tutores:(rt.data||[]) as Tutor[],
     animais:(ra.data||[]) as Animal[],
     registros:parseRegistros(rr.data?.dados).filter(r=>r.clinicaId===d.clinicaId && r.status==="concluido"),
+    consultasPersistidas:(rc.data||[]) as ConsultaPersistida[],
     agendamentos:(rag.data||[]) as Agendamento[],
     eventos:(rev.data||[]) as Evento[],
   };
@@ -85,7 +95,17 @@ function listarCandidatos(baseDados: Awaited<ReturnType<typeof carregarBase>>, s
   const animais = new Map(baseDados.animais.filter(animalAtivo).map(a=>[a.id,a]));
   const ultimo = new Map<string,{data:string; animalNome:string; id:string}>();
   const pesquisas:Candidato[]=[];
-  for(const r of baseDados.registros){
+  // Mesclar registros legados e consultas efetivamente gravadas no PostgreSQL
+  // sem duplicar um mesmo ID clínico caso as duas fontes coexistam.
+  const registrosPorId = new Map<string,Registro>();
+  for(const r of baseDados.registros) if(r.id) registrosPorId.set(r.id,r);
+  for(const consulta of baseDados.consultasPersistidas) {
+    if(!registrosPorId.has(consulta.id)) registrosPorId.set(consulta.id,{
+      id:consulta.id,animalId:consulta.animal_id,data:consulta.data,
+      status:"concluido",titulo:consulta.titulo,subtipo:consulta.titulo,tipo:consulta.tipo,
+    });
+  }
+  for(const r of registrosPorId.values()){
     if (!r.id || !r.animalId || !r.data || !dataValida(r.data)) continue;
     const animal=animais.get(r.animalId);
     const tutor=animal && tutores.get(animal.tutor_id);
@@ -94,7 +114,8 @@ function listarCandidatos(baseDados: Awaited<ReturnType<typeof carregarBase>>, s
     const atual=ultimo.get(tutor.id);
     if (!atual || r.data > atual.data) ultimo.set(tutor.id,{data:r.data,animalNome:animal!.nome,id:r.id});
     const dias=diasDesde(r.data);
-    if(servico==="satisfacao" && dias>=1 && dias<=14 && r.subtipo==="Consulta" && autorizacao(tutor,"satisfacao")){
+    if(servico==="satisfacao" && dias>=0 && dias<=14 &&
+      (r.subtipo==="Consulta" || r.titulo==="Consulta") && autorizacao(tutor,"satisfacao") && telefone(tutor)){
       pesquisas.push({id:r.id,tutorId:tutor.id,tutorNome:tutor.nome,animalNome:animal!.nome,dataOrigem:r.data,dias,
         resumo:"Atendimento clínico concluído em "+r.data.split("-").reverse().join("/"),origem:"registro"});
     }
@@ -143,6 +164,25 @@ function listarCandidatos(baseDados: Awaited<ReturnType<typeof carregarBase>>, s
       resumo:"Sem atendimento concluído há "+dias+" dias",origem:"tutor"}];
   }).sort((a,b)=>b.dias-a.dias).slice(0,200);
 }
+function destinatariosPesquisa(dados:Awaited<ReturnType<typeof carregarBase>>):DestinatarioPesquisa[] {
+  const animaisPorTutor = new Map<string,{id:string;nome:string}[]>();
+  for(const animal of dados.animais.filter(animalAtivo)) {
+    const lista = animaisPorTutor.get(animal.tutor_id) || [];
+    lista.push({id:animal.id,nome:animal.nome});
+    animaisPorTutor.set(animal.tutor_id,lista);
+  }
+  return dados.tutores.map(tutor=>{
+    const permite = autorizacao(tutor,"satisfacao");
+    const temTelefone = Boolean(telefone(tutor));
+    return {
+      tutorId:tutor.id,tutorNome:tutor.nome,
+      disponivel:permite && temTelefone,
+      motivo:!permite?"WhatsApp ou lembretes não autorizados no cadastro.":!temTelefone?"Sem número de WhatsApp válido.":undefined,
+      animais:animaisPorTutor.get(tutor.id)||[],
+    };
+  }).sort((a,b)=>a.tutorNome.localeCompare(b.tutorNome,"pt-BR"));
+}
+
 async function hash(token:string) {
   const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
   return Array.from(new Uint8Array(buf),v=>v.toString(16).padStart(2,"0")).join("");
@@ -157,21 +197,53 @@ export const listarOportunidadesRelacionamento = createServerFn({method:"POST"})
     return {
       candidatos:listarCandidatos(dados,data.servico,data.limiteDias||180),
       eventos:dados.eventos.filter(e=>e.tipo===(data.servico==="ausentes"?"inativo":"pesquisa_satisfacao")),
+      destinatarios:data.servico==="satisfacao"?destinatariosPesquisa(dados):[],
     };
   });
 
 export const prepararOportunidadeRelacionamento = createServerFn({method:"POST"})
-  .validator((v:unknown)=>base.extend({servico:area,origemId:z.string().uuid(),limiteDias:z.number().int().min(90).max(3650).optional()}).parse(v))
+  .validator((v:unknown)=>base.extend({
+    servico:area,origemId:z.string().uuid(),limiteDias:z.number().int().min(90).max(3650).optional(),
+    manual:z.boolean().optional(),animalId:z.string().uuid().optional(),
+  }).parse(v))
   .handler(async({data})=>{
     const {admin,usuarioId}=await validarAcesso(data,true);
     const dados=await carregarBase(data);
-    const elegivel=listarCandidatos(dados,data.servico,data.limiteDias||180).find(c=>c.id===data.origemId);
+    if(data.manual && data.servico!=="satisfacao")throw new Error("A seleção manual é exclusiva da pesquisa de satisfação.");
+    let elegivel:Candidato|undefined;
+    if(data.manual) {
+      const tutorEscolhido=dados.tutores.find(t=>t.id===data.origemId);
+      if(!tutorEscolhido)throw new Error("Tutor não cadastrado nesta clínica.");
+      if(!autorizacao(tutorEscolhido,"satisfacao") || !telefone(tutorEscolhido))
+        throw new Error("Tutor sem autorização ou WhatsApp válido no cadastro.");
+      const ultimaPesquisa=dados.eventos.some(e=>
+        e.tipo==="pesquisa_satisfacao" && e.tutor_id===tutorEscolhido.id &&
+        dataValida(String(e.agendado_para||"").slice(0,10)) &&
+        diasDesde(String(e.agendado_para).slice(0,10))<30
+      );
+      if(ultimaPesquisa)throw new Error("Já existe uma pesquisa para este tutor nos últimos 30 dias.");
+      const vinculados=dados.animais.filter(a=>a.tutor_id===tutorEscolhido.id && animalAtivo(a));
+      const animalSelecionado=data.animalId
+        ? vinculados.find(a=>a.id===data.animalId)
+        : vinculados[0];
+      if(data.animalId && !animalSelecionado)
+        throw new Error("O animal escolhido não pertence ao tutor nesta clínica.");
+      elegivel={
+        id:tutorEscolhido.id,tutorId:tutorEscolhido.id,tutorNome:tutorEscolhido.nome,
+        animalNome:animalSelecionado?.nome || "",
+        dataOrigem:diaHoje(),dias:0,resumo:"Pesquisa escolhida manualmente",origem:"tutor",
+      };
+    } else {
+      elegivel=listarCandidatos(dados,data.servico,data.limiteDias||180).find(c=>c.id===data.origemId);
+    }
     if(!elegivel)throw new Error("Este contato já foi preparado ou não atende mais às regras.");
     const tutor=dados.tutores.find(t=>t.id===elegivel.tutorId)!;
     const tipo=data.servico==="ausentes"?"inativo":"pesquisa_satisfacao";
     const chave=tipo==="inativo"
       ? "reativacao:mensal:"+elegivel.tutorId+":"+diaHoje().slice(0,7)
-      : "pesquisa_satisfacao:registro:"+elegivel.id;
+      : data.manual
+        ? "pesquisa_satisfacao:manual:"+elegivel.tutorId+":"+diaHoje().slice(0,7)
+        : "pesquisa_satisfacao:registro:"+elegivel.id;
     const {data:existente}=await admin.from("oricse_crm_eventos").select("id")
       .eq("clinica_id",data.clinicaId).eq("chave_dedupe",chave).maybeSingle();
     if(existente)return {criado:false};
@@ -184,7 +256,9 @@ export const prepararOportunidadeRelacionamento = createServerFn({method:"POST"}
     }else{
       const token=novoToken();
       const url="https://oricse.com.br/avaliar-atendimento?codigo="+token;
-      texto="Olá, "+nomeTutor(tutor)+"! Gostaríamos de saber como foi o atendimento de "+elegivel.animalNome+
+      const atendimento=elegivel.animalNome
+        ? "o atendimento de "+elegivel.animalNome : "sua experiência com nossa equipe";
+      texto="Olá, "+nomeTutor(tutor)+"! Gostaríamos de saber como foi "+atendimento+
         ". Sua opinião nos ajuda a melhorar. Pode avaliar em um minuto? "+url+" Obrigado! 🐾";
       extras={...extras,pesquisa_token_hash:await hash(token),pesquisa_expira_em:new Date(Date.now()+21*86400000).toISOString()};
     }
