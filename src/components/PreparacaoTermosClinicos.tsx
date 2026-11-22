@@ -108,7 +108,9 @@ export function PreparacaoTermosClinicos() {
     setPreview(null);
   }
   async function gerar(visualizar: boolean) {
-    if (gerando || !dadosTermo || !dados || !papel || !autor) return;
+    const animal = dados?.animal;
+    const tutor = dados?.tutor;
+    if (gerando || !dadosTermo || !animal || !tutor || !papel || !autor) return;
     if (pendencias.length) return void toast.error("Complete os dados antes de gerar: " + pendencias.join("; "));
     setGerando(true);
     try {
@@ -122,10 +124,10 @@ export function PreparacaoTermosClinicos() {
         papel: folha,
         demonstrativo: true,
         vias: 2,
-        assinaturaResponsavel: dados.tutor?.nome || "",
+        assinaturaResponsavel: tutor.nome || "",
         identificacao: {
-          paciente: { ...dados.animal, peso: dados.animal.peso ? dados.animal.peso + " kg" : "" },
-          tutor: { ...dados.tutor, cpf, endereco },
+          paciente: { ...animal, nome: animal.nome || "", peso: animal.peso ? animal.peso + " kg" : "" },
+          tutor: { ...tutor, nome: tutor.nome || "", cpf, endereco },
         },
         assinatura: [
           [papel.identidade.municipio, new Date().toLocaleDateString("pt-BR")].filter(Boolean).join(", "),
