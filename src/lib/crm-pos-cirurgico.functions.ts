@@ -166,3 +166,43 @@ export const criarJornadaPosCirurgica = createServerFn({ method: "POST" })
     if (error) throw new Error("Procedimento salvo, mas não foi possível preparar o pós-cirúrgico.");
     return { planejadas: linhas.length, criadas: inseridos?.length || 0 };
   });
+
+// Consulta no servidor para membros com permissão de contato CRM. A RLS de
+// cadastro de tutores é propositalmente distinta da permissão de contato;
+// nenhuma credencial de serviço é exposta ao navegador.
+export const obterWhatsappPosCirurgico = createServerFn({ method: "POST" })
+  .validator((valor: unknown) =>
+    input.extend({ eventoId: z.string().uuid() }).parse(valor))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: sessao, error: erroSessao } = await supabaseAdmin.auth.getUser(data.accessToken);
+    if (erroSessao || !sessao.user) throw new Error("Sessão expirada.");
+    await exigirPermissaoClinica(
+      supabaseAdmin, sessao.user.id, data.clinicaId,
+      ["crm.enviar", "crm.gerenciar"], data.accessToken,
+    );
+    const { data: evento, error: erroEvento } = await supabaseAdmin
+      .from("oricse_crm_eventos")
+      .select("id,clinica_id,tipo,tutor_id")
+      .eq("id", data.eventoId)
+      .eq("clinica_id", data.clinicaId)
+      .maybeSingle();
+    if (erroEvento || !evento || evento.tipo !== "pos_cirurgico" || !evento.tutor_id)
+      throw new Error("Acompanhamento pós-cirúrgico não encontrado nesta clínica.");
+
+    const { data: tutor, error: erroTutor } = await supabaseAdmin
+      .from("tutores").select("id,telefone,outro_telefone,dados")
+      .eq("id", evento.tutor_id)
+      .eq("clinica_id", data.clinicaId)
+      .maybeSingle();
+    if (erroTutor || !tutor)
+      throw new Error("Não foi possível confirmar o cadastro do tutor.");
+    const autorizacoes = tutor.dados && typeof tutor.dados === "object" ? tutor.dados : {};
+    if (autorizacoes.autorizaWhatsapp !== true || autorizacoes.autorizaLembretes !== true)
+      throw new Error("Contato clínico por WhatsApp não autorizado no cadastro atual.");
+
+    const bruto = String(tutor.telefone || tutor.outro_telefone || "").replace(/\D/g, "");
+    const numero = bruto.length === 10 || bruto.length === 11 ? "55" + bruto : bruto;
+    if (!/^55\d{10,11}$/.test(numero)) throw new Error("Número de WhatsApp inválido.");
+    return { numero };
+  });
