@@ -2,6 +2,7 @@ import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowLeft, ArrowUp, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { LeitorCodigoBarrasCamera } from "@/components/LeitorCodigoBarrasCamera";
 
@@ -43,6 +44,16 @@ function formatarCentavos(valor: string) {
 }
 function formatarValorExistente(valor: number) {
   return formatarCentavos(String(Math.round(valor * 100)));
+}
+// O editor aceita "280,00", "280.00", "R$ 280,00" e "1.280,00".
+// Não converte a cada tecla, para evitar que o cursor salte durante a edição.
+function interpretarPrecoEditavel(valor: string): number {
+  const texto = valor.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  if (!texto) return Number.NaN;
+  const normalizado = texto.includes(",")
+    ? texto.replace(/\./g, "").replace(",", ".")
+    : texto;
+  return Number(normalizado);
 }
 const FORM_VAZIO: ItemForm = {
   tipo: "servico",
@@ -288,7 +299,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     const nome = modal.nome.trim();
     const convertido = modal.faixas_peso.map((faixa, indice): FaixaPrecoPeso => ({
       ateKg: indice === modal.faixas_peso.length - 1 ? null : Number(faixa.ateKg.replace(",", ".")),
-      valor: Number(faixa.valor.replace(/[^\d,]/g, "").replace(",", ".")),
+      valor: interpretarPrecoEditavel(faixa.valor),
     }));
     if (modal.tipo === "servico" && modal.preco_por_peso) {
       if (modal.faixas_peso.some(faixa => !faixa.valor.trim()) ||
@@ -821,14 +832,23 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
         </section>
       </div>}
 
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
-          <form onSubmit={salvarItem} className="w-full max-w-md rounded-2xl bg-background p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-bold">{modal.id ? "Editar" : "Novo"} {modal.tipo === "servico" ? "serviço" : "produto"}</h2>
-              <button type="button" onClick={() => setModal(null)} aria-label="Fechar"><X size={18} /></button>
+      {modal && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/60 p-2 sm:p-4"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
+          <form role="dialog" aria-modal="true" aria-label={(modal.id ? "Editar" : "Novo") + (modal.tipo === "servico" ? " serviço" : " produto")}
+            onSubmit={salvarItem} onKeyDown={(event) => {
+              if (event.key === "Escape") { event.stopPropagation(); setModal(null); }
+            }}
+            className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b bg-background px-4 py-4 sm:px-6">
+              <div>
+                <h2 className="text-lg font-black">{modal.id ? "Editar" : "Novo"} {modal.tipo === "servico" ? "serviço" : "produto"}</h2>
+                <p className="text-xs text-muted-foreground">Altere os campos e salve as mudanças.</p>
+              </div>
+              <button type="button" onClick={() => setModal(null)} aria-label="Fechar" className="min-h-11 min-w-11 rounded-xl border p-2"><X size={18} /></button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+              <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-semibold sm:col-span-2">Nome
                 <input autoFocus maxLength={120} required value={modal.nome} onChange={(event) => setModal({ ...modal, nome: event.target.value })} placeholder={modal.tipo === "servico" ? "Ex.: Consulta" : "Ex.: Vacina V10"} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal" />
               </label>
@@ -860,21 +880,27 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                     Um único serviço com vários preços. O ORICSE sugere a faixa pelo peso,
                     mas só cobra depois da aprovação na comanda.
                   </p>
-                  {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2 rounded-xl border bg-card p-2">
+                  {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                     {indice === modal.faixas_peso.length - 1
                       ? <div className="pb-3 text-xs font-bold">Acima da faixa anterior</div>
                       : <label className="text-xs font-semibold">
                         Até (kg)
-                        <input inputMode="decimal" value={faixa.ateKg}
+                        <input type="text" inputMode="decimal" value={faixa.ateKg}
                           onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,ateKg:e.target.value}:v)})}
-                          placeholder="Ex.: 20" className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal"/>
+                          placeholder="Ex.: 20" className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal"/>
                       </label>}
                     <label className="text-xs font-semibold">
                       Preço (R$)
-                      <input inputMode="numeric" value={faixa.valor}
+                      <input type="text" inputMode="decimal" value={faixa.valor}
                         onFocus={e=>e.currentTarget.select()}
-                        onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,valor:formatarCentavos(e.target.value)}:v)})}
-                        placeholder="R$ 0,00" className="mt-1 min-h-10 w-full rounded-lg border bg-background px-2 font-normal"/>
+                        onChange={e=>setModal({...modal,faixas_peso:modal.faixas_peso.map((v,i)=>i===indice?{...v,valor:e.target.value}:v)})}
+                        onBlur={e=>{
+                          const valor = interpretarPrecoEditavel(e.target.value);
+                          if (Number.isFinite(valor) && valor >= 0) {
+                            setModal(atual=>atual?{...atual,faixas_peso:atual.faixas_peso.map((v,i)=>i===indice?{...v,valor:formatarValorExistente(valor)}:v)}:atual);
+                          }
+                        }}
+                        placeholder="Ex.: 280,00" className="mt-1 min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 font-normal tabular-nums"/>
                     </label>
                     <button type="button" title="Retirar faixa" aria-label={"Retirar faixa " + (indice+1)}
                       disabled={modal.faixas_peso.length<=2 || indice===modal.faixas_peso.length-1}
@@ -919,10 +945,21 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                   </label>
                 </>
               )}
+              </div>
             </div>
-            <button disabled={!podeGerenciarCatalogo} className="mt-4 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">Salvar {modal.tipo === "servico" ? "serviço" : "produto"}</button>
+            <div className="shrink-0 border-t bg-background px-4 py-3 sm:px-6">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button type="button" onClick={() => setModal(null)}
+                  className="min-h-11 rounded-xl border px-4 text-sm font-semibold">Cancelar</button>
+                <button type="submit" disabled={!podeGerenciarCatalogo}
+                  className="min-h-11 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-50">
+                  Salvar {modal.tipo === "servico" ? "serviço" : "produto"}
+                </button>
+              </div>
+            </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </main>
   );
