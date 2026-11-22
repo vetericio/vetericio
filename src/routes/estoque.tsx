@@ -16,7 +16,7 @@ import {
 } from "@/lib/comissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
-import { faixasValidas, rotuloCondicao, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
+import { agruparFaixasPorCondicao, faixasValidas, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
 export const Route = createFileRoute("/estoque")({ component: Estoque });
 
@@ -1015,14 +1015,18 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
               <p className="truncate text-sm font-semibold">{item.nome}</p>
               <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}
                 {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
-                  <span className="ml-1 text-primary"> · Preço por peso: {faixasValidas(item.faixas_peso).length} faixas</span>}</p>
+                  <span className="ml-1 text-primary"> · Preço por paciente: {agruparFaixasPorCondicao(item.faixas_peso).length} {agruparFaixasPorCondicao(item.faixas_peso).length === 1 ? "grupo" : "grupos"}</span>}</p>
               {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
                 <details className="mt-2 text-xs">
-                  <summary className="cursor-pointer font-bold text-primary">Ver valores por peso</summary>
-                  <div className="mt-2 space-y-1 rounded-xl bg-muted/30 p-2">
-                    {faixasValidas(item.faixas_peso).map((faixa,i,lista)=>
-                      <div key={i} className="flex justify-between gap-2 border-b py-1 last:border-b-0">
-                        <span>{rotuloCondicao(faixa)}{faixa.ateKg !== null ? ` · ${tituloFaixa(lista.filter(x=>x.especie===faixa.especie&&x.sexo===faixa.sexo), 0)}` : ""}</span><strong>{dinheiro(faixa.valor)}</strong>
+                  <summary className="cursor-pointer font-bold text-primary">Ver tabela de preços</summary>
+                  <div className="mt-2 space-y-2 rounded-xl bg-muted/30 p-2">
+                    {agruparFaixasPorCondicao(item.faixas_peso).map((grupo) =>
+                      <div key={grupo.rotulo} className="overflow-hidden rounded-lg border bg-background">
+                        <p className="bg-primary/10 px-2 py-1.5 font-bold text-primary">{grupo.rotulo}</p>
+                        {grupo.faixas.map((faixa, indice) =>
+                          <div key={indice} className="flex justify-between gap-2 border-t px-2 py-1.5 first:border-t-0">
+                            <span>{tituloFaixa(grupo.faixas, indice)}</span><strong>{dinheiro(faixa.valor)}</strong>
+                          </div>)}
                       </div>)}
                   </div>
                 </details>}
