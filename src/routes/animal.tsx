@@ -11,6 +11,8 @@ import {
   ClipboardList,
   FileText,
   FileUp,
+  Eye,
+  Download,
   FlaskConical,
   Image,
   ExternalLink,
@@ -30,12 +32,14 @@ import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
+import { obterStatusTermosPaciente } from "@/lib/status-termos-paciente.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
 import { obterMomentoLocalAplicacao } from "@/lib/documento-preventivo.functions";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, vacinasPredefinidas, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
+import { TermosDoPaciente } from "@/components/animal/TermosDoPaciente";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { enviarAnexoPortal } from "@/lib/drive.functions";
@@ -352,6 +356,10 @@ function AnimalFicha() {
   const [dadosPreventivos, setDadosPreventivos] = useState(camposPreventivos);
   const [tipoVacina, setTipoVacina] = useState("");
   const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
+  const [documentoEmVisualizacao, setDocumentoEmVisualizacao] = useState<{url:string;nome:string;mimeType:string}|null>(null);
+  const [termosGerados, setTermosGerados] = useState<{documentoId:string;codigoTermo:string|null;geradoPeloOricse:boolean}[]>([]);
+  const [statusTermosCompleto, setStatusTermosCompleto] = useState(false);
+  useEffect(() => () => { if (documentoEmVisualizacao) URL.revokeObjectURL(documentoEmVisualizacao.url); }, [documentoEmVisualizacao]);
   const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [erroProfissional, setErroProfissional] = useState("");
   const tipoPreventivo = modalTipo === "Vacinas" ? "vacina" : modalTipo === "Vermífugos" ? "vermifugo" : null;
@@ -480,7 +488,7 @@ function AnimalFicha() {
         ...docs.map((d) => ({
           id: d.id,
           animalId: d.animal_id,
-          tipo: "Documentos" as const,
+          tipo: (/^termo\b/i.test(d.tipo || "") ? "Termos" : "Documentos") as RegistroTipo,
           titulo: d.titulo,
           detalhe: [d.tipo && d.tipo !== "Documento" ? `Tipo: ${d.tipo}` : "", d.observacoes || ""]
             .filter(Boolean)
@@ -522,6 +530,31 @@ function AnimalFicha() {
   useEffect(() => {
     void carregarConteudosPortal();
   }, [animalId]);
+
+  useEffect(() => {
+    if (aba !== "Termos" || !clinicaId || !animalId) return;
+    let ativo = true;
+    setStatusTermosCompleto(false);
+    setTermosGerados([]);
+    void (async () => {
+      try {
+        const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+        if (!token) throw new Error("Sessão expirada.");
+        const resultado = await obterStatusTermosPaciente({ data: {
+          accessToken: token, clinicaId, animalId,
+        } });
+        if (!ativo) return;
+        setTermosGerados(resultado.documentos);
+        setStatusTermosCompleto(resultado.completo);
+      } catch (error) {
+        if (ativo) {
+          console.error("Não foi possível conferir a emissão dos termos do paciente:", error);
+          setStatusTermosCompleto(false);
+        }
+      }
+    })();
+    return () => { ativo = false; };
+  }, [aba, animalId, clinicaId, registrosPortal]);
 
   useEffect(() => {
     if (!animalId) return;
@@ -594,6 +627,11 @@ function AnimalFicha() {
       window.location.href = `/encaminhar?tutorId=${encodeURIComponent(animal.tutorId)}&animalId=${encodeURIComponent(animal.id)}`;
       return;
     }
+    if (tipo === "Termos" && animal) {
+      window.location.href = "/termos?tutorId=" + encodeURIComponent(animal.tutorId) +
+        "&animalId=" + encodeURIComponent(animal.id);
+      return;
+    }
     if (tipo === "Receitas" && animal) {
       window.location.href = `/receituario?tutorId=${encodeURIComponent(animal.tutorId)}&animalId=${encodeURIComponent(animal.id)}`;
       return;
@@ -617,6 +655,50 @@ function AnimalFicha() {
     setArquivoPdf(null);
     anexoEmEdicao.current = null;
     setTipoDetalhe(tipo === "Exames" ? "Exame" : tipo === "Documentos" ? "Documento" : "");
+  }
+
+  function abrirAnexoTermo(nome: string) {
+    if (!animal) return;
+    setModalTipo("Termos");
+    setTitulo(nome);
+    setTipoDetalhe("Termo");
+    setDetalhe("");
+    setData(hojeNoBrasil());
+    setArquivoPdf(null);
+    setVisivelTutor(false);
+    anexoEmEdicao.current = null;
+  }
+
+  async function abrirDocumento(registro: Registro, acao: "visualizar" | "baixar") {
+    if (!registro.driveArquivoId) {
+      toast.error("Este documento ainda não possui arquivo anexado.");
+      return;
+    }
+    try {
+      const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+      if (!token || !clinicaId) throw new Error("Sessão expirada.");
+      const arquivo = await baixarDocumentoPortal({ data: {
+        accessToken: token, documentoId: registro.id,
+        tipo: registro.fontePortal === "exame" ? "exame" : registro.fontePortal === "receita" ? "receita" : "documento",
+        clinicaEquipeId: clinicaId,
+      } });
+      const bytes = Uint8Array.from(atob(arquivo.base64), letra => letra.charCodeAt(0));
+      const mimeType = arquivo.mimeType || "application/pdf";
+      const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+      const nome = arquivo.nome || "documento.pdf";
+      if (acao === "visualizar") {
+        setDocumentoEmVisualizacao({ url, nome, mimeType });
+      } else {
+        const link = document.createElement("a");
+        link.href = url; link.download = nome;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível abrir o documento.");
+    }
   }
 
   function editarPreventivo(registro: Registro) {
@@ -659,11 +741,12 @@ function AnimalFicha() {
 
   async function salvarRegistro() {
     if (!animal || !modalTipo || salvandoPortal) return;
-    if (demoAlvorada && (modalTipo === "Documentos" || (modalTipo === "Exames" && arquivoPdf))) {
+    if (demoAlvorada && (modalTipo === "Documentos" || modalTipo === "Termos" || (modalTipo === "Exames" && arquivoPdf))) {
       return void toast.info(AVISO_DEMO_DOCUMENTOS);
     }
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
-    if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
+    if (modalTipo === "Termos" && !arquivoPdf) return void toast.error("Anexe um arquivo PDF antes de registrar o termo.");
+    if (["Vacinas", "Vermífugos", "Exames", "Documentos", "Termos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
       if (
         (modalTipo === "Exames" || modalTipo === "Documentos") &&
@@ -761,7 +844,7 @@ function AnimalFicha() {
             clinica_id: clinicaId,
             animal_id: animal.id,
             titulo: titulo.trim(),
-            tipo: tipoDetalhe.trim() || (exame ? "Exame" : "Documento"),
+            tipo: modalTipo === "Termos" ? "Termo" : (tipoDetalhe.trim() || (exame ? "Exame" : "Documento")),
             drive_arquivo_id: driveArquivoId,
             visivel_tutor: visivelTutor && !demoAlvorada,
           };
@@ -782,7 +865,7 @@ function AnimalFicha() {
         setModalTipo(null);
         setArquivoPdf(null);
         toast.success(
-          visivelTutor && !demoAlvorada && ["Exames", "Documentos"].includes(modalTipo)
+          visivelTutor && !demoAlvorada && ["Exames", "Documentos", "Termos"].includes(modalTipo)
             ? `${modalTipo} disponível no Portal. O aviso com link foi adicionado ao CRM.`
             : `${modalTipo} adicionado no banco.`,
         );
@@ -1082,6 +1165,7 @@ function AnimalFicha() {
                     "Vermífugos",
                     "Exames",
                     "Receitas",
+                    "Termos",
                     "Observações",
                     "Documentos",
                     "Galeria",
@@ -1118,20 +1202,18 @@ function AnimalFicha() {
               onChange={(proximos) => setRegistros(proximos as Registro[])}
             />
           ) : (
+            <>
+            {aba === "Termos" && <TermosDoPaciente
+              animalId={animal.id}
+              tutorId={animal.tutorId}
+              documentos={registrosAnimal.filter(r => r.tipo === "Termos")}
+              gerados={termosGerados}
+              conferenciaCompleta={statusTermosCompleto}
+              onAnexar={abrirAnexoTermo}
+            />}
             <SecaoCompleta
-              onBaixarDocumento={async (registro) => {
-                try {
-                  const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
-                  if (!token || !clinicaId) throw new Error("Sessão expirada.");
-                  const arquivo = await baixarDocumentoPortal({data:{accessToken:token,documentoId:registro.id,
-                    tipo:registro.fontePortal==="exame"?"exame":registro.fontePortal==="receita"?"receita":"documento",clinicaEquipeId:clinicaId}});
-                  const bytes = Uint8Array.from(atob(arquivo.base64), letra=>letra.charCodeAt(0));
-                  const url = URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));
-                  const link = document.createElement("a");
-                  link.href=url; link.download=arquivo.nome||"documento.pdf"; link.click();
-                  setTimeout(()=>URL.revokeObjectURL(url),1000);
-                } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível baixar o PDF."); }
-              }}
+              onBaixarDocumento={(registro) => void abrirDocumento(registro, "baixar")}
+              onVisualizarDocumento={(registro) => void abrirDocumento(registro, "visualizar")}
               aba={aba}
               registros={registrosAnimal.filter((r) => r.tipo === aba)}
               onAdd={() => abrirNovo(aba as RegistroTipo)}
@@ -1139,12 +1221,41 @@ function AnimalFicha() {
               onEditarPreventivo={editarPreventivo}
               onDocumentoPreventivo={demoAlvorada ? undefined : registro => setDocumentoPreventivo(registro.preventivo)}
             />
+            </>
           )}
 
           {documentoPreventivo && documentoPreventivo.linha.animal_id === animal.id && (
             <DocumentoPreventivo key={documentoPreventivo.linha.id} clinicaId={clinicaId} animalId={animal.id}
               registroId={documentoPreventivo.linha.id} tipo={documentoPreventivo.tipo}
               onClose={() => setDocumentoPreventivo(undefined)} />
+          )}
+
+          {documentoEmVisualizacao && (
+            <div role="dialog" aria-modal="true" aria-label={"Visualizar " + documentoEmVisualizacao.nome}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-3"
+              onMouseDown={(e) => { if (e.target === e.currentTarget) setDocumentoEmVisualizacao(null); }}>
+              <div className="flex h-[min(90dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
+                  <strong className="min-w-0 flex-1 truncate text-sm">{documentoEmVisualizacao.nome}</strong>
+                  <div className="flex items-center gap-2">
+                    <a href={documentoEmVisualizacao.url} download={documentoEmVisualizacao.nome}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold">
+                      <Download size={16} /> Baixar
+                    </a>
+                    <button type="button" onClick={() => setDocumentoEmVisualizacao(null)}
+                      aria-label="Fechar visualização" className="rounded-lg border p-2"><X size={19} /></button>
+                  </div>
+                </div>
+                {documentoEmVisualizacao.mimeType === "application/pdf" ?
+                  <iframe title={"Documento: " + documentoEmVisualizacao.nome}
+                    src={documentoEmVisualizacao.url} className="min-h-0 w-full flex-1 bg-white" />
+                : documentoEmVisualizacao.mimeType.startsWith("image/") ?
+                  <img alt={documentoEmVisualizacao.nome} src={documentoEmVisualizacao.url} className="min-h-0 w-full flex-1 object-contain" />
+                : <div className="p-5 text-sm text-muted-foreground">
+                    Este formato não possui visualização integrada. Use Baixar para acessar o arquivo.
+                  </div>}
+              </div>
+            </div>
           )}
 
           {modalTipo && (
@@ -1266,10 +1377,10 @@ function AnimalFicha() {
                       {modalTipo === "Documentos" && <datalist id="tipos-documento-portal">{["Laudo", "Atestado", "Atestado de vacinação", "Comprovante de vermifugação", "Cartão de vacinação", "Carteira de saúde", "Resultado de exame", "Termo", "Relatório", "Orientações", "Outros"].map(t=><option key={t} value={t}/>)}</datalist>}
                     </label>
                   )}
-                  {(modalTipo === "Exames" || modalTipo === "Documentos") && (
+                  {(modalTipo === "Exames" || modalTipo === "Documentos" || modalTipo === "Termos") && (
                     <label className="block rounded-xl border border-dashed p-3 text-sm font-bold">
                       <span className="flex items-center gap-2">
-                        <FileUp size={17} /> {modalTipo === "Exames" ? "PDF do exame" : "PDF do documento ou laudo"} (opcional)
+                        <FileUp size={17} /> {modalTipo === "Termos" ? "PDF do termo já existente" : modalTipo === "Exames" ? "PDF do exame" : "PDF do documento ou laudo"} {modalTipo !== "Termos" && "(opcional)"}
                       </span>
                       <input
                         type="file"
@@ -1305,12 +1416,12 @@ function AnimalFicha() {
                       className="mt-1 w-full rounded-xl border p-3"
                     />
                   </label>
-                  {["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo) && (
+                  {["Vacinas", "Vermífugos", "Exames", "Documentos", "Termos"].includes(modalTipo) && (
                     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
                       <div>
                         <div className="text-sm font-black">Visível no Portal do Tutor</div>
                         <div className="text-xs text-muted-foreground">
-                          {modalTipo === "Exames" || modalTipo === "Documentos"
+                          {modalTipo === "Exames" || modalTipo === "Documentos" || modalTipo === "Termos"
                             ? "Ao publicar, o CRM prepara um aviso com link seguro para o Portal do Tutor."
                             : "O tutor só verá este registro se esta opção estiver ativada."}
                         </div>
@@ -1679,6 +1790,7 @@ function SecaoCompleta({
   registros,
   onAdd,
   onBaixarDocumento,
+  onVisualizarDocumento,
   onTogglePortal,
   onEditarPreventivo,
   onDocumentoPreventivo,
@@ -1687,6 +1799,7 @@ function SecaoCompleta({
   registros: Registro[];
   onAdd: () => void;
   onBaixarDocumento: (registro: Registro) => void;
+  onVisualizarDocumento: (registro: Registro) => void;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
   onEditarPreventivo: (registro: Registro) => void;
   onDocumentoPreventivo?: (registro: Registro) => void;
@@ -1720,7 +1833,19 @@ function SecaoCompleta({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {r.driveArquivoId && <button type="button" onClick={()=>onBaixarDocumento(r)} className="rounded-xl border px-3 py-2 text-xs font-bold">Baixar PDF</button>}
+                    {r.driveArquivoId ? <>
+                      <button type="button" onClick={() => onVisualizarDocumento(r)}
+                        aria-label={"Visualizar " + r.titulo}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted">
+                        <Eye size={15} /> Visualizar
+                      </button>
+                      <button type="button" onClick={() => onBaixarDocumento(r)}
+                        aria-label={"Baixar " + r.titulo}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted">
+                        <Download size={15} /> Baixar
+                      </button>
+                    </> : (["Receitas", "Exames", "Documentos", "Termos"].includes(aba)
+                        ? <span className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Sem arquivo anexado</span> : null)}
                     {r.preventivo && (
                       <>
                       <button
