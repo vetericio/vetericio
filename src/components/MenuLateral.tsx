@@ -30,7 +30,6 @@ import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { CRM_EM_PREPARACAO, ORICSTUDIO_EM_PREPARACAO, SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
-import { crmLiberadoParaClinica } from "@/lib/crm-acesso";
 
 type MenuRoute =
   | "/recepcao"
@@ -160,11 +159,11 @@ const areas: AreaMenu[] = [
     ],
   },
   {
-    titulo: "Gestão de clientes",
+    titulo: "Central de Relacionamento",
     icone: Users,
     emPreparacao: CRM_EM_PREPARACAO,
     itens: [
-      { to: "/crm", rotulo: "Retornos, cuidados e campanhas", permissao: "crm.visualizar" },
+      { to: "/crm", rotulo: "Retornos, lembretes e campanhas", permissao: "crm.visualizar" },
     ],
   },
   {
@@ -376,7 +375,7 @@ export function MenuLateral({
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) => (item.to === "/crm" && crmLiberadoParaClinica(clinicaSlug) && (adminGlobal || pode("crm.visualizar") || pode("crm.enviar") || pode("crm.gerenciar"))) ||
+          (item) => (item.to === "/crm") ||
             (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
             (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
@@ -441,7 +440,7 @@ export function MenuLateral({
                 />
               </button>
               {abertoGrupo && (
-                <div className={`oricse-menu-panel ${area.titulo === "Gestão de clientes" ? "py-1" : "space-y-1 p-2"}`}>
+                <div className={`oricse-menu-panel ${area.titulo === "Central de Relacionamento" ? "py-1" : "space-y-1 p-2"}`}>
                   {itens.map((item, i) => {
                     const chave = (item.to || item.rotulo) + i;
                     if (item.separador) {
@@ -490,6 +489,13 @@ export function MenuLateral({
                           <span className="flex-1">{item.rotulo}</span>
                           <Lock className="h-4 w-4 shrink-0" aria-label="Recurso não incluído no plano" />
                         </button>
+                      );
+                    if (item.to === "/crm" && !adminGlobal && !pode("crm.visualizar") && !pode("crm.enviar") && !pode("crm.gerenciar"))
+                      return (
+                        <div key={chave} className="oricse-menu-item flex min-h-10 items-center gap-2 px-4 py-2 text-sm text-muted-foreground" aria-disabled="true">
+                          <Lock size={15} aria-hidden="true"/>
+                          <span>Central de Relacionamento <span className="block text-xs">Solicite acesso ao administrador da clínica</span></span>
+                        </div>
                       );
                     const bloqueadoPlantao =
                       !!item.to &&
@@ -540,7 +546,7 @@ export function MenuLateral({
                         onClick={() => setAberto(false)}
                         data-destaque={item.destaque}
                         data-current={location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) || undefined}
-                        className={area.titulo === "Gestão de clientes"
+                        className={area.titulo === "Central de Relacionamento"
                           ? "oricse-menu-item flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors"
                           : "oricse-menu-item block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors"}
                       >

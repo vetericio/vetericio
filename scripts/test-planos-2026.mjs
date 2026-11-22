@@ -24,7 +24,7 @@ assert.equal(BENEFICIOS_ORICSE[0].nome,"Painel inicial e resumo do dia");
 assert(BENEFICIOS_ORICSE.some((b)=>b.nome.includes("Banco de horas") && b.nivelMinimo===3));
 assert(BENEFICIOS_ORICSE.some((b)=>b.nome.includes("Movimentações e ajustes") && b.nivelMinimo===2));
 assert(BENEFICIOS_ORICSE.some((b)=>b.nome.includes("Painel de internação") && b.nivelMinimo===2));
-assert(BENEFICIOS_ORICSE.some((b)=>b.nome.includes("CRM com campanhas") && b.nivelMinimo===3));
+assert(BENEFICIOS_ORICSE.some((b)=>b.nome.includes("CRM com campanhas") && b.nivelMinimo===0));
 const admin = readFileSync("src/routes/admin-planos.tsx","utf8");
 const planos = readFileSync("src/routes/planos.tsx","utf8");
 const checkout = readFileSync("src/routes/contratar.tsx","utf8");

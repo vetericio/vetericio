@@ -172,8 +172,8 @@ const GRUPOS: ReadonlyArray<readonly [string, NivelPlano, readonly string[]]> = 
     ]
   ],
   [
-    "CRM e relacionamento com clientes",
-    2,
+    "Central de Relacionamento",
+    0,
     [
       "Controle de retornos",
       "Lembretes de vacinas e vermífugos",
@@ -182,8 +182,8 @@ const GRUPOS: ReadonlyArray<readonly [string, NivelPlano, readonly string[]]> = 
     ]
   ],
   [
-    "CRM e relacionamento com clientes",
-    3,
+    "Central de Relacionamento",
+    0,
     [
       "CRM com campanhas segmentadas",
       "Seleção de públicos por critérios",

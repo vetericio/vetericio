@@ -1476,7 +1476,7 @@ function AnimalFicha() {
                       <input type="date" value={retornoExameEm} onChange={(e) => setRetornoExameEm(e.target.value)}
                         className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
                       <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                        Se preencher, a Gestão de Clientes lembrará a equipe de confirmar a data com o tutor.
+                        Se preencher, a Central de Relacionamento lembrará a equipe de confirmar a data com o tutor.
                       </span>
                     </label>
                   )}

@@ -82,7 +82,7 @@ const vazio: Omit<Tutor, "id" | "criadoEm"> = {
   autorizaLembretes: true,
   autorizaWhatsapp: true,
   autorizaEmail: false,
-  autorizaMarketing: false,
+  autorizaMarketing: true,
   responsavelFinanceiroNome: "",
   responsavelFinanceiroDocumento: "",
   veterinarioPreferencial: "",
@@ -351,6 +351,15 @@ function Tutores() {
           </Bloco>
 
           <Bloco titulo="Contato e preferências">
+            <label className="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+              <input type="checkbox" checked={form.autorizaMarketing === true}
+                onChange={(e) => set("autorizaMarketing", e.target.checked)}
+                className="h-4 w-4 shrink-0 accent-primary" />
+              <span>
+                <span className="block font-semibold">Receber novidades e campanhas pelo WhatsApp</span>
+                <span className="block text-xs text-muted-foreground">Desmarque se o tutor não autorizou mensagens promocionais. Isso não impede avisos clínicos autorizados.</span>
+              </span>
+            </label>
             <label className="text-sm font-semibold">Contato preferencial<select value={form.contatoPreferencial} onChange={(e) => set("contatoPreferencial", e.target.value)} className={campo}><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></label>
             <label className="text-sm font-semibold">Horário preferencial<input value={form.horarioPreferencial} onChange={(e) => set("horarioPreferencial", e.target.value)} className={campo}/></label>
             <label className="text-sm font-semibold">Contato de emergência<input value={form.contatoEmergenciaNome} onChange={(e) => set("contatoEmergenciaNome", e.target.value)} className={campo}/></label>
