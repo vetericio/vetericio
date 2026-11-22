@@ -883,7 +883,7 @@ function AnimalFicha() {
             visivel_tutor: visivelTutor && !demoAlvorada,
           };
           const { error } = exame
-            ? await supabaseBanco.from("oricse_portal_exames").upsert({
+            ? await (supabaseBanco as any).from("oricse_portal_exames").upsert({
                 ...registro, realizado_em: data || null, resultado_resumo: detalhe.trim() || null,
                 retorno_em: retornoExameEm || null, orientacoes_retorno: retornoExameEm ? "Confirmar reavaliação ou resultado com o tutor." : null,
               }, { onConflict: "id", ignoreDuplicates: true })
