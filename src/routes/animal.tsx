@@ -2078,12 +2078,12 @@ function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: strin
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) throw new Error("Sessão expirada.");
       const resultado = await registrarRetornoClinico({ data: {
-        accessToken: token, clinicaId, animalId, origem: "manual", origemId: animalId,
+        accessToken: token, clinicaId, animalId, origem: "manual",
         titulo: "Retorno clínico", orientacoes: "", dataPrevista,
       } });
       setEscolhendoPrazo(false);
       toast.success(
-        (resultado.criado ? "Enviado ao CRM. " : "Prazo salvo no CRM. ") +
+        (resultado.criado ? "Novo retorno enviado ao CRM. " : "Retorno encontrado no CRM. ") +
         "Retorno previsto: " + formatarDataRetorno(dataPrevista) + "."
       );
     } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível enviar o retorno ao CRM."); }
