@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
+import { obterStatusTermosPaciente } from "@/lib/status-termos-paciente.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
 import { obterMomentoLocalAplicacao } from "@/lib/documento-preventivo.functions";
@@ -356,6 +357,8 @@ function AnimalFicha() {
   const [tipoVacina, setTipoVacina] = useState("");
   const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
   const [documentoEmVisualizacao, setDocumentoEmVisualizacao] = useState<{url:string;nome:string;mimeType:string}|null>(null);
+  const [termosGerados, setTermosGerados] = useState<{documentoId:string;codigoTermo:string|null;geradoPeloOricse:boolean}[]>([]);
+  const [statusTermosCompleto, setStatusTermosCompleto] = useState(false);
   useEffect(() => () => { if (documentoEmVisualizacao) URL.revokeObjectURL(documentoEmVisualizacao.url); }, [documentoEmVisualizacao]);
   const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [erroProfissional, setErroProfissional] = useState("");
@@ -527,6 +530,31 @@ function AnimalFicha() {
   useEffect(() => {
     void carregarConteudosPortal();
   }, [animalId]);
+
+  useEffect(() => {
+    if (aba !== "Termos" || !clinicaId || !animalId) return;
+    let ativo = true;
+    setStatusTermosCompleto(false);
+    setTermosGerados([]);
+    void (async () => {
+      try {
+        const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+        if (!token) throw new Error("Sessão expirada.");
+        const resultado = await obterStatusTermosPaciente({ data: {
+          accessToken: token, clinicaId, animalId,
+        } });
+        if (!ativo) return;
+        setTermosGerados(resultado.documentos);
+        setStatusTermosCompleto(resultado.completo);
+      } catch (error) {
+        if (ativo) {
+          console.error("Não foi possível conferir a emissão dos termos do paciente:", error);
+          setStatusTermosCompleto(false);
+        }
+      }
+    })();
+    return () => { ativo = false; };
+  }, [aba, animalId, clinicaId, registrosPortal]);
 
   useEffect(() => {
     if (!animalId) return;
@@ -1179,6 +1207,8 @@ function AnimalFicha() {
               animalId={animal.id}
               tutorId={animal.tutorId}
               documentos={registrosAnimal.filter(r => r.tipo === "Termos")}
+              gerados={termosGerados}
+              conferenciaCompleta={statusTermosCompleto}
               onAnexar={abrirAnexoTermo}
             />}
             <SecaoCompleta
