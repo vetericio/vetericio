@@ -1174,20 +1174,16 @@ function AnimalFicha() {
               onChange={(proximos) => setRegistros(proximos as Registro[])}
             />
           ) : (
+            <>
+            {aba === "Termos" && <TermosDoPaciente
+              animalId={animal.id}
+              tutorId={animal.tutorId}
+              documentos={registrosAnimal.filter(r => r.tipo === "Termos")}
+              onAnexar={abrirAnexoTermo}
+            />}
             <SecaoCompleta
-              onBaixarDocumento={async (registro) => {
-                try {
-                  const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
-                  if (!token || !clinicaId) throw new Error("Sessão expirada.");
-                  const arquivo = await baixarDocumentoPortal({data:{accessToken:token,documentoId:registro.id,
-                    tipo:registro.fontePortal==="exame"?"exame":registro.fontePortal==="receita"?"receita":"documento",clinicaEquipeId:clinicaId}});
-                  const bytes = Uint8Array.from(atob(arquivo.base64), letra=>letra.charCodeAt(0));
-                  const url = URL.createObjectURL(new Blob([bytes],{type:arquivo.mimeType}));
-                  const link = document.createElement("a");
-                  link.href=url; link.download=arquivo.nome||"documento.pdf"; link.click();
-                  setTimeout(()=>URL.revokeObjectURL(url),1000);
-                } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível baixar o PDF."); }
-              }}
+              onBaixarDocumento={(registro) => void abrirDocumento(registro, "baixar")}
+              onVisualizarDocumento={(registro) => void abrirDocumento(registro, "visualizar")}
               aba={aba}
               registros={registrosAnimal.filter((r) => r.tipo === aba)}
               onAdd={() => abrirNovo(aba as RegistroTipo)}
@@ -1195,12 +1191,41 @@ function AnimalFicha() {
               onEditarPreventivo={editarPreventivo}
               onDocumentoPreventivo={demoAlvorada ? undefined : registro => setDocumentoPreventivo(registro.preventivo)}
             />
+            </>
           )}
 
           {documentoPreventivo && documentoPreventivo.linha.animal_id === animal.id && (
             <DocumentoPreventivo key={documentoPreventivo.linha.id} clinicaId={clinicaId} animalId={animal.id}
               registroId={documentoPreventivo.linha.id} tipo={documentoPreventivo.tipo}
               onClose={() => setDocumentoPreventivo(undefined)} />
+          )}
+
+          {documentoEmVisualizacao && (
+            <div role="dialog" aria-modal="true" aria-label={"Visualizar " + documentoEmVisualizacao.nome}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-3"
+              onMouseDown={(e) => { if (e.target === e.currentTarget) setDocumentoEmVisualizacao(null); }}>
+              <div className="flex h-[min(90dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
+                  <strong className="min-w-0 flex-1 truncate text-sm">{documentoEmVisualizacao.nome}</strong>
+                  <div className="flex items-center gap-2">
+                    <a href={documentoEmVisualizacao.url} download={documentoEmVisualizacao.nome}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold">
+                      <Download size={16} /> Baixar
+                    </a>
+                    <button type="button" onClick={() => setDocumentoEmVisualizacao(null)}
+                      aria-label="Fechar visualização" className="rounded-lg border p-2"><X size={19} /></button>
+                  </div>
+                </div>
+                {documentoEmVisualizacao.mimeType === "application/pdf" ?
+                  <iframe title={"Documento: " + documentoEmVisualizacao.nome}
+                    src={documentoEmVisualizacao.url} className="min-h-0 w-full flex-1 bg-white" />
+                : documentoEmVisualizacao.mimeType.startsWith("image/") ?
+                  <img alt={documentoEmVisualizacao.nome} src={documentoEmVisualizacao.url} className="min-h-0 w-full flex-1 object-contain" />
+                : <div className="p-5 text-sm text-muted-foreground">
+                    Este formato não possui visualização integrada. Use Baixar para acessar o arquivo.
+                  </div>}
+              </div>
+            </div>
           )}
 
           {modalTipo && (
@@ -1735,6 +1760,7 @@ function SecaoCompleta({
   registros,
   onAdd,
   onBaixarDocumento,
+  onVisualizarDocumento,
   onTogglePortal,
   onEditarPreventivo,
   onDocumentoPreventivo,
@@ -1743,6 +1769,7 @@ function SecaoCompleta({
   registros: Registro[];
   onAdd: () => void;
   onBaixarDocumento: (registro: Registro) => void;
+  onVisualizarDocumento: (registro: Registro) => void;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
   onEditarPreventivo: (registro: Registro) => void;
   onDocumentoPreventivo?: (registro: Registro) => void;
@@ -1776,7 +1803,19 @@ function SecaoCompleta({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {r.driveArquivoId && <button type="button" onClick={()=>onBaixarDocumento(r)} className="rounded-xl border px-3 py-2 text-xs font-bold">Baixar PDF</button>}
+                    {r.driveArquivoId ? <>
+                      <button type="button" onClick={() => onVisualizarDocumento(r)}
+                        aria-label={"Visualizar " + r.titulo}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted">
+                        <Eye size={15} /> Visualizar
+                      </button>
+                      <button type="button" onClick={() => onBaixarDocumento(r)}
+                        aria-label={"Baixar " + r.titulo}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold hover:bg-muted">
+                        <Download size={15} /> Baixar
+                      </button>
+                    </> : (["Receitas", "Exames", "Documentos", "Termos"].includes(aba)
+                        ? <span className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Sem arquivo anexado</span> : null)}
                     {r.preventivo && (
                       <>
                       <button
