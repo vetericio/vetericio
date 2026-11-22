@@ -42,6 +42,12 @@ const [catalogo,consulta,comanda,aprovacao,banco,tipos] = await Promise.all([
   readFile("src/lib/comandas.ts","utf8"),
 ]);
 assert.match(catalogo,/Definir preço por faixa de peso do animal/);
+assert.match(catalogo,/createPortal\(/, "Modal deve abrir fora da área de rolagem do menu");
+assert.match(catalogo,/max-h-\[calc\(100dvh-1rem\)\]/, "Editor deve respeitar a altura da tela");
+assert.match(catalogo,/min-h-0 flex-1 overflow-y-auto overscroll-contain/, "Campos precisam rolar dentro do editor");
+assert.match(catalogo,/shrink-0 border-t bg-background/, "Botão Salvar deve continuar sempre visível");
+assert.match(catalogo,/valor:e\.target\.value/, "Preço deve ser livremente editável, sem máscara por tecla");
+assert.doesNotMatch(catalogo,/Serviços antigos separados por peso\? Organize/, "Banner antigo não deve aparecer no catálogo");
 assert.match(catalogo,/agruparServicosExistentes/);
 assert.match(catalogo,/oricse_agrupar_servicos_peso/);
 assert.match(catalogo,/faixas_peso: modal\.tipo === "servico"/);
