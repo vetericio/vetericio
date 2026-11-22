@@ -1,4 +1,5 @@
 import type { jsPDF } from "jspdf";
+import { quebrarAntesDaLinhaFinal } from "@/lib/paginacao-assinaturas";
 import { COR_QUADROS_PADRAO, formatarDataExtensoDocumento, obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao, type TemaDocumentoPremium } from "@/lib/modelos-documentos";
 
 export type PapelDocumento = {
@@ -480,13 +481,58 @@ export async function criarPdfComModelo({
         (papel ?? fundoSemIdentidade)?.corQuadros, "receita", papel?.tema);
     }
     y += 2;
-    for (const linha of conteudo.split("\n")) escrever(linha);
-    if (assinatura.length || assinaturaResponsavel) {
+    const temAssinaturas = Boolean(assinatura.length || assinaturaResponsavel);
+    definirFonte(false, 10);
+    const [data, ...profissional] = assinatura;
+    const linhas = profissional.filter(Boolean).flatMap(texto => pdf.splitTextToSize(texto, largura) as string[]);
+    // Inclui a data, as duas linhas de assinatura, as identificações e margem de segurança.
+    const alturaAssinaturas = temAssinaturas
+      ? 7 + (assinaturaResponsavel ? 23 : 0) + (assinatura.length ? 17 + linhas.length * 5 : 0) + 4
+      : 0;
+
+    if (vias === 2 && temAssinaturas) {
+      // Para cada via, usar a maior tipografia que permita texto e assinaturas
+      // na mesma página. Nunca diminuir abaixo de 9 pt.
+      const tamanhos = [
+        { fonte: 10.5, passo: 5 },
+        { fonte: 10, passo: 4.75 },
+        { fonte: 9.5, passo: 4.5 },
+        { fonte: 9, passo: 4.3 },
+      ];
+      const planos = tamanhos.map(({ fonte, passo }) => {
+        definirFonte(false, fonte);
+        const corpo = conteudo.split("\n")
+          .flatMap(paragrafo => pdf.splitTextToSize(paragrafo || " ", largura) as string[]);
+        return { fonte, passo, corpo };
+      });
+      const plano = planos.find(p => y + p.corpo.length * p.passo + alturaAssinaturas <= 273)
+        ?? planos[planos.length - 1];
+
+      for (let indice = 0; indice < plano.corpo.length; indice++) {
+        const restantes = plano.corpo.length - indice;
+        if (quebrarAntesDaLinhaFinal({
+          y, linhasRestantes: restantes, passo: plano.passo,
+          reservaAssinaturas: alturaAssinaturas,
+        })) {
+          pdf.addPage();
+          iniciarPagina();
+        }
+        definirFonte(false, plano.fonte);
+        pdf.text(plano.corpo[indice], margem, y);
+        y += plano.passo;
+      }
+    } else {
+      for (const linha of conteudo.split("\n")) escrever(linha);
+    }
+    if (temAssinaturas) {
       definirFonte(false, 10);
-      const [data, ...profissional] = assinatura;
-      const linhas = profissional.filter(Boolean).flatMap(texto => pdf.splitTextToSize(texto, largura) as string[]);
-      const alturaAssinaturas = (assinaturaResponsavel ? 23 : 0) + (assinatura.length ? 28 + linhas.length * 5 : 0);
-      if (y + alturaAssinaturas > 273) { pdf.addPage(); iniciarPagina(); }
+      if (y + alturaAssinaturas > 273) {
+        // Para os termos, a paginação tem de reservar a assinatura antes
+        // de imprimir as linhas finais. Evitar página só com assinatura.
+        if (vias === 2) throw new Error("O bloco de assinaturas não cabe junto ao texto final.");
+        pdf.addPage();
+        iniciarPagina();
+      }
       y += 7;
       definirFonte(false, 10);
       if (data) {
