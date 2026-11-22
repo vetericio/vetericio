@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { build } from "esbuild";
+import { jsPDF } from "jspdf";
 
 // Testa o código de produção, sem cópia das regras.
 const { outputFiles } = await build({
@@ -67,4 +68,48 @@ const endereco = dados("cirurgia");endereco.identificacao.enderecoTutorCompleto 
 assert(pendenciasTermo(endereco).some(e=>e.includes("Endereço completo")));
 const gate = await readFile("src/lib/termos-clinicos-status.ts","utf8");
 assert.match(gate,/TERMOS_CLINICOS_HOMOLOGADOS = false;/,"Novos termos não devem ser liberados sem homologação");
+// Paginação realista de todos os 14 textos com os mesmos cálculos do gerador.
+// Conferir também casos grandes: nunca gerar a última página só com assinatura.
+const { outputFiles: arquivosPaginacao } = await build({
+  entryPoints: ["src/lib/paginacao-assinaturas.ts"],
+  bundle: true, platform: "node", format: "esm", target: "node22",
+  write: false, tsconfig: "tsconfig.json", logLevel: "silent",
+});
+const { quebrarAntesDaLinhaFinal } = await import("data:text/javascript;base64," +
+  Buffer.from(arquivosPaginacao[0].text).toString("base64"));
+const largura = 210 - 2 * 13;
+for (const termo of BIBLIOTECA_TERMOS) {
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  const texto = prepararConteudoTermo(dados(termo.id));
+  for (const inicio of [123, 158, 215]) {
+    const assinatura = 57;
+    const planos = [
+      { fonte: 10.5, passo: 5 }, { fonte: 10, passo: 4.75 },
+      { fonte: 9.5, passo: 4.5 }, { fonte: 9, passo: 4.3 },
+    ].map(plano => {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(plano.fonte);
+      return { ...plano, linhas: texto.split("\\n").flatMap(paragrafo =>
+        pdf.splitTextToSize(paragrafo || " ", largura)) };
+    });
+    const plano = planos.find(v => inicio + v.linhas.length * v.passo + assinatura <= 273)
+      ?? planos[planos.length - 1];
+    let y = inicio;
+    let textoNaUltimaPagina = 0;
+    for (let i = 0; i < plano.linhas.length; i++) {
+      if (quebrarAntesDaLinhaFinal({
+        y, linhasRestantes: plano.linhas.length - i,
+        passo: plano.passo, reservaAssinaturas: assinatura,
+      })) {
+        y = 60; // nova página, com cabeçalho e identificação da via
+        textoNaUltimaPagina = 0;
+      }
+      y += plano.passo;
+      textoNaUltimaPagina++;
+    }
+    assert(textoNaUltimaPagina >= 1, "Página de assinaturas sem texto: " + termo.id);
+    assert(y + assinatura <= 273, "Assinatura sem espaço no termo: " + termo.id);
+  }
+}
+console.log("OK: 14 termos com assinaturas junto ao texto final (incluindo quebras e conteúdo longo).");
 console.log("OK: 14 modelos, CPF, campos obrigatórios, RCP, testemunhas, domicílio e gate de publicação.");
