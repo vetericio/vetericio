@@ -163,8 +163,7 @@ const areas: AreaMenu[] = [
     icone: Users,
     emPreparacao: CRM_EM_PREPARACAO,
     itens: [
-      { to: "/crm", rotulo: "Retornos, vacinas e aniversários", permissao: "crm.visualizar" },
-      { to: "/crm", rotulo: "Avisos e atualizações para tutores", permissao: "crm.enviar" },
+      { to: "/crm", rotulo: "Retornos, cuidados e campanhas", permissao: "crm.visualizar" },
     ],
   },
   {
