@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
+import { crmLiberadoParaClinica } from "@/lib/crm-acesso";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Crm360Panel } from "@/components/Crm360Panel";
@@ -285,7 +286,7 @@ async function comTempoLimite<T>(promessa: Promise<T>, milissegundos = 20000): P
 }
 
 function Crm() {
-  const { carregando: carregandoPermissoes, clinicaId, pode, adminGlobal } = usePermissoes();
+  const { carregando: carregandoPermissoes, clinicaId, clinicaSlug, pode, adminGlobal } = usePermissoes();
   const [aba, setAba] = useState<Aba>("fila");
   const [visao, setVisao] = useState<"retornos" | "campanhas" | "fila">("retornos");
   const [config, setConfig] = useState<CrmConfig | null>(null);
@@ -300,6 +301,7 @@ function Crm() {
 
   const podeOperar = adminGlobal || pode("crm.enviar") || pode("crm.gerenciar");
   const podeGerenciar = adminGlobal || pode("crm.gerenciar");
+  const crmLiberado = crmLiberadoParaClinica(clinicaSlug);
 
   async function carregarEventos(id = clinicaId) {
     if (!id) return;
@@ -489,6 +491,11 @@ function Crm() {
 
   useEffect(() => {
     if (carregandoPermissoes) return;
+    if (!crmLiberado) {
+      setErroCarregamento("A Gestão de Clientes está liberada somente para a Veterício nesta etapa de validação.");
+      setCarregando(false);
+      return;
+    }
     if (!clinicaId) {
       setErroCarregamento("Selecione uma clínica na página inicial antes de abrir o CRM.");
       setCarregando(false);
@@ -527,7 +534,7 @@ function Crm() {
     }
     void carregar();
     return () => { ativo = false; };
-  }, [carregandoPermissoes, clinicaId, tentativa]);
+  }, [carregandoPermissoes, clinicaId, crmLiberado, tentativa]);
 
   const pendentes = useMemo(() => eventos.filter((evento) => evento.status === "pendente"), [eventos]);
   const vencidos = useMemo(() => pendentes.filter((evento) => new Date(evento.agendado_para).getTime() < Date.now()), [pendentes]);
