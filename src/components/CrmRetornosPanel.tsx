@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   CalendarCheck2, CalendarClock, MessageCircle,
@@ -64,35 +64,68 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
   const [observacao, setObservacao] = useState("");
   const [preparandoMensagem, setPreparandoMensagem] = useState<string | null>(null);
   const [editorMensagem, setEditorMensagem] = useState<{ retornoId: string; telefone: string; mensagem: string; comResumoClinico: boolean } | null>(null);
+  const versaoCarregamento = useRef(0);
+  const clinicaSincronizada = useRef("");
+  const timerSincronizacao = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const recarregar = useCallback(async () => {
+  const recarregar = useCallback(async (sincronizar = false) => {
     if (!clinicaId) return;
+    const versao = ++versaoCarregamento.current;
     setCarregando(true);
     setErro("");
     try {
-      const [sessao, pets, pais] = await Promise.all([
-        supabase.auth.getSession(),
+      const sessao = await supabase.auth.getSession();
+      const accessToken = sessao.data.session?.access_token;
+      if (sessao.error || !accessToken) throw new Error("Faça login novamente.");
+
+      // A leitura dos retornos, o seletor de pacientes e o de tutores são
+      // independentes. Nenhum aguarda os demais antes de iniciar.
+      const [resposta, pets, pais] = await Promise.all([
+        listarRetornosClinica({ data: { clinicaId, accessToken, sincronizar } }),
         (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id")
           .eq("clinica_id", clinicaId).order("nome").limit(2000),
         (supabaseBanco as any).from("tutores").select("id,nome")
           .eq("clinica_id", clinicaId).limit(2000),
       ]);
-      if (pets.error || pais.error || !sessao.data.session?.access_token)
-        throw new Error(pets.error?.message || pais.error?.message || "Faça login novamente.");
-      const resposta = await listarRetornosClinica({
-        data: { clinicaId, accessToken: sessao.data.session.access_token },
-      });
+      if (versaoCarregamento.current !== versao) return;
+      if (pets.error || pais.error) throw new Error(pets.error?.message || pais.error?.message);
       setRetornos(resposta);
       setPacientes(pets.data || []);
       setTutores(pais.data || []);
+
+      // Sincronizar reforços UMA VEZ por acesso, sem bloquear a primeira
+      // renderização. Manter revalidação para não perder vacinas/exames novos.
+      if (!sincronizar && clinicaSincronizada.current !== clinicaId) {
+        clinicaSincronizada.current = clinicaId;
+        if (timerSincronizacao.current) clearTimeout(timerSincronizacao.current);
+        timerSincronizacao.current = setTimeout(() => {
+          timerSincronizacao.current = null;
+          void listarRetornosClinica({
+            data: { clinicaId, accessToken, sincronizar: true },
+          }).then((atualizados) => {
+            if (versaoCarregamento.current === versao) setRetornos(atualizados);
+          }).catch((erroSync) => {
+            console.warn("Retornos exibidos, mas a conciliação dos reforços não foi concluída:", erroSync);
+            // Permite nova tentativa manual pelo botão Atualizar.
+          });
+        }, 150);
+      }
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível carregar os retornos.");
+      if (versaoCarregamento.current === versao)
+        setErro(e instanceof Error ? e.message : "Não foi possível carregar os retornos.");
     } finally {
-      setCarregando(false);
+      if (versaoCarregamento.current === versao) setCarregando(false);
     }
   }, [clinicaId]);
 
-  useEffect(() => { void recarregar(); }, [recarregar]);
+  useEffect(() => {
+    void recarregar();
+    return () => {
+      versaoCarregamento.current += 1;
+      if (timerSincronizacao.current) clearTimeout(timerSincronizacao.current);
+      timerSincronizacao.current = null;
+    };
+  }, [recarregar]);
 
   useEffect(() => {
     if (!animalPreselecionadoId || !pacientes.some((paciente) => paciente.id === animalPreselecionadoId)) return;
@@ -204,7 +237,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
           </p>
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={() => void recarregar()} disabled={carregando}
+          <button type="button" onClick={() => void recarregar(true)} disabled={carregando}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-50">
             <RefreshCw size={16} /> Atualizar
           </button>

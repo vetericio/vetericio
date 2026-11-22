@@ -112,10 +112,13 @@ async function sincronizarReforcos(admin: any, clinicaId: string) {
 }
 
 export const listarRetornosClinica = createServerFn({ method: "POST" })
-  .validator((input: unknown) => base.parse(input))
+  .validator((input: unknown) => base.extend({ sincronizar: z.boolean().optional() }).parse(input))
   .handler(async ({ data }) => {
     const { admin } = await acessoSeguro(data.accessToken, data.clinicaId, "leitura");
-    await sincronizarReforcos(admin, data.clinicaId);
+    // A fila deve poder carregar sem aguardar a varredura de todas as vacinas,
+    // vermífugos e exames. A reconciliação será solicitada separadamente
+    // pela interface depois da primeira renderização.
+    if (data.sincronizar) await sincronizarReforcos(admin, data.clinicaId);
     const [retornos, animais, tutores] = await Promise.all([
       admin.from("oricse_crm_retornos").select("id,animal_id,tutor_id,origem,titulo,data_prevista,orientacoes,status,anotacao_equipe,contato_em,confirmado_em,realizado_em")
         .eq("clinica_id", data.clinicaId).order("data_prevista", { ascending: true }).limit(2000),

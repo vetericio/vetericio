@@ -46,4 +46,12 @@ assert.match(schema,/lower\(coalesce\(v_tutor\.dados->>'autorizaMarketing','fals
 assert.match(schema,/and clinica_id=v_campanha\.clinica_id/);
 assert.match(schema,/v_tutor\.telefone/);
 assert.match(schema,/v_tutor\.email/);
+// Regressão de performance: Retornos não depende da fila e sincronização
+// de reforços não pode bloquear a primeira leitura.
+assert.match(crm,/if \(visao !== "fila"\)/);
+assert.match(crm,/lazy\(\(\) => import\("@\/components\/Crm360Panel"\)/);
+assert.match(panel,/const \[resposta, pets, pais\] = await Promise\.all/);
+assert.match(panel,/sincronizar: true/);
+assert.match(server,/if \(data\.sincronizar\) await sincronizarReforcos/);
+assert.doesNotMatch(server,/^\s{4}await sincronizarReforcos\(admin, data\.clinicaId\);$/m);
 console.log("OK: retornos clínicos, consentimento, segurança por clínica e campanhas autoexplicativas.");

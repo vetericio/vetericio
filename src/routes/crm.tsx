@@ -1,16 +1,16 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, CalendarClock, Check, Mail, MessageCircle, RefreshCw, Settings2, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { crmLiberadoParaClinica } from "@/lib/crm-acesso";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
-import { Crm360Panel } from "@/components/Crm360Panel";
+const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
 import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
-import { CrmModelosDaCentral } from "@/components/CrmModelosDaCentral";
+const CrmModelosDaCentral = lazy(() => import("@/components/CrmModelosDaCentral").then(m => ({ default: m.CrmModelosDaCentral })));
 
 export const Route = createFileRoute("/crm")({
   component: CRM_EM_PREPARACAO ? CrmEmPreparacao : Crm,
@@ -293,7 +293,7 @@ function Crm() {
   const [modelos, setModelos] = useState<ModeloCrm[]>([]);
   const [eventos, setEventos] = useState<EventoCrm[]>([]);
   const [clinicaNome, setClinicaNome] = useState("Clínica");
-  const [carregando, setCarregando] = useState(true);
+  const [carregando, setCarregando] = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState("");
   const [tentativa, setTentativa] = useState(0);
   const [sincronizando, setSincronizando] = useState(false);
@@ -501,6 +501,13 @@ function Crm() {
       setCarregando(false);
       return;
     }
+    // O painel inicial de Retornos e a área de Campanhas consultam seus próprios
+    // dados. Não bloquear a rota com configurações e eventos da fila legada.
+    if (visao !== "fila") {
+      setErroCarregamento("");
+      setCarregando(false);
+      return;
+    }
     let ativo = true;
     async function carregar() {
       setCarregando(true);
@@ -534,7 +541,7 @@ function Crm() {
     }
     void carregar();
     return () => { ativo = false; };
-  }, [carregandoPermissoes, clinicaId, crmLiberado, tentativa]);
+  }, [carregandoPermissoes, clinicaId, crmLiberado, tentativa, visao]);
 
   const pendentes = useMemo(() => eventos.filter((evento) => evento.status === "pendente"), [eventos]);
   const vencidos = useMemo(() => pendentes.filter((evento) => new Date(evento.agendado_para).getTime() < Date.now()), [pendentes]);
@@ -617,7 +624,7 @@ function Crm() {
         <h1 className="mt-1 text-3xl font-black tracking-tight">Gestão de Clientes</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Organize retornos, confirme com o tutor, acompanhe cuidados preventivos e crie campanhas de forma simples.</p>
       </div>
-      {podeOperar && <button type="button" disabled={sincronizando} onClick={() => void sincronizarComDados()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><RefreshCw size={17} className={sincronizando ? "animate-spin" : ""}/>{sincronizando ? "Sincronizando..." : "Sincronizar agora"}</button>}
+      {visao === "fila" && podeOperar && <button type="button" disabled={sincronizando || carregando} onClick={() => void sincronizarComDados()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><RefreshCw size={17} className={sincronizando ? "animate-spin" : ""}/>{sincronizando ? "Sincronizando..." : "Sincronizar agora"}</button>}
     </header>
 
     <nav aria-label="Seções da gestão de clientes" className="mt-6 flex flex-wrap gap-2 rounded-2xl border bg-card p-2">
@@ -636,14 +643,16 @@ function Crm() {
     {visao === "retornos" && <div className="mt-5">
       <CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} />
     </div>}
-    {visao === "campanhas" && <Crm360Panel
-      clinicaId={clinicaId}
-      podeCampanhas={adminGlobal || pode("crm.campanhas") || pode("crm.gerenciar")}
-      podeOperar={podeOperar}
-      onAbrirFila={() => { setVisao("fila"); setAba("fila");
-        window.setTimeout(() => document.getElementById("crm-fila")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-      }}
-    />}
+    {visao === "campanhas" && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Preparando campanhas...</div>}>
+      <Crm360Panel
+        clinicaId={clinicaId}
+        podeCampanhas={adminGlobal || pode("crm.campanhas") || pode("crm.gerenciar")}
+        podeOperar={podeOperar}
+        onAbrirFila={() => { setVisao("fila"); setAba("fila");
+          window.setTimeout(() => document.getElementById("crm-fila")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+        }}
+      />
+    </Suspense>}
 
     {visao === "fila" && <>
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -665,11 +674,13 @@ function Crm() {
     </section>}
 
     {aba === "modelos" && <section className="mt-5 grid gap-4 lg:grid-cols-2">
-      {clinicaId && <CrmModelosDaCentral clinicaId={clinicaId} modelos={modelos} podeGerenciar={podeGerenciar}
-        onAtualizados={(alteracoes)=>setModelos(lista=>lista.map(m=>{
-          const encontrado=alteracoes.find(x=>x.id===m.id);
-          return encontrado?{...m,mensagem:encontrado.mensagem}:m;
-        }))}/>}
+      {clinicaId && <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">Carregando modelos...</p>}>
+        <CrmModelosDaCentral clinicaId={clinicaId} modelos={modelos} podeGerenciar={podeGerenciar}
+          onAtualizados={(alteracoes)=>setModelos(lista=>lista.map(m=>{
+            const encontrado=alteracoes.find(x=>x.id===m.id);
+            return encontrado?{...m,mensagem:encontrado.mensagem}:m;
+          }))}/>
+      </Suspense>}
       {modelos.map((item) => <article key={item.id} className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div><p className="text-xs font-bold uppercase tracking-wider text-primary">{ROTULOS[item.tipo]}</p><h2 className="mt-1 font-black">{item.nome}</h2></div>
