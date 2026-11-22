@@ -15,7 +15,7 @@ export function TermosDoPaciente({
   animalId: string;
   tutorId: string;
   documentos: Documento[];
-  gerados: { documentoId: string; codigoTermo: string | null; geradoPeloOricse: boolean }[];
+  gerados: { documentoId: string; codigoTermo: string | null; geradoPeloOricse: boolean; previaSalva: boolean }[];
   conferenciaCompleta: boolean;
   onAnexar: (nome: string) => void;
 }) {
@@ -27,13 +27,14 @@ export function TermosDoPaciente({
   });
   const anexados = emitidos.filter(item => item.registros.some(registro => Boolean(registro.driveArquivoId))).length;
   const oficialmenteGerados = BIBLIOTECA_TERMOS.filter(termo => gerados.some(info => info.codigoTermo === termo.id && info.geradoPeloOricse)).length;
+  const demonstrativos = BIBLIOTECA_TERMOS.filter(termo => gerados.some(info => info.codigoTermo === termo.id && info.previaSalva)).length;
 
   return <section className="mt-5 space-y-4" aria-label="Biblioteca de termos do paciente">
     <div className="rounded-2xl border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold"><FileCheck2 className="text-primary" size={21} /> Termos do paciente</h2>
-          <p className="mt-1 text-sm text-muted-foreground">14 modelos · {oficialmenteGerados} emitidos pelo ORICSE · {anexados} tipos com PDF anexado.</p>
+          <p className="mt-1 text-sm text-muted-foreground">14 modelos · {oficialmenteGerados} termos oficiais · {demonstrativos} prévias salvas · {anexados} tipos com PDF.</p>
         </div>
         <Link to="/termos" search={{ animalId, tutorId } as never}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
@@ -50,7 +51,11 @@ export function TermosDoPaciente({
       {emitidos.map(({ termo, registros }) => {
         const comPdf = registros.filter(registro => Boolean(registro.driveArquivoId));
         const emitidoNoSistema = gerados.some(info => info.codigoTermo === termo.id && info.geradoPeloOricse);
-        const status = emitidoNoSistema ? "Gerado e registrado no ORICSE" : comPdf.length ? "PDF anexado · emissão pelo ORICSE não confirmada" : registros.length ? "Registrado sem PDF" : "Ainda não gerado ou anexado";
+        const previa = gerados.some(info => info.codigoTermo === termo.id && info.previaSalva);
+        const status = emitidoNoSistema ? "Termo oficial registrado" :
+          previa ? "Prévia demonstrativa salva no prontuário" :
+          comPdf.length ? "PDF anexado · emissão pelo ORICSE não confirmada" :
+          registros.length ? "Registrado sem PDF" : "Ainda não gerado ou anexado";
         return <article key={termo.id} className="flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm">
           <div className="flex items-start gap-3">
             {comPdf.length ? <FileCheck2 size={20} className="mt-0.5 shrink-0 text-emerald-700" />
