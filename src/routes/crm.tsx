@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { gerarTarefasPosCirurgicas, mensagemPosCirurgica } from "@/lib/crm-pos-cirurgico";
 const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
 import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
 const CrmModelosDaCentral = lazy(() => import("@/components/CrmModelosDaCentral").then(m => ({ default: m.CrmModelosDaCentral })));
@@ -98,6 +99,11 @@ type AnimalLocal = { id: string; tutorId: string; nome: string };
 type RegistroLocal = {
   id: string;
   animalId: string;
+  tutorId?: string;
+  clinicaId?: string;
+  autorNome?: string;
+  data?: string;
+  status?: "rascunho" | "concluido" | "cancelado" | "adendo";
   tipo?: string;
   titulo?: string;
   detalhe?: string;
@@ -441,12 +447,61 @@ function Crm() {
             }
           }
 
-          if (cfg.gerar_pos_cirurgico && /cirurg|procedimento cirúrg/i.test(tipoServico)) {
-            const dataContato = deslocarData(dataEvento, Math.max(0, cfg.dias_pos_cirurgico));
-            if (diasEntre(dataContato) >= -14 && diasEntre(dataContato) <= 60) {
-              const candidato = criarCandidato("pos_cirurgico", tutor, animalNome, dataContato, "", tipoServico, `pos_cirurgico:${evento.id}:${dataContato}`, cfg, listaModelos, nomeClinica);
-              if (candidato) candidatos.push(candidato);
-            }
+          // Pós-cirúrgico NÃO é originado por agendamento. Agendar uma cirurgia
+          // não significa que ela ocorreu. A fonte é o prontuário concluído.
+        }
+      }
+
+      if (cfg.gerar_pos_cirurgico) {
+        // Apenas registros clínicos concluídos, explicitamente selecionados
+        // para acompanhamento. Requer o mesmo animal, tutor e clínica.
+        for (const registro of registros) {
+          if (
+            registro.clinicaId !== cfg.clinica_id ||
+            registro.subtipo !== "Cirurgia / Procedimentos" ||
+            registro.status !== "concluido" ||
+            registro.dados?.acompanhamentoCrm !== true ||
+            !registro.data
+          ) continue;
+          const animal = animalPorId.get(String(registro.animalId));
+          const tutor = animal ? tutorPorId.get(String(animal.tutorId)) : undefined;
+          if (!animal || !tutor || (registro.tutorId && String(registro.tutorId) !== String(tutor.id))) continue;
+
+          const etapas = gerarTarefasPosCirurgicas({
+            id: registro.id, clinicaId: cfg.clinica_id, animalId: registro.animalId, tutorId: tutor.id,
+            dataProcedimento: registro.data,
+            dataAlta: typeof registro.dados.dataAlta === "string" ? registro.dados.dataAlta : null,
+            status: "concluido", acompanhamentoAprovado: true,
+            obitoRegistrado: Boolean(registro.dados.obitoRegistrado),
+          }, [Math.max(0, cfg.dias_pos_cirurgico), 3, 7, 10]);
+
+          for (const etapa of etapas) {
+            if (diasEntre(etapa.dataPrevista) < -14 || diasEntre(etapa.dataPrevista) > 60) continue;
+            const canal: CanalCrm = tutor.autorizaLembretes === true
+              ? canalTutor(tutor, cfg.canal_padrao) : "manual";
+            const texto = mensagemPosCirurgica({
+              tutorNome: tutor.nome, animalNome: animal.nome, veterinarioNome: registro.autorNome,
+            }, etapa);
+            candidatos.push({
+              clinica_id: cfg.clinica_id,
+              tutor_ref_local: tutor.id,
+              destinatario_nome: tutor.nome,
+              telefone: telefone(tutor),
+              email: tutor.email || "",
+              animal_nome: animal.nome,
+              tipo: "pos_cirurgico",
+              titulo: etapa.titulo,
+              mensagem: texto,
+              canal,
+              agendado_para: isoLocal(etapa.dataPrevista, "09:00"),
+              chave_dedupe: etapa.chaveDedupe,
+              status: "pendente",
+              origem: "automatico",
+              metadados: {
+                registro_id: registro.id, animal_id: animal.id, dia_etapa: etapa.dia,
+                data_prevista: etapa.dataPrevista, somente_contato_humano: true,
+              },
+            });
           }
         }
       }
