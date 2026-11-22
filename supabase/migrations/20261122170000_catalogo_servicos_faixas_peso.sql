@@ -28,7 +28,8 @@ begin
     then return false; end if;
 
     if v_indice = v_qtd then
-      if v_item->'ateKg' <> 'null'::jsonb then return false; end if;
+      if not (v_item ? 'ateKg') or v_item->'ateKg' <> 'null'::jsonb
+      then return false; end if;
     else
       if jsonb_typeof(v_item->'ateKg') <> 'number' then return false; end if;
       v_limite := (v_item->>'ateKg')::numeric;
