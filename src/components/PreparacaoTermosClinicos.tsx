@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Download, Eye, FilePenLine, ShieldAlert, X } from "lucide-react";
+import { ArrowLeft, Download, Eye, FilePenLine, Save, ShieldAlert, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { obterDadosReceituario } from "@/lib/receituario-contexto.functions";
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
+import { enviarAnexoPortal } from "@/lib/drive.functions";
+import { salvarPreviaTermoNoProntuario } from "@/lib/previa-termo.functions";
+import { PaginasPrevia } from "@/components/PadroesDocumentosClinica";
+import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
+import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import {
   BIBLIOTECA_TERMOS, CAMPOS_TERMOS, pendenciasTermo, prepararConteudoTermo,
   type CodigoTermoClinico, type DadosTermo,
@@ -18,6 +23,7 @@ type ModeloEmissao = Awaited<ReturnType<typeof obterModeloDocumentoEmissao>>;
 type Autor = Awaited<ReturnType<typeof obterAutorClinico>>;
 
 export function PreparacaoTermosClinicos() {
+  const demoAlvorada = useDemoAlvorada();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const animalId = params.get("animalId") || "";
   const tutorId = params.get("tutorId") || "";
@@ -34,11 +40,18 @@ export function PreparacaoTermosClinicos() {
   const [recusaAssinatura, setRecusaAssinatura] = useState(false);
   const [carregando, setCarregando] = useState(Boolean(animalId));
   const [gerando, setGerando] = useState(false);
+  const [uploadPendente, setUploadPendente] = useState<string | null>(null);
+  const [documentoSalvo, setDocumentoSalvo] = useState<string | null>(null);
   const [erro, setErro] = useState("");
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof criarPdfComModelo>> | null>(null);
   const [nomePreview, setNomePreview] = useState("");
 
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  // A prévia é desenhada em canvas com PDF.js: não depende de iframe blob: bloqueado pela CSP.
+  function invalidarPrevia() {
+    setPreview(null);
+    setDocumentoSalvo(null);
+    setUploadPendente(null);
+  }
 
   useEffect(() => {
     if (!animalId) return;
@@ -101,16 +114,17 @@ export function PreparacaoTermosClinicos() {
     setSelecionado(id);
     setCampos({});
     setRecusaAssinatura(false);
-    setPreview(null);
+    invalidarPrevia();
   }
   function mudarCampo(id: string, valor: string) {
     setCampos(atual => ({ ...atual, [id]: valor }));
-    setPreview(null);
+    invalidarPrevia();
   }
-  async function gerar(visualizar: boolean) {
+  async function gerar(modo: "visualizar" | "baixar" | "salvar") {
     const animal = dados?.animal;
     const tutor = dados?.tutor;
     if (gerando || !dadosTermo || !animal || !tutor || !papel || !autor) return;
+    if (modo === "salvar" && demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
     if (pendencias.length) return void toast.error("Complete os dados antes de gerar: " + pendencias.join("; "));
     setGerando(true);
     try {
@@ -135,12 +149,34 @@ export function PreparacaoTermosClinicos() {
         ],
       });
       const nome = "PREVIA-SEM-VALIDADE-" + selecionado + ".pdf";
-      if (visualizar) {
+      if (modo === "visualizar") {
         setNomePreview(nome);
-        setPreview(URL.createObjectURL(pdf.output("blob")));
-      } else {
+        setPreview(pdf);
+      } else if (modo === "baixar") {
         pdf.save(nome);
         toast.success("Prévia demonstrativa baixada. Não é um termo válido para assinatura.");
+      } else {
+        const { data: sessao } = await supabase.auth.getSession();
+        const accessToken = sessao.session?.access_token;
+        if (!accessToken) throw new Error("Sessão expirada. Faça login novamente.");
+        const registroId = uploadPendente || crypto.randomUUID();
+        setUploadPendente(registroId);
+        const base64 = pdf.output("datauristring");
+        const anexo = await enviarAnexoPortal({ data: {
+          accessToken, clinicaId: dados.clinicaId, animalId: animal.id,
+          registroId, categoria: "documentos", nome, base64,
+        } });
+        if (!anexo?.arquivoId) throw new Error("O armazenamento não confirmou o PDF.");
+        const salvo = await salvarPreviaTermoNoProntuario({ data: {
+          accessToken, clinicaId: dados.clinicaId, animalId: animal.id,
+          tutorId: tutor.id, registroId, tipoTermo: selecionado,
+        } });
+        if (!salvo.salvo || !salvo.documentoId) {
+          throw new Error("Não foi possível confirmar o salvamento no prontuário.");
+        }
+        setDocumentoSalvo(salvo.documentoId);
+        setUploadPendente(null);
+        toast.success("Prévia demonstrativa salva na aba Termos do animal, somente para uso interno.");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível preparar a prévia.");
@@ -185,17 +221,17 @@ export function PreparacaoTermosClinicos() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-semibold">
           CPF do responsável *
-          <input value={cpf} onChange={e => { setCpf(e.target.value); setPreview(null); }}
+          <input value={cpf} onChange={e => { setCpf(e.target.value); invalidarPrevia(); }}
             placeholder="000.000.000-00" className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal" />
         </label>
         <label className="text-sm font-semibold">
           Endereço completo do responsável *
-          <textarea rows={2} value={endereco} onChange={e => { setEndereco(e.target.value); setEnderecoCompleto(false); setPreview(null); }}
+          <textarea rows={2} value={endereco} onChange={e => { setEndereco(e.target.value); setEnderecoCompleto(false); invalidarPrevia(); }}
             placeholder="Rua, número, bairro, cidade/UF e CEP" className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" />
         </label>
       </div>
       <label className="mt-3 flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={enderecoCompleto} onChange={e => { setEnderecoCompleto(e.target.checked); setPreview(null); }} className="size-4 accent-primary" />
+        <input type="checkbox" checked={enderecoCompleto} onChange={e => { setEnderecoCompleto(e.target.checked); invalidarPrevia(); }} className="size-4 accent-primary" />
         Conferi rua, número, bairro, cidade, UF e CEP.
       </label>
       <fieldset className="mt-5 grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
@@ -214,7 +250,7 @@ export function PreparacaoTermosClinicos() {
               placeholder="Preencha conforme o caso clínico" />}
         </label>)}
         {selecionado === "retirada-sem-alta" && <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
-          <input type="checkbox" checked={recusaAssinatura} onChange={e => { setRecusaAssinatura(e.target.checked); setPreview(null); }} className="size-4 accent-primary" />
+          <input type="checkbox" checked={recusaAssinatura} onChange={e => { setRecusaAssinatura(e.target.checked); invalidarPrevia(); }} className="size-4 accent-primary" />
           O responsável recusou assinar, exigir duas testemunhas presentes.
         </label>}
       </fieldset>
@@ -223,17 +259,28 @@ export function PreparacaoTermosClinicos() {
           Antes de gerar, complete: {pendencias.join("; ")}.
         </p>}
       <div className="mt-5 flex flex-wrap gap-2">
-        <button type="button" disabled={gerando || pendencias.length > 0} onClick={() => void gerar(true)}
+        <button type="button" disabled={gerando || pendencias.length > 0} onClick={() => void gerar("visualizar")}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
           <Eye size={17} /> {gerando ? "Preparando…" : "Visualizar prévia"}
         </button>
-        <button type="button" disabled={gerando || pendencias.length > 0} onClick={() => void gerar(false)}
+        <button type="button" disabled={gerando || pendencias.length > 0} onClick={() => void gerar("baixar")}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-50">
           <Download size={17} /> Baixar prévia (2 vias)
         </button>
+        <button type="button" disabled={gerando || pendencias.length > 0 || demoAlvorada || Boolean(documentoSalvo)}
+          onClick={() => void gerar("salvar")}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary bg-primary/10 px-4 font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50">
+          <Save size={17} /> {gerando ? "Salvando..." : documentoSalvo ? "Salvo no prontuário" : "Salvar nos termos do animal"}
+        </button>
       </div>
+      {demoAlvorada && <p className="mt-2 text-xs text-muted-foreground">{AVISO_DEMO_DOCUMENTOS}</p>}
+      {documentoSalvo && <div role="status" className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        Prévia demonstrativa salva. O documento é interno, não homologado e não está disponível no Portal do Tutor.
+        <Link to="/animal" search={{ animalId, aba: "Termos" } as never}
+          className="ml-2 font-bold underline">Ver nos termos do animal</Link>
+      </div>}
       <p className="mt-2 text-xs text-muted-foreground">
-        Os dados informados aqui são usados somente nesta prévia. Não atualizam automaticamente o cadastro nem registram o termo como emitido.
+        Os dados informados não alteram o cadastro. Salvar cria um registro interno de prévia, sem emissão oficial ou liberação ao tutor.
       </p>
     </>}
     {preview && <div role="dialog" aria-modal="true" aria-label="Visualização do termo demonstrativo"
@@ -242,11 +289,13 @@ export function PreparacaoTermosClinicos() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
           <strong className="text-sm">Prévia demonstrativa · {termo.nome}</strong>
           <div className="flex items-center gap-2">
-            <a href={preview} download={nomePreview} className="rounded-lg border px-3 py-2 text-sm font-semibold">Baixar prévia</a>
+            <button type="button" onClick={() => preview.save(nomePreview)} className="rounded-lg border px-3 py-2 text-sm font-semibold">Baixar prévia</button>
             <button type="button" onClick={() => setPreview(null)} aria-label="Fechar visualização" className="rounded-lg border p-2"><X size={18} /></button>
           </div>
         </div>
-        <iframe title={"Prévia demonstrativa de " + termo.nome} src={preview} className="min-h-0 w-full flex-1 bg-white" />
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 p-4">
+          <PaginasPrevia pdf={preview} />
+        </div>
       </div>
     </div>}
   </section>;

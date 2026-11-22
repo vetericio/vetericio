@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
+import { PaginasArquivoPdf } from "@/components/PaginasArquivoPdf";
 import { obterStatusTermosPaciente } from "@/lib/status-termos-paciente.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
@@ -346,7 +347,11 @@ function AnimalFicha() {
       vivo = false;
     };
   }, [animalId]);
-  const [aba, setAba] = useState<Aba>("Visão geral");
+  const [aba, setAba] = useState<Aba>(() => {
+    const solicitada = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("aba") : null;
+    return solicitada && (ABAS as readonly string[]).includes(solicitada) ? solicitada as Aba : "Visão geral";
+  });
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [registrosPortal, setRegistrosPortal] = useState<Registro[]>([]);
   const [clinicaId, setClinicaId] = useState("");
@@ -356,8 +361,8 @@ function AnimalFicha() {
   const [dadosPreventivos, setDadosPreventivos] = useState(camposPreventivos);
   const [tipoVacina, setTipoVacina] = useState("");
   const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
-  const [documentoEmVisualizacao, setDocumentoEmVisualizacao] = useState<{url:string;nome:string;mimeType:string}|null>(null);
-  const [termosGerados, setTermosGerados] = useState<{documentoId:string;codigoTermo:string|null;geradoPeloOricse:boolean}[]>([]);
+  const [documentoEmVisualizacao, setDocumentoEmVisualizacao] = useState<{url:string;nome:string;mimeType:string;bytes:Uint8Array}|null>(null);
+  const [termosGerados, setTermosGerados] = useState<{documentoId:string;codigoTermo:string|null;geradoPeloOricse:boolean;previaSalva:boolean}[]>([]);
   const [statusTermosCompleto, setStatusTermosCompleto] = useState(false);
   useEffect(() => () => { if (documentoEmVisualizacao) URL.revokeObjectURL(documentoEmVisualizacao.url); }, [documentoEmVisualizacao]);
   const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
@@ -489,6 +494,7 @@ function AnimalFicha() {
           id: d.id,
           animalId: d.animal_id,
           tipo: (/^termo\b/i.test(d.tipo || "") ? "Termos" : "Documentos") as RegistroTipo,
+          subtipo: d.tipo,
           titulo: d.titulo,
           detalhe: [d.tipo && d.tipo !== "Documento" ? `Tipo: ${d.tipo}` : "", d.observacoes || ""]
             .filter(Boolean)
@@ -687,7 +693,7 @@ function AnimalFicha() {
       const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
       const nome = arquivo.nome || "documento.pdf";
       if (acao === "visualizar") {
-        setDocumentoEmVisualizacao({ url, nome, mimeType });
+        setDocumentoEmVisualizacao({ url, nome, mimeType, bytes });
       } else {
         const link = document.createElement("a");
         link.href = url; link.download = nome;
@@ -894,6 +900,10 @@ function AnimalFicha() {
   }
 
   async function alternarVisibilidade(registro: Registro, valor: boolean) {
+    if (registro.subtipo === "Termo - Prévia demonstrativa") {
+      toast.error("Prévia demonstrativa não pode ser publicada no Portal do Tutor.");
+      return;
+    }
     if (!registro.fontePortal || !clinicaId || registro.fontePortal === "receita") return;
     if (demoAlvorada && ["exame", "documento"].includes(registro.fontePortal)) {
       return void toast.info(AVISO_DEMO_DOCUMENTOS);
@@ -1247,8 +1257,10 @@ function AnimalFicha() {
                   </div>
                 </div>
                 {documentoEmVisualizacao.mimeType === "application/pdf" ?
-                  <iframe title={"Documento: " + documentoEmVisualizacao.nome}
-                    src={documentoEmVisualizacao.url} className="min-h-0 w-full flex-1 bg-white" />
+                  <div className="min-h-0 w-full flex-1 overflow-y-auto bg-muted/20 p-4">
+                    <PaginasArquivoPdf bytes={documentoEmVisualizacao.bytes}
+                      rotulo={"Documento: " + documentoEmVisualizacao.nome} />
+                  </div>
                 : documentoEmVisualizacao.mimeType.startsWith("image/") ?
                   <img alt={documentoEmVisualizacao.nome} src={documentoEmVisualizacao.url} className="min-h-0 w-full flex-1 object-contain" />
                 : <div className="p-5 text-sm text-muted-foreground">
@@ -1863,7 +1875,11 @@ function SecaoCompleta({
                       </button>}
                       </>
                     )}
-                    {r.fontePortal === "receita" ? (
+                    {r.subtipo === "Termo - Prévia demonstrativa" ? (
+                      <span className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950">
+                        Prévia interna · não publicada
+                      </span>
+                    ) : r.fontePortal === "receita" ? (
                       <span
                         className={`rounded-full px-3 py-2 text-xs font-bold ${r.visivelTutor ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}
                       >
