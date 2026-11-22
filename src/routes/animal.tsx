@@ -11,6 +11,8 @@ import {
   ClipboardList,
   FileText,
   FileUp,
+  Eye,
+  Download,
   FlaskConical,
   Image,
   ExternalLink,
@@ -36,6 +38,7 @@ import { obterMomentoLocalAplicacao } from "@/lib/documento-preventivo.functions
 import { obterAutorClinico } from "@/lib/perfil-clinico";
 import { camposPreventivos, dataDoRotulo, dataPreventivaBR, fimDaValidade, hojeNoBrasil, normalizarCamposPreventivos, pendenciasPreventivo, selecaoPreventivos, vacinasPredefinidas, type CamposPreventivos, type TipoPreventivo } from "@/lib/dados-preventivos";
 import { ObservacoesAnimal } from "@/components/animal/ObservacoesAnimal";
+import { TermosDoPaciente } from "@/components/animal/TermosDoPaciente";
 import { codigoPublicoTutor } from "@/lib/codigo-tutor";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { enviarAnexoPortal } from "@/lib/drive.functions";
@@ -352,6 +355,8 @@ function AnimalFicha() {
   const [dadosPreventivos, setDadosPreventivos] = useState(camposPreventivos);
   const [tipoVacina, setTipoVacina] = useState("");
   const [documentoPreventivo, setDocumentoPreventivo] = useState<Registro["preventivo"]>(undefined);
+  const [documentoEmVisualizacao, setDocumentoEmVisualizacao] = useState<{url:string;nome:string;mimeType:string}|null>(null);
+  useEffect(() => () => { if (documentoEmVisualizacao) URL.revokeObjectURL(documentoEmVisualizacao.url); }, [documentoEmVisualizacao]);
   const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [erroProfissional, setErroProfissional] = useState("");
   const tipoPreventivo = modalTipo === "Vacinas" ? "vacina" : modalTipo === "Vermífugos" ? "vermifugo" : null;
@@ -480,7 +485,7 @@ function AnimalFicha() {
         ...docs.map((d) => ({
           id: d.id,
           animalId: d.animal_id,
-          tipo: "Documentos" as const,
+          tipo: (/^termo\b/i.test(d.tipo || "") ? "Termos" : "Documentos") as RegistroTipo,
           titulo: d.titulo,
           detalhe: [d.tipo && d.tipo !== "Documento" ? `Tipo: ${d.tipo}` : "", d.observacoes || ""]
             .filter(Boolean)
@@ -594,6 +599,11 @@ function AnimalFicha() {
       window.location.href = `/encaminhar?tutorId=${encodeURIComponent(animal.tutorId)}&animalId=${encodeURIComponent(animal.id)}`;
       return;
     }
+    if (tipo === "Termos" && animal) {
+      window.location.href = "/termos?tutorId=" + encodeURIComponent(animal.tutorId) +
+        "&animalId=" + encodeURIComponent(animal.id);
+      return;
+    }
     if (tipo === "Receitas" && animal) {
       window.location.href = `/receituario?tutorId=${encodeURIComponent(animal.tutorId)}&animalId=${encodeURIComponent(animal.id)}`;
       return;
@@ -617,6 +627,50 @@ function AnimalFicha() {
     setArquivoPdf(null);
     anexoEmEdicao.current = null;
     setTipoDetalhe(tipo === "Exames" ? "Exame" : tipo === "Documentos" ? "Documento" : "");
+  }
+
+  function abrirAnexoTermo(nome: string) {
+    if (!animal) return;
+    setModalTipo("Termos");
+    setTitulo(nome);
+    setTipoDetalhe("Termo");
+    setDetalhe("");
+    setData(hojeNoBrasil());
+    setArquivoPdf(null);
+    setVisivelTutor(false);
+    anexoEmEdicao.current = null;
+  }
+
+  async function abrirDocumento(registro: Registro, acao: "visualizar" | "baixar") {
+    if (!registro.driveArquivoId) {
+      toast.error("Este documento ainda não possui arquivo anexado.");
+      return;
+    }
+    try {
+      const token = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+      if (!token || !clinicaId) throw new Error("Sessão expirada.");
+      const arquivo = await baixarDocumentoPortal({ data: {
+        accessToken: token, documentoId: registro.id,
+        tipo: registro.fontePortal === "exame" ? "exame" : registro.fontePortal === "receita" ? "receita" : "documento",
+        clinicaEquipeId: clinicaId,
+      } });
+      const bytes = Uint8Array.from(atob(arquivo.base64), letra => letra.charCodeAt(0));
+      const mimeType = arquivo.mimeType || "application/pdf";
+      const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+      const nome = arquivo.nome || "documento.pdf";
+      if (acao === "visualizar") {
+        setDocumentoEmVisualizacao({ url, nome, mimeType });
+      } else {
+        const link = document.createElement("a");
+        link.href = url; link.download = nome;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
+    } catch (erro) {
+      toast.error(erro instanceof Error ? erro.message : "Não foi possível abrir o documento.");
+    }
   }
 
   function editarPreventivo(registro: Registro) {
@@ -659,11 +713,12 @@ function AnimalFicha() {
 
   async function salvarRegistro() {
     if (!animal || !modalTipo || salvandoPortal) return;
-    if (demoAlvorada && (modalTipo === "Documentos" || (modalTipo === "Exames" && arquivoPdf))) {
+    if (demoAlvorada && (modalTipo === "Documentos" || modalTipo === "Termos" || (modalTipo === "Exames" && arquivoPdf))) {
       return void toast.info(AVISO_DEMO_DOCUMENTOS);
     }
     if (!titulo.trim()) return void toast.error("Informe o título do registro.");
-    if (["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo)) {
+    if (modalTipo === "Termos" && !arquivoPdf) return void toast.error("Anexe um arquivo PDF antes de registrar o termo.");
+    if (["Vacinas", "Vermífugos", "Exames", "Documentos", "Termos"].includes(modalTipo)) {
       if (!clinicaId) return void toast.error("Não foi possível identificar a clínica atual.");
       if (
         (modalTipo === "Exames" || modalTipo === "Documentos") &&
@@ -761,7 +816,7 @@ function AnimalFicha() {
             clinica_id: clinicaId,
             animal_id: animal.id,
             titulo: titulo.trim(),
-            tipo: tipoDetalhe.trim() || (exame ? "Exame" : "Documento"),
+            tipo: modalTipo === "Termos" ? "Termo" : (tipoDetalhe.trim() || (exame ? "Exame" : "Documento")),
             drive_arquivo_id: driveArquivoId,
             visivel_tutor: visivelTutor && !demoAlvorada,
           };
@@ -782,7 +837,7 @@ function AnimalFicha() {
         setModalTipo(null);
         setArquivoPdf(null);
         toast.success(
-          visivelTutor && !demoAlvorada && ["Exames", "Documentos"].includes(modalTipo)
+          visivelTutor && !demoAlvorada && ["Exames", "Documentos", "Termos"].includes(modalTipo)
             ? `${modalTipo} disponível no Portal. O aviso com link foi adicionado ao CRM.`
             : `${modalTipo} adicionado no banco.`,
         );
@@ -1082,6 +1137,7 @@ function AnimalFicha() {
                     "Vermífugos",
                     "Exames",
                     "Receitas",
+                    "Termos",
                     "Observações",
                     "Documentos",
                     "Galeria",
@@ -1266,10 +1322,10 @@ function AnimalFicha() {
                       {modalTipo === "Documentos" && <datalist id="tipos-documento-portal">{["Laudo", "Atestado", "Atestado de vacinação", "Comprovante de vermifugação", "Cartão de vacinação", "Carteira de saúde", "Resultado de exame", "Termo", "Relatório", "Orientações", "Outros"].map(t=><option key={t} value={t}/>)}</datalist>}
                     </label>
                   )}
-                  {(modalTipo === "Exames" || modalTipo === "Documentos") && (
+                  {(modalTipo === "Exames" || modalTipo === "Documentos" || modalTipo === "Termos") && (
                     <label className="block rounded-xl border border-dashed p-3 text-sm font-bold">
                       <span className="flex items-center gap-2">
-                        <FileUp size={17} /> {modalTipo === "Exames" ? "PDF do exame" : "PDF do documento ou laudo"} (opcional)
+                        <FileUp size={17} /> {modalTipo === "Termos" ? "PDF do termo já existente" : modalTipo === "Exames" ? "PDF do exame" : "PDF do documento ou laudo"} {modalTipo !== "Termos" && "(opcional)"}
                       </span>
                       <input
                         type="file"
@@ -1305,12 +1361,12 @@ function AnimalFicha() {
                       className="mt-1 w-full rounded-xl border p-3"
                     />
                   </label>
-                  {["Vacinas", "Vermífugos", "Exames", "Documentos"].includes(modalTipo) && (
+                  {["Vacinas", "Vermífugos", "Exames", "Documentos", "Termos"].includes(modalTipo) && (
                     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
                       <div>
                         <div className="text-sm font-black">Visível no Portal do Tutor</div>
                         <div className="text-xs text-muted-foreground">
-                          {modalTipo === "Exames" || modalTipo === "Documentos"
+                          {modalTipo === "Exames" || modalTipo === "Documentos" || modalTipo === "Termos"
                             ? "Ao publicar, o CRM prepara um aviso com link seguro para o Portal do Tutor."
                             : "O tutor só verá este registro se esta opção estiver ativada."}
                         </div>
