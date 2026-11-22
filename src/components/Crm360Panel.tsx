@@ -353,7 +353,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
               </button>
             </div>
           </div>
-        </div>
+        </div>}
         {!podeCampanhas && <p className="mt-2 text-xs text-amber-700">Seu perfil pode visualizar o CRM, mas não possui permissão para publicar campanhas.</p>}
       </section>
 
