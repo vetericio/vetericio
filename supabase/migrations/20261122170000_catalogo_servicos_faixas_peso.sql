@@ -54,6 +54,17 @@ alter table public.oricse_catalogo_itens
   check (public.oricse_faixas_peso_validas(faixas_peso) and
     (tipo = 'servico' or faixas_peso = '[]'::jsonb));
 
+-- Médicos-veterinários e operadores de caixa precisam consultar os preços para
+-- sugerir faixas, sem receber autorização de editar serviços.
+drop policy if exists oricse_catalogo_leitura_atendimento_preco_peso
+  on public.oricse_catalogo_itens;
+create policy oricse_catalogo_leitura_atendimento_preco_peso
+  on public.oricse_catalogo_itens for select to authenticated
+  using (
+    public.oricse_usuario_pode_permissao(clinica_id, 'consultorio.atendimentos')
+    or public.oricse_usuario_pode_permissao(clinica_id, 'caixa.comandas')
+  );
+
 comment on column public.oricse_catalogo_itens.faixas_peso is
   'Faixas consecutivas de serviços com peso em kg; ateKg inclusivo; último ateKg null. A escolha exige aprovação explícita antes da comanda.';
 commit;
