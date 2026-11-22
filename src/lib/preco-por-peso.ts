@@ -74,11 +74,21 @@ export function rotuloCondicao(faixa: FaixaPrecoPeso): string {
   return [faixa.especie, faixa.sexo].filter(Boolean).join(" · ") || "Todos os animais";
 }
 
+export function agruparFaixasPorCondicao(valor: unknown): Array<{ rotulo: string; faixas: FaixaPrecoPeso[] }> {
+  const grupos = new Map<string, FaixaPrecoPeso[]>();
+  for (const faixa of faixasValidas(valor)) {
+    const chave = `${faixa.especie || ""}|${faixa.sexo || ""}`;
+    grupos.set(chave, [...(grupos.get(chave) || []), faixa]);
+  }
+  return [...grupos.values()].map((faixas) => ({ rotulo: rotuloCondicao(faixas[0]), faixas }));
+}
+
 export function tituloFaixa(faixas: readonly FaixaPrecoPeso[], indice: number): string {
   if (indice < 0 || indice >= faixas.length) return "Faixa inválida";
   const anterior = indice > 0 ? faixas[indice - 1].ateKg : 0;
   const atual = faixas[indice].ateKg;
   const kg = (v: number | null) => v === null ? "" : v.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+  if (indice === 0 && atual === null) return "Sem limite de peso";
   if (indice === 0) return "Até " + kg(atual) + " kg";
   return atual === null ? "Acima de " + kg(anterior) + " kg" :
     "Acima de " + kg(anterior) + " até " + kg(atual) + " kg";
