@@ -30,6 +30,15 @@ assert.equal(lib.validarFaixasPeso([{ateKg:10,valor:280},{ateKg:20,valor:320}])!
 assert.equal(lib.validarFaixasPeso([{ateKg:10,valor:280},{ateKg:null,valor:-1}])!==null,true);
 assert.equal(lib.faixasValidas([{ateKg:10,valor:280},{ateKg:null,valor:320}]).length,2);
 assert.equal(lib.faixasValidas(null).length,0);
+const castracao = [
+  {ateKg:null,valor:250,especie:"Cão",sexo:"Macho"},
+  {ateKg:null,valor:380,especie:"Cão",sexo:"Fêmea"},
+  {ateKg:null,valor:290,especie:"Gato",sexo:"Macho"},
+  {ateKg:null,valor:420,especie:"Gato",sexo:"Fêmea"},
+];
+assert.equal(lib.validarFaixasPeso(castracao), null);
+assert.equal(lib.faixasParaAnimal(castracao,"Cão","Macho")[0].valor,250);
+assert.equal(lib.faixasParaAnimal(castracao,"Gato","Fêmea")[0].valor,420);
 assert.equal(lib.tituloFaixa(linhas,0),"Até 10 kg");
 assert.match(lib.tituloFaixa(linhas,3),/Acima de 30 kg/);
 
@@ -42,8 +51,12 @@ const [catalogo,consulta,comanda,aprovacao,banco,tipos] = await Promise.all([
   readFile("src/lib/comandas.ts","utf8"),
 ]);
 assert.match(catalogo,/Definir preço por faixa de peso do animal/);
+assert.match(catalogo,/Excluir \{modal\.tipo === "servico" \? "serviço" : "produto"\}/);
+assert.match(catalogo,/Espécie/);
+assert.match(catalogo,/Sexo/);
 assert.match(catalogo,/createPortal\(/, "Modal deve abrir fora da área de rolagem do menu");
-assert.match(catalogo,/max-h-\[calc\(100dvh-1rem\)\]/, "Editor deve respeitar a altura da tela");
+assert.match(catalogo,/h-\[calc\(100dvh-1rem\)\]/, "Editor deve ocupar uma altura fixa dentro da tela");
+assert.match(catalogo,/fixed inset-0 z-\[200\].*overflow-hidden/, "A camada externa não pode deslocar o modal para fora da tela");
 assert.match(catalogo,/min-h-0 flex-1 overflow-y-auto overscroll-contain/, "Campos precisam rolar dentro do editor");
 assert.match(catalogo,/shrink-0 border-t bg-background/, "Botão Salvar deve continuar sempre visível");
 assert.match(catalogo,/valor:e\.target\.value/, "Preço deve ser livremente editável, sem máscara por tecla");
@@ -56,8 +69,9 @@ assert.match(consulta,/precoPorPeso: item\.precoPorPeso/);
 assert.match(consulta,/itensSemPreco=itensComanda\.filter/);
 assert.match(comanda,/servicoComFaixas && \(!precoPesoAprovado/);
 assert.match(comanda,/precoPorPeso: precoPesoAprovado/);
-assert.match(comanda,/\.select\("id,nome,tutor_id,especie,peso_kg,dados"\)/);
+assert.match(comanda,/\.select\("id,nome,tutor_id,especie,sexo,peso_kg,dados"\)/);
 assert.match(aprovacao,/Aprovar valor/);
+assert.match(aprovacao,/faixasParaAnimal/);
 assert.match(aprovacao,/aprovadoPor, aprovadoEm: new Date/);
 assert.match(aprovacao,/motivo\.trim\(\)\.length < 5/);
 assert.match(tipos,/precoPorPeso\?:/);
