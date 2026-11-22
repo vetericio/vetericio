@@ -53,5 +53,5 @@ assert.match(crm,/lazy\(\(\) => import\("@\/components\/Crm360Panel"\)/);
 assert.match(panel,/const \[resposta, pets, pais\] = await Promise\.all/);
 assert.match(panel,/sincronizar: true/);
 assert.match(server,/if \(data\.sincronizar\) await sincronizarReforcos/);
-assert.doesNotMatch(server,/await sincronizarReforcos\(admin, data\.clinicaId\);\s*const \[retornos/);
+assert.doesNotMatch(server,/^\s{4}await sincronizarReforcos\(admin, data\.clinicaId\);$/m);
 console.log("OK: retornos clínicos, consentimento, segurança por clínica e campanhas autoexplicativas.");
