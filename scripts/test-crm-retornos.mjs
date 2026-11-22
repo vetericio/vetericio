@@ -76,4 +76,18 @@ assert.match(panel,/const \[resposta, pets, pais\] = await Promise\.all/);
 assert.match(panel,/sincronizar: true/);
 assert.match(server,/if \(data\.sincronizar\) await sincronizarReforcos/);
 assert.doesNotMatch(server,/^\s{4}await sincronizarReforcos\(admin, data\.clinicaId\);$/m);
+const etapaPos = await readFile("src/lib/crm-pos-cirurgico.ts","utf8");
+const registroClinico = await readFile("src/routes/registro-clinico.tsx","utf8");
+// Pós-cirúrgico não pode surgir de um simples agendamento.
+assert.doesNotMatch(crm,/if \(cfg\.gerar_pos_cirurgico && \/cirurg/);
+assert.match(crm,/registro\.status !== "concluido"/);
+assert.match(crm,/registro\.dados\?\.acompanhamentoCrm !== true/);
+assert.match(crm,/gerarTarefasPosCirurgicas/);
+assert.match(crm,/chave_dedupe: etapa\.chaveDedupe/);
+assert.match(crm,/setEditorPosCirurgico/);
+assert.match(crm,/dados\.autorizaWhatsapp !== true \|\| dados\.autorizaLembretes !== true/);
+assert.match(registroClinico,/checked=\{acompanharPosCirurgico\}/);
+assert.match(registroClinico,/status:"concluido"/);
+assert.match(etapaPos,/DIAS_POS_CIRURGICO_PADRAO = \[1, 3, 7, 10\]/);
+await import("./test-crm-pos-cirurgico.mjs");
 console.log("OK: retornos clínicos, consentimento, segurança por clínica e campanhas autoexplicativas.");
