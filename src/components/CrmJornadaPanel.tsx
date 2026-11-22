@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Check, ClipboardCopy, HeartPulse, MessageCircle, RefreshCw, Star, Users, X } from "lucide-react";
+import { Check, ClipboardCopy, HeartPulse, MessageCircle, RefreshCw, Star, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { criarJornadaPosCirurgica, listarFontesPosCirurgicas } from "@/lib/crm-pos-cirurgico.functions";
@@ -193,7 +193,7 @@ export function CrmJornadaPanel({ clinicaId, tipo, podeOperar }: {
             </div>
             {destacarResposta(e)!==null&&<p className="mt-3 rounded-xl border bg-muted/40 p-3 text-sm font-semibold">
               Avaliação recebida: {"★".repeat(destacarResposta(e)!)}{"☆".repeat(5-destacarResposta(e)!)}
-              {e.metadados?.pesquisa_comentario&&<span className="mt-1 block font-normal">Comentário: {String(e.metadados.pesquisa_comentario)}</span>}
+              {Boolean(e.metadados?.pesquisa_comentario)&&<span className="mt-1 block font-normal">Comentário: {String(e.metadados?.pesquisa_comentario)}</span>}
               {destacarResposta(e)!<=2&&<span className="mt-1 block text-amber-700">Atenção: conversar com o tutor sobre a experiência.</span>}
             </p>}
             {podeOperar&&e.status==="pendente"&&<div className="mt-4 flex flex-wrap gap-2">
