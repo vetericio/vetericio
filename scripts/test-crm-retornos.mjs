@@ -131,6 +131,6 @@ assert.doesNotMatch(journeys,/sendWhatsapp|\.delete\(/);
 assert.match(journeyPanel,/Revisar WhatsApp/);
 assert.match(journeyPanel,/Nenhuma mensagem foi enviada/);
 assert.match(avaliacao,/Enviar avaliação/);
-assert.match(root,/\/"\/avaliar-atendimento"/);
+assert.match(root,/"\/avaliar-atendimento"/);
 await import("./test-crm-pos-cirurgico.mjs");
 console.log("OK: retornos clínicos, consentimento, segurança por clínica e campanhas autoexplicativas.");
