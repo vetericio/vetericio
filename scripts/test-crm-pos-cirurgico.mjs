@@ -7,7 +7,7 @@ const compiled = ts.transpileModule(src, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, strict: true },
 }).outputText;
 const { DIAS_POS_CIRURGICO_PADRAO, gerarTarefasPosCirurgicas, deslocarDia,
-  normalizarProtocolo, mensagemPosCirurgica, precisaAvaliacaoPrioritaria } =
+  normalizarProtocolo, mensagemPosCirurgica, precisaAvaliacaoPrioritaria, fonteClinicaElegivel } =
   await import("data:text/javascript;base64," + Buffer.from(compiled).toString("base64"));
 
 const registro = {
@@ -51,4 +51,18 @@ assert.match(mensagemPosCirurgica({tutorNome:"",animalNome:""},gerarTarefasPosCi
 assert.equal(precisaAvaliacaoPrioritaria({}),false);
 assert.equal(precisaAvaliacaoPrioritaria({dorIntensa:true}),true);
 assert.equal(precisaAvaliacaoPrioritaria({dificuldadeRespiratoria:true}),true);
+const registroPersistido = {
+  id: "registro-001", clinicaId:"clinica-A",
+  animalId:"animal-A", tutorId:"tutor-A", data:"2026-11-22",
+  status:"concluido", subtipo:"Cirurgia / Procedimentos",
+  dados:{ acompanhamentoCrm:true },
+};
+assert.equal(fonteClinicaElegivel(registroPersistido, "clinica-A"),true);
+assert.equal(fonteClinicaElegivel(registroPersistido, "clinica-B"),false,
+  "O registro de uma clínica jamais pode gerar contatos para outra");
+assert.equal(fonteClinicaElegivel({...registroPersistido,status:"rascunho"},"clinica-A"),false);
+assert.equal(fonteClinicaElegivel({...registroPersistido,subtipo:"Consulta"},"clinica-A"),false);
+assert.equal(fonteClinicaElegivel({...registroPersistido,dados:{acompanhamentoCrm:false}},"clinica-A"),false);
+assert.equal(fonteClinicaElegivel({...registroPersistido,dados:{acompanhamentoCrm:true,obitoRegistrado:true}},"clinica-A"),false);
+assert.equal(fonteClinicaElegivel({...registroPersistido,tutorId:null},"clinica-A"),false);
 console.log("OK: pós-cirúrgico D+1/D+3/D+7/D+10, alta, segurança, datas, dedupe, mensagens e alertas.");
