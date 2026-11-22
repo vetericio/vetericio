@@ -2,21 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Scale } from "lucide-react";
 import { toast } from "sonner";
 import {
-  type AprovacaoPrecoPeso, faixasValidas, sugerirFaixaPeso, tituloFaixa, valorEmReais,
+  type AprovacaoPrecoPeso, faixasParaAnimal, sugerirFaixaPeso, tituloFaixa, valorEmReais,
 } from "@/lib/preco-por-peso";
 
 type Item = { id: string; nome: string; faixas_peso?: unknown };
 
 export function AprovarPrecoPorPeso({
-  item, pesoInicial, aprovadoPor, onAprovar, onCancelar,
+  item, pesoInicial, especie, sexo, aprovadoPor, onAprovar, onCancelar,
 }: {
   item: Item;
   pesoInicial: number | null;
+  especie?: string;
+  sexo?: string;
   aprovadoPor: string;
   onAprovar: (aprovacao: AprovacaoPrecoPeso) => void;
   onCancelar: () => void;
 }) {
-  const faixas = useMemo(() => faixasValidas(item.faixas_peso), [item.faixas_peso]);
+  const faixas = useMemo(() => faixasParaAnimal(item.faixas_peso, especie, sexo), [item.faixas_peso, especie, sexo]);
   const [pesoTexto, setPesoTexto] = useState(pesoInicial && pesoInicial > 0 ? String(pesoInicial) : "");
   const [escolha, setEscolha] = useState("sugerida");
   const [personalizar, setPersonalizar] = useState(false);
@@ -65,9 +67,10 @@ export function AprovarPrecoPorPeso({
       <Scale size={21} className="text-primary" />
       <div>
         <h3 className="text-sm font-black">{item.nome}: preço por peso</h3>
-        <p className="text-xs text-muted-foreground">Confira o peso, selecione a faixa e aprove antes de incluir na comanda.</p>
+        <p className="text-xs text-muted-foreground">{[especie, sexo].filter(Boolean).join(" · ") || "Paciente sem espécie ou sexo informado"}. Confira e aprove antes de incluir na comanda.</p>
       </div>
     </div>
+    {!faixas.length && <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Não há preço cadastrado para a espécie e o sexo deste animal.</p>}
     <label className="mt-3 block text-xs font-semibold">Peso do animal (kg)
       <input inputMode="decimal" type="text" value={pesoTexto}
         onChange={e => { setPesoTexto(e.target.value); setEscolha("sugerida"); }}
