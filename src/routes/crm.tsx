@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, CalendarClock, Check, Mail, MessageCircle, RefreshCw, Settings2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,9 @@ import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
 import { CrmModelosDaCentral } from "@/components/CrmModelosDaCentral";
 
 export const Route = createFileRoute("/crm")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    animalId: typeof search.animalId === "string" ? search.animalId : undefined,
+  }),
   component: CRM_EM_PREPARACAO ? CrmEmPreparacao : Crm,
 });
 
@@ -286,6 +289,7 @@ async function comTempoLimite<T>(promessa: Promise<T>, milissegundos = 20000): P
 }
 
 function Crm() {
+  const { animalId: animalPreselecionadoId } = useSearch({ from: "/crm" });
   const { carregando: carregandoPermissoes, clinicaId, clinicaSlug, pode, adminGlobal } = usePermissoes();
   const [aba, setAba] = useState<Aba>("fila");
   const [visao, setVisao] = useState<"retornos" | "campanhas" | "fila">("retornos");
@@ -634,7 +638,7 @@ function Crm() {
     </nav>
 
     {visao === "retornos" && <div className="mt-5">
-      <CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} />
+      <CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} animalPreselecionadoId={animalPreselecionadoId} />
     </div>}
     {visao === "campanhas" && <Crm360Panel
       clinicaId={clinicaId}
