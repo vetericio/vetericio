@@ -27,7 +27,8 @@ const origemNome: Record<string,string> = {
 function hojeLocal() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
-function mostrarData(data: string) {
+function mostrarData(data: string | null) {
+  if (!data) return "A marcar";
   const [ano,mes,dia] = data.slice(0,10).split("-");
   return [dia,mes,ano].join("/");
 }
@@ -36,7 +37,7 @@ function urlWhatsApp(r: RetornoClinico) {
   const completo = telefone.length >= 10 && telefone.length <= 11 ? "55" + telefone : telefone;
   const mensagem = "Olá, " + r.tutor_nome + "! Aqui é da clínica veterinária. " +
     "Gostaríamos de confirmar o retorno de " + r.animal_nome +
-    " previsto para " + mostrarData(r.data_prevista) +
+    (r.data_prevista ? " previsto para " + mostrarData(r.data_prevista) : " com data a combinar") +
     ". Podemos confirmar essa data?";
   return "https://wa.me/" + completo + "?text=" + encodeURIComponent(mensagem);
 }
@@ -97,7 +98,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
 
   const hoje = hojeLocal();
   const ativos = retornos.filter(r => r.status !== "realizado" && r.status !== "cancelado");
-  const vencidos = ativos.filter(r => r.data_prevista < hoje);
+  const vencidos = ativos.filter(r => Boolean(r.data_prevista) && r.data_prevista < hoje);
   const paraHoje = ativos.filter(r => r.data_prevista === hoje);
   const confirmados = ativos.filter(r => r.status === "confirmado");
   const tutoresPorId = useMemo(() => new Map(tutores.map(t => [t.id,t.nome])), [tutores]);
@@ -106,7 +107,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
     if (!texto.includes(busca.toLocaleLowerCase("pt-BR"))) return false;
     if (filtro === "pendentes") return r.status !== "realizado" && r.status !== "cancelado";
     if (filtro === "hoje") return r.data_prevista === hoje && r.status !== "realizado" && r.status !== "cancelado";
-    if (filtro === "atrasados") return r.data_prevista < hoje && r.status !== "realizado" && r.status !== "cancelado";
+    if (filtro === "atrasados") return Boolean(r.data_prevista) && r.data_prevista < hoje && r.status !== "realizado" && r.status !== "cancelado";
     return true;
   }), [retornos,busca,filtro,hoje]);
 
@@ -257,7 +258,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
             </div>
             <div className="text-right">
               <p className="text-sm font-black tabular-nums">{mostrarData(item.data_prevista)}</p>
-              <p className={"mt-1 text-xs font-bold " + (item.data_prevista < hoje && !["realizado","cancelado"].includes(item.status) ? "text-amber-700" : "text-muted-foreground")}>
+              <p className={"mt-1 text-xs font-bold " + (item.data_prevista && item.data_prevista < hoje && !["realizado","cancelado"].includes(item.status) ? "text-amber-700" : "text-muted-foreground")}>
                 {statusNome[item.status]}
               </p>
             </div>
