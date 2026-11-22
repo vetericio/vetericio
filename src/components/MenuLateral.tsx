@@ -554,28 +554,24 @@ export function MenuLateral({
           );
   };
 
+  // Um único logotipo: a marca original do topo também é o atalho ao Início.
   const logoNoTopo = (
-    <div className="oricse-menu-marca mx-auto grid w-fit max-w-full shrink-0 place-items-center rounded-xl p-1 lg:px-3">
+    <Link
+      to="/inicio"
+      aria-label="Oricse: ir para o Início"
+      title="Ir para o Início"
+      onClick={() => setAberto(false)}
+      className="oricse-menu-marca mx-auto grid w-fit max-w-full shrink-0 place-items-center rounded-xl p-1 transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:px-3"
+    >
       <span
         role="img"
         aria-label="Oricse"
         className="oricse-menu-marca-imagem aspect-[360/212] w-28 max-w-full"
       />
-    </div>
-  );
-
-  const atalhoInicio = (compacto = false) => (
-    <Link
-      to="/inicio"
-      aria-label="Ir para o Início"
-      onClick={() => setAberto(false)}
-      className={`oricse-logo-inicio mx-auto grid shrink-0 place-items-center rounded-xl border border-border bg-background shadow-sm ${compacto ? "size-11" : "mt-4 size-16"}`}
-    >
-      <span aria-hidden="true" className={`oricse-logo-inicio-imagem ${compacto ? "size-9" : "size-14"}`} />
     </Link>
   );
 
-  const navegacao = (menuFixo = false) => (
+  const navegacao = () => (
     <>
       <nav aria-label="Áreas do sistema" className="mt-5 space-y-1.5">
         {areasPrincipais.map(renderArea)}
@@ -607,15 +603,6 @@ export function MenuLateral({
             )}
           </div>
       </nav>
-      <button
-        type="button"
-        onClick={() => alterarModo(!menuFixo)}
-        className="oricse-menu-item mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold"
-      >
-        {menuFixo ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-        {menuFixo ? "Usar menu por três riscos" : "Fixar menu na lateral"}
-      </button>
-      {atalhoInicio()}
     </>
   );
 
@@ -633,18 +620,33 @@ export function MenuLateral({
         <aside className="oricse-menu oricse-menu-lateral fixed inset-y-0 left-0 z-40 flex w-16 flex-col border-r p-2 shadow-xl lg:block lg:w-80 lg:overflow-y-auto lg:p-4">
           {logoNoTopo}
           <div className="mt-3 hidden items-center gap-2 px-1 lg:flex">
-            <Menu className="h-5 w-5 shrink-0 text-primary" />
-            <h2 className="shrink-0 font-bold">Menu</h2>
+            <button
+              type="button"
+              onClick={() => alterarModo(false)}
+              aria-label="Usar menu por três riscos"
+              title="Usar menu por três riscos"
+              className="oricse-menu-item group flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-2 text-left font-bold transition-colors hover:bg-current/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <Menu className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <span>Menu</span>
+              <PanelLeftClose className="h-3.5 w-3.5 opacity-45 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+            </button>
             {identificacao}
           </div>
-          <div className="hidden lg:block">{navegacao(true)}</div>
+          <div className="hidden lg:block">{navegacao()}</div>
           <nav
             aria-label="Atalhos fixos do sistema"
             className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto pb-1 [&>*]:shrink-0 lg:hidden"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl text-primary">
-              <Menu className="h-5 w-5" />
-            </span>
+            <button
+              type="button"
+              onClick={() => alterarModo(false)}
+              aria-label="Usar menu por três riscos"
+              title="Usar menu por três riscos"
+              className="oricse-menu-item flex h-11 w-11 items-center justify-center rounded-xl text-primary transition-colors hover:bg-current/5 focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
             {areasPrincipais.map((area) => {
               const itens = itensVisiveis(area);
               if (itens.length === 0) return null;
@@ -675,16 +677,6 @@ export function MenuLateral({
               >
                 <Settings className="h-5 w-5" />
               </button>
-            <button
-              type="button"
-              aria-label="Usar menu por três riscos"
-              title="Usar menu por três riscos"
-              onClick={() => alterarModo(false)}
-              className="oricse-menu-item mt-auto flex h-11 w-11 items-center justify-center rounded-xl border border-border/70"
-            >
-              <PanelLeftClose className="h-5 w-5" />
-            </button>
-            {atalhoInicio(true)}
           </nav>
         </aside>
       )}
@@ -701,10 +693,22 @@ export function MenuLateral({
         <SheetContent side="left" className="oricse-menu w-80 overflow-y-auto">
           {logoNoTopo}
           <SheetHeader className="mt-3 flex-row items-center gap-2 space-y-0 pr-7">
-            <SheetTitle className="oricse-menu-title shrink-0">Menu</SheetTitle>
+            <SheetTitle className="oricse-menu-title shrink-0" asChild>
+              <button
+                type="button"
+                onClick={() => alterarModo(true)}
+                aria-label="Fixar menu na lateral"
+                title="Fixar menu na lateral"
+                className="oricse-menu-item group flex min-h-11 items-center gap-2 rounded-lg px-2 text-left font-bold transition-colors hover:bg-current/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <Menu className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                <span>Menu</span>
+                <PanelLeftOpen className="h-3.5 w-3.5 opacity-45 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+              </button>
+            </SheetTitle>
             {identificacao}
           </SheetHeader>
-          {navegacao(false)}
+          {navegacao()}
         </SheetContent>
       </Sheet>
       <DialogoTurno aberto={turnoAberto} onFechar={() => setTurnoAberto(false)} />
