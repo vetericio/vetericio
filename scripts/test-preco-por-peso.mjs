@@ -52,7 +52,7 @@ const [catalogo,consulta,comanda,aprovacao,banco,tipos] = await Promise.all([
   readFile("supabase/migrations/20261122170000_catalogo_servicos_faixas_peso.sql","utf8"),
   readFile("src/lib/comandas.ts","utf8"),
 ]);
-assert.match(catalogo,/Definir preço por faixa de peso do animal/);
+assert.match(catalogo,/Definir preços conforme o perfil do animal/);
 assert.match(catalogo,/Excluir \{modal\.tipo === "servico" \? "serviço" : "produto"\}/);
 assert.match(catalogo,/Espécie/);
 assert.match(catalogo,/Sexo/);
