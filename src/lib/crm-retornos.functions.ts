@@ -190,7 +190,7 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
           .eq("origem_id",origemIdConsulta).maybeSingle();
         if (existente?.id) return { id: existente.id as string, criado: false };
       }
-      throw new Error("Consulta salva, mas o retorno não foi cadastrado. Registre-o na Gestão de Clientes.");
+      throw new Error("Consulta salva, mas o retorno não foi cadastrado. Registre-o na Central de Relacionamento.");
     }
     return { id: criado.id as string, criado: true };
   });
