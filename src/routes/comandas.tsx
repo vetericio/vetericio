@@ -378,7 +378,7 @@ export function Comandas() {
     if (servicoComFaixas && (!precoPesoAprovado ||
       !Number.isFinite(precoPesoAprovado.valorAprovado) ||
       Number(valorItem) !== precoPesoAprovado.valorAprovado)) {
-      return void toast.error("Confira o peso e aprove o valor antes de incluir o serviço.");
+      return void toast.error("Confira o perfil do paciente e aprove o valor antes de incluir o serviço.");
     }
     const quantidade = Number(quantidadeItem);
     const valorInformado = parseValorMonetario(valorItem);
@@ -870,7 +870,7 @@ export function Comandas() {
                       {catalogo.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.nome} · {item.tipo === "servico" ? "Serviço" : "Produto"} ·{" "}
-                          {faixasValidas(item.faixas_peso).length ? "Aprovação por peso" : dinheiro(item.valor)}
+                          {faixasValidas(item.faixas_peso).length ? "Preço configurado: aprovar" : dinheiro(item.valor)}
                         </option>
                       ))}
                     </select>
