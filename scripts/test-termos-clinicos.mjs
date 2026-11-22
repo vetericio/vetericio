@@ -116,5 +116,22 @@ for (const termo of BIBLIOTECA_TERMOS) {
   }
   }
 }
+// Regressão visual: todos os 14 títulos devem ser centralizados linha a linha.
+const fonteGeradorPdf = await readFile("src/lib/modelos-documentos-pdf.ts", "utf8");
+assert.match(fonteGeradorPdf, /pdf\.text\(linhaTitulo, centro, y, \{ align: "center" \}\)/,
+  "O título de cada termo deve usar o centro real da página.");
+assert.match(fonteGeradorPdf, /pdf\.splitTextToSize\(titulo \|\| " ", largura\)/,
+  "O título longo deve quebrar linhas respeitando a largura do documento.");
+for (const termo of BIBLIOTECA_TERMOS) {
+  assert(/^termo\b/i.test(termo.titulo), "Título inesperado: " + termo.id);
+  const amostra = new jsPDF({ unit: "mm", format: "a4" });
+  amostra.setFont("helvetica", "bold");
+  amostra.setFontSize(19);
+  const linhasTitulo = amostra.splitTextToSize(termo.titulo, largura);
+  assert(linhasTitulo.length >= 1, "Termo sem título: " + termo.id);
+  assert(linhasTitulo.every(linha => amostra.getTextWidth(linha) <= largura + 0.5),
+    "Título excede as margens: " + termo.id);
+}
+console.log("OK: títulos dos 14 termos centralizados, inclusive em múltiplas linhas.");
 console.log("OK: 14 termos com assinaturas junto ao texto final (incluindo quebras e conteúdo longo).");
 console.log("OK: 14 modelos, CPF, campos obrigatórios, RCP, testemunhas, domicílio e gate de publicação.");
