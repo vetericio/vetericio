@@ -97,7 +97,7 @@ create or replace function public.oricse_agrupar_servicos_peso(
   p_clinica uuid, p_originais uuid[], p_nome text, p_faixas jsonb
 ) returns uuid
 language plpgsql security invoker set search_path = ''
-as $
+as $$
 declare
   v_qtd integer;
   v_count integer;
@@ -158,7 +158,7 @@ begin
   values (p_clinica,v_novo,p_originais,(select auth.uid()));
   return v_novo;
 end;
-$;
+$$;
 revoke all on function public.oricse_agrupar_servicos_peso(uuid,uuid[],text,jsonb)
   from public,anon;
 grant execute on function public.oricse_agrupar_servicos_peso(uuid,uuid[],text,jsonb)
