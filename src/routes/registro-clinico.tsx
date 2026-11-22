@@ -17,6 +17,7 @@ import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 import type { Medicacao } from "@/lib/ficha";
 import { categoriaExame, EXAMES_PADRAO, type CategoriaExame } from "@/lib/exames-catalogo";
 import { registrarRetornoClinico } from "@/lib/crm-retornos.functions";
+import { criarJornadaPosCirurgica } from "@/lib/crm-pos-cirurgico.functions";
 
 export const Route = createFileRoute("/registro-clinico")({ component: RegistroClinico });
 
@@ -397,7 +398,27 @@ function RegistroClinico(){
     ...procedimento,
     acompanhamentoCrm: acompanharPosCirurgico,
     dataAlta: altaPosCirurgico || null,
-  }}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
+  }}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; }
+  if (acompanharPosCirurgico) {
+    try {
+      const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
+      if (erroSessao || !sessao.session?.access_token)
+        throw new Error("Sessão expirada. Entre novamente.");
+      const resultado = await criarJornadaPosCirurgica({
+        data: {
+          clinicaId: clinicaAnimalId, accessToken: sessao.session.access_token,
+          registroId: novo.id,
+        },
+      });
+      toast.success(`Procedimento salvo. ${resultado.planejadas} acompanhamento(s) pós-cirúrgico(s) preparado(s) na Central.`);
+    } catch (erro) {
+      console.error("Falha ao agendar acompanhamento pós-cirúrgico:", erro);
+      toast.error("Procedimento salvo, mas os acompanhamentos não foram preparados. Confira a Central de Relacionamento.");
+    }
+  } else {
+    toast.success("Procedimento salvo no prontuário.");
+  }
+  navigate({to:"/animal",search:{animalId:animal.id} as never}); }
 
   const abrirConsulta=()=>{if (!animal) return; setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 
