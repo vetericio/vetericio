@@ -124,7 +124,7 @@ const modulos = [
   { icon: Scissors, titulo: "Banho e tosa", descricao: "Controle serviços, pacotes, profissionais, horários e observações importantes para cada pet." },
   { icon: Hotel, titulo: "Hotelzinho", descricao: "Cuide de reservas, hospedagens, check-in, estadias, diárias e rotinas de cuidado com clareza." },
   { icon: Sparkles, titulo: "Meu OricStúdio", descricao: "Crie e organize a presença digital do seu negócio, planeje conteúdos e fortaleça sua marca." },
-  { icon: Users, titulo: "Gestão de clientes", descricao: "Histórico completo de tutores e pets, relacionamento, lembretes e campanhas segmentadas." },
+  { icon: Users, titulo: "Central de Relacionamento", descricao: "Histórico completo de tutores e pets, relacionamento, lembretes e campanhas segmentadas." },
   { icon: CreditCard, titulo: "Financeiro", descricao: "Caixa, comandas, cobranças, repasses e uma visão clara da saúde financeira da operação." },
   { icon: CalendarCheck, titulo: "OricsePay", descricao: "Disponibilize a agenda no Portal do Tutor e confirme o agendamento somente após o pagamento." },
   { icon: Package, titulo: "Estoque e produtos", descricao: "Catálogo, movimentações, vendas, alertas e produtos conectados à rotina da clínica e do pet shop." },
