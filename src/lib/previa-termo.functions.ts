@@ -3,7 +3,7 @@ import { z } from "zod";
 import { contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 import { BIBLIOTECA_TERMOS } from "@/lib/termos-clinicos-validacao";
-import { UUID_MODELOS_TERMO, type CodigoTermoModelo } from "@/lib/termos-clinicos-status";
+import { UUID_MODELOS_TERMO } from "@/lib/termos-clinicos-status";
 
 const entrada = z.object({
   accessToken: z.string().min(20),
@@ -77,7 +77,7 @@ export const salvarPreviaTermoNoProntuario = createServerFn({ method: "POST" })
           ...metadata,
           origem: "previa_demonstrativa_termo",
           codigoTermo: data.tipoTermo,
-          modeloId: UUID_MODELOS_TERMO[data.tipoTermo as CodigoTermoModelo],
+          modeloId: UUID_MODELOS_TERMO[data.tipoTermo as keyof typeof UUID_MODELOS_TERMO],
           versaoModelo: 0,
           situacao: "minuta_nao_homologada",
           animalId: data.animalId,
