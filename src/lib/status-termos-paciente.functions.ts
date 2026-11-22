@@ -62,6 +62,8 @@ export const obterStatusTermosPaciente = createServerFn({ method: "POST" })
         return {
           documentoId: d.id,
           codigoTermo: codigo,
+          previaSalva: Boolean(codigo && meta.origem === "previa_demonstrativa_termo" &&
+            meta.codigoTermo === codigo && d.tipo === "Termo - Prévia demonstrativa"),
           geradoPeloOricse: Boolean(codigo && meta.origem === "modelo_clinico_assinado"),
         };
       }),
