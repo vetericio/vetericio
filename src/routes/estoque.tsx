@@ -1,6 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LeitorCodigoBarrasCamera } from "@/components/LeitorCodigoBarrasCamera";
@@ -73,6 +73,10 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   const [remuneracoes, setRemuneracoes] = useState<RemuneracaoFuncionario[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modal, setModal] = useState<ItemForm | null>(null);
+  const [agruparAberto, setAgruparAberto] = useState(false);
+  const [nomeGrupo, setNomeGrupo] = useState("");
+  const [servicosParaAgrupar, setServicosParaAgrupar] = useState<{id:string;ateKg:string}[]>([]);
+  const [agrupando, setAgrupando] = useState(false);
   const [quantidadesEstoque, setQuantidadesEstoque] = useState<Record<string, string>>({});
   const [salvandoEstoque, setSalvandoEstoque] = useState<string | null>(null);
   const [historicoEstoque, setHistoricoEstoque] = useState<Array<{id:string;item_nome:string;tipo:string;quantidade:number;estoque_anterior:number;estoque_posterior:number;registrado_em:string}>>([]);
@@ -332,6 +336,45 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     toast.success(modal.id ? "Item atualizado." : "Item cadastrado.");
   }
 
+  async function agruparServicosExistentes() {
+    if (!podeGerenciarCatalogo || !clinicaId || agrupando) return;
+    if (nomeGrupo.trim().length < 3) return void toast.error("Dê um nome ao serviço agrupado.");
+    const escolhidos = servicosParaAgrupar.map((selecionado,indice) => {
+      const original = servicos.find(item=>item.id===selecionado.id);
+      return {
+        id:selecionado.id,
+        ateKg:indice === servicosParaAgrupar.length-1 ? null : Number(selecionado.ateKg.replace(",",".")),
+        valor:Number(original?.valor),
+      };
+    });
+    const faixas = escolhidos.map(({ateKg,valor})=>({ateKg,valor}));
+    if (servicosParaAgrupar.slice(0,-1).some(f=>!f.ateKg.trim()))
+      return void toast.error("Informe o limite de peso de cada faixa.");
+    const erro=validarFaixasPeso(faixas);
+    if (erro) return void toast.error(erro);
+    if (!window.confirm(
+      "Criar o serviço \"" + nomeGrupo.trim() + "\" com " + faixas.length +
+      " faixas? Os cadastros antigos ficarão arquivados, preservando o histórico. Confirme para prosseguir."
+    )) return;
+    setAgrupando(true);
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc("oricse_agrupar_servicos_peso", {
+        p_clinica:clinicaId, p_originais:escolhidos.map(x=>x.id),
+        p_nome:nomeGrupo.trim(),p_faixas:faixas,
+      });
+      if (error || !data) throw new Error(error?.message || "Não foi possível agrupar os serviços.");
+      await carregarDados(clinicaId);
+      setAgruparAberto(false);
+      setServicosParaAgrupar([]);
+      setNomeGrupo("");
+      toast.success("Serviço agrupado: preços antigos preservados e opções organizadas por peso.");
+    } catch(e) {
+      toast.error(e instanceof Error ? e.message : "Falha na conversão dos serviços.");
+    } finally {
+      setAgrupando(false);
+    }
+  }
+
   async function arquivarItem(item: ItemCatalogo) {
     if (!podeGerenciarCatalogo) return void toast.error("Seu usuário não pode gerenciar o catálogo.");
     if (!clinicaId || !window.confirm(`Remover "${item.nome}" do catálogo?`)) return;
@@ -542,7 +585,17 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       )}
 
       {aba === "catalogo" && podeVerCatalogo && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-3">
+          {podeGerenciarCatalogo && servicos.length >= 2 && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
+            <p className="text-xs text-muted-foreground">
+              Serviços antigos separados por peso? Organize em um único cadastro sem perder o histórico.
+            </p>
+            <button type="button" onClick={()=>setAgruparAberto(true)}
+              className="min-h-11 rounded-xl border px-4 text-sm font-bold text-primary">
+              Agrupar serviços por peso
+            </button>
+          </div>}
+          <div className="grid gap-4 md:grid-cols-2">
           <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({
             id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria,
             valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "",
@@ -556,6 +609,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
           <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso),
             preco_por_peso: false, faixas_peso: [] })} aoRemover={arquivarItem} />
           {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
+          </div>
         </div>
       )}
 
@@ -690,6 +744,91 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
           </section>
         </section>
       )}
+
+      {agruparAberto && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3"
+        onMouseDown={e=>{if(e.target===e.currentTarget && !agrupando)setAgruparAberto(false);}}>
+        <section role="dialog" aria-modal="true" aria-label="Agrupar serviços existentes por peso"
+          className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-card p-5 shadow-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black">Agrupar serviços existentes</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Escolha os serviços na ordem das faixas, informe os limites e confirme.
+                O histórico de valores e comissões anteriores será preservado.
+              </p>
+            </div>
+            <button type="button" disabled={agrupando} onClick={()=>setAgruparAberto(false)}
+              aria-label="Fechar agrupamento" className="rounded-lg border p-2"><X size={18}/></button>
+          </div>
+          <label className="mt-4 block text-sm font-semibold">Nome do novo serviço
+            <input value={nomeGrupo} onChange={e=>setNomeGrupo(e.target.value)} maxLength={120}
+              placeholder="Ex.: Eutanásia" className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"/>
+          </label>
+          <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">
+            1. Selecione os serviços antigos
+          </p>
+          <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border p-2">
+            {servicos.filter(item=>faixasValidas(item.faixas_peso).length===0).map(item=><label key={item.id}
+              className="flex min-h-10 cursor-pointer items-center justify-between gap-2 border-b p-2 text-sm last:border-0">
+              <span className="flex items-center gap-2">
+                <input type="checkbox" checked={servicosParaAgrupar.some(v=>v.id===item.id)}
+                  onChange={e=>{
+                    setServicosParaAgrupar(atuais=>e.target.checked
+                      ? [...atuais,{id:item.id,ateKg:""}]
+                      : atuais.filter(v=>v.id!==item.id));
+                    if(e.target.checked && !nomeGrupo.trim()){
+                      setNomeGrupo(item.nome.replace(/\s*(?:[-–]|at[eé]|acima|de\s+[0-9])[\s\S]*$/i,"").trim() || item.nome);
+                    }
+                  }} />
+                {item.nome}
+              </span>
+              <strong className="whitespace-nowrap">{dinheiro(item.valor)}</strong>
+            </label>)}
+          </div>
+          <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">
+            2. Confira a ordem e indique os pesos
+          </p>
+          <div className="mt-2 space-y-2">
+            {servicosParaAgrupar.map((entrada,indice)=>{
+              const original=servicos.find(x=>x.id===entrada.id);
+              return <div key={entrada.id} className="grid grid-cols-[minmax(0,1fr)_105px_auto] items-center gap-2 rounded-xl border p-2">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold">{original?.nome}</p>
+                  <p className="text-xs text-primary">{dinheiro(Number(original?.valor||0))}</p>
+                </div>
+                {indice===servicosParaAgrupar.length-1
+                  ? <span className="text-xs font-semibold">Sem limite superior</span>
+                  : <label className="text-xs font-semibold">Até (kg)
+                    <input inputMode="decimal" placeholder="Ex.: 10" value={entrada.ateKg}
+                      onChange={e=>setServicosParaAgrupar(rows=>rows.map((v,i)=>i===indice?{...v,ateKg:e.target.value}:v))}
+                      className="mt-1 min-h-9 w-full rounded-lg border bg-background px-2 font-normal"/>
+                  </label>}
+                <div className="flex flex-col gap-1">
+                  <button type="button" disabled={indice===0} title="Mover para cima"
+                    onClick={()=>setServicosParaAgrupar(rows=>{const nova=[...rows];[nova[indice-1],nova[indice]]=[nova[indice],nova[indice-1]];return nova;})}
+                    className="rounded-md border p-1 disabled:opacity-30"><ArrowUp size={15}/></button>
+                  <button type="button" disabled={indice===servicosParaAgrupar.length-1} title="Mover para baixo"
+                    onClick={()=>setServicosParaAgrupar(rows=>{const nova=[...rows];[nova[indice],nova[indice+1]]=[nova[indice+1],nova[indice]];return nova;})}
+                    className="rounded-md border p-1 disabled:opacity-30"><ArrowDown size={15}/></button>
+                </div>
+              </div>;
+            })}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            A última linha valerá para pesos acima do limite anterior. Confira se o preço faz sentido nessa faixa.
+            Só os serviços selecionados serão arquivados, sem apagar as cobranças existentes.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" disabled={agrupando} onClick={()=>setAgruparAberto(false)}
+              className="min-h-11 rounded-xl border px-4 font-semibold">Cancelar</button>
+            <button type="button" disabled={agrupando || servicosParaAgrupar.length<2}
+              onClick={()=>void agruparServicosExistentes()}
+              className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40">
+              {agrupando?"Agrupando...":"Revisar e criar agrupamento"}
+            </button>
+          </div>
+        </section>
+      </div>}
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}>
