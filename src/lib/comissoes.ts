@@ -19,6 +19,7 @@ export type ItemCatalogo = {
   estoque_minimo: number | null;
   codigo_barras?: string | null;
   venda_por_peso?: boolean;
+  faixas_peso?: unknown;
   ativo: boolean;
 };
 
