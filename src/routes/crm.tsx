@@ -1,6 +1,6 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, CalendarClock, Check, ClipboardList, FileText, HeartPulse, History, LayoutGrid, Mail, Megaphone, MessageCircle, RefreshCw, Settings2, Sparkles, Star, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, FileText, HeartPulse, History, LayoutGrid, Mail, Megaphone, MessageCircle, RefreshCw, Settings2, Sparkles, Star, Users } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,11 +9,15 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
 const CrmRetornosPanel = lazy(() => import("@/components/CrmRetornosPanel").then(m => ({ default: m.CrmRetornosPanel })));
+const CrmJornadaPanel = lazy(() => import("@/components/CrmJornadaPanel").then(m => ({ default: m.CrmJornadaPanel })));
 const CrmModelosDaCentral = lazy(() => import("@/components/CrmModelosDaCentral").then(m => ({ default: m.CrmModelosDaCentral })));
 
-type SecaoCrm = "retornos" | "campanhas" | "fila" | "historico" | "modelos" | "config";
+type SecaoCrm = "retornos" | "pos-cirurgico" | "ausentes" | "satisfacao" | "campanhas" | "fila" | "historico" | "modelos" | "config";
 const SECOES_CRM = [
   { id: "retornos", nome: "Retornos e cuidados", resumo: "Consultas de retorno, vacinas, vermífugos e exames.", icone: CalendarClock, grupo: "rotina" },
+  { id: "pos-cirurgico", nome: "Pós-cirúrgico", resumo: "Revisões D+1, D+3, D+7 e D+10 após cirurgias concluídas.", icone: HeartPulse, grupo: "rotina" },
+  { id: "ausentes", nome: "Clientes ausentes", resumo: "Recupere o contato com tutores que não retornam há algum tempo.", icone: Users, grupo: "rotina" },
+  { id: "satisfacao", nome: "Pesquisa de satisfação", resumo: "Convide tutores a avaliar a experiência com a clínica.", icone: Star, grupo: "rotina" },
   { id: "campanhas", nome: "Campanhas", resumo: "Comunique novidades e organize ações de relacionamento.", icone: Megaphone, grupo: "rotina" },
   { id: "fila", nome: "Fila de mensagens", resumo: "Acompanhe os contatos que precisam de atenção.", icone: MessageCircle, grupo: "rotina" },
   { id: "historico", nome: "Histórico de contatos", resumo: "Consulte mensagens concluídas e ações anteriores.", icone: History, grupo: "gestao" },
@@ -21,12 +25,7 @@ const SECOES_CRM = [
   { id: "config", nome: "Configurações", resumo: "Defina lembretes, prazos e automações da clínica.", icone: Settings2, grupo: "gestao" },
 ] as const;
 
-const PROXIMOS_SERVICOS = [
-  { nome: "Pós-cirúrgico inteligente", resumo: "Acompanhamento em etapas após a alta.", icone: HeartPulse, andamento: "Em testes" },
-  { nome: "Clientes ausentes", resumo: "Recuperação de tutores sem novos atendimentos.", icone: Users, andamento: "Em preparação" },
-  { nome: "Orçamentos pendentes", resumo: "Acompanhamento de propostas ainda não aprovadas.", icone: ClipboardList, andamento: "Em preparação" },
-  { nome: "Pesquisa de satisfação", resumo: "Avaliação do atendimento e oportunidades de melhoria.", icone: Star, andamento: "Em preparação" },
-] as const;
+
 
 export const Route = createFileRoute("/crm")({
   validateSearch: ({ secao, oricse_build }: Record<string, unknown>): { secao?: SecaoCrm; oricse_build?: string } => ({
@@ -150,7 +149,7 @@ const PADRAO: Omit<CrmConfig, "clinica_id"> = {
   gerar_aniversarios: true,
   gerar_reforcos: true,
   gerar_agendamentos: true,
-  gerar_pos_cirurgico: true,
+  gerar_pos_cirurgico: false,
   gerar_inativos: false,
 };
 
@@ -345,6 +344,9 @@ function Crm() {
     ((banco.data || []) as EventoCrm[]).forEach((evento) => unificados.set(evento.id, { ...evento, fonteDados: "banco" }));
     const agora = Date.now();
     const visiveis = [...unificados.values()].filter((evento) => {
+      if (evento.status === "pendente" && evento.origem === "automatico" &&
+        ((evento.tipo === "pos_cirurgico" && !String((evento as EventoCrm & {chave_dedupe?:string}).chave_dedupe || "").startsWith("pos_cirurgico:registro:")) ||
+         (evento.tipo === "inativo" && !String((evento as EventoCrm & {chave_dedupe?:string}).chave_dedupe || "").startsWith("reativacao:mensal:")))) return false;
       if (!evento.campanha_id) return true;
       const campanha = campanhaPorId.get(evento.campanha_id);
       if (!campanha) return true;
@@ -411,8 +413,6 @@ function Crm() {
       const tutorPorId = new Map(tutores.map((t) => [String(t.id), t]));
       const animalPorId = new Map(animais.map((a) => [String(a.id), a]));
       const candidatos: Candidato[] = [];
-      const agora = new Date();
-      const anoAtual = agora.getFullYear();
 
       if (cfg.gerar_aniversarios) {
         for (const tutor of tutores) {
@@ -440,7 +440,7 @@ function Crm() {
         }
       }
 
-      if (cfg.gerar_agendamentos || cfg.gerar_pos_cirurgico || cfg.gerar_inativos) {
+      if (cfg.gerar_agendamentos) {
         for (const evento of todosEventos) {
           const dataEvento = normalizarData(evento.data);
           if (!dataEvento) continue;
@@ -467,36 +467,13 @@ function Crm() {
             }
           }
 
-          if (cfg.gerar_pos_cirurgico && /cirurg|procedimento cirúrg/i.test(tipoServico)) {
-            const dataContato = deslocarData(dataEvento, Math.max(0, cfg.dias_pos_cirurgico));
-            if (diasEntre(dataContato) >= -14 && diasEntre(dataContato) <= 60) {
-              const candidato = criarCandidato("pos_cirurgico", tutor, animalNome, dataContato, "", tipoServico, `pos_cirurgico:${evento.id}:${dataContato}`, cfg, listaModelos, nomeClinica);
-              if (candidato) candidatos.push(candidato);
-            }
-          }
+          // Nunca gerar acompanhamento cirúrgico a partir de agendamento: somente prontuário concluído.
         }
       }
 
-      if (cfg.gerar_inativos) {
-        const ultimoPorTutor = new Map<string, string>();
-        for (const evento of todosEventos) {
-          const d = normalizarData(evento.data);
-          if (!evento.tutorId || !d || new Date(`${d}T12:00:00`) > agora) continue;
-          const atual = ultimoPorTutor.get(String(evento.tutorId));
-          if (!atual || d > atual) ultimoPorTutor.set(String(evento.tutorId), d);
-        }
-        for (const tutor of tutores) {
-          if (tutor.autorizaMarketing !== true) continue;
-          const ultima = ultimoPorTutor.get(String(tutor.id)) || normalizarData(tutor.criadoEm);
-          if (!ultima) continue;
-          const diasInativo = Math.floor((inicioDia().getTime() - new Date(`${ultima}T12:00:00`).getTime()) / 86400000);
-          if (diasInativo < cfg.dias_inatividade) continue;
-          const animal = animais.find((a) => String(a.tutorId) === String(tutor.id));
-          const data = `${anoAtual}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
-          const candidato = criarCandidato("inativo", tutor, animal?.nome || "seu pet", data, "", "acompanhamento", `inativo:${tutor.id}:${anoAtual}-${agora.getMonth() + 1}`, cfg, listaModelos, nomeClinica);
-          if (candidato) candidatos.push(candidato);
-        }
-      }
+      // Recuperação de clientes ausentes é preparada na seção própria,
+      // apenas a partir de atendimento realmente concluído, não da agenda.
+
 
       if (candidatos.length) {
         const { error } = await (supabase as any)
@@ -580,6 +557,13 @@ function Crm() {
   }
 
   function abrirContato(evento: EventoCrm) {
+    // Todos os acompanhamentos novos exigem revisão e autorização atual
+    // do tutor dentro da aba própria, nunca abrem WhatsApp pela fila legada.
+    if (evento.tipo === "pos_cirurgico" || evento.tipo === "inativo" || evento.tipo === "pesquisa_satisfacao") {
+      abrirSecao(evento.tipo === "pos_cirurgico" ? "pos-cirurgico" : evento.tipo === "inativo" ? "ausentes" : "satisfacao");
+      toast.info("Abra o contato na área do serviço para revisar a mensagem e confirmar a autorização.");
+      return;
+    }
     if (evento.canal === "manual") {
       if (!navigator.clipboard?.writeText) return void toast.error("Copie a mensagem manualmente; área de transferência indisponível.");
       void navigator.clipboard.writeText(evento.mensagem)
@@ -601,7 +585,7 @@ function Crm() {
   async function salvarConfig() {
     if (!config || !podeGerenciar) return;
     setSalvando("config");
-    const { error } = await (supabase as any).from("oricse_crm_config").upsert({ ...config, updated_at: new Date().toISOString() }, { onConflict: "clinica_id" });
+    const { error } = await (supabase as any).from("oricse_crm_config").upsert({ ...config, gerar_pos_cirurgico: false, gerar_inativos: false, updated_at: new Date().toISOString() }, { onConflict: "clinica_id" });
     setSalvando(null);
     if (error) return void toast.error(error.message);
     toast.success("Configurações do CRM salvas.");
@@ -669,24 +653,23 @@ function Crm() {
           </button>;
         })}
       </div>
-      <div className="mt-8 rounded-3xl border border-dashed border-primary/20 bg-card/60 p-5">
-        <h2 className="text-base font-black">Próximos serviços</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Funcionalidades aprovadas no planejamento, mas ainda não disponíveis para uso.</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {PROXIMOS_SERVICOS.map(item => {
-            const Icone = item.icone;
-            return <div key={item.nome} className="flex items-start gap-3 rounded-2xl border bg-background/80 p-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Icone size={20} aria-hidden="true"/></span>
-              <div>
-                <p className="font-bold">{item.nome}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.resumo}</p>
-                <p className="mt-2 text-xs font-semibold text-muted-foreground">{item.andamento}</p>
-              </div>
-            </div>;
-          })}
-        </div>
-      </div>
+
     </section>}
+
+    <nav aria-label="Abas da Central de Relacionamento" className="mt-6 flex gap-2 overflow-x-auto rounded-2xl border bg-card p-2">
+      <button type="button" onClick={() => abrirSecao()}
+        aria-current={visao==="inicio"?"page":undefined}
+        className={"min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold "+(visao==="inicio"?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted")}>
+        Início
+      </button>
+      {SECOES_CRM.filter(item => item.id!=="config" || podeGerenciar).map(item=>
+        <button key={item.id} type="button" onClick={() => abrirSecao(item.id)}
+          aria-current={visao===item.id?"page":undefined}
+          className={"min-h-10 shrink-0 rounded-xl px-4 text-sm font-bold "+(visao===item.id?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted")}>
+          {item.nome}
+        </button>
+      )}
+    </nav>
 
     {visao !== "inicio" && <div className="mt-6 flex flex-wrap items-center gap-3">
       <button type="button" onClick={() => abrirSecao()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold hover:bg-muted">
@@ -697,6 +680,9 @@ function Crm() {
 
     {visao === "retornos" && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Carregando retornos...</div>}>
       <div className="mt-5"><CrmRetornosPanel clinicaId={clinicaId} podeOperar={podeOperar || pode("recepcao.agenda")} /></div>
+    </Suspense>}
+    {(visao === "pos-cirurgico" || visao === "ausentes" || visao === "satisfacao") && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Carregando serviço...</div>}>
+      <CrmJornadaPanel key={visao} clinicaId={clinicaId} tipo={visao} podeOperar={podeOperar}/>
     </Suspense>}
     {visao === "campanhas" && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Preparando campanhas...</div>}>
       <Crm360Panel
@@ -748,15 +734,14 @@ function Crm() {
         <Toggle rotulo="Aniversários" checked={config.gerar_aniversarios} onChange={(v) => setConfig({ ...config, gerar_aniversarios: v })}/>
         <Toggle rotulo="Vacinas e reforços" checked={config.gerar_reforcos} onChange={(v) => setConfig({ ...config, gerar_reforcos: v })}/>
         <Toggle rotulo="Lembretes de consulta e retorno" checked={config.gerar_agendamentos} onChange={(v) => setConfig({ ...config, gerar_agendamentos: v })}/>
-        <Toggle rotulo="Pós-cirúrgico" checked={config.gerar_pos_cirurgico} onChange={(v) => setConfig({ ...config, gerar_pos_cirurgico: v })}/>
-        <Toggle rotulo="Recuperar clientes inativos" checked={config.gerar_inativos} onChange={(v) => setConfig({ ...config, gerar_inativos: v })}/>
+
         <Toggle rotulo="CRM ativo" checked={config.ativo} onChange={(v) => setConfig({ ...config, ativo: v })}/>
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <CampoNumero rotulo="Lembrete antes da agenda" sufixo="dia(s)" valor={config.dias_antecedencia_agenda} min={0} max={30} onChange={(v) => setConfig({ ...config, dias_antecedencia_agenda: v })}/>
-        <CampoNumero rotulo="Contato pós-cirúrgico" sufixo="dia(s) depois" valor={config.dias_pos_cirurgico} min={0} max={30} onChange={(v) => setConfig({ ...config, dias_pos_cirurgico: v })}/>
-        <CampoNumero rotulo="Considerar cliente inativo após" sufixo="dias" valor={config.dias_inatividade} min={30} max={3650} onChange={(v) => setConfig({ ...config, dias_inatividade: v })}/>
+
       </div>
+      <p className="mt-4 text-sm text-muted-foreground">Pós-cirúrgico e clientes ausentes agora são administrados em suas abas, com validação do prontuário e revisão antes do WhatsApp.</p>
       <button type="button" disabled={salvando === "config"} onClick={() => void salvarConfig()} className="mt-5 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50">Salvar configurações</button>
     </section>}
     </>)}

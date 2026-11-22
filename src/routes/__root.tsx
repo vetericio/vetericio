@@ -112,6 +112,7 @@ const ROTAS_PUBLICAS = new Set([
   "/", "/login", "/modelos", "/solucoes", "/planos", "/contratar",
   "/contratacao-recebida", "/termos-de-uso", "/politica-de-privacidade",
   "/demo-portal-tutor", "/portaldotutor", "/demonstracao", "/solicitar-demonstracao",
+  "/avaliar-atendimento",
 ]);
 const ROTA_CONTRATO_PUBLICO = /^\/contrato\/[^/]+$/;
 

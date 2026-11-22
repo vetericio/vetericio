@@ -34,7 +34,10 @@ assert.match(crm,/CrmRetornosPanel/);
 assert.match(crm,/visao === "retornos"/);
 assert.match(crm,/visao === "campanhas"/);
 assert.match(navegacao,/CRM_EM_PREPARACAO = false/);
-assert.match(menu,/Abrir Central/);
+assert.match(menu,/rotulo: "Início"/);
+assert.match(menu,/secaoCrm: "pos-cirurgico"/);
+assert.match(menu,/secaoCrm: "ausentes"/);
+assert.match(menu,/secaoCrm: "satisfacao"/);
 assert.match(menu,/Central de Relacionamento/);
 const [tutoresTela, migracaoLiberacao, seed] = await Promise.all([
   readFile("src/routes/tutores.tsx","utf8"),
@@ -80,9 +83,9 @@ assert.match(crm,/Fila de mensagens/);
 assert.match(crm,/Histórico de contatos/);
 assert.match(crm,/Modelos de mensagens/);
 assert.match(crm,/Configurações/);
-assert.match(crm,/Próximos serviços/);
-assert.match(crm,/Pós-cirúrgico inteligente/);
-assert.match(crm,/Orçamentos pendentes/);
+assert.match(crm,/Abas da Central de Relacionamento/);
+assert.match(crm,/nome: "Pós-cirúrgico"/);
+assert.doesNotMatch(crm,/Orçamentos pendentes/);
 assert.match(crm,/Pesquisa de satisfação/);
 assert.match(crm,/onAbrirFila=\{\(\) => abrirSecao\("fila"\)\}/);
 assert.match(crm,/carregaFila && \(carregando \?/);
@@ -94,4 +97,40 @@ assert.match(panel,/const \[resposta, pets, pais\] = await Promise\.all/);
 assert.match(panel,/sincronizar: true/);
 assert.match(server,/if \(data\.sincronizar\) await sincronizarReforcos/);
 assert.doesNotMatch(server,/^\s{4}await sincronizarReforcos\(admin, data\.clinicaId\);$/m);
+const [journeys,journeyPanel,postSource,postFunctions,clin,avaliacao,root] = await Promise.all([
+  readFile("src/lib/crm-jornadas.functions.ts","utf8"),
+  readFile("src/components/CrmJornadaPanel.tsx","utf8"),
+  readFile("src/lib/crm-pos-cirurgico.ts","utf8"),
+  readFile("src/lib/crm-pos-cirurgico.functions.ts","utf8"),
+  readFile("src/routes/registro-clinico.tsx","utf8"),
+  readFile("src/routes/avaliar-atendimento.tsx","utf8"),
+  readFile("src/routes/__root.tsx","utf8"),
+]);
+assert.match(crm,/CrmJornadaPanel/);
+assert.match(crm,/visao === "pos-cirurgico"/);
+assert.match(crm,/visao === "ausentes"/);
+assert.match(crm,/visao === "satisfacao"/);
+assert.match(crm,/gerar_pos_cirurgico: false/);
+assert.doesNotMatch(crm,/if \(cfg\.gerar_pos_cirurgico && \/cirurg/);
+assert.doesNotMatch(crm,/if \(cfg\.gerar_inativos\) \{/);
+assert.match(crm,/obter.*Jornada|abrirSecao\(evento\.tipo/);
+assert.match(clin,/criarJornadaPosCirurgica/);
+assert.match(postSource,/DIAS_POS_CIRURGICO_PADRAO = \[1, 3, 7, 10\]/);
+assert.match(postFunctions,/fonteClinicaElegivel/);
+assert.match(postFunctions,/exigirPermissaoClinica/);
+assert.match(postFunctions,/ignoreDuplicates: true/);
+assert.match(journeys,/CONCLUIDOS\.has/);
+assert.match(journeys,/autorizaMarketing === true/);
+assert.match(journeys,/somente_envio_humano:true/);
+assert.match(journeys,/pesquisa_token_hash/);
+assert.match(journeys,/pesquisa_expira_em/);
+assert.match(journeys,/responderPesquisaSatisfacao/);
+assert.match(journeys,/exigirPermissaoClinica/);
+assert.match(journeys,/getUser\(d\.accessToken\)/);
+assert.doesNotMatch(journeys,/sendWhatsapp|\.delete\(/);
+assert.match(journeyPanel,/Revisar WhatsApp/);
+assert.match(journeyPanel,/Nenhuma mensagem foi enviada/);
+assert.match(avaliacao,/Enviar avaliação/);
+assert.match(root,/"\/avaliar-atendimento"/);
+await import("./test-crm-pos-cirurgico.mjs");
 console.log("OK: retornos clínicos, consentimento, segurança por clínica e campanhas autoexplicativas.");
