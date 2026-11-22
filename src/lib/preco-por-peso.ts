@@ -19,7 +19,7 @@ export function validarFaixasPeso(faixas: readonly FaixaPrecoPeso[]): string | n
   for (let i = 0; i < faixas.length; i++) {
     const faixa = faixas[i];
     if (!Number.isFinite(faixa?.valor) || faixa.valor < 0 ||
-        Math.round(faixa.valor * 100) !== faixa.valor * 100)
+        Math.abs(Math.round(faixa.valor * 100) - faixa.valor * 100) > 0.00001)
       return "Informe preços válidos em reais e centavos.";
     if (i === faixas.length - 1) {
       if (faixa.ateKg !== null) return "A última faixa precisa ser sem limite de peso.";
