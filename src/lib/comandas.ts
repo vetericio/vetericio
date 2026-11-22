@@ -32,6 +32,7 @@ export type ItemComanda = {
   criadoEm: string;
   criadoPor: string;
   catalogoItemId?: string;
+  precoPorPeso?: import("@/lib/preco-por-peso").AprovacaoPrecoPeso;
   tipo?: "servico" | "produto" | "avulso";
   diaComissao?: number;
   percentualComissao?: number;
