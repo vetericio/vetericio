@@ -159,50 +159,31 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
         .eq("animal_id", data.animalId).eq("titulo","Consulta").maybeSingle();
       if (error || !registro) throw new Error("Salve primeiro a consulta no prontuário.");
     }
+    // Retornos manuais são independentes: o ID do animal nunca deve ser usado
+    // como chave única de retorno. A idempotência aplica-se apenas à consulta.
+    const origemIdConsulta = data.origem === "consulta" ? data.origemId : undefined;
     const payload = {
       clinica_id: data.clinicaId, animal_id: data.animalId, tutor_id: animal.tutor_id,
-      origem: data.origem, origem_id: data.origemId || null,
+      origem: data.origem, origem_id: origemIdConsulta || null,
       titulo: data.titulo, orientacoes: data.orientacoes,
       data_prevista: data.dataPrevista, status: "a_confirmar",
       criado_por: userId, atualizado_por: userId,
     };
-    if (data.origemId) {
+    if (origemIdConsulta) {
       const { data: registroExistente, error: erroConsulta } = await admin
-        .from("oricse_crm_retornos").select("id,status,animal_id")
+        .from("oricse_crm_retornos").select("id")
         .eq("clinica_id", data.clinicaId).eq("origem", data.origem)
-        .eq("origem_id", data.origemId).maybeSingle();
+        .eq("origem_id", origemIdConsulta).maybeSingle();
       if (erroConsulta) throw new Error("Não foi possível verificar o retorno.");
-      if (registroExistente) {
-        if (registroExistente.animal_id !== data.animalId) throw new Error("O retorno está associado a outro paciente.");
-        if (data.origem === "manual" && data.dataPrevista) {
-          if (registroExistente.status === "realizado" || registroExistente.status === "cancelado") {
-            // Preserva o histórico: um novo envio não reabre um retorno encerrado.
-            payload.origem_id = null;
-          } else {
-            const { data: atualizado, error: erroAtualizacao } = await admin.from("oricse_crm_retornos")
-              .update({
-                data_prevista: data.dataPrevista,
-                titulo: data.titulo, status: "a_confirmar",
-                contato_em: null, confirmado_em: null,
-                atualizado_por: userId, updated_at: new Date().toISOString(),
-              })
-              .eq("clinica_id", data.clinicaId).eq("animal_id", data.animalId)
-              .eq("id", registroExistente.id).select("id").maybeSingle();
-            if (erroAtualizacao || !atualizado) throw new Error("Não foi possível atualizar a data do retorno.");
-            return { id: atualizado.id as string, criado: false };
-          }
-        } else {
-          return { id: registroExistente.id as string, criado: false };
-        }
-      }
+      if (registroExistente) return { id: registroExistente.id as string, criado: false };
     }
     const { data: criado, error } = await admin.from("oricse_crm_retornos")
       .insert(payload).select("id").single();
     if (error || !criado) {
-      if (error?.code === "23505" && data.origemId) {
+      if (error?.code === "23505" && origemIdConsulta) {
         const { data: existente } = await admin.from("oricse_crm_retornos").select("id")
           .eq("clinica_id",data.clinicaId).eq("origem",data.origem)
-          .eq("origem_id",data.origemId).maybeSingle();
+          .eq("origem_id",origemIdConsulta).maybeSingle();
         if (existente?.id) return { id: existente.id as string, criado: false };
       }
       throw new Error("Consulta salva, mas o retorno não foi cadastrado. Registre-o na Gestão de Clientes.");
