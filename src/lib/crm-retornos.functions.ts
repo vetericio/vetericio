@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
+import { comporMensagemAcompanhamento } from "@/lib/crm-mensagem-local";
 
 export type StatusRetorno = "a_confirmar" | "contatado" | "confirmado" | "reagendar" | "realizado" | "cancelado";
 export type TipoRetorno = "consulta" | "vacina" | "vermifugo" | "exame" | "cirurgia" | "medicacao" | "manual" | "outro";
@@ -211,4 +212,73 @@ export const atualizarRetornoClinico = createServerFn({ method: "POST" })
       .select("id,status").maybeSingle();
     if (error || !salvo) throw new Error("Não foi possível atualizar o retorno desta clínica.");
     return { id: salvo.id as string, status: salvo.status as StatusRetorno };
+  });
+
+/**
+ * Prévia local para contato humano: não salva o texto e não envia WhatsApp.
+ * Consulta somente o prontuário do paciente da mesma clínica, com permissão de CRM.
+ */
+export const prepararMensagemAcompanhamento = createServerFn({ method: "POST" })
+  .validator((input: unknown) => base.extend({ retornoId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { admin } = await acessoSeguro(data.accessToken, data.clinicaId, "gestao");
+    const { data: retorno, error: erroRetorno } = await admin.from("oricse_crm_retornos")
+      .select("id,animal_id,tutor_id,origem,origem_id")
+      .eq("clinica_id", data.clinicaId).eq("id", data.retornoId).maybeSingle();
+    if (erroRetorno || !retorno) throw new Error("Retorno não encontrado nesta clínica.");
+
+    const [animalResp, tutorResp] = await Promise.all([
+      admin.from("oricse_animais").select("id,nome,tutor_id")
+        .eq("clinica_id", data.clinicaId).eq("id", retorno.animal_id).maybeSingle(),
+      admin.from("tutores").select("id,nome,telefone,outro_telefone,dados")
+        .eq("clinica_id", data.clinicaId).eq("id", retorno.tutor_id).maybeSingle(),
+    ]);
+    const animal = animalResp.data;
+    const tutor = tutorResp.data;
+    if (animalResp.error || tutorResp.error || !animal || !tutor || animal.tutor_id !== tutor.id) {
+      throw new Error("Não foi possível conferir o vínculo entre tutor e paciente.");
+    }
+    const autorizado = tutor.dados?.autorizaLembretes === true && tutor.dados?.autorizaWhatsapp === true;
+    if (!autorizado) throw new Error("O tutor não autorizou lembretes por WhatsApp.");
+    const telefone = String(tutor.telefone || tutor.outro_telefone || "").replace(/\D/g, "");
+    const numero = telefone.length >= 10 && telefone.length <= 11 ? "55" + telefone : telefone;
+    if (!/^\d{12,13}$/.test(numero) || !numero.startsWith("55")) {
+      throw new Error("O tutor não possui um WhatsApp válido cadastrado.");
+    }
+
+    // Usa o registro associado à consulta, se houver; caso contrário, a última consulta da ficha.
+    let consulta: any = null;
+    if (retorno.origem === "consulta" && retorno.origem_id) {
+      const exata = await admin.from("oricse_animal_registros_extra")
+        .select("id,data,detalhe,dados_atendimento")
+        .eq("clinica_id", data.clinicaId).eq("animal_id", animal.id)
+        .eq("id", retorno.origem_id).eq("titulo", "Consulta").maybeSingle();
+      if (exata.error) throw new Error("Não foi possível consultar o atendimento.");
+      consulta = exata.data;
+    }
+    if (!consulta) {
+      const recente = await admin.from("oricse_animal_registros_extra")
+        .select("id,data,detalhe,dados_atendimento")
+        .eq("clinica_id", data.clinicaId).eq("animal_id", animal.id)
+        .eq("titulo", "Consulta").order("data", { ascending: false })
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (recente.error) throw new Error("Não foi possível consultar o atendimento.");
+      consulta = recente.data;
+    }
+    const dadosConsulta = consulta?.dados_atendimento || {};
+    const queixa = typeof dadosConsulta.consulta?.queixa === "string"
+      ? dadosConsulta.consulta.queixa
+      : String(consulta?.detalhe || "").match(/(?:^|\n)Queixa principal:\s*([^\n]+)/i)?.[1] || "";
+    const autorNome = typeof dadosConsulta.autorNome === "string" ? dadosConsulta.autorNome : "";
+    return {
+      mensagem: comporMensagemAcompanhamento({
+        tutorNome: tutor.nome || "",
+        animalNome: animal.nome || "o paciente",
+        autorNome,
+        queixa,
+        dataConsulta: consulta?.data || null,
+      }),
+      telefone: numero,
+      comResumoClinico: Boolean(queixa.trim()),
+    };
   });
