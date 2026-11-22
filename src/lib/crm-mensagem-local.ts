@@ -58,5 +58,6 @@ export function comporMensagemAcompanhamento(dados: DadosMensagem) {
   const referencia = resumo
     ? `Queria saber como ${animal} está desde o atendimento por ${resumo}. Já está melhor?`
     : `Queria saber como ${animal} está desde o atendimento${dados.dataConsulta ? " de " + dataBr(dados.dataConsulta) : ""}. Já está melhor?`;
-  return `Oi, ${tutor || "tudo bem"}! Tudo bem?\n\n${apresentacao}\n\n${referencia}\n\nQualquer coisa, estou à disposição! 😊`;
+  const saudacao = tutor ? `Oi, ${tutor}! Tudo bem?` : "Oi! Tudo bem?";
+  return `${saudacao}\n\n${apresentacao}\n\n${referencia}\n\nQualquer coisa, estou à disposição! 😊`;
 }
