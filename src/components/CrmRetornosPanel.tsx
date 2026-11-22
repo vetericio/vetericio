@@ -14,7 +14,7 @@ import {
 
 type Paciente = { id: string; nome: string; tutor_id: string };
 type Responsavel = { id: string; nome: string };
-type Filtro = "para_tratar" | "no_prazo" | "hoje" | "atrasados" | "programados" | "todos";
+type Filtro = "para_tratar" | "no_prazo" | "hoje" | "atrasados" | "a_marcar" | "programados" | "todos";
 const statusNome: Record<StatusRetorno,string> = {
   a_confirmar: "A confirmar", contatado: "Aguardando resposta",
   confirmado: "Confirmado", reagendar: "Reagendar",
@@ -121,6 +121,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
     if (filtro === "no_prazo") return aberto && prazo === "no_prazo";
     if (filtro === "hoje") return aberto && prazo === "hoje";
     if (filtro === "atrasados") return aberto && prazo === "atrasado";
+    if (filtro === "a_marcar") return aberto && prazo === "a_marcar";
     if (filtro === "programados") return aberto && prazo === "programado";
     return true;
   }), [retornos,busca,filtro,hoje]);
@@ -200,7 +201,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
           ["No prazo", noPrazo.length, "no_prazo", "bg-emerald-500"],
           ["Hoje", paraHoje.length, "hoje", "bg-amber-400"],
           ["Atrasados", vencidos.length, "atrasados", "bg-red-500"],
-          ["A marcar", aMarcar.length, "para_tratar", "bg-slate-400"],
+          ["A marcar", aMarcar.length, "a_marcar", "bg-slate-400"],
         ] as const).map(([titulo,total,filtroCard,cor]) =>
           <button type="button" key={titulo} onClick={() => setFiltro(filtroCard)}
             className="rounded-xl border bg-muted/10 p-4 text-left transition hover:border-primary/50"
@@ -222,18 +223,19 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
             {pacientes.map(p => <option key={p.id} value={p.id}>{p.nome} · {tutoresPorId.get(p.tutor_id) || "Tutor"}</option>)}
           </select>
         </label>
-        <label className="text-sm font-semibold">2. Data do retorno *
-          <input type="date" value={dataPrevista} onChange={e=>setDataPrevista(e.target.value)}
+        <div className="text-sm font-semibold">
+          <label htmlFor="crm-data-retorno" className="block">2. Data do retorno *</label>
+          <input id="crm-data-retorno" type="date" value={dataPrevista} onChange={e=>setDataPrevista(e.target.value)}
             className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal" />
-          <span className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {OPCOES_DIAS_RETORNO.map(dias =>
               <button type="button" key={dias} onClick={() => setDataPrevista(calcularDataRetorno(dias))}
                 className="rounded-lg border px-2 py-1.5 text-xs font-semibold hover:border-primary hover:bg-primary/5">
                 {dias} dias
               </button>)}
-          </span>
-          {dataPrevista && <span className="mt-2 block text-xs font-semibold text-primary">Retorno: {mostrarData(dataPrevista)}</span>
-        </label>
+          </div>
+          {dataPrevista && <p className="mt-2 text-xs font-semibold text-primary">Retorno: {mostrarData(dataPrevista)}</p>}
+        </div>
         <label className="text-sm font-semibold">Motivo do acompanhamento
           <select value={tipoNovo} onChange={e=>setTipoNovo(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal">
             {["Reavaliação clínica","Resultado de exame","Vacinação","Vermifugação","Pós-operatório","Acompanhamento de medicação","Outro retorno"].map(x=><option key={x}>{x}</option>)}
@@ -260,7 +262,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
         <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar tutor, animal ou retorno" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/>
       </label>
       {([
-        ["para_tratar","Para tratar"],["no_prazo","No prazo"],["hoje","Hoje"],["atrasados","Atrasados"],["programados","Programados"],["todos","Todos"],
+        ["para_tratar","Para tratar"],["no_prazo","No prazo"],["hoje","Hoje"],["atrasados","Atrasados"],["a_marcar","A marcar"],["programados","Programados"],["todos","Todos"],
       ] as Array<[Filtro,string]>).map(([id,nome])=>
         <button type="button" key={id} onClick={()=>setFiltro(id)}
           aria-pressed={filtro===id}
