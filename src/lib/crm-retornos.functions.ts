@@ -7,7 +7,7 @@ export type TipoRetorno = "consulta" | "vacina" | "vermifugo" | "exame" | "cirur
 
 export type RetornoClinico = {
   id: string; animal_id: string; tutor_id: string; origem: TipoRetorno; titulo: string;
-  data_prevista: string; orientacoes: string; status: StatusRetorno;
+  data_prevista: string | null; orientacoes: string; status: StatusRetorno;
   anotacao_equipe: string; contato_em: string | null; confirmado_em: string | null;
   realizado_em: string | null; animal_nome: string; tutor_nome: string;
   telefone: string; email: string; permite_whatsapp: boolean; permite_email: boolean;
@@ -28,7 +28,7 @@ const escrever = base.extend({
   origemId: z.string().uuid().optional(),
   titulo: z.string().trim().min(3).max(180),
   orientacoes: z.string().trim().max(2000).default(""),
-  dataPrevista: dataISO,
+  dataPrevista: dataISO.optional().nullable(),
 });
 
 const alterar = base.extend({
@@ -147,7 +147,7 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { admin, userId } = await acessoSeguro(
       data.accessToken, data.clinicaId, data.origem === "consulta" ? "consultorio" : "gestao");
-    if ((data.origem === "consulta") !== Boolean(data.origemId))
+    if (data.origem === "consulta" && !data.origemId)
       throw new Error("Identificação da consulta inválida.");
     const { data: animal, error: erroAnimal } = await admin.from("oricse_animais")
       .select("id,tutor_id").eq("clinica_id", data.clinicaId)
@@ -166,12 +166,12 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
       data_prevista: data.dataPrevista, status: "a_confirmar",
       criado_por: userId, atualizado_por: userId,
     };
-    if (data.origem === "consulta") {
+    if (data.origemId) {
       const { data: registroExistente, error: erroConsulta } = await admin
         .from("oricse_crm_retornos").select("id")
-        .eq("clinica_id", data.clinicaId).eq("origem", "consulta")
+        .eq("clinica_id", data.clinicaId).eq("origem", data.origem)
         .eq("origem_id", data.origemId).maybeSingle();
-      if (erroConsulta) throw new Error("Não foi possível verificar o retorno da consulta.");
+      if (erroConsulta) throw new Error("Não foi possível verificar o retorno.");
       if (registroExistente) return { id: registroExistente.id, criado: false };
     }
     const { data: criado, error } = await admin.from("oricse_crm_retornos")
@@ -179,7 +179,7 @@ export const registrarRetornoClinico = createServerFn({ method: "POST" })
     if (error || !criado) {
       if (error?.code === "23505" && data.origemId) {
         const { data: existente } = await admin.from("oricse_crm_retornos").select("id")
-          .eq("clinica_id",data.clinicaId).eq("origem","consulta")
+          .eq("clinica_id",data.clinicaId).eq("origem",data.origem)
           .eq("origem_id",data.origemId).maybeSingle();
         if (existente?.id) return { id: existente.id as string, criado: false };
       }
