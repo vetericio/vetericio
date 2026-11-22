@@ -80,6 +80,7 @@ type ItemMenu = {
   moduloEmPreparacao?: boolean;
   portalOficial?: boolean;
   abaHotel?: string;
+  secaoCrm?: string;
   separador?: "consultorio" | "internacao" | "trabalho" | "comissoes";
   grupoRh?: "trabalho" | "comissoes";
 };
@@ -163,7 +164,16 @@ const areas: AreaMenu[] = [
     icone: Users,
     emPreparacao: CRM_EM_PREPARACAO,
     itens: [
-      { to: "/crm", rotulo: "Abrir Central", permissao: "crm.visualizar" },
+      { to: "/crm", rotulo: "Início", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "retornos", rotulo: "Retornos e cuidados", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "pos-cirurgico", rotulo: "Pós-cirúrgico", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "ausentes", rotulo: "Clientes ausentes", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "satisfacao", rotulo: "Pesquisa de satisfação", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "campanhas", rotulo: "Campanhas", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "fila", rotulo: "Fila de mensagens", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "historico", rotulo: "Histórico", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "modelos", rotulo: "Modelos de mensagens", permissao: "crm.visualizar" },
+      { to: "/crm", secaoCrm: "config", rotulo: "Configurações", permissao: "crm.gerenciar" },
     ],
   },
   {
@@ -442,7 +452,7 @@ export function MenuLateral({
               {abertoGrupo && (
                 <div className={`oricse-menu-panel ${area.titulo === "Central de Relacionamento" ? "py-1" : "space-y-1 p-2"}`}>
                   {itens.map((item, i) => {
-                    const chave = (item.to || item.rotulo) + i;
+                    const chave = (item.to || item.rotulo) + (item.secaoCrm || "") + i;
                     if (item.separador) {
                       const SeparadorIcone = item.separador === "consultorio" ? Stethoscope
                         : item.separador === "internacao" ? BedDouble
@@ -542,10 +552,15 @@ export function MenuLateral({
                       <Link
                         key={chave}
                         to={item.to}
+                        search={item.to === "/crm" ? { secao: item.secaoCrm || undefined } : undefined}
                         hash={item.abaHotel || undefined}
                         onClick={() => setAberto(false)}
                         data-destaque={item.destaque}
-                        data-current={location.pathname === item.to && (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash)) || undefined}
+                        data-current={location.pathname === item.to && (
+                          item.to === "/crm"
+                            ? ((location.search as { secao?: string }).secao || "") === (item.secaoCrm || "")
+                            : (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash))
+                        ) || undefined}
                         className={area.titulo === "Central de Relacionamento"
                           ? "oricse-menu-item flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors"
                           : "oricse-menu-item block min-h-10 rounded-lg px-3 py-2.5 text-sm transition-colors"}
