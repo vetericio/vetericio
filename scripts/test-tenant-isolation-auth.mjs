@@ -80,6 +80,8 @@ try {
     for (const [table, column] of [
       ["oricse_animais", "clinica_id"],
       ["tutores", "clinica_id"],
+      ["oricse_dados_modulos", "clinica_id"],
+      ["oricse_crm_eventos", "clinica_id"],
       ["oricse_agendas_online", "clinica_id"],
       ["oricse_catalogo_itens", "clinica_id"],
     ]) {
