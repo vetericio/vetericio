@@ -30,6 +30,7 @@ import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { CRM_EM_PREPARACAO, ORICSTUDIO_EM_PREPARACAO, SO_COM_PLANTAO } from "@/lib/navegacao";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { obterAutorClinico } from "@/lib/perfil-clinico";
+import { crmLiberadoParaClinica } from "@/lib/crm-acesso";
 
 type MenuRoute =
   | "/recepcao"
@@ -375,7 +376,7 @@ export function MenuLateral({
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(
-          (item) => (item.to === "/crm" && (adminGlobal || pode("crm.visualizar") || pode("crm.enviar") || pode("crm.gerenciar"))) ||
+          (item) => (item.to === "/crm" && crmLiberadoParaClinica(clinicaSlug) && (adminGlobal || pode("crm.visualizar") || pode("crm.enviar") || pode("crm.gerenciar"))) ||
             (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
             (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
