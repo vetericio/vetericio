@@ -39,6 +39,8 @@ const castracao = [
 assert.equal(lib.validarFaixasPeso(castracao), null);
 assert.equal(lib.faixasParaAnimal(castracao,"Cão","Macho")[0].valor,250);
 assert.equal(lib.faixasParaAnimal(castracao,"Gato","Fêmea")[0].valor,420);
+assert.equal(lib.agruparFaixasPorCondicao(castracao).length,4);
+assert.equal(lib.tituloFaixa([{ateKg:null,valor:65}],0),"Sem limite de peso");
 assert.equal(lib.tituloFaixa(linhas,0),"Até 10 kg");
 assert.match(lib.tituloFaixa(linhas,3),/Acima de 30 kg/);
 
@@ -54,6 +56,7 @@ assert.match(catalogo,/Definir preço por faixa de peso do animal/);
 assert.match(catalogo,/Excluir \{modal\.tipo === "servico" \? "serviço" : "produto"\}/);
 assert.match(catalogo,/Espécie/);
 assert.match(catalogo,/Sexo/);
+assert.match(catalogo,/Ver tabela de preços/);
 assert.match(catalogo,/createPortal\(/, "Modal deve abrir fora da área de rolagem do menu");
 assert.match(catalogo,/h-\[calc\(100dvh-1rem\)\]/, "Editor deve ocupar uma altura fixa dentro da tela");
 assert.match(catalogo,/fixed inset-0 z-\[200\].*overflow-hidden/, "A camada externa não pode deslocar o modal para fora da tela");
