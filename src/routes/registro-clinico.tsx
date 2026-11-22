@@ -370,12 +370,12 @@ function RegistroClinico(){
           retornoRegistrado = true;
         } catch (erroRetorno) {
           console.error("Consulta salva, mas retorno não foi incluído na Gestão:", erroRetorno);
-          toast.warning("Consulta salva, mas a Gestão de Clientes não confirmou o retorno. Registre-o manualmente na aba Retornos.");
+          toast.warning("Consulta salva, mas a Central de Relacionamento não confirmou o retorno. Registre-o manualmente na aba Retornos.");
         }
       }
       oricseStorage.removeItem(chaveRascunho);
       toast.success(retornoRegistrado
-        ? "Consulta e comanda salvas. Retorno enviado à Gestão de Clientes."
+        ? "Consulta e comanda salvas. Retorno enviado à Central de Relacionamento."
         : "Consulta salva e comanda registrada.");
       navigate({to:"/animal",search:{animalId:animal.id,comandaId:resultado.comandaId} as never});
     } catch(error) {
@@ -471,7 +471,7 @@ function RegistroClinico(){
               <div className="mt-3"><Textarea label="Exame físico / avaliação geral" value={consulta.exameGeral} onChange={v=>setConsulta({...consulta,exameGeral:v})}/></div>
             </>}
             {etapa===5&&<><div className="grid gap-4 md:grid-cols-2"><Textarea grande label="Hipóteses / suspeitas" value={consulta.suspeitas} onChange={v=>setConsulta({...consulta,suspeitas:v})}/><Textarea grande label="Conduta / orientações" value={consulta.conduta} onChange={v=>setConsulta({...consulta,conduta:v})}/></div><div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-semibold">Data do retorno (Gestão de Clientes)
+              <label className="block text-sm font-semibold">Data do retorno (Central de Relacionamento)
                 <input type="date" value={consulta.retornoEm} onChange={e=>setConsulta({...consulta,retornoEm:e.target.value})}
                   className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal"/>
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">
