@@ -80,7 +80,11 @@ const { quebrarAntesDaLinhaFinal } = await import("data:text/javascript;base64,"
 const largura = 210 - 2 * 13;
 for (const termo of BIBLIOTECA_TERMOS) {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const texto = prepararConteudoTermo(dados(termo.id));
+  const base = prepararConteudoTermo(dados(termo.id));
+  for (const texto of [
+    base,
+    base + "\\n" + ("Acompanhamento, riscos e orientações individualizadas descritas na ficha. ".repeat(5) + "\\n").repeat(30),
+  ]) {
   for (const inicio of [123, 158, 215]) {
     const assinatura = 57;
     const planos = [
@@ -107,8 +111,9 @@ for (const termo of BIBLIOTECA_TERMOS) {
       y += plano.passo;
       textoNaUltimaPagina++;
     }
-    assert(textoNaUltimaPagina >= 1, "Página de assinaturas sem texto: " + termo.id);
+    assert(textoNaUltimaPagina >= Math.min(4, plano.linhas.length), "Assinaturas sem trecho final do texto: " + termo.id);
     assert(y + assinatura <= 273, "Assinatura sem espaço no termo: " + termo.id);
+  }
   }
 }
 console.log("OK: 14 termos com assinaturas junto ao texto final (incluindo quebras e conteúdo longo).");
