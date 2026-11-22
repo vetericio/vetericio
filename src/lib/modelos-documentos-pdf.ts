@@ -474,7 +474,7 @@ export async function criarPdfComModelo({
   for (viaAtual = 1; viaAtual <= vias; viaAtual++) {
     if (viaAtual > 1) pdf.addPage();
     iniciarPagina();
-    if (vias === 2 || /^termo\\b/i.test(titulo.trim())) {
+    if (vias === 2 || /^termo\b/i.test(titulo.trim())) {
       // Centralizar cada linha do título dos termos, inclusive títulos longos.
       // Manter o texto quebrado dentro das margens e a altura original.
       definirFonte(true, 19);
