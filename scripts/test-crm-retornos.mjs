@@ -108,7 +108,7 @@ assert.match(fontesBackend,/\["crm\.enviar", "crm\.gerenciar"\]/);
 assert.match(fontesBackend,/\.eq\("id", data\.eventoId\)/);
 assert.match(fontesBackend,/\.eq\("clinica_id", data\.clinicaId\)/);
 assert.match(crm,/obterWhatsappPosCirurgico/);
-assert.doesNotMatch(crm,/\.from\("tutores"\)[\s\S]*?const { numero }/);
+assert.doesNotMatch(crm.slice(crm.indexOf("async function abrirContato"),crm.indexOf("async function salvarConfig")),/\.from\("tutores"\)/);
 assert.match(registroClinico,/checked=\{acompanharPosCirurgico\}/);
 assert.match(registroClinico,/status:"concluido"/);
 assert.match(etapaPos,/DIAS_POS_CIRURGICO_PADRAO = \[1, 3, 7, 10\]/);
