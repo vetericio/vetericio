@@ -586,15 +586,6 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
 
       {aba === "catalogo" && podeVerCatalogo && (
         <div className="space-y-3">
-          {podeGerenciarCatalogo && servicos.length >= 2 && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
-            <p className="text-xs text-muted-foreground">
-              Serviços antigos separados por peso? Organize em um único cadastro sem perder o histórico.
-            </p>
-            <button type="button" onClick={()=>setAgruparAberto(true)}
-              className="min-h-11 rounded-xl border px-4 text-sm font-bold text-primary">
-              Agrupar serviços por peso
-            </button>
-          </div>}
           <div className="grid gap-4 md:grid-cols-2">
           <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({
             id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria,
