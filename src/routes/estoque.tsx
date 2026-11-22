@@ -971,8 +971,22 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
               <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}
                 {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
                   <span className="ml-1 text-primary"> · Preço por peso: {faixasValidas(item.faixas_peso).length} faixas</span>}</p>
+              {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
+                <details className="mt-2 text-xs">
+                  <summary className="cursor-pointer font-bold text-primary">Ver valores por peso</summary>
+                  <div className="mt-2 space-y-1 rounded-xl bg-muted/30 p-2">
+                    {faixasValidas(item.faixas_peso).map((faixa,i,lista)=>
+                      <div key={i} className="flex justify-between gap-2 border-b py-1 last:border-b-0">
+                        <span>{tituloFaixa(lista,i)}</span><strong>{dinheiro(faixa.valor)}</strong>
+                      </div>)}
+                  </div>
+                </details>}
             </div>
-            <strong className="whitespace-nowrap text-sm text-primary">{dinheiro(item.valor)}</strong>
+            <strong className="whitespace-nowrap text-sm text-primary">
+              {faixasValidas(item.faixas_peso).length ? "A partir de " : ""}{dinheiro(
+                faixasValidas(item.faixas_peso).length
+                  ? Math.min(...faixasValidas(item.faixas_peso).map(f=>f.valor)) : item.valor)}
+            </strong>
             {podeEditar && <div className="flex">
               <button type="button" onClick={() => aoEditar(item)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Editar ${item.nome}`}><Pencil size={14} /></button>
               <button type="button" onClick={() => aoRemover(item)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Remover ${item.nome}`}><Trash2 size={14} /></button>
