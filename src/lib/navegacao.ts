@@ -1,4 +1,4 @@
-export const CRM_EM_PREPARACAO = true;
+export const CRM_EM_PREPARACAO = false;
 export const ORICSTUDIO_EM_PREPARACAO = true;
 
 export const SO_COM_PLANTAO = ["/anamnese", "/curva", "/alarmes", "/medicacoes", "/pendencias"];
