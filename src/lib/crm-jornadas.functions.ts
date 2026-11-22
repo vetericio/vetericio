@@ -225,7 +225,7 @@ export const prepararOportunidadeRelacionamento = createServerFn({method:"POST"}
       const vinculados=dados.animais.filter(a=>a.tutor_id===tutorEscolhido.id && animalAtivo(a));
       const animalSelecionado=data.animalId
         ? vinculados.find(a=>a.id===data.animalId)
-        : vinculados[0];
+        : undefined;
       if(data.animalId && !animalSelecionado)
         throw new Error("O animal escolhido não pertence ao tutor nesta clínica.");
       elegivel={
