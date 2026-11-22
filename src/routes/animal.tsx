@@ -48,6 +48,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { enviarAnexoPortal } from "@/lib/drive.functions";
 import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 import { registrarRetornoClinico } from "@/lib/crm-retornos.functions";
+import { calcularDataRetorno, formatarDataRetorno, OPCOES_DIAS_RETORNO } from "@/lib/crm-prazos-retorno";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -2068,14 +2069,23 @@ function SecaoCompleta({
 }
 function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: string; clinicaId: string; registros: Registro[] }) {
   const [enviandoAoCrm, setEnviandoAoCrm] = useState(false);
-  async function enviarAoCrm() {
+  const [escolhendoPrazo, setEscolhendoPrazo] = useState(false);
+  async function enviarAoCrm(dias: number) {
     if (!clinicaId || enviandoAoCrm) return;
+    const dataPrevista = calcularDataRetorno(dias);
     setEnviandoAoCrm(true);
     try {
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) throw new Error("Sessão expirada.");
-      const resultado = await registrarRetornoClinico({ data: { accessToken: token, clinicaId, animalId, origem: "manual", origemId: animalId, titulo: "Retorno a marcar", orientacoes: "" }});
-      toast.success(resultado.criado ? "Retorno enviado ao CRM como pendente." : "Este paciente já possui um retorno pendente no CRM.");
+      const resultado = await registrarRetornoClinico({ data: {
+        accessToken: token, clinicaId, animalId, origem: "manual",
+        titulo: "Retorno clínico", orientacoes: "", dataPrevista,
+      } });
+      setEscolhendoPrazo(false);
+      toast.success(
+        (resultado.criado ? "Novo retorno enviado ao CRM. " : "Retorno encontrado no CRM. ") +
+        "Retorno previsto: " + formatarDataRetorno(dataPrevista) + "."
+      );
     } catch (erro) { toast.error(erro instanceof Error ? erro.message : "Não foi possível enviar o retorno ao CRM."); }
     finally { setEnviandoAoCrm(false); }
   }
@@ -2084,11 +2094,24 @@ function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: strin
       <div className="border-b bg-muted/20 px-4 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2"><ClipboardList size={20} className="text-primary" /><h2 className="text-xl font-black">Registros clínicos</h2></div>
-          <button type="button" disabled={!clinicaId || enviandoAoCrm} onClick={() => void enviarAoCrm()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/40 bg-white px-3 text-sm font-bold text-primary disabled:opacity-50"><CalendarDays size={16} /> {enviandoAoCrm ? "Enviando..." : "Enviar para o CRM"}</button>
+          <button type="button" disabled={!clinicaId || enviandoAoCrm} onClick={() => setEscolhendoPrazo(aberto => !aberto)} aria-expanded={escolhendoPrazo} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/40 bg-white px-3 text-sm font-bold text-primary disabled:opacity-50"><CalendarDays size={16} /> {enviandoAoCrm ? "Enviando..." : "Enviar para o CRM"}</button>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Registre uma consulta, cirurgia ou procedimento no prontuário do animal.
         </p>
+        {escolhendoPrazo && <div className="mt-4 rounded-xl border border-primary/20 bg-white p-4">
+          <p className="text-sm font-bold">Quando o paciente deve retornar?</p>
+          <p className="mt-1 text-xs text-muted-foreground">Selecione o prazo. A data é calculada a partir de hoje e o retorno é salvo no CRM automaticamente.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+            {OPCOES_DIAS_RETORNO.map(dias => <button key={dias} type="button" disabled={enviandoAoCrm}
+              onClick={() => void enviarAoCrm(dias)}
+              className="min-h-14 rounded-lg border border-primary/25 bg-background px-2 py-2 text-center text-sm font-bold transition hover:border-primary hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50">
+              <span className="block">{dias} dias</span>
+              <span className="block text-xs font-normal text-muted-foreground">{formatarDataRetorno(calcularDataRetorno(dias))}</span>
+            </button>)}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">A equipe verá o retorno na fila de acompanhamento 2 dias antes da data prevista.</p>
+        </div>}
       </div>
       <div className="p-4 sm:p-5">
         <div className="grid w-full min-w-0 auto-rows-fr grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
