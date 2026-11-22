@@ -8,7 +8,7 @@ import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { gerarTarefasPosCirurgicas, mensagemPosCirurgica } from "@/lib/crm-pos-cirurgico";
-import { listarFontesPosCirurgicas } from "@/lib/crm-pos-cirurgico.functions";
+import { listarFontesPosCirurgicas, obterWhatsappPosCirurgico } from "@/lib/crm-pos-cirurgico.functions";
 const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
 import { CrmRetornosPanel } from "@/components/CrmRetornosPanel";
 const CrmModelosDaCentral = lazy(() => import("@/components/CrmModelosDaCentral").then(m => ({ default: m.CrmModelosDaCentral })));
@@ -636,19 +636,13 @@ function Crm() {
       // Mesmo com consentimento armazenado no cartão, consultar o cadastro
       // atualizado antes de habilitar o link do WhatsApp.
       try {
-        if (!evento.tutor_ref_local) throw new Error("Tutor não vinculado ao contato.");
-        const { data: tutor, error } = await (supabaseBanco as any).from("tutores")
-          .select("telefone,outro_telefone,dados")
-          .eq("clinica_id", evento.clinica_id)
-          .eq("id", evento.tutor_ref_local).maybeSingle();
-        if (error || !tutor) throw new Error("Não foi possível confirmar o cadastro do tutor.");
-        const dados = tutor.dados || {};
-        if (dados.autorizaWhatsapp !== true || dados.autorizaLembretes !== true) {
-          throw new Error("Contato por WhatsApp não autorizado no cadastro atual.");
-        }
-        const bruto = String(tutor.telefone || tutor.outro_telefone || "").replace(/\D/g, "");
-        const numero = bruto.length === 10 || bruto.length === 11 ? "55" + bruto : bruto;
-        if (!/^55\d{10,11}$/.test(numero)) throw new Error("Telefone WhatsApp inválido.");
+        const { data: sessao, error: erroSessao } = await supabase.auth.getSession();
+        if (erroSessao || !sessao.session?.access_token)
+          throw new Error("Sessão expirada. Entre novamente.");
+        const { numero } = await obterWhatsappPosCirurgico({
+          data: { clinicaId: evento.clinica_id,
+            accessToken: sessao.session.access_token, eventoId: evento.id },
+        });
         setEditorPosCirurgico(atual => atual?.evento.id === evento.id
           ? { ...atual, numero, verificando: false } : atual);
       } catch (erro) {
