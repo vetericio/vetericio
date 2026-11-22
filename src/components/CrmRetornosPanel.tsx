@@ -285,9 +285,11 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
             </div>
             <div className="text-right">
               <p className="text-sm font-black tabular-nums">{mostrarData(item.data_prevista)}</p>
-              <p className={"mt-1 text-xs font-bold " + (item.data_prevista && item.data_prevista < hoje && !["realizado","cancelado"].includes(item.status) ? "text-amber-700" : "text-muted-foreground")}>
-                {statusNome[item.status]}
+              <p className="mt-1 flex items-center justify-end gap-1.5 text-xs font-bold">
+                <span className={"inline-block h-2.5 w-2.5 rounded-full " + corPrazo[prazoVisual(item, hoje)]} aria-hidden="true" />
+                {nomePrazo[prazoVisual(item, hoje)]}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">{statusNome[item.status]}</p>
             </div>
           </div>
           {item.orientacoes && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{item.orientacoes}</p>}
