@@ -303,6 +303,9 @@ function Crm() {
   const [tentativa, setTentativa] = useState(0);
   const [sincronizando, setSincronizando] = useState(false);
   const [salvando, setSalvando] = useState<string | null>(null);
+  const [editorPosCirurgico, setEditorPosCirurgico] = useState<{
+    evento: EventoCrm; mensagem: string; numero: string | null; verificando: boolean; erro?: string;
+  } | null>(null);
 
   const podeOperar = adminGlobal || pode("crm.enviar") || pode("crm.gerenciar");
   const podeGerenciar = adminGlobal || pode("crm.gerenciar");
@@ -608,7 +611,35 @@ function Crm() {
     setEventos((lista) => lista.map((item) => item.id === evento.id ? { ...item, status, enviado_em: status === "enviado" ? new Date().toISOString() : item.enviado_em } : item));
   }
 
-  function abrirContato(evento: EventoCrm) {
+  async function abrirContato(evento: EventoCrm) {
+    if (evento.tipo === "pos_cirurgico") {
+      if (!podeOperar) return;
+      setEditorPosCirurgico({ evento, mensagem: evento.mensagem, numero: null, verificando: true });
+      // Mesmo com consentimento armazenado no cartão, consultar o cadastro
+      // atualizado antes de habilitar o link do WhatsApp.
+      try {
+        if (!evento.tutor_ref_local) throw new Error("Tutor não vinculado ao contato.");
+        const { data: tutor, error } = await (supabaseBanco as any).from("tutores")
+          .select("telefone,outro_telefone,dados")
+          .eq("clinica_id", evento.clinica_id)
+          .eq("id", evento.tutor_ref_local).maybeSingle();
+        if (error || !tutor) throw new Error("Não foi possível confirmar o cadastro do tutor.");
+        const dados = tutor.dados || {};
+        if (dados.autorizaWhatsapp !== true || dados.autorizaLembretes !== true) {
+          throw new Error("Contato por WhatsApp não autorizado no cadastro atual.");
+        }
+        const bruto = String(tutor.telefone || tutor.outro_telefone || "").replace(/\D/g, "");
+        const numero = bruto.length === 10 || bruto.length === 11 ? "55" + bruto : bruto;
+        if (!/^55\d{10,11}$/.test(numero)) throw new Error("Telefone WhatsApp inválido.");
+        setEditorPosCirurgico(atual => atual?.evento.id === evento.id
+          ? { ...atual, numero, verificando: false } : atual);
+      } catch (erro) {
+        setEditorPosCirurgico(atual => atual?.evento.id === evento.id
+          ? { ...atual, numero: null, verificando: false,
+              erro: erro instanceof Error ? erro.message : "Não foi possível confirmar o WhatsApp." } : atual);
+      }
+      return;
+    }
     if (evento.canal === "manual") {
       if (!navigator.clipboard?.writeText) return void toast.error("Copie a mensagem manualmente; área de transferência indisponível.");
       void navigator.clipboard.writeText(evento.mensagem)
@@ -664,6 +695,41 @@ function Crm() {
   }
 
   return <main className="mx-auto min-h-screen w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6">
+    {editorPosCirurgico && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
+      role="dialog" aria-modal="true" aria-label="Revisar mensagem pós-cirúrgica">
+      <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border bg-background p-5 shadow-xl">
+        <h2 className="text-xl font-black">Acompanhamento pós-cirúrgico</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Revise a mensagem para {editorPosCirurgico.evento.destinatario_nome} antes de abrir o WhatsApp.
+          O contato não será enviado automaticamente.
+        </p>
+        <label className="mt-4 block text-sm font-semibold" htmlFor="pos-cirurgico-mensagem">Mensagem editável</label>
+        <textarea id="pos-cirurgico-mensagem" rows={8} maxLength={3000}
+          className="mt-2 w-full resize-y rounded-xl border bg-background p-3 text-sm leading-relaxed"
+          value={editorPosCirurgico.mensagem}
+          onChange={e => setEditorPosCirurgico(atual => atual ? { ...atual, mensagem: e.target.value } : atual)}/>
+        {editorPosCirurgico.verificando && <p className="mt-2 text-xs text-muted-foreground">Conferindo WhatsApp autorizado...</p>}
+        {editorPosCirurgico.erro && <p role="status" className="mt-2 text-xs text-amber-700">{editorPosCirurgico.erro}</p>}
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => setEditorPosCirurgico(null)}
+            className="min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold">Cancelar</button>
+          <button type="button" disabled={!editorPosCirurgico.mensagem.trim()}
+            onClick={() => {
+              void navigator.clipboard?.writeText(editorPosCirurgico.mensagem)
+                .then(() => toast.success("Mensagem copiada."))
+                .catch(() => toast.error("Não foi possível copiar."));
+            }}
+            className="min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-40">Copiar</button>
+          {editorPosCirurgico.numero && <a target="_blank" rel="noopener noreferrer"
+            href={`https://wa.me/${editorPosCirurgico.numero}?text=${encodeURIComponent(editorPosCirurgico.mensagem)}`}
+            aria-disabled={!editorPosCirurgico.mensagem.trim()}
+            onClick={e => { if (!editorPosCirurgico.mensagem.trim()) e.preventDefault(); }}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">
+            <MessageCircle size={16}/> Abrir WhatsApp
+          </a>}
+        </div>
+      </section>
+    </div>}
     <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={17}/> Recepção</Link>
 
     <header className="mt-4 flex flex-wrap items-end justify-between gap-4">
