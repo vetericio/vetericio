@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  CalendarCheck2, CalendarClock, CheckCircle2, Clock3, MessageCircle,
+  CalendarCheck2, CalendarClock, MessageCircle,
   Plus, RefreshCw, Search, Stethoscope,
 } from "lucide-react";
 import { toast } from "sonner";
+import { calcularDataRetorno, formatarDataRetorno, hojeRetornoBrasil, OPCOES_DIAS_RETORNO, situacaoPrazoRetorno, type SituacaoPrazoRetorno } from "@/lib/crm-prazos-retorno";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import {
   atualizarRetornoClinico, listarRetornosClinica, registrarRetornoClinico,
@@ -13,7 +14,7 @@ import {
 
 type Paciente = { id: string; nome: string; tutor_id: string };
 type Responsavel = { id: string; nome: string };
-type Filtro = "pendentes" | "hoje" | "atrasados" | "todos";
+type Filtro = "para_tratar" | "no_prazo" | "hoje" | "atrasados" | "programados" | "todos";
 const statusNome: Record<StatusRetorno,string> = {
   a_confirmar: "A confirmar", contatado: "Aguardando resposta",
   confirmado: "Confirmado", reagendar: "Reagendar",
@@ -24,13 +25,21 @@ const origemNome: Record<string,string> = {
   exame: "Exame", cirurgia: "Cirurgia", medicacao: "Medicação",
   manual: "Acompanhamento", outro: "Outro",
 };
-function hojeLocal() {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const corPrazo: Record<SituacaoPrazoRetorno | "encerrado", string> = {
+  no_prazo: "bg-emerald-500", hoje: "bg-amber-400", atrasado: "bg-red-500",
+  programado: "bg-slate-400", a_marcar: "bg-slate-400", encerrado: "bg-slate-300",
+};
+const nomePrazo: Record<SituacaoPrazoRetorno | "encerrado", string> = {
+  no_prazo: "No prazo", hoje: "Hoje", atrasado: "Atrasado",
+  programado: "Programado", a_marcar: "A marcar", encerrado: "Encerrado",
+};
+function prazoVisual(item: RetornoClinico, hoje: string): SituacaoPrazoRetorno | "encerrado" {
+  return item.status === "realizado" || item.status === "cancelado"
+    ? "encerrado" : situacaoPrazoRetorno(item.data_prevista, hoje);
 }
 function mostrarData(data: string | null) {
   if (!data) return "A marcar";
-  const [ano,mes,dia] = data.slice(0,10).split("-");
-  return [dia,mes,ano].join("/");
+  return formatarDataRetorno(data);
 }
 function urlWhatsApp(r: RetornoClinico) {
   const telefone = r.telefone.replace(/\D/g,"");
@@ -54,7 +63,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
   const [dataPrevista, setDataPrevista] = useState("");
   const [tipoNovo, setTipoNovo] = useState("Reavaliação clínica");
   const [orientacoes, setOrientacoes] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("pendentes");
+  const [filtro, setFiltro] = useState<Filtro>("para_tratar");
   const [busca, setBusca] = useState("");
   const [reagendarId, setReagendarId] = useState<string | null>(null);
   const [novaData, setNovaData] = useState("");
@@ -96,18 +105,23 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
     setNovoAberto(true);
   }, [animalPreselecionadoId, pacientes]);
 
-  const hoje = hojeLocal();
+  const hoje = hojeRetornoBrasil();
   const ativos = retornos.filter(r => r.status !== "realizado" && r.status !== "cancelado");
-  const vencidos = ativos.filter(r => Boolean(r.data_prevista) && r.data_prevista < hoje);
-  const paraHoje = ativos.filter(r => r.data_prevista === hoje);
-  const confirmados = ativos.filter(r => r.status === "confirmado");
+  const noPrazo = ativos.filter(r => situacaoPrazoRetorno(r.data_prevista, hoje) === "no_prazo");
+  const paraHoje = ativos.filter(r => situacaoPrazoRetorno(r.data_prevista, hoje) === "hoje");
+  const vencidos = ativos.filter(r => situacaoPrazoRetorno(r.data_prevista, hoje) === "atrasado");
+  const aMarcar = ativos.filter(r => situacaoPrazoRetorno(r.data_prevista, hoje) === "a_marcar");
   const tutoresPorId = useMemo(() => new Map(tutores.map(t => [t.id,t.nome])), [tutores]);
   const filtrados = useMemo(() => retornos.filter(r => {
     const texto = (r.animal_nome + " " + r.tutor_nome + " " + r.titulo).toLocaleLowerCase("pt-BR");
     if (!texto.includes(busca.toLocaleLowerCase("pt-BR"))) return false;
-    if (filtro === "pendentes") return r.status !== "realizado" && r.status !== "cancelado";
-    if (filtro === "hoje") return r.data_prevista === hoje && r.status !== "realizado" && r.status !== "cancelado";
-    if (filtro === "atrasados") return Boolean(r.data_prevista) && r.data_prevista < hoje && r.status !== "realizado" && r.status !== "cancelado";
+    const aberto = r.status !== "realizado" && r.status !== "cancelado";
+    const prazo = situacaoPrazoRetorno(r.data_prevista, hoje);
+    if (filtro === "para_tratar") return aberto && prazo !== "programado";
+    if (filtro === "no_prazo") return aberto && prazo === "no_prazo";
+    if (filtro === "hoje") return aberto && prazo === "hoje";
+    if (filtro === "atrasados") return aberto && prazo === "atrasado";
+    if (filtro === "programados") return aberto && prazo === "programado";
     return true;
   }), [retornos,busca,filtro,hoje]);
 
@@ -180,17 +194,22 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
           </button>}
         </div>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <p className="mt-3 text-xs text-muted-foreground">A fila “Para tratar” exibe retornos a partir de 2 dias antes da data prevista e aqueles ainda sem data.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {([
-          ["Acompanhar",ativos.length,Clock3],
-          ["Para hoje",paraHoje.length,CalendarClock],
-          ["Atrasados",vencidos.length,CalendarCheck2],
-          ["Confirmados",confirmados.length,CheckCircle2],
-        ] as const).map(([titulo,total,Icone]) =>
-          <div key={titulo} className="rounded-xl border bg-muted/10 p-4">
-            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground"><Icone size={16}/>{titulo}</div>
+          ["No prazo", noPrazo.length, "no_prazo", "bg-emerald-500"],
+          ["Hoje", paraHoje.length, "hoje", "bg-amber-400"],
+          ["Atrasados", vencidos.length, "atrasados", "bg-red-500"],
+          ["A marcar", aMarcar.length, "para_tratar", "bg-slate-400"],
+        ] as const).map(([titulo,total,filtroCard,cor]) =>
+          <button type="button" key={titulo} onClick={() => setFiltro(filtroCard)}
+            className="rounded-xl border bg-muted/10 p-4 text-left transition hover:border-primary/50"
+            aria-label={titulo + ": " + total + " retornos"}>
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              <span className={"h-2.5 w-2.5 shrink-0 rounded-full " + cor} aria-hidden="true" />{titulo}
+            </div>
             <p className="mt-1 text-3xl font-black tabular-nums">{total}</p>
-          </div>)}
+          </button>)}
       </div>
     </div>
 
@@ -206,6 +225,14 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
         <label className="text-sm font-semibold">2. Data do retorno *
           <input type="date" value={dataPrevista} onChange={e=>setDataPrevista(e.target.value)}
             className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal" />
+          <span className="mt-2 flex flex-wrap gap-1.5">
+            {OPCOES_DIAS_RETORNO.map(dias =>
+              <button type="button" key={dias} onClick={() => setDataPrevista(calcularDataRetorno(dias))}
+                className="rounded-lg border px-2 py-1.5 text-xs font-semibold hover:border-primary hover:bg-primary/5">
+                {dias} dias
+              </button>)}
+          </span>
+          {dataPrevista && <span className="mt-2 block text-xs font-semibold text-primary">Retorno: {mostrarData(dataPrevista)}</span>
         </label>
         <label className="text-sm font-semibold">Motivo do acompanhamento
           <select value={tipoNovo} onChange={e=>setTipoNovo(e.target.value)} className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-normal">
@@ -233,7 +260,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
         <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar tutor, animal ou retorno" className="min-w-0 flex-1 bg-transparent text-sm outline-none"/>
       </label>
       {([
-        ["pendentes","A acompanhar"],["hoje","Hoje"],["atrasados","Atrasados"],["todos","Todos"],
+        ["para_tratar","Para tratar"],["no_prazo","No prazo"],["hoje","Hoje"],["atrasados","Atrasados"],["programados","Programados"],["todos","Todos"],
       ] as Array<[Filtro,string]>).map(([id,nome])=>
         <button type="button" key={id} onClick={()=>setFiltro(id)}
           aria-pressed={filtro===id}
