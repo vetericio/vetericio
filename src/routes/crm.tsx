@@ -149,7 +149,7 @@ const PADRAO: Omit<CrmConfig, "clinica_id"> = {
   gerar_aniversarios: true,
   gerar_reforcos: true,
   gerar_agendamentos: true,
-  gerar_pos_cirurgico: true,
+  gerar_pos_cirurgico: false,
   gerar_inativos: false,
 };
 
@@ -413,8 +413,6 @@ function Crm() {
       const tutorPorId = new Map(tutores.map((t) => [String(t.id), t]));
       const animalPorId = new Map(animais.map((a) => [String(a.id), a]));
       const candidatos: Candidato[] = [];
-      const agora = new Date();
-      const anoAtual = agora.getFullYear();
 
       if (cfg.gerar_aniversarios) {
         for (const tutor of tutores) {
@@ -442,7 +440,7 @@ function Crm() {
         }
       }
 
-      if (cfg.gerar_agendamentos || cfg.gerar_pos_cirurgico || cfg.gerar_inativos) {
+      if (cfg.gerar_agendamentos) {
         for (const evento of todosEventos) {
           const dataEvento = normalizarData(evento.data);
           if (!dataEvento) continue;
@@ -587,7 +585,7 @@ function Crm() {
   async function salvarConfig() {
     if (!config || !podeGerenciar) return;
     setSalvando("config");
-    const { error } = await (supabase as any).from("oricse_crm_config").upsert({ ...config, updated_at: new Date().toISOString() }, { onConflict: "clinica_id" });
+    const { error } = await (supabase as any).from("oricse_crm_config").upsert({ ...config, gerar_pos_cirurgico: false, gerar_inativos: false, updated_at: new Date().toISOString() }, { onConflict: "clinica_id" });
     setSalvando(null);
     if (error) return void toast.error(error.message);
     toast.success("Configurações do CRM salvas.");
