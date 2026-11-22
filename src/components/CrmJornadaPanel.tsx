@@ -216,7 +216,7 @@ export function CrmJornadaPanel({ clinicaId, tipo, podeOperar }: {
           Animal (opcional)
           <select value={animalSelecionado} onChange={e=>setAnimalSelecionado(e.target.value)}
             className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal">
-            <option value="">Atendimento em geral{escolhido.animais.length?" / primeiro pet":""}</option>
+            <option value="">Atendimento em geral (sem animal específico)</option>
             {escolhido.animais.map(a=><option key={a.id} value={a.id}>{a.nome}</option>)}
           </select>
         </label>
