@@ -203,7 +203,12 @@ function RegistroClinico(){
     return () => { ativo=false; };
   },[clinicaAnimalId]);
   useEffect(()=>{if(modo==="consulta"&&etapa===7)setReceituarioAtivado(true);},[modo,etapa]);
-  useEffect(()=>{ if(etapa!==8||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario||(itemCatalogo?valorCampo(itemCatalogo.preco):""), automatico:true, precoConfigurado:(Boolean(itemCatalogo) && !faixasValidas(itemCatalogo.faixas_peso).length) || Boolean(existente?.precoConfigurado),
+  const existingAprovado=(item?:ItemComanda)=>Boolean(item?.precoPorPeso &&
+    item.precoPorPeso.valorAprovado===numeroMoeda(item.valorUnitario));
+  useEffect(()=>{ if(etapa!==8||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario ||
+            (itemCatalogo && !faixasValidas(itemCatalogo.faixas_peso).length ? valorCampo(itemCatalogo.preco) : ""),
+          automatico:true,
+          precoConfigurado:existingAprovado(existente) || (Boolean(itemCatalogo) && !faixasValidas(itemCatalogo.faixas_peso).length),
           precoPorPeso:existente?.precoPorPeso } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
 
 
@@ -507,7 +512,7 @@ function RegistroClinico(){
       </option>)}</select><button type="button" onClick={adicionarItemCatalogo} disabled={!itemCatalogoId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar</button></div>{precoPorPesoPendente && <div className="mt-3">
         <AprovarPrecoPorPeso
           item={precoPorPesoPendente.item}
-          pesoInicial={Number(pesoConsulta || animal.peso || 0) || null}
+          pesoInicial={Number(String(pesoConsulta || animal.peso || 0).replace(",", ".")) || null}
           aprovadoPor={responsavel.nome}
           onAprovar={confirmarPrecoPorPeso}
           onCancelar={()=>setPrecoPorPesoPendente(null)}
