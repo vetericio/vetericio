@@ -83,7 +83,7 @@ for (const termo of BIBLIOTECA_TERMOS) {
   const base = prepararConteudoTermo(dados(termo.id));
   for (const texto of [
     base,
-    base + "\\n" + ("Acompanhamento, riscos e orientações individualizadas descritas na ficha. ".repeat(5) + "\\n").repeat(30),
+    base + "\n" + ("Acompanhamento, riscos e orientações individualizadas descritas na ficha. ".repeat(5) + "\n").repeat(30),
   ]) {
   for (const inicio of [123, 158, 215]) {
     const assinatura = 57;
@@ -93,7 +93,7 @@ for (const termo of BIBLIOTECA_TERMOS) {
     ].map(plano => {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(plano.fonte);
-      return { ...plano, linhas: texto.split("\\n").flatMap(paragrafo =>
+      return { ...plano, linhas: texto.split("\n").flatMap(paragrafo =>
         pdf.splitTextToSize(paragrafo || " ", largura)) };
     });
     const plano = planos.find(v => inicio + v.linhas.length * v.passo + assinatura <= 273)
