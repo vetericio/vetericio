@@ -677,7 +677,7 @@ export function MenuLateral({
               >
                 <Settings className="h-5 w-5" />
               </button>
-                      </nav>
+          </nav>
         </aside>
       )}
       <Sheet open={aberto} onOpenChange={setAberto}>
