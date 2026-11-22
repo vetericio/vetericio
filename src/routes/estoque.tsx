@@ -878,12 +878,12 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                         : [],
                     })}
                     className="size-5 accent-primary"/>
-                  Definir preço por faixa de peso do animal
+                  Definir preços conforme o perfil do animal
                 </label>
                 {modal.preco_por_peso && <div className="mt-3 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Cadastre preços para cão, gato, macho ou fêmea. O peso é opcional e só é usado
-                    quando você preencher o limite em kg. A cobrança sempre exige aprovação na comanda.
+                    Cadastre preços por espécie e sexo. O peso é opcional e só é usado quando você
+                    preencher o limite em kg. A cobrança sempre exige aprovação na comanda.
                   </p>
                   {modal.faixas_peso.map((faixa, indice) => <div key={indice} className="grid min-w-0 grid-cols-1 items-end gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
                     <label className="text-xs font-semibold">Espécie
@@ -921,7 +921,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                   <button type="button" disabled={modal.faixas_peso.length>=20}
                     onClick={()=>setModal({...modal,faixas_peso:[...modal.faixas_peso,{ateKg:"",valor:"",especie:"",sexo:""}]})}
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-xs font-bold">
-                    <Plus size={15}/> Adicionar faixa
+                    <Plus size={15}/> Adicionar preço
                   </button>
                   <p className="text-xs text-muted-foreground">
                     Os valores ficam em um único cadastro. Nenhuma cobrança é gerada nesta tela.
