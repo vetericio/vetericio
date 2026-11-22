@@ -64,9 +64,11 @@ function dataBR(valor?: string) {
   return Number.isNaN(data.getTime()) ? valor : data.toLocaleDateString("pt-BR");
 }
 function hojeBrasil() {
-  return new Intl.DateTimeFormat("en-CA", {
+  const partes = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
+  }).formatToParts(new Date());
+  const mapa = Object.fromEntries(partes.map(parte => [parte.type, parte.value]));
+  return [mapa.year, mapa.month, mapa.day].join("-");
 }
 
 function BuscaInteligente() {
