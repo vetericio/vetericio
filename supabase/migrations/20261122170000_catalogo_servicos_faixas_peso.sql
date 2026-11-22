@@ -21,7 +21,8 @@ begin
   for v_item in select value from jsonb_array_elements(p_faixas)
   loop
     v_indice := v_indice + 1;
-    if jsonb_typeof(v_item) <> 'object' or jsonb_typeof(v_item->'valor') <> 'number'
+    if jsonb_typeof(v_item) is distinct from 'object' or
+      jsonb_typeof(v_item->'valor') is distinct from 'number'
     then return false; end if;
     v_valor := (v_item->>'valor')::numeric;
     if v_valor < 0 or v_valor > 9999999 or v_valor <> round(v_valor, 2)
@@ -31,7 +32,7 @@ begin
       if not (v_item ? 'ateKg') or v_item->'ateKg' <> 'null'::jsonb
       then return false; end if;
     else
-      if jsonb_typeof(v_item->'ateKg') <> 'number' then return false; end if;
+      if jsonb_typeof(v_item->'ateKg') is distinct from 'number' then return false; end if;
       v_limite := (v_item->>'ateKg')::numeric;
       if v_limite <= v_anterior or v_limite > 9999 or
          v_limite <> round(v_limite, 3) then return false; end if;
