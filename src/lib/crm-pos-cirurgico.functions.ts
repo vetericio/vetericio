@@ -8,6 +8,26 @@ const input = z.object({
   clinicaId: z.string().uuid(),
 });
 
+export type FontePosCirurgica = {
+  id: string;
+  clinicaId: string;
+  animalId: string;
+  tutorId: string;
+  animalNome: string;
+  tutorNome: string;
+  dataProcedimento: string;
+  dataAlta: string | null;
+  autorNome: string;
+  acompanhamentoAprovado: true;
+  obitoRegistrado: boolean;
+  telefone: string;
+  outroTelefone: string;
+  email: string;
+  autorizaLembretes: boolean;
+  autorizaWhatsapp: boolean;
+  autorizaEmail: boolean;
+};
+
 function parseProntuario(estado: unknown): unknown[] {
   if (!estado || typeof estado !== "object" || Array.isArray(estado)) return [];
   const bruto = (estado as Record<string, unknown>)["oricse-prontuario-animal-v1"];
