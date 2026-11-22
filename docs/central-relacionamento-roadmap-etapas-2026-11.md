@@ -43,6 +43,14 @@
 - Apenas orçamentos identificados e ainda não aprovados/recusados/cancelados entram na fila.
 - Sem cobranças ou vendas automáticas.
 
+## Verificações complementares 22/11/2026
+- Projeto Supabase `mwrmfcyrdxfxssebgknz` está em plano **Free**, sem backups automáticos incluídos. O conector Supabase da sessão não oferece download de backup completo nem restauração de snapshot.
+- Criado `scripts/backup-supabase-oricse.ps1`: exportação local via Supabase CLI de papéis, esquema e dados SQL, com hashes SHA-256, sem credenciais no Git. **Ainda não executado:** requer autenticação do Supabase CLI e senha do Postgres na sessão local do operador. Os dumps não incluem objetos reais de Storage nem arquivos do Google Drive.
+- Teste read-only no PostgreSQL usando duas identidades de usuário existentes, cada qual vinculada a uma clínica diferente: ambas enxergaram 1 registro do próprio estado operacional e **0 registros do estado operacional, eventos CRM e tutores da outra clínica**. Este teste é simulação de contexto de autorização com SET ROLE, não teste de login real com duas contas.
+- Ampliado `scripts/test-tenant-isolation-auth.mjs` para consultar `oricse_dados_modulos` e `oricse_crm_eventos` com duas sessões reais quando as credenciais de teste de ambiente isolado estiverem disponíveis.
+- A migração de exclusão do gerador antigo continua preparada, não executada.
+- A liberação requer restauração de backup em ambiente isolado com evidência, teste real entre clínicas e medição da latência autenticada.
+
 ## Gates de liberação
 - [ ] CI: testes de unidade, regressões CRM, lint, build, TypeScript, dry-run Cloudflare.
 - [ ] Backup **completo** de arquivos + banco, com restauração verificada, antes de operações em produção.
