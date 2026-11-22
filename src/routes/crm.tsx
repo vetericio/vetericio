@@ -76,6 +76,8 @@ type EventoCrm = {
   agendado_para: string;
   status: StatusCrm;
   origem: string;
+  chave_dedupe?: string | null;
+  metadados?: Record<string, unknown> | null;
   enviado_em?: string | null;
   campanha_id?: string | null;
   fonteDados?: "drive" | "banco";
@@ -329,6 +331,11 @@ function Crm() {
     ((banco.data || []) as EventoCrm[]).forEach((evento) => unificados.set(evento.id, { ...evento, fonteDados: "banco" }));
     const agora = Date.now();
     const visiveis = [...unificados.values()].filter((evento) => {
+      // Preservar histórico, mas não exibir tarefas legadas geradas
+      // automaticamente a partir de cirurgia apenas agendada.
+      if (evento.tipo === "pos_cirurgico" && evento.origem === "automatico" &&
+          evento.status === "pendente" &&
+          !String(evento.chave_dedupe || "").startsWith("pos_cirurgico:registro:")) return false;
       if (!evento.campanha_id) return true;
       const campanha = campanhaPorId.get(evento.campanha_id);
       if (!campanha) return true;
