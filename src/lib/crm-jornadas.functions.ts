@@ -11,7 +11,7 @@ type Animal = { id: string; tutor_id: string; nome: string; dados?: Record<strin
 type Agendamento = { tutor_id?: string | null; inicio?: string | null; estado?: string | null };
 type ConsultaPersistida = { id: string; animal_id: string; data: string; tipo: string; titulo: string };
 type DestinatarioPesquisa = { tutorId: string; tutorNome: string; disponivel: boolean; motivo?: string; animais: { id: string; nome: string }[] };
-type Evento = { id: string; tipo: string; tutor_id?: string | null; titulo: string; destinatario_nome: string; animal_nome: string; mensagem: string; status: string; canal: string; agendado_para: string; metadados?: Record<string, string | number | boolean | null> | null; chave_dedupe?: string | null };
+type Evento = { id: string; clinica_id: string; tipo: string; tutor_id?: string | null; titulo: string; destinatario_nome: string; animal_nome: string; mensagem: string; status: string; canal: string; agendado_para: string; metadados?: Record<string, string | number | boolean | null> | null; chave_dedupe?: string | null };
 type Candidato = { id: string; tutorId: string; tutorNome: string; animalNome: string; dataOrigem: string; dias: number; resumo: string; origem: "registro" | "tutor" };
 
 const EXCLUIR = /eutan[aá]s|[oó]bito|falecid|luto|destina[cç][aã]o de corpo/i;
@@ -68,7 +68,7 @@ async function carregarBase(d: z.infer<typeof base>) {
     admin.from("oricse_animais").select("id,tutor_id,nome,dados").eq("clinica_id",d.clinicaId).limit(MAX_ROWS),
     admin.from("oricse_dados_modulos").select("dados").eq("clinica_id",d.clinicaId).eq("chave","estado_sistema").maybeSingle(),
     admin.from("oricse_agendamentos_online").select("tutor_id,inicio,estado").eq("clinica_id",d.clinicaId).limit(MAX_ROWS),
-    admin.from("oricse_crm_eventos").select("id,tipo,tutor_id,titulo,destinatario_nome,animal_nome,mensagem,status,canal,agendado_para,metadados,chave_dedupe")
+    admin.from("oricse_crm_eventos").select("id,clinica_id,tipo,tutor_id,titulo,destinatario_nome,animal_nome,mensagem,status,canal,agendado_para,metadados,chave_dedupe")
       .eq("clinica_id",d.clinicaId).in("tipo",["inativo","pesquisa_satisfacao"]).order("agendado_para",{ascending:false}).limit(MAX_ROWS),
     // Fonte canônica das consultas finalizadas. O prontuário legado em
     // oricse_dados_modulos não contém os atendimentos atuais de várias clínicas.
