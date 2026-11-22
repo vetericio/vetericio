@@ -38,7 +38,13 @@ function dataBr(data: string) {
 function resumoCurto(queixa: string) {
   const texto = queixa.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1200);
   if (!texto) return "";
-  const sinais = SINAIS.filter(([padrao]) => padrao.test(texto)).slice(0, 3).map(([, nome]) => nome);
+  const sinais = SINAIS.filter(([padrao]) => {
+    const padraoGlobal = new RegExp(padrao.source, "gi");
+    return [...texto.matchAll(padraoGlobal)].some(encontro => {
+      const anterior = texto.slice(Math.max(0, (encontro.index || 0) - 35), encontro.index).toLowerCase();
+      return !/(?:\\bsem\\b|\\bnega\\b|\\bnegou\\b|\\bnegativo para\\b|\\bnão apresenta\\b|\\bnao apresenta\\b|\\bausência de\\b|\\bausencia de\\b)\\s+(?:[\\p{L}-]+\\s+){0,2}$/iu.test(anterior);
+    });
+  }).slice(0, 3).map(([, nome]) => nome);
   if (!sinais.length) return "";
 
   // Contexto de ingestão apenas quando explicitamente descrito no prontuário.
