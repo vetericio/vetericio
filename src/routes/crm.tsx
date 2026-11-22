@@ -5,7 +5,6 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CRM_EM_PREPARACAO } from "@/lib/navegacao";
-import { crmLiberadoParaClinica } from "@/lib/crm-acesso";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 const Crm360Panel = lazy(() => import("@/components/Crm360Panel").then(m => ({ default: m.Crm360Panel })));
@@ -23,7 +22,7 @@ function CrmEmPreparacao() {
         <ArrowLeft size={17} aria-hidden="true" /> Voltar ao início
       </Link>
       <section className="rounded-xl border bg-card p-5">
-        <h1 className="text-xl font-semibold">Gestão de clientes</h1>
+        <h1 className="text-xl font-semibold">Central de Relacionamento</h1>
         <p className="mt-2 text-sm text-muted-foreground">Módulo em preparação · Em breve</p>
       </section>
     </main>
@@ -286,7 +285,7 @@ async function comTempoLimite<T>(promessa: Promise<T>, milissegundos = 20000): P
 }
 
 function Crm() {
-  const { carregando: carregandoPermissoes, clinicaId, clinicaSlug, pode, adminGlobal } = usePermissoes();
+  const { carregando: carregandoPermissoes, clinicaId, pode, adminGlobal } = usePermissoes();
   const [aba, setAba] = useState<Aba>("fila");
   const [visao, setVisao] = useState<"retornos" | "campanhas" | "fila">("retornos");
   const [config, setConfig] = useState<CrmConfig | null>(null);
@@ -301,7 +300,6 @@ function Crm() {
 
   const podeOperar = adminGlobal || pode("crm.enviar") || pode("crm.gerenciar");
   const podeGerenciar = adminGlobal || pode("crm.gerenciar");
-  const crmLiberado = crmLiberadoParaClinica(clinicaSlug);
 
   async function carregarEventos(id = clinicaId) {
     if (!id) return;
@@ -491,11 +489,6 @@ function Crm() {
 
   useEffect(() => {
     if (carregandoPermissoes) return;
-    if (!crmLiberado) {
-      setErroCarregamento("A Gestão de Clientes está liberada somente para a Veterício nesta etapa de validação.");
-      setCarregando(false);
-      return;
-    }
     if (!clinicaId) {
       setErroCarregamento("Selecione uma clínica na página inicial antes de abrir o CRM.");
       setCarregando(false);
@@ -541,7 +534,7 @@ function Crm() {
     }
     void carregar();
     return () => { ativo = false; };
-  }, [carregandoPermissoes, clinicaId, crmLiberado, tentativa, visao]);
+  }, [carregandoPermissoes, clinicaId, tentativa, visao]);
 
   const pendentes = useMemo(() => eventos.filter((evento) => evento.status === "pendente"), [eventos]);
   const vencidos = useMemo(() => pendentes.filter((evento) => new Date(evento.agendado_para).getTime() < Date.now()), [pendentes]);
@@ -620,14 +613,14 @@ function Crm() {
 
     <header className="mt-4 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <div className="flex items-center gap-2 text-primary"><Sparkles size={20}/><span className="text-xs font-black uppercase tracking-[0.16em]">CRM inteligente</span></div>
-        <h1 className="mt-1 text-3xl font-black tracking-tight">Gestão de Clientes</h1>
+        <div className="flex items-center gap-2 text-primary"><Sparkles size={20}/><span className="text-xs font-black uppercase tracking-[0.16em]">Acompanhamento e relacionamento</span></div>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">Central de Relacionamento</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Organize retornos, confirme com o tutor, acompanhe cuidados preventivos e crie campanhas de forma simples.</p>
       </div>
       {visao === "fila" && podeOperar && <button type="button" disabled={sincronizando || carregando} onClick={() => void sincronizarComDados()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50"><RefreshCw size={17} className={sincronizando ? "animate-spin" : ""}/>{sincronizando ? "Sincronizando..." : "Sincronizar agora"}</button>}
     </header>
 
-    <nav aria-label="Seções da gestão de clientes" className="mt-6 flex flex-wrap gap-2 rounded-2xl border bg-card p-2">
+    <nav aria-label="Seções da Central de Relacionamento" className="mt-6 flex flex-wrap gap-2 rounded-2xl border bg-card p-2">
       {([
         ["retornos","Retornos e cuidados"],
         ["campanhas","Campanhas"],
