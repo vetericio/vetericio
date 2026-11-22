@@ -13,6 +13,7 @@ import {
   FileUp,
   Eye,
   Download,
+  Trash2,
   FlaskConical,
   Image,
   ExternalLink,
@@ -34,6 +35,7 @@ import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
 import { PaginasArquivoPdf } from "@/components/PaginasArquivoPdf";
 import { obterStatusTermosPaciente } from "@/lib/status-termos-paciente.functions";
+import { consultarExclusaoRt, excluirTermoOuReceitaRt } from "@/lib/exclusao-documentos-rt.functions";
 import { AgendamentosAnimal } from "@/components/animal/AgendamentosAnimal";
 import { DocumentoPreventivo } from "@/components/animal/DocumentoPreventivo";
 import { obterMomentoLocalAplicacao } from "@/lib/documento-preventivo.functions";
@@ -364,6 +366,11 @@ function AnimalFicha() {
   const [documentoEmVisualizacao, setDocumentoEmVisualizacao] = useState<{url:string;nome:string;mimeType:string;bytes:Uint8Array}|null>(null);
   const [termosGerados, setTermosGerados] = useState<{documentoId:string;codigoTermo:string|null;geradoPeloOricse:boolean;previaSalva:boolean}[]>([]);
   const [statusTermosCompleto, setStatusTermosCompleto] = useState(false);
+  const [podeExcluirComoRt, setPodeExcluirComoRt] = useState(false);
+  const [registroParaExcluir, setRegistroParaExcluir] = useState<Registro | null>(null);
+  const [confirmacaoDelete, setConfirmacaoDelete] = useState("");
+  const [motivoExclusao, setMotivoExclusao] = useState("");
+  const [excluindoDocumento, setExcluindoDocumento] = useState(false);
   useEffect(() => () => { if (documentoEmVisualizacao) URL.revokeObjectURL(documentoEmVisualizacao.url); }, [documentoEmVisualizacao]);
   const [profissional, setProfissional] = useState<Awaited<ReturnType<typeof obterAutorClinico>> | null>(null);
   const [erroProfissional, setErroProfissional] = useState("");
@@ -452,6 +459,7 @@ function AnimalFicha() {
           )
           .eq("clinica_id", cid)
           .eq("animal_id", animalId)
+          .is("excluido_em", null)
           .order("data_documento", { ascending: false, nullsFirst: false }),
         (supabaseBanco as any)
           .from("oricse_portal_receitas")
@@ -460,6 +468,7 @@ function AnimalFicha() {
           )
           .eq("clinica_id", cid)
           .eq("animal_id", animalId)
+          .is("excluido_em", null)
           .order("emitida_em", { ascending: false }),
       ]);
       for (const r of [vacinasResult, vermifugosResult, examesResult, docsResult, receitasResult])
@@ -536,6 +545,23 @@ function AnimalFicha() {
   useEffect(() => {
     void carregarConteudosPortal();
   }, [animalId]);
+
+  useEffect(() => {
+    if (!clinicaId) { setPodeExcluirComoRt(false); return; }
+    let ativo = true;
+    setPodeExcluirComoRt(false);
+    void (async () => {
+      try {
+        const accessToken = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+        if (!accessToken) return;
+        const acesso = await consultarExclusaoRt({ data: { accessToken, clinicaId } });
+        if (ativo) setPodeExcluirComoRt(acesso.podeExcluir);
+      } catch {
+        if (ativo) setPodeExcluirComoRt(false);
+      }
+    })();
+    return () => { ativo = false; };
+  }, [clinicaId]);
 
   useEffect(() => {
     if (aba !== "Termos" || !clinicaId || !animalId) return;
@@ -899,6 +925,43 @@ function AnimalFicha() {
     toast.success(`${modalTipo} registrado no ORICSE.`);
   }
 
+  function solicitarExclusao(registro: Registro) {
+    if (!podeExcluirComoRt || !["Termos", "Receitas"].includes(registro.tipo) ||
+        !["documento", "receita"].includes(registro.fontePortal || "")) return;
+    setRegistroParaExcluir(registro);
+    setConfirmacaoDelete("");
+    setMotivoExclusao("");
+  }
+
+  async function confirmarExclusaoRt() {
+    const registro = registroParaExcluir;
+    if (!registro || !podeExcluirComoRt || !clinicaId || excluindoDocumento ||
+        confirmacaoDelete !== "DELETE" || motivoExclusao.trim().length < 5) return;
+    const categoria = registro.tipo === "Termos" ? "termo" : "receita";
+    setExcluindoDocumento(true);
+    try {
+      const accessToken = (await supabaseBanco.auth.getSession()).data.session?.access_token;
+      if (!accessToken) throw new Error("Sessão expirada. Faça login novamente.");
+      const resultado = await excluirTermoOuReceitaRt({ data: {
+        accessToken, clinicaId, animalId: registro.animalId,
+        documentoId: registro.id, categoria,
+        confirmacao: "DELETE", motivo: motivoExclusao.trim(),
+      } });
+      if (!resultado.excluido) throw new Error("A exclusão não foi confirmada.");
+      setRegistrosPortal(lista => lista.filter(item => item.id !== registro.id));
+      setRegistroParaExcluir(null);
+      setConfirmacaoDelete("");
+      setMotivoExclusao("");
+      toast.success((categoria === "termo" ? "Termo" : "Receita") +
+        " removido da ficha ativa. Original preservado para auditoria do RT.");
+      void carregarConteudosPortal();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível excluir o documento.");
+    } finally {
+      setExcluindoDocumento(false);
+    }
+  }
+
   async function alternarVisibilidade(registro: Registro, valor: boolean) {
     if (registro.subtipo === "Termo - Prévia demonstrativa") {
       toast.error("Prévia demonstrativa não pode ser publicada no Portal do Tutor.");
@@ -1224,6 +1287,8 @@ function AnimalFicha() {
             <SecaoCompleta
               onBaixarDocumento={(registro) => void abrirDocumento(registro, "baixar")}
               onVisualizarDocumento={(registro) => void abrirDocumento(registro, "visualizar")}
+              onExcluir={solicitarExclusao}
+              podeExcluirComoRt={podeExcluirComoRt}
               aba={aba}
               registros={registrosAnimal.filter((r) => r.tipo === aba)}
               onAdd={() => abrirNovo(aba as RegistroTipo)}
@@ -1238,6 +1303,61 @@ function AnimalFicha() {
             <DocumentoPreventivo key={documentoPreventivo.linha.id} clinicaId={clinicaId} animalId={animal.id}
               registroId={documentoPreventivo.linha.id} tipo={documentoPreventivo.tipo}
               onClose={() => setDocumentoPreventivo(undefined)} />
+          )}
+
+          {registroParaExcluir && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/65 p-4"
+              onMouseDown={(event) => {
+                if (!excluindoDocumento && event.target === event.currentTarget) setRegistroParaExcluir(null);
+              }}>
+              <section role="dialog" aria-modal="true" aria-labelledby="titulo-delete-rt"
+                className="w-full max-w-lg rounded-2xl border bg-card p-5 shadow-2xl">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-destructive">Somente Responsável Técnico</p>
+                    <h2 id="titulo-delete-rt" className="mt-1 text-xl font-black">
+                      Excluir {registroParaExcluir.tipo === "Termos" ? "termo" : "receita"}
+                    </h2>
+                  </div>
+                  <button type="button" aria-label="Cancelar exclusão" disabled={excluindoDocumento}
+                    onClick={() => setRegistroParaExcluir(null)} className="rounded-lg border p-2">
+                    <X size={18} />
+                  </button>
+                </div>
+                <p className="mt-4 text-sm font-semibold">{registroParaExcluir.titulo}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  O documento sairá da ficha ativa e do Portal do Tutor. O PDF original
+                  e os dados de autoria, data e motivo ficarão preservados na auditoria da clínica.
+                </p>
+                <label className="mt-4 block text-sm font-semibold">
+                  Motivo da exclusão *
+                  <textarea rows={3} maxLength={500} value={motivoExclusao}
+                    onChange={event => setMotivoExclusao(event.target.value)}
+                    placeholder="Informe por que o documento deve ser retirado da ficha ativa"
+                    className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" />
+                </label>
+                <label className="mt-4 block text-sm font-semibold">
+                  Digite DELETE para confirmar *
+                  <input value={confirmacaoDelete} onChange={event => setConfirmacaoDelete(event.target.value)}
+                    autoComplete="off" spellCheck={false} placeholder="DELETE"
+                    className="mt-1 min-h-12 w-full rounded-xl border bg-background px-3 font-mono font-semibold" />
+                </label>
+                <div className="mt-5 flex flex-wrap justify-end gap-2">
+                  <button type="button" disabled={excluindoDocumento}
+                    onClick={() => setRegistroParaExcluir(null)}
+                    className="min-h-11 rounded-xl border px-4 text-sm font-semibold">
+                    Cancelar
+                  </button>
+                  <button type="button"
+                    disabled={excluindoDocumento || !podeExcluirComoRt ||
+                      confirmacaoDelete !== "DELETE" || motivoExclusao.trim().length < 5}
+                    onClick={() => void confirmarExclusaoRt()}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-destructive px-4 text-sm font-bold text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-40">
+                    <Trash2 size={16} /> {excluindoDocumento ? "Excluindo..." : "DELETE"}
+                  </button>
+                </div>
+              </section>
+            </div>
           )}
 
           {documentoEmVisualizacao && (
@@ -1803,6 +1923,8 @@ function SecaoCompleta({
   onAdd,
   onBaixarDocumento,
   onVisualizarDocumento,
+  onExcluir,
+  podeExcluirComoRt,
   onTogglePortal,
   onEditarPreventivo,
   onDocumentoPreventivo,
@@ -1812,6 +1934,8 @@ function SecaoCompleta({
   onAdd: () => void;
   onBaixarDocumento: (registro: Registro) => void;
   onVisualizarDocumento: (registro: Registro) => void;
+  onExcluir: (registro: Registro) => void;
+  podeExcluirComoRt: boolean;
   onTogglePortal: (registro: Registro, valor: boolean) => void;
   onEditarPreventivo: (registro: Registro) => void;
   onDocumentoPreventivo?: (registro: Registro) => void;
@@ -1858,6 +1982,15 @@ function SecaoCompleta({
                       </button>
                     </> : (["Receitas", "Exames", "Documentos", "Termos"].includes(aba)
                         ? <span className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Sem arquivo anexado</span> : null)}
+                    {podeExcluirComoRt && ["Termos", "Receitas"].includes(aba) &&
+                      ((aba === "Termos" && r.fontePortal === "documento") ||
+                       (aba === "Receitas" && r.fontePortal === "receita")) && (
+                        <button type="button" onClick={() => onExcluir(r)}
+                          aria-label={"Excluir " + r.titulo + " (somente RT)"}
+                          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-destructive/40 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive/5">
+                          <Trash2 size={15} /> Excluir
+                        </button>
+                      )}
                     {r.preventivo && (
                       <>
                       <button

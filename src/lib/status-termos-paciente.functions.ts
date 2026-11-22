@@ -33,6 +33,7 @@ export const obterStatusTermosPaciente = createServerFn({ method: "POST" })
       .select("id,titulo,drive_arquivo_id,tipo")
       .eq("clinica_id", data.clinicaId)
       .eq("animal_id", data.animalId)
+      .is("excluido_em", null)
       .ilike("tipo", "termo%")
       .order("created_at", { ascending: false })
       .limit(1000);

@@ -42,6 +42,15 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
       .select("id,clinica_id,animal_id,drive_arquivo_id,visivel_tutor,tipo")
       .eq("id",data.documentoId).maybeSingle();
     if(erroCanonico)throw new Error("Não foi possível verificar a autorização do documento.");
+    // Exclusão lógica bloqueia tanto o tutor quanto o funcionário na API.
+    // O original continua retido no banco/Drive para auditoria interna do RT.
+    if (canonico && data.tipo !== "exame") {
+      const { data: estado, error: erroEstado } = await (supabaseAdmin as any)
+        .from(tabela).select("excluido_em").eq("id", data.documentoId)
+        .eq("clinica_id", canonico.clinica_id).maybeSingle();
+      if (erroEstado || !estado) throw new Error("Não foi possível verificar o estado do documento.");
+      if (estado.excluido_em) throw new Error("Documento excluído da ficha pelo RT e indisponível para download.");
+    }
     if (canonico && !data.clinicaEquipeId && canonico.tipo === "Termo - Prévia demonstrativa")
       throw new Error("Prévia demonstrativa interna não está disponível no Portal do Tutor.");
     if(canonico && !data.clinicaEquipeId && canonico.visivel_tutor !== true) throw new Error("Documento não liberado ao tutor.");
