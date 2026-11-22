@@ -134,6 +134,8 @@ function RegistroClinico(){
   const [receituarioAtivado,setReceituarioAtivado]=useState(false);
   const [consulta,setConsulta]=useState<ConsultaForm>(()=>formConsultaVazio());
   const [procedimento,setProcedimento]=useState<ProcedimentoForm>({tipo:"",indicacao:"",equipe:"",anestesia:"",achados:"",materiais:"",intercorrencias:"",posOperatorio:"",observacoes:""});
+  const [acompanharPosCirurgico, setAcompanharPosCirurgico] = useState(false);
+  const [altaPosCirurgico, setAltaPosCirurgico] = useState("");
   const [aberto,setAberto]=useState<string|null>(null);
   const [data,setData]=useState(hoje());
   const [catalogo,setCatalogo]=useState<ItemCatalogo[]>([]);
@@ -386,7 +388,16 @@ function RegistroClinico(){
     }
   }
 
-  async function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if (!responsavel.id) return void toast.error("Não foi possível identificar o autor deste procedimento."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento."); const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,autorNome:responsavel.nome,autorCrmv:responsavel.crmv||undefined,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:procedimento}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
+  async function salvarProcedimento(){ if (!animal) return void toast.error("Animal não encontrado."); if (!responsavel.id) return void toast.error("Não foi possível identificar o autor deste procedimento."); if(!procedimento.tipo.trim())return void toast.error("Informe a cirurgia ou procedimento.");
+  if (acompanharPosCirurgico && !tutor?.id)
+    return void toast.error("Vincule um tutor ao paciente para iniciar o acompanhamento pós-cirúrgico.");
+  if (altaPosCirurgico && (altaPosCirurgico < data || altaPosCirurgico > hoje()))
+    return void toast.error("A data de alta precisa ser válida e não pode ser anterior ao procedimento nem futura.");
+  const detalhe=[procedimento.indicacao&&`Indicação: ${procedimento.indicacao}`,procedimento.equipe&&`Equipe: ${procedimento.equipe}`,procedimento.anestesia&&`Anestesia / sedação: ${procedimento.anestesia}`,procedimento.achados&&`Achados: ${procedimento.achados}`,procedimento.materiais&&`Materiais / técnica: ${procedimento.materiais}`,procedimento.intercorrencias&&`Intercorrências: ${procedimento.intercorrencias}`,procedimento.posOperatorio&&`Pós-operatório: ${procedimento.posOperatorio}`,procedimento.observacoes&&`Observações: ${procedimento.observacoes}`].filter(Boolean).join("\n"); const atual=ler<RegistroProntuario>(PRONTUARIO_KEY); const agora=new Date().toISOString(); const novo:RegistroProntuario={id:crypto.randomUUID(),animalId:animal.id,tutorId:tutor?.id,clinicaId:clinicaAnimalId,autorId:responsavel.id,autorNome:responsavel.nome,autorCrmv:responsavel.crmv||undefined,tipo:"Registros clínicos",titulo:procedimento.tipo.trim(),detalhe,data,criadoEm:agora,atualizadoEm:agora,status:"concluido",versao:1,subtipo:"Cirurgia / Procedimentos",dados:{
+    ...procedimento,
+    acompanhamentoCrm: acompanharPosCirurgico,
+    dataAlta: altaPosCirurgico || null,
+  }}; oricseStorage.setItem(PRONTUARIO_KEY,JSON.stringify([novo,...atual])); try { await descarregarOricseStorage(); } catch (error) { console.error("Procedimento não confirmado no banco:", error); toast.error("O procedimento ainda não foi confirmado no servidor. Tente novamente."); return; } toast.success("Procedimento salvo no prontuário."); navigate({to:"/animal",search:{animalId:animal.id} as never}); }
 
   const abrirConsulta=()=>{if (!animal) return; setModo("consulta");setEtapa(1);setConsulta(f=>({...f,peso:animal.peso||f.peso}))};
 
@@ -539,7 +550,26 @@ function RegistroClinico(){
       </div>
     </section>}
 
-    {modo==="procedimento"&&<section className="mt-4 rounded-2xl border bg-white shadow-sm"><Cabecalho titulo="Cirurgia / Procedimento" subtitulo="Registro objetivo do procedimento e do pós-operatório."/><div className="p-4 sm:p-5"><div className="grid gap-3 md:grid-cols-2"><Input label="Cirurgia / procedimento *" value={procedimento.tipo} onChange={v=>setProcedimento({...procedimento,tipo:v})}/><Input label="Equipe" value={procedimento.equipe} onChange={v=>setProcedimento({...procedimento,equipe:v})}/><Textarea label="Indicação" value={procedimento.indicacao} onChange={v=>setProcedimento({...procedimento,indicacao:v})}/><Textarea label="Anestesia / sedação" value={procedimento.anestesia} onChange={v=>setProcedimento({...procedimento,anestesia:v})}/><Textarea label="Achados" value={procedimento.achados} onChange={v=>setProcedimento({...procedimento,achados:v})}/><Textarea label="Materiais / técnica" value={procedimento.materiais} onChange={v=>setProcedimento({...procedimento,materiais:v})}/><Textarea label="Intercorrências" value={procedimento.intercorrencias} onChange={v=>setProcedimento({...procedimento,intercorrencias:v})}/><Textarea label="Pós-operatório" value={procedimento.posOperatorio} onChange={v=>setProcedimento({...procedimento,posOperatorio:v})}/></div><div className="mt-3"><Textarea label="Observações" value={procedimento.observacoes} onChange={v=>setProcedimento({...procedimento,observacoes:v})}/></div><div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t pt-4"><label className="text-sm font-bold">Data<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 font-normal"/></label><button onClick={salvarProcedimento} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-primary-foreground"><Save size={17}/> Salvar registro</button></div></div></section>}
+    {modo==="procedimento"&&<section className="mt-4 rounded-2xl border bg-white shadow-sm"><Cabecalho titulo="Cirurgia / Procedimento" subtitulo="Registro objetivo do procedimento e do pós-operatório."/><div className="p-4 sm:p-5"><div className="grid gap-3 md:grid-cols-2"><Input label="Cirurgia / procedimento *" value={procedimento.tipo} onChange={v=>setProcedimento({...procedimento,tipo:v})}/><Input label="Equipe" value={procedimento.equipe} onChange={v=>setProcedimento({...procedimento,equipe:v})}/><Textarea label="Indicação" value={procedimento.indicacao} onChange={v=>setProcedimento({...procedimento,indicacao:v})}/><Textarea label="Anestesia / sedação" value={procedimento.anestesia} onChange={v=>setProcedimento({...procedimento,anestesia:v})}/><Textarea label="Achados" value={procedimento.achados} onChange={v=>setProcedimento({...procedimento,achados:v})}/><Textarea label="Materiais / técnica" value={procedimento.materiais} onChange={v=>setProcedimento({...procedimento,materiais:v})}/><Textarea label="Intercorrências" value={procedimento.intercorrencias} onChange={v=>setProcedimento({...procedimento,intercorrencias:v})}/><Textarea label="Pós-operatório" value={procedimento.posOperatorio} onChange={v=>setProcedimento({...procedimento,posOperatorio:v})}/></div><div className="mt-3"><Textarea label="Observações" value={procedimento.observacoes} onChange={v=>setProcedimento({...procedimento,observacoes:v})}/></div>
+      <div className="mt-4 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <input type="checkbox" checked={acompanharPosCirurgico}
+            onChange={e => setAcompanharPosCirurgico(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-primary" />
+          <span>
+            <span className="block font-bold">Criar acompanhamento pós-cirúrgico na Central de Relacionamento</span>
+            <span className="block text-xs text-muted-foreground">Após salvar o procedimento concluído, preparar tarefas D+1, D+3, D+7 e D+10. A equipe revisa e envia cada mensagem manualmente.</span>
+          </span>
+        </label>
+        {acompanharPosCirurgico && <label className="block text-sm font-medium">
+          Data da alta (opcional)
+          <input type="date" min={data} max={hoje()} value={altaPosCirurgico}
+            onChange={e => setAltaPosCirurgico(e.target.value)}
+            className="mt-1 block min-h-10 rounded-lg border bg-white px-3" />
+          <span className="mt-1 block text-xs text-muted-foreground">Se informada, os prazos serão calculados a partir da alta. Caso contrário, da data do procedimento.</span>
+        </label>}
+      </div>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t pt-4"><label className="text-sm font-bold">Data<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 font-normal"/></label><button onClick={salvarProcedimento} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-black text-primary-foreground"><Save size={17}/> Salvar registro</button></div></div></section>}
 
   </main>;
 }
