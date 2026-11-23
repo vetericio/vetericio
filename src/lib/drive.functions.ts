@@ -211,3 +211,118 @@ export async function baixarMidiaOricstudioServidor(clinicaId:string,registroId:
     }
   });
 }
+
+const midiaSistemaSchema = authSchema.extend({
+  nome: z.string().min(1).max(220),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp", "video/mp4", "video/quicktime"]),
+  base64: z.string().min(1).max(18_000_000),
+});
+const registroMidiaSistemaSchema = authSchema.extend({ registroId: z.string().uuid() });
+
+async function exigirAdminOricStudio(accessToken: string) {
+  const admin = await carregarSupabaseAdmin();
+  const { data: auth, error } = await admin.auth.getUser(accessToken);
+  if (error || !auth.user?.id) throw new Error("Sessão inválida ou expirada.");
+  const { data: perfil, error: erroPerfil } = await admin.from("app_users")
+    .select("role").eq("user_id", auth.user.id).maybeSingle();
+  if (erroPerfil || perfil?.role !== "admin") {
+    throw new Error("OricStúdio da ORICSE restrito à Administração Geral.");
+  }
+  return { admin, userId: auth.user.id };
+}
+
+/** Biblioteca privada da plataforma, separada do Drive de cada clínica. */
+export const enviarMidiaSistemaOricStudio = createServerFn({ method: "POST" })
+  .validator((input: unknown) => midiaSistemaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { admin, userId } = await exigirAdminOricStudio(data.accessToken);
+    const base64 = data.base64.replace(/^data:[^;]+;base64,/, "");
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw new Error("Arquivo inválido.");
+    const bytes = Buffer.from(base64, "base64");
+    if (!bytes.length || bytes.length > 12 * 1024 * 1024) {
+      throw new Error("Arquivo inválido ou acima do limite de 12 MB.");
+    }
+
+    const token = await accessTokenGoogle();
+    const pastaRaiz = await buscarOuCriarPasta(token, rootFolderId(), "OricStudio-Sistema");
+    const pasta = await buscarOuCriarPasta(token, pastaRaiz, "Biblioteca");
+    const registroId = crypto.randomUUID();
+    const metadata = {
+      name: data.nome,
+      parents: [pasta],
+      appProperties: {
+        oricseRegistroId: registroId,
+        oricstudioAmbiente: "sistema",
+        enviadoPor: userId,
+        visibilidade: "interno",
+      },
+    };
+    const form = new FormData();
+    form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+    form.append("file", new Blob([new Uint8Array(bytes)], { type: data.mimeType }), data.nome);
+    const resposta = await gfetch(token,
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+      { method: "POST", body: form });
+    const arquivo = await resposta.json() as { id: string };
+
+    const { error } = await admin.from("oricstudio_sistema_midias").insert({
+      id: registroId,
+      nome: data.nome,
+      tipo: data.mimeType.startsWith("video/") ? "video" : "imagem",
+      caminho_privado: registroId,
+    });
+    if (error) {
+      await gfetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}`,
+        { method: "DELETE" }).catch(() => null);
+      throw new Error("Não foi possível registrar a mídia da ORICSE.");
+    }
+    return { registroId };
+  });
+
+export const visualizarMidiaSistemaOricStudio = createServerFn({ method: "POST" })
+  .validator((input: unknown) => registroMidiaSistemaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { admin } = await exigirAdminOricStudio(data.accessToken);
+    const { data: registro, error } = await admin.from("oricstudio_sistema_midias")
+      .select("caminho_privado,tipo").eq("id", data.registroId).maybeSingle();
+    if (error || !registro || registro.tipo !== "imagem") throw new Error("Mídia não encontrada.");
+
+    const token = await accessTokenGoogle();
+    const arquivo = await localizarPorRegistro(token, registro.caminho_privado);
+    if (!arquivo || arquivo.appProperties?.oricstudioAmbiente !== "sistema") {
+      throw new Error("Arquivo não pertence à biblioteca privada da ORICSE.");
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(String(arquivo.mimeType))) {
+      throw new Error("Prévia indisponível para este formato.");
+    }
+    if (Number(arquivo.size || 0) > 5 * 1024 * 1024) throw new Error("Prévia acima do limite de 5 MB.");
+
+    const resposta = await gfetch(token,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}?alt=media`);
+    const bytes = Buffer.from(await resposta.arrayBuffer());
+    if (bytes.length > 5 * 1024 * 1024) throw new Error("Prévia acima do limite de 5 MB.");
+    return { dataUrl: `data:${arquivo.mimeType};base64,${bytes.toString("base64")}` };
+  });
+
+export const excluirMidiaSistemaOricStudio = createServerFn({ method: "POST" })
+  .validator((input: unknown) => registroMidiaSistemaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { admin } = await exigirAdminOricStudio(data.accessToken);
+    const { data: registro, error } = await admin.from("oricstudio_sistema_midias")
+      .select("caminho_privado").eq("id", data.registroId).maybeSingle();
+    if (error || !registro) throw new Error("Mídia não encontrada.");
+
+    const token = await accessTokenGoogle();
+    const arquivo = await localizarPorRegistro(token, registro.caminho_privado);
+    if (arquivo) {
+      if (arquivo.appProperties?.oricstudioAmbiente !== "sistema") {
+        throw new Error("Arquivo não pertence à biblioteca privada da ORICSE.");
+      }
+      await gfetch(token, `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}`,
+        { method: "DELETE" });
+    }
+    const { error: erroDelete } = await admin.from("oricstudio_sistema_midias")
+      .delete().eq("id", data.registroId);
+    if (erroDelete) throw new Error("Não foi possível remover a mídia da ORICSE.");
+    return { ok: true };
+  });

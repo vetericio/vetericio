@@ -13,7 +13,14 @@ import { ORICSTUDIO_EM_PREPARACAO } from "@/lib/navegacao";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
 import {AgendamentoOricStudio} from "@/components/oricstudio/AgendamentoOricStudio";
 import { ORICSTUDIO_PLATAFORMA_ID } from "@/lib/oricstudio-plataforma";
-import { enviarArquivoDrive, excluirArquivoDrive, visualizarImagemPrivadaDrive } from "@/lib/drive.functions";
+import {
+  enviarArquivoDrive,
+  excluirArquivoDrive,
+  visualizarImagemPrivadaDrive,
+  enviarMidiaSistemaOricStudio,
+  visualizarMidiaSistemaOricStudio,
+  excluirMidiaSistemaOricStudio,
+} from "@/lib/drive.functions";
 import {consultarOperacaoOricStudio,resolverAlertaOricStudio,salvarRegraOricStudio,prepararEnvioOricStudio,gerarRelatorioOricStudio} from "@/lib/oricstudio-operacao.functions";
 import { iniciarConexaoMetaOricStudio, iniciarConexaoInstagramDiretoOricStudio, statusInstagramDiretoOricStudio, listarContasMetaOricStudio, desconectarContaMetaOricStudio, statusIntegracaoMetaOricStudio, verificarContaMetaOricStudio } from "@/lib/oricstudio-meta.functions";
 
@@ -644,23 +651,32 @@ function OricStudio() {
         reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
         reader.readAsDataURL(file);
       });
-      const arquivo = await enviarArquivoDrive({data:{
-        accessToken:token, clinicaId:contexto.clinica_id, categoria:"imagens",
-        nome:file.name, mimeType:file.type, base64:b64,
-        visibilidade:"interno", entidadeTipo:"oricstudio",
-        metadata:{modulo:"oricstudio",uso:"biblioteca_privada"},
-      }});
+      const arquivo = modoPlataforma
+        ? await enviarMidiaSistemaOricStudio({ data: {
+            accessToken: token,
+            nome: file.name,
+            mimeType: file.type as "image/png" | "image/jpeg" | "image/webp" | "video/mp4" | "video/quicktime",
+            base64: b64,
+          } })
+        : await enviarArquivoDrive({data:{
+            accessToken:token, clinicaId:contexto.clinica_id, categoria:"imagens",
+            nome:file.name, mimeType:file.type, base64:b64,
+            visibilidade:"interno", entidadeTipo:"oricstudio",
+            metadata:{modulo:"oricstudio",uso:"biblioteca_privada"},
+          }});
       if (!arquivo?.registroId) throw new Error("Upload não retornou identificação.");
-      const {error} = await (supabaseBanco as any).from(tabelaMidias).insert({
-        ...(modoPlataforma ? {} : {clinica_id:contexto.clinica_id}),
-        nome:file.name, tipo:file.type.startsWith("video/")?"video":"imagem",
-        caminho_privado:arquivo.registroId,
-      });
-      if(error) {
-        try { await excluirArquivoDrive({data:{
-          accessToken:token,clinicaId:contexto.clinica_id,registroId:arquivo.registroId,
-        }}); } catch {}
-        throw error;
+      if (!modoPlataforma) {
+        const {error} = await (supabaseBanco as any).from(tabelaMidias).insert({
+          clinica_id:contexto.clinica_id,
+          nome:file.name, tipo:file.type.startsWith("video/")?"video":"imagem",
+          caminho_privado:arquivo.registroId,
+        });
+        if(error) {
+          try { await excluirArquivoDrive({data:{
+            accessToken:token,clinicaId:contexto.clinica_id,registroId:arquivo.registroId,
+          }}); } catch {}
+          throw error;
+        }
       }
       toast.success(modoPlataforma?"Arquivo salvo na biblioteca privada da ORICSE.":"Arquivo salvo na biblioteca privada da clínica.");
       await carregar();
@@ -694,9 +710,11 @@ function OricStudio() {
       const {data:auth} = await supabase.auth.getSession();
       const token=auth.session?.access_token;
       if(!token)throw new Error("Faça login novamente.");
-      const arquivo=await visualizarImagemPrivadaDrive({data:{
-        accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
-      }});
+      const arquivo = modoPlataforma
+        ? await visualizarMidiaSistemaOricStudio({ data: { accessToken: token, registroId: m.id } })
+        : await visualizarImagemPrivadaDrive({data:{
+            accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
+          }});
       setPrevias(atual=>({...atual,[m.id]:arquivo.dataUrl}));
     } catch(e) {toast.error(e instanceof Error?e.message:"Não foi possível abrir a imagem.");}
   }
@@ -707,12 +725,16 @@ function OricStudio() {
       const {data:auth} = await supabase.auth.getSession();
       const token=auth.session?.access_token;
       if(!token)throw new Error("Faça login novamente.");
-      await excluirArquivoDrive({data:{
-        accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
-      }});
-      const {error}=await filtrarClinica((supabaseBanco as any).from(tabelaMidias)
-        .delete().eq("id",m.id), contexto.clinica_id);
-      if(error)throw error;
+      if (modoPlataforma) {
+        await excluirMidiaSistemaOricStudio({ data: { accessToken: token, registroId: m.id } });
+      } else {
+        await excluirArquivoDrive({data:{
+          accessToken:token,clinicaId:contexto.clinica_id,registroId:m.caminho_privado,
+        }});
+        const {error}=await filtrarClinica((supabaseBanco as any).from(tabelaMidias)
+          .delete().eq("id",m.id), contexto.clinica_id);
+        if(error)throw error;
+      }
       toast.success("Mídia excluída.");
       setPrevias(atual=>{const n={...atual};delete n[m.id];return n;});
       await carregar();
