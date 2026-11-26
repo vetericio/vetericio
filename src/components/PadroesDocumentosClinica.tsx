@@ -107,7 +107,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
       ...atual, modelos: { ...atual.modelos, receita: { ...atual.modelos.receita, texto: modeloSalvo.texto } },
     }));
     setOrientacoes(modeloSalvo.texto);
-    toast.success("Orientações da receita salvas.");
+    toast.success("Texto final da receita salvo.");
   }
 
   async function trocarLogo(arquivo: File | null) {
@@ -130,7 +130,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   return <Tabs value={aba} onValueChange={setAba} className="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
     <TabsList aria-label="Configurações dos documentos" className="h-auto w-full flex-wrap justify-start">
       <TabsTrigger value="modelos" className="min-h-10">Modelos e fundos</TabsTrigger>
-      <TabsTrigger value="orientacoes" className="min-h-10">Orientações da receita</TabsTrigger>
+      <TabsTrigger value="orientacoes" className="min-h-10">Texto final da receita</TabsTrigger>
     </TabsList>
     <TabsContent value="modelos" className="space-y-5">
       <div>
@@ -264,17 +264,17 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
       </fieldset>
     </TabsContent>
     <TabsContent value="orientacoes" className="space-y-4">
-      <h2 className="text-lg font-semibold">Orientações padrão da receita</h2>
+      <h2 className="text-lg font-semibold">Texto final da receita</h2>
       <form onSubmit={e => { e.preventDefault(); void executar(salvarOrientacoes); }}>
         <fieldset disabled={ocupado} className="space-y-3">
           <label className="block text-sm font-semibold">
-            Texto sugerido nas receitas simples
+            Texto padrão da clínica
             <textarea rows={5} maxLength={25000} value={orientacoes} onChange={e => setOrientacoes(e.target.value)}
               aria-describedby="ajuda-orientacoes-receita" className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
           </label>
-          <p id="ajuda-orientacoes-receita" className="text-xs text-muted-foreground">Deixe em branco para emitir sem texto padrão.</p>
+          <p id="ajuda-orientacoes-receita" className="text-xs text-muted-foreground">Este texto será incluído automaticamente após a prescrição e as orientações individuais, antes da data e da assinatura/carimbo. Deixe em branco para não incluir texto final.</p>
           <button type="submit" className={botao + " bg-primary text-primary-foreground"}>
-            <Save size={16} /> {ocupado ? "Salvando…" : "Salvar orientações"}
+            <Save size={16} /> {ocupado ? "Salvando…" : "Salvar texto final"}
           </button>
         </fieldset>
       </form>
@@ -297,7 +297,7 @@ async function gerarPrevia(identidade: IdentidadeDocumento, modelo: ModeloDocume
       pelagem: paciente.pelagem, castrado: paciente.castrado, microchip: paciente.microchip, data: exemplo.data, endereco: identidade.endereco,
       itens: [{ id: "exemplo", medicamento: "Medicamento fictício", apresentacao: "Apresentação de exemplo",
         quantidade: "", forma: "", intervalo: "", dias: "", observacao: "" }],
-      observacoes: corpo, profissional: { nomeCompleto: "Dra. Ana Exemplo", crmv: "fictício", crmvUf: "MG" },
+      observacoes: "", textoFinalReceita: corpo, profissional: { nomeCompleto: "Dra. Ana Exemplo", crmv: "fictício", crmvUf: "MG" },
       posicoesSelos: {},
     });
   }

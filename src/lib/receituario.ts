@@ -86,6 +86,7 @@ export type DadosReceituario = {
   data: string;
   itens: ItemReceituario[];
   observacoes: string;
+  textoFinalReceita?: string;
   endereco: string;
   profissional?: {
     nomeCompleto: string;
@@ -455,6 +456,11 @@ export async function criarReceituario(dados: DadosReceituario) {
     escrever("Orientações gerais", 0, true);
     y += 5;
     escrever(dados.observacoes.trim());
+  }
+
+  if (dados.textoFinalReceita?.trim()) {
+    y += 12;
+    escrever(dados.textoFinalReceita.trim());
   }
 
   const paginaFinal = doc.getNumberOfPages();

@@ -123,7 +123,6 @@ export function Receituario({
   const [data, setData] = useState(() => new Date().toLocaleDateString("pt-BR"));
   const [itens, setItens] = useState<ItemReceituario[]>(() => [novoItem()]);
   const [observacoes, setObservacoes] = useState("");
-  const [usarOrientacoesPadrao, setUsarOrientacoesPadrao] = useState(true);
   const [perfilEmissor, setPerfilEmissor] = useState<PerfilEmissor | null>(null);
   const [padraoReceita, setPadraoReceita] = useState<Awaited<ReturnType<typeof obterModeloDocumentoEmissao>> | null>(null);
   const [pelagem, setPelagem] = useState("");
@@ -310,7 +309,7 @@ export function Receituario({
     if (error) throw new Error("O PDF foi anexado, mas o prontuário ainda não foi atualizado.");
   }
 
-  const orientacoesPadrao = tipoReceita === "normal" && padraoReceita
+  const orientacoesPadrao = padraoReceita
     ? preencherTextoDocumento(limparOrientacoesPadraoReceita(padraoReceita.modelo.texto), valoresModeloDocumento(padraoReceita.identidade, {
         paciente, especie: especie === "Outro" ? outraEspecie : especie, raca, tutor, data,
       }))
@@ -331,9 +330,10 @@ export function Receituario({
     if (tipoReceita === "especial" && (!tutor.trim() || !enderecoTutor.trim() || !cpfTutor.trim())) return void toast.error("Receita de controle especial exige tutor, CPF/CNPJ e endereço do tutor.");
     if (!enviarPortal && !motivoOcultacao) return void toast.error("Selecione o motivo para não enviar a receita ao Portal do Tutor.");
     if (!enviarPortal && motivoOcultacao === "outro" && motivoOutro.trim().length < 3) return void toast.error("Explique o motivo em pelo menos 3 caracteres.");
-    const textoPadraoSelecionado = usarOrientacoesPadrao ? orientacoesPadrao : "";
+    if (!padraoReceita) return void toast.error("Não foi possível carregar o padrão da clínica. Reabra a receita antes de emitir.");
+    const textoPadraoSelecionado = orientacoesPadrao;
     if (/\{\{[a-z_]+\}\}/.test(textoPadraoSelecionado)) {
-      return void toast.error("Revise as orientações padrão nas Configurações da clínica ou desmarque sua inclusão nesta receita.");
+      return void toast.error("Revise o texto final da receita nas Configurações da clínica.");
     }
     const textoFinal = [observacoes.trim(), textoPadraoSelecionado].filter(Boolean).join("\n\n");
     const dadosEmissao = {
@@ -368,7 +368,7 @@ export function Receituario({
             : undefined;
           const numero = especial ? await emitirReceitaControladaNoBanco(dadosEmissao) : undefined;
           const dadosPdf = {
-            ...dadosEmissao, tipo: tipoReceita, numero, profissional,
+            ...dadosEmissao, observacoes: observacoes.trim(), textoFinalReceita: textoPadraoSelecionado, tipo: tipoReceita, numero, profissional,
             especie: especie === "Outro" ? outraEspecie.trim() : especie, posicoesSelos, selos, papel,
             logoClinica, nomeClinica: padraoReceita?.identidade.nome,
           };
@@ -539,14 +539,12 @@ export function Receituario({
             className="mt-3 inline-flex min-h-10 items-center gap-1 rounded-xl bg-secondary px-3 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70">
             <Plus className="h-4 w-4" /> Adicionar medicamento
           </button>
-          {orientacoesPadrao && <div className="mt-4 rounded-lg border p-3">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={usarOrientacoesPadrao} onChange={e => setUsarOrientacoesPadrao(e.target.checked)} />
-              Incluir as orientações padrão da clínica
-            </label>
-            {usarOrientacoesPadrao && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{orientacoesPadrao}</p>}
-          </div>}
           <label className="mt-4 block"><span className={rotulo}>Orientações gerais</span><textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} className={campo} placeholder="Orientações adicionais para o tutor (opcional)" /></label>
+          {orientacoesPadrao && <div className="mt-4 rounded-lg border p-3">
+            <p className="text-sm font-semibold">Texto final da receita</p>
+            <p className="mt-1 text-xs text-muted-foreground">Incluído automaticamente antes da data e da assinatura. Para alterar, use as configurações da clínica.</p>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm">{orientacoesPadrao}</p>
+          </div>}
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
