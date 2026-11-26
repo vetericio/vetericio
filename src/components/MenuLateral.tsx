@@ -185,10 +185,12 @@ const areas: AreaMenu[] = [
     ],
   },
   {
-    titulo: "Estoque e produtos",
+    titulo: "Serviços, produtos e estoque",
     icone: Package,
     itens: [
-      { to: "/estoque", rotulo: "Produtos e estoque", permissao: "estoque.catalogo.visualizar" },
+      { to: "/estoque", abaHotel: "catalogo", rotulo: "Serviços e produtos", permissao: "estoque.catalogo.visualizar" },
+      { to: "/estoque", abaHotel: "estoque", rotulo: "Estoque", permissao: "estoque.catalogo.visualizar" },
+      { to: "/estoque", abaHotel: "historico", rotulo: "Histórico", permissao: "estoque.catalogo.visualizar" },
     ],
   },
   {
@@ -387,6 +389,7 @@ export function MenuLateral({
       : area.itens.filter(
           (item) => (item.to === "/crm") ||
             (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
+            (item.to === "/estoque" && (adminGlobal || pode("estoque.catalogo.visualizar") || pode("estoque.movimentar"))) ||
             (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
@@ -487,7 +490,8 @@ export function MenuLateral({
                     const bloqueioPlano =
                       !carregandoPermissoes &&
                       !!item.permissao &&
-                      bloqueadaPeloPlano(item.permissao);
+                      bloqueadaPeloPlano(item.permissao) &&
+                      !(item.to === "/estoque" && (adminGlobal || pode("estoque.movimentar")));
                     if (bloqueioPlano)
                       return (
                         <button
@@ -559,7 +563,7 @@ export function MenuLateral({
                         data-current={location.pathname === item.to && (
                           item.to === "/crm"
                             ? ((location.search as { secao?: string }).secao || "") === (item.secaoCrm || "")
-                            : (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || (item.abaHotel === "painel" && !location.hash))
+                            : (!item.abaHotel || location.hash.replace(/^#/, "") === item.abaHotel || ((item.abaHotel === "painel" || (item.to === "/estoque" && item.abaHotel === "catalogo")) && !location.hash))
                         ) || undefined}
                         className={area.titulo === "Central de Relacionamento"
                           ? "oricse-menu-item flex min-h-10 items-center px-5 py-2 pl-12 text-sm transition-colors"

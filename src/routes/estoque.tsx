@@ -1,5 +1,5 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { ArrowDown, ArrowLeft, ArrowUp, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -18,7 +18,13 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { agruparFaixasPorCondicao, faixasValidas, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
-export const Route = createFileRoute("/estoque")({ component: Estoque });
+export const Route = createFileRoute("/estoque")({ component: AreaEstoque });
+
+function AreaEstoque() {
+  const { hash } = useLocation();
+  const secao = hash.replace(/^#/, "");
+  return <Estoque abaInicial={secao === "estoque" || secao === "historico" ? secao : "catalogo"} />;
+}
 
 type Aba = "catalogo" | "cadastro" | "estoque" | "historico" | "comissoes" | "equipe" | "pagamentos";
 type ItemForm = {
@@ -72,8 +78,7 @@ function dinheiro(valor: number) {
   return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "rh";abaInicial?: "comissoes" | "equipe" | "pagamentos"}) {
-  const [aba, setAba] = useState<Aba>(area === "rh" ? (abaInicial || "comissoes") : "catalogo");
+export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "rh";abaInicial?: Aba}) {
   const [clinicaId, setClinicaId] = useState("");
   const [usuarioId, setUsuarioId] = useState("");
   const [adminGeral, setAdminGeral] = useState(false);
@@ -128,12 +133,9 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     return lista;
   }, [area, podeGerenciarCatalogo, podeMovimentarEstoque, podeVerCatalogo, podeVerPagamentos]);
 
-  useEffect(() => {if(area === "rh" && abaInicial && abasPermitidas.some(([id]) => id === abaInicial)) setAba(abaInicial);},[area,abaInicial,abasPermitidas]);
-
-  useEffect(() => {
-    if (carregandoPermissoes || abasPermitidas.length === 0) return;
-    if (!abasPermitidas.some(([id]) => id === aba)) setAba(abasPermitidas[0][0]);
-  }, [aba, abasPermitidas, carregandoPermissoes]);
+  const abaSolicitada = abaInicial || (area === "rh" ? "comissoes" : "catalogo");
+  const aba: Aba = abasPermitidas.some(([id]) => id === abaSolicitada)
+    ? abaSolicitada : abasPermitidas[0]?.[0] || abaSolicitada;
 
   const servicos = useMemo(
     () => itens.filter((item) => item.tipo === "servico" && item.ativo),
@@ -502,22 +504,14 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Perfil da clínica</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">{area === "rh" ? "Recursos humanos" : "Serviços, produtos e estoque"}</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">{area === "rh" ? "Recursos humanos" : abasPermitidas.find(([id]) => id === aba)?.[1] || "Serviços, produtos e estoque"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{area === "rh"
             ? "Jornada, comissões e pagamentos da equipe, separados por atividade."
-            : "Serviços e produtos com as ações permitidas para este usuário."}</p>
+            : aba === "estoque" ? "Controle de entradas, saídas e quantidades de produtos."
+              : aba === "historico" ? "Consulte o histórico de movimentações e vendas."
+              : "Serviços e produtos com as ações permitidas para este usuário."}</p>
         </div>
       </header>
-
-      {area !== "rh" && (
-        <nav className="sticky top-0 z-30 mb-5 flex gap-1 overflow-x-auto rounded-xl border bg-card/95 p-1 shadow-sm backdrop-blur-md">
-          {abasPermitidas.map(([id, nome]) => (
-            <button key={id} onClick={() => setAba(id)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${aba === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-              {nome}
-            </button>
-          ))}
-        </nav>
-      )}
 
       {abasPermitidas.length === 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Seu usuário não possui permissões para esta área.</div>}
 
