@@ -143,13 +143,21 @@ function mascaraDocumento(v: string, tipo: Tutor["tipoPessoa"]) {
 }
 
 function Tutores() {
-  const [modo, setModo] = useState<Modo>("procurar");
+  return <CadastroTutor />;
+}
+
+export function CadastroTutor({ dentroDaBusca }: {
+  dentroDaBusca?: { clinicaId: string; onSalvar: (id: string) => void; onCancelar: () => void };
+} = {}) {
+  const [modo, setModo] = useState<Modo>(dentroDaBusca ? "novo" : "procurar");
   const [form, setForm] = useState(vazio);
   const [erroCpf, setErroCpf] = useState("");
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [tutores, setTutores] = useState<Tutor[]>([]);
-  const [clinicaId,setClinicaId]=useState("");
-  const [carregando,setCarregando]=useState(true);
+  const [clinicaId,setClinicaId]=useState(dentroDaBusca?.clinicaId || "");
+  const [carregando,setCarregando]=useState(!dentroDaBusca);
+  const salvamentoEmCurso = useRef(false);
+  const [salvando, setSalvando] = useState(false);
   const [animais,setAnimais] = useState<AnimalResumo[]>([]);
   const [busca, setBusca] = useState("");
   const [letra, setLetra] = useState("TODOS");
@@ -170,7 +178,7 @@ function Tutores() {
     setTutores((data?.tutores || []).map((tutor: Tutor) => ({ ...tutor, usuarioPortal: usuarios.get(tutor.id) })));
     setAnimais(data?.animais || []);
   }
-  useEffect(()=>{let ativo=true;(async()=>{try{
+  useEffect(()=>{if(dentroDaBusca)return;let ativo=true;(async()=>{try{
     const {data:{user}}=await supabaseBanco.auth.getUser();
     if(!user)throw Error("Faça login para acessar os tutores.");
     const {data:cidAtiva,error}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_obter");
@@ -231,7 +239,9 @@ function Tutores() {
   }
 
   function cancelarEdicao() {
+    if (salvamentoEmCurso.current) return;
     limparConsultaCep();
+    if (dentroDaBusca) { dentroDaBusca.onCancelar(); return; }
     setEditandoId(null);
     setForm(vazio);
     setModo("procurar");
@@ -285,19 +295,40 @@ function Tutores() {
       document.getElementById("tutor-documento")?.focus();
       return;
     }
-    const { usuarioPortal: _usuarioPortal, ...dados } = form;
-    const {error}=await (supabaseBanco as any).rpc("oricse_tutor_salvar_tela",{p_clinica:clinicaId,p_dados:dados,p_id:editandoId});
-    if(error)return toast.error(error.message);
-    await atualizarBanco(clinicaId);
-    toast.success(editandoId?"Tutor atualizado no Supabase.":"Tutor cadastrado no Supabase.");
-    cancelarEdicao();
-    setLetra("TODOS");
+    if (salvamentoEmCurso.current) return;
+    salvamentoEmCurso.current = true;
+    setSalvando(true);
+    try {
+      const { usuarioPortal: _usuarioPortal, ...dados } = form;
+      const {data, error}=await (supabaseBanco as any).rpc("oricse_tutor_salvar_tela",{p_clinica:clinicaId,p_dados:dados,p_id:editandoId});
+      if(error)return toast.error(error.message);
+      if (dentroDaBusca) {
+        if (typeof data !== "string" || !data) {
+          toast.error("Tutor salvo, mas não foi possível identificar o cadastro. Atualize a busca.");
+          dentroDaBusca.onCancelar();
+          return;
+        }
+        toast.success("Tutor cadastrado no ORICSE.");
+        dentroDaBusca.onSalvar(data);
+        return;
+      }
+      await atualizarBanco(clinicaId);
+      toast.success(editandoId?"Tutor atualizado no Supabase.":"Tutor cadastrado no Supabase.");
+      salvamentoEmCurso.current = false;
+      cancelarEdicao();
+      setLetra("TODOS");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível concluir o cadastro do tutor.");
+    } finally {
+      salvamentoEmCurso.current = false;
+      setSalvando(false);
+    }
   }
 
   const campo = "mt-1 min-h-11 w-full rounded-xl border bg-white px-3 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
-  return <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
-    <div className="mb-6">
+  return <div className={dentroDaBusca ? "w-full" : "mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6"}>
+    {!dentroDaBusca && <><div className="mb-6">
       <Link to="/recepcao" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Recepção</Link>
       <div className="mt-4 flex items-center gap-2"><Users size={23} className="text-primary"/><h1 className="text-3xl font-black">Tutores</h1><span className="ml-auto text-xs text-muted-foreground">{carregando?"Carregando banco…":"Clínica ativa · Supabase"}</span></div>
     </div>
@@ -305,7 +336,7 @@ function Tutores() {
     <div className="inline-flex w-full rounded-2xl border bg-white p-1 shadow-sm sm:w-auto">
       <button type="button" onClick={cancelarEdicao} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold sm:flex-none ${modo === "procurar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}><Search size={17}/> Buscar tutor</button>
       <button type="button" onClick={abrirNovo} className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold sm:flex-none ${modo === "novo" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}><UserPlus size={17}/> Novo tutor</button>
-    </div>
+    </div></>}
 
     {modo === "procurar" ? (
       <section className="mt-5 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
@@ -396,17 +427,17 @@ function Tutores() {
           </Bloco>
 
           <label className="text-sm font-semibold">Observações<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} className={`${campo} py-3`}/></label>
-          <div className="flex justify-end gap-2"><button type="button" onClick={cancelarEdicao} className="rounded-xl border px-4 py-3 font-semibold">Cancelar</button><button type="button" onClick={salvarTutor} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground">{modo === "editar" ? "Salvar alterações" : "Salvar tutor"}</button></div>
+          <div className="flex justify-end gap-2"><button type="button" onClick={cancelarEdicao} disabled={salvando} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-60">Cancelar</button><button type="button" onClick={salvarTutor} disabled={salvando || carregando} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-60">{salvando ? "Salvando..." : modo === "editar" ? "Salvar alterações" : dentroDaBusca ? "Salvar tutor e continuar" : "Salvar tutor"}</button></div>
         </div>
       </section>
     )}
 
-    <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+    {!dentroDaBusca && <section className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
       <h2 className="flex items-center gap-2 text-lg font-black"><Users size={20} className="text-primary"/> Tutores cadastrados <span className="text-sm text-muted-foreground">({tutores.length})</span></h2>
       <div className="mt-4 flex flex-wrap gap-1.5"><button type="button" onClick={() => setLetra("TODOS")} className={`rounded-lg border px-3 py-1.5 text-sm font-bold ${letra === "TODOS" ? "bg-primary text-primary-foreground" : "bg-white"}`}>Todos</button>{ALFABETO.map((l) => <button key={l} type="button" disabled={!letrasDisponiveis.has(l)} onClick={() => setLetra(l)} className={`h-8 min-w-8 rounded-lg border text-sm font-bold ${letra === l ? "bg-primary text-primary-foreground" : "bg-white"} disabled:opacity-25`}>{l}</button>)}</div>
       {tutores.length === 0 ? <div className="mt-4 rounded-xl border border-dashed bg-slate-50 p-7 text-center"><p className="text-sm text-muted-foreground">Nenhum tutor cadastrado ainda.</p><button type="button" onClick={abrirNovo} className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Cadastrar tutor</button></div> : <div className="mt-5 space-y-5">{gruposAlfabeticos.map(([i, lista]) => <div key={i}><div className="mb-2 text-xl font-black text-primary">{i}</div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{lista.map((t) => <TutorCard key={t.id} tutor={t} animais={animais} onEdit={abrirEdicao} clinicaId={clinicaId}/>)}</div></div>)}</div>}
-    </section>
-  </main>;
+    </section>}
+  </div>;
 }
 
 function TutorCard({ tutor, animais, onEdit, clinicaId }: { tutor: Tutor; animais: AnimalResumo[]; onEdit: (tutor: Tutor) => void; clinicaId:string }) {

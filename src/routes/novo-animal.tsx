@@ -129,10 +129,16 @@ function pesoPorDigitacao(valorDigitado: string) {
 }
 
 function NovoAnimal() {
+  return <CadastroAnimal />;
+}
+
+export function CadastroAnimal({ dentroDaBusca }: {
+  dentroDaBusca?: { tutorId: string; clinicaId: string; onSalvar: () => void; onCancelar: () => void };
+} = {}) {
   const navigate = useNavigate();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const tutorIdParam = params.get("tutorId") || "";
-  const animalId = params.get("animalId") || "";
+  const tutorIdParam = dentroDaBusca?.tutorId || params.get("tutorId") || "";
+  const animalId = dentroDaBusca ? "" : params.get("animalId") || "";
 
   const [tutor,setTutor]=useState<Tutor|null>(null);
   const [animalExistente,setAnimalExistente]=useState<Animal|null>(null);
@@ -147,6 +153,7 @@ function NovoAnimal() {
    // O vínculo do tutor define a clínica; não depender do contexto temporário do admin.
    const {data:clinicaSelecionada,error:erroClinica}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_tutor:tutorIdParam||null,p_animal:animalId||null});
    if(erroClinica||!clinicaSelecionada)throw Error(erroClinica?.message||"Clínica do tutor não identificada.");
+   if(dentroDaBusca && clinicaSelecionada !== dentroDaBusca.clinicaId)throw Error("Tutor de outra clínica.");
    const {data,error:rpcError}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaSelecionada,p_tutor:tutorIdParam||null,p_animal:animalId||null});
    if(rpcError)throw rpcError;
    if(!ativo)return;
@@ -154,7 +161,7 @@ function NovoAnimal() {
    setTutor(data?.tutor||null);
    if(data?.animal){setAnimalExistente(data.animal);setForm({...FORM_VAZIO,...data.animal,peso:data.animal.peso==null?"":String(data.animal.peso),temperamentos:data.animal.temperamentos||[]});}
   }catch(e){if(ativo)toast.error(e instanceof Error?e.message:"Não foi possível consultar o tutor no Supabase");}
-  finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[tutorIdParam,animalId]);
+  finally{if(ativo)setCarregando(false)}})();return()=>{ativo=false};},[tutorIdParam,animalId,dentroDaBusca?.clinicaId]);
 
   const racasInternacionais = RACAS_COMPLETAS[form.especie] || [SRD, "Outra raça / variedade", "Não informado"];
   const cadastroExotico = ehExotico(form.especie);
@@ -199,7 +206,8 @@ function NovoAnimal() {
     const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
     if(error)return toast.error(error.message);
     toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no ORICSE.");
-    navigate({to:"/tutores"});
+    if (dentroDaBusca) dentroDaBusca.onSalvar();
+    else navigate({to:"/tutores"});
     } catch (error) {
       console.error("Não foi possível salvar o animal:", error);
       toast.error(error instanceof Error ? error.message : "Não foi possível concluir o cadastro do animal.");
@@ -208,8 +216,8 @@ function NovoAnimal() {
     }
   }
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6">
-      <Link to="/tutores" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Tutores</Link>
+    <div className={dentroDaBusca ? "w-full" : "mx-auto min-h-screen w-full max-w-[1200px] px-4 pb-28 pt-6 sm:px-6"}>
+      {!dentroDaBusca && <Link to="/tutores" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={18}/> Voltar para Tutores</Link>}
 
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
@@ -270,10 +278,10 @@ function NovoAnimal() {
 
           <section className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><label className="text-sm font-semibold">Observações gerais<textarea rows={4} value={form.observacoes} onChange={(e) => set("observacoes", e.target.value)} className={`${campo} py-3`}/></label></section>
 
-          <div className="flex flex-wrap justify-end gap-2"><Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link><button type="button" onClick={salvar} disabled={salvando} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"><Save size={17}/> {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Salvar animal"}</button></div>
+          <div className="flex flex-wrap justify-end gap-2">{dentroDaBusca ? <button type="button" disabled={salvando} onClick={dentroDaBusca.onCancelar} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-60">Cancelar</button> : <Link to="/tutores" className="rounded-xl border px-4 py-3 font-semibold">Cancelar</Link>}<button type="button" onClick={salvar} disabled={salvando} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"><Save size={17}/> {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Salvar animal"}</button></div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

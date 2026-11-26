@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft, ChevronRight, CircleAlert, ClipboardList, PawPrint,
-  ReceiptText, Search, ShieldCheck, Stethoscope, UserRound, Users,
+  ReceiptText, Search, ShieldCheck, Stethoscope, UserPlus, Plus, UserRound, Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CadastroTutor } from "./tutores";
+import { CadastroAnimal } from "./novo-animal";
 import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { lerComandas, saldoComanda } from "@/lib/comandas";
@@ -76,6 +78,18 @@ function BuscaInteligente() {
   const autorizado = adminGlobal || podeAlguma(permissoesPesquisa);
   const podeFinanceiro = adminGlobal || pode("caixa.comandas") || pode("caixa.financeiro.visualizar");
   const podeConsultar = adminGlobal || pode("consultorio.atendimentos");
+  const podeCadastrar = adminGlobal || pode("recepcao.cadastros.criar");
+  const contextoCadastro = useRef({ clinicaId, podeCadastrar });
+  contextoCadastro.current = { clinicaId, podeCadastrar };
+  const [cadastro, setCadastro] = useState<{ tipo: "tutor" | "animal"; clinicaId: string; tutorId?: string } | null>(null);
+  const [atualizacao, setAtualizacao] = useState(0);
+  const cadastroAtual = podeCadastrar && cadastro?.clinicaId === clinicaId ? cadastro : null;
+  function concluirCadastro(id: string) {
+    if (contextoCadastro.current.clinicaId !== clinicaId || !contextoCadastro.current.podeCadastrar) return;
+    setCadastro(null);
+    setTutorSelecionado(id);
+    setAtualizacao(n => n + 1);
+  }
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [tutorSelecionado, setTutorSelecionado] = useState<string | null>(null);
@@ -91,11 +105,15 @@ function BuscaInteligente() {
   const [erro, setErro] = useState("");
 
   useEffect(() => {
+    setCadastro(null);
+    setTutorSelecionado(null);
+  }, [clinicaId]);
+
+  useEffect(() => {
     if (verificando || !clinicaId || !autorizado) return;
     let ativo = true;
     setCarregando(true);
     setErro("");
-    setTutorSelecionado(null);
     setTutores([]);
     setAnimais([]);
     setComandas([]);
@@ -173,7 +191,7 @@ function BuscaInteligente() {
       }
     })();
     return () => { ativo = false; };
-  }, [autorizado, clinicaId, podeFinanceiro, verificando]);
+  }, [autorizado, clinicaId, podeFinanceiro, verificando, atualizacao]);
 
   const tutorPorId = useMemo(() => new Map(tutores.map(t => [t.id, t])), [tutores]);
   const tutoresEncontrados = useMemo(() => {
@@ -235,9 +253,20 @@ function BuscaInteligente() {
       {erro} <button type="button" className="ml-2 font-semibold underline" onClick={() => window.location.reload()}>Tentar novamente</button>
     </div>}
 
-    {!tutor ? <>
+    {cadastroAtual?.tipo === "tutor" ? <CadastroTutor key={clinicaId} dentroDaBusca={{
+      clinicaId, onSalvar: concluirCadastro, onCancelar: () => setCadastro(null),
+    }} /> : cadastroAtual?.tipo === "animal" && cadastroAtual.tutorId && tutor?.id === cadastroAtual.tutorId
+      ? <section className="mt-6 rounded-2xl border bg-card p-4 sm:p-6">
+          <button type="button" onClick={() => setCadastro(null)} className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><ArrowLeft size={17}/> Voltar ao tutor</button>
+          <CadastroAnimal key={cadastroAtual.tutorId} dentroDaBusca={{
+            clinicaId, tutorId: cadastroAtual.tutorId, onSalvar: () => concluirCadastro(tutor.id), onCancelar: () => setCadastro(null),
+          }} />
+        </section> : !tutor ? <>
       <section className="mt-6 rounded-2xl border bg-card p-4 shadow-sm sm:p-6">
-        <label htmlFor="busca-oricse" className="block text-sm font-semibold">Quem você procura?</label>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label htmlFor="busca-oricse" className="block text-sm font-semibold">Quem você procura?</label>
+          {podeCadastrar && <button type="button" onClick={() => setCadastro({ tipo: "tutor", clinicaId })} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><UserPlus size={18}/> Novo tutor</button>}
+        </div>
         <div className="mt-2 flex min-h-13 items-center gap-3 rounded-xl border bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
           <Search className="shrink-0 text-muted-foreground" size={20} />
           <input id="busca-oricse" autoFocus value={busca} onChange={e => setBusca(e.target.value)}
@@ -320,7 +349,10 @@ function BuscaInteligente() {
       </section>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border bg-card p-5">
-          <h3 className="flex items-center gap-2 text-lg font-bold"><PawPrint className="text-primary" size={20} /> Animais</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-lg font-bold"><PawPrint className="text-primary" size={20} /> Animais</h3>
+            {podeCadastrar && <button type="button" onClick={() => setCadastro({ tipo: "animal", clinicaId, tutorId: tutor.id })} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"><Plus size={17}/> Adicionar animal</button>}
+          </div>
           <div className="mt-4 space-y-2">
             {petsDoTutor.map(a => <div key={a.id} className="flex items-center gap-3 rounded-xl border p-3">
               <PawPrint className="shrink-0 text-primary" size={20} />
