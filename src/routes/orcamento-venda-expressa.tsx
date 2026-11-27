@@ -20,6 +20,7 @@ type Produto = { id: string; nome: string; valor: number; faixas: FaixaPrecoPeso
 type Linha = { id: string; produtoId: string; quantidade: number; perfil: PerfilOrcamento };
 type Clinica = Record<string, unknown>;
 type Tutor = { id: string; nome: string; telefone?: string | null; email?: string | null };
+type Animal = { id: string; nome: string; tutor_id: string; especie: string; sexo: string; raca: string; peso_kg: number | null };
 const moeda = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const texto = (v: unknown) => typeof v === "string" ? v.trim() : "";
 const numero = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -33,6 +34,10 @@ function OrcamentoVendaExpressa() {
   const [clinica, setClinica] = useState<Clinica>({});
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [tutores, setTutores] = useState<Tutor[]>([]);
+  const [animais, setAnimais] = useState<Animal[]>([]);
+  const [animalId, setAnimalId] = useState("");
+  const [tutorId, setTutorId] = useState("");
+  const [logoClinica, setLogoClinica] = useState<HTMLImageElement | null>(null);
   const [nomeTutor, setNomeTutor] = useState("");
   const [contatoTutor, setContatoTutor] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -94,6 +99,9 @@ function OrcamentoVendaExpressa() {
     setClinica({});
     setProdutos([]);
     setTutores([]);
+    setAnimais([]);
+    setAnimalId("");
+    setTutorId("");
     setLinhas([]);
     setNomeTutor("");
     setContatoTutor("");
@@ -105,12 +113,21 @@ function OrcamentoVendaExpressa() {
     setCarregando(true);
     Promise.all([
       (supabaseBanco as any).rpc("oricse_orcamento_dados_clinica", { p_clinica_id: clinicaId }),
+      supabaseBanco.from("clinicas").select("logo_url").eq("id", clinicaId).maybeSingle(),
       supabaseBanco.from("oricse_catalogo_itens").select("id,nome,valor,tipo,faixas_peso").eq("clinica_id", clinicaId).eq("ativo", true).order("nome"),
       (supabaseBanco as any).from("tutores").select("id,nome,telefone,email").eq("clinica_id", clinicaId).order("nome").limit(1000),
-    ]).then(([c, p, t]) => {
+      (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,sexo,raca,peso_kg").eq("clinica_id", clinicaId).order("nome").limit(2000),
+    ]).then(([c, logo, p, t, a]) => {
       if (!ativo) return;
       if (c.error || p.error) throw new Error(c.error?.message || p.error?.message);
       setClinica(c.data || {});
+      const logoUrl = logo.data?.logo_url;
+      if (logoUrl) {
+        const imagem = new Image();
+        imagem.crossOrigin = "anonymous";
+        imagem.onload = () => { if (ativo) setLogoClinica(imagem); };
+        imagem.src = logoUrl;
+      }
       setProdutos((p.data ?? []).map(item => ({
         id: item.id,
         nome: item.nome,
@@ -118,6 +135,7 @@ function OrcamentoVendaExpressa() {
         faixas: item.tipo === "servico" ? faixasValidas(item.faixas_peso) : [],
       })));
       setTutores(t.error ? [] : t.data || []);
+      setAnimais(a.error ? [] : a.data || []);
       setCatalogoClinicaId(clinicaId);
     }).catch(e => { if (ativo) toast.error(e instanceof Error ? e.message : "Não foi possível carregar os dados."); })
       .finally(() => { if (ativo) setCarregando(false); });
@@ -149,8 +167,9 @@ function OrcamentoVendaExpressa() {
     const ctx = canvas.getContext("2d"); if (!ctx) return null;
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, largura, altura);
     ctx.fillStyle = "#692b40"; ctx.fillRect(0, 0, largura, 16);
+    if (logoClinica) ctx.drawImage(logoClinica, 74, 42, 150, 62);
     ctx.fillStyle = "#182239"; ctx.font = "bold 40px Arial";
-    ctx.fillText(texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", 74, 105);
+    ctx.fillText(texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", logoClinica ? 250 : 74, 105);
     ctx.font = "22px Arial"; ctx.fillStyle = "#4b5563";
     const endereco = [texto(clinica.endereco), texto(clinica.numero), texto(clinica.bairro), texto(clinica.cidade), texto(clinica.uf)].filter(Boolean).join(", ");
     const dados = [
@@ -169,8 +188,17 @@ function OrcamentoVendaExpressa() {
     ctx.font = "21px Arial"; ctx.fillStyle = "#374151";
     ctx.fillText("Emissão: " + new Date().toLocaleDateString("pt-BR"), 74, 372);
     ctx.fillText("Validade: " + Math.max(1, Math.min(365, Math.floor(Number(validade)||7))) + " dia(s)", 430, 372);
-    ctx.fillText("Tutor/cliente: " + (nomeTutor.trim() || "Não informado").slice(0, 75), 74, 425);
-    if (contatoTutor.trim()) ctx.fillText("Contato: " + contatoTutor.trim().slice(0, 70), 74, 463);
+    ctx.fillText("TUTOR", 74, 425);
+    ctx.font = "bold 22px Arial"; ctx.fillStyle = "#182239";
+    ctx.fillText(nomeTutor.trim() || "Não informado", 74, 456);
+    if (contatoTutor.trim()) { ctx.font = "20px Arial"; ctx.fillStyle = "#4b5563"; ctx.fillText(contatoTutor.trim().slice(0, 70), 74, 484); }
+    const animal = animais.find(a => a.id === animalId);
+    if (animal) {
+      ctx.font = "bold 22px Arial"; ctx.fillStyle = "#692b40"; ctx.fillText("ANIMAL", 610, 425);
+      ctx.font = "bold 22px Arial"; ctx.fillStyle = "#182239"; ctx.fillText(animal.nome, 610, 456);
+      ctx.font = "20px Arial"; ctx.fillStyle = "#4b5563";
+      ctx.fillText([animal.especie, animal.raca, animal.sexo, animal.peso_kg ? animal.peso_kg + " kg" : ""].filter(Boolean).join(" · "), 610, 484, 540);
+    }
     ctx.fillStyle = "#f5eef1"; ctx.fillRect(74, 510, 1092, 58);
     ctx.fillStyle = "#692b40"; ctx.font = "bold 23px Arial";
     ctx.fillText("DESCRIÇÃO", 93, 547); ctx.fillText("QTD.", 780, 547); ctx.fillText("TOTAL", 980, 547);
@@ -237,11 +265,27 @@ function OrcamentoVendaExpressa() {
       {tutores.length > 0 && <label className="text-sm font-semibold sm:col-span-2">Selecionar tutor cadastrado (opcional)
         <select aria-label="Selecionar tutor cadastrado" className="mt-2 w-full rounded-xl border bg-background p-3" defaultValue="" onChange={e => {
           const tutor = tutores.find(t => t.id === e.target.value);
+          setTutorId(tutor?.id ?? "");
+          setAnimalId("");
           if (tutor) { setNomeTutor(tutor.nome); setContatoTutor(tutor.telefone || tutor.email || ""); }
         }}><option value="">Sem seleção — orçamento avulso</option>{tutores.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}</select>
       </label>}
       <label className="text-sm font-semibold">Tutor/cliente (opcional)<input className="mt-2 w-full rounded-xl border bg-background p-3" value={nomeTutor} onChange={e=>setNomeTutor(e.target.value)} placeholder="Nome do tutor ou cliente"/></label>
       <label className="text-sm font-semibold">Contato (opcional)<input className="mt-2 w-full rounded-xl border bg-background p-3" value={contatoTutor} onChange={e=>setContatoTutor(e.target.value)} placeholder="WhatsApp ou e-mail"/></label>
+      {animais.length > 0 && <label className="text-sm font-semibold sm:col-span-2">Animal (opcional)
+        <select aria-label="Selecionar animal" className="mt-2 w-full rounded-xl border bg-background p-3" value={animalId}
+          onChange={e => {
+            const selecionado = animais.find(a => a.id === e.target.value);
+            setAnimalId(e.target.value);
+            if (selecionado) {
+              const tutor = tutores.find(t => t.id === selecionado.tutor_id);
+              if (tutor) { setTutorId(tutor.id); setNomeTutor(tutor.nome); setContatoTutor(tutor.telefone || tutor.email || ""); }
+            }
+          }}>
+          <option value="">Sem animal vinculado</option>
+          {animais.filter(a => !tutorId || a.tutor_id === tutorId).map(a => <option key={a.id} value={a.id}>{a.nome} · {a.especie || "Espécie não informada"}</option>)}
+        </select>
+      </label>}
       <label className="text-sm font-semibold">Validade (dias)<input type="number" min="1" max="365" className="mt-2 w-full rounded-xl border bg-background p-3" value={validade} onChange={e=>setValidade(e.target.value)}/></label>
       <div className="self-end text-sm text-muted-foreground">Clínica: {texto(clinica.nome) || "Carregando dados…"}</div>
     </section>
