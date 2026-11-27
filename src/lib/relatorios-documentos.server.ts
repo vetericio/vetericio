@@ -196,12 +196,17 @@ export async function gerarRelatorioDocumentos({
     const pdf = r.drive_arquivo_id === r.id ? pdfs.get(r.id) : undefined;
     return pdf?.animal === r.animal_id && pdf.categoria === "receitas" ? pdf.autor : null;
   };
-  const pendentes = receitas.filter((r) => !r.prescritor_nome?.trim() || !r.prescritor_crmv?.trim());
+  const pendentes = receitas.filter(
+    (r) => !r.prescritor_nome?.trim() || !r.prescritor_crmv?.trim(),
+  );
   const perfis = await porLotes(
     pendentes.map(autorRegistrado),
     (ids) =>
       registros(
-        supabaseAdmin.from("oricse_pessoas").select("user_id,nome_completo,crmv,crmv_uf").in("user_id", ids),
+        supabaseAdmin
+          .from("oricse_pessoas")
+          .select("user_id,nome_completo,crmv,crmv_uf")
+          .in("user_id", ids),
       ),
     (p) => [p.user_id, p],
   );

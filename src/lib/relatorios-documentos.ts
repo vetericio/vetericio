@@ -39,7 +39,8 @@ export type MovimentoRelatorio = {
 export function referenciaGuardaReceita(emissao: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(emissao)) return null;
   const original = new Date(emissao + "T00:00:00Z");
-  if (Number.isNaN(original.getTime()) || original.toISOString().slice(0, 10) !== emissao) return null;
+  if (Number.isNaN(original.getTime()) || original.toISOString().slice(0, 10) !== emissao)
+    return null;
   // Em anos sem 29/02, usar 01/03 para não antecipar a referência.
   original.setUTCFullYear(original.getUTCFullYear() + 5);
   return original.toISOString().slice(0, 10);
