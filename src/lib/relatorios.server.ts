@@ -1,3 +1,4 @@
+import { exigirClinicaNoPilotoRelatorios } from "./relatorios-acesso";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { clienteSupabaseUsuario, exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 import {
@@ -144,6 +145,8 @@ export async function gerarRelatorio({
     [PERMISSAO_RELATORIOS],
     accessToken,
   );
+
+  await exigirClinicaNoPilotoRelatorios(supabaseAdmin, clinicaId, auth.user.id);
 
   const banco = clienteSupabaseUsuario(accessToken);
   const margemInicio = somarDias(inicio, -1) + "T00:00:00Z";
@@ -429,12 +432,13 @@ export async function gerarRelatorio({
     ];
     return {
       indicadores: [
-        { rotulo: "Saldo em aberto", valor: moeda(soma(valores, (x) => x)) },
-        { rotulo: "Pendências", valor: valores.length },
+        { rotulo: "Saldo em aberto das origens do período", valor: moeda(soma(valores, (x) => x)) },
+        { rotulo: "Pendências originadas no período", valor: valores.length },
         { rotulo: "Inadimplência", valor: "Sem vencimentos registrados" },
       ],
       notas: [
-        "Saldo atual dos registros originados no período. Comandas e entradas manuais aparecem separados para não somar pagamentos já registrados no caixa.",
+        "Mostra o saldo que ainda está aberto hoje das comandas abertas e dos lançamentos com competência no período. Pendências anteriores não entram neste total. Altere a data inicial para incluí-las.",
+        "Comandas e entradas manuais são listadas separadamente.",
         "Sem vencimento registrado não classificamos o saldo como atrasado.",
       ],
       tabelas: [
@@ -672,7 +676,7 @@ export async function gerarRelatorio({
       { rotulo: "Orçamentos registrados", valor: orcamentos.length },
       { rotulo: "Orçamentos vinculados a venda", valor: convertido },
       {
-        rotulo: "Conversão dos registrados",
+        rotulo: "Conversão até hoje dos orçamentos do período",
         valor: orcamentos.length
           ? (convertido / orcamentos.length).toLocaleString("pt-BR", {
               style: "percent",
@@ -683,8 +687,8 @@ export async function gerarRelatorio({
       { rotulo: "Comandas no período", valor: csPeriodo.length },
     ],
     notas: [
-      "Conta somente orçamentos registrados a partir da ativação. PDFs antigos sem registro não entram.",
-      "Conversão é um vínculo explícito com uma Venda Expressa. Finalizar comanda ou baixar PDF não conta como conversão.",
+      "Use Registrar para acompanhamento na tela de orçamento. Baixar, imprimir ou enviar o PDF sem registrar não entra na contagem.",
+      "A taxa considera as vendas vinculadas até hoje aos orçamentos registrados no período, mesmo que a venda ocorra depois da data final. A tabela de vendas usa a data da venda.",
     ],
     tabelas: [
       {

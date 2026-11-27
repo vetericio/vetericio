@@ -1,3 +1,4 @@
+import { clinicaNoPilotoRelatorios } from "@/lib/relatorios-acesso";
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
@@ -384,7 +385,11 @@ export function MenuLateral({
     setAberto(true);
   };
 
-  const itensVisiveis = (area: AreaMenu) => {
+  const itensVisiveis = (area: AreaMenu): ItemMenu[] => {
+    if (area.titulo === "Relatórios" &&
+        (carregandoPermissoes || !clinicaNoPilotoRelatorios(clinicaSlug))) {
+      return [{ rotulo: "Módulo em preparação", emBreve: true }];
+    }
     const visiveis = carregandoPermissoes
       ? area.itens
       : area.itens.filter(

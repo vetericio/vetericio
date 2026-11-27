@@ -1,3 +1,4 @@
+import { exigirClinicaNoPilotoRelatorios } from "./relatorios-acesso";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 import { contaDemoAlvorada, exigirEmissaoDisponivel } from "@/lib/demo-alvorada";
@@ -10,6 +11,7 @@ async function autorizar({ accessToken, clinicaId }: Identidade, permissoes: str
   if (error || !data.user) throw new Error("Sessão inválida. Entre novamente.");
   exigirEmissaoDisponivel(contaDemoAlvorada(data.user));
   await exigirPermissaoClinica(supabaseAdmin, data.user.id, clinicaId, permissoes, accessToken);
+  await exigirClinicaNoPilotoRelatorios(supabaseAdmin, clinicaId, data.user.id);
   return data.user.id;
 }
 

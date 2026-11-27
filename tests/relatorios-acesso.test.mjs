@@ -4,6 +4,7 @@ import test from "node:test";
 import ts from "typescript";
 
 const urlLib = new URL("../src/lib/relatorios.ts", import.meta.url).href;
+const urlPiloto = new URL("../src/lib/relatorios-acesso.ts", import.meta.url).href;
 const codigo = fs.readFileSync(new URL("../src/lib/relatorios.server.ts", import.meta.url), "utf8");
 const { outputText } = ts.transpileModule(codigo, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -15,6 +16,7 @@ const programa = outputText
     'import { clienteSupabaseUsuario, exigirPermissaoClinica } from "@/lib/permissao-clinica.server";',
     "",
   )
+  .replace('from "./relatorios-acesso";', `from ${JSON.stringify(urlPiloto)};`)
   .replace('from "./relatorios";', `from ${JSON.stringify(urlLib)};`)
   .replace(
     "    const { data: auth, error }",
@@ -35,18 +37,46 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
   let consultas = 0;
   let autorizado = false;
   let autenticado = false;
+  let falhaClinica = false;
+  let vinculoAtivo = true;
   globalThis[chave] = {
     supabaseAdmin: {
+      from(tabela) {
+        const filtros = [];
+        const query = {
+          select(col) {
+            assert.equal(col, tabela === "clinicas" ? "slug" : "user_id");
+            return query;
+          },
+          eq(campo, valor) {
+            filtros.push([campo, valor]);
+            return query;
+          },
+          async maybeSingle() {
+            if (tabela === "clinicas") {
+              assert.equal(filtros[0][0], "id");
+              return {
+                data: { slug: filtros[0][1] === "clinica-a" ? "vetericio" : "outra" },
+                error: falhaClinica ? new Error("sem banco") : null,
+              };
+            }
+            assert.equal(tabela, "clinica_usuarios");
+            assert.deepEqual(filtros, [
+              ["clinica_id", "clinica-a"],
+              ["user_id", "vet-a"],
+              ["ativo", true],
+            ]);
+            return { data: vinculoAtivo ? { user_id: "vet-a" } : null, error: null };
+          },
+        };
+        return query;
+      },
       auth: { getUser: async () => ({ data: { user: autenticado ? { id: "vet-a" } : null } }) },
     },
     async exigirPermissaoClinica(_admin, usuario, clinica, permissoes, jwt) {
       assert.equal(usuario, "vet-a");
       assert.equal(jwt, params.accessToken);
-      if (
-        !autorizado ||
-        clinica !== "clinica-a" ||
-        permissoes[0] !== "caixa.financeiro.visualizar"
-      ) {
+      if (!autorizado || permissoes[0] !== "caixa.financeiro.visualizar") {
         throw new Error("Seu cargo ou plano não autoriza esta operação.");
       }
     },
@@ -95,7 +125,20 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
     await assert.rejects(gerarRelatorio(params), /não autoriza/);
     autorizado = true;
 
-    await assert.rejects(gerarRelatorio({ ...params, clinicaId: "clinica-b" }), /não autoriza/);
+    // A outra clínica tem permissão financeira. Ainda assim, o piloto é bloqueado.
+    for (const codigo of ["01", "02", "03", "04", "05", "06", "07"]) {
+      await assert.rejects(
+        gerarRelatorio({ ...params, codigo, clinicaId: "clinica-b" }),
+        /somente para a Veterício/,
+      );
+    }
+    falhaClinica = true;
+    await assert.rejects(gerarRelatorio(params), /somente para a Veterício/);
+    falhaClinica = false;
+    // Mesmo após passar pela permissão genérica, não libera um admin sem vínculo.
+    vinculoAtivo = false;
+    await assert.rejects(gerarRelatorio(params), /somente para a Veterício/);
+    vinculoAtivo = true;
     assert.equal(consultas, 0);
     const relat = await gerarRelatorio(params);
     assert.equal(relat.indicadores[1].valor, 1);

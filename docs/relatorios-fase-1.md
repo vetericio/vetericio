@@ -1,7 +1,7 @@
 # Relatórios ORICSE: primeira entrega financeira (01 a 07)
 
-Acesse **Relatórios** no menu. Cada consulta usa a clínica selecionada e até 93 dias.
-A permissão de leitura financeira é verificada no servidor antes de qualquer leitura.
+Piloto restrito à Veterício. Acesse **Relatórios** no menu da Veterício. Cada consulta usa a clínica selecionada e até 93 dias.
+A clínica do piloto e a permissão financeira são verificadas no servidor antes de ler ou gravar dados de relatórios. As demais clínicas continuam com o módulo bloqueado.
 Os relatórios 08 a 30 não fazem parte desse lote.
 
 | Nº | O que está disponível |
@@ -9,10 +9,10 @@ Os relatórios 08 a 30 não fazem parte desse lote.
 | 01 | Faturamento bruto por setor, itens identificados na Venda Expressa e recebimentos de consulta por profissional quando há vínculo registrado. Os últimos dois recortes não são totais adicionais. |
 | 02 | Entradas, saídas pagas por categoria, estornos confirmados e resultado dos lançamentos. Sem inventar custo histórico por item, margem ou lucro contábil. |
 | 03 | Aberturas e fechamentos por operador, fundo, esperado, contado e divergência registrada. |
-| 04 | Saldo atual de comandas abertas e entradas manuais pendentes da origem no período. Sem vencimento registrado, não classifica pendência como inadimplência. |
+| 04 | Saldo atual de comandas abertas e entradas manuais pendentes da origem no período, sem incluir pendências anteriores à data inicial. Sem vencimento registrado, não classifica pendência como inadimplência. |
 | 05 | Saídas pendentes, movimentação realizada e projeção pelo que foi registrado no caixa. Competência de um pendente não é vencimento. Não calcula saldo bancário. |
 | 06 | Conferência dos pagamentos do portal vinculados ao caixa, valores de taxa e repasse registrados, baixas e estornos. Não declara conferência com extrato bancário. |
-| 07 | Orçamentos registrados para acompanhamento, vendas e comandas. Um gestor pode relacionar uma venda existente posterior ao orçamento, dentro da mesma clínica. Não cria venda, pagamento ou baixa de estoque. Orçamentos antigos não registrados não entram na conversão. |
+| 07 | Orçamentos registrados para acompanhamento, vendas e comandas. Um gestor pode relacionar uma venda existente posterior ao orçamento, dentro da mesma clínica. Não cria venda, pagamento ou baixa de estoque. Só entram orçamentos registrados para acompanhamento. A conversão da lista filtrada pela data de registro é acumulada até hoje e inclui venda posterior ao período. |
 
 ## Homologação e rollback
 

@@ -1,3 +1,4 @@
+import { AVISO_PILOTO_RELATORIOS, clinicaNoPilotoRelatorios } from "@/lib/relatorios-acesso";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BarChart3 } from "lucide-react";
@@ -25,9 +26,10 @@ const botao =
 const titulo = (codigo: CodigoRelatorio) => RELATORIOS[Number(codigo) - 1];
 
 function Relatorios() {
-  const { clinicaId, clinicaNome, pode, carregando } = usePermissoes();
+  const { clinicaId, clinicaNome, clinicaSlug, pode, carregando } = usePermissoes();
   const [atual, escolher] = useState<CodigoRelatorio>("01");
-  const autorizado = !!clinicaId && pode(PERMISSAO_RELATORIOS);
+  const autorizado =
+    !!clinicaId && clinicaNoPilotoRelatorios(clinicaSlug) && pode(PERMISSAO_RELATORIOS);
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
       <header>
@@ -42,7 +44,9 @@ function Relatorios() {
         <p role="status">Verificando acesso…</p>
       ) : !autorizado ? (
         <p role="status">
-          Selecione uma clínica com acesso financeiro para consultar os relatórios.
+          {clinicaId && !clinicaNoPilotoRelatorios(clinicaSlug)
+            ? AVISO_PILOTO_RELATORIOS
+            : "Selecione uma clínica com acesso financeiro para consultar os relatórios."}
         </p>
       ) : (
         <>

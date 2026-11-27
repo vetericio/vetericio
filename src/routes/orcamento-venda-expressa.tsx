@@ -1,3 +1,4 @@
+import { clinicaNoPilotoRelatorios } from "@/lib/relatorios-acesso";
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -22,8 +23,9 @@ const numero = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0;
 
 function OrcamentoVendaExpressa() {
   const demoAlvorada = useDemoAlvorada();
-  const { clinicaId, carregando: verificando, adminGlobal, pode } = usePermissoes();
+  const { clinicaId, clinicaSlug, carregando: verificando, adminGlobal, pode } = usePermissoes();
   const autorizado = adminGlobal || pode("caixa.comandas") || pode("caixa.financeiro.gerenciar");
+  const acompanharOrcamentos = clinicaNoPilotoRelatorios(clinicaSlug);
   const [clinica, setClinica] = useState<Clinica>({});
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [tutores, setTutores] = useState<Tutor[]>([]);
@@ -43,7 +45,7 @@ function OrcamentoVendaExpressa() {
   const codigoRegistrado = registro?.chave === chave ? registro.id : null;
   async function registrarOrcamento() {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
-    if (!clinicaId || !autorizado || emCurso.current || codigoRegistrado) return;
+    if (!clinicaId || !autorizado || !acompanharOrcamentos || emCurso.current || codigoRegistrado) return;
     if (!linhas.length || linhas.some(l => !produtos.some(p => p.id === l.produtoId) || !(l.quantidade > 0)) ||
         !Number.isFinite(total) || total < 0) return void toast.error("Inclua itens e quantidades válidas.");
     emCurso.current = true;
@@ -207,11 +209,11 @@ function OrcamentoVendaExpressa() {
       <p className="text-right text-xl font-bold">Total: {moeda(total)}</p>
     </section>
     <label className="block text-sm font-semibold">Observações<textarea className="mt-2 min-h-24 w-full rounded-xl border bg-card p-3" value={observacoes} onChange={e=>setObservacoes(e.target.value)} placeholder="Condições e informações adicionais"/></label>
-    {codigoRegistrado && <p role="status" className="break-all text-sm">Código do orçamento: <strong>{codigoRegistrado}</strong></p>}
+    {acompanharOrcamentos && codigoRegistrado && <p role="status" className="break-all text-sm">Código do orçamento: <strong>{codigoRegistrado}</strong></p>}
     <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={registrando || !linhas.length || !!codigoRegistrado} onClick={()=>void registrarOrcamento()} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-60">
+      {acompanharOrcamentos && <button type="button" disabled={registrando || !linhas.length || !!codigoRegistrado} onClick={()=>void registrarOrcamento()} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-60">
         {registrando ? "Registrando…" : codigoRegistrado ? "Orçamento registrado" : "Registrar para acompanhamento"}
-      </button>
+      </button>}
       <button type="button" onClick={()=>exportar("pdf")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground"><FileDown size={18}/> PDF</button>
       <button type="button" onClick={()=>exportar("jpeg")} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><ImageDown size={18}/> JPEG</button>
       <button type="button" onClick={()=>{const canvas=gerarCanvas();if(canvas){const win=window.open("","_blank");if(!win){toast.error("Permita pop-ups para imprimir.");return;}const imagem=win.document.createElement("img");imagem.alt="Orçamento";imagem.style.width="100%";imagem.onload=()=>{win.focus();win.print();};win.document.body.style.margin="0";win.document.body.appendChild(imagem);imagem.src=canvas.toDataURL("image/jpeg",.94);}}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Printer size={18}/> Imprimir</button>
