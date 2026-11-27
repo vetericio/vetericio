@@ -113,6 +113,7 @@ declare
   nota_normalizada text := nullif(regexp_replace(p_nota_fiscal, '^[[:space:]]+|[[:space:]]+$', '', 'g'), '');
   lote_normalizado text := nullif(regexp_replace(p_lote, '^[[:space:]]+|[[:space:]]+$', '', 'g'), '');
   hash_entrada bytea;
+  estado_igual boolean;
   estado text := case when p_finalizar then 'completo' else 'pendente' end;
 begin
   if ator is null
@@ -164,16 +165,15 @@ begin
     end if;
   end if;
 
-  if p_id is not null and compra.status = 'completo' and (
-    (compra.data_compra, compra.produto_id, compra.quantidade, compra.fornecedor, compra.nota_fiscal, compra.lote, compra.status)
-      is distinct from
-    (p_data_compra, p_produto_id, p_quantidade, fornecedor_normalizado, nota_normalizada, lote_normalizado, estado)
-  ) then
+  estado_igual := (compra.data_compra, compra.produto_id, compra.quantidade, compra.fornecedor, compra.nota_fiscal, compra.lote, compra.status)
+    is not distinct from
+    (p_data_compra, p_produto_id, p_quantidade, fornecedor_normalizado, nota_normalizada, lote_normalizado, estado);
+  if p_id is not null and compra.status = 'completo' and not estado_igual then
     raise exception using errcode = '22023', message = 'Uma compra finalizada não pode ser alterada.';
   end if;
 
   -- Reentregas de criação não sobrescrevem alterações posteriores ao primeiro registro.
-  if compra.id is null or (p_id is not null and compra.status = 'pendente') then
+  if compra.id is null or (p_id is not null and compra.status = 'pendente' and not estado_igual) then
     -- Um rascunho pode usar seu próprio produto se ele foi arquivado depois.
     select i.nome into nome_produto from public.oricse_catalogo_itens i
       where i.clinica_id = p_clinica_id and i.id = p_produto_id and i.tipo = 'produto'

@@ -142,7 +142,20 @@ test(
     await negado(db.query("select autor_id from public.oricse_compras_controlados"));
     await negado(db.query("update public.oricse_compras_controlados set status = 'completo'"));
 
+    // A reentrega idêntica de uma edição também não muda a linha.
+    await registro({ compra: rascunho.id, fornecedor: "Fornecedor" });
     await db.exec("reset role");
+    const antesRepeticao = await db.query(
+      "select atualizado_em from public.oricse_compras_controlados",
+    );
+    await autorizar(id(10));
+    await registro({ compra: rascunho.id, fornecedor: "Fornecedor" });
+    await db.exec("reset role");
+    assert.deepEqual(
+      (await db.query("select atualizado_em from public.oricse_compras_controlados")).rows,
+      antesRepeticao.rows,
+    );
+
     await db.exec(`update public.oricse_catalogo_itens set ativo=false where id='${id(20)}'`);
     await db.exec(
       `update public.oricse_pessoas set nome_completo='Nome posterior' where user_id='${id(10)}'`,
