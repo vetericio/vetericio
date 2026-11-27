@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { caminhoInternoDaFicha } from "@/lib/endereco-ficha-animal";
 import { PERMISSOES_ROTA_RELATORIOS } from "@/lib/relatorios";
 
 export type PermissaoEfetiva = {
@@ -65,7 +66,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
 };
 
 export function permissoesDaRota(pathname: string) {
-  return PERMISSOES_ROTA[pathname] || null;
+  return PERMISSOES_ROTA[caminhoInternoDaFicha(pathname)] || null;
 }
 
 // Evita repetir as mesmas RPCs de permissões em cada card, cabeçalho, menu

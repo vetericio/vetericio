@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
+import { caminhoInternoDaFicha } from "@/lib/endereco-ficha-animal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   applyVisualLayout,
@@ -94,7 +95,7 @@ export function VisualPageRuntime() {
         ? "/portal-tutores?portal_login_preview=1"
         : location.pathname === "/portal-tutores" && new URLSearchParams(window.location.search).has("portal_login_preview")
           ? "/portal-tutores?portal_login_preview=1"
-          : location.pathname;
+          : caminhoInternoDaFicha(location.pathname);
       const page = published.pages?.[paginaVisual];
       if (!page) return undefined;
       // Nunca aplicar coordenadas salvas no desktop em uma tela mobile.
